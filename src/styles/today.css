@@ -1,0 +1,104 @@
+/* The focus room: one task, a quiet landscape, and a timer. */
+.focus-environment {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: oklch(14% 0.04 300);
+  color: #fff;
+}
+.focus-environment > img,
+.focus-environment-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  object-fit: cover;
+}
+.focus-environment-shade {
+  z-index: -1;
+  background: oklch(12% 0.05 300 / 0.72);
+  backdrop-filter: blur(4px);
+}
+.focus-environment header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 36px;
+}
+.focus-environment header > span,
+.focus-environment header button,
+.focus-environment-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.focus-environment header button,
+.focus-environment-actions button {
+  padding: 11px 16px;
+  border: 1px solid oklch(100% 0 0 / 0.18);
+  border-radius: var(--r-full);
+  background: oklch(100% 0 0 / 0.08);
+  color: #fff;
+}
+.focus-environment-center {
+  margin: auto;
+  max-width: 660px;
+  padding: 20px;
+  text-align: center;
+}
+.focus-environment h2 {
+  margin: 10px 0 28px;
+  color: #fff;
+  font-size: 30px;
+  font-weight: 500;
+}
+.focus-time {
+  display: grid;
+  place-items: center;
+  width: 210px;
+  height: 210px;
+  margin: 0 auto 30px;
+  border: 1px solid oklch(100% 0 0 / 0.2);
+  border-radius: 50%;
+  box-shadow: 0 0 60px oklch(60% 0.2 300 / 0.25);
+}
+.focus-time span {
+  font-size: 52px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 250;
+}
+.focus-time i { margin: 0 3px; opacity: 0.45; font-style: normal; }
+.focus-environment-actions { justify-content: center; }
+
+@media (max-width: 900px) {
+  .today-work-grid { grid-template-columns: minmax(0, 1fr); }
+  .experience-today { padding-top: 24px !important; }
+}
+
+@media (max-width: 620px) {
+  .welcome-heading h1 { font-size: 34px; }
+  .welcome-heading div > div { font-size: var(--t-md); }
+  .today-capture { min-height: 58px; padding-left: 14px; }
+  .today-capture input { font-size: var(--t-md); }
+  .today-capture .primary-button { min-height: 40px; padding-inline: 14px; }
+  .today-capture kbd { display: none; }
+  .today-work-grid,
+  .today-activity { grid-template-columns: minmax(0, 1fr); }
+  .empty-actions,
+  .experience-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .experience-today *,
+  .focus-environment * {
+    animation: none !important;
+    transition-duration: 0s !important;
+  }
+}

@@ -1,0 +1,219 @@
+/* The frame: one bar across the top, one scrolling workspace under it.
+   Phones trade the tabs for a bar along the bottom. */
+
+.app-shell { height: 100dvh; overflow: hidden; background: var(--page); }
+.workspace {
+  height: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+.workspace-content {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  view-transition-name: workspace;
+}
+.workspace-content > * { max-width: var(--content-max); margin-inline: auto; padding: 32px var(--gutter) 64px; }
+.workspace-content.is-filled { overflow: hidden; }
+.workspace-content.is-filled > * { height: 100%; max-width: none; padding: 0; }
+.loading-workspace { display: grid; place-items: center; height: 100%; }
+
+.page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 20px; }
+.page-heading h1 { font-family: var(--font-serif); font-size: clamp(32px, 3vw, 40px); letter-spacing: -0.035em; }
+.page-heading h1:focus { outline: none; }
+.page-heading > p { color: var(--faint); font-size: 12px; letter-spacing: 0.02em; }
+
+/* ---- Top bar --------------------------------------------------------- */
+
+.topbar {
+  position: relative;
+  z-index: 30;
+  height: var(--topbar-h);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 0 14px 0 22px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--page);
+}
+.topbar-start { min-width: 0; display: flex; align-items: center; gap: 14px; }
+.wordmark {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--ink-strong);
+}
+.topbar-saved { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+.topbar-saved i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--positive);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--positive) 16%, transparent);
+}
+.topbar-saved.error { color: var(--critical); }
+.topbar-saved.error i { background: var(--critical); box-shadow: none; }
+
+.topbar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 5.5%, transparent);
+}
+.topbar-tabs button {
+  position: relative;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 13px;
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color var(--d-fast);
+}
+.topbar-tabs button:hover,
+.topbar-tabs button[aria-expanded="true"] { color: var(--ink); }
+.topbar-tabs button[aria-current="page"] { color: var(--ink-strong); }
+.topbar-tabs button > span:not(.topbar-pill),
+.topbar-tabs button > svg { position: relative; z-index: 1; }
+.topbar-tabs button > svg { width: 9px; height: 9px; opacity: 0.55; }
+.topbar-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: var(--surface-raised);
+  box-shadow: 0 1px 2px rgb(40 26 14 / 10%), 0 0 0 0.5px var(--line-strong);
+  view-transition-name: topbar-pill;
+}
+:root[data-theme="dark"] .topbar-pill { background: #34302a; box-shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 0 0 0.5px var(--line-strong); }
+.topbar-more .menu-popover { top: calc(100% + 10px); min-width: 210px; max-height: none; }
+.topbar-more .menu-popover button.checked { color: var(--accent); }
+.topbar-more .menu-popover button.checked svg { color: var(--accent); }
+
+.topbar-end { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.topbar-search {
+  width: 200px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-raised) 65%, transparent);
+  color: var(--faint);
+  font-size: 13px;
+  transition: border-color var(--d-fast), color var(--d-fast);
+}
+.topbar-search:hover { border-color: var(--line-strong); color: var(--muted); }
+.topbar-search kbd { margin-left: auto; font: 500 11px var(--font); color: var(--faint); }
+.topbar-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--muted);
+  transition: background var(--d-fast), color var(--d-fast);
+}
+.topbar-icon:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.topbar-new { background: var(--ink); color: var(--page); }
+.topbar-new:hover { background: var(--accent); color: var(--accent-ink); }
+.topbar-icon svg,
+.topbar-search svg { width: 16px; height: 16px; flex: none; }
+.sun-icon { display: none; }
+[data-theme="dark"] .sun-icon { display: block; }
+[data-theme="dark"] .moon-icon { display: none; }
+
+@media (max-width: 1180px) {
+  .topbar { padding-left: 18px; }
+  .topbar-saved { font-size: 0; gap: 0; }
+  .topbar-search { width: 32px; padding: 0; justify-content: center; border-color: transparent; background: none; }
+  .topbar-search span,
+  .topbar-search kbd { display: none; }
+}
+@media (max-width: 900px) {
+  .topbar { gap: 8px; padding-inline: 12px 10px; }
+  .topbar-tabs button { padding: 0 9px; }
+}
+
+/* ---- Moving between rooms ---------------------------------------------- */
+
+::view-transition-group(topbar-pill) { animation-duration: 340ms; animation-timing-function: var(--ease-out); }
+:root[data-vt="room"]::view-transition-old(workspace) { animation: 120ms ease-in both room-out; }
+:root[data-vt="room"]::view-transition-new(workspace) { animation: 300ms var(--ease-out) 40ms both room-in; }
+@keyframes room-out { to { opacity: 0; } }
+@keyframes room-in { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+
+/* ---- Phone ------------------------------------------------------------- */
+
+.mobile-nav { display: none; }
+@media (max-width: 760px) {
+  .topbar { grid-template-columns: minmax(0, 1fr) auto; padding: 0 8px 0 16px; }
+  .topbar-tabs,
+  .topbar-saved,
+  .topbar-new { display: none; }
+  .workspace { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
+  .workspace-content > * { --gutter: 16px; padding-top: 22px; }
+  .page-heading { flex-wrap: wrap; }
+  .mobile-nav {
+    position: fixed;
+    z-index: 40;
+    inset: auto 0 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--page) 92%, transparent);
+    backdrop-filter: blur(18px) saturate(1.2);
+  }
+  .mobile-nav button {
+    min-height: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 12px;
+    color: var(--faint);
+    font-size: 10.5px;
+    font-weight: 500;
+  }
+  .mobile-nav button svg { width: 21px; height: 21px; }
+  .mobile-nav button.active { color: var(--ink-strong); }
+  .mobile-nav .mobile-new svg {
+    width: 38px;
+    height: 38px;
+    padding: 10px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--page);
+  }
+  .mobile-nav .mobile-new span { display: none; }
+}
+
+/* ---- Inside the Mac app ---------------------------------------------- */
+/* The window has no title bar of its own. The top bar and home's wallpaper
+   drag the window, and both leave room for the traffic lights. */
+.is-mac-app .topbar { padding-left: 88px; -webkit-app-region: drag; }
+.is-mac-app .topbar-tabs,
+.is-mac-app .topbar-end { -webkit-app-region: no-drag; }
+.is-mac-app .workspace-content > .home { padding-top: 46px; }
+.is-mac-app .home { -webkit-app-region: drag; }
+.is-mac-app .home :is(.widget, .home-modes, .home-composer-wrap, .icon, .icons-toggle, .icons-empty, .dock, .field-sheet, .field-banner) { -webkit-app-region: no-drag; }

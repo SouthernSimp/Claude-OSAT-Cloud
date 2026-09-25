@@ -1,0 +1,620 @@
+/* Calendar: month grid + agenda rail. Fills the frame; each column scrolls on its own. */
+
+.calendar-view {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 336px;
+  min-height: 0;
+}
+
+.calendar-main {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: var(--s-5) var(--gutter) var(--s-5);
+}
+
+/* ---- Toolbar ----------------------------------------------------------- */
+
+.calendar-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-bottom: var(--s-4);
+}
+
+.calendar-title h2 {
+  font-size: var(--t-3xl);
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-title span {
+  display: block;
+  margin-top: var(--s-1);
+  color: var(--muted);
+  font-size: var(--t-xs);
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.calendar-nav .today-button {
+  min-height: 32px;
+  padding: 0 var(--s-3);
+  font-size: var(--t-xs);
+}
+
+/* ---- Month grid --------------------------------------------------------- */
+
+.month-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto repeat(6, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--line);
+  gap: 1px;
+  box-shadow: var(--e-2);
+}
+
+.weekday {
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface-sunken);
+  color: var(--faint);
+  font-size: var(--t-2xs);
+  font-weight: 650;
+  letter-spacing: var(--tr-wide);
+  text-transform: uppercase;
+}
+
+.weekday abbr {
+  display: none;
+  text-decoration: none;
+}
+
+.day-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: var(--s-2);
+  background: var(--surface);
+  transition: background var(--d-fast);
+}
+
+.day-cell.outside {
+  background: color-mix(in oklab, var(--surface-sunken) 55%, var(--surface));
+}
+
+.day-cell.outside .day-number {
+  color: var(--faint);
+}
+
+.day-cell:hover {
+  background: var(--surface-hover);
+}
+
+.day-cell.is-selected {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+/* The whole cell above the chips is the click target for selecting the day. */
+.day-open {
+  display: flex;
+  justify-content: flex-start;
+  padding: 0;
+}
+
+.day-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.day-number {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 var(--s-1);
+  border-radius: var(--r-full);
+  color: var(--ink);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.day-cell.is-today .day-number {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.day-events {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  margin-top: var(--s-1);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.event-chip {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-1);
+  min-width: 0;
+  padding: 2px var(--s-2);
+  border-radius: var(--r-xs);
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  color: var(--ink);
+  font-size: var(--t-2xs);
+  text-align: left;
+  transition: background var(--d-fast);
+}
+
+.event-chip::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 3px;
+  align-self: stretch;
+  margin-right: 1px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+}
+
+.event-chip:hover {
+  background: color-mix(in oklab, var(--accent) 22%, var(--surface));
+}
+
+.event-chip time {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-more {
+  position: relative;
+  z-index: 1;
+  padding: 1px var(--s-2);
+  color: var(--muted);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  text-align: left;
+}
+
+.event-more:hover {
+  color: var(--accent);
+}
+
+/* Quick-add reveals on hover, keyboard focus, or on the selected cell. */
+.day-add {
+  position: absolute;
+  top: var(--s-2);
+  right: var(--s-2);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-xs);
+  background: var(--surface-raised);
+  color: var(--muted);
+  box-shadow: var(--e-1);
+  opacity: 0;
+  scale: 0.85;
+  transition: opacity var(--d-fast), scale var(--d-fast), color var(--d-fast);
+}
+
+.day-add svg {
+  width: 12px;
+  height: 12px;
+}
+
+.day-cell:hover .day-add,
+.day-cell.is-selected .day-add,
+.day-add:focus-visible {
+  opacity: 1;
+  scale: 1;
+}
+
+.day-add:hover {
+  color: var(--accent);
+}
+
+/* ---- Agenda rail --------------------------------------------------------- */
+
+.calendar-agenda {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-5) var(--s-5) var(--s-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.calendar-agenda > header h3 {
+  margin-top: var(--s-2);
+  font-size: var(--t-lg);
+}
+
+.calendar-agenda > header span {
+  display: block;
+  margin-top: var(--s-1);
+  color: var(--muted);
+  font-size: var(--t-xs);
+}
+
+.agenda-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 38px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 550;
+  transition: border-color var(--d-fast), color var(--d-fast), background var(--d-fast);
+}
+
+.agenda-add svg {
+  width: 15px;
+  height: 15px;
+}
+
+.agenda-add:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.agenda-composer {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--e-2);
+  animation: dialog-in var(--d-base) var(--ease-out);
+}
+
+.composer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.composer-head strong {
+  font-size: var(--t-sm);
+  font-weight: 650;
+}
+
+.composer-times {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s-2);
+}
+
+/* datetime-local has a wide intrinsic minimum; without this it blows the grid out. */
+.composer-times > label {
+  min-width: 0;
+}
+
+.composer-times input {
+  min-width: 0;
+  font-size: var(--t-xs);
+}
+
+.agenda-list {
+  display: grid;
+  gap: var(--s-2);
+  align-content: start;
+}
+
+.agenda-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition: border-color var(--d-fast), box-shadow var(--d-fast);
+}
+
+.agenda-item:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--e-1);
+}
+
+.agenda-item > time {
+  display: grid;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda-item > time strong {
+  color: var(--ink);
+  font-size: var(--t-xs);
+  font-weight: 650;
+}
+
+.agenda-item > time small {
+  color: var(--faint);
+  font-size: var(--t-2xs);
+}
+
+.agenda-item h4 {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  letter-spacing: var(--tr-tight);
+}
+
+.agenda-item p {
+  margin-top: var(--s-1);
+  color: var(--muted);
+  font-size: var(--t-xs);
+  line-height: var(--lh-snug);
+}
+
+.agenda-menu {
+  position: relative;
+}
+
+.agenda-popover {
+  position: absolute;
+  top: calc(100% + var(--s-1));
+  right: 0;
+  z-index: 20;
+  display: grid;
+  min-width: 190px;
+  padding: var(--s-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  box-shadow: var(--e-4);
+  animation: dialog-in var(--d-fast) var(--ease-out);
+}
+
+.agenda-popover a,
+.agenda-popover button {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 32px;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font-size: var(--t-xs);
+  text-align: left;
+  text-decoration: none;
+}
+
+.agenda-popover a svg,
+.agenda-popover button svg {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+}
+
+.agenda-popover a:hover,
+.agenda-popover button:hover {
+  background: var(--surface-hover);
+}
+
+.agenda-popover .danger,
+.agenda-popover .danger svg {
+  color: var(--critical);
+}
+
+.agenda-popover .danger:hover {
+  background: var(--critical-soft);
+}
+
+.agenda-empty {
+  display: grid;
+  place-items: center;
+  gap: var(--s-2);
+  padding: var(--s-8) var(--s-4);
+  color: var(--muted);
+  text-align: center;
+}
+
+.agenda-empty svg {
+  width: 22px;
+  height: 22px;
+  color: var(--faint);
+}
+
+.agenda-empty p {
+  max-width: 26ch;
+  font-size: var(--t-xs);
+  line-height: var(--lh-snug);
+}
+
+.agenda-upcoming {
+  display: grid;
+  gap: var(--s-1);
+  margin-top: auto;
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+}
+
+.agenda-upcoming > button {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2);
+  border-radius: var(--r-sm);
+  text-align: left;
+}
+
+.agenda-upcoming > button svg {
+  width: 15px;
+  height: 15px;
+  color: var(--faint);
+}
+
+.agenda-upcoming > button:hover {
+  background: var(--surface-hover);
+}
+
+.agenda-upcoming span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.agenda-upcoming strong {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agenda-upcoming small {
+  color: var(--muted);
+  font-size: var(--t-2xs);
+}
+
+.agenda-footer {
+  color: var(--faint);
+  font-size: var(--t-2xs);
+  line-height: var(--lh-snug);
+}
+
+/* ---- Responsive ---------------------------------------------------------- */
+
+@media (max-width: 1140px) {
+  .calendar-view {
+    grid-template-columns: minmax(0, 1fr) 296px;
+  }
+
+  .event-chip time {
+    display: none;
+  }
+}
+
+@media (max-width: 940px) {
+  /* Below this width the two columns stack. Dropping out of grid entirely is
+     simpler than fighting track sizing: plain block flow lets the month grid
+     take its natural height and the view scroll once. */
+  .calendar-view {
+    display: block;
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .calendar-main {
+    display: block;
+    height: auto;
+    min-height: 0;
+  }
+
+  .month-grid {
+    min-height: 0;
+    grid-template-rows: auto repeat(6, minmax(76px, auto));
+  }
+
+  .calendar-agenda {
+    display: block;
+    height: auto;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    overflow: visible;
+  }
+
+  .calendar-agenda > * + * {
+    margin-top: var(--s-4);
+  }
+
+  .agenda-upcoming {
+    margin-top: var(--s-4);
+  }
+}
+
+@media (max-width: 620px) {
+  .calendar-main {
+    padding-inline: var(--s-4);
+  }
+
+  .calendar-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--s-3);
+  }
+
+  .calendar-nav {
+    justify-content: space-between;
+  }
+
+  .weekday abbr {
+    display: inline;
+  }
+
+  .weekday span {
+    display: none;
+  }
+
+  .weekday {
+    text-align: center;
+  }
+
+  .month-grid {
+    grid-template-rows: auto repeat(6, minmax(62px, auto));
+  }
+
+  .event-chip span {
+    display: none;
+  }
+
+  .event-chip {
+    height: 5px;
+    padding: 0;
+  }
+
+  .event-chip::before {
+    width: 100%;
+  }
+
+  .day-add {
+    display: none;
+  }
+
+  .composer-times {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calendar-agenda {
+    padding-bottom: var(--s-8);
+  }
+}

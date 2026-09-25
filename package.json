@@ -1,0 +1,79 @@
+{
+  "name": "nateos-prototype",
+  "version": "2.1.0",
+  "private": true,
+  "description": "OSAT Field \u2014 a private room for your thoughts",
+  "author": "Nate McCreery",
+  "main": "desktop/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/prepare-sites-build.mjs",
+    "start:mac": "npm run build && electron .",
+    "dist:mac": "npm run build && electron-builder --mac dmg zip --arm64",
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.mjs",
+    "test:platform": "node --test tests/platform-bridge.test.mjs",
+    "test:sites": "node --test tests/sites-worker.test.mjs",
+    "test:experience": "node --test tests/next-steps.test.mjs tests/local-ai.test.mjs tests/assistant.test.mjs",
+    "install:mac": "npm run dist:mac && node scripts/install-mac.mjs"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "@vitejs/plugin-react": "5.0.4",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "electron": "43.2.0",
+    "electron-builder": "26.15.3",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "vite": "6.4.2"
+  },
+  "build": {
+    "appId": "ai.mccreery.osat.field",
+    "productName": "OSAT Field",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/client/**/*",
+      "desktop/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "artifactName": "OSAT-Field-${version}-${arch}-mac.${ext}"
+    },
+    "masDev": {
+      "entitlements": "build/entitlements.mas.plist",
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist"
+    },
+    "asarUnpack": [
+      "node_modules/node-pty/**"
+    ],
+    "dmg": {
+      "title": "OSAT Field ${version}",
+      "artifactName": "OSAT-Field-${version}-${arch}.${ext}"
+    }
+  }
+}
