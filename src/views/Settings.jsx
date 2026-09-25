@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, DownloadSimple, Keyboard, UploadSimple } from "@phosphor-icons/react";
+import { ArrowClockwise, Check, CircleHalf, Database, DownloadSimple, FolderOpen, GearSix, Info, Keyboard, Sparkle, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
 import { workspaceClient } from "../store/useWorkspace.js";
 import { AppearanceControls } from "../shell/Shell.jsx";
+import { getLocalModels } from "../local-ai.js";
+import { ObsidianView } from "./Obsidian.jsx";
 
-export function SettingsView({ workspace, commit, storage }) {
+export function SettingsView({ workspace, commit, storage, target }) {
   const restoreInputRef = useRef(null);
   function backup() {
     const payload = makeBackup(workspace);
@@ -43,72 +45,123 @@ export function SettingsView({ workspace, commit, storage }) {
       window.alert(`The backup couldn't be restored: ${error.message}`);
     }
   }
+  const about = useAbout();
+  const [section, setSection] = useState(target?.section && SECTIONS.some(([id]) => id === target.section) ? target.section : "general");
+  useEffect(() => { if (target?.section) setSection(target.section); }, [target]);
+
   return (
-    <section className="settings-grid">
-      <ShortcutCard />
-      <section className="content-card">
-        <p className="eyebrow">APPEARANCE</p>
-        <h2>Make yourself at home.</h2>
-        <div className="appearance-card">
-          <AppearanceControls workspace={workspace} commit={commit} />
-        </div>
-      </section>
-      <section className="content-card">
-        <p className="eyebrow">LOCAL STORAGE</p>
-        <h2>
-          {storage.status === "ready"
-            ? "Your workspace stays here."
-            : storage.status === "error"
-              ? "Database needs attention."
-              : "Opening database."}
-        </h2>
-        <p>{storage.message}</p>
-        <div className="storage-facts">
-          <span>
-            <Check /> Notes, folders, boards, projects, and next steps in one workspace
-          </span>
-          <span>
-            <Check /> Original data preserved
-          </span>
-          <span>
-            <Check /> No cloud sync or account
-          </span>
-        </div>
-      </section>
-      <section className="content-card">
-        <p className="eyebrow">PORTABILITY</p>
-        <h2>Take your work with you.</h2>
-        <p>
-          The backup contains the whole workspace — notes, folders, every
-          Mindmap board, and the original import snapshot. Backups from the
-          earlier OSAT app restore here too.
-        </p>
-        <button className="primary-button" type="button" onClick={backup}>
-          <DownloadSimple /> Download JSON backup
-        </button>
-        <button
-          className="outline-button"
-          type="button"
-          onClick={() => restoreInputRef.current?.click()}
-        >
-          <UploadSimple /> Restore from backup
-        </button>
-        <input
-          ref={restoreInputRef}
-          type="file"
-          accept="application/json"
-          hidden
-          onChange={restore}
-        />
-      </section>
-      <section className="content-card danger-zone">
-        <p className="eyebrow">BOUNDARIES</p>
-        <h2>Your privacy, your choice.</h2>
-        <p>
-          Cloud accounts, provider calendars, automated Obsidian sync and
-          autonomous filing are inactive by design.
-        </p>
-      </section>
+    <div className="settings">
+      <nav className="settings-rail" aria-label="Settings sections">
+        {SECTIONS.map(([id, label, Icon]) => (
+          <button key={id} type="button" aria-current={section === id ? "page" : undefined} onClick={() => setSection(id)}>
+            <Icon weight={section === id ? "fill" : "regular"} /> {label}
+          </button>
+        ))}
+      </nav>
+      <div className="settings-page" key={section}>
+        {section === "general" && (
+          <>
+            <ShortcutCard />
+            <section className="content-card">
+              <p className="eyebrow">KEYBOARD</p>
+              <h2>Everything is a key away.</h2>
+              <dl className="key-list">
+                {[["⌘1 – ⌘4", "Desk, Notes, Map, Ask"], ["⌘K", "Find anything"], ["⇧⌘N", "A new thought"], ["⌘,", "Settings"], ["esc", "Back out, one step at a time"]].map(([keys, what]) => (
+                  <div key={keys}><dt><kbd>{keys}</kbd></dt><dd>{what}</dd></div>
+                ))}
+              </dl>
+            </section>
+          </>
+        )}
+        {section === "appearance" && (
+          <section className="content-card">
+            <p className="eyebrow">APPEARANCE</p>
+            <h2>Make yourself at home.</h2>
+            <div className="appearance-card">
+              <AppearanceControls workspace={workspace} commit={commit} />
+            </div>
+          </section>
+        )}
+        {section === "ai" && <AiCard />}
+        {section === "data" && (
+          <>
+            <section className="content-card">
+              <p className="eyebrow">ON THIS MAC</p>
+              <h2>{storage.status === "error" ? "Saving needs attention." : "Your workspace stays here."}</h2>
+              <p>{storage.message}</p>
+              <div className="storage-facts">
+                <span><Check /> Saved a moment after every change, with 14 daily copies kept</span>
+                <span><Check /> No cloud sync, no account</span>
+              </div>
+              {window.osatApp?.showDataFolder && (
+                <button className="outline-button" type="button" onClick={() => window.osatApp.showDataFolder().catch(() => {})}>
+                  <FolderOpen /> Show the data folder
+                </button>
+              )}
+            </section>
+            <section className="content-card">
+              <p className="eyebrow">BACKUP</p>
+              <h2>Take your work with you.</h2>
+              <p>One file with every note, folder and board. Restoring keeps a copy of what it replaces.</p>
+              <div className="button-row">
+                <button className="primary-button" type="button" onClick={backup}>
+                  <DownloadSimple /> Download a backup
+                </button>
+                <button className="outline-button" type="button" onClick={() => restoreInputRef.current?.click()}>
+                  <UploadSimple /> Restore a backup
+                </button>
+              </div>
+              <input ref={restoreInputRef} type="file" accept="application/json" hidden onChange={restore} />
+            </section>
+            <section className="content-card settings-obsidian">
+              <p className="eyebrow">OBSIDIAN</p>
+              <h2>Send notes to a vault.</h2>
+              <ObsidianView workspace={workspace} commit={commit} />
+            </section>
+          </>
+        )}
+        {section === "about" && (
+          <section className="content-card">
+            <p className="eyebrow">ABOUT</p>
+            <h2>OSAT{about?.version ? ` ${about.version}` : ""}</h2>
+            <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac. Cloud accounts, provider calendars and automatic filing are off by design.</p>
+            {about?.dataFolder && <p className="settings-path">{about.dataFolder}</p>}
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const SECTIONS = [
+  ["general", "General", GearSix],
+  ["appearance", "Appearance", CircleHalf],
+  ["ai", "AI", Sparkle],
+  ["data", "Data", Database],
+  ["about", "About", Info],
+];
+
+function useAbout() {
+  const [about, setAbout] = useState(null);
+  useEffect(() => { window.osatApp?.about?.().then(setAbout).catch(() => {}); }, []);
+  return about;
+}
+
+/* Where the AI stands today. Phase 4 makes it set itself up. */
+function AiCard() {
+  const [models, setModels] = useState(null);
+  const check = () => { setModels(null); getLocalModels().then(setModels).catch(() => setModels([])); };
+  useEffect(check, []);
+  return (
+    <section className="content-card">
+      <p className="eyebrow">LOCAL AI</p>
+      <h2>{models === null ? "Looking for a model on this Mac…" : models.length ? "A model is ready." : "No model is running yet."}</h2>
+      <p>
+        {models?.length
+          ? `${models.map((model) => model.id || model.name).slice(0, 3).join(", ")}. Nothing you ask leaves this Mac.`
+          : "Ask uses LM Studio on this Mac for now: open it, load a model and start its local server. Soon OSAT will download and run a model by itself."}
+      </p>
+      <button className="outline-button" type="button" onClick={check}><ArrowClockwise /> Check again</button>
     </section>
   );
 }

@@ -78,13 +78,39 @@
   width: 15px;
   height: 15px;
 }
-.settings-grid {
-  max-width: 1120px;
+.settings {
+  max-width: 1000px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: 190px minmax(0, 1fr);
+  align-items: start;
+  gap: 28px;
   margin: 0 auto;
 }
+.settings-rail { position: sticky; top: 0; display: grid; gap: 2px; }
+.settings-rail button {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 540;
+  text-align: left;
+}
+.settings-rail button svg { width: 16px; height: 16px; }
+.settings-rail button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.settings-rail button[aria-current="page"] { color: var(--ink-strong); background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.settings-rail button[aria-current="page"] svg { color: var(--accent); }
+.settings-page { display: grid; gap: 14px; animation: body-in 480ms var(--glide) both; }
+.settings .button-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.settings-path { font: 12px var(--font-mono); word-break: break-all; }
+.key-list { display: grid; gap: 8px; margin: 14px 0 0; }
+.key-list > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; }
+.key-list kbd { padding: 3px 8px; border-radius: 6px; font: 560 12px var(--font); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.key-list dd { margin: 0; color: var(--muted); font-size: 13.5px; }
+.settings-obsidian > :last-child { margin-top: 10px; }
 
 .practice-layout, .obsidian-layout {
   max-width: 1320px;
@@ -269,37 +295,16 @@
   color: var(--muted);
   font-size: 11px;
 }
-.settings-grid > .content-card {
+.settings-page > .content-card {
   width: 100%;
   margin: 0;
 }
-.settings-grid h2 {
+.settings h2 {
   margin-bottom: 10px;
 }
-.settings-grid p:not(.eyebrow) {
+.settings p:not(.eyebrow) {
   color: var(--muted);
   line-height: 1.55;
-}
-.theme-options {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 22px;
-}
-.theme-options button {
-  min-height: 82px;
-  display: grid;
-  place-items: center;
-  gap: 4px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  background: var(--surface-soft);
-  text-transform: capitalize;
-}
-.theme-options button.active {
-  border-color: var(--blue);
-  background: var(--blue-soft);
-  color: var(--blue);
 }
 .danger-zone {
   border-color: color-mix(in srgb, var(--danger) 24%, var(--line));
@@ -507,9 +512,10 @@
   }
 }
 @media (max-width: 720px) {
-.settings-grid {
+.settings {
     grid-template-columns: minmax(0, 1fr);
   }
+.settings-rail { position: static; grid-auto-flow: column; overflow-x: auto; }
 .bridge-preview, .files-layout {
     padding: 20px;
     border-radius: 16px;
@@ -536,14 +542,6 @@
   }
 .bridge-diff {
     grid-template-columns: minmax(0, 1fr);
-  }
-.theme-options {
-    grid-template-columns: minmax(0, 1fr);
-  }
-.theme-options button {
-    min-height: 60px;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    justify-items: start;
   }
 .file-browser-grid {
     display: block;
@@ -836,3 +834,12 @@
 .money-period { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin: 28px 0 18px; }.money-period h2 { font-size: 15px; letter-spacing: -.02em; }.money-period input { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; padding: 8px 12px; }
 .money-overview { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 28px; }.money-overview article { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }.money-overview article svg { grid-column: 2; grid-row: 1; color: var(--accent); width: 20px; height: 20px; }.money-overview article span { grid-column: 1; grid-row: 1; color: var(--muted); font-size: 11px; }.money-overview article strong { grid-column: 1/-1; font-family: var(--font-serif); font-size: clamp(23px, 3vw, 35px); font-weight: 600; margin-top: 19px; }
 @media (max-width: 600px) { .money-overview { gap: 8px; }.money-overview article { padding: 13px; }.money-overview article svg { display: none; }.money-overview article span { font-size: 10px; }.money-overview article strong { font-size: 22px; }.money-hero { flex-wrap: wrap; gap: 25px; } }
+
+/* Obsidian lives inside Settings → Data: one calm column, no card inside a card. */
+.settings-obsidian .obsidian-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 12px; }
+.settings-obsidian .obsidian-layout > .content-card,
+.settings-obsidian .bridge-preview { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.settings-obsidian .section-intro { display: none; }
+.settings-obsidian .bridge-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.settings-obsidian .bridge-steps span { min-height: 0; padding: 10px 12px; }
+.settings-obsidian .bridge-preview pre { max-height: 240px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }

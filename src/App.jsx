@@ -21,7 +21,6 @@ import { JournalView } from "./views/Journal.jsx";
 import { NotesView } from "./notes/NotesView.jsx";
 import { BoardView } from "./board/BoardView.jsx";
 import { BudgetView } from "./views/Budget.jsx";
-import { ObsidianView } from "./views/Obsidian.jsx";
 import { ProjectsView } from "./views/Projects.jsx";
 import { ReflectionView } from "./views/Reflection.jsx";
 import { SettingsView } from "./views/Settings.jsx";
@@ -49,6 +48,7 @@ function WorkspaceApp() {
   const [boardTarget, setBoardTarget] = useState(null);
   const [calendarTarget, setCalendarTarget] = useState(null);
   const [assistantTarget, setAssistantTarget] = useState(null);
+  const [settingsTarget, setSettingsTarget] = useState(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
@@ -140,6 +140,9 @@ function WorkspaceApp() {
       setCaptureOpen(true);
       return;
     }
+    // The Obsidian export lives in Settings → Data now.
+    if (next === "Obsidian") { navigate("Settings", { section: "data" }); return; }
+    if (next === "Settings") setSettingsTarget(detail?.section ? { section: detail.section, at: Date.now() } : null);
     if (next === "Notes") setNotesTarget(detail ? { ...(typeof detail === "string" ? { noteId: detail } : detail), at: Date.now() } : null);
     if (next === "Mindmap") setBoardTarget(detail && typeof detail === "object" ? { ...detail, at: Date.now() } : null);
     if (next === "Calendar") setCalendarTarget(detail?.date || null);
@@ -277,8 +280,7 @@ function WorkspaceApp() {
             {view === "Reflection" && <ReflectionView {...common} today={today} />}
             {view === "Journal" && <JournalView {...common} />}
             {view === "Files" && <FilesView />}
-            {view === "Obsidian" && <ObsidianView {...common} />}
-            {view === "Settings" && <SettingsView {...common} storage={storage} />}
+                        {view === "Settings" && <SettingsView {...common} storage={storage} target={settingsTarget} />}
           </RoomSheet>
         )}
         <Dock
@@ -297,7 +299,7 @@ function WorkspaceApp() {
         <div className="modal-backdrop" onPointerDown={closeCapture}>
           <form
             ref={modalRef}
-            className="glass capture-dialog"
+            className="capture-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="capture-title"

@@ -27,7 +27,7 @@ export const TOOLS = [
 ]
 
 export const SETTINGS = { id: 'Settings', label: 'Settings', icon: GearSix, hint: 'Appearance, data, the shortcut' }
-export const HIDDEN = [{ id: 'Obsidian', label: 'Export to Obsidian', icon: UploadSimple, hint: 'Markdown export' }]
+export const HIDDEN = [{ id: 'Obsidian', label: 'Export to Obsidian', icon: UploadSimple, hint: 'In Settings → Data' }]
 
 const ALL = [...SPACES, ...TOOLS, SETTINGS, ...HIDDEN]
 

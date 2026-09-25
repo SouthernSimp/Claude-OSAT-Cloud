@@ -535,6 +535,12 @@ function sendToAppWindows(channel, ...args) {
 }
 
 function registerBrowserAndTerminal() {
+  // Settings → Data and About.
+  handleApp('app:about', () => ({ version: app.getVersion(), dataFolder: app.getPath('userData') }))
+  handleApp('app:show-data-folder', async () => {
+    if (await shell.openPath(app.getPath('userData'))) fail('Finder could not open the data folder.')
+    return true
+  })
   handleApp('browser:state', (sender) => browserFor(sender).state())
   handleApp('browser:open', (sender, url) => browserFor(sender).open(url))
   handleApp('browser:navigate', (sender, url) => browserFor(sender).navigate(url))

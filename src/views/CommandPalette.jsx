@@ -47,7 +47,7 @@ export function CommandPalette({ workspace, navigate, close, initialQuery = "" }
 
   return (
     <div className="modal-backdrop command-backdrop" onPointerDown={close}>
-      <section ref={ref} className="command-palette" role="dialog" aria-modal="true" aria-label="Search workspace" onPointerDown={(event) => event.stopPropagation()}>
+      <section ref={ref} className="glass command-palette" role="dialog" aria-modal="true" aria-label="Search workspace" onPointerDown={(event) => event.stopPropagation()}>
         <label>
           <MagnifyingGlass />
           <input
