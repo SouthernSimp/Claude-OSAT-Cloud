@@ -14,12 +14,12 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 
 | Phase | What | State |
 |---|---|---|
-| 0 | Foundation and cleanup | Done, merged (PR #1) |
-| 1 | Final data shape and one source of truth | Done, merged (PR #1) |
-| 2 | The overlay (LYKN-style layer with pop-outs) | Built, in PR #2 — waiting for Nate's try |
-| 3a | One place: the desk, glass sheets, one navigation | Built, in PR #3 (on top of #2) |
-| 3b | One Today | Planned |
-| 4 | Local AI that sets itself up | Planned |
+| 0 | Foundation and cleanup | Merged (PR #1) |
+| 1 | Final data shape and one source of truth | Merged (PR #1) |
+| 2 | The overlay (LYKN-style layer with pop-outs), Spotify, movable widgets | Merged (PR #2) |
+| 3a | One place: the desk, glass sheets, one navigation, Settings sections | Merged (PR #3) |
+| 3b | A calm day: Next ≤ 5 + bring forward (in #3), evening invitation, Undo, See in the Sky | In PR #4 |
+| 4 | Local AI that sets itself up | Next |
 | 5 | Visual polish | Planned |
 
 ## Nate's answers (Sep 25)
@@ -249,7 +249,9 @@ Nate asked to condense and connect desk → notes → sky → mindmap, make the 
 - **Appearance** (the dock's Look button, the layer's dock, and Settings): Auto/Light/Dark, wallpaper, and a **Blur** slider saved in `settings.blur` (no schema change). On the layer, Blur sets the veil, and zero takes the Mac's frosting off entirely.
 - **Less clutter on the desk:** pinned notes, folders, the Map, then **loose thoughts gathered in one pile** that fans open under the cursor, then only the 4 most recently touched notes. Resting on a note lights up the notes it links to and their folders.
 
-**Still to do (moves to 3b/5):** Settings' five sections and Data (Obsidian export there), retiring `field-sample.js`, the Focus timer look.
+**Also landed in #3:** Settings in five sections (General, Appearance, AI, Data with the Obsidian export and Show data folder, About); ⌘K as a glass palette.
+
+**Still to do (Phase 5):** retiring `field-sample.js`, the Focus timer look, habit chips on the desk.
 
 ### Phase 3b: One Today
 - A date header with a month picker, reusing the grid from `Calendar.jsx`.
