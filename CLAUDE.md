@@ -49,8 +49,10 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
 
 - `desktop/` — Electron main process (CommonJS).
   - `main.cjs`: windows, menu, IPC for the store / files / local AI / browser / terminal,
-    ⌥Space quick capture, single-instance lock. Files, browser and terminal IPC answer the
+    the ⌥Space layer (hotkey, menu-bar icon, app launchers, Esc routing), single-instance lock. Files, browser and terminal IPC answer the
     main window only.
+  - `overlay.cjs`: the layer window — full-screen, see-through, a macOS panel with vibrancy on
+    the display under the cursor. Created hidden at launch and only ever hidden, never closed.
   - `store/`: the workspace lives here. `index.cjs` owns the one document (via the shared
     hub), saves it 250 ms after a change, and does a final synchronous save on quit.
     `file.cjs` writes `store/workspace.json` atomically, keeps 14 daily snapshots and sets an
@@ -58,7 +60,7 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
   - `data-folder.cjs`: data lives in `~/Library/Application Support/OSAT` (`OSAT Dev` from source).
     An older folder without our marker is renamed aside, never read or deleted.
   - `preload.cjs`: the bridges exposed to the renderer (`osat.store`, `nateOSFiles`,
-    `osatLocalAI`, `osatQuickCapture`, `osatBrowser`, `osatTerminal`, `osatApp`).
+    `osatLocalAI`, `osatBrowser`, `osatTerminal`, `osatApp`, `osatOverlay`).
 - `shared/store-core.mjs` — pure, used by main, every window and the tests: the schema,
   `createEmptyDoc`, `diffDocs`, `applyOps` (returns the inverse, for undo), `validateOps`,
   `compactOps`, `migrations[]` and the hub. It is unpacked from the app archive
@@ -70,7 +72,9 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
     batched operations, confirmed vs pending so edits never bounce back), `bridges.js`
     (the Mac app's `window.osat.store`, or an IndexedDB-backed hub for the browser preview;
     `?fresh=1` starts the preview empty).
-  - `App.jsx`: routing between rooms, capture dialog, quick-capture surface.
+  - `App.jsx`: routing between rooms, capture dialog; `?surface=overlay` renders the layer.
+  - `surfaces/Overlay.jsx`: the ⌥Space layer — Day/Month/Next, Note · Find · Ask line, desktop
+    icons, dock with app launchers, and draggable pop-outs (Esc closes the top one, then the layer).
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
     `note-core.js`, `board-model.js` (Mindmap), `next-steps.js`, `daily-practice.js`,
     `field/field-model.js`.
