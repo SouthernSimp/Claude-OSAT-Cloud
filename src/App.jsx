@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { Aperture, Database, Plus, ShieldCheck, X } from "@phosphor-icons/react";
+import { Database, Plus, X } from "@phosphor-icons/react";
 
 import { LocalAssistant } from "./assistant/LocalAssistant.jsx";
 import { FieldTopbar } from "./field/FieldChrome.jsx";
@@ -28,7 +28,8 @@ import { SettingsView } from "./views/Settings.jsx";
 
 import { localDateKey } from "./daily-practice.js";
 import { captureThought, isActiveNote } from "./notes-model.js";
-import { useWorkspace, workspaceClient } from "./store/useWorkspace.js";
+import { storageFrom, useWorkspace } from "./store/useWorkspace.js";
+import { OverlaySurface } from "./surfaces/Overlay.jsx";
 import { inputActive } from "./lib/ui.js";
 import { useFocusTrap } from "./lib/use-focus-trap.js";
 import { DATE_LABEL } from "./lib/modules.js";
@@ -43,13 +44,6 @@ function readWallpaper() {
   } catch {
     return "lake";
   }
-}
-
-
-/* The top bar and Settings read a simple saving status. */
-function storageFrom(status, ready) {
-  if (status.state === "error") return { status: "error", message: status.message };
-  return { status: ready ? "ready" : "loading", message: status.message || (ready ? "Saved on this Mac." : "Opening your workspace") };
 }
 
 function WorkspaceApp() {
@@ -76,24 +70,6 @@ function WorkspaceApp() {
   const closeCapture = useCallback(() => setCaptureOpen(false), []);
   const closeCommands = useCallback(() => setCommandOpen(false), []);
   useFocusTrap(modalRef, captureOpen, closeCapture);
-
-  useEffect(() => {
-    const media = matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => {
-      if (!workspace) return;
-      const resolved =
-        workspace.theme === "system"
-          ? media.matches
-            ? "dark"
-            : "light"
-          : workspace.theme;
-      document.documentElement.dataset.theme = resolved;
-      document.documentElement.style.colorScheme = resolved;
-    };
-    apply();
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
-  }, [workspace?.theme]);
 
   useEffect(() => {
     if (previousView.current !== view) titleRef.current?.focus();
@@ -331,31 +307,8 @@ function WorkspaceApp() {
   );
 }
 
-function QuickCaptureSurface() {
-  const { commit, ready } = useWorkspace();
-  const [text, setText] = useState("");
-  const [saved, setSaved] = useState(false);
-  useEffect(() => {
-    // ⌥Space should let you type straight away, not after a click.
-    const fresh = () => { setSaved(false); requestAnimationFrame(() => document.getElementById("quick-text")?.focus()); };
-    window.addEventListener("focus", fresh);
-    return () => window.removeEventListener("focus", fresh);
-  }, []);
-  function submit(event) {
-    event.preventDefault();
-    const value = text.trim();
-    if (!value || !ready) return;
-    commit((state) => captureThought(state, value, "Quick capture").state);
-    workspaceClient().flushNow();
-    setText("");
-    setSaved(true);
-    window.osatQuickCapture?.done?.();
-  }
-  return <main className="quick-surface"><form onSubmit={submit}><header><Aperture weight="bold" /><span><strong>Quick capture</strong><small>Lands in Unsorted, on this Mac</small></span></header>{saved ? <div className="quick-saved"><ShieldCheck /><strong>Captured.</strong><span>You can close this window.</span></div> : <><label htmlFor="quick-text">What’s on your mind?</label><textarea id="quick-text" data-autofocus autoFocus rows="7" value={text} onChange={(event) => setText(event.target.value)} placeholder="Paste or type it exactly as it is…" onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") submit(event); }} /><footer><span>⌘ Return to save</span><button className="primary-button" disabled={!text.trim() || !ready}><Plus /> Capture</button></footer></>}</form></main>;
-}
-
 export function App() {
   const surface = new URLSearchParams(window.location.search).get("surface");
-  if (surface === "quick-capture") return <QuickCaptureSurface />;
+  if (surface === "overlay") return <OverlaySurface />;
   return <WorkspaceApp />;
 }

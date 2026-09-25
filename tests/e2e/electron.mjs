@@ -2,7 +2,7 @@
 // checks the store end to end:
 //   1. a thought typed in the main window is saved to disk and survives a restart
 //   2. a second window sees the main window's change, and the other way round
-//   3. a capture made while the main window is closed is not lost
+//   3. a thought left on the ⌥Space layer while the main window is closed is not lost
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import os from 'node:os'
@@ -20,8 +20,13 @@ const check = (ok, message) => { if (!ok) problems.push(message) }
 
 async function launch() {
   const app = await electron.launch({ cwd: root, args: [root, '--no-sandbox'], env })
-  const main = await app.firstWindow()
-  await main.waitForSelector('.workspace-content', { timeout: 20000 })
+  // The hidden ⌥Space layer is a window too; the main window is the one without a surface.
+  let main
+  while (!main) {
+    main = app.windows().find((page) => !page.url().includes('surface='))
+    if (!main) await sleep(100)
+  }
+  await main.waitForSelector('.workspace', { timeout: 20000 })
   return { app, main }
 }
 
@@ -69,13 +74,14 @@ try {
     .catch(() => problems.push('the main window did not show the second window\'s note'))
   await main.keyboard.press('Control+1')
 
-  // 3. Capture with the main window closed.
-  const capture = await openSecondWindow(app, '?surface=quick-capture')
-  await capture.waitForSelector('#quick-text', { timeout: 10000 })
+  // 3. Capture on the ⌥Space layer with the main window closed.
+  const layer = app.windows().find((page) => page.url().includes('surface=overlay'))
+  check(Boolean(layer), 'the layer window was not created at launch')
+  await layer.waitForSelector('#home-line', { timeout: 10000 })
   await main.close()
   await sleep(300)
-  await capture.fill('#quick-text', 'Captured with the window closed')
-  await capture.getByRole('button', { name: 'Capture' }).click()
+  await layer.fill('#home-line', 'Captured with the window closed')
+  await layer.press('#home-line', 'Enter')
   await sleep(1500)
   await app.close()
   const afterClose = JSON.parse(await readFile(dataFile, 'utf8'))

@@ -38,10 +38,11 @@ function readIconsCollapsed() {
 /* Home is a quiet desktop: a blurred wallpaper, two small widgets and the
    next steps, one line that does one thing on Return, your notes as icons,
    and a dock to the rooms. It reads and writes the same records the rest of
-   OSAT keeps. */
+   OSAT keeps. The ⌥Space layer reuses it with `layer`: no wallpaper (the real
+   desktop shows through), its own dock, and notes open as pop-outs. */
 export function FieldDesk({
   workspace, commit, navigate, preview, sampled, onKeep, onBlank, onRemove, sheet, onSheetDone,
-  storage, onSearch, onCapture, onTheme, wallpaper, onWallpaper,
+  storage, onSearch, onCapture, onTheme, wallpaper, onWallpaper, layer = false, dock, onOpenNote, visit,
 }) {
   const box = useRef(null)
   const grid = useRef(null)
@@ -89,6 +90,13 @@ export function FieldDesk({
   useEffect(() => {
     if (!arrived) sessionStorage.setItem('osat.field.arrived', '1')
   }, [arrived])
+
+  /* Each time the layer is shown the line is back on Note and ready to type into. */
+  useEffect(() => {
+    if (!visit) return
+    setMode('note')
+    box.current?.focus()
+  }, [visit])
 
   useEffect(() => {
     if (!sheet?.id) return
@@ -198,6 +206,10 @@ export function FieldDesk({
 
   /* Opening and setting down morph the icon's page into the sheet and back. */
   function openNote(id, paper = null) {
+    if (onOpenNote) {
+      onOpenNote(id)
+      return
+    }
     if (reduced || !document.startViewTransition) {
       setOpenId(id)
       return
@@ -253,10 +265,12 @@ export function FieldDesk({
   const blocked = mode === 'ask' && ai.state !== 'ready'
 
   return (
-    <div className={`home ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''}`} data-phase={phase} data-wall={wallpaper}>
-      <div className="home-wall" aria-hidden="true">
-        <img src={wallpaper === 'moss' ? './images/wall-moss.jpg' : './images/wall-lake.jpg'} alt="" decoding="async" style={{ objectPosition: wallpaper === 'moss' ? '50% 62%' : WALL_FOCUS[phase] }} />
-      </div>
+    <div className={`home ${layer ? 'is-layer' : ''} ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''}`} data-phase={phase} data-wall={wallpaper}>
+      {!layer && (
+        <div className="home-wall" aria-hidden="true">
+          <img src={wallpaper === 'moss' ? './images/wall-moss.jpg' : './images/wall-lake.jpg'} alt="" decoding="async" style={{ objectPosition: wallpaper === 'moss' ? '50% 62%' : WALL_FOCUS[phase] }} />
+        </div>
+      )}
 
       <aside className="home-widgets" aria-label="Today at a glance">
         <DayWidget now={now} events={events} onOpen={() => navigate('Calendar', { date: today })} />
@@ -353,14 +367,14 @@ export function FieldDesk({
             {items.every((item) => item.kind === 'board') && (
               <div className="icons-empty">
                 <p>Your notes will appear here.</p>
-                {!sampled && <button type="button" onClick={() => onKeep()}>Or lay out a sample room</button>}
+                {!sampled && !layer && <button type="button" onClick={() => onKeep()}>Or lay out a sample room</button>}
               </div>
             )}
           </div>
         )}
       </nav>
 
-      <HomeDock
+      {dock || <HomeDock
         navigate={navigate}
         storage={storage}
         aiReady={ai.state === 'ready'}
@@ -370,7 +384,7 @@ export function FieldDesk({
         onFocus={() => setFocusOpen(true)}
         wallpaper={wallpaper}
         onWallpaper={onWallpaper}
-      />
+      />}
 
       {sheetNote && (
         <FieldSheet

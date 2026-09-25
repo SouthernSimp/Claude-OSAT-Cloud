@@ -80,6 +80,23 @@ async function main() {
       await sleep(300)
     }
   }
+
+  // The ⌥Space layer over a stand-in desktop: a thought, a note pop-out, a room pop-out, Esc.
+  room = 'layer'
+  await page.goto(`${url}?surface=overlay`)
+  await page.waitForSelector('#home-line', { timeout: 15000 })
+  await page.fill('#home-line', 'Left on the layer')
+  await page.press('#home-line', 'Enter')
+  await page.getByRole('button', { name: 'Open note Left on the layer' }).click()
+  await page.getByRole('dialog', { name: 'Left on the layer' }).waitFor({ timeout: 5000 })
+    .catch(() => problems.push('layer: a note did not open as a pop-out'))
+  await page.getByRole('button', { name: 'Notes', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
+    .catch(() => problems.push('layer: Notes did not open as a pop-out'))
+  await sleep(400)
+  await page.screenshot({ path: `${OUT}/layer.png` })
+  await page.keyboard.press('Escape')
+  if (await page.getByRole('dialog', { name: 'Notes' }).count()) problems.push('layer: Esc did not close the top pop-out')
   await browser.close()
 }
 

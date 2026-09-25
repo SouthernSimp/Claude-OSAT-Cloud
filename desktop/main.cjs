@@ -2,7 +2,7 @@ const { randomUUID } = require('node:crypto')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
-const { app, BrowserWindow, Menu, dialog, globalShortcut, ipcMain, screen, session, shell } = require('electron')
+const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell } = require('electron')
 const { claimDataFolder } = require('./data-folder.cjs')
 const { resolveApprovedPath, resolveApprovedWritePath } = require('./path-guard.cjs')
 const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile } = require('./text-files.cjs')
@@ -10,6 +10,7 @@ const { localAiChat, localAiChatStream, localAiModels, validateLocalChatPayload 
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
+const { DEFAULT_HOTKEY, addLauncher, createOverlay, hotkeyLabel, validHotkey } = require('./overlay.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
@@ -17,11 +18,17 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const WRITABLE_EXTENSIONS = new Set(['.canvas', '.markdown', '.md'])
 
 let mainWindow
-let quickCaptureWindow
+let overlay
+let tray
+let prefs = { hotkey: DEFAULT_HOTKEY, launchers: [] }
+let hotkey = null
+let hotkeyFailed = false
+let aiStatus = 'Checking for a local model…'
+let holdOverlay = false
 let grants = []
 let grantsFile
 let mutation = Promise.resolve()
-let browser
+const browsers = new Map()
 let terminals
 let store
 const storeClients = new Map()
@@ -79,9 +86,14 @@ function ensureGrantAccess(grant) {
   }
 }
 
-/* Files, the browser and the terminal answer only the main OSAT window. */
+/* Files answer only the main OSAT window; the browser and the terminal also answer the layer. */
 function assertMainWindow(event) {
   if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) fail('Only the main OSAT window can do that.')
+}
+
+function assertAppWindow(event) {
+  if (overlay && event.sender === overlay.window.webContents) return
+  assertMainWindow(event)
 }
 
 function assertTrustedSender(event) {
@@ -164,10 +176,13 @@ function mutateGrants(change) {
   return result
 }
 
-function handle(channel, operation, { mainOnly = true } = {}) {
+/* from: 'main' (the default), 'app' (main or the layer), 'overlay' (the layer) or 'any'. */
+function handle(channel, operation, { from = 'main' } = {}) {
   ipcMain.handle(channel, async (event, ...args) => {
     assertTrustedSender(event)
-    if (mainOnly) assertMainWindow(event)
+    if (from === 'main') assertMainWindow(event)
+    if (from === 'app') assertAppWindow(event)
+    if (from === 'overlay' && event.sender !== overlay?.window.webContents) fail('Only the OSAT layer can do that.')
     try {
       return await operation(...args)
     } catch (error) {
@@ -357,9 +372,8 @@ async function createWindow() {
   })
 
   mainWindow = window
+  mainListening = false
   if (saved?.maximized) window.maximize()
-  browser?.destroy()
-  browser = createBrowser({ window, emit: send })
   window.on('close', () => {
     const bounds = window.getNormalBounds()
     fs.writeFile(windowStateFile(), JSON.stringify({ ...bounds, maximized: window.isMaximized() })).catch(() => {})
@@ -373,11 +387,7 @@ async function createWindow() {
   })
   window.once('ready-to-show', () => window.show())
   window.once('closed', () => {
-    if (mainWindow === window) {
-      mainWindow = undefined
-      browser?.destroy()
-      browser = undefined
-    }
+    if (mainWindow === window) mainWindow = undefined
   })
   window.loadFile(APP_ENTRY)
 }
@@ -391,16 +401,17 @@ function focusMain() {
 }
 
 /* Everything in the menu bar goes through the same navigate() the app uses. */
-// A command that reopens a closed window waits until the new window is listening.
+// A command for a window that is closed or still loading waits until it is listening.
 let pendingCommand
+let mainListening = false
 function command(detail) {
-  if (mainWindow && !mainWindow.isDestroyed()) {
+  if (mainWindow && !mainWindow.isDestroyed() && mainListening) {
     focusMain()
     send('app:command', detail)
     return
   }
   pendingCommand = detail
-  createWindow()
+  focusMain()
 }
 
 function buildMenu() {
@@ -427,7 +438,7 @@ function buildMenu() {
       submenu: [
         { label: 'New Thought', accelerator: 'CmdOrCtrl+Shift+N', click: () => command({ view: 'Capture' }) },
         { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => command({ view: 'Notes', detail: { action: 'new' } }) },
-        { label: 'Quick Capture Anywhere', accelerator: 'Alt+Space', registerAccelerator: false, click: showQuickCapture },
+        { label: 'Show OSAT Layer', accelerator: hotkey || undefined, registerAccelerator: false, click: () => overlay?.show() },
         { type: 'separator' },
         { label: 'New Browser Tab', accelerator: 'CmdOrCtrl+T', click: () => command({ view: 'Browser', action: 'new-tab' }) },
         ...(terminals?.available ? [{ label: 'New Terminal', accelerator: 'CmdOrCtrl+Shift+T', click: () => command({ view: 'Terminal', action: 'new-terminal' }) }] : []),
@@ -472,19 +483,21 @@ function buildMenu() {
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   app.dock?.setMenu(Menu.buildFromTemplate([
-    { label: 'New Thought', click: showQuickCapture },
+    { label: 'Show OSAT Layer', click: () => overlay?.show() },
     { label: 'Local AI', click: () => command({ view: 'Assistant' }) },
     { label: 'New Browser Tab', click: () => command({ view: 'Browser', action: 'new-tab' }) },
   ]))
 }
 
-/* Browser and terminal calls pass their own messages back to the room. */
+/* Browser and terminal calls pass their own messages back to the room.
+   Each window (the main one and the layer) gets its own browser tabs. */
 function handleApp(channel, operation) {
-  handle(channel, async (...args) => {
+  ipcMain.handle(channel, async (event, ...args) => {
+    assertTrustedSender(event)
+    assertAppWindow(event)
     try {
-      return await operation(...args)
+      return await operation(event.sender, ...args)
     } catch (error) {
-      if (error instanceof FileAccessError) throw error
       fail(error?.message || 'That did not work.')
     }
   })
@@ -494,35 +507,51 @@ function onTrusted(channel, listener) {
   ipcMain.on(channel, (event, ...args) => {
     try {
       assertTrustedSender(event)
-      assertMainWindow(event)
-      listener(...args)
+      assertAppWindow(event)
+      listener(event.sender, ...args)
     } catch {
-      // Ignore requests from anything but the OSAT window.
+      // Ignore requests from anything but an OSAT window.
     }
   })
 }
 
-function registerBrowserAndTerminal() {
-  handleApp('browser:state', () => browser?.state() || { tabs: [], active: null })
-  handleApp('browser:open', (url) => browser.open(url))
-  handleApp('browser:navigate', (url) => browser.navigate(url))
-  handleApp('browser:activate', (id) => browser.activate(id))
-  handleApp('browser:close', (id) => browser.close(id))
-  handleApp('browser:back', () => browser.back())
-  handleApp('browser:forward', () => browser.forward())
-  handleApp('browser:reload', () => browser.reload())
-  handleApp('browser:stop', () => browser.stop())
-  handleApp('browser:clip', () => browser.clip())
-  onTrusted('browser:place', (rect) => browser?.place(rect))
+function browserFor(sender) {
+  let browser = browsers.get(sender.id)
+  if (browser) return browser
+  const window = BrowserWindow.fromWebContents(sender)
+  browser = createBrowser({ window, emit: (channel, ...args) => { if (!sender.isDestroyed()) sender.send(channel, ...args) } })
+  browsers.set(sender.id, browser)
+  window.once('closed', () => { browser.destroy(); browsers.delete(sender.id) })
+  return browser
+}
 
-  terminals = process.mas ? { available: false, destroy() {} } : createTerminals({ emit: send })
+/* Terminal output goes to every window that can show a terminal. */
+function sendToAppWindows(channel, ...args) {
+  send(channel, ...args)
+  if (overlay && !overlay.window.isDestroyed()) overlay.window.webContents.send(channel, ...args)
+}
+
+function registerBrowserAndTerminal() {
+  handleApp('browser:state', (sender) => browserFor(sender).state())
+  handleApp('browser:open', (sender, url) => browserFor(sender).open(url))
+  handleApp('browser:navigate', (sender, url) => browserFor(sender).navigate(url))
+  handleApp('browser:activate', (sender, id) => browserFor(sender).activate(id))
+  handleApp('browser:close', (sender, id) => browserFor(sender).close(id))
+  handleApp('browser:back', (sender) => browserFor(sender).back())
+  handleApp('browser:forward', (sender) => browserFor(sender).forward())
+  handleApp('browser:reload', (sender) => browserFor(sender).reload())
+  handleApp('browser:stop', (sender) => browserFor(sender).stop())
+  handleApp('browser:clip', (sender) => browserFor(sender).clip())
+  onTrusted('browser:place', (sender, rect) => browserFor(sender).place(rect))
+
+  terminals = process.mas ? { available: false, destroy() {} } : createTerminals({ emit: sendToAppWindows })
   handleApp('terminal:available', () => terminals.available)
   handleApp('terminal:list', () => terminals.list())
-  handleApp('terminal:start', (size) => terminals.start(size))
-  handleApp('terminal:attach', (id) => terminals.attach(id))
-  handleApp('terminal:close', (id) => terminals.close(id))
-  onTrusted('terminal:write', (id, data) => terminals.write?.(id, data))
-  onTrusted('terminal:resize', (id, cols, rows) => terminals.resize?.(id, cols, rows))
+  handleApp('terminal:start', (_sender, size) => terminals.start(size))
+  handleApp('terminal:attach', (_sender, id) => terminals.attach(id))
+  handleApp('terminal:close', (_sender, id) => terminals.close(id))
+  onTrusted('terminal:write', (_sender, id, data) => terminals.write?.(id, data))
+  onTrusted('terminal:resize', (_sender, id, cols, rows) => terminals.resize?.(id, cols, rows))
 }
 
 /* ---- The workspace store --------------------------------------------- */
@@ -575,44 +604,172 @@ function registerStore() {
   })
 }
 
-function createSurfaceWindow(surface, options) {
-  const window = new BrowserWindow({
-    ...options,
-    show: false,
-    backgroundColor: '#f8f7f3',
-    titleBarStyle: 'hiddenInset',
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      preload: path.join(__dirname, 'preload.cjs'),
-    },
-  })
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-  window.webContents.on('will-navigate', (event, url) => {
-    if (url !== window.webContents.getURL()) event.preventDefault()
-  })
-  window.loadFile(APP_ENTRY, { query: { surface } })
-  return window
+/* ---- The layer (⌥Space), its hotkey, launchers and the menu-bar icon ---- */
+
+function prefsFile() {
+  return path.join(app.getPath('userData'), 'prefs.json')
 }
 
-function showQuickCapture() {
-  if (!quickCaptureWindow || quickCaptureWindow.isDestroyed()) {
-    quickCaptureWindow = createSurfaceWindow('quick-capture', {
-      width: 520,
-      height: 390,
-      minWidth: 420,
-      minHeight: 330,
-      resizable: true,
-      alwaysOnTop: true,
-      title: 'Quick capture',
-    })
+async function loadPrefs() {
+  try {
+    const saved = JSON.parse(await fs.readFile(prefsFile(), 'utf8'))
+    prefs = {
+      hotkey: validHotkey(saved.hotkey) ? saved.hotkey : DEFAULT_HOTKEY,
+      launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
+    }
+  } catch {
+    // No preferences yet: the defaults stand.
   }
-  quickCaptureWindow.center()
-  if (process.platform === 'darwin') app.focus({ steal: true })
-  quickCaptureWindow.show()
-  quickCaptureWindow.focus()
-  quickCaptureWindow.webContents.focus()
+}
+
+async function savePrefs() {
+  const temporary = `${prefsFile()}.${process.pid}.tmp`
+  await fs.writeFile(temporary, JSON.stringify(prefs, null, 2))
+  await fs.rename(temporary, prefsFile())
+}
+
+/* Registers a new hotkey, or keeps the old one when the new one is taken. */
+function useHotkey(value) {
+  if (!validHotkey(value)) return false
+  if (value === hotkey) return true
+  if (hotkey) globalShortcut.unregister(hotkey)
+  const ok = globalShortcut.register(value, () => overlay?.toggle())
+  if (!ok && hotkey) globalShortcut.register(hotkey, () => overlay?.toggle())
+  if (ok) hotkey = value
+  hotkeyFailed = !hotkey
+  buildMenu()
+  updateTray()
+  return ok
+}
+
+const launcherIcons = new Map()
+async function launcherList() {
+  return Promise.all(prefs.launchers.map(async (item) => {
+    if (!launcherIcons.has(item.path)) {
+      launcherIcons.set(item.path, await app.getFileIcon(item.path, { size: 'large' }).then((icon) => icon.toDataURL()).catch(() => ''))
+    }
+    return { ...item, icon: launcherIcons.get(item.path) }
+  }))
+}
+
+function registerOverlay() {
+  overlay = createOverlay({
+    BrowserWindow,
+    screen,
+    platform: process.platform,
+    preload: path.join(__dirname, 'preload.cjs'),
+    load: (window) => {
+      window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+      window.webContents.on('will-navigate', (event, url) => {
+        if (url !== window.webContents.getURL()) event.preventDefault()
+      })
+      window.loadFile(APP_ENTRY, { query: { surface: 'overlay' } })
+    },
+    onBlur: () => { if (!holdOverlay && !overlay.window.webContents.isDevToolsOpened()) overlay.hide() },
+  })
+  // A macOS panel swallows Esc before the page sees it, so while the layer is up
+  // OSAT takes Esc itself and hands it to the page as an ordinary key press.
+  overlay.window.on('show', escapeToLayer)
+  overlay.window.on('hide', () => globalShortcut.unregister('Escape'))
+
+  const fromOverlay = (event) => {
+    assertTrustedSender(event)
+    if (event.sender !== overlay.window.webContents) fail('Only the OSAT layer can do that.')
+  }
+  ipcMain.on('overlay:hide', (event) => { try { fromOverlay(event); overlay.hide() } catch { /* ignored */ } })
+  ipcMain.on('overlay:open-in-window', (event, view, detail) => {
+    try { fromOverlay(event) } catch { return }
+    if (typeof view !== 'string') return
+    overlay.hide()
+    if (process.platform === 'darwin') app.focus({ steal: true })
+    command({ view, detail: detail && typeof detail === 'object' ? detail : null })
+  })
+  // The hotkey can be read and changed from the layer or from Settings in the main window.
+  handle('overlay:prefs', async () => ({ hotkey, label: hotkeyLabel(hotkey || prefs.hotkey), failed: hotkeyFailed, launchers: await launcherList() }), { from: 'app' })
+  handle('overlay:set-hotkey', async (value) => {
+    if (!validHotkey(value)) fail('Use one or more of ⌘ ⌃ ⌥ ⇧ with one key.')
+    if (!useHotkey(value)) fail(`${hotkeyLabel(value)} is taken by another app. Try a different one.`)
+    prefs = { ...prefs, hotkey: value }
+    await savePrefs()
+    return { hotkey, label: hotkeyLabel(hotkey), failed: false }
+  }, { from: 'app' })
+  handle('overlay:add-launcher', async () => {
+    holdOverlay = true
+    globalShortcut.unregister('Escape')
+    try {
+      const result = await dialog.showOpenDialog(overlay.window, {
+        title: 'Add an app to the dock',
+        defaultPath: '/Applications',
+        properties: ['openFile'],
+        filters: [{ name: 'Applications', extensions: ['app'] }],
+      })
+      if (!result.canceled && result.filePaths[0]) {
+        prefs = { ...prefs, launchers: addLauncher(prefs.launchers, result.filePaths[0]) }
+        await savePrefs()
+      }
+    } finally {
+      holdOverlay = false
+      overlay.show()
+      escapeToLayer()
+    }
+    return launcherList()
+  }, { from: 'overlay' })
+  handle('overlay:remove-launcher', async (appPath) => {
+    prefs = { ...prefs, launchers: prefs.launchers.filter((item) => item.path !== appPath) }
+    await savePrefs()
+    return launcherList()
+  }, { from: 'overlay' })
+  // Only apps Nate added can be opened this way.
+  handle('overlay:launch', async (appPath) => {
+    if (!prefs.launchers.some((item) => item.path === appPath)) fail('That app is not in the dock.')
+    overlay.hide()
+    if (await shell.openPath(appPath)) fail('macOS could not open that app.')
+    return true
+  }, { from: 'overlay' })
+}
+
+function escapeToLayer() {
+  if (process.platform !== 'darwin' || globalShortcut.isRegistered('Escape')) return
+  globalShortcut.register('Escape', () => overlay.window.webContents.send('overlay:escape'))
+}
+
+async function refreshAiStatus() {
+  try {
+    const models = await localAiModels()
+    aiStatus = models.length ? `Local AI ready · ${models[0].name}` : 'Local AI: no model loaded'
+  } catch {
+    aiStatus = 'Local AI: not running'
+  }
+  updateTray()
+}
+
+function updateTray() {
+  if (!tray) return
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Show OSAT Layer', accelerator: hotkey || undefined, registerAccelerator: false, click: () => overlay.show() },
+    { label: 'Open OSAT', click: () => focusMain() },
+    { type: 'separator' },
+    { label: aiStatus, enabled: false },
+    { label: hotkeyFailed ? 'Shortcut not set · choose one…' : `Change shortcut (${hotkeyLabel(hotkey)})…`, click: () => command({ view: 'Settings' }) },
+    ...(app.isPackaged ? [{
+      label: 'Open at Login',
+      type: 'checkbox',
+      checked: app.getLoginItemSettings().openAtLogin,
+      click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked }),
+    }] : []),
+    { type: 'separator' },
+    { label: 'Quit OSAT', role: 'quit' },
+  ]))
+}
+
+function createTray() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'trayTemplate.png'))
+  icon.setTemplateImage(true)
+  tray = new Tray(icon)
+  tray.setToolTip('OSAT')
+  tray.on('mouse-enter', () => { refreshAiStatus() })
+  updateTray()
+  refreshAiStatus()
 }
 
 app.whenReady().then(async () => {
@@ -636,7 +793,7 @@ app.whenReady().then(async () => {
     } catch {
       return { runtime: 'lm-studio', offline: true, models: [], error: 'Start the LM Studio local server to use offline AI.' }
     }
-  }, { mainOnly: false })
+  }, { from: 'any' })
   handle('local-ai:chat', async (payload) => {
     validateLocalChatPayload(payload)
     try {
@@ -644,7 +801,7 @@ app.whenReady().then(async () => {
     } catch (error) {
       throw new FileAccessError(error.message || 'Local AI is unavailable.')
     }
-  }, { mainOnly: false })
+  }, { from: 'any' })
   const streams = new Map()
   ipcMain.on('local-ai:cancel', (event, id) => {
     assertTrustedSender(event)
@@ -668,21 +825,21 @@ app.whenReady().then(async () => {
     }
   })
   ipcMain.on('app:listening', (event) => {
-    if (!pendingCommand || event.sender !== mainWindow?.webContents) return
+    if (event.sender !== mainWindow?.webContents) return
+    mainListening = true
+    if (!pendingCommand) return
     send('app:command', pendingCommand)
     pendingCommand = undefined
   })
-  // The quick-capture window saves through the store itself; this only puts it away.
-  ipcMain.on('quick-capture:done', (event) => {
-    if (!quickCaptureWindow || quickCaptureWindow.isDestroyed() || event.sender !== quickCaptureWindow.webContents) return
-    setTimeout(() => { if (!quickCaptureWindow.isDestroyed()) quickCaptureWindow.hide() }, 700)
-  })
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, respond) => respond(false))
   registerBrowserAndTerminal()
+  await loadPrefs()
+  registerOverlay()
   await createWindow()
-  buildMenu()
-  globalShortcut.register(process.platform === 'darwin' ? 'Alt+Space' : 'CommandOrControl+Shift+Space', showQuickCapture)
-  // Clicking the Dock icon reopens the main window, even while a hidden capture window exists.
+  createTray()
+  // If the shortcut is taken by another app, open Settings so a new one can be picked.
+  if (!useHotkey(prefs.hotkey)) command({ view: 'Settings', detail: { section: 'shortcut' } })
+  // Clicking the Dock icon reopens the main window, even while the hidden layer exists.
   app.on('activate', () => focusMain())
 })
 

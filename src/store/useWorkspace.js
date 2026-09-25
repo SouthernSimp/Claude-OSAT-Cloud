@@ -33,10 +33,26 @@ export function workspaceClient() {
 export function useWorkspace() {
   const store = workspaceClient()
   const { workspace, status } = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  // Every OSAT window follows the workspace theme ("system" follows the Mac).
   useEffect(() => {
-    if (workspace?.theme) {
-      try { localStorage.setItem('osat.theme', workspace.theme) } catch { /* first-paint hint only */ }
+    const theme = workspace?.theme
+    if (!theme) return undefined
+    try { localStorage.setItem('osat.theme', theme) } catch { /* first-paint hint only */ }
+    const media = matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => {
+      const resolved = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme
+      document.documentElement.dataset.theme = resolved
+      document.documentElement.style.colorScheme = resolved
     }
+    apply()
+    media.addEventListener('change', apply)
+    return () => media.removeEventListener('change', apply)
   }, [workspace?.theme])
   return { workspace, status, commit: store.commit, replace: store.replace, ready: status.ready }
+}
+
+/* The top bar, the dock and Settings read a simple saving status. */
+export function storageFrom(status, ready) {
+  if (status.state === 'error') return { status: 'error', message: status.message }
+  return { status: ready ? 'ready' : 'loading', message: status.message || (ready ? 'Saved on this Mac.' : 'Opening your workspace') }
 }
