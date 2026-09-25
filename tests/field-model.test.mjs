@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createDefaultWorkspace } from '../src/osat-data.js'
 import { addFieldSample, hasFieldSample, removeFieldSample } from '../src/field/field-sample.js'
-import { buildSkyGraph, constellationLabels, dayPhase, homeItems, paperFields, paperPose, paperWrite, runSky, stepSky } from '../src/field/field-model.js'
+import { WARM, buildSkyGraph, constellationLabels, dayPhase, homeItems, paperFields, paperPose, paperWrite, runSky, stepSky } from '../src/field/field-model.js'
 
 test('day phase follows the clock', () => {
   assert.equal(dayPhase(new Date('2026-09-22T08:00:00')), 'morning')
@@ -114,4 +114,19 @@ test('home icons put pinned notes, folders and the mindmap first, and count what
   assert.deepEqual(cut.map((item) => item.id), ['pinned', 'f-a', 'f-b', 'more'])
   assert.equal(cut[3].count, 3)
   assert.deepEqual(homeItems({ notes: [], folders: [], boards: [] }, 6), [])
+})
+
+test('loose thoughts gather into one pile and only a few recent notes stay out', () => {
+  const note = (id, day, extra = {}) => ({ id, title: id, markdown: id, updatedAt: `2026-09-${String(day).padStart(2, '0')}T00:00:00Z`, trashedAt: null, archived: false, ...extra })
+  const notes = [
+    note('loose-1', 20, { unsorted: true }),
+    note('loose-2', 19, { unsorted: true }),
+    ...Array.from({ length: 8 }, (_, index) => note(`filed-${index}`, 10 - index, { folderId: 'f' })),
+  ]
+  const items = homeItems({ notes, folders: [], boards: [] })
+  assert.deepEqual(items.map((item) => item.kind), ['pile', ...Array(WARM).fill('note')])
+  assert.deepEqual(items[0].notes.map((item) => item.id), ['loose-1', 'loose-2'])
+  assert.deepEqual(items.slice(1).map((item) => item.id), ['filed-0', 'filed-1', 'filed-2', 'filed-3'])
+  // One loose thought is just a note; no pile of one.
+  assert.equal(homeItems({ notes: [notes[0]], folders: [], boards: [] })[0].kind, 'note')
 })

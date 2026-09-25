@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { ArrowUp, CaretDown, CheckCircle, MagnifyingGlass, NotePencil, PencilSimpleLine, Plus, PushPin, ShareNetwork, Sparkle } from '@phosphor-icons/react'
 
@@ -6,7 +6,7 @@ import { FocusEnvironment } from '../Experience.jsx'
 import { modelLabel } from '../assistant/LocalAssistant.jsx'
 import { calendarMonthDays, localDateKey } from '../daily-practice.js'
 import { getLocalModels } from '../local-ai.js'
-import { captureThought, dayNoteId, excerpt, isActiveNote, relinkRenamedNote, updateNote } from '../notes-model.js'
+import { captureThought, dayNoteId, excerpt, isActiveNote, relinkRenamedNote, updateNote, wikilinkPairs } from '../notes-model.js'
 import { addNextStep, nextSteps, toggleNextStep } from '../next-steps.js'
 import { clamp, inputActive, timeLabel } from '../lib/ui.js'
 import { sampleEvents, sampleFolders, sampleNotes } from './field-sample.js'
@@ -62,6 +62,7 @@ export function FieldDesk({
   const [focusOpen, setFocusOpen] = useState(false)
   const [openId, setOpenId] = useState(null)
   const [ai, setAi] = useState({ state: 'checking', label: '' })
+  const [hoverId, setHoverId] = useState(null)
   const openRef = useRef(null)
   const focusRef = useRef(false)
   focusRef.current = focusOpen
@@ -85,6 +86,11 @@ export function FieldDesk({
   const placed = (item) => Boolean(places[`${item.kind}:${item.id}`])
   const items = fitCells(allItems.filter((item) => !placed(item)), capacity)
   const placedItems = allItems.filter(placed)
+
+  /* Resting on a note lights up the notes it links to, and their folders. */
+  const pairs = useMemo(() => wikilinkPairs(notes), [notes])
+  const linked = new Set(hoverId ? pairs.flatMap((pair) => (pair.a === hoverId ? [pair.b] : pair.b === hoverId ? [pair.a] : [])) : [])
+  const linkedFolders = new Set(notes.filter((note) => linked.has(note.id) && note.folderId).map((note) => note.folderId))
   const sheetNote = notes.find((item) => item.id === openId) || null
   openRef.current = sheetNote ? openId : null
   const current = MODES.find((item) => item.id === mode)
@@ -252,6 +258,7 @@ export function FieldDesk({
     if (item.kind === 'note') openNote(item.id, event.currentTarget.querySelector('[data-paper]'))
     else if (item.kind === 'folder') navigate('Notes', preview ? null : { folderId: item.id })
     else if (item.kind === 'board') navigate('Mindmap', { boardId: item.id })
+    else if (item.kind === 'pile') navigate('Notes', { list: 'unsorted' })
     else navigate('Notes')
   }
 
@@ -314,13 +321,15 @@ export function FieldDesk({
       <button
         key={key}
         type="button"
-        className={`icon is-${item.kind} ${item.kind === 'note' && item.id === freshId ? 'is-fresh' : ''}`}
-        aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open folder ${item.folder.name}` : item.kind === 'board' ? 'Open the Mindmap' : `See ${item.count} more notes`}
+        className={`icon is-${item.kind} ${(item.kind === 'note' && item.id === freshId) || (item.kind === 'pile' && item.notes.some((note) => note.id === freshId)) ? 'is-fresh' : ''} ${linked.has(item.id) || (item.kind === 'folder' && linkedFolders.has(item.id)) ? 'is-linked' : ''}`}
+        aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open folder ${item.folder.name}` : item.kind === 'board' ? 'Open the Map' : item.kind === 'pile' ? `${item.count} loose thoughts. Open Unsorted` : `See ${item.count} more notes`}
         onClick={(event) => openItem(item, event)}
+        onPointerEnter={item.kind === 'note' ? () => setHoverId(item.id) : undefined}
+        onPointerLeave={item.kind === 'note' ? () => setHoverId((id) => (id === item.id ? null : id)) : undefined}
         {...(item.kind === 'more' ? {} : movable(key))}
       >
         <IconArt item={item} />
-        <span className="icon-label">{item.kind === 'note' ? item.note.title : item.kind === 'folder' ? item.folder.name : item.kind === 'board' ? 'Mindmap' : `${item.count} more`}</span>
+        <span className="icon-label">{item.kind === 'note' ? item.note.title : item.kind === 'folder' ? item.folder.name : item.kind === 'board' ? 'Map' : item.kind === 'pile' ? `${item.count} loose thoughts` : `${item.count} more`}</span>
       </button>
     )
   }
@@ -517,6 +526,15 @@ function IconArt({ item }) {
     return <span className="art-board" aria-hidden="true"><ShareNetwork weight="bold" /></span>
   }
   if (item.kind === 'more') return <span className="art-more" aria-hidden="true">+{item.count}</span>
+  if (item.kind === 'pile') {
+    return (
+      <span className="art-pile" aria-hidden="true">
+        {item.notes.slice(0, 3).reverse().map((note, index) => (
+          <span key={note.id} className="art-note" style={{ '--i': index }}><b>{note.title}</b><em /><em /></span>
+        ))}
+      </span>
+    )
+  }
   const { note } = item
   const lines = excerpt(paperFields(note).body, 70)
   return (

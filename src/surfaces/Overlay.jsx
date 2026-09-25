@@ -16,6 +16,8 @@ import { relinkRenamedNote, updateNote } from '../notes-model.js'
 import { storageFrom, useWorkspace } from '../store/useWorkspace.js'
 import { BrowserView } from '../tools/Browser.jsx'
 import { TerminalView } from '../tools/Terminal.jsx'
+import { GlassDefs, magnify, unmagnify, useAlive } from '../shell/glass.jsx'
+import { Appearance } from '../shell/Shell.jsx'
 import { CalendarView } from '../views/Calendar.jsx'
 import { CommandPalette } from '../views/CommandPalette.jsx'
 import { JournalView } from '../views/Journal.jsx'
@@ -44,6 +46,13 @@ export function OverlaySurface() {
   const [prefs, setPrefs] = useState({ launchers: [], places: {} })
   const latest = useRef({ pops, palette })
   latest.current = { pops, palette }
+  useAlive()
+
+  /* Blur at zero means a clear layer: the Mac's frosting comes off entirely. */
+  const clear = workspace?.settings?.blur === 0
+  useEffect(() => {
+    bridge?.setClear?.(clear)
+  }, [bridge, clear])
 
   useEffect(() => {
     bridge?.prefs().then(setPrefs).catch(() => {})
@@ -158,6 +167,7 @@ export function OverlaySurface() {
 
   return (
     <main className={`overlay-surface ${bridge ? '' : 'is-preview'}`}>
+      <GlassDefs />
       <div className="workspace-content is-filled">
         <FieldDesk
           {...common}
@@ -169,7 +179,7 @@ export function OverlaySurface() {
           places={prefs.places || {}}
           onPlace={place}
           media={bridge?.nowPlaying ? bridge : null}
-          dock={<OverlayDock navigate={navigate} openInWindow={openInWindow} launchers={prefs.launchers} launcher={launcher} canLaunch={Boolean(bridge)} storage={storage} onFind={() => setPalette('')} onTidy={Object.keys(prefs.places || {}).length ? tidy : null} />}
+          dock={<OverlayDock navigate={navigate} openInWindow={openInWindow} launchers={prefs.launchers} launcher={launcher} canLaunch={Boolean(bridge)} storage={storage} onFind={() => setPalette('')} onTidy={Object.keys(prefs.places || {}).length ? tidy : null} workspace={workspace} commit={commit} />}
         />
       </div>
 
@@ -281,12 +291,12 @@ function PopOut({ pop, z, top, title, onRaise, onClose, onChange, onWindow, chil
   )
 }
 
-function OverlayDock({ navigate, openInWindow, launchers, launcher, canLaunch, storage, onFind, onTidy }) {
+function OverlayDock({ navigate, openInWindow, launchers, launcher, canLaunch, storage, onFind, onTidy, workspace, commit }) {
   const room = (view, label, Icon, tip = label) => (
-    <button key={view} type="button" aria-label={label} data-tip={tip} onClick={() => navigate(view)}><Icon /></button>
+    <button key={view} type="button" data-mag aria-label={label} data-tip={tip} onClick={() => navigate(view)}><Icon /></button>
   )
   return (
-    <nav className="glass dock" aria-label="OSAT dock">
+    <nav className="glass liquid dock" aria-label="OSAT dock" onPointerMove={magnify} onPointerLeave={unmagnify}>
       <div className="dock-group">
         {room('Notes', 'Notes', NotePencil)}
         {room('Mindmap', 'Map', ShareNetwork)}
@@ -307,7 +317,7 @@ function OverlayDock({ navigate, openInWindow, launchers, launcher, canLaunch, s
             ...(launchers.length ? [{ divider: true }, ...launchers.map((item) => ({ label: `Remove ${item.name} from the dock`, icon: X, onSelect: () => launcher('removeLauncher', item.path) }))] : []),
           ]}
           trigger={({ toggle, open }) => (
-            <button type="button" aria-label="Tools" data-tip="Tools" aria-haspopup="menu" aria-expanded={open} onClick={toggle}><Toolbox /></button>
+            <button type="button" data-mag aria-label="Tools" data-tip="Tools" aria-haspopup="menu" aria-expanded={open} onClick={toggle}><Toolbox /></button>
           )}
         />
       </div>
@@ -316,7 +326,7 @@ function OverlayDock({ navigate, openInWindow, launchers, launcher, canLaunch, s
           <i className="dock-rule" />
           <div className="dock-group dock-apps">
             {launchers.map((item) => (
-              <button key={item.path} type="button" className="launcher" aria-label={`Open ${item.name}`} data-tip={item.name} onClick={() => launcher('launch', item.path)}>
+              <button key={item.path} type="button" data-mag className="launcher" aria-label={`Open ${item.name}`} data-tip={item.name} onClick={() => launcher('launch', item.path)}>
                 {item.icon ? <img src={item.icon} alt="" /> : <AppWindow />}
               </button>
             ))}
@@ -326,7 +336,8 @@ function OverlayDock({ navigate, openInWindow, launchers, launcher, canLaunch, s
       )}
       <i className="dock-rule" />
       <div className="dock-group">
-        <button type="button" aria-label="Find" data-tip="Find  ⌘K" onClick={onFind}><MagnifyingGlass /></button>
+        <button type="button" data-mag aria-label="Find" data-tip="Find  ⌘K" onClick={onFind}><MagnifyingGlass /></button>
+        <Appearance workspace={workspace} commit={commit} />
         <span className={`dock-status ${storage?.status || ''}`} role="status" data-tip={storage?.status === 'error' ? 'Check storage' : 'Saved on this Mac'}>
           <i />
           <span className="visually-hidden">{storage?.status === 'error' ? 'Check storage' : 'Saved on this Mac'}</span>

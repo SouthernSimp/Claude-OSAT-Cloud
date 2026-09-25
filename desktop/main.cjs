@@ -453,20 +453,22 @@ function buildMenu() {
     {
       label: 'Go',
       submenu: [
-        room('Today', 'Today', 'CmdOrCtrl+1'),
+        // The same spaces and tools as the dock (src/lib/spaces.js).
+        room('Desk', 'Today', 'CmdOrCtrl+1'),
         room('Notes', 'Notes', 'CmdOrCtrl+2'),
-        room('Mindmap', 'Mindmap', 'CmdOrCtrl+3'),
-        room('Journal', 'Journal', 'CmdOrCtrl+4'),
-        room('Calendar', 'Calendar', 'CmdOrCtrl+5'),
-        room('Local AI', 'Assistant', 'CmdOrCtrl+6'),
-        room('Browser', 'Browser', 'CmdOrCtrl+7'),
-        ...(terminals?.available ? [room('Terminal', 'Terminal', 'CmdOrCtrl+8')] : []),
-        { type: 'separator' },
+        room('Map', 'Mindmap', 'CmdOrCtrl+3'),
+        room('Ask', 'Assistant', 'CmdOrCtrl+4'),
         room('Sky', 'Sky'),
-        room('Files', 'Files'),
-        room('Projects', 'Projects'),
+        { type: 'separator' },
+        room('Today’s Page', 'Journal'),
+        room('Calendar', 'Calendar'),
         room('Habits', 'Habits'),
+        room('Reflect', 'Reflection'),
         room('Money', 'Budget'),
+        room('Projects', 'Projects'),
+        room('Files', 'Files'),
+        room('Browser', 'Browser'),
+        ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
       ],
     },
     {
@@ -679,6 +681,11 @@ function registerOverlay() {
     if (event.sender !== overlay.window.webContents) fail('Only the OSAT layer can do that.')
   }
   ipcMain.on('overlay:hide', (event) => { try { fromOverlay(event); overlay.hide() } catch { /* ignored */ } })
+  // Blur set to zero in Appearance: no frosting, the desktop shows through clear.
+  ipcMain.on('overlay:clear', (event, clear) => {
+    try { fromOverlay(event) } catch { return }
+    if (process.platform === 'darwin') overlay.window.setVibrancy(clear === true ? null : 'fullscreen-ui')
+  })
   ipcMain.on('overlay:open-in-window', (event, view, detail) => {
     try { fromOverlay(event) } catch { return }
     if (typeof view !== 'string') return

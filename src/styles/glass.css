@@ -122,6 +122,27 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .icon:hover .art-board { translate: 0 -3px; }
 .icon.is-moving .art-note { rotate: 3deg; box-shadow: var(--sheet-lift); }
 
+/* Loose thoughts rest in a soft pile that fans open when the cursor comes by. */
+.art-pile { position: relative; width: 58px; height: 58px; display: block; }
+.art-pile .art-note {
+  position: absolute;
+  left: 6px;
+  top: 0;
+  rotate: calc((var(--i) - 1) * 7deg);
+  translate: calc((var(--i) - 1) * 3px) calc(var(--i) * -1px);
+  transition: rotate 520ms var(--spring), translate 520ms var(--spring);
+}
+.icon:hover .art-pile .art-note { rotate: calc((var(--i) - 1) * 16deg); translate: calc((var(--i) - 1) * 12px) calc(var(--i) * -3px - 3px); }
+.icon.is-pile.is-fresh { animation: pile-bump 700ms var(--spring) both; }
+@keyframes pile-bump { 30% { scale: 1.12; } }
+
+/* Notes linked to the one under the cursor, and their folders, glow softly. */
+.icon.is-linked .art-note,
+.icon.is-linked .art-folder { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 80%, transparent)); }
+.icon.is-linked .icon-label { color: var(--on-1); }
+.icon .art-note,
+.icon .art-folder { transition: filter 500ms var(--glide), translate 420ms var(--spring), rotate 420ms var(--spring), box-shadow 420ms var(--glide); }
+
 /* The greeting catches a slow sweep of light. */
 .home-greeting {
   background: linear-gradient(100deg, var(--on-1) 40%, color-mix(in srgb, var(--on-1) 55%, #fff) 50%, var(--on-1) 60%) 0 0 / 300% 100%;
@@ -178,7 +199,8 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .app-dock button[aria-expanded="true"] { color: var(--on-1); background: none; }
 .app-dock button[aria-current="page"] { color: var(--on-1); }
 .app-dock button svg { width: 21px; height: 21px; scale: var(--mag, 1); transform-origin: 50% 90%; transition: scale 260ms var(--spring); }
-.dock-label { font: 560 10.5px/1 var(--font); letter-spacing: 0.01em; }
+.dock-label { font: 560 10.5px/1 var(--font); letter-spacing: 0.01em; white-space: nowrap; }
+.app-dock .menu-root > button { width: auto; min-width: 58px; padding: 0 8px; }
 .dock-pill {
   position: absolute;
   z-index: 0;
@@ -201,6 +223,14 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .app-dock [data-tip]:hover::before { bottom: calc(100% + 14px); animation: tip-in 240ms var(--glide) 650ms both; }
 @keyframes tip-in { from { opacity: 0; translate: -50% 4px; } }
 .app-dock .menu-popover { bottom: calc(100% + 14px); }
+
+/* The layer's dock swells under the cursor too. */
+.dock [data-mag] svg { scale: var(--mag, 1); transform-origin: 50% 85%; transition: scale 260ms var(--spring); }
+.dock:not(.app-dock) .appearance > button { position: relative; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; color: var(--on-2); }
+.dock:not(.app-dock) .appearance > button .dock-label { display: none; }
+.dock:not(.app-dock) .appearance-pop { left: auto; right: -60px; translate: none; }
+.dock .appearance-pop button { width: auto; height: auto; min-height: 0; place-items: initial; translate: none; }
+.dock .appearance-pop button svg { width: 14px; height: 14px; scale: none; }
 
 /* ---- Menus and popovers are glass too -------------------------------------- */
 
@@ -267,9 +297,6 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .segmented button:hover { color: var(--on-1); }
 .segmented button[aria-checked="true"] { color: var(--on-1); background: rgb(255 255 255 / 80%); box-shadow: 0 1px 3px rgb(0 0 0 / 14%), inset 0 1px 0 #fff; }
 :root[data-theme="dark"] .segmented button[aria-checked="true"] { background: rgb(255 255 255 / 15%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%); }
-/* The dock's own button rules stop at the popover. */
-.app-dock .appearance-pop button { width: auto; height: auto; min-height: 0; place-items: initial; translate: none; }
-.app-dock .appearance-pop button svg { width: 14px; height: 14px; scale: none; }
 .appearance-card { display: grid; gap: 12px; max-width: 420px; margin-top: 14px; }
 .appearance-card .wall-picks img { height: 72px; }
 .wall-picks { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

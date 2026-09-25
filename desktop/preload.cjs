@@ -105,6 +105,7 @@ contextBridge.exposeInMainWorld('osatOverlay', Object.freeze({
   tidy: () => ipcRenderer.invoke('overlay:tidy'),
   nowPlaying: () => ipcRenderer.invoke('media:now'),
   media: (action) => ipcRenderer.invoke('media:control', action),
+  setClear: (clear) => ipcRenderer.send('overlay:clear', clear === true),
   onShown: (listener) => listen('overlay:shown', listener),
   onEscape: (listener) => listen('overlay:escape', listener),
 }))

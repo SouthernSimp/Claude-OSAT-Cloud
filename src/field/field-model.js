@@ -53,19 +53,30 @@ export function paperPose(id, index, total, compact = false) {
 }
 
 /* The desktop icons on home, in order: pinned notes, top-level folders, the
-   Mindmap, then recent notes. Daily plans and journal pages have their own
-   places. When there are more than fit, the last cell says how many more. */
+   Mindmap, loose thoughts gathered into one pile, then the few notes touched
+   most recently. Everything else is a click away in its folder, so the desk
+   stays calm however much you write. Daily pages have their own place. */
+export const WARM = 4
+
 export function homeItems({ notes = [], folders = [], boards = [] }, capacity = Infinity) {
   const active = notes.filter((note) => isActiveNote(note) && note.kind !== 'day')
   const recent = [...active].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-  const board = boards.find((item) => item?.scope?.kind === 'all') || boards[0]
+  const board = board0(boards)
+  const loose = recent.filter((note) => note.unsorted && !note.pinned)
+  const piled = loose.length > 1 ? loose : []
+  const warm = recent.filter((note) => !note.pinned && !piled.includes(note)).slice(0, WARM)
   const items = [
     ...recent.filter((note) => note.pinned).map((note) => ({ kind: 'note', id: note.id, note })),
     ...folderChildren(folders, null).map((folder) => ({ kind: 'folder', id: folder.id, folder })),
     ...(board ? [{ kind: 'board', id: board.id, board }] : []),
-    ...recent.filter((note) => !note.pinned).map((note) => ({ kind: 'note', id: note.id, note })),
+    ...(piled.length ? [{ kind: 'pile', id: 'unsorted', count: piled.length, notes: piled }] : []),
+    ...warm.map((note) => ({ kind: 'note', id: note.id, note })),
   ]
   return fitCells(items, capacity)
+}
+
+function board0(boards) {
+  return boards.find((item) => item?.scope?.kind === 'all') || boards[0]
 }
 
 /* As many items as fit; when there are more, the last cell says how many more. */
