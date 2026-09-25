@@ -120,7 +120,7 @@ export function TerminalView({ command }) {
       <section className="tool-unavailable">
         <TerminalWindow weight="duotone" />
         <h2>{bridge ? 'This edition of OSAT has no terminal.' : 'The terminal lives in the OSAT Mac app.'}</h2>
-        <p>{bridge ? 'App Store apps run in a sandbox, where a shell can’t reach the rest of your Mac. The direct-download OSAT has one.' : 'A web page can’t run commands on your Mac. Open OSAT Field on your Mac to use your shell here.'}</p>
+        <p>{bridge ? 'App Store apps run in a sandbox, where a shell can’t reach the rest of your Mac. The direct-download OSAT has one.' : 'A web page can’t run commands on your Mac. Open OSAT on your Mac to use your shell here.'}</p>
       </section>
     )
   }

@@ -118,8 +118,8 @@ export function SettingsView({ workspace, commit, storage }) {
         <p className="eyebrow">BOUNDARIES</p>
         <h2>Your privacy, your choice.</h2>
         <p>
-          Gmail, provider calendars, cloud accounts, automated Obsidian sync,
-          and autonomous filing are inactive by design.
+          Cloud accounts, provider calendars, automated Obsidian sync and
+          autonomous filing are inactive by design.
         </p>
       </section>
     </section>

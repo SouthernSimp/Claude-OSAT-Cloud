@@ -161,53 +161,6 @@
   ::view-transition-new(*) { animation: none !important; }
 }
 
-/* ---- Phone ------------------------------------------------------------- */
-
-.mobile-nav { display: none; }
-@media (max-width: 760px) {
-  .topbar { grid-template-columns: minmax(0, 1fr) auto; padding: 0 8px 0 16px; }
-  .topbar-tabs,
-  .topbar-saved,
-  .topbar-new { display: none; }
-  .workspace { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
-  .workspace-content > * { --gutter: 16px; padding-top: 22px; }
-  .page-heading { flex-wrap: wrap; }
-  .mobile-nav {
-    position: fixed;
-    z-index: 40;
-    inset: auto 0 0;
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--page) 92%, transparent);
-    backdrop-filter: blur(18px) saturate(1.2);
-  }
-  .mobile-nav button {
-    min-height: 48px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    border-radius: 12px;
-    color: var(--faint);
-    font-size: 10.5px;
-    font-weight: 500;
-  }
-  .mobile-nav button svg { width: 21px; height: 21px; }
-  .mobile-nav button.active { color: var(--ink-strong); }
-  .mobile-nav .mobile-new svg {
-    width: 38px;
-    height: 38px;
-    padding: 10px;
-    border-radius: 50%;
-    background: var(--ink);
-    color: var(--page);
-  }
-  .mobile-nav .mobile-new span { display: none; }
-}
-
 /* ---- Inside the Mac app ---------------------------------------------- */
 /* The window has no title bar of its own. The top bar and home's wallpaper
    drag the window, and both leave room for the traffic lights. */

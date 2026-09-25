@@ -2,7 +2,6 @@ import {
   BookOpenText,
   CalendarBlank,
   CurrencyDollar,
-  DotsThree,
   Files,
   Globe,
   TerminalWindow,
@@ -14,7 +13,6 @@ import {
   MoonStars,
   Sparkle,
   SunHorizon,
-  Plus,
   Tray,
   UploadSimple,
 } from "@phosphor-icons/react";
@@ -39,18 +37,7 @@ export const TOOL_NAV = [
 
 export const FOOT_NAV = [
   { id: "Settings", label: "Settings", icon: GearSix, description: "Appearance, backup, boundaries" },
-  { id: "More", label: "Library", icon: DotsThree },
 ];
-
-export const PRIMARY_NAV = [
-  { id: "Today", label: "Today", icon: SunHorizon },
-  { id: "Notes", label: "Notes", icon: NotePencil },
-  { id: "Capture", label: "New", icon: Plus },
-  { id: "Mindmap", label: "Map", icon: ShareNetwork },
-  { id: "More", label: "More", icon: DotsThree },
-];
-
-export const WORKFLOW_NAV = CORE_NAV;
 
 export const MODULES = [
   { id: "Projects", label: "Projects", icon: FolderSimple, description: "Work and safe links" },
@@ -62,9 +49,3 @@ export const MODULES = [
 export const DATE_LABEL = new Intl.DateTimeFormat("en-US", {
   weekday: "long", month: "long", day: "numeric",
 }).format(new Date());
-
-export const REFLECTION_PROMPTS = [
-  ["win", "What moved forward?"],
-  ["hard", "What felt difficult?"],
-  ["tomorrow", "What is the next honest step?"],
-];

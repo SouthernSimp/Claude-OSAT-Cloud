@@ -12,13 +12,6 @@ contextBridge.exposeInMainWorld('nateOSFiles', Object.freeze({
   forget: (rootId) => ipcRenderer.invoke('files:forget', rootId),
 }))
 
-contextBridge.exposeInMainWorld('osatSecrets', Object.freeze({
-  status: () => ipcRenderer.invoke('secrets:status'),
-  keys: () => ipcRenderer.invoke('secrets:keys'),
-  set: (key, value) => ipcRenderer.invoke('secrets:set', key, value),
-  delete: (key) => ipcRenderer.invoke('secrets:delete', key),
-}))
-
 let streamSeq = 0
 
 contextBridge.exposeInMainWorld('osatLocalAI', Object.freeze({
@@ -48,10 +41,6 @@ contextBridge.exposeInMainWorld('osatQuickCapture', Object.freeze({
     ipcRenderer.on('quick-capture:received', handler)
     return () => ipcRenderer.removeListener('quick-capture:received', handler)
   },
-}))
-
-contextBridge.exposeInMainWorld('osatWindows', Object.freeze({
-  openAssistant: () => ipcRenderer.invoke('app:open-assistant'),
 }))
 
 const listen = (channel, listener) => {

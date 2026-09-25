@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { Aperture, Database, EnvelopeSimple, Plus, ShieldCheck, X } from "@phosphor-icons/react";
+import { Aperture, Database, Plus, ShieldCheck, X } from "@phosphor-icons/react";
 
 import { LocalAssistant } from "./assistant/LocalAssistant.jsx";
 import { FieldTopbar } from "./field/FieldChrome.jsx";
@@ -14,14 +14,10 @@ import { BLANK_KEY } from "./field/field-model.js";
 
 import { CalendarView } from "./views/Calendar.jsx";
 import { CommandPalette } from "./views/CommandPalette.jsx";
-import { DisconnectedView } from "./views/Disconnected.jsx";
 import { FilesView } from "./views/Files.jsx";
 import { HabitsView } from "./views/Habits.jsx";
-import { IdeasView } from "./views/Ideas.jsx";
 import { InboxView } from "./views/Inbox.jsx";
 import { JournalView } from "./views/Journal.jsx";
-import { MobileNav } from "./views/MobileNav.jsx";
-import { MoreView } from "./views/More.jsx";
 import { NotesView } from "./notes/NotesView.jsx";
 import { BoardView } from "./board/BoardView.jsx";
 import { BudgetView } from "./views/Budget.jsx";
@@ -35,7 +31,7 @@ import { createDefaultWorkspace, importLegacyStorage } from "./osat-data.js";
 import { reconcileBoards } from "./board-model.js";
 import { captureThought, isActiveNote } from "./notes-model.js";
 import { loadCanonicalWorkspace, saveCanonicalWorkspace, stageWorkspace } from "./osat-store.js";
-import { inputActive, makeId } from "./lib/ui.js";
+import { inputActive } from "./lib/ui.js";
 import { useFocusTrap } from "./lib/use-focus-trap.js";
 import { DATE_LABEL } from "./lib/modules.js";
 
@@ -355,7 +351,7 @@ function WorkspaceApp() {
           />
         )}
         <div className={`workspace-content ${FILLED_VIEWS.has(view) ? "is-filled" : ""}`} data-view={view}>
-        {!FILLED_VIEWS.has(view) && !["Today", "Sky", "More", "Reflection", "Budget", "Journal", "Files"].includes(view) && (
+        {!FILLED_VIEWS.has(view) && !["Today", "Sky", "Reflection", "Budget", "Journal", "Files"].includes(view) && (
           <header className="page-heading">
             <div>
               <h1 ref={titleRef} tabIndex="-1">
@@ -387,8 +383,6 @@ function WorkspaceApp() {
         {view === "Inbox" && <InboxView {...common} />}
         {view === "Notes" && <NotesView {...common} target={notesTarget} today={today} />}
         {view === "Mindmap" && <BoardView {...common} boardTarget={boardTarget} />}
-        {view === "More" && <MoreView navigate={navigate} />}
-        {view === "Ideas" && <IdeasView {...common} />}
         {view === "Projects" && <ProjectsView {...common} />}
         {view === "Budget" && <BudgetView {...common} />}
         {view === "Calendar" && <CalendarView {...common} initialDate={calendarTarget} />}
@@ -397,17 +391,9 @@ function WorkspaceApp() {
         {view === "Journal" && <JournalView {...common} />}
         {view === "Files" && <FilesView />}
         {view === "Obsidian" && <ObsidianView {...common} />}
-        {view === "Gmail" && (
-          <DisconnectedView
-            title="Gmail"
-            icon={EnvelopeSimple}
-            copy="No Google account is connected. OSAT will not ask for mailbox access until a reviewed connector is deliberately enabled."
-          />
-        )}
         {view === "Settings" && <SettingsView {...common} storage={storage} />}
         </div>
       </section>
-      <MobileNav view={view} navigate={navigate} />
 
       {captureOpen && (
         <div className="modal-backdrop" onPointerDown={closeCapture}>
@@ -467,15 +453,8 @@ function QuickCaptureSurface() {
   return <main className="quick-surface"><form onSubmit={submit}><header><Aperture weight="bold" /><span><strong>Quick capture</strong><small>Sent privately to OSAT</small></span></header>{saved ? <div className="quick-saved"><ShieldCheck /><strong>Captured.</strong><span>You can close this window.</span></div> : <><label htmlFor="quick-text">What’s on your mind?</label><textarea id="quick-text" data-autofocus autoFocus rows="7" value={text} onChange={(event) => setText(event.target.value)} placeholder="Paste or type it exactly as it is…" onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") submit(event); }} /><footer><span>⌘ Return to save</span><button className="primary-button" disabled={!text.trim()}><Plus /> Capture</button></footer></>}</form></main>;
 }
 
-function AssistantSurface() {
-  const { workspace, setWorkspace, storage, hydrated } = useWorkspace();
-  if (!hydrated) return <main className="quick-surface"><div className="quick-loading">Opening local AI…</div></main>;
-  return <main className="assistant-popout"><LocalAssistant workspace={workspace} commit={setWorkspace} navigate={() => {}} popout storage={storage} /></main>;
-}
-
 export function App() {
   const surface = new URLSearchParams(window.location.search).get("surface");
   if (surface === "quick-capture") return <QuickCaptureSurface />;
-  if (surface === "assistant") return <AssistantSurface />;
   return <WorkspaceApp />;
 }

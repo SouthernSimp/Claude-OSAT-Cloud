@@ -21,7 +21,6 @@ import {
   Plus,
   ShareNetwork,
   Sparkle,
-  SquaresFour,
   Sun,
   Tray,
   UploadSimple,
@@ -50,7 +49,6 @@ const MORE = [
   ['Inbox', 'Inbox', Tray],
   ['Obsidian', 'Obsidian', UploadSimple],
   ['Settings', 'Settings', GearSix],
-  ['More', 'All spaces', SquaresFour],
 ]
 
 export function useReducedMotion() {

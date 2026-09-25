@@ -483,5 +483,4 @@
   .icons-toggle { align-self: flex-end; }
   .icon-grid { flex: none; height: 206px; grid-template-columns: repeat(4, minmax(0, 1fr)); justify-content: stretch; }
   .dock { display: none; }
-  .workspace.is-home + .mobile-nav { background: var(--glass-strong); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
 }

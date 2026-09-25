@@ -115,7 +115,7 @@ export function BrowserView({ workspace, commit, navigate, covered, command }) {
       <section className="tool-unavailable">
         <Globe weight="duotone" />
         <h2>The browser lives in the OSAT Mac app.</h2>
-        <p>Web pages can’t load inside a browser tab like this one. Open OSAT Field on your Mac to browse, and to clip pages straight into Notes.</p>
+        <p>Web pages can’t load inside a browser tab like this one. Open OSAT on your Mac to browse, and to clip pages straight into Notes.</p>
       </section>
     )
   }

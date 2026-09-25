@@ -1,8 +1,7 @@
-import { ArrowSquareOut, CaretRight, File, FileText, FolderOpen, House, Monitor, Trash } from "@phosphor-icons/react";
+import { ArrowSquareOut, CaretRight, File, FileText, FolderOpen, House, Trash } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { formatBytes } from "../lib/ui.js";
 import { EmptyInline } from "./Empty.jsx";
-import { FileShelf } from "./FileShelf.jsx";
 
 export function FilesView() {
   const api = window.nateOSFiles;
@@ -113,7 +112,13 @@ export function FilesView() {
   }
   const crumbs = relative.split("/").filter(Boolean);
   if (!api)
-    return <FileShelf />;
+    return (
+      <section className="tool-unavailable">
+        <FolderOpen weight="duotone" />
+        <h2>Files live in the OSAT Mac app.</h2>
+        <p>Open OSAT on your Mac to browse the folders and files you choose to share with it.</p>
+      </section>
+    );
   return (
     <section className="files-layout">
       <div className="files-top">
