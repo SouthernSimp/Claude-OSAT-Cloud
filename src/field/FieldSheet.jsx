@@ -13,7 +13,8 @@ function remember(snapshot, note, title, body) {
   }
 }
 
-export function FieldSheet({ note, preview, onClose, onCommit, onKeep, onOpenNotes }) {
+/* `inline` drops the backdrop and focus trap, for a note that opens as a pop-out on the layer. */
+export function FieldSheet({ note, preview, onClose, onCommit, onKeep, onOpenNotes, inline = false }) {
   const origin = paperFields(note)
   const [title, setTitle] = useState(origin.title)
   const [body, setBody] = useState(origin.body)
@@ -63,10 +64,49 @@ export function FieldSheet({ note, preview, onClose, onCommit, onKeep, onOpenNot
   // Escape sets the sheet down, Tab stays inside it, and focus returns where it came from.
   const dialog = useRef(null)
   const close = useCallback(() => { flush(); closeRef.current() }, [])
-  useFocusTrap(dialog, true, close)
+  useFocusTrap(dialog, !inline, close)
 
   const words = wordCount(paperWrite(note, title, body).markdown)
   const tag = note.tags?.[0]
+
+  const paper = (
+    <article ref={dialog} className="field-sheet-paper" onPointerDown={(event) => event.stopPropagation()}>
+      <small>{tag ? `#${tag}` : 'A thought'}</small>
+      <textarea
+        ref={titleRef}
+        rows={1}
+        className="field-sheet-title"
+        aria-label="Title"
+        value={title}
+        placeholder="A title"
+        onChange={(event) => setTitle(event.target.value.replace(/\s*\n\s*/g, ' '))}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            bodyRef.current?.focus()
+          }
+        }}
+      />
+      <textarea
+        ref={bodyRef}
+        aria-label="Note"
+        value={body}
+        placeholder="The rest can wait."
+        onChange={(event) => setBody(event.target.value)}
+      />
+      <footer>
+        <span>{words === 1 ? '1 word' : `${words} words`}</span>
+        {preview ? (
+          <button type="button" className="primary-button" onClick={() => onKeep(note.id)}>Keep this room</button>
+        ) : (
+          <button type="button" onClick={() => { flush(); onOpenNotes() }}>Open in Notes <ArrowRight /></button>
+        )}
+        <button type="button" className="field-sheet-down" onClick={() => { flush(); onClose() }}>Set it down</button>
+      </footer>
+      {preview && <p className="field-sheet-note">This page is the sample. It is saved only when you keep the room.</p>}
+    </article>
+  )
+  if (inline) return paper
 
   return (
     <div
@@ -79,41 +119,7 @@ export function FieldSheet({ note, preview, onClose, onCommit, onKeep, onOpenNot
         onClose()
       }}
     >
-      <article ref={dialog} className="field-sheet-paper" onPointerDown={(event) => event.stopPropagation()}>
-        <small>{tag ? `#${tag}` : 'A thought'}</small>
-        <textarea
-          ref={titleRef}
-          rows={1}
-          className="field-sheet-title"
-          aria-label="Title"
-          value={title}
-          placeholder="A title"
-          onChange={(event) => setTitle(event.target.value.replace(/\s*\n\s*/g, ' '))}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              bodyRef.current?.focus()
-            }
-          }}
-        />
-        <textarea
-          ref={bodyRef}
-          aria-label="Note"
-          value={body}
-          placeholder="The rest can wait."
-          onChange={(event) => setBody(event.target.value)}
-        />
-        <footer>
-          <span>{words === 1 ? '1 word' : `${words} words`}</span>
-          {preview ? (
-            <button type="button" className="primary-button" onClick={() => onKeep(note.id)}>Keep this room</button>
-          ) : (
-            <button type="button" onClick={() => { flush(); onOpenNotes() }}>Open in Notes <ArrowRight /></button>
-          )}
-          <button type="button" className="field-sheet-down" onClick={() => { flush(); onClose() }}>Set it down</button>
-        </footer>
-        {preview && <p className="field-sheet-note">This page is the sample. It is saved only when you keep the room.</p>}
-      </article>
+      {paper}
     </div>
   )
 }

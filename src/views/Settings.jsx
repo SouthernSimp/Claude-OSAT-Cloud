@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Check, DownloadSimple, Monitor, MoonStars, SunHorizon, UploadSimple } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
+import { Check, DownloadSimple, Keyboard, Monitor, MoonStars, SunHorizon, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
@@ -44,6 +44,7 @@ export function SettingsView({ workspace, commit, storage }) {
   }
   return (
     <section className="settings-grid">
+      <ShortcutCard />
       <section className="content-card">
         <p className="eyebrow">APPEARANCE</p>
         <h2>Make yourself at home.</h2>
@@ -122,6 +123,63 @@ export function SettingsView({ workspace, commit, storage }) {
           autonomous filing are inactive by design.
         </p>
       </section>
+    </section>
+  );
+}
+
+/* The key that shows the OSAT layer from anywhere. Recorded from event.code,
+   because ⌥ changes event.key on a Mac. */
+const KEY_NAMES = { Space: "Space", Tab: "Tab", Enter: "Return", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right" };
+function keyName(code) {
+  if (KEY_NAMES[code]) return KEY_NAMES[code];
+  const match = /^(?:Key([A-Z])|Digit([0-9])|(F[0-9]{1,2}))$/.exec(code);
+  return match ? match[1] || match[2] || match[3] : null;
+}
+
+function ShortcutCard() {
+  const bridge = window.osatOverlay;
+  const [info, setInfo] = useState(null);
+  const [recording, setRecording] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => { bridge?.prefs().then(setInfo).catch(() => {}); }, [bridge]);
+  if (!bridge) return null;
+
+  async function record(event) {
+    if (!recording) return;
+    event.preventDefault();
+    if (event.key === "Escape") { setRecording(false); return; }
+    const key = keyName(event.code);
+    if (!key) return; // only a modifier so far
+    const modifiers = [event.metaKey && "Command", event.ctrlKey && "Control", event.altKey && "Alt", event.shiftKey && "Shift"].filter(Boolean);
+    if (!modifiers.length) { setMessage("Hold ⌘, ⌃, ⌥ or ⇧ together with a key."); return; }
+    setRecording(false);
+    try {
+      setInfo({ ...info, ...(await bridge.setHotkey([...modifiers, key].join("+"))) });
+      setMessage("Saved. Try it from any app.");
+    } catch (error) {
+      setMessage(String(error?.message || "That shortcut didn’t work.").replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
+    }
+  }
+
+  return (
+    <section className="content-card">
+      <p className="eyebrow">SHORTCUT</p>
+      <h2>{info?.failed ? "Pick a key for the OSAT layer." : "The OSAT layer, from anywhere."}</h2>
+      <p>
+        {info?.failed
+          ? `${info.label} is already used by another app, so OSAT can’t listen for it. Choose a different shortcut.`
+          : "Press it in any app to drop a thought, find something or ask. Esc puts it away."}
+      </p>
+      <button
+        type="button"
+        className={recording ? "primary-button" : "outline-button"}
+        onClick={() => { setMessage(""); setRecording((value) => !value); }}
+        onKeyDown={record}
+        onBlur={() => setRecording(false)}
+      >
+        <Keyboard /> {recording ? "Press the new shortcut…" : info?.failed ? "Choose a shortcut" : `${info?.label || "⌥Space"} · Change`}
+      </button>
+      {message && <p role="status">{message}</p>}
     </section>
   );
 }

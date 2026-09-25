@@ -424,26 +424,6 @@ input[type="radio"] {
   font-size: var(--t-xs);
 }
 
-/* Compact Electron surfaces: the global capture window and local-AI popout. */
-.quick-surface {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 48px 22px 22px;
-  background: var(--page);
-}
-
-.quick-surface form { width:100%; display:grid; gap:16px; }
-.quick-surface header { display:flex; align-items:center; gap:11px; }
-.quick-surface header>svg { width:25px; height:25px; color:var(--accent); }
-.quick-surface header>span { display:grid; gap:2px; }
-.quick-surface header strong { font-size:var(--t-lg); }
-.quick-surface header small,.quick-surface label,.quick-surface footer>span { color:var(--muted); font-size:var(--t-xs); }
-.quick-surface textarea { min-height:170px; background:var(--surface); font-size:var(--t-md); }
-.quick-surface footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.quick-saved { min-height:210px; display:grid; place-items:center; align-content:center; gap:8px; color:var(--muted); }
-.quick-saved svg { width:28px; height:28px; color:var(--positive); }
-.quick-saved strong { color:var(--ink); font-size:var(--t-xl); }
 
 /* ---- Command palette --------------------------------------------------- */
 

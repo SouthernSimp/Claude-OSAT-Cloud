@@ -18,6 +18,8 @@ async function folder(t) {
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 60))
+// Real disk writes can be slow on a busy machine: wait for the outcome, up to 3 s.
+const until = async (check) => { for (let i = 0; i < 150 && !check(); i += 1) await new Promise((resolve) => setTimeout(resolve, 20)) }
 const clock = (iso) => { let now = new Date(iso); return { now: () => now, set: (next) => { now = new Date(next) } } }
 const manualTimers = () => {
   const pending = new Set()
@@ -85,11 +87,11 @@ test('the store saves shortly after a commit, reports failures calmly and keeps 
   assert.equal(timers.pending.size, 1)
   failNext = true
   timers.run()
-  await settle()
+  await until(() => store.status().state === 'error')
   assert.equal(store.status().state, 'error')
   assert.equal(timers.pending.size, 1, 'a retry is scheduled')
   timers.run()
-  await settle()
+  await until(() => store.status().state === 'saved')
   assert.equal(store.status().state, 'saved')
   assert.deepEqual(seen, ['error', 'saved'])
   const reopened = await createStore({ dir, core, timers })

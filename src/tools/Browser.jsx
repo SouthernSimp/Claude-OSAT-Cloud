@@ -6,7 +6,7 @@ import { clipMarkdown, toAddress } from './address.js'
 
 /* The page itself is a native Chromium view the Mac app lays over .browser-page.
    This room draws the tabs, the address bar and the clipper around it. */
-export function BrowserView({ workspace, commit, navigate, covered, command }) {
+export function BrowserView({ workspace, commit, navigate, covered, command, frame }) {
   const bridge = window.osatBrowser
   const [state, setState] = useState({ tabs: [], active: null })
   const [address, setAddress] = useState('')
@@ -58,7 +58,7 @@ export function BrowserView({ workspace, commit, navigate, covered, command }) {
       window.removeEventListener('resize', place)
       bridge.place(null)
     }
-  }, [bridge, covered, menuOpen, blank, state.active])
+  }, [bridge, covered, menuOpen, blank, state.active, frame])
 
   useEffect(() => {
     if (!bridge || !command?.at) return

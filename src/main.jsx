@@ -13,6 +13,7 @@ import "./styles/board.css";
 import "./styles/field.css";
 import "./styles/home.css";
 import "./styles/tools.css";
+import "./styles/overlay.css";
 
 // The Mac app draws its own title bar: leave room for the window buttons.
 if (window.osatApp) document.documentElement.classList.add("is-mac-app");

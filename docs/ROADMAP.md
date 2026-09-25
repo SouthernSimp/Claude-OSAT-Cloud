@@ -14,10 +14,10 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 
 | Phase | What | State |
 |---|---|---|
-| 0 | Foundation and cleanup | Done, in PR #1 |
-| 1 | Final data shape and one source of truth | Done, in PR #1 |
-| 2 | The overlay (LYKN-style layer with pop-outs) | Next |
-| 3a | One navigation, Settings, Tools | Planned |
+| 0 | Foundation and cleanup | Done, merged (PR #1) |
+| 1 | Final data shape and one source of truth | Done, merged (PR #1) |
+| 2 | The overlay (LYKN-style layer with pop-outs) | Built, in PR #2 — waiting for Nate's try |
+| 3a | One navigation, Settings, Tools | Next |
 | 3b | One Today | Planned |
 | 4 | Local AI that sets itself up | Planned |
 | 5 | Visual polish | Planned |
@@ -282,8 +282,8 @@ OSAT's current in-window home already copies this look. Phase 2 makes it real, a
 
 ## Git workflow (Claude manages it)
 - `main` always works.
-- Each phase is built on the designated branch `claude/jolly-mendel-tdebt2` and opened as a draft PR with a plain-English summary, a "How to try it" section and a Mac checklist.
-- After Nate says "merge", Claude merges. The branch then restarts from the new `main` for the next phase.
+- Each phase gets its own `claude/…` branch from `main` and is opened as a draft PR with a plain-English summary, a "How to try it" section and a Mac checklist.
+- After Nate says "merge", Claude merges, and the next phase starts a fresh branch from the new `main`.
 - Small, descriptive commits. Nothing is ever lost from history.
 - Claude watches each PR's CI and fixes failures.
 
