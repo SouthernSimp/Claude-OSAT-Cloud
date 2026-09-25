@@ -667,12 +667,12 @@ app.whenReady().then(async () => {
       streams.delete(id)
     }
   })
-  // The quick-capture window saves through the store itself; this only puts it away.
   ipcMain.on('app:listening', (event) => {
     if (!pendingCommand || event.sender !== mainWindow?.webContents) return
     send('app:command', pendingCommand)
     pendingCommand = undefined
   })
+  // The quick-capture window saves through the store itself; this only puts it away.
   ipcMain.on('quick-capture:done', (event) => {
     if (!quickCaptureWindow || quickCaptureWindow.isDestroyed() || event.sender !== quickCaptureWindow.webContents) return
     setTimeout(() => { if (!quickCaptureWindow.isDestroyed()) quickCaptureWindow.hide() }, 700)
@@ -682,9 +682,8 @@ app.whenReady().then(async () => {
   await createWindow()
   buildMenu()
   globalShortcut.register(process.platform === 'darwin' ? 'Alt+Space' : 'CommandOrControl+Shift+Space', showQuickCapture)
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
+  // Clicking the Dock icon reopens the main window, even while a hidden capture window exists.
+  app.on('activate', () => focusMain())
 })
 
 app.on('window-all-closed', () => {
