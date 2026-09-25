@@ -65,6 +65,11 @@ export function homeItems({ notes = [], folders = [], boards = [] }, capacity = 
     ...(board ? [{ kind: 'board', id: board.id, board }] : []),
     ...recent.filter((note) => !note.pinned).map((note) => ({ kind: 'note', id: note.id, note })),
   ]
+  return fitCells(items, capacity)
+}
+
+/* As many items as fit; when there are more, the last cell says how many more. */
+export function fitCells(items, capacity = Infinity) {
   const room = Math.max(1, Math.floor(capacity))
   if (items.length <= room) return items
   return [...items.slice(0, room - 1), { kind: 'more', id: 'more', count: items.length - room + 1 }]

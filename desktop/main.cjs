@@ -10,7 +10,8 @@ const { localAiChat, localAiChatStream, localAiModels, validateLocalChatPayload 
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, addLauncher, createOverlay, hotkeyLabel, validHotkey } = require('./overlay.cjs')
+const { DEFAULT_HOTKEY, addLauncher, createOverlay, hotkeyLabel, placeItem, validHotkey } = require('./overlay.cjs')
+const { createMedia } = require('./media.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
@@ -20,7 +21,7 @@ const WRITABLE_EXTENSIONS = new Set(['.canvas', '.markdown', '.md'])
 let mainWindow
 let overlay
 let tray
-let prefs = { hotkey: DEFAULT_HOTKEY, launchers: [] }
+let prefs = { hotkey: DEFAULT_HOTKEY, launchers: [], places: {} }
 let hotkey = null
 let hotkeyFailed = false
 let aiStatus = 'Checking for a local model…'
@@ -616,6 +617,7 @@ async function loadPrefs() {
     prefs = {
       hotkey: validHotkey(saved.hotkey) ? saved.hotkey : DEFAULT_HOTKEY,
       launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
+      places: Object.entries(saved.places || {}).reduce((places, [id, spot]) => placeItem(places, id, spot), {}),
     }
   } catch {
     // No preferences yet: the defaults stand.
@@ -685,7 +687,7 @@ function registerOverlay() {
     command({ view, detail: detail && typeof detail === 'object' ? detail : null })
   })
   // The hotkey can be read and changed from the layer or from Settings in the main window.
-  handle('overlay:prefs', async () => ({ hotkey, label: hotkeyLabel(hotkey || prefs.hotkey), failed: hotkeyFailed, launchers: await launcherList() }), { from: 'app' })
+  handle('overlay:prefs', async () => ({ hotkey, label: hotkeyLabel(hotkey || prefs.hotkey), failed: hotkeyFailed, launchers: await launcherList(), places: prefs.places }), { from: 'app' })
   handle('overlay:set-hotkey', async (value) => {
     if (!validHotkey(value)) fail('Use one or more of ⌘ ⌃ ⌥ ⇧ with one key.')
     if (!useHotkey(value)) fail(`${hotkeyLabel(value)} is taken by another app. Try a different one.`)
@@ -719,6 +721,20 @@ function registerOverlay() {
     await savePrefs()
     return launcherList()
   }, { from: 'overlay' })
+  // Widgets and icons Nate moved on the layer. null puts one back; tidy puts all back.
+  handle('overlay:place', async (id, spot) => {
+    prefs = { ...prefs, places: placeItem(prefs.places, id, spot) }
+    await savePrefs()
+    return prefs.places
+  }, { from: 'overlay' })
+  handle('overlay:tidy', async () => {
+    prefs = { ...prefs, places: {} }
+    await savePrefs()
+    return prefs.places
+  }, { from: 'overlay' })
+  const media = createMedia()
+  handle('media:now', () => (process.platform === 'darwin' ? media.nowPlaying() : null), { from: 'overlay' })
+  handle('media:control', (action) => media.control(action), { from: 'overlay' })
   // Only apps Nate added can be opened this way.
   handle('overlay:launch', async (appPath) => {
     if (!prefs.launchers.some((item) => item.path === appPath)) fail('That app is not in the dock.')

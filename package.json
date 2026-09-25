@@ -63,6 +63,9 @@
       ],
       "category": "public.app-category.productivity",
       "artifactName": "OSAT-${version}-${arch}-mac.${ext}",
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "OSAT shows what is playing in Spotify and lets you play, pause and skip."
+      },
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist"

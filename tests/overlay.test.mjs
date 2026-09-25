@@ -52,3 +52,14 @@ test('the layer is created hidden, shows on the cursor display and hides again',
   layer.toggle()
   assert.equal(layer.visible(), false)
 })
+
+test('a spot on the layer is kept inside it, and null puts the item back', () => {
+  const { placeItem } = createRequire(import.meta.url)('../desktop/overlay.cjs')
+  let places = placeItem({}, 'widget:day', { x: 0.4, y: 1.8 })
+  assert.deepEqual(places, { 'widget:day': { x: 0.4, y: 0.97 } })
+  places = placeItem(places, 'note:abc', { x: -2, y: 0.1 })
+  assert.deepEqual(places['note:abc'], { x: 0, y: 0.1 })
+  assert.equal(placeItem(places, 'bad id!', { x: 0, y: 0 }), places)
+  assert.equal(placeItem(places, 'note:abc', { x: 'a', y: 0 }), places)
+  assert.deepEqual(Object.keys(placeItem(places, 'widget:day', null)), ['note:abc'])
+})

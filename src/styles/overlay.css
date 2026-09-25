@@ -72,3 +72,37 @@ html:has(.overlay-surface) body,
 @media (prefers-reduced-motion: reduce) {
   .popout { animation: none; }
 }
+
+/* ---- Moving things on the layer ---------------------------------------- */
+
+/* Anything set down leaves its column and sits where it was dropped. */
+.home.is-layer [data-placed] { z-index: 2; margin: 0; }
+.home.is-layer .widget[data-placed] { width: 148px; }
+.home.is-layer :is(.widget-next, .widget-media)[data-placed] { width: 311px; }
+.home.is-layer .icon[data-placed] { width: 92px; }
+.home.is-layer :is(.widget, .icon).is-moving { position: relative; z-index: 6; cursor: grabbing; transition: none; animation: none; }
+
+/* ---- Spotify ----------------------------------------------------------- */
+
+.widget-media {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 12px;
+}
+.widget-media img,
+.media-art { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; }
+.media-art { display: grid; place-items: center; color: var(--on-3); background: color-mix(in srgb, var(--on-1) 10%, transparent); }
+.media-art svg { width: 22px; height: 22px; }
+.media-text { min-width: 0; }
+.media-text :is(strong, span) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.media-text strong { margin-top: 6px; font-size: 13px; color: var(--on-1); }
+.media-text span { margin-top: 2px; font-size: 11.5px; color: var(--on-2); }
+.media-controls { display: flex; align-items: center; gap: 2px; }
+.media-controls button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: var(--on-1); }
+.media-controls button:hover:not(:disabled) { background: color-mix(in srgb, var(--on-1) 14%, transparent); }
+.media-controls button:disabled { color: var(--on-4); }
+.media-controls svg { width: 14px; height: 14px; }
+.media-controls .media-play svg { width: 18px; height: 18px; }

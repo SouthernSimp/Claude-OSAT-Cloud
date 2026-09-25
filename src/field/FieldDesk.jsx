@@ -8,11 +8,12 @@ import { calendarMonthDays, localDateKey } from '../daily-practice.js'
 import { getLocalModels } from '../local-ai.js'
 import { captureThought, dayNoteId, excerpt, isActiveNote, relinkRenamedNote, updateNote } from '../notes-model.js'
 import { addNextStep, nextSteps, toggleNextStep } from '../next-steps.js'
-import { inputActive, timeLabel } from '../lib/ui.js'
+import { clamp, inputActive, timeLabel } from '../lib/ui.js'
 import { sampleEvents, sampleFolders, sampleNotes } from './field-sample.js'
 import { FieldBanner, HomeDock, useReducedMotion } from './FieldChrome.jsx'
 import { FieldSheet } from './FieldSheet.jsx'
-import { dayPhase, homeItems, paperFields, phaseCopy } from './field-model.js'
+import { dayPhase, fitCells, homeItems, paperFields, phaseCopy } from './field-model.js'
+import { MediaWidget } from './MediaWidget.jsx'
 
 const MODES = [
   { id: 'note', label: 'Note', icon: NotePencil, placeholder: 'Leave a thought here.', hint: 'Return saves a note' },
@@ -39,11 +40,14 @@ function readIconsCollapsed() {
    next steps, one line that does one thing on Return, your notes as icons,
    and a dock to the rooms. It reads and writes the same records the rest of
    OSAT keeps. The ⌥Space layer reuses it with `layer`: no wallpaper (the real
-   desktop shows through), its own dock, and notes open as pop-outs. */
+   desktop shows through), its own dock, and notes open as pop-outs. On the
+   layer, widgets and icons can be picked up and set down anywhere (`places`). */
 export function FieldDesk({
   workspace, commit, navigate, preview, sampled, onKeep, onBlank, onRemove, sheet, onSheetDone,
-  storage, onSearch, onCapture, onTheme, wallpaper, onWallpaper, layer = false, dock, onOpenNote, visit,
+  storage, onSearch, onCapture, onTheme, wallpaper, onWallpaper, layer = false, dock, onOpenNote, visit, places = {}, onPlace, media,
 }) {
+  const home = useRef(null)
+  const justMoved = useRef(false)
   const box = useRef(null)
   const grid = useRef(null)
   const reduced = useReducedMotion()
@@ -77,7 +81,10 @@ export function FieldDesk({
   const events = allEvents
     .filter((event) => localDateKey(new Date(event.start)) === today)
     .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
-  const items = homeItems({ notes, folders: preview ? sampleFolders() : workspace.folders, boards: workspace.sorter?.boards || [] }, capacity)
+  const allItems = homeItems({ notes, folders: preview ? sampleFolders() : workspace.folders, boards: workspace.sorter?.boards || [] })
+  const placed = (item) => Boolean(places[`${item.kind}:${item.id}`])
+  const items = fitCells(allItems.filter((item) => !placed(item)), capacity)
+  const placedItems = allItems.filter(placed)
   const sheetNote = notes.find((item) => item.id === openId) || null
   openRef.current = sheetNote ? openId : null
   const current = MODES.find((item) => item.id === mode)
@@ -251,6 +258,69 @@ export function FieldDesk({
     })
   }
 
+  /* Pick a widget or icon up and set it down anywhere, like a sticky. A press
+     that barely moves is still a click. */
+  function movable(id) {
+    if (!onPlace) return {}
+    const spot = places[id]
+    return {
+      'data-placed': spot ? '' : undefined,
+      style: spot ? { position: 'absolute', left: `${spot.x * 100}%`, top: `${spot.y * 100}%` } : undefined,
+      onClickCapture: (event) => {
+        if (!justMoved.current) return
+        event.preventDefault()
+        event.stopPropagation()
+      },
+      onPointerDown: (event) => {
+        if (event.button !== 0 || event.target.closest('textarea, input')) return
+        const element = event.currentTarget
+        const box = home.current.getBoundingClientRect()
+        const from = element.getBoundingClientRect()
+        const start = { x: event.clientX, y: event.clientY }
+        let shift = null
+        const move = (next) => {
+          const dx = next.clientX - start.x
+          const dy = next.clientY - start.y
+          if (!shift && Math.hypot(dx, dy) < 5) return
+          shift = { x: clamp(dx, box.left - from.left, box.right - from.right), y: clamp(dy, box.top - from.top, box.bottom - from.bottom) }
+          element.classList.add('is-moving')
+          element.style.translate = `${shift.x}px ${shift.y}px`
+        }
+        const end = (last) => {
+          window.removeEventListener('pointermove', move)
+          window.removeEventListener('pointerup', end)
+          window.removeEventListener('pointercancel', end)
+          element.classList.remove('is-moving')
+          element.style.translate = ''
+          if (!shift || last.type === 'pointercancel') return
+          justMoved.current = true
+          window.setTimeout(() => { justMoved.current = false })
+          onPlace(id, { x: (from.left + shift.x - box.left) / box.width, y: (from.top + shift.y - box.top) / box.height })
+        }
+        window.addEventListener('pointermove', move)
+        window.addEventListener('pointerup', end)
+        window.addEventListener('pointercancel', end)
+      },
+    }
+  }
+
+  function renderIcon(item) {
+    const key = `${item.kind}:${item.id}`
+    return (
+      <button
+        key={key}
+        type="button"
+        className={`icon is-${item.kind} ${item.kind === 'note' && item.id === freshId ? 'is-fresh' : ''}`}
+        aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open folder ${item.folder.name}` : item.kind === 'board' ? 'Open the Mindmap' : `See ${item.count} more notes`}
+        onClick={(event) => openItem(item, event)}
+        {...(item.kind === 'more' ? {} : movable(key))}
+      >
+        <IconArt item={item} />
+        <span className="icon-label">{item.kind === 'note' ? item.note.title : item.kind === 'folder' ? item.folder.name : item.kind === 'board' ? 'Mindmap' : `${item.count} more`}</span>
+      </button>
+    )
+  }
+
   const chip = mode === 'note'
     ? { tone: storage?.status === 'error' ? 'bad' : 'good', text: storage?.status === 'error' ? 'Check storage' : 'Saved privately on this Mac' }
     : mode === 'step'
@@ -265,7 +335,7 @@ export function FieldDesk({
   const blocked = mode === 'ask' && ai.state !== 'ready'
 
   return (
-    <div className={`home ${layer ? 'is-layer' : ''} ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''}`} data-phase={phase} data-wall={wallpaper}>
+    <div ref={home} className={`home ${layer ? 'is-layer' : ''} ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''}`} data-phase={phase} data-wall={wallpaper}>
       {!layer && (
         <div className="home-wall" aria-hidden="true">
           <img src={wallpaper === 'moss' ? './images/wall-moss.jpg' : './images/wall-lake.jpg'} alt="" decoding="async" style={{ objectPosition: wallpaper === 'moss' ? '50% 62%' : WALL_FOCUS[phase] }} />
@@ -273,9 +343,9 @@ export function FieldDesk({
       )}
 
       <aside className="home-widgets" aria-label="Today at a glance">
-        <DayWidget now={now} events={events} onOpen={() => navigate('Calendar', { date: today })} />
-        <MonthWidget now={now} today={today} events={allEvents} onOpen={() => navigate('Calendar', { date: today })} />
-        <section className="glass widget widget-next" aria-labelledby="widget-next">
+        <DayWidget now={now} events={events} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:day')} />
+        <MonthWidget now={now} today={today} events={allEvents} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:month')} />
+        <section className="glass widget widget-next" aria-labelledby="widget-next" {...movable('widget:next')}>
           <h2 id="widget-next" tabIndex={-1} className="widget-kicker">Next <small>{openCount ? `${openCount} open` : ''}</small></h2>
           {steps.length ? (
             <ul>
@@ -288,6 +358,7 @@ export function FieldDesk({
             </ul>
           ) : <p className="widget-empty">Nothing waiting. Choose Next step to add one.</p>}
         </section>
+        {media && <MediaWidget media={media} visit={visit} move={movable('widget:media')} />}
       </aside>
 
       <div className="home-center">
@@ -352,18 +423,7 @@ export function FieldDesk({
         </button>
         {!collapsed && (
           <div className="icon-grid" ref={grid}>
-            {items.map((item) => (
-              <button
-                key={`${item.kind}:${item.id}`}
-                type="button"
-                className={`icon is-${item.kind} ${item.kind === 'note' && item.id === freshId ? 'is-fresh' : ''}`}
-                aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open folder ${item.folder.name}` : item.kind === 'board' ? 'Open the Mindmap' : `See ${item.count} more notes`}
-                onClick={(event) => openItem(item, event)}
-              >
-                <IconArt item={item} />
-                <span className="icon-label">{item.kind === 'note' ? item.note.title : item.kind === 'folder' ? item.folder.name : item.kind === 'board' ? 'Mindmap' : `${item.count} more`}</span>
-              </button>
-            ))}
+            {items.map(renderIcon)}
             {items.every((item) => item.kind === 'board') && (
               <div className="icons-empty">
                 <p>Your notes will appear here.</p>
@@ -372,6 +432,7 @@ export function FieldDesk({
             )}
           </div>
         )}
+        {placedItems.map(renderIcon)}
       </nav>
 
       {dock || <HomeDock
@@ -412,9 +473,9 @@ export function FieldDesk({
   )
 }
 
-function DayWidget({ now, events, onOpen }) {
+function DayWidget({ now, events, onOpen, move }) {
   return (
-    <section className="glass widget widget-day" aria-label="Today">
+    <section className="glass widget widget-day" aria-label="Today" {...move}>
       <p className="widget-kicker">{WEEKDAY.format(now)}</p>
       <strong className="widget-date">{now.getDate()}</strong>
       <div className="widget-day-foot">
@@ -431,12 +492,12 @@ function DayWidget({ now, events, onOpen }) {
   )
 }
 
-function MonthWidget({ now, today, events, onOpen }) {
+function MonthWidget({ now, today, events, onOpen, move }) {
   const busy = new Set(events.map((event) => localDateKey(new Date(event.start))))
   const cells = calendarMonthDays(now.getFullYear(), now.getMonth())
   const weeks = Array.from({ length: 6 }, (_, row) => cells.slice(row * 7, row * 7 + 7)).filter((week) => week.some((day) => day.inMonth))
   return (
-    <button type="button" className="glass widget widget-month" aria-label={`${MONTH.format(now)}. Open the calendar`} onClick={onOpen}>
+    <button type="button" className="glass widget widget-month" aria-label={`${MONTH.format(now)}. Open the calendar`} onClick={onOpen} {...move}>
       <span className="widget-kicker">{MONTH.format(now)}</span>
       <span className="mini-month" aria-hidden="true">
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => <b key={index}>{day}</b>)}

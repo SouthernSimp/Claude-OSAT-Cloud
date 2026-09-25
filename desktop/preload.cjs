@@ -91,7 +91,8 @@ contextBridge.exposeInMainWorld('osatApp', Object.freeze({
   },
 }))
 
-/* The ⌥Space layer: hide it, hand a pop-out to the main window, the hotkey and the app launchers. */
+/* The ⌥Space layer: hide it, hand a pop-out to the main window, the hotkey, the app launchers,
+   where things sit on it, and Spotify. */
 contextBridge.exposeInMainWorld('osatOverlay', Object.freeze({
   hide: () => ipcRenderer.send('overlay:hide'),
   openInWindow: (view, detail) => ipcRenderer.send('overlay:open-in-window', view, detail),
@@ -100,6 +101,10 @@ contextBridge.exposeInMainWorld('osatOverlay', Object.freeze({
   addLauncher: () => ipcRenderer.invoke('overlay:add-launcher'),
   removeLauncher: (appPath) => ipcRenderer.invoke('overlay:remove-launcher', appPath),
   launch: (appPath) => ipcRenderer.invoke('overlay:launch', appPath),
+  place: (id, spot) => ipcRenderer.invoke('overlay:place', id, spot),
+  tidy: () => ipcRenderer.invoke('overlay:tidy'),
+  nowPlaying: () => ipcRenderer.invoke('media:now'),
+  media: (action) => ipcRenderer.invoke('media:control', action),
   onShown: (listener) => listen('overlay:shown', listener),
   onEscape: (listener) => listen('overlay:escape', listener),
 }))

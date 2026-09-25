@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  AppWindow, ArrowSquareOut, BookOpenText, CalendarBlank, GearSix, Globe, MagnifyingGlass, NotePencil, Plus,
+  AppWindow, ArrowCounterClockwise, ArrowSquareOut, BookOpenText, CalendarBlank, GearSix, Globe, MagnifyingGlass, NotePencil, Plus,
   ShareNetwork, Sparkle, TerminalWindow, Toolbox, X,
 } from '@phosphor-icons/react'
 
@@ -41,7 +41,7 @@ export function OverlaySurface() {
   const [pops, setPops] = useState([])
   const [palette, setPalette] = useState(null)
   const [visit, setVisit] = useState(0)
-  const [prefs, setPrefs] = useState({ launchers: [] })
+  const [prefs, setPrefs] = useState({ launchers: [], places: {} })
   const latest = useRef({ pops, palette })
   latest.current = { pops, palette }
 
@@ -139,6 +139,17 @@ export function OverlaySurface() {
     }
   }
 
+  /* Set down right away; the Mac app keeps the spot for next time. */
+  function place(id, spot) {
+    setPrefs((value) => ({ ...value, places: { ...value.places, [id]: spot } }))
+    bridge?.place(id, spot).then((places) => setPrefs((value) => ({ ...value, places }))).catch(() => {})
+  }
+
+  function tidy() {
+    setPrefs((value) => ({ ...value, places: {} }))
+    bridge?.tidy().catch(() => {})
+  }
+
   if (!ready || !workspace) return <main className="overlay-surface" />
 
   const storage = storageFrom(status, true)
@@ -155,7 +166,10 @@ export function OverlaySurface() {
           storage={storage}
           onSearch={(query) => setPalette(query)}
           onOpenNote={(noteId) => open('note', { noteId })}
-          dock={<OverlayDock navigate={navigate} openInWindow={openInWindow} launchers={prefs.launchers} launcher={launcher} canLaunch={Boolean(bridge)} storage={storage} onFind={() => setPalette('')} />}
+          places={prefs.places || {}}
+          onPlace={place}
+          media={bridge?.nowPlaying ? bridge : null}
+          dock={<OverlayDock navigate={navigate} openInWindow={openInWindow} launchers={prefs.launchers} launcher={launcher} canLaunch={Boolean(bridge)} storage={storage} onFind={() => setPalette('')} onTidy={Object.keys(prefs.places || {}).length ? tidy : null} />}
         />
       </div>
 
@@ -267,7 +281,7 @@ function PopOut({ pop, z, top, title, onRaise, onClose, onChange, onWindow, chil
   )
 }
 
-function OverlayDock({ navigate, openInWindow, launchers, launcher, canLaunch, storage, onFind }) {
+function OverlayDock({ navigate, openInWindow, launchers, launcher, canLaunch, storage, onFind, onTidy }) {
   const room = (view, label, Icon, tip = label) => (
     <button key={view} type="button" aria-label={label} data-tip={tip} onClick={() => navigate(view)}><Icon /></button>
   )
@@ -289,6 +303,7 @@ function OverlayDock({ navigate, openInWindow, launchers, launcher, canLaunch, s
             { divider: true },
             { label: 'Open the OSAT window', icon: AppWindow, onSelect: () => openInWindow('Today') },
             { label: 'Settings', icon: GearSix, onSelect: () => openInWindow('Settings') },
+            ...(onTidy ? [{ label: 'Put widgets and icons back', icon: ArrowCounterClockwise, onSelect: onTidy }] : []),
             ...(launchers.length ? [{ divider: true }, ...launchers.map((item) => ({ label: `Remove ${item.name} from the dock`, icon: X, onSelect: () => launcher('removeLauncher', item.path) }))] : []),
           ]}
           trigger={({ toggle, open }) => (

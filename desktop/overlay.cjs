@@ -38,6 +38,21 @@ function addLauncher(list, appPath) {
   return [...list, { path: appPath, name }].slice(0, 12)
 }
 
+/* Where Nate set a widget or icon down on the layer, as fractions of the layer
+   (so it survives a different display). null puts it back in its usual place. */
+function placeItem(places, id, spot) {
+  if (typeof id !== 'string' || !/^[\w:.-]{1,120}$/.test(id)) return places
+  const next = { ...places }
+  delete next[id]
+  if (spot === null) return next
+  const x = Number(spot?.x)
+  const y = Number(spot?.y)
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return places
+  next[id] = { x: Math.min(Math.max(x, 0), 0.97), y: Math.min(Math.max(y, 0), 0.97) }
+  // ponytail: oldest spots drop off past 200; nobody sets down that many things
+  return Object.fromEntries(Object.entries(next).slice(-200))
+}
+
 function createOverlay({ BrowserWindow, screen, platform, preload, load, onBlur }) {
   const mac = platform === 'darwin'
   const window = new BrowserWindow({
@@ -77,4 +92,4 @@ function createOverlay({ BrowserWindow, screen, platform, preload, load, onBlur 
   return { window, show, hide, visible, toggle: () => (visible() ? hide() : show()) }
 }
 
-module.exports = { DEFAULT_HOTKEY, addLauncher, createOverlay, displayAt, hotkeyLabel, validHotkey }
+module.exports = { DEFAULT_HOTKEY, addLauncher, placeItem, createOverlay, displayAt, hotkeyLabel, validHotkey }
