@@ -2,9 +2,9 @@ const { randomUUID } = require('node:crypto')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
-const { app, BrowserWindow, Menu, dialog, globalShortcut, ipcMain, safeStorage, screen, session, shell } = require('electron')
+const { app, BrowserWindow, Menu, dialog, globalShortcut, ipcMain, screen, session, shell } = require('electron')
+const { claimDataFolder } = require('./data-folder.cjs')
 const { resolveApprovedPath, resolveApprovedWritePath } = require('./path-guard.cjs')
-const { SecretVault } = require('./secret-vault.cjs')
 const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile } = require('./text-files.cjs')
 const { localAiChat, localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -17,19 +17,17 @@ const WRITABLE_EXTENSIONS = new Set(['.canvas', '.markdown', '.md'])
 
 let mainWindow
 let quickCaptureWindow
-let assistantWindow
 let grants = []
 let grantsFile
 let mutation = Promise.resolve()
-let secretVault
 let browser
 let terminals
 const grantAccessStops = new Map()
 
-// OSAT Field keeps its own data folder. It never reads OSAT, OSAT V2, or NateOS.
-// Move data across with Settings → backup / restore.
-app.setPath('userData', path.join(app.getPath('appData'), app.isPackaged ? 'OSAT Field' : 'OSAT Field Preview'))
-app.setName('OSAT Field')
+// Real notes live in "OSAT"; running from source uses "OSAT Dev" so development
+// never touches them. See data-folder.cjs for how an older "OSAT" folder is kept safe.
+app.setPath('userData', claimDataFolder(path.join(app.getPath('appData'), app.isPackaged ? 'OSAT' : 'OSAT Dev')).folder)
+app.setName('OSAT')
 
 class FileAccessError extends Error {}
 
@@ -313,7 +311,7 @@ async function readWindowState() {
   try {
     const saved = JSON.parse(await fs.readFile(windowStateFile(), 'utf8'))
     const area = screen.getDisplayMatching(saved).workArea
-    const fits = saved.width >= 320 && saved.height >= 560 && saved.x < area.x + area.width && saved.y < area.y + area.height && saved.x + saved.width > area.x && saved.y + saved.height > area.y
+    const fits = saved.width >= 960 && saved.height >= 600 && saved.x < area.x + area.width && saved.y < area.y + area.height && saved.x + saved.width > area.x && saved.y + saved.height > area.y
     return fits ? saved : null
   } catch {
     return null
@@ -330,8 +328,8 @@ async function createWindow() {
     width: saved?.width || 1487,
     height: saved?.height || 1058,
     ...(saved ? { x: saved.x, y: saved.y } : {}),
-    minWidth: 320,
-    minHeight: 560,
+    minWidth: 960,
+    minHeight: 600,
     show: false,
     backgroundColor: '#f8f5ef',
     title: 'OSAT',
@@ -387,7 +385,7 @@ function buildMenu() {
   const room = (label, view, accelerator) => ({ label, accelerator, click: () => command({ view }) })
   const template = [
     {
-      label: 'OSAT Field',
+      label: 'OSAT',
       submenu: [
         { role: 'about' },
         { type: 'separator' },
@@ -421,7 +419,7 @@ function buildMenu() {
     {
       label: 'Go',
       submenu: [
-        room('Home', 'Today', 'CmdOrCtrl+1'),
+        room('Today', 'Today', 'CmdOrCtrl+1'),
         room('Notes', 'Notes', 'CmdOrCtrl+2'),
         room('Mindmap', 'Mindmap', 'CmdOrCtrl+3'),
         room('Journal', 'Journal', 'CmdOrCtrl+4'),
@@ -435,8 +433,6 @@ function buildMenu() {
         room('Projects', 'Projects'),
         room('Habits', 'Habits'),
         room('Money', 'Budget'),
-        { type: 'separator' },
-        { label: 'Local AI in Its Own Window', accelerator: 'CmdOrCtrl+Shift+L', click: showAssistant },
       ],
     },
     {
@@ -455,7 +451,7 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   app.dock?.setMenu(Menu.buildFromTemplate([
     { label: 'New Thought', click: showQuickCapture },
-    { label: 'Local AI', click: showAssistant },
+    { label: 'Local AI', click: () => command({ view: 'Assistant' }) },
     { label: 'New Browser Tab', click: () => command({ view: 'Browser', action: 'new-tab' }) },
   ]))
 }
@@ -544,33 +540,10 @@ function showQuickCapture() {
   quickCaptureWindow.focus()
 }
 
-function showAssistant() {
-  if (!assistantWindow || assistantWindow.isDestroyed()) {
-    assistantWindow = createSurfaceWindow('assistant', {
-      width: 620,
-      height: 780,
-      minWidth: 460,
-      minHeight: 620,
-      title: 'OSAT Local AI',
-    })
-  }
-  assistantWindow.show()
-  assistantWindow.focus()
-}
-
 app.whenReady().then(async () => {
   grantsFile = path.join(app.getPath('userData'), 'approved-files.json')
-  secretVault = new SecretVault(path.join(app.getPath('userData'), 'secure-secrets.json'), safeStorage)
   await loadGrants()
   registerFileHandlers()
-  handle('secrets:status', async () => {
-    const status = secretVault.status()
-    if (!status.available) return status
-    return { available: true, count: (await secretVault.keys()).length }
-  })
-  handle('secrets:keys', () => secretVault.keys())
-  handle('secrets:set', (key, value) => secretVault.set(key, value))
-  handle('secrets:delete', (key) => secretVault.delete(key))
   handle('local-ai:models', async () => {
     try {
       return { runtime: 'lm-studio', offline: true, models: await localAiModels() }
@@ -614,11 +587,6 @@ app.whenReady().then(async () => {
     if (!clean || !mainWindow || mainWindow.isDestroyed()) return
     mainWindow.webContents.send('quick-capture:received', clean)
     quickCaptureWindow.hide()
-  })
-  ipcMain.handle('app:open-assistant', (event) => {
-    assertTrustedSender(event)
-    showAssistant()
-    return true
   })
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, respond) => respond(false))
   registerBrowserAndTerminal()
