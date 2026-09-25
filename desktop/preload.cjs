@@ -84,6 +84,8 @@ contextBridge.exposeInMainWorld('osat', Object.freeze({
 }))
 
 contextBridge.exposeInMainWorld('osatApp', Object.freeze({
+  about: () => ipcRenderer.invoke('app:about'),
+  showDataFolder: () => ipcRenderer.invoke('app:show-data-folder'),
   onCommand: (listener) => {
     const stop = listen('app:command', listener)
     ipcRenderer.send('app:listening')
@@ -105,6 +107,7 @@ contextBridge.exposeInMainWorld('osatOverlay', Object.freeze({
   tidy: () => ipcRenderer.invoke('overlay:tidy'),
   nowPlaying: () => ipcRenderer.invoke('media:now'),
   media: (action) => ipcRenderer.invoke('media:control', action),
+  setClear: (clear) => ipcRenderer.send('overlay:clear', clear === true),
   onShown: (listener) => listen('overlay:shown', listener),
   onEscape: (listener) => listen('overlay:escape', listener),
 }))

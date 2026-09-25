@@ -8,8 +8,9 @@ import { chromium } from 'playwright'
 
 const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
-const TABS = [['Today', 1], ['Notes', 2], ['Mindmap', 3], ['Journal', 4], ['Calendar', 5], ['Assistant', 6]]
-const MORE = [['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Sky', 'Sky'], ['Projects', 'Projects'], ['Habits', 'Habits'], ['Reflection', 'Reflect'], ['Budget', 'Money'], ['Files', 'Files'], ['Inbox', 'Unsorted'], ['Obsidian', 'Obsidian'], ['Settings', 'Settings']]
+// The four spaces (⌃1–4), then every tool from the dock's Tools menu.
+const SPACES = [['Notes', 2], ['Mindmap', 3], ['Assistant', 4]]
+const TOOLS = [['Journal', 'Today’s page'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Reflection', 'Reflect'], ['Budget', 'Money'], ['Projects', 'Projects'], ['Files', 'Files'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
 
 let server
 async function start() {
@@ -50,33 +51,46 @@ async function main() {
   await page.goto(url)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
   await page.keyboard.press('Control+2')
-  await page.locator('.topbar-more > button').click()
-  await page.getByRole('menuitem', { name: 'Unsorted', exact: true }).click()
-  await page.getByRole('heading', { name: 'Smoke test thought' }).waitFor({ timeout: 5000 })
+  await page.locator('.organizer-row', { hasText: 'Unsorted' }).first().click()
+  await page.locator('.note-row', { hasText: 'Smoke test thought' }).first().waitFor({ timeout: 5000 })
     .catch(() => problems.push('capture: a thought typed on home was not in Unsorted after a reload'))
 
+  // Each room opens as a sheet over the desk, and Esc takes you back to the desk.
   async function visit(view, go, theme) {
     room = view
     await go()
-    await page.waitForSelector(`.workspace-content[data-view="${view}"]`, { timeout: 5000 })
+    await page.waitForSelector(`.sheet-body[data-view="${view}"]`, { timeout: 5000 })
       .catch(() => problems.push(`${view}: the room did not open`))
-    await sleep(500)
-    const empty = await page.$eval('.workspace-content', (node) => node.children.length === 0).catch(() => true)
+    await sleep(900)
+    const empty = await page.$eval('.sheet-body', (node) => node.children.length === 0).catch(() => true)
     if (empty) problems.push(`${view}: rendered nothing`)
     await page.screenshot({ path: `${OUT}/${theme}-${view}.png` })
   }
 
+  async function backToDesk(theme) {
+    room = 'desk'
+    await page.locator('.sheet-title').click()
+    await page.keyboard.press('Escape')
+    await page.waitForSelector('.room-sheet', { state: 'detached', timeout: 3000 })
+      .catch(() => problems.push('desk: Esc did not close the room'))
+    await sleep(500)
+    await page.screenshot({ path: `${OUT}/${theme}-Desk.png` })
+  }
+
   for (const theme of ['light', 'dark']) {
-    for (const [view, key] of TABS) await visit(view, () => page.keyboard.press(`Control+${key}`), theme)
-    for (const [view, label] of MORE) {
+    for (const [view, key] of SPACES) await visit(view, () => page.keyboard.press(`Control+${key}`), theme)
+    await visit('Sky', () => page.keyboard.press('Control+3').then(() => sleep(900)).then(() => page.getByRole('radio', { name: 'Sky' }).click()), theme)
+    for (const [view, label] of TOOLS) {
       await visit(view, async () => {
-        await page.locator('.topbar-more > button').click()
-        await page.getByRole('menuitem', { name: label, exact: true }).click()
+        await page.locator('.app-dock [data-space="tools"]').click()
+        await page.getByRole('menuitem', { name: label }).click()
       }, theme)
     }
+    await backToDesk(theme)
     if (theme === 'light') {
-      await page.keyboard.press('Control+2')
-      await page.getByRole('button', { name: 'Switch light or dark appearance' }).first().click()
+      await page.locator('.app-dock .appearance > button').click()
+      await page.getByRole('radio', { name: 'Dark' }).click()
+      await page.keyboard.press('Escape')
       await sleep(300)
     }
   }
@@ -87,8 +101,13 @@ async function main() {
   await page.waitForSelector('#home-line', { timeout: 15000 })
   await page.fill('#home-line', 'Left on the layer')
   await page.press('#home-line', 'Enter')
-  await page.getByRole('button', { name: 'Open note Left on the layer' }).click()
-  await page.getByRole('dialog', { name: 'Left on the layer' }).waitFor({ timeout: 5000 })
+  // Two loose thoughts now: they rest in one pile, which opens Unsorted.
+  await page.getByRole('button', { name: /loose thoughts/ }).click()
+  await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
+    .catch(() => problems.push('layer: the pile of loose thoughts did not open Unsorted'))
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Open note The room' }).click()
+  await page.getByRole('dialog', { name: 'The room' }).waitFor({ timeout: 5000 })
     .catch(() => problems.push('layer: a note did not open as a pop-out'))
   await page.getByRole('button', { name: 'Notes', exact: true }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })

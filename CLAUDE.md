@@ -51,6 +51,7 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
   - `main.cjs`: windows, menu, IPC for the store / files / local AI / browser / terminal,
     the ⌥Space layer (hotkey, menu-bar icon, app launchers, Esc routing), single-instance lock. Files, browser and terminal IPC answer the
     main window only.
+  - `media.cjs`: Spotify on the layer through AppleScript (now playing, play/pause, skip).
   - `overlay.cjs`: the layer window — full-screen, see-through, a macOS panel with vibrancy on
     the display under the cursor. Created hidden at launch and only ever hidden, never closed.
   - `store/`: the workspace lives here. `index.cjs` owns the one document (via the shared
@@ -72,16 +73,22 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
     batched operations, confirmed vs pending so edits never bounce back), `bridges.js`
     (the Mac app's `window.osat.store`, or an IndexedDB-backed hub for the browser preview;
     `?fresh=1` starts the preview empty).
-  - `App.jsx`: routing between rooms, capture dialog; `?surface=overlay` renders the layer.
+  - `App.jsx`: the desk is always underneath; every other room opens as a glass sheet over it
+    (`shell/Shell.jsx`: `RoomSheet`, `Dock`, `Appearance`). `?surface=overlay` renders the layer.
+  - `lib/spaces.js`: the one list of spaces (Desk, Notes, Map, Ask), tools and Settings. The dock,
+    ⌘K and ⌘1–4 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
+  - `shell/glass.jsx`: the liquid-glass SVG filter (`GlassDefs`), `useAlive()` (cursor light on
+    `.glass`/`.lit`, `--px/--py` for parallax) and the dock's magnify.
   - `surfaces/Overlay.jsx`: the ⌥Space layer — Day/Month/Next, Note · Find · Ask line, desktop
     icons, dock with app launchers, and draggable pop-outs (Esc closes the top one, then the layer).
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
     `note-core.js`, `board-model.js` (Mindmap), `next-steps.js`, `daily-practice.js`,
     `field/field-model.js`.
-  - Rooms: `field/` (home desk, Sky), `notes/`, `board/` (Mindmap), `assistant/` (Local AI),
+  - Rooms: `field/` (home desk, Sky, `MediaWidget`), `notes/`, `board/` (Mindmap), `assistant/` (Local AI),
     `views/` (Calendar, Journal, Projects, Habits, Reflection, Budget, Files, Inbox,
     Obsidian, Settings, command palette), `tools/` (Browser, Terminal).
-  - Styles: `src/styles/`, tokens in `tokens.css`.
+  - Styles: `src/styles/`, tokens in `tokens.css`. `glass.css` loads last: the glass kit, the sheet,
+    the dock, transitions, and the token overrides that make every room see-through inside a sheet.
 - Data rules: a captured thought is one note with `unsorted: true` and a `source`; filing,
   pinning or Keep clears it. Each day has one note, `day-YYYY-MM-DD` with `kind: 'day'`
   (`ensureDayNote`): it is the journal page and where new next steps land. Wikilinks follow
@@ -99,5 +106,9 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
 - Grid tracks: write `minmax(0, 1fr)`, not `1fr`, and always declare columns, or wide
   children push the track past the viewport.
 - `backdrop-filter` only blurs what shares its backdrop root: no element containing glass
-  may carry opacity, filter or a view-transition name.
+  may carry opacity, filter or a view-transition name. Push the desk back with `scale` on its
+  children, never a filter on the desk.
+- Inside a sheet `--page` is transparent: never use it as a text colour; use `--on-solid-ink`.
+- `.glass` draws its rim and cursor light with `::before`/`::after`; don't give glass elements
+  other pseudo-elements.
 - `board.css` owns `--paper-*` and `--desk` on `:root`; never reuse those names elsewhere.

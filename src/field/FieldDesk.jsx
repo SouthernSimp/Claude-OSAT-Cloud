@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { ArrowUp, CaretDown, CheckCircle, MagnifyingGlass, NotePencil, PencilSimpleLine, Plus, PushPin, ShareNetwork, Sparkle } from '@phosphor-icons/react'
 
@@ -6,11 +6,11 @@ import { FocusEnvironment } from '../Experience.jsx'
 import { modelLabel } from '../assistant/LocalAssistant.jsx'
 import { calendarMonthDays, localDateKey } from '../daily-practice.js'
 import { getLocalModels } from '../local-ai.js'
-import { captureThought, dayNoteId, excerpt, isActiveNote, relinkRenamedNote, updateNote } from '../notes-model.js'
-import { addNextStep, nextSteps, toggleNextStep } from '../next-steps.js'
+import { captureThought, dayNoteId, excerpt, isActiveNote, relinkRenamedNote, updateNote, wikilinkPairs } from '../notes-model.js'
+import { addNextStep, bringForward, earlierSteps, nextSteps, toggleNextStep } from '../next-steps.js'
 import { clamp, inputActive, timeLabel } from '../lib/ui.js'
 import { sampleEvents, sampleFolders, sampleNotes } from './field-sample.js'
-import { FieldBanner, HomeDock, useReducedMotion } from './FieldChrome.jsx'
+import { FieldBanner, useReducedMotion } from './FieldChrome.jsx'
 import { FieldSheet } from './FieldSheet.jsx'
 import { dayPhase, fitCells, homeItems, paperFields, phaseCopy } from './field-model.js'
 import { MediaWidget } from './MediaWidget.jsx'
@@ -44,7 +44,7 @@ function readIconsCollapsed() {
    layer, widgets and icons can be picked up and set down anywhere (`places`). */
 export function FieldDesk({
   workspace, commit, navigate, preview, sampled, onKeep, onBlank, onRemove, sheet, onSheetDone,
-  storage, onSearch, onCapture, onTheme, wallpaper, onWallpaper, layer = false, dock, onOpenNote, visit, places = {}, onPlace, media,
+  storage, onSearch, wallpaper, focusAt, layer = false, dock, onOpenNote, visit, places = {}, onPlace, media,
 }) {
   const home = useRef(null)
   const justMoved = useRef(false)
@@ -62,6 +62,7 @@ export function FieldDesk({
   const [focusOpen, setFocusOpen] = useState(false)
   const [openId, setOpenId] = useState(null)
   const [ai, setAi] = useState({ state: 'checking', label: '' })
+  const [hoverId, setHoverId] = useState(null)
   const openRef = useRef(null)
   const focusRef = useRef(false)
   focusRef.current = focusOpen
@@ -73,8 +74,11 @@ export function FieldDesk({
   const realNotes = workspace.notes.filter(isActiveNote)
   const notes = preview ? sampleNotes() : realNotes
   const planId = dayNoteId(today)
+  // Steps left on earlier daily pages wait to be brought forward, not piled on here.
+  const earlier = earlierSteps(notes, today)
+  const earlierIds = new Set(earlier.map((step) => step.id))
   const steps = nextSteps(notes)
-    .filter((step) => !step.done || ghosts.has(step.id))
+    .filter((step) => (!step.done || ghosts.has(step.id)) && !earlierIds.has(step.id))
     .sort((a, b) => (b.noteId === planId) - (a.noteId === planId))
   const openCount = steps.filter((step) => !step.done).length
   const allEvents = preview ? sampleEvents() : workspace.calendar.events
@@ -85,6 +89,11 @@ export function FieldDesk({
   const placed = (item) => Boolean(places[`${item.kind}:${item.id}`])
   const items = fitCells(allItems.filter((item) => !placed(item)), capacity)
   const placedItems = allItems.filter(placed)
+
+  /* Resting on a note lights up the notes it links to, and their folders. */
+  const pairs = useMemo(() => wikilinkPairs(notes), [notes])
+  const linked = new Set(hoverId ? pairs.flatMap((pair) => (pair.a === hoverId ? [pair.b] : pair.b === hoverId ? [pair.a] : [])) : [])
+  const linkedFolders = new Set(notes.filter((note) => linked.has(note.id) && note.folderId).map((note) => note.folderId))
   const sheetNote = notes.find((item) => item.id === openId) || null
   openRef.current = sheetNote ? openId : null
   const current = MODES.find((item) => item.id === mode)
@@ -104,6 +113,10 @@ export function FieldDesk({
     setMode('note')
     box.current?.focus()
   }, [visit])
+
+  useEffect(() => {
+    if (focusAt) setFocusOpen(true)
+  }, [focusAt])
 
   useEffect(() => {
     if (!sheet?.id) return
@@ -248,6 +261,7 @@ export function FieldDesk({
     if (item.kind === 'note') openNote(item.id, event.currentTarget.querySelector('[data-paper]'))
     else if (item.kind === 'folder') navigate('Notes', preview ? null : { folderId: item.id })
     else if (item.kind === 'board') navigate('Mindmap', { boardId: item.id })
+    else if (item.kind === 'pile') navigate('Notes', { list: 'unsorted' })
     else navigate('Notes')
   }
 
@@ -310,13 +324,15 @@ export function FieldDesk({
       <button
         key={key}
         type="button"
-        className={`icon is-${item.kind} ${item.kind === 'note' && item.id === freshId ? 'is-fresh' : ''}`}
-        aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open folder ${item.folder.name}` : item.kind === 'board' ? 'Open the Mindmap' : `See ${item.count} more notes`}
+        className={`icon is-${item.kind} ${(item.kind === 'note' && item.id === freshId) || (item.kind === 'pile' && item.notes.some((note) => note.id === freshId)) ? 'is-fresh' : ''} ${linked.has(item.id) || (item.kind === 'folder' && linkedFolders.has(item.id)) ? 'is-linked' : ''}`}
+        aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open folder ${item.folder.name}` : item.kind === 'board' ? 'Open the Map' : item.kind === 'pile' ? `${item.count} loose thoughts. Open Unsorted` : `See ${item.count} more notes`}
         onClick={(event) => openItem(item, event)}
+        onPointerEnter={item.kind === 'note' ? () => setHoverId(item.id) : undefined}
+        onPointerLeave={item.kind === 'note' ? () => setHoverId((id) => (id === item.id ? null : id)) : undefined}
         {...(item.kind === 'more' ? {} : movable(key))}
       >
         <IconArt item={item} />
-        <span className="icon-label">{item.kind === 'note' ? item.note.title : item.kind === 'folder' ? item.folder.name : item.kind === 'board' ? 'Mindmap' : `${item.count} more`}</span>
+        <span className="icon-label">{item.kind === 'note' ? item.note.title : item.kind === 'folder' ? item.folder.name : item.kind === 'board' ? 'Map' : item.kind === 'pile' ? `${item.count} loose thoughts` : `${item.count} more`}</span>
       </button>
     )
   }
@@ -349,7 +365,7 @@ export function FieldDesk({
           <h2 id="widget-next" tabIndex={-1} className="widget-kicker">Next <small>{openCount ? `${openCount} open` : ''}</small></h2>
           {steps.length ? (
             <ul>
-              {steps.slice(0, 4).map((step) => (
+              {steps.slice(0, 5).map((step) => (
                 <li key={step.id} className={step.done ? 'is-done' : ''}>
                   <button type="button" className="ring" aria-label={`Complete ${step.text}`} aria-pressed={step.done} disabled={preview} onClick={() => toggleStep(step)} />
                   <button type="button" className="step-text" onClick={() => openNote(step.noteId)}>{step.text}</button>
@@ -357,6 +373,16 @@ export function FieldDesk({
               ))}
             </ul>
           ) : <p className="widget-empty">Nothing waiting. Choose Next step to add one.</p>}
+          {(steps.length > 5 || (earlier.length > 0 && !preview)) && (
+            <div className="widget-next-foot">
+              {steps.length > 5 && <button type="button" onClick={() => navigate('Journal')}>{steps.length - 5} more on today’s page</button>}
+              {earlier.length > 0 && !preview && (
+                <button type="button" className="bring" onClick={() => commit((state) => bringForward(state, localDateKey()))}>
+                  Bring {earlier.length} from earlier days
+                </button>
+              )}
+            </div>
+          )}
         </section>
         {media && <MediaWidget media={media} visit={visit} move={movable('widget:media')} />}
       </aside>
@@ -435,17 +461,7 @@ export function FieldDesk({
         {placedItems.map(renderIcon)}
       </nav>
 
-      {dock || <HomeDock
-        navigate={navigate}
-        storage={storage}
-        aiReady={ai.state === 'ready'}
-        onSearch={() => onSearch('')}
-        onCapture={onCapture}
-        onTheme={onTheme}
-        onFocus={() => setFocusOpen(true)}
-        wallpaper={wallpaper}
-        onWallpaper={onWallpaper}
-      />}
+      {dock}
 
       {sheetNote && (
         <FieldSheet
@@ -523,6 +539,15 @@ function IconArt({ item }) {
     return <span className="art-board" aria-hidden="true"><ShareNetwork weight="bold" /></span>
   }
   if (item.kind === 'more') return <span className="art-more" aria-hidden="true">+{item.count}</span>
+  if (item.kind === 'pile') {
+    return (
+      <span className="art-pile" aria-hidden="true">
+        {item.notes.slice(0, 3).reverse().map((note, index) => (
+          <span key={note.id} className="art-note" style={{ '--i': index }}><b>{note.title}</b><em /><em /></span>
+        ))}
+      </span>
+    )
+  }
   const { note } = item
   const lines = excerpt(paperFields(note).body, 70)
   return (

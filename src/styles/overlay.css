@@ -9,7 +9,8 @@ html:has(.overlay-surface) body,
 .overlay-surface > .workspace-content { height: 100%; view-transition-name: none; }
 .overlay-surface .home.is-layer { padding: 34px 34px 18px 28px; -webkit-app-region: no-drag; }
 /* A soft veil keeps text readable over any wallpaper. */
-.overlay-surface .home.is-layer::before { background: var(--wall-vignette), color-mix(in srgb, var(--page) 18%, transparent); }
+/* The Blur setting also sets how much of a veil sits over the real desktop. */
+.overlay-surface .home.is-layer::before { background: var(--wall-vignette), color-mix(in srgb, var(--page) calc(var(--blur-n, 0.6) * 30%), transparent); }
 .overlay-surface.is-preview { background: #1d2430 url("/images/wall-lake.jpg") center / cover; }
 
 /* ---- Pop-outs ---------------------------------------------------------- */

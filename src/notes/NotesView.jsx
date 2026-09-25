@@ -58,6 +58,12 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
     if (!target || handledTarget.current === target.at) return;
     handledTarget.current = target.at;
     if (target.action) { requestAnimationFrame(() => actionsRef.current?.[target.action === "new" ? "createNote" : target.action === "today" ? "openToday" : "startFolder"]?.()); return; }
+    if (target.list) {
+      setUi({ list: target.list, folderId: null, query: "", tags: [] });
+      setSelection(new Set());
+      setPane("list");
+      return;
+    }
     if (target.folderId) {
       setUi({ list: "folder", folderId: target.folderId, query: "", tags: [] });
       setSelection(new Set());

@@ -1,6 +1,6 @@
-import { ArrowRight, CalendarBlank, FolderSimple, MagnifyingGlass, NotePencil, Plus, ShareNetwork } from "@phosphor-icons/react";
+import { ArrowRight, CalendarBlank, FolderSimple, MagnifyingGlass, MoonStars, NotePencil, Plus, ShareNetwork } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
-import { MODULES, CORE_NAV, TOOL_NAV, FOOT_NAV } from "../lib/modules.js";
+import { EVERYWHERE } from "../lib/spaces.js";
 import { useFocusTrap } from "../lib/use-focus-trap.js";
 import { folderPath, isActiveNote, parseQuery } from "../notes-model.js";
 
@@ -17,7 +17,8 @@ export function CommandPalette({ workspace, navigate, close, initialQuery = "" }
     { key: "act:new-note", label: "New note", icon: Plus, kind: "Action", run: () => navigate("Notes", { action: "new" }) },
     { key: "act:today", label: "Today’s note", icon: CalendarBlank, kind: "Action", run: () => navigate("Notes", { action: "today" }) },
     { key: "act:new-folder", label: "New folder", icon: FolderSimple, kind: "Action", run: () => navigate("Notes", { action: "new-folder" }) },
-    { key: "act:board", label: "Open Mindmap", icon: ShareNetwork, kind: "Action", run: () => navigate("Mindmap") },
+    { key: "act:board", label: "Open the Map", icon: ShareNetwork, kind: "Action", run: () => navigate("Mindmap") },
+    { key: "act:sky", label: "See the Sky", icon: MoonStars, kind: "Action", run: () => navigate("Sky") },
   ].filter((action) => !q || action.label.toLowerCase().includes(q));
 
   const notes = q
@@ -39,14 +40,14 @@ export function CommandPalette({ workspace, navigate, close, initialQuery = "" }
     ? workspace.projects.filter((project) => `${project.title} ${project.summary}`.toLowerCase().includes(q))
       .map((project) => ({ key: `project:${project.id}`, label: project.title, icon: FolderSimple, kind: "Project", run: () => navigate("Projects") }))
     : [];
-  const routes = [...CORE_NAV, ...TOOL_NAV, ...FOOT_NAV, ...MODULES].filter((route) => route.label.toLowerCase().includes(q) && !tags.length)
+  const routes = EVERYWHERE.filter((route) => route.label.toLowerCase().includes(q) && !tags.length)
     .map((route) => ({ key: `route:${route.id}`, label: route.label, icon: route.icon, kind: "Go to", run: () => navigate(route.id) }));
   const results = [...notes, ...folders, ...boards, ...projects, ...actions, ...routes].slice(0, 40);
   const pick = (item) => { item.run(); close(); };
 
   return (
     <div className="modal-backdrop command-backdrop" onPointerDown={close}>
-      <section ref={ref} className="command-palette" role="dialog" aria-modal="true" aria-label="Search workspace" onPointerDown={(event) => event.stopPropagation()}>
+      <section ref={ref} className="glass command-palette" role="dialog" aria-modal="true" aria-label="Search workspace" onPointerDown={(event) => event.stopPropagation()}>
         <label>
           <MagnifyingGlass />
           <input

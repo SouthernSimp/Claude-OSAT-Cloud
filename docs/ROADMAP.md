@@ -17,7 +17,7 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 0 | Foundation and cleanup | Done, merged (PR #1) |
 | 1 | Final data shape and one source of truth | Done, merged (PR #1) |
 | 2 | The overlay (LYKN-style layer with pop-outs) | Built, in PR #2 — waiting for Nate's try |
-| 3a | One navigation, Settings, Tools | Next |
+| 3a | One place: the desk, glass sheets, one navigation | Built, in PR #3 (on top of #2) |
 | 3b | One Today | Planned |
 | 4 | Local AI that sets itself up | Planned |
 | 5 | Visual polish | Planned |
@@ -237,13 +237,19 @@ OSAT's current in-window home already copies this look. Phase 2 makes it real, a
   - Note pop-outs use the single `NoteEditor`.
 - The layer replaces the quick-capture window and the in-window desk home. The browser preview shows the layer over a mock desktop image, for Playwright.
 
-### Phase 3a: One navigation, Settings, Tools
-- `src/lib/spaces.js` is **the one definition** of spaces, tools, shortcuts and labels. The top bar, ⌘K, the keyboard handler and the Mac menu bar (sent over IPC) all read from it. Delete the nav lists in `modules.js`, `FieldChrome` TABS/MORE/DOCK, `ROOM_KEYS` and the menu lists in `main.cjs`.
-- The window's top bar has Today · Notes · Map · Ask, then a Tools menu, Search (⌘K) and New.
-- The Settings sheet has five sections. The Obsidian export moves to Data, along with Export/Import in the new format and "Show data folder".
-- The command palette covers every space, tool, setting and action.
-- Map gets a Board / Sky toggle that renders the existing `FieldSky` in place.
-- Retire the in-window desk home, the wallpapers, the Focus timer and `field-sample.js` (it holds personal sample content). Delete their CSS in the same PR.
+### Phase 3a: One place (updated Sep 25 from Nate's notes)
+Nate asked to condense and connect desk → notes → sky → mindmap, make the mouse bring things to life without clicking, add a blur setting, reduce clutter (and make clutter feel OK), take the calm of the ChatGPT build's Notes, and go "liquid glass, Raycast/Apple, rich transitions" everywhere.
+
+**Built:**
+- `src/lib/spaces.js` is **the one definition**: Desk · Notes · Map · Ask, plus Tools (Today's page, Calendar, Habits, Reflect, Money, Projects, Files, Browser, Terminal) and Settings. The dock, sheet titles, ⌘K and ⌘1–4 read from it; the Mac Go menu mirrors it by hand (it can't import the React icons). The top bar and `modules.js` are gone.
+- **The desk is always underneath.** Every room is a glass sheet (`src/shell/Shell.jsx`) that grows out of what you clicked and sinks back into its dock button; the desk recedes behind it. Esc backs out one step (out of a field, then to the desk).
+- **Map = Board + Sky.** A switch in the sheet; going Board → Sky pulls back until the cards are stars, Sky → Board dives in (view transitions).
+- **Glass kit** (`src/shell/glass.jsx`, `src/styles/glass.css`): liquid-glass edge refraction (an SVG displacement map, Chromium only), a rim light, a soft light that follows the cursor on every piece of glass, a Mac-style dock that swells under the cursor, the wallpaper drifting slowly and leaning away from the mouse, a sheen across the greeting. All of it rests when the mouse rests; reduced motion turns it off.
+- **Every room rethemed** by scoping the design tokens inside `.room-sheet` (and the layer's pop-outs) to see-through values, so Notes, Map, Ask, Calendar, Money, Habits, Settings, Browser and Terminal all wear the same glass.
+- **Appearance** (the dock's Look button, the layer's dock, and Settings): Auto/Light/Dark, wallpaper, and a **Blur** slider saved in `settings.blur` (no schema change). On the layer, Blur sets the veil, and zero takes the Mac's frosting off entirely.
+- **Less clutter on the desk:** pinned notes, folders, the Map, then **loose thoughts gathered in one pile** that fans open under the cursor, then only the 4 most recently touched notes. Resting on a note lights up the notes it links to and their folders.
+
+**Still to do (moves to 3b/5):** Settings' five sections and Data (Obsidian export there), retiring `field-sample.js`, the Focus timer look.
 
 ### Phase 3b: One Today
 - A date header with a month picker, reusing the grid from `Calendar.jsx`.
