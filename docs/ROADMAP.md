@@ -14,9 +14,9 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 
 | Phase | What | State |
 |---|---|---|
-| 0 | Foundation and cleanup | In review |
-| 1 | Final data shape and one source of truth | Next |
-| 2 | The overlay | Planned |
+| 0 | Foundation and cleanup | Done, in PR #1 |
+| 1 | Final data shape and one source of truth | Done, in PR #1 |
+| 2 | The overlay (LYKN-style layer with pop-outs) | Next |
 | 3a | One navigation, Settings, Tools | Planned |
 | 3b | One Today | Planned |
 | 4 | Local AI that sets itself up | Planned |
@@ -212,18 +212,30 @@ Removed from the schema: `records`, `capture`, `savedIds`, `legacySnapshot`, `im
 - An Electron end-to-end test under xvfb in CI.
 - Delete the legacy tests.
 
-### Phase 2: The overlay (kept thin)
-- `desktop/overlay.cjs`, dependency-injected:
-  - pure, unit-tested `overlayOptions(platform)`, `placeOverlay(cursor, displays)` and toggle state
-  - on the Mac: `type:'panel'`, frameless, transparent, `vibrancy`, visible on all Spaces and over full-screen apps
-  - created hidden at launch and only ever hidden, never closed, so it opens instantly with live data.
-- Global shortcut ⌥Space. `register()` failing (Raycast or ChatGPT often own it) opens a **hotkey picker**, and the choice is saved in Settings. A menu-bar `Tray` icon has Open overlay, Open OSAT and AI status. Launch at login.
-- `src/surfaces/overlay/Overlay.jsx` plus a pure `overlay-model.js`:
-  - **Note** writes an unsorted note.
-  - **Find** searches notes and boards; Return opens the result in the main window.
-  - **Next** shows up to 5 steps from `src/next-steps.js`, and **Recent** comes from `homeItems` in `field-model.js`.
-  - Esc hides it and the previous app keeps focus. **Ask arrives in Phase 4.**
-- Replaces the quick-capture window. The browser preview shows the overlay in a `<dialog>` over a mock desktop, for Playwright.
+### Phase 2: The overlay, a LYKN-style layer over your real desktop
+**Updated Sep 25 from Nate's LYKN screenshot.** He loved it and wants "the pop-out thing and the same freedoms". LYKN is not a small panel. It is a full-screen layer over the real desktop:
+- the wallpaper is blurred behind it
+- glass widgets on the left (day, month, a recent-items card)
+- one line with modes at the top centre
+- desktop icons on the right (Files, Vault)
+- a dock at the bottom with its own tools plus launchers for Nate's other apps
+- tools such as its browser open as **floating pop-out windows** on top of the layer.
+
+OSAT's current in-window home already copies this look. Phase 2 makes it real, and keeps every one of LYKN's cloud pieces out.
+
+- **`desktop/overlay.cjs`** (dependency-injected; the pure pieces are unit-tested):
+  - The layer is a full-screen, frameless, transparent `BrowserWindow` on the display under the cursor. On the Mac it uses `type:'panel'` and `vibrancy` (the real desktop blurred behind it; no fake wallpaper) and shows over full-screen apps and on every Space.
+  - It is created hidden at launch and only ever hidden, never closed, so it opens instantly with live data from the store.
+- **⌥Space** shows or hides the layer. If `register()` fails (Raycast or ChatGPT often own it), a **hotkey picker** appears, and the choice is saved in Settings. A menu-bar `Tray` icon offers Open OSAT and AI status. Launch at login.
+- **Contents:** `src/surfaces/overlay/`, built by reusing `FieldDesk`, `HomeDock`, `homeItems` and `next-steps`.
+  - Top left: glass Day and Month widgets, with Next underneath.
+  - Top centre: a mode pill (**Note · Find · Ask**) over one line. Note writes an unsorted note; Find searches everything. Ask arrives with the Phase 4 runtime.
+  - Right side: desktop icons for pinned notes, folders and boards.
+  - Bottom: a dock with Notes, Map, Today, Ask and Tools, plus **app launchers** (Nate picks Mac apps; OSAT opens them with `shell.openPath`).
+- **Pop-outs:** a note, a board, the browser, the terminal or Ask opens as a **floating glass window on the layer**. The pop-outs can be dragged, resized and closed; Esc closes the top one, then the layer. "Open in window" sends any pop-out to the full OSAT window for deep work.
+  - The browser pop-out reuses `desktop/browser.cjs` (its native view is placed inside the pop-out's frame).
+  - Note pop-outs use the single `NoteEditor`.
+- The layer replaces the quick-capture window and the in-window desk home. The browser preview shows the layer over a mock desktop image, for Playwright.
 
 ### Phase 3a: One navigation, Settings, Tools
 - `src/lib/spaces.js` is **the one definition** of spaces, tools, shortcuts and labels. The top bar, ⌘K, the keyboard handler and the Mac menu bar (sent over IPC) all read from it. Delete the nav lists in `modules.js`, `FieldChrome` TABS/MORE/DOCK, `ROOM_KEYS` and the menu lists in `main.cjs`.

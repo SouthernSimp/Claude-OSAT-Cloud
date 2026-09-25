@@ -32,6 +32,10 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Open every room and take screenshots
         run: npm run test:ui
+      - name: Run the real app (Electron) end to end
+        run: |
+          node node_modules/electron/install.js
+          xvfb-run -a npm run test:e2e
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
