@@ -70,6 +70,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Build the DMG
+        env:
+          # electron-builder skips all signing on pull requests by default, which
+          # leaves a bundle macOS reports as "damaged". Sign these builds too.
+          CSC_FOR_PULL_REQUEST: "true"
         run: |
           if [ -n "$CSC_LINK" ]; then
             if [ -n "$APPLE_API_KEY_P8" ]; then
