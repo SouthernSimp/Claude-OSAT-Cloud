@@ -29,7 +29,9 @@ const grantAccessStops = new Map()
 
 // Real notes live in "OSAT"; running from source uses "OSAT Dev" so development
 // never touches them. See data-folder.cjs for how an older "OSAT" folder is kept safe.
-app.setPath('userData', claimDataFolder(path.join(app.getPath('appData'), app.isPackaged ? 'OSAT' : 'OSAT Dev')).folder)
+// Tests pass OSAT_DATA_DIR (from source only) because macOS ignores a fake HOME.
+const dataDir = (!app.isPackaged && process.env.OSAT_DATA_DIR) || path.join(app.getPath('appData'), app.isPackaged ? 'OSAT' : 'OSAT Dev')
+app.setPath('userData', claimDataFolder(dataDir).folder)
 app.setName('OSAT')
 // One OSAT at a time: a second launch just brings the open one forward.
 const primaryInstance = app.requestSingleInstanceLock()
