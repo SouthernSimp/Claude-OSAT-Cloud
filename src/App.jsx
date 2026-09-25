@@ -49,6 +49,7 @@ function WorkspaceApp() {
   const [calendarTarget, setCalendarTarget] = useState(null);
   const [assistantTarget, setAssistantTarget] = useState(null);
   const [settingsTarget, setSettingsTarget] = useState(null);
+  const [skyTarget, setSkyTarget] = useState(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
@@ -144,6 +145,7 @@ function WorkspaceApp() {
     if (next === "Obsidian") { navigate("Settings", { section: "data" }); return; }
     if (next === "Settings") setSettingsTarget(detail?.section ? { section: detail.section, at: Date.now() } : null);
     if (next === "Notes") setNotesTarget(detail ? { ...(typeof detail === "string" ? { noteId: detail } : detail), at: Date.now() } : null);
+    if (next === "Sky") setSkyTarget(typeof detail?.noteId === "string" ? { noteId: detail.noteId, at: Date.now() } : null);
     if (next === "Mindmap") setBoardTarget(detail && typeof detail === "object" ? { ...detail, at: Date.now() } : null);
     if (next === "Calendar") setCalendarTarget(detail?.date || null);
     if (next === "Today" && detail && typeof detail === "object" && typeof detail.noteId === "string") setDeskSheet({ id: detail.noteId, at: Date.now() });
@@ -266,7 +268,7 @@ function WorkspaceApp() {
             onSearch={() => openCommands()}
             onMode={(mode) => navigate(mode)}
           >
-            {view === "Sky" && <FieldSky {...common} {...room} />}
+            {view === "Sky" && <FieldSky {...common} {...room} target={skyTarget} />}
             {view === "Assistant" && <LocalAssistant {...common} initialPrompt={assistantTarget} />}
             {view === "Browser" && <BrowserView {...common} covered={captureOpen || commandOpen || closing} command={roomCommand} />}
             {view === "Terminal" && <TerminalView command={roomCommand} />}

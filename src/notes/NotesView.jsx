@@ -92,6 +92,13 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
 
   const pendingFocus = useRef(null);
   const [folderDraftAt, setFolderDraftAt] = useState(0);
+  // Calm rule 2: trashing happens at once, and Undo is right there for a few seconds.
+  const [toast, setToast] = useState(null);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(timer);
+  }, [toast]);
   const actions = useMemo(() => {
     const open = (id) => { setSelectedId(id); setSelection(new Set()); setPane("editor"); };
     return {
@@ -115,7 +122,18 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       moveNotes: (ids, folderId) => commit((state) => moveNotes(state, ids, folderId)),
       setPinned: (ids, pinned) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, pinned, unsorted: pinned ? false : note.unsorted } : note) })),
       setArchived: (ids, archived) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, archived, pinned: archived ? false : note.pinned } : note) })),
-      trashNotes(ids) { commit((state) => trashNotes(state, ids)); setSelection(new Set()); },
+      showInSky(noteId) { navigate("Sky", { noteId }); },
+      trashNotes(ids) {
+        const chosen = new Set(ids);
+        const pinned = new Set(workspace.notes.filter((note) => chosen.has(note.id) && note.pinned).map((note) => note.id));
+        commit((state) => trashNotes(state, ids));
+        setSelection(new Set());
+        setToast({
+          id: Date.now(),
+          message: ids.length === 1 ? "Moved to Trash" : `${ids.length} notes moved to Trash`,
+          undo: () => commit((state) => ({ ...state, notes: state.notes.map((note) => chosen.has(note.id) ? { ...note, trashedAt: null, pinned: pinned.has(note.id) } : note) })),
+        });
+      },
       restoreNotes(ids) { commit((state) => restoreNotes(state, ids)); setSelection(new Set()); },
       purgeNotes(ids) {
         if (!confirm(ids.length === 1 ? "Delete this note forever? This cannot be undone." : `Delete ${ids.length} notes forever? This cannot be undone.`)) return;
@@ -265,6 +283,14 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
           </div>
         </section>
       )}
+      <div className="notes-toasts" aria-live="polite">
+        {toast && (
+          <div className="toast" key={toast.id}>
+            <span>{toast.message}</span>
+            <button type="button" onClick={() => { toast.undo(); setToast(null); }}>Undo</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

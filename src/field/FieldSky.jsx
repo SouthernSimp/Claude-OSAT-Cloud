@@ -18,6 +18,7 @@ export function FieldSky({
   onKeep,
   onBlank,
   onRemove,
+  target,
 }) {
   const viewport = useRef(null)
   const nodesRef = useRef([])
@@ -88,6 +89,21 @@ export function FieldSky({
     intro.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(intro.current)
   }, [signature, reduced])
+
+  /* Arriving from a note ("See in the Sky"): its star is picked and centred. */
+  useEffect(() => {
+    if (!target?.noteId) return undefined
+    const frame = requestAnimationFrame(() => {
+      const view = viewport.current
+      const node = nodesRef.current.find((item) => item.id === target.noteId)
+      if (!view || !node) return
+      cancelAnimationFrame(intro.current)
+      const z = 1.3
+      setCam({ x: view.clientWidth / 2 - node.x * z, y: view.clientHeight / 2 - node.y * z, z })
+      setSelected(node.id)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [target?.at])
 
   function stopIntro() {
     cancelAnimationFrame(intro.current)
@@ -289,7 +305,7 @@ export function FieldSky({
               {preview ? 'Keep and read it' : 'Lay it on the desk'} <ArrowRight />
             </button>
             {!preview && (
-              <button type="button" onClick={() => navigate('Mindmap', { focusNoteId: selectedNode.id })}>On the mindmap</button>
+              <button type="button" onClick={() => navigate('Mindmap', { focusNoteId: selectedNode.id })}>On the Map</button>
             )}
           </div>
         </aside>

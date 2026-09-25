@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Archive, ArrowCounterClockwise, ArrowLeft, ArrowUpRight, CheckSquare, Code, Copy, CopySimple, DotsThree, FolderSimple, Hash, Link as LinkIcon,
-  LinkSimple, ListBullets, ListNumbers, Minus, PushPin, Quotes, ShareNetwork, Sidebar, TextB, TextHOne, TextItalic, TextStrikethrough, Trash, BracketsSquare,
-} from "@phosphor-icons/react";
+  LinkSimple, ListBullets, ListNumbers, Minus, PushPin, Quotes, ShareNetwork, Sidebar, TextB, TextHOne, TextItalic, TextStrikethrough, Trash, BracketsSquare, MoonStars } from "@phosphor-icons/react";
 import { Markdown } from "../lib/markdown.jsx";
 import { Menu } from "../lib/Menu.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
@@ -145,7 +144,8 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
     { label: note.pinned ? "Unpin" : "Pin to top", icon: PushPin, onSelect: () => actions.setPinned([note.id], !note.pinned) },
     { label: note.archived ? "Unarchive" : "Archive", icon: Archive, onSelect: () => actions.setArchived([note.id], !note.archived) },
     { label: "Duplicate", icon: CopySimple, onSelect: () => actions.duplicateNote(note.id) },
-    { label: "See on Mindmap", icon: ShareNetwork, onSelect: () => actions.showOnBoard(note.id, boards[0]?.id) },
+    { label: "See on the Map", icon: ShareNetwork, onSelect: () => actions.showOnBoard(note.id, boards[0]?.id) },
+    { label: "See in the Sky", icon: MoonStars, onSelect: () => actions.showInSky(note.id) },
     { label: "Copy as Markdown", icon: Copy, onSelect: () => navigator.clipboard?.writeText(`# ${note.title}\n\n${note.markdown}`) },
     { divider: true },
     { label: "Move to Trash", icon: Trash, danger: true, onSelect: () => actions.trashNotes([note.id]) },
@@ -299,7 +299,8 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             <span>{wordCount(note.markdown)} words</span>
             {tasks.total > 0 && <span>{tasks.done}/{tasks.total} steps done</span>}
             <span>Edited {formatRelativeTime(note.updatedAt)}</span>
-            {boards.length > 0 && <button type="button" className="text-button" onClick={() => actions.showOnBoard(note.id, boards[0].id)}><ShareNetwork /> See on Mindmap</button>}
+            {boards.length > 0 && <button type="button" className="text-button" onClick={() => actions.showOnBoard(note.id, boards[0].id)}><ShareNetwork /> See on the Map</button>}
+            {!note.trashedAt && <button type="button" className="text-button" onClick={() => actions.showInSky(note.id)}><MoonStars /> See in the Sky</button>}
           </footer>
         </div>
 
