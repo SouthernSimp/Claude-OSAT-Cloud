@@ -852,8 +852,7 @@
   font-weight: 500;
 }
 
-.hud-button,
-.hud-zoom {
+.hud-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -872,8 +871,7 @@
   height: 15px;
 }
 
-.hud-button:hover:not(:disabled),
-.hud-zoom:hover {
+.hud-button:hover:not(:disabled) {
   background: color-mix(in oklab, var(--ink) 7%, transparent);
   color: var(--ink);
 }
@@ -892,12 +890,6 @@
 .hud-button.hero:hover:not(:disabled) {
   background: var(--accent-hover);
   color: var(--accent-ink);
-}
-
-.hud-zoom {
-  min-width: 48px;
-  justify-content: center;
-  font-variant-numeric: tabular-nums;
 }
 
 .board-search {

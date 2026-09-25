@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests, build and screenshots
+    runs-on: ubuntu-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Install the browser for the screenshot test
+        run: npx playwright install --with-deps chromium
+      - name: Open every room and take screenshots
+        run: npm run test:ui
+      - name: Run the real app (Electron) end to end
+        run: |
+          node node_modules/electron/install.js
+          xvfb-run -a npm run test:e2e
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: test-results/ui/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  mac:
+    name: Mac app (DMG to try)
+    needs: test
+    runs-on: macos-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      # Optional. When these repository secrets exist the app is signed with the
+      # Developer ID and notarized, so it opens with no warning. Without them the
+      # build is ad-hoc signed and needs one "Open Anyway" in System Settings.
+      CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
+      CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm run build
+      - name: Build the DMG
+        env:
+          # electron-builder skips all signing on pull requests by default, which
+          # leaves a bundle macOS reports as "damaged". Sign these builds too.
+          CSC_FOR_PULL_REQUEST: "true"
+        run: |
+          if [ -n "$CSC_LINK" ]; then
+            if [ -n "$APPLE_API_KEY_P8" ]; then
+              printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+              export APPLE_API_KEY="$RUNNER_TEMP/AuthKey.p8"
+            fi
+            npx electron-builder --mac dmg --arm64 --publish never
+          else
+            unset CSC_LINK CSC_KEY_PASSWORD
+            CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --arm64 --publish never -c.mac.identity=-
+          fi
+      - name: Check the app starts
+        run: |
+          APP="$(ls -d release/mac-arm64/OSAT.app)"
+          codesign --verify --deep --strict "$APP"
+          "$APP/Contents/MacOS/OSAT" > launch.log 2>&1 &
+          PID=$!
+          sleep 20
+          if ! kill -0 "$PID" 2>/dev/null; then
+            echo "OSAT quit on its own during launch:"; cat launch.log; exit 1
+          fi
+          kill "$PID"
+          test -f "$HOME/Library/Application Support/OSAT/osat-data-folder.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OSAT-mac-dmg
+          path: release/*.dmg
+          retention-days: 14

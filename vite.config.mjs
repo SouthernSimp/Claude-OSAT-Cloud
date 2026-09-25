@@ -88,9 +88,6 @@ function localAiApi() {
 }
 
 export default defineConfig({
-  // This copy shares node_modules with another app; keep optimized React local.
-  cacheDir: '.vite-osat-field',
-  resolve: { dedupe: ['react', 'react-dom'] },
   base: "./",
   build: {
     outDir: "dist/client",
@@ -99,8 +96,7 @@ export default defineConfig({
     include: ["react", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "@phosphor-icons/react"],
   },
   server: {
-    host: "0.0.0.0",
-    allowedHosts: ["terminal.local"],
+    host: "127.0.0.1",
     warmup: {
       clientFiles: ["./src/main.jsx"],
     },

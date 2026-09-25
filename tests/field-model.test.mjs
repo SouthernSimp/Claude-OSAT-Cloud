@@ -103,8 +103,7 @@ test('home icons put pinned notes, folders and the mindmap first, and count what
     note('old', '2026-09-01T00:00:00Z'),
     note('new', '2026-09-20T00:00:00Z'),
     note('pinned', '2026-08-01T00:00:00Z', { pinned: true }),
-    note('daily-plan-2026-09-23', '2026-09-23T00:00:00Z'),
-    note('journal-2026-09-23', '2026-09-23T00:00:00Z'),
+    note('day-2026-09-23', '2026-09-23T00:00:00Z', { kind: 'day', date: '2026-09-23' }),
     note('gone', '2026-09-22T00:00:00Z', { trashedAt: '2026-09-22T01:00:00Z' }),
   ]
   const folders = [{ id: 'f-b', name: 'Work', parentId: null }, { id: 'f-a', name: 'Life', parentId: null }, { id: 'f-c', name: 'Inner', parentId: 'f-a' }]

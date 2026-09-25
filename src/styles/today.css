@@ -74,29 +74,7 @@
 .focus-time i { margin: 0 3px; opacity: 0.45; font-style: normal; }
 .focus-environment-actions { justify-content: center; }
 
-@media (max-width: 900px) {
-  .today-work-grid { grid-template-columns: minmax(0, 1fr); }
-  .experience-today { padding-top: 24px !important; }
-}
-
-@media (max-width: 620px) {
-  .welcome-heading h1 { font-size: 34px; }
-  .welcome-heading div > div { font-size: var(--t-md); }
-  .today-capture { min-height: 58px; padding-left: 14px; }
-  .today-capture input { font-size: var(--t-md); }
-  .today-capture .primary-button { min-height: 40px; padding-inline: 14px; }
-  .today-capture kbd { display: none; }
-  .today-work-grid,
-  .today-activity { grid-template-columns: minmax(0, 1fr); }
-  .empty-actions,
-  .experience-footer {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .experience-today *,
   .focus-environment * {
     animation: none !important;
     transition-duration: 0s !important;

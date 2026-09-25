@@ -4,7 +4,7 @@ import {
 } from "@phosphor-icons/react";
 import { Menu } from "../lib/Menu.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
-import { SORTS, excerpt, folderPath, folderTree, isDailyNote, notesInList, searchNotes, sortNotes } from "../notes-model.js";
+import { SORTS, excerpt, folderPath, folderTree, isDayNote, notesInList, searchNotes, sortNotes } from "../notes-model.js";
 
 const LIST_TITLES = {
   all: "All notes", pinned: "Pinned", recent: "Recent", daily: "Daily notes", unfiled: "Unfiled", archived: "Archive", trash: "Trash",
@@ -136,7 +136,7 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
               </div>
               <p>{excerpt(note.markdown) || <em>Nothing written yet</em>}</p>
               <div className="note-row-meta">
-                {isDailyNote(note) && <span className="meta-chip"><CalendarBlank /> Daily</span>}
+                {isDayNote(note) && <span className="meta-chip"><CalendarBlank /> Daily</span>}
                 {path.length > 0 && ui.list !== "folder" && <span className="meta-chip"><FolderSimple /> {path.join(" / ")}</span>}
                 {note.tags.slice(0, 3).map((tag) => <span key={tag} className="meta-tag">#{tag}</span>)}
                 {note.tags.length > 3 && <span className="meta-tag">+{note.tags.length - 3}</span>}

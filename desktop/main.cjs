@@ -2,13 +2,14 @@ const { randomUUID } = require('node:crypto')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
-const { app, BrowserWindow, Menu, dialog, globalShortcut, ipcMain, safeStorage, screen, session, shell } = require('electron')
+const { app, BrowserWindow, Menu, dialog, globalShortcut, ipcMain, screen, session, shell } = require('electron')
+const { claimDataFolder } = require('./data-folder.cjs')
 const { resolveApprovedPath, resolveApprovedWritePath } = require('./path-guard.cjs')
-const { SecretVault } = require('./secret-vault.cjs')
 const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile } = require('./text-files.cjs')
 const { localAiChat, localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
+const { createStore } = require('./store/index.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
@@ -17,19 +18,24 @@ const WRITABLE_EXTENSIONS = new Set(['.canvas', '.markdown', '.md'])
 
 let mainWindow
 let quickCaptureWindow
-let assistantWindow
 let grants = []
 let grantsFile
 let mutation = Promise.resolve()
-let secretVault
 let browser
 let terminals
+let store
+const storeClients = new Map()
 const grantAccessStops = new Map()
 
-// OSAT Field keeps its own data folder. It never reads OSAT, OSAT V2, or NateOS.
-// Move data across with Settings → backup / restore.
-app.setPath('userData', path.join(app.getPath('appData'), app.isPackaged ? 'OSAT Field' : 'OSAT Field Preview'))
-app.setName('OSAT Field')
+// Real notes live in "OSAT"; running from source uses "OSAT Dev" so development
+// never touches them. See data-folder.cjs for how an older "OSAT" folder is kept safe.
+// Tests pass OSAT_DATA_DIR (from source only) because macOS ignores a fake HOME.
+const dataDir = (!app.isPackaged && process.env.OSAT_DATA_DIR) || path.join(app.getPath('appData'), app.isPackaged ? 'OSAT' : 'OSAT Dev')
+app.setPath('userData', claimDataFolder(dataDir).folder)
+app.setName('OSAT')
+// One OSAT at a time: a second launch just brings the open one forward.
+const primaryInstance = app.requestSingleInstanceLock()
+if (!primaryInstance) app.quit()
 
 class FileAccessError extends Error {}
 
@@ -71,6 +77,11 @@ function ensureGrantAccess(grant) {
   } catch {
     fail('Choose this location again to restore access.')
   }
+}
+
+/* Files, the browser and the terminal answer only the main OSAT window. */
+function assertMainWindow(event) {
+  if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) fail('Only the main OSAT window can do that.')
 }
 
 function assertTrustedSender(event) {
@@ -153,9 +164,10 @@ function mutateGrants(change) {
   return result
 }
 
-function handle(channel, operation) {
+function handle(channel, operation, { mainOnly = true } = {}) {
   ipcMain.handle(channel, async (event, ...args) => {
     assertTrustedSender(event)
+    if (mainOnly) assertMainWindow(event)
     try {
       return await operation(...args)
     } catch (error) {
@@ -313,7 +325,7 @@ async function readWindowState() {
   try {
     const saved = JSON.parse(await fs.readFile(windowStateFile(), 'utf8'))
     const area = screen.getDisplayMatching(saved).workArea
-    const fits = saved.width >= 320 && saved.height >= 560 && saved.x < area.x + area.width && saved.y < area.y + area.height && saved.x + saved.width > area.x && saved.y + saved.height > area.y
+    const fits = saved.width >= 960 && saved.height >= 600 && saved.x < area.x + area.width && saved.y < area.y + area.height && saved.x + saved.width > area.x && saved.y + saved.height > area.y
     return fits ? saved : null
   } catch {
     return null
@@ -330,8 +342,8 @@ async function createWindow() {
     width: saved?.width || 1487,
     height: saved?.height || 1058,
     ...(saved ? { x: saved.x, y: saved.y } : {}),
-    minWidth: 320,
-    minHeight: 560,
+    minWidth: 960,
+    minHeight: 600,
     show: false,
     backgroundColor: '#f8f5ef',
     title: 'OSAT',
@@ -379,15 +391,23 @@ function focusMain() {
 }
 
 /* Everything in the menu bar goes through the same navigate() the app uses. */
+// A command that reopens a closed window waits until the new window is listening.
+let pendingCommand
 function command(detail) {
-  Promise.resolve(focusMain()).then(() => send('app:command', detail))
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    focusMain()
+    send('app:command', detail)
+    return
+  }
+  pendingCommand = detail
+  createWindow()
 }
 
 function buildMenu() {
   const room = (label, view, accelerator) => ({ label, accelerator, click: () => command({ view }) })
   const template = [
     {
-      label: 'OSAT Field',
+      label: 'OSAT',
       submenu: [
         { role: 'about' },
         { type: 'separator' },
@@ -421,7 +441,7 @@ function buildMenu() {
     {
       label: 'Go',
       submenu: [
-        room('Home', 'Today', 'CmdOrCtrl+1'),
+        room('Today', 'Today', 'CmdOrCtrl+1'),
         room('Notes', 'Notes', 'CmdOrCtrl+2'),
         room('Mindmap', 'Mindmap', 'CmdOrCtrl+3'),
         room('Journal', 'Journal', 'CmdOrCtrl+4'),
@@ -435,8 +455,6 @@ function buildMenu() {
         room('Projects', 'Projects'),
         room('Habits', 'Habits'),
         room('Money', 'Budget'),
-        { type: 'separator' },
-        { label: 'Local AI in Its Own Window', accelerator: 'CmdOrCtrl+Shift+L', click: showAssistant },
       ],
     },
     {
@@ -455,7 +473,7 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   app.dock?.setMenu(Menu.buildFromTemplate([
     { label: 'New Thought', click: showQuickCapture },
-    { label: 'Local AI', click: showAssistant },
+    { label: 'Local AI', click: () => command({ view: 'Assistant' }) },
     { label: 'New Browser Tab', click: () => command({ view: 'Browser', action: 'new-tab' }) },
   ]))
 }
@@ -476,6 +494,7 @@ function onTrusted(channel, listener) {
   ipcMain.on(channel, (event, ...args) => {
     try {
       assertTrustedSender(event)
+      assertMainWindow(event)
       listener(...args)
     } catch {
       // Ignore requests from anything but the OSAT window.
@@ -504,6 +523,56 @@ function registerBrowserAndTerminal() {
   handleApp('terminal:close', (id) => terminals.close(id))
   onTrusted('terminal:write', (id, data) => terminals.write?.(id, data))
   onTrusted('terminal:resize', (id, cols, rows) => terminals.resize?.(id, cols, rows))
+}
+
+/* ---- The workspace store --------------------------------------------- */
+
+// shared/ is unpacked from the app archive so Node can load it as a plain ES module.
+function sharedModule(name) {
+  const file = path.join(__dirname, '..', 'shared', name).replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
+  return import(pathToFileURL(file).href)
+}
+
+function storeClient(sender) {
+  let id = storeClients.get(sender.id)
+  if (id) return id
+  id = store.connect((message) => { if (!sender.isDestroyed()) sender.send('store:changed', message) })
+  storeClients.set(sender.id, id)
+  sender.once('destroyed', () => {
+    store.disconnect(id)
+    storeClients.delete(sender.id)
+  })
+  return id
+}
+
+function registerStore() {
+  ipcMain.handle('store:load', (event) => {
+    assertTrustedSender(event)
+    storeClient(event.sender)
+    return store.load()
+  })
+  ipcMain.handle('store:commit', (event, ops) => {
+    assertTrustedSender(event)
+    return store.commit(storeClient(event.sender), ops)
+  })
+  // Only used as a window closes, so its last keystrokes are never lost.
+  ipcMain.on('store:commit-sync', (event, ops) => {
+    try {
+      assertTrustedSender(event)
+      event.returnValue = store.commit(storeClient(event.sender), ops)
+    } catch (error) {
+      event.returnValue = { error: error.message }
+    }
+  })
+  ipcMain.handle('store:replace', (event, doc) => {
+    assertTrustedSender(event)
+    return store.replace(doc)
+  })
+  store.onStatus((status) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && storeClients.has(window.webContents.id)) window.webContents.send('store:status', status)
+    }
+  })
 }
 
 function createSurfaceWindow(surface, options) {
@@ -540,44 +609,34 @@ function showQuickCapture() {
     })
   }
   quickCaptureWindow.center()
+  if (process.platform === 'darwin') app.focus({ steal: true })
   quickCaptureWindow.show()
   quickCaptureWindow.focus()
-}
-
-function showAssistant() {
-  if (!assistantWindow || assistantWindow.isDestroyed()) {
-    assistantWindow = createSurfaceWindow('assistant', {
-      width: 620,
-      height: 780,
-      minWidth: 460,
-      minHeight: 620,
-      title: 'OSAT Local AI',
-    })
-  }
-  assistantWindow.show()
-  assistantWindow.focus()
+  quickCaptureWindow.webContents.focus()
 }
 
 app.whenReady().then(async () => {
+  if (!primaryInstance) return
+  try {
+    const core = await sharedModule('store-core.mjs')
+    store = await createStore({ dir: path.join(app.getPath('userData'), 'store'), core })
+  } catch (error) {
+    dialog.showErrorBox('OSAT couldn\u2019t open your notes', `${error.message}\n\nNothing was changed. Your notes are in ${app.getPath('userData')}.`)
+    app.exit(1)
+    return
+  }
+  registerStore()
+  app.on('second-instance', () => focusMain())
   grantsFile = path.join(app.getPath('userData'), 'approved-files.json')
-  secretVault = new SecretVault(path.join(app.getPath('userData'), 'secure-secrets.json'), safeStorage)
   await loadGrants()
   registerFileHandlers()
-  handle('secrets:status', async () => {
-    const status = secretVault.status()
-    if (!status.available) return status
-    return { available: true, count: (await secretVault.keys()).length }
-  })
-  handle('secrets:keys', () => secretVault.keys())
-  handle('secrets:set', (key, value) => secretVault.set(key, value))
-  handle('secrets:delete', (key) => secretVault.delete(key))
   handle('local-ai:models', async () => {
     try {
       return { runtime: 'lm-studio', offline: true, models: await localAiModels() }
     } catch {
       return { runtime: 'lm-studio', offline: true, models: [], error: 'Start the LM Studio local server to use offline AI.' }
     }
-  })
+  }, { mainOnly: false })
   handle('local-ai:chat', async (payload) => {
     validateLocalChatPayload(payload)
     try {
@@ -585,7 +644,7 @@ app.whenReady().then(async () => {
     } catch (error) {
       throw new FileAccessError(error.message || 'Local AI is unavailable.')
     }
-  })
+  }, { mainOnly: false })
   const streams = new Map()
   ipcMain.on('local-ai:cancel', (event, id) => {
     assertTrustedSender(event)
@@ -608,26 +667,23 @@ app.whenReady().then(async () => {
       streams.delete(id)
     }
   })
-  ipcMain.on('quick-capture:submit', (event, text) => {
-    if (!quickCaptureWindow || event.sender !== quickCaptureWindow.webContents || typeof text !== 'string') return
-    const clean = text.trim().slice(0, 10_000)
-    if (!clean || !mainWindow || mainWindow.isDestroyed()) return
-    mainWindow.webContents.send('quick-capture:received', clean)
-    quickCaptureWindow.hide()
+  ipcMain.on('app:listening', (event) => {
+    if (!pendingCommand || event.sender !== mainWindow?.webContents) return
+    send('app:command', pendingCommand)
+    pendingCommand = undefined
   })
-  ipcMain.handle('app:open-assistant', (event) => {
-    assertTrustedSender(event)
-    showAssistant()
-    return true
+  // The quick-capture window saves through the store itself; this only puts it away.
+  ipcMain.on('quick-capture:done', (event) => {
+    if (!quickCaptureWindow || quickCaptureWindow.isDestroyed() || event.sender !== quickCaptureWindow.webContents) return
+    setTimeout(() => { if (!quickCaptureWindow.isDestroyed()) quickCaptureWindow.hide() }, 700)
   })
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, respond) => respond(false))
   registerBrowserAndTerminal()
   await createWindow()
   buildMenu()
   globalShortcut.register(process.platform === 'darwin' ? 'Alt+Space' : 'CommandOrControl+Shift+Space', showQuickCapture)
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
+  // Clicking the Dock icon reopens the main window, even while a hidden capture window exists.
+  app.on('activate', () => focusMain())
 })
 
 app.on('window-all-closed', () => {
@@ -635,6 +691,8 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  // Every window has closed and handed over its last edits; write them now.
+  try { store?.flushSync() } catch (error) { console.error('Final save failed:', error) }
   globalShortcut.unregisterAll()
   terminals?.destroy()
   for (const id of grantAccessStops.keys()) stopGrantAccess(id)

@@ -15,7 +15,7 @@ const {
   readTextFile,
   writeTextFile,
 } = require('../desktop/text-files.cjs')
-const { SecretVault } = require('../desktop/secret-vault.cjs')
+const { DATA_MARKER, claimDataFolder } = require('../desktop/data-folder.cjs')
 const root = fileURLToPath(new URL('..', import.meta.url))
 
 async function fixture(t) {
@@ -95,85 +95,68 @@ test('system open policy excludes executable and script paths', () => {
   }
 })
 
-test('secret vault persists ciphertext and fails closed', async (t) => {
+test('the data folder is claimed without touching an older app\'s data', async (t) => {
   const directory = await fixture(t)
-  const vaultFile = path.join(directory, 'secure-secrets.json')
-  const transform = (value) => Buffer.from(value).map((byte) => byte ^ 0xa5)
-  const safeStorage = {
-    isEncryptionAvailable: () => true,
-    encryptString: (value) => transform(Buffer.from(value, 'utf8')),
-    decryptString: (value) => transform(value).toString('utf8'),
-  }
-  const vault = new SecretVault(vaultFile, safeStorage, 'darwin')
+  const now = () => new Date('2026-09-25T12:00:00Z')
 
-  await vault.set('gmail.refresh-token', 'top-secret')
-  assert.equal(await vault.get('gmail.refresh-token'), 'top-secret')
-  assert.deepEqual(await vault.keys(), ['gmail.refresh-token'])
-  assert.equal((await readFile(vaultFile, 'utf8')).includes('top-secret'), false)
-  assert.equal(await vault.delete('gmail.refresh-token'), true)
-  assert.equal(await vault.get('gmail.refresh-token'), null)
+  const fresh = path.join(directory, 'fresh', 'OSAT')
+  assert.deepEqual(claimDataFolder(fresh, { now }), { folder: fresh, movedAside: null })
+  assert.match(await readFile(path.join(fresh, DATA_MARKER), 'utf8'), /ai\.mccreery\.osat/)
+  await writeFile(path.join(fresh, 'notes.json'), 'mine')
+  assert.equal(claimDataFolder(fresh, { now }).movedAside, null)
+  assert.equal(await readFile(path.join(fresh, 'notes.json'), 'utf8'), 'mine')
 
-  const unavailable = new SecretVault(path.join(directory, 'unavailable.json'), {
-    isEncryptionAvailable: () => false,
-  }, 'darwin')
-  await assert.rejects(unavailable.set('token', 'value'), /SAFE_STORAGE_UNAVAILABLE/)
-  await assert.rejects(unavailable.get('token'), /SAFE_STORAGE_UNAVAILABLE/)
+  const older = path.join(directory, 'OSAT')
+  await mkdir(older)
+  await writeFile(path.join(older, 'old.json'), 'older app')
+  await mkdir(`${older} (before 2026-09-25)`)
+  const claimed = claimDataFolder(older, { now })
+  assert.equal(claimed.movedAside, `${older} (before 2026-09-25) 2`)
+  assert.equal(await readFile(path.join(claimed.movedAside, 'old.json'), 'utf8'), 'older app')
+  assert.match(await readFile(path.join(older, DATA_MARKER), 'utf8'), /ai\.mccreery\.osat/)
 
-  const corruptFile = path.join(directory, 'corrupt.json')
-  await writeFile(corruptFile, '{not json')
-  const corrupt = new SecretVault(corruptFile, safeStorage, 'darwin')
-  await assert.rejects(corrupt.keys(), /SECRET_VAULT_CORRUPT/)
-  assert.equal(await readFile(corruptFile, 'utf8'), '{not json')
+  const empty = path.join(directory, 'empty')
+  await mkdir(empty)
+  assert.equal(claimDataFolder(empty, { now }).movedAside, null)
 })
 
-test('platform metadata uses the OSAT Field identity and its own data folder in both modes', async () => {
+test('platform metadata uses the OSAT identity and its own data folder in both modes', async () => {
   const read = (relative) => readFile(path.join(root, relative), 'utf8')
   const pkg = JSON.parse(await read('package.json'))
-  const manifest = JSON.parse(await read('public/manifest.webmanifest'))
-  const [index, main, preload, serviceWorker, registration, entitlements, modules] = await Promise.all([
+  const [index, main, preload, entitlements] = await Promise.all([
     read('index.html'),
     read('desktop/main.cjs'),
     read('desktop/preload.cjs'),
-    read('public/service-worker.js'),
-    read('public/pwa-register.js'),
     read('build/entitlements.mas.plist'),
-    read('src/lib/modules.js'),
   ])
 
-  assert.equal(pkg.name, 'nateos-prototype')
-  assert.equal(pkg.build.appId, 'ai.mccreery.osat.field')
-  assert.equal(pkg.build.productName, 'OSAT Field')
+  assert.equal(pkg.name, 'osat')
+  assert.equal(pkg.build.appId, 'ai.mccreery.osat')
+  assert.equal(pkg.build.productName, 'OSAT')
   assert.deepEqual(pkg.build.masDev, {
     entitlements: 'build/entitlements.mas.plist',
     entitlementsInherit: 'build/entitlements.mas.inherit.plist',
   })
   assert.equal(Object.keys(pkg.dependencies).some((dependency) => dependency.startsWith('@tiptap/')), false)
-  assert.equal(manifest.name, 'OSAT Field')
-  assert.equal(manifest.short_name, 'OSAT Field')
-  assert.match(index, /<title>OSAT Field<\/title>/)
-  assert.match(index, /<script type="module" src="\/pwa-register\.js\?v=2"><\/script>/)
-  assert.match(index, /worker-src 'self'/)
-  assert.match(main, /app\.setPath\('userData', path\.join\(app\.getPath\('appData'\), app\.isPackaged \? 'OSAT Field' : 'OSAT Field Preview'\)\)/)
-  assert.doesNotMatch(main, /'NateOS'/)
-  assert.doesNotMatch(main, /'OSAT V2'/)
-  assert.match(main, /app\.setName\('OSAT Field'\)/)
+  assert.match(index, /<title>OSAT<\/title>/)
+  assert.doesNotMatch(index, /manifest|pwa-register|apple-mobile-web-app/)
+  assert.match(main, /app\.isPackaged \? 'OSAT' : 'OSAT Dev'/)
+  assert.match(main, /app\.setName\('OSAT'\)/)
+  assert.doesNotMatch(main, /'NateOS'|'OSAT V2'|'OSAT Field'/)
   assert.doesNotMatch(main, /MINDMAP_URL|mccreery\.ai\/mindmap|mindmap:open/)
   assert.match(preload, /files:write-text/)
-  assert.match(preload, /osatSecrets/)
-  assert.doesNotMatch(preload, /secrets:get/)
+  assert.doesNotMatch(preload, /osatSecrets|secrets:|app:open-assistant/)
   assert.match(main, /if \(stat\.isDirectory\(\)\) \{\s+shell\.showItemInFolder\(target\)/)
-  assert.match(registration, /serviceWorker\.register\('\.\/service-worker\.js'/)
-  assert.match(serviceWorker, /osat-field-shell-v1/)
   assert.match(entitlements, /com\.apple\.security\.app-sandbox/)
   assert.match(entitlements, /com\.apple\.security\.files\.user-selected\.read-write/)
   assert.match(main, /globalShortcut\.register\(process\.platform === 'darwin' \? 'Alt\+Space'/)
   assert.match(main, /createSurfaceWindow\('quick-capture'/)
-  assert.match(main, /createSurfaceWindow\('assistant'/)
-  assert.match(preload, /quick-capture:submit/)
-  assert.match(preload, /app:open-assistant/)
-  assert.match(modules, /WORKFLOW_NAV/)
-  assert.doesNotMatch(modules, /id: "Gmail"|id: "Ideas"/)
+  assert.doesNotMatch(main, /createSurfaceWindow\('assistant'/)
+  assert.match(preload, /quick-capture:done/)
+  assert.match(preload, /store:commit-sync/)
+  assert.match(main, /requestSingleInstanceLock/)
+  assert.deepEqual(pkg.build.asarUnpack.includes('shared/**'), true)
 
   const forbiddenExpansion = ['One', 'Step', 'Atta', 'Time'].join(' ')
-  assert.equal([pkg.description, index, main, JSON.stringify(manifest)].join('\n').includes(forbiddenExpansion), false)
+  assert.equal([pkg.description, index, main].join('\n').includes(forbiddenExpansion), false)
 })

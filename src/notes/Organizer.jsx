@@ -6,11 +6,12 @@ import { Menu } from "../lib/Menu.jsx";
 import { canMoveFolder, folderSubtree, folderTree, isActiveNote, noteCounts, tagIndex } from "../notes-model.js";
 
 const SMART = [
+  ["unsorted", "Unsorted", Tray, "unsorted"],
   ["all", "All notes", Notebook, "all"],
   ["pinned", "Pinned", PushPin, "pinned"],
   ["recent", "Recent", Clock, null],
   ["daily", "Daily notes", CalendarBlank, "daily"],
-  ["unfiled", "Unfiled", Tray, "unfiled"],
+  ["unfiled", "Unfiled", Folder, "unfiled"],
   ["archived", "Archive", Archive, "archived"],
   ["trash", "Trash", Trash, "trashed"],
 ];

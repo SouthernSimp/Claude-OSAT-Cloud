@@ -6,8 +6,8 @@ import { FocusEnvironment } from '../Experience.jsx'
 import { modelLabel } from '../assistant/LocalAssistant.jsx'
 import { calendarMonthDays, localDateKey } from '../daily-practice.js'
 import { getLocalModels } from '../local-ai.js'
-import { captureThought, excerpt, isActiveNote, updateNote } from '../notes-model.js'
-import { appendNextStep, nextSteps, toggleNextStep } from '../next-steps.js'
+import { captureThought, dayNoteId, excerpt, isActiveNote, relinkRenamedNote, updateNote } from '../notes-model.js'
+import { addNextStep, nextSteps, toggleNextStep } from '../next-steps.js'
 import { inputActive, timeLabel } from '../lib/ui.js'
 import { sampleEvents, sampleFolders, sampleNotes } from './field-sample.js'
 import { FieldBanner, HomeDock, useReducedMotion } from './FieldChrome.jsx'
@@ -67,7 +67,7 @@ export function FieldDesk({
   const [greeting] = phaseCopy(phase)
   const realNotes = workspace.notes.filter(isActiveNote)
   const notes = preview ? sampleNotes() : realNotes
-  const planId = `daily-plan-${today}`
+  const planId = dayNoteId(today)
   const steps = nextSteps(notes)
     .filter((step) => !step.done || ghosts.has(step.id))
     .sort((a, b) => (b.noteId === planId) - (a.noteId === planId))
@@ -167,11 +167,11 @@ export function FieldDesk({
     } else if (mode === 'find') {
       onSearch(text)
     } else if (mode === 'step') {
-      commit((state) => ({ ...state, notes: appendNextStep(state.notes, text.replace(/\s*\n\s*/g, ' ').slice(0, 240), localDateKey()) }))
+      commit((state) => addNextStep(state, text.replace(/\s*\n\s*/g, ' ').slice(0, 240), localDateKey()))
     } else {
       let note
       commit((state) => {
-        const result = captureThought(state, text)
+        const result = captureThought(state, text, 'Home')
         note = result.note
         return result.state
       })
@@ -377,7 +377,11 @@ export function FieldDesk({
           note={sheetNote}
           preview={preview}
           onClose={closeSheet}
-          onCommit={(id, patch) => commit((state) => updateNote(state, id, patch))}
+          onCommit={(id, patch) => commit((state) => {
+            const before = state.notes.find((item) => item.id === id)
+            const next = updateNote(state, id, patch)
+            return before && patch.title !== undefined && patch.title !== before.title ? relinkRenamedNote(next, before.title, patch.title) : next
+          })}
           onKeep={onKeep}
           onOpenNotes={() => { setOpenId(null); onSheetDone?.(); navigate('Notes', { noteId: sheetNote.id }) }}
         />

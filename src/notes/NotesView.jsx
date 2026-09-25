@@ -3,8 +3,8 @@ import { FolderSimple, NotePencil, Plus, X } from "@phosphor-icons/react";
 import { localDateKey } from "../daily-practice.js";
 import { addCardsToBoard, newBoard, normalizeBoardDoc, stockFor, updateBoard } from "../board-model.js";
 import {
-  canMoveFolder, createFolder, createNote, dailyNoteFor, deleteFolder, duplicateNote, emptyTrash, isActiveNote, moveNotes, notesInList,
-  purgeNotes, resolveWikilink, restoreNotes, trashNotes, updateNote,
+  canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, emptyTrash, isActiveNote, moveNotes, notesInList,
+  keepNotes, purgeNotes, relinkRenamedNote, resolveWikilink, restoreNotes, trashNotes, updateNote,
 } from "../notes-model.js";
 import { Organizer } from "./Organizer.jsx";
 import { NoteList, useVisibleNotes } from "./NoteList.jsx";
@@ -104,8 +104,10 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         pendingFocus.current = "title";
       },
       updateNote: (id, patch) => commit((state) => updateNote(state, id, patch)),
+      relinkTitle: (oldTitle, newTitle) => commit((state) => relinkRenamedNote(state, oldTitle, newTitle)),
+      keepNotes: (ids) => commit((state) => keepNotes(state, ids)),
       moveNotes: (ids, folderId) => commit((state) => moveNotes(state, ids, folderId)),
-      setPinned: (ids, pinned) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, pinned } : note) })),
+      setPinned: (ids, pinned) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, pinned, unsorted: pinned ? false : note.unsorted } : note) })),
       setArchived: (ids, archived) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, archived, pinned: archived ? false : note.pinned } : note) })),
       trashNotes(ids) { commit((state) => trashNotes(state, ids)); setSelection(new Set()); },
       restoreNotes(ids) { commit((state) => restoreNotes(state, ids)); setSelection(new Set()); },
@@ -135,7 +137,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       },
       openToday() {
         let note;
-        commit((state) => { const result = dailyNoteFor(state, today); note = result.note; return result.state; });
+        commit((state) => { const result = ensureDayNote(state, today); note = result.note; return result.state; });
         if (note) { setUi({ list: "daily", folderId: null, query: "", tags: [] }); open(note.id); }
       },
       showOnBoard(noteId, boardId = null) {

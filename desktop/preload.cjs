@@ -12,13 +12,6 @@ contextBridge.exposeInMainWorld('nateOSFiles', Object.freeze({
   forget: (rootId) => ipcRenderer.invoke('files:forget', rootId),
 }))
 
-contextBridge.exposeInMainWorld('osatSecrets', Object.freeze({
-  status: () => ipcRenderer.invoke('secrets:status'),
-  keys: () => ipcRenderer.invoke('secrets:keys'),
-  set: (key, value) => ipcRenderer.invoke('secrets:set', key, value),
-  delete: (key) => ipcRenderer.invoke('secrets:delete', key),
-}))
-
 let streamSeq = 0
 
 contextBridge.exposeInMainWorld('osatLocalAI', Object.freeze({
@@ -42,16 +35,7 @@ contextBridge.exposeInMainWorld('osatLocalAI', Object.freeze({
 }))
 
 contextBridge.exposeInMainWorld('osatQuickCapture', Object.freeze({
-  submit: (text) => ipcRenderer.send('quick-capture:submit', text),
-  onCapture: (listener) => {
-    const handler = (_event, text) => { if (typeof text === 'string') listener(text) }
-    ipcRenderer.on('quick-capture:received', handler)
-    return () => ipcRenderer.removeListener('quick-capture:received', handler)
-  },
-}))
-
-contextBridge.exposeInMainWorld('osatWindows', Object.freeze({
-  openAssistant: () => ipcRenderer.invoke('app:open-assistant'),
+  done: () => ipcRenderer.send('quick-capture:done'),
 }))
 
 const listen = (channel, listener) => {
@@ -87,6 +71,26 @@ contextBridge.exposeInMainWorld('osatTerminal', Object.freeze({
   onExit: (listener) => listen('terminal:exit', listener),
 }))
 
+/* The workspace store in the main process. Windows send operations, never whole documents. */
+contextBridge.exposeInMainWorld('osat', Object.freeze({
+  store: Object.freeze({
+    load: () => ipcRenderer.invoke('store:load'),
+    commit: (ops) => ipcRenderer.invoke('store:commit', ops),
+    commitSync: (ops) => {
+      const result = ipcRenderer.sendSync('store:commit-sync', ops)
+      if (result?.error) throw new Error(result.error)
+      return result
+    },
+    replace: (doc) => ipcRenderer.invoke('store:replace', doc),
+    onChange: (listener) => listen('store:changed', listener),
+    onStatus: (listener) => listen('store:status', listener),
+  }),
+}))
+
 contextBridge.exposeInMainWorld('osatApp', Object.freeze({
-  onCommand: (listener) => listen('app:command', listener),
+  onCommand: (listener) => {
+    const stop = listen('app:command', listener)
+    ipcRenderer.send('app:listening')
+    return stop
+  },
 }))

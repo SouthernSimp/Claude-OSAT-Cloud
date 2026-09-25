@@ -1,9 +1,8 @@
 import { Check, DownloadSimple, Eye, FolderOpen, UploadSimple } from "@phosphor-icons/react";
 import { useState } from "react";
-import { downloadFile, makeId } from "../lib/ui.js";
+import { downloadFile } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
-import { normalizeNote } from "../osat-data.js";
-import { isVisibleNote } from "../notes-model.js";
+import { createNote, isVisibleNote } from "../notes-model.js";
 
 export function ObsidianView({ workspace, commit }) {
   const api = window.nateOSFiles;
@@ -13,13 +12,6 @@ export function ObsidianView({ workspace, commit }) {
       title: note.title,
       markdown: `# ${note.title}\n\n${note.markdown}`,
     })),
-    ...workspace.records
-      .filter((record) => record.type === "capture")
-      .map((record) => ({
-        id: `capture:${record.id}`,
-        title: record.title,
-        markdown: `# ${record.title}\n\n${record.summary || ""}\n\n_Source: ${record.source}_`,
-      })),
   ];
   const [chosen, setChosen] = useState([]);
   const [reviewed, setReviewed] = useState(false);
@@ -121,39 +113,7 @@ export function ObsidianView({ workspace, commit }) {
         .split("\n")
         .find((line) => line.trim())
         ?.replace(/^#+\s*/, "") || incoming.name.replace(/\.(md|markdown)$/i, "");
-    const note = normalizeNote({
-      id: makeId("note"),
-      title,
-      markdown: incoming.content,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    commit((state) => {
-      const nodeId = `note-${note.id}`,
-        index = state.mindmap.nodes.length;
-      return {
-        ...state,
-        notes: [note, ...state.notes],
-        mindmap: {
-          ...state.mindmap,
-          nodes: [
-            ...state.mindmap.nodes,
-            { id: nodeId, entityType: "note", entityId: note.id },
-          ],
-          geometry: {
-            ...state.mindmap.geometry,
-            [nodeId]: {
-              x: 80 + (index % 4) * 260,
-              y: 70 + Math.floor(index / 4) * 210,
-              w: 224,
-              h: 164,
-              color: "paper",
-              rot: 0,
-            },
-          },
-        },
-      };
-    });
+    commit((state) => createNote(state, { title, markdown: incoming.content, unsorted: true, source: "Obsidian" }).state);
     setIncoming(null);
     setImportApproved(false);
     setStatus(`Imported ${incoming.name} as an editable note.`);

@@ -11,19 +11,15 @@ import {
 
 const workspaceWith = (notes, folders = [], sorter) => normalizeWorkspace({ ...createDefaultWorkspace(), notes, folders, sorter })
 
-test('a V1 sorter document migrates: text dropped from cards, hidden ids move to the desk board', () => {
-  const state = workspaceWith(
-    [{ id: 'n1', title: 'Keep', markdown: 'Original' }, { id: 'n2', title: 'Hidden', markdown: 'Not on the board' }],
-    [],
-    { schema: 1, activeId: 'osat-board', hiddenNoteIds: ['n2'], boards: [{ id: 'osat-board', name: 'My notes', notes: [{ id: 'n1', text: 'Original', x: 40, y: 60, w: 224, h: 180, color: 'sand' }], links: [], views: [], tagColors: {}, cam: { x: 1, y: 2, z: 1 } }] },
-  )
-  const board = state.sorter.boards[0]
-  assert.equal(state.sorter.schema, 2)
-  assert.deepEqual(board.scope, { kind: 'all', folderId: null })
-  assert.deepEqual(board.notes.map((card) => card.id), ['n1'])
-  assert.equal('text' in board.notes[0], false)
-  assert.equal(board.notes[0].color, 'apricot')
-  assert.deepEqual(board.hidden, ['n2'])
+test('keeping boards in step does nothing when nothing changed, so typing never rewrites boards', () => {
+  const state = workspaceWith([{ id: 'a', title: 'A', markdown: 'one' }, { id: 'b', title: 'B', markdown: 'two' }])
+  assert.equal(reconcileBoards(state), state.sorter)
+  const typed = { ...state, notes: state.notes.map((note) => note.id === 'a' ? { ...note, markdown: 'one!' } : note) }
+  assert.equal(reconcileBoards(typed), state.sorter)
+  const added = { ...state, notes: [...state.notes, { id: 'c', title: 'C', markdown: 'three', createdAt: '2026-09-25T00:00:00Z' }] }
+  const next = reconcileBoards(added)
+  assert.notEqual(next, state.sorter)
+  assert.deepEqual(next.boards[0].notes.map((card) => card.id).sort(), ['a', 'b', 'c'])
 })
 
 test('auto boards follow Notes: new notes appear, archived and trashed notes leave, manual boards keep their cards', () => {

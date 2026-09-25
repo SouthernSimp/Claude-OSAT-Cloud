@@ -3,11 +3,9 @@ dist/
 release/
 work/
 .vite/
-.vite-osat-home/
-.vite-osat-field/
-.design-backups/
 .DS_Store
 *.log
 .env
 .env.*
 !.env.example
+test-results/

@@ -3,7 +3,8 @@
    strip it from the visible reply and surface each entry as a card the user
    approves. Nothing is ever applied without an explicit click. */
 
-import { appendNextStep } from '../next-steps.js'
+import { addNextStep } from '../next-steps.js'
+import { captureThought } from '../notes-model.js'
 import { normalizeNote } from '../osat-data.js'
 import { makeId } from '../lib/ui.js'
 
@@ -32,7 +33,7 @@ When — and only when — the person clearly asks you to add, create, schedule 
 Allowed types:
 - {"type":"next-step","text":"..."} — one actionable step
 - {"type":"note","title":"...","markdown":"..."} — a new note
-- {"type":"capture","text":"..."} — a raw thought for the inbox
+- {"type":"capture","text":"..."} — a raw thought to sort later (it lands in Unsorted)
 - {"type":"event","title":"...","start":"YYYY-MM-DDTHH:MM","end":"YYYY-MM-DDTHH:MM"} — a calendar event
 
 Never invent actions the person did not ask for. Never mention this block in your prose; they see it as buttons. If nothing is requested, omit the block entirely.`
@@ -93,7 +94,7 @@ export function extractActions(reply) {
 
 export function describeAction(action) {
   if (action.type === 'next-step') return { label: 'Add next step', detail: action.text }
-  if (action.type === 'capture') return { label: 'Save to Inbox', detail: action.text }
+  if (action.type === 'capture') return { label: 'Save to Unsorted', detail: action.text }
   if (action.type === 'note') return { label: 'Create note', detail: action.title }
   return {
     label: 'Add event',
@@ -110,20 +111,10 @@ export function describeAction(action) {
 /* Pure: returns the next workspace with the action applied. */
 export function applyAction(state, action, today) {
   if (action.type === 'next-step') {
-    return { ...state, notes: appendNextStep(state.notes, action.text, today) }
+    return addNextStep(state, action.text, today)
   }
   if (action.type === 'capture') {
-    const capture = {
-      id: makeId('capture'),
-      title: action.text,
-      summary: action.text,
-      source: 'Local AI',
-      createdAt: new Date().toISOString(),
-      type: 'capture',
-      status: 'inbox',
-      bookmarked: false,
-    }
-    return { ...state, capture, records: [capture, ...state.records] }
+    return captureThought(state, action.text, 'Local AI').state
   }
   if (action.type === 'note') {
     const note = normalizeNote({

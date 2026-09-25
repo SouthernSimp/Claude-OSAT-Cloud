@@ -17,6 +17,7 @@ const MODES = [["write", "Write"], ["split", "Split"], ["read", "Read"]];
 
 export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
   const textareaRef = useRef(null);
+  const titleAtFocus = useRef(null);
   const [complete, setComplete] = useState(null); // { context, items, cursor, top, left }
   const [pendingSelection, setPendingSelection] = useState(null);
   const trashed = Boolean(note.trashedAt);
@@ -203,6 +204,8 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             placeholder="Untitled note"
             readOnly={trashed}
             onChange={(event) => actions.updateNote(note.id, { title: event.target.value })}
+            onFocus={() => { titleAtFocus.current = note.title; }}
+            onBlur={() => { if (titleAtFocus.current !== null && titleAtFocus.current !== note.title) actions.relinkTitle(titleAtFocus.current, note.title); titleAtFocus.current = null; }}
             onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); textareaRef.current?.focus(); } }}
           />
           <div className="note-tags-row">
@@ -311,7 +314,6 @@ function NoteInspector({ workspace, note, actions, tasks, boards, textareaRef })
   const incoming = backlinks(workspace.notes, note);
   const outgoing = outgoingLinks(workspace.notes, note);
   const created = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(note.createdAt));
-  const sourceCapture = note.originCaptureId ? workspace.records.find((record) => record.id === note.originCaptureId) : null;
   function jumpTo(line) {
     const element = textareaRef.current;
     if (element) {
@@ -333,7 +335,7 @@ function NoteInspector({ workspace, note, actions, tasks, boards, textareaRef })
           <dt>Edited</dt><dd>{formatRelativeTime(note.updatedAt)}</dd>
           <dt>Words</dt><dd>{wordCount(note.markdown)}</dd>
           {tasks.total > 0 && <><dt>Next steps</dt><dd>{tasks.done} of {tasks.total} done</dd></>}
-          {sourceCapture && <><dt>Source</dt><dd>Inbox capture</dd></>}
+          {note.source && <><dt>Came from</dt><dd>{note.source}</dd></>}
         </dl>
       </section>
       {headings.length > 1 && (

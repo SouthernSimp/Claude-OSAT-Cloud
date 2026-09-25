@@ -1,0 +1,64 @@
+{
+  "hash": "d2df9f63",
+  "configHash": "2ee82f43",
+  "lockfileHash": "4fde9fc0",
+  "browserHash": "49f96ead",
+  "optimized": {
+    "react": {
+      "src": "../../../Projects/NateOS/Apps/NateOS-Prototype/node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "1d072f07",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../../Projects/NateOS/Apps/NateOS-Prototype/node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "62ae83d3",
+      "needsInterop": true
+    },
+    "react/jsx-runtime": {
+      "src": "../../../Projects/NateOS/Apps/NateOS-Prototype/node_modules/react/jsx-runtime.js",
+      "file": "react_jsx-runtime.js",
+      "fileHash": "af07c37e",
+      "needsInterop": true
+    },
+    "react/jsx-dev-runtime": {
+      "src": "../../../Projects/NateOS/Apps/NateOS-Prototype/node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "28297486",
+      "needsInterop": true
+    },
+    "@phosphor-icons/react": {
+      "src": "../../../Projects/NateOS/Apps/NateOS-Prototype/node_modules/@phosphor-icons/react/dist/index.es.js",
+      "file": "@phosphor-icons_react.js",
+      "fileHash": "28b69222",
+      "needsInterop": false
+    },
+    "react-dom": {
+      "src": "../../../Projects/NateOS/Apps/NateOS-Prototype/node_modules/react-dom/index.js",
+      "file": "react-dom.js",
+      "fileHash": "3490f875",
+      "needsInterop": true
+    },
+    "@xterm/xterm": {
+      "src": "../../node_modules/@xterm/xterm/lib/xterm.js",
+      "file": "@xterm_xterm.js",
+      "fileHash": "ec023570",
+      "needsInterop": true
+    },
+    "@xterm/addon-fit": {
+      "src": "../../node_modules/@xterm/addon-fit/lib/addon-fit.js",
+      "file": "@xterm_addon-fit.js",
+      "fileHash": "3c441cc1",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-NZQJAUJ4": {
+      "file": "chunk-NZQJAUJ4.js"
+    },
+    "chunk-G3PMV62Z": {
+      "file": "chunk-G3PMV62Z.js"
+    }
+  }
+}

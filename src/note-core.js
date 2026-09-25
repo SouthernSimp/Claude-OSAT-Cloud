@@ -19,9 +19,11 @@ export function parseTags(text) {
   return tags
 }
 
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/
+
 export function normalizeNote(value, index = 0) {
   if (!isObject(value)) return null
-  const markdown = cleanString(value.markdown, cleanString(value.text, cleanString(value.body)))
+  const markdown = cleanString(value.markdown)
   const title = cleanString(value.title, markdown.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '') || 'Untitled note')
   const stamp = new Date(Date.now() + index).toISOString()
   return {
@@ -29,12 +31,17 @@ export function normalizeNote(value, index = 0) {
     title,
     markdown,
     tags: [...new Set([...(Array.isArray(value.tags) ? value.tags.filter((tag) => typeof tag === 'string').map((tag) => tag.toLowerCase()) : []), ...parseTags(`${title}\n${markdown}`)])],
-    createdAt: cleanString(value.createdAt, cleanString(value.created, stamp)),
-    updatedAt: cleanString(value.updatedAt, cleanString(value.updated, stamp)),
+    createdAt: cleanString(value.createdAt, stamp),
+    updatedAt: cleanString(value.updatedAt, stamp),
     folderId: cleanString(value.folderId) || null,
-    originCaptureId: cleanString(value.originCaptureId) || null,
     pinned: Boolean(value.pinned),
     archived: Boolean(value.archived),
     trashedAt: cleanString(value.trashedAt) || null,
+    // A thought that arrived without a home (overlay, quick capture, AI, a clip) until it is sorted.
+    unsorted: value.unsorted === true,
+    source: cleanString(value.source) || null,
+    // The one note per day: its journal page and that day's next steps.
+    kind: value.kind === 'day' && DATE_KEY.test(value.date) ? 'day' : null,
+    date: value.kind === 'day' && DATE_KEY.test(value.date) ? value.date : null,
   }
 }

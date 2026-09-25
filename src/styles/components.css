@@ -304,14 +304,6 @@ input[type="radio"] {
   color: var(--caution);
 }
 
-.tag-chip {
-  padding: 2px var(--s-2);
-  border: 1px solid var(--line);
-  border-radius: var(--r-full);
-  color: var(--muted);
-  font-size: var(--t-2xs);
-}
-
 /* ---- Dialogs ---------------------------------------------------------- */
 
 .modal-backdrop {
@@ -452,9 +444,6 @@ input[type="radio"] {
 .quick-saved { min-height:210px; display:grid; place-items:center; align-content:center; gap:8px; color:var(--muted); }
 .quick-saved svg { width:28px; height:28px; color:var(--positive); }
 .quick-saved strong { color:var(--ink); font-size:var(--t-xl); }
-.quick-loading { color:var(--muted); }
-.assistant-popout { height:100dvh; padding-top:28px; background:var(--page); }
-.assistant-popout .assistant { height:100%; border-top:1px solid var(--line); }
 
 /* ---- Command palette --------------------------------------------------- */
 
@@ -552,13 +541,6 @@ input[type="radio"] {
 .command-palette > div button:hover svg,
 .command-palette > div button[data-active="true"] svg {
   color: var(--accent);
-}
-
-.command-empty {
-  padding: var(--s-8) var(--s-4);
-  color: var(--muted);
-  font-size: var(--t-sm);
-  text-align: center;
 }
 
 /* ---- Empty states ------------------------------------------------------ */
