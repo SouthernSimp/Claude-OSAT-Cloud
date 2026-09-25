@@ -7,7 +7,7 @@ import { modelLabel } from '../assistant/LocalAssistant.jsx'
 import { calendarMonthDays, localDateKey } from '../daily-practice.js'
 import { getLocalModels } from '../local-ai.js'
 import { captureThought, dayNoteId, excerpt, isActiveNote, relinkRenamedNote, updateNote, wikilinkPairs } from '../notes-model.js'
-import { addNextStep, nextSteps, toggleNextStep } from '../next-steps.js'
+import { addNextStep, bringForward, earlierSteps, nextSteps, toggleNextStep } from '../next-steps.js'
 import { clamp, inputActive, timeLabel } from '../lib/ui.js'
 import { sampleEvents, sampleFolders, sampleNotes } from './field-sample.js'
 import { FieldBanner, useReducedMotion } from './FieldChrome.jsx'
@@ -74,8 +74,11 @@ export function FieldDesk({
   const realNotes = workspace.notes.filter(isActiveNote)
   const notes = preview ? sampleNotes() : realNotes
   const planId = dayNoteId(today)
+  // Steps left on earlier daily pages wait to be brought forward, not piled on here.
+  const earlier = earlierSteps(notes, today)
+  const earlierIds = new Set(earlier.map((step) => step.id))
   const steps = nextSteps(notes)
-    .filter((step) => !step.done || ghosts.has(step.id))
+    .filter((step) => (!step.done || ghosts.has(step.id)) && !earlierIds.has(step.id))
     .sort((a, b) => (b.noteId === planId) - (a.noteId === planId))
   const openCount = steps.filter((step) => !step.done).length
   const allEvents = preview ? sampleEvents() : workspace.calendar.events
@@ -362,7 +365,7 @@ export function FieldDesk({
           <h2 id="widget-next" tabIndex={-1} className="widget-kicker">Next <small>{openCount ? `${openCount} open` : ''}</small></h2>
           {steps.length ? (
             <ul>
-              {steps.slice(0, 4).map((step) => (
+              {steps.slice(0, 5).map((step) => (
                 <li key={step.id} className={step.done ? 'is-done' : ''}>
                   <button type="button" className="ring" aria-label={`Complete ${step.text}`} aria-pressed={step.done} disabled={preview} onClick={() => toggleStep(step)} />
                   <button type="button" className="step-text" onClick={() => openNote(step.noteId)}>{step.text}</button>
@@ -370,6 +373,16 @@ export function FieldDesk({
               ))}
             </ul>
           ) : <p className="widget-empty">Nothing waiting. Choose Next step to add one.</p>}
+          {(steps.length > 5 || (earlier.length > 0 && !preview)) && (
+            <div className="widget-next-foot">
+              {steps.length > 5 && <button type="button" onClick={() => navigate('Journal')}>{steps.length - 5} more on today’s page</button>}
+              {earlier.length > 0 && !preview && (
+                <button type="button" className="bring" onClick={() => commit((state) => bringForward(state, localDateKey()))}>
+                  Bring {earlier.length} from earlier days
+                </button>
+              )}
+            </div>
+          )}
         </section>
         {media && <MediaWidget media={media} visit={visit} move={movable('widget:media')} />}
       </aside>

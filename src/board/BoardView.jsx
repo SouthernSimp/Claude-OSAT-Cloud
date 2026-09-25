@@ -316,10 +316,20 @@ export function BoardView({ workspace, commit, navigate, boardTarget }) {
   const openInNotes = (id) => navigate("Notes", id);
   const trashSelected = () => {
     const ids = [...latest.current.selection];
-    if (!ids.length || !confirm(ids.length === 1 ? "Move this note to the Trash? It leaves every board." : `Move ${ids.length} notes to the Trash?`)) return;
+    if (!ids.length) return;
+    // Nothing is lost: no question first, and Undo puts the notes and their cards back.
+    const chosen = new Set(ids);
+    const pinned = new Set(ids.filter((id) => latest.current.notesById.get(id)?.pinned));
+    pushUndo();
     commit((state) => trashNotes(state, ids));
     setSelection(new Set());
-    showToast(ids.length === 1 ? "Note moved to Trash" : `${ids.length} notes moved to Trash`);
+    showToast(ids.length === 1 ? "Note moved to Trash" : `${ids.length} notes moved to Trash`, {
+      label: "Undo",
+      run: () => {
+        commit((state) => ({ ...state, notes: state.notes.map((note) => chosen.has(note.id) ? { ...note, trashedAt: null, pinned: pinned.has(note.id) } : note) }));
+        undo();
+      },
+    });
   };
 
   const placeNear = (w, h) => {

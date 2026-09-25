@@ -48,3 +48,27 @@ export function addNextStep(state, text, dateKey) {
   if (typeof text !== 'string' || !text.trim() || /[\r\n]/.test(text) || typeof dateKey !== 'string' || !dateKey) return state
   return appendToDay(state, dateKey, `- [ ] ${text.trim()}`)
 }
+
+/* Unfinished steps on earlier daily pages. */
+export function earlierSteps(notes, dateKey) {
+  const earlier = (Array.isArray(notes) ? notes : []).filter((note) => note?.kind === 'day' && typeof note.date === 'string' && note.date < dateKey && !note.trashedAt)
+  return nextSteps(earlier).filter((step) => !step.done)
+}
+
+/* Moves those steps onto today's page: they leave the old page and land on
+   today's, in the order they were written. Nothing is lost or duplicated. */
+export function bringForward(state, dateKey, now = new Date().toISOString()) {
+  const steps = earlierSteps(state.notes, dateKey)
+  if (!steps.length) return state
+  const drop = new Map()
+  for (const step of steps) drop.set(step.noteId, new Set([...(drop.get(step.noteId) || []), step.line]))
+  const cleaned = {
+    ...state,
+    notes: state.notes.map((note) => {
+      const lines = drop.get(note.id)
+      if (!lines) return note
+      return { ...note, markdown: note.markdown.split('\n').filter((_, index) => !lines.has(index + 1)).join('\n'), updatedAt: now }
+    }),
+  }
+  return steps.reduce((current, step) => appendToDay(current, dateKey, `- [ ] ${step.text}`), cleaned)
+}

@@ -44,3 +44,17 @@ test('a step added to a trashed day brings the page back', () => {
   assert.equal(next.archived, false)
   assert.ok(nextSteps([next]).some((step) => step.text === 'Water the plants'))
 })
+
+test('unfinished steps from earlier days move to today, once, and done ones stay put', async () => {
+  const { bringForward, earlierSteps, nextSteps } = await import('../src/next-steps.js')
+  const day = (date, markdown) => ({ id: `day-${date}`, kind: 'day', date, title: date, markdown, tags: [], updatedAt: '2026-09-20T00:00:00Z' })
+  const state = { notes: [day('2026-09-23', '- [ ] Call Sam\n- [x] Water plants\nA thought'), day('2026-09-24', '- [ ] Book dentist'), day('2026-09-25', '- [ ] Today thing'), { id: 'n', title: 'Project', markdown: '- [ ] Not a day', tags: [] }] }
+  assert.deepEqual(earlierSteps(state.notes, '2026-09-25').map((step) => step.text), ['Call Sam', 'Book dentist'])
+  const next = bringForward(state, '2026-09-25')
+  const today = next.notes.find((note) => note.id === 'day-2026-09-25')
+  assert.equal(today.markdown, '- [ ] Today thing\n- [ ] Call Sam\n- [ ] Book dentist')
+  assert.equal(next.notes.find((note) => note.id === 'day-2026-09-23').markdown, '- [x] Water plants\nA thought')
+  assert.equal(earlierSteps(next.notes, '2026-09-25').length, 0)
+  assert.equal(nextSteps(next.notes).filter((step) => step.text === 'Call Sam').length, 1)
+  assert.equal(bringForward(next, '2026-09-25'), next)
+})
