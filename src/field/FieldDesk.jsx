@@ -10,7 +10,7 @@ import { captureThought, dayNoteId, excerpt, isActiveNote, relinkRenamedNote, up
 import { addNextStep, nextSteps, toggleNextStep } from '../next-steps.js'
 import { clamp, inputActive, timeLabel } from '../lib/ui.js'
 import { sampleEvents, sampleFolders, sampleNotes } from './field-sample.js'
-import { FieldBanner, HomeDock, useReducedMotion } from './FieldChrome.jsx'
+import { FieldBanner, useReducedMotion } from './FieldChrome.jsx'
 import { FieldSheet } from './FieldSheet.jsx'
 import { dayPhase, fitCells, homeItems, paperFields, phaseCopy } from './field-model.js'
 import { MediaWidget } from './MediaWidget.jsx'
@@ -44,7 +44,7 @@ function readIconsCollapsed() {
    layer, widgets and icons can be picked up and set down anywhere (`places`). */
 export function FieldDesk({
   workspace, commit, navigate, preview, sampled, onKeep, onBlank, onRemove, sheet, onSheetDone,
-  storage, onSearch, onCapture, onTheme, wallpaper, onWallpaper, layer = false, dock, onOpenNote, visit, places = {}, onPlace, media,
+  storage, onSearch, wallpaper, focusAt, layer = false, dock, onOpenNote, visit, places = {}, onPlace, media,
 }) {
   const home = useRef(null)
   const justMoved = useRef(false)
@@ -104,6 +104,10 @@ export function FieldDesk({
     setMode('note')
     box.current?.focus()
   }, [visit])
+
+  useEffect(() => {
+    if (focusAt) setFocusOpen(true)
+  }, [focusAt])
 
   useEffect(() => {
     if (!sheet?.id) return
@@ -435,17 +439,7 @@ export function FieldDesk({
         {placedItems.map(renderIcon)}
       </nav>
 
-      {dock || <HomeDock
-        navigate={navigate}
-        storage={storage}
-        aiReady={ai.state === 'ready'}
-        onSearch={() => onSearch('')}
-        onCapture={onCapture}
-        onTheme={onTheme}
-        onFocus={() => setFocusOpen(true)}
-        wallpaper={wallpaper}
-        onWallpaper={onWallpaper}
-      />}
+      {dock}
 
       {sheetNote && (
         <FieldSheet

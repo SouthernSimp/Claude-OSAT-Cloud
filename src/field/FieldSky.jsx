@@ -214,7 +214,7 @@ export function FieldSky({
   return (
     <div className="field-sky">
       <div
-        className="sky-viewport"
+        className="sky-viewport lit"
         ref={viewport}
         onPointerDown={panFrom}
       >

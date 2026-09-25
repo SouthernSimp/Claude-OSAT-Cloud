@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Database, Plus, X } from "@phosphor-icons/react";
 
+
 import { LocalAssistant } from "./assistant/LocalAssistant.jsx";
-import { FieldTopbar } from "./field/FieldChrome.jsx";
 import { BrowserView } from "./tools/Browser.jsx";
 import { TerminalView } from "./tools/Terminal.jsx";
 import { FieldDesk } from "./field/FieldDesk.jsx";
@@ -32,25 +32,19 @@ import { storageFrom, useWorkspace } from "./store/useWorkspace.js";
 import { OverlaySurface } from "./surfaces/Overlay.jsx";
 import { inputActive } from "./lib/ui.js";
 import { useFocusTrap } from "./lib/use-focus-trap.js";
-import { DATE_LABEL } from "./lib/modules.js";
+import { SETTINGS, spaceFor, spaceForKey, titleFor } from "./lib/spaces.js";
+import { GlassDefs, useAlive } from "./shell/glass.jsx";
+import { Dock, RoomSheet } from "./shell/Shell.jsx";
 
-const FILLED_VIEWS = new Set(["Mindmap", "Assistant", "Notes", "Calendar", "Today", "Sky", "Browser", "Terminal"]);
-const ROOM_KEYS = { 1: "Today", 2: "Notes", 3: "Mindmap", 4: "Journal", 5: "Calendar", 6: "Assistant", 7: "Browser", 8: "Terminal" };
-const WALL_KEY = "osat.home.wallpaper.v1";
-
-function readWallpaper() {
-  try {
-    return localStorage.getItem(WALL_KEY) === "moss" ? "moss" : "lake";
-  } catch {
-    return "lake";
-  }
-}
+const FILLED_VIEWS = new Set(["Mindmap", "Assistant", "Notes", "Calendar", "Sky", "Browser", "Terminal"]);
 
 function WorkspaceApp() {
   const { workspace, status, commit, ready } = useWorkspace();
   const hydrated = Boolean(ready && workspace);
   const storage = storageFrom(status, hydrated);
   const [view, setView] = useState("Today");
+  const [closing, setClosing] = useState(false);
+  const [origin, setOrigin] = useState(null);
   const [notesTarget, setNotesTarget] = useState(null);
   const [boardTarget, setBoardTarget] = useState(null);
   const [calendarTarget, setCalendarTarget] = useState(null);
@@ -58,22 +52,28 @@ function WorkspaceApp() {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
-  const [wallpaper, setWallpaper] = useState(readWallpaper);
   const [roomCommand, setRoomCommand] = useState(null);
   const [sampleHidden, setSampleHidden] = useState(() => localStorage.getItem(BLANK_KEY) === "1");
   const [deskSheet, setDeskSheet] = useState(null);
+  const [focusAt, setFocusAt] = useState(0);
   const [draft, setDraft] = useState("");
   const modalRef = useRef(null);
-  const titleRef = useRef(null);
-  const previousView = useRef(view);
+  const pointer = useRef({ x: 0, y: 0, at: 0 });
   const today = localDateKey();
   const closeCapture = useCallback(() => setCaptureOpen(false), []);
   const closeCommands = useCallback(() => setCommandOpen(false), []);
   useFocusTrap(modalRef, captureOpen, closeCapture);
+  useAlive();
+
+  /* Sheets grow out of the point you clicked, so remember it. */
+  useEffect(() => {
+    const down = (event) => { pointer.current = { x: event.clientX, y: event.clientY, at: Date.now() }; };
+    addEventListener("pointerdown", down, true);
+    return () => removeEventListener("pointerdown", down, true);
+  }, []);
 
   useEffect(() => {
-    if (previousView.current !== view) titleRef.current?.focus();
-    previousView.current = view;
+    if (view !== "Today") document.querySelector(".sheet-title")?.focus({ preventScroll: true });
   }, [view]);
 
   /* The Mac menu bar and Dock menu send commands here, through the same navigate(). */
@@ -87,56 +87,90 @@ function WorkspaceApp() {
 
   useEffect(() => {
     const keydown = (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      const mod = event.metaKey || event.ctrlKey;
+      if (mod && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setCommandQuery("");
         setCommandOpen((open) => !open);
+        return;
       }
-      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && ROOM_KEYS[event.key]) {
+      if (mod && !event.shiftKey && !event.altKey && spaceForKey(event.key)) {
         event.preventDefault();
-        navigate(ROOM_KEYS[event.key]);
+        latest.current?.navigate(spaceForKey(event.key));
+        return;
       }
-      if (
-        !event.metaKey &&
-        !event.ctrlKey &&
-        event.key.toLowerCase() === "n" &&
-        !inputActive() &&
-        view !== "Mindmap" &&
-        view !== "Notes" &&
-        view !== "Today" &&
-        view !== "Sky"
-      ) {
+      if (mod && event.key === ",") {
         event.preventDefault();
-        setCaptureOpen(true);
+        latest.current?.navigate(SETTINGS.id);
+        return;
       }
-      if (event.key === "Escape") setCommandOpen(false);
-    };
-    addEventListener("keydown", keydown);
-    return () => removeEventListener("keydown", keydown);
-  }, [view]);
-
-  function navigate(next, detail = null) {
-    const go = () => {
-      if (next === "Notes") setNotesTarget(detail ? { ...(typeof detail === "string" ? { noteId: detail } : detail), at: Date.now() } : null);
-      if (next === "Mindmap") setBoardTarget(detail && typeof detail === "object" ? { ...detail, at: Date.now() } : null);
-      if (next === "Calendar") setCalendarTarget(detail?.date || null);
-      if (next === "Today" && detail && typeof detail === "object" && typeof detail.noteId === "string") {
-        setDeskSheet({ id: detail.noteId, at: Date.now() });
-      }
-      if (next === "Assistant") setAssistantTarget(typeof detail?.prompt === "string" ? { prompt: detail.prompt, at: Date.now() } : null);
-      setCommandOpen(false);
-      if (next === "Capture") {
+      if (mod && event.shiftKey && event.key.toLowerCase() === "n") {
+        event.preventDefault();
         setCaptureOpen(true);
         return;
       }
-      setView(next);
+      if (!mod && event.key.toLowerCase() === "n" && !inputActive() && !["Mindmap", "Notes", "Today", "Sky", "Terminal"].includes(view)) {
+        event.preventDefault();
+        setCaptureOpen(true);
+        return;
+      }
+      // Esc backs out one step: out of a field, then out of the room, back to the desk.
+      if (event.key === "Escape" && !event.defaultPrevented && view !== "Today" && !commandOpen && !captureOpen) {
+        const active = document.activeElement;
+        if (active?.closest?.(".xterm, .browser-view")) return;
+        if (inputActive()) { active.blur(); return; }
+        latest.current?.navigate("Today");
+      }
     };
-    // Changing rooms cross-fades and the tab pill glides; reduced motion just swaps.
-    if (next === "Capture" || next === view || !document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) go();
-    else {
-      document.documentElement.dataset.vt = "room";
-      document.startViewTransition(() => flushSync(go)).finished.finally(() => { delete document.documentElement.dataset.vt; });
+    addEventListener("keydown", keydown);
+    return () => removeEventListener("keydown", keydown);
+  }, [view, commandOpen, captureOpen]);
+
+  function originFor(next) {
+    const recent = Date.now() - pointer.current.at < 700;
+    if (recent) return { x: pointer.current.x, y: pointer.current.y };
+    const id = spaceFor(next)?.id;
+    const button = document.querySelector(`.app-dock [data-space="${id}"]`) || document.querySelector('.app-dock [data-space="tools"]');
+    const box = button?.getBoundingClientRect();
+    return box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : { x: innerWidth / 2, y: innerHeight };
+  }
+
+  function navigate(next, detail = null) {
+    if (next === "Capture") {
+      setCaptureOpen(true);
+      return;
     }
+    if (next === "Notes") setNotesTarget(detail ? { ...(typeof detail === "string" ? { noteId: detail } : detail), at: Date.now() } : null);
+    if (next === "Mindmap") setBoardTarget(detail && typeof detail === "object" ? { ...detail, at: Date.now() } : null);
+    if (next === "Calendar") setCalendarTarget(detail?.date || null);
+    if (next === "Today" && detail && typeof detail === "object" && typeof detail.noteId === "string") setDeskSheet({ id: detail.noteId, at: Date.now() });
+    if (next === "Assistant") setAssistantTarget(typeof detail?.prompt === "string" ? { prompt: detail.prompt, at: Date.now() } : null);
+    setCommandOpen(false);
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Back to the desk: the sheet sinks into its place in the dock.
+    if (next === "Today") {
+      if (view === "Today") return;
+      if (reduced) { setView("Today"); return; }
+      const button = document.querySelector(`.app-dock [data-space="${spaceFor(view)?.id}"]`) || document.querySelector('.app-dock [data-space="tools"]');
+      const box = button?.getBoundingClientRect();
+      if (box) setOrigin({ x: box.left + box.width / 2, y: box.top + box.height / 2 });
+      setClosing(true);
+      return;
+    }
+    // From the desk: the room rises out of what you clicked.
+    if (view === "Today" || closing) {
+      setClosing(false);
+      setOrigin(originFor(next));
+      setView(next);
+      return;
+    }
+    if (next === view) return;
+    // Room to room: the page inside the sheet changes; Board and Sky zoom into each other.
+    if (reduced || !document.startViewTransition) { setView(next); return; }
+    const kind = view === "Mindmap" && next === "Sky" ? "zoom-out" : view === "Sky" && next === "Mindmap" ? "zoom-in" : "room";
+    document.documentElement.dataset.vt = kind;
+    document.startViewTransition(() => flushSync(() => setView(next))).finished.finally(() => { delete document.documentElement.dataset.vt; });
   }
   function saveCaptureText(value, source = "Private note", openInbox = false) {
     const title = String(value || "").trim();
@@ -178,7 +212,7 @@ function WorkspaceApp() {
     setSampleHidden(false);
     if (typeof noteId === "string") {
       setDeskSheet({ id: noteId, at: Date.now() });
-      setView("Today");
+      navigate("Today");
     }
   };
   const hideSample = () => {
@@ -194,41 +228,15 @@ function WorkspaceApp() {
     setCommandQuery(query);
     setCommandOpen(true);
   };
-  const chooseWallpaper = (value) => {
-    setWallpaper(value);
-    try { localStorage.setItem(WALL_KEY, value); } catch { /* a convenience only */ }
-  };
   latest.current = { navigate, openCommands };
-  const toggleTheme = () => commit((state) => ({ ...state, theme: document.documentElement.dataset.theme === "dark" ? "light" : "dark" }));
+  const open = view !== "Today";
+  const wallpaper = workspace.settings?.wallpaper === "moss" ? "moss" : "lake";
+
   return (
     <main className="app-shell field-app">
-      <section
-        className={`workspace ${view === "Today" ? "is-home" : ""}`}
-        aria-label="OSAT workspace"
-        inert={captureOpen || commandOpen || undefined}
-      >
-        {view !== "Today" && (
-          <FieldTopbar
-            view={view}
-            navigate={navigate}
-            storage={storage}
-            onCommands={() => openCommands()}
-            onCapture={() => setCaptureOpen(true)}
-            onTheme={toggleTheme}
-          />
-        )}
-        <div className={`workspace-content ${FILLED_VIEWS.has(view) ? "is-filled" : ""}`} data-view={view}>
-        {!FILLED_VIEWS.has(view) && !["Today", "Sky", "Reflection", "Budget", "Journal", "Files"].includes(view) && (
-          <header className="page-heading">
-            <div>
-              <h1 ref={titleRef} tabIndex="-1">
-                {({ Assistant: "Local AI", Inbox: "Unsorted", Budget: "Money" })[view] || view}
-              </h1>
-            </div>
-            <p>{DATE_LABEL}</p>
-          </header>
-        )}
-        {view === "Today" && (
+      <GlassDefs />
+      <section className={`workspace is-home ${open && !closing ? "has-sheet" : ""}`} aria-label="OSAT workspace" inert={captureOpen || commandOpen || undefined}>
+        <div className="workspace-content is-filled desk-layer" data-view="Today" inert={open && !closing ? true : undefined}>
           <FieldDesk
             {...common}
             {...room}
@@ -237,36 +245,59 @@ function WorkspaceApp() {
             onSheetDone={() => setDeskSheet(null)}
             storage={storage}
             onSearch={openCommands}
-            onCapture={() => setCaptureOpen(true)}
-            onTheme={toggleTheme}
             wallpaper={wallpaper}
-            onWallpaper={chooseWallpaper}
+            focusAt={focusAt}
+            dock={<span className="dock-slot" aria-hidden="true" />}
           />
-        )}
-        {view === "Sky" && <FieldSky {...common} {...room} />}
-        {view === "Assistant" && <LocalAssistant {...common} initialPrompt={assistantTarget} />}
-        {view === "Browser" && <BrowserView {...common} covered={captureOpen || commandOpen} command={roomCommand} />}
-        {view === "Terminal" && <TerminalView command={roomCommand} />}
-        {view === "Inbox" && <InboxView {...common} />}
-        {view === "Notes" && <NotesView {...common} target={notesTarget} today={today} />}
-        {view === "Mindmap" && <BoardView {...common} boardTarget={boardTarget} />}
-        {view === "Projects" && <ProjectsView {...common} />}
-        {view === "Budget" && <BudgetView {...common} />}
-        {view === "Calendar" && <CalendarView {...common} initialDate={calendarTarget} />}
-        {view === "Habits" && <HabitsView {...common} today={today} />}
-        {view === "Reflection" && <ReflectionView {...common} today={today} />}
-        {view === "Journal" && <JournalView {...common} />}
-        {view === "Files" && <FilesView />}
-        {view === "Obsidian" && <ObsidianView {...common} />}
-        {view === "Settings" && <SettingsView {...common} storage={storage} />}
         </div>
+        {open && <div className={`sheet-scrim ${closing ? "is-closing" : ""}`} aria-hidden="true" onPointerDown={() => navigate("Today")} />}
+        {open && (
+          <RoomSheet
+            view={view}
+            title={titleFor(view)}
+            origin={origin}
+            closing={closing}
+            filled={FILLED_VIEWS.has(view)}
+            onClose={() => navigate("Today")}
+            onClosed={() => { setClosing(false); setView("Today"); }}
+            onSearch={() => openCommands()}
+            onMode={(mode) => navigate(mode)}
+          >
+            {view === "Sky" && <FieldSky {...common} {...room} />}
+            {view === "Assistant" && <LocalAssistant {...common} initialPrompt={assistantTarget} />}
+            {view === "Browser" && <BrowserView {...common} covered={captureOpen || commandOpen || closing} command={roomCommand} />}
+            {view === "Terminal" && <TerminalView command={roomCommand} />}
+            {view === "Inbox" && <InboxView {...common} />}
+            {view === "Notes" && <NotesView {...common} target={notesTarget} today={today} />}
+            {view === "Mindmap" && <BoardView {...common} boardTarget={boardTarget} />}
+            {view === "Projects" && <ProjectsView {...common} />}
+            {view === "Budget" && <BudgetView {...common} />}
+            {view === "Calendar" && <CalendarView {...common} initialDate={calendarTarget} />}
+            {view === "Habits" && <HabitsView {...common} today={today} />}
+            {view === "Reflection" && <ReflectionView {...common} today={today} />}
+            {view === "Journal" && <JournalView {...common} />}
+            {view === "Files" && <FilesView />}
+            {view === "Obsidian" && <ObsidianView {...common} />}
+            {view === "Settings" && <SettingsView {...common} storage={storage} />}
+          </RoomSheet>
+        )}
+        <Dock
+          view={closing ? "Today" : view}
+          navigate={navigate}
+          storage={storage}
+          workspace={workspace}
+          commit={commit}
+          onSearch={() => openCommands()}
+          onCapture={() => setCaptureOpen(true)}
+          onFocus={() => { navigate("Today"); setFocusAt(Date.now()); }}
+        />
       </section>
 
       {captureOpen && (
         <div className="modal-backdrop" onPointerDown={closeCapture}>
           <form
             ref={modalRef}
-            className="capture-dialog"
+            className="glass capture-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="capture-title"
@@ -284,15 +315,15 @@ function WorkspaceApp() {
             <p className="eyebrow">MAKE A LITTLE ROOM</p>
             <h2 id="capture-title">Let it land here.</h2>
             <p>A thought, a loose end, a possibility. No need to organize it yet.</p>
-          <textarea
-            data-autofocus
-            value={draft}
+            <textarea
+              data-autofocus
+              value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder="Type the thought exactly as it is..."
               rows="7"
             />
             <div className="dialog-actions">
-              <span>One thought. Connected in Notes & Mindmap.</span>
+              <span>It waits in Unsorted until you give it a home.</span>
               <button className="primary-button" disabled={!draft.trim()}>
                 <Plus /> Capture
               </button>

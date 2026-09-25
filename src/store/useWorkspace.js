@@ -48,6 +48,13 @@ export function useWorkspace() {
     media.addEventListener('change', apply)
     return () => media.removeEventListener('change', apply)
   }, [workspace?.theme])
+  // …and the blur Nate chose in Appearance (0 clear … 100 deep; 60 by default).
+  const blur = workspace?.settings?.blur
+  useEffect(() => {
+    const amount = Number.isFinite(blur) ? Math.min(Math.max(blur, 0), 100) : 60
+    document.documentElement.style.setProperty('--blur-n', String(amount / 100))
+    document.documentElement.style.setProperty('--wall-blur', `${Math.round(amount * 0.8)}px`)
+  }, [blur])
   return { workspace, status, commit: store.commit, replace: store.replace, ready: status.ready }
 }
 

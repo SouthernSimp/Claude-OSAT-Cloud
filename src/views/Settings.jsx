@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, DownloadSimple, Keyboard, Monitor, MoonStars, SunHorizon, UploadSimple } from "@phosphor-icons/react";
+import { Check, DownloadSimple, Keyboard, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
 import { workspaceClient } from "../store/useWorkspace.js";
+import { AppearanceControls } from "../shell/Shell.jsx";
 
 export function SettingsView({ workspace, commit, storage }) {
   const restoreInputRef = useRef(null);
@@ -48,23 +49,8 @@ export function SettingsView({ workspace, commit, storage }) {
       <section className="content-card">
         <p className="eyebrow">APPEARANCE</p>
         <h2>Make yourself at home.</h2>
-        <div className="theme-options">
-          {[
-            ["system", Monitor],
-            ["light", SunHorizon],
-            ["dark", MoonStars],
-          ].map(([theme, Icon]) => (
-            <button
-              key={theme}
-              type="button"
-              className={workspace.theme === theme ? "active" : ""}
-              onClick={() => commit((state) => ({ ...state, theme }))}
-            >
-              <Icon />
-              <span>{theme}</span>
-              {workspace.theme === theme && <Check />}
-            </button>
-          ))}
+        <div className="appearance-card">
+          <AppearanceControls workspace={workspace} commit={commit} />
         </div>
       </section>
       <section className="content-card">
