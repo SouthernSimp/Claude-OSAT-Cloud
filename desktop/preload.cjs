@@ -88,5 +88,9 @@ contextBridge.exposeInMainWorld('osat', Object.freeze({
 }))
 
 contextBridge.exposeInMainWorld('osatApp', Object.freeze({
-  onCommand: (listener) => listen('app:command', listener),
+  onCommand: (listener) => {
+    const stop = listen('app:command', listener)
+    ipcRenderer.send('app:listening')
+    return stop
+  },
 }))

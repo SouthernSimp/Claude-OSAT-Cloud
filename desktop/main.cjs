@@ -391,8 +391,16 @@ function focusMain() {
 }
 
 /* Everything in the menu bar goes through the same navigate() the app uses. */
+// A command that reopens a closed window waits until the new window is listening.
+let pendingCommand
 function command(detail) {
-  Promise.resolve(focusMain()).then(() => send('app:command', detail))
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    focusMain()
+    send('app:command', detail)
+    return
+  }
+  pendingCommand = detail
+  createWindow()
 }
 
 function buildMenu() {
@@ -601,8 +609,10 @@ function showQuickCapture() {
     })
   }
   quickCaptureWindow.center()
+  if (process.platform === 'darwin') app.focus({ steal: true })
   quickCaptureWindow.show()
   quickCaptureWindow.focus()
+  quickCaptureWindow.webContents.focus()
 }
 
 app.whenReady().then(async () => {
@@ -658,6 +668,11 @@ app.whenReady().then(async () => {
     }
   })
   // The quick-capture window saves through the store itself; this only puts it away.
+  ipcMain.on('app:listening', (event) => {
+    if (!pendingCommand || event.sender !== mainWindow?.webContents) return
+    send('app:command', pendingCommand)
+    pendingCommand = undefined
+  })
   ipcMain.on('quick-capture:done', (event) => {
     if (!quickCaptureWindow || quickCaptureWindow.isDestroyed() || event.sender !== quickCaptureWindow.webContents) return
     setTimeout(() => { if (!quickCaptureWindow.isDestroyed()) quickCaptureWindow.hide() }, 700)

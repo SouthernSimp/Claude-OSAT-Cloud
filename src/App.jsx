@@ -336,7 +336,8 @@ function QuickCaptureSurface() {
   const [text, setText] = useState("");
   const [saved, setSaved] = useState(false);
   useEffect(() => {
-    const fresh = () => setSaved(false);
+    // ⌥Space should let you type straight away, not after a click.
+    const fresh = () => { setSaved(false); requestAnimationFrame(() => document.getElementById("quick-text")?.focus()); };
     window.addEventListener("focus", fresh);
     return () => window.removeEventListener("focus", fresh);
   }, []);
