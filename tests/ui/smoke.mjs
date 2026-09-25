@@ -9,7 +9,7 @@ import { chromium } from 'playwright'
 const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
 const TABS = [['Today', 1], ['Notes', 2], ['Mindmap', 3], ['Journal', 4], ['Calendar', 5], ['Assistant', 6]]
-const MORE = [['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Sky', 'Sky'], ['Projects', 'Projects'], ['Habits', 'Habits'], ['Reflection', 'Reflect'], ['Budget', 'Money'], ['Files', 'Files'], ['Inbox', 'Inbox'], ['Obsidian', 'Obsidian'], ['Settings', 'Settings']]
+const MORE = [['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Sky', 'Sky'], ['Projects', 'Projects'], ['Habits', 'Habits'], ['Reflection', 'Reflect'], ['Budget', 'Money'], ['Files', 'Files'], ['Inbox', 'Unsorted'], ['Obsidian', 'Obsidian'], ['Settings', 'Settings']]
 
 let server
 async function start() {
@@ -36,11 +36,24 @@ async function main() {
     if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) problems.push(`${room}: ${message.text()}`)
   })
 
-  await page.goto(url)
+  await page.goto(`${url}?fresh=1`)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
   const keep = page.getByRole('button', { name: 'Keep this room' })
   if (await keep.count()) await keep.first().click()
   await sleep(600)
+
+  // A thought typed on home is saved, survives a reload, and waits in Unsorted.
+  room = 'capture'
+  await page.getByPlaceholder('Leave a thought here.').fill('Smoke test thought')
+  await page.keyboard.press('Enter')
+  await sleep(800)
+  await page.goto(url)
+  await page.waitForSelector('.workspace-content', { timeout: 15000 })
+  await page.keyboard.press('Control+2')
+  await page.locator('.topbar-more > button').click()
+  await page.getByRole('menuitem', { name: 'Unsorted', exact: true }).click()
+  await page.getByRole('heading', { name: 'Smoke test thought' }).waitFor({ timeout: 5000 })
+    .catch(() => problems.push('capture: a thought typed on home was not in Unsorted after a reload'))
 
   async function visit(view, go, theme) {
     room = view

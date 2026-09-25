@@ -1,7 +1,7 @@
 import { ArrowUpRight, BookOpenText, Check, ShareNetwork } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { localDateKey } from '../daily-practice.js';
-import { createNote, isActiveNote, updateNote, wordCount } from '../notes-model.js';
+import { dayNoteId, ensureDayNote, isActiveNote, isDayNote, updateNote, wordCount } from '../notes-model.js';
 import { Markdown } from '../lib/markdown.jsx';
 import { ReflectionView } from './Reflection.jsx';
 
@@ -20,17 +20,14 @@ export function JournalView({ workspace, commit, navigate }) {
   const today = localDateKey();
   const [tab, setTab] = useState('write');
   const [selected, setSelected] = useState(null);
-  const id = `journal-${today}`;
+  const id = dayNoteId(today);
   const entry = workspace.notes.find((note) => note.id === id);
-  const previous = workspace.notes.filter((note) => isActiveNote(note) && /^journal-\d{4}-\d{2}-\d{2}$/.test(note.id) && note.id !== id).sort((a, b) => b.id.localeCompare(a.id));
-  const legacy = workspace.records.filter((record) => record.type === 'journal').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const chosen = [...previous, ...legacy].find((note) => note.id === selected);
+  const previous = workspace.notes.filter((note) => isActiveNote(note) && isDayNote(note) && note.id !== id && note.markdown.trim()).sort((a, b) => b.date.localeCompare(a.date));
+  const chosen = previous.find((note) => note.id === selected);
   const dateLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(`${today}T12:00:00`));
   const [lead, turn] = MARGIN[Math.floor(Date.parse(`${today}T12:00:00Z`) / 86400000) % MARGIN.length];
   function write(markdown) {
-    commit((state) => state.notes.some((note) => note.id === id)
-      ? updateNote(state, id, { markdown })
-      : createNote(state, { id, title: `Journal · ${dateLabel}`, markdown, tags: ['journal'] }).state);
+    commit((state) => updateNote(ensureDayNote(state, today).state, id, { markdown }));
   }
   return <section className="journal-studio">
     <header className="journal-top">
@@ -55,10 +52,10 @@ export function JournalView({ workspace, commit, navigate }) {
       <aside className="journal-margin">
         <span>If you need a place to start</span>
         <p>{lead} <em>{turn}</em></p>
-        <small>This page is a note like any other. It lives in Notes and on the mindmap, and never leaves this Mac.</small>
+        <small>This page is today’s note. Next steps you add today land here too, and it never leaves this Mac.</small>
       </aside>
     </div>}
     {tab === 'reflect' && <ReflectionView workspace={workspace} commit={commit} today={today} />}
-    {tab === 'past' && <div className="journal-history"><aside>{[...previous, ...legacy].map((note) => <button key={note.id} className={selected === note.id ? 'active' : ''} onClick={() => setSelected(note.id)}><BookOpenText /><span>{note.title}<small>{note.createdAt.slice(0, 10)}</small></span></button>)}{!previous.length && !legacy.length && <p>Your story starts here. Earlier pages will be waiting whenever you want to revisit them.</p>}</aside><article>{chosen ? <><p className="eyebrow">AN EARLIER PAGE · READ ONLY</p><h2>{chosen.title}</h2><Markdown text={chosen.markdown || chosen.body || chosen.summary || ''} /></> : <p className="quiet-empty">Choose a page to return to.</p>}</article></div>}
+    {tab === 'past' && <div className="journal-history"><aside>{previous.map((note) => <button key={note.id} className={selected === note.id ? 'active' : ''} onClick={() => setSelected(note.id)}><BookOpenText /><span>{note.title}<small>{note.date}</small></span></button>)}{!previous.length && <p>Your story starts here. Earlier pages will be waiting whenever you want to revisit them.</p>}</aside><article>{chosen ? <><p className="eyebrow">AN EARLIER PAGE · READ ONLY</p><h2>{chosen.title}</h2><Markdown text={chosen.markdown} /></> : <p className="quiet-empty">Choose a page to return to.</p>}</article></div>}
   </section>;
 }

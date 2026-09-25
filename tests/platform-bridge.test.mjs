@@ -152,7 +152,10 @@ test('platform metadata uses the OSAT identity and its own data folder in both m
   assert.match(main, /globalShortcut\.register\(process\.platform === 'darwin' \? 'Alt\+Space'/)
   assert.match(main, /createSurfaceWindow\('quick-capture'/)
   assert.doesNotMatch(main, /createSurfaceWindow\('assistant'/)
-  assert.match(preload, /quick-capture:submit/)
+  assert.match(preload, /quick-capture:done/)
+  assert.match(preload, /store:commit-sync/)
+  assert.match(main, /requestSingleInstanceLock/)
+  assert.deepEqual(pkg.build.asarUnpack.includes('shared/**'), true)
 
   const forbiddenExpansion = ['One', 'Step', 'Atta', 'Time'].join(' ')
   assert.equal([pkg.description, index, main].join('\n').includes(forbiddenExpansion), false)

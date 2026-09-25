@@ -4,8 +4,6 @@
 
 const DB_NAME = 'osat-field-chats'
 const STORE = 'conversations'
-const LEGACY_KEY = 'osat.local-chat.v1'
-const MIGRATED_KEY = 'osat.local-chat.migrated.v1'
 const MAX_MESSAGES = 200
 
 export const newConversation = (overrides = {}) => ({
@@ -96,42 +94,7 @@ function normalize(value) {
   }
 }
 
-/* Moves the old single-thread chat into one conversation, once. */
-async function migrateLegacy(storage) {
-  if (storage.getItem(MIGRATED_KEY)) return null
-  let raw
-  try {
-    raw = JSON.parse(storage.getItem(LEGACY_KEY) || 'null')
-  } catch {
-    storage.setItem(MIGRATED_KEY, 'yes') // corrupt legacy value, nothing retry could fix
-    return null
-  }
-  if (!Array.isArray(raw) || !raw.length) {
-    storage.setItem(MIGRATED_KEY, 'yes') // nothing to migrate
-    return null
-  }
-  const conversation = normalize(
-    newConversation({
-      title: '',
-      messages: raw.map((message) => ({ ...message, at: new Date().toISOString() })),
-    }),
-  )
-  if (!conversation?.messages.length) {
-    storage.setItem(MIGRATED_KEY, 'yes')
-    return null
-  }
-  try {
-    await run('readwrite', (store) => store.put(conversation))
-  } catch (error) {
-    console.error('Legacy chat migration failed, will retry next launch:', error)
-    return null // MIGRATED_KEY stays unset so this retries
-  }
-  storage.setItem(MIGRATED_KEY, 'yes')
-  return conversation
-}
-
-export async function listConversations(storage = localStorage) {
-  await migrateLegacy(storage)
+export async function listConversations() {
   const all = await run('readonly', (store) => store.getAll())
   return (all || [])
     .map(normalize)

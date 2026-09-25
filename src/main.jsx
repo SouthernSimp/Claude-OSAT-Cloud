@@ -17,7 +17,8 @@ import "./styles/tools.css";
 // The Mac app draws its own title bar: leave room for the window buttons.
 if (window.osatApp) document.documentElement.classList.add("is-mac-app");
 
-const storedTheme = localStorage.getItem("nateos.theme") || "system";
+let storedTheme = "system";
+try { storedTheme = localStorage.getItem("osat.theme") || "system"; } catch { /* first paint only */ }
 document.documentElement.dataset.theme = storedTheme === "system"
   ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
   : storedTheme;

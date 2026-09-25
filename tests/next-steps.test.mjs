@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { appendNextStep, nextSteps, toggleNextStep } from '../src/next-steps.js'
+import { addNextStep, nextSteps, toggleNextStep } from '../src/next-steps.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 
 test('extracts checklists outside fenced code', () => {
@@ -24,17 +24,22 @@ test('rejects stale line updates', () => {
   assert.deepEqual(toggleNextStep(notes, { noteId: 'n1', line: 1, text: 'Old' }), notes)
 })
 
-test('appends to or creates a daily plan and survives normalization', () => {
-  const appended = appendNextStep([], 'Call it done', '2026-09-10')
-  const normalized = normalizeWorkspace({ ...createDefaultWorkspace(), notes: appended })
-  assert.equal(normalized.notes[0].id, 'daily-plan-2026-09-10')
+test('a next step goes onto the day\'s page, which is created once and survives normalization', () => {
+  const once = addNextStep(createDefaultWorkspace(), 'Call it done', '2026-09-10')
+  const normalized = normalizeWorkspace(once)
+  const day = normalized.notes.find((note) => note.id === 'day-2026-09-10')
+  assert.equal(day.kind, 'day')
+  assert.equal(day.date, '2026-09-10')
   assert.equal(nextSteps(normalized.notes)[0].text, 'Call it done')
-  assert.equal(appendNextStep(appended, 'Second step', '2026-09-10')[0].markdown.includes('Second step'), true)
+  const twice = addNextStep(normalized, 'Second step', '2026-09-10')
+  assert.equal(twice.notes.filter((note) => note.kind === 'day').length, 1)
+  assert.equal(twice.notes.find((note) => note.id === 'day-2026-09-10').markdown, '- [ ] Call it done\n- [ ] Second step')
+  assert.equal(addNextStep(twice, '  ', '2026-09-10'), twice)
 })
 
-test('a step added to a trashed plan brings the plan back', () => {
-  const plan = { id: 'daily-plan-2026-09-24', title: 'Plan', markdown: '# Today', tags: [], trashedAt: '2026-09-24T01:00:00Z', archived: true }
-  const [next] = appendNextStep([plan], 'Water the plants', '2026-09-24')
+test('a step added to a trashed day brings the page back', () => {
+  const day = { id: 'day-2026-09-24', kind: 'day', date: '2026-09-24', title: 'Thursday', markdown: '', tags: [], trashedAt: '2026-09-24T01:00:00Z', archived: true }
+  const next = addNextStep(normalizeWorkspace({ notes: [day] }), 'Water the plants', '2026-09-24').notes[0]
   assert.equal(next.trashedAt, null)
   assert.equal(next.archived, false)
   assert.ok(nextSteps([next]).some((step) => step.text === 'Water the plants'))

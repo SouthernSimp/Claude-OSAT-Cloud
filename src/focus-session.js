@@ -1,4 +1,3 @@
-export const FOCUS_STORAGE_KEY = 'nateos.focus.v1'
 export const FOCUS_MINUTES = 25
 
 export function focusRemaining(session, now = Date.now()) {

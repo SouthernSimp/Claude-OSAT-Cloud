@@ -56,7 +56,7 @@ export function paperPose(id, index, total, compact = false) {
    Mindmap, then recent notes. Daily plans and journal pages have their own
    places. When there are more than fit, the last cell says how many more. */
 export function homeItems({ notes = [], folders = [], boards = [] }, capacity = Infinity) {
-  const active = notes.filter((note) => isActiveNote(note) && !/^(daily-plan|journal)-/.test(note.id))
+  const active = notes.filter((note) => isActiveNote(note) && note.kind !== 'day')
   const recent = [...active].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
   const board = boards.find((item) => item?.scope?.kind === 'all') || boards[0]
   const items = [

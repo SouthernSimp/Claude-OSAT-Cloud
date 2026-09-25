@@ -21,7 +21,6 @@ export function normalizeFolders(value) {
       parentId: clean(folder.parentId) || null,
       createdAt: clean(folder.createdAt, new Date().toISOString()),
       collapsed: Boolean(folder.collapsed),
-      color: clean(folder.color) || null,
     }]
   })
   // A parent must exist and must not create a cycle; otherwise the folder moves to the root.
@@ -42,7 +41,7 @@ export function normalizeFolders(value) {
 export function createFolder(name, parentId = null) {
   const cleanName = clean(name).trim().slice(0, 80)
   if (!cleanName) return null
-  return { id: uid('folder'), name: cleanName, parentId: parentId || null, createdAt: new Date().toISOString(), collapsed: false, color: null }
+  return { id: uid('folder'), name: cleanName, parentId: parentId || null, createdAt: new Date().toISOString(), collapsed: false }
 }
 
 export function folderChildren(folders, parentId = null) {
@@ -111,30 +110,42 @@ export function noteCounts(state) {
   const active = state.notes.filter(isActiveNote)
   return {
     all: active.length,
+    unsorted: active.filter((note) => note.unsorted).length,
     pinned: active.filter((note) => note.pinned).length,
     unfiled: active.filter((note) => !note.folderId).length,
-    daily: active.filter(isDailyNote).length,
+    daily: active.filter(isDayNote).length,
     archived: state.notes.filter((note) => note.archived && !note.trashedAt).length,
     trashed: state.notes.filter((note) => note.trashedAt).length,
   }
 }
 
-export const DAILY_ID = /^daily-plan-(\d{4}-\d{2}-\d{2})$/
-export const isDailyNote = (note) => DAILY_ID.test(note?.id || '')
-export const dailyNoteId = (dateKey) => `daily-plan-${dateKey}`
+/* One note per day: that day's page and its next steps. Created on first use. */
+export const isDayNote = (note) => note?.kind === 'day'
+export const dayNoteId = (dateKey) => `day-${dateKey}`
 
-export function dailyNoteFor(state, dateKey, folderId = null) {
-  const existing = state.notes.find((note) => note.id === dailyNoteId(dateKey))
+export function dayTitle(dateKey) {
+  return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(`${dateKey}T12:00:00`))
+}
+
+export function ensureDayNote(state, dateKey) {
+  const id = dayNoteId(dateKey)
+  const existing = state.notes.find((note) => note.id === id)
   if (existing) return { state, note: existing, created: false }
-  const label = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(`${dateKey}T12:00:00`))
-  const note = normalizeNote({
-    id: dailyNoteId(dateKey),
-    title: `Today’s next steps`,
-    tags: ['today'],
-    markdown: `# ${label}\n\n- [ ] `,
-    folderId,
-  })
+  const now = new Date().toISOString()
+  const note = normalizeNote({ id, kind: 'day', date: dateKey, title: dayTitle(dateKey), markdown: '', createdAt: now, updatedAt: now })
   return { state: { ...state, notes: [note, ...state.notes] }, note, created: true }
+}
+
+/* Adds a line to the day's page, bringing the page back if it was archived or trashed. */
+export function appendToDay(state, dateKey, line) {
+  const { state: withDay, note } = ensureDayNote(state, dateKey)
+  const markdown = note.markdown ? `${note.markdown.replace(/\n+$/, '')}\n${line}` : line
+  return {
+    ...withDay,
+    notes: withDay.notes.map((item) => item.id === note.id
+      ? { ...item, markdown, tags: parseTags(`${item.title}\n${markdown}`), trashedAt: null, archived: false, updatedAt: new Date().toISOString() }
+      : item),
+  }
 }
 
 /* ---------- wikilinks ---------- */
@@ -207,6 +218,7 @@ export function renameWikilinks(notes, oldTitle, newTitle) {
 /* ---------- lists, search, sort ---------- */
 
 export const SMART_LISTS = [
+  ['unsorted', 'Unsorted'],
   ['all', 'All notes'],
   ['pinned', 'Pinned'],
   ['recent', 'Recent'],
@@ -227,7 +239,8 @@ export function notesInList(state, list, folderId = null, now = Date.now()) {
   }
   if (list === 'pinned') return active.filter((note) => note.pinned)
   if (list === 'recent') return active.filter((note) => now - Date.parse(note.updatedAt) < 7 * 86400000)
-  if (list === 'daily') return active.filter(isDailyNote)
+  if (list === 'unsorted') return active.filter((note) => note.unsorted)
+  if (list === 'daily') return active.filter(isDayNote)
   if (list === 'unfiled') return active.filter((note) => !note.folderId)
   return active
 }
@@ -312,24 +325,17 @@ export function createNote(state, patch = {}) {
   return { state: { ...state, notes: [note, ...state.notes] }, note }
 }
 
-/* Capture is a note immediately. Inbox keeps its original text and review state. */
-export function noteFromCapture(state, capture) {
-  const existing = state.notes.find((note) => note.originCaptureId === capture.id)
-  if (existing) return { state, note: existing }
-  const markdown = capture.summary && capture.summary !== capture.title
-    ? `${capture.title}\n\n${capture.summary}` : capture.title
-  return createNote(state, {
-    title: capture.title.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A thought',
-    markdown, originCaptureId: capture.id,
-  })
-}
-
+/* A thought that arrives without a home becomes one note, marked Unsorted until it is filed, pinned or kept. */
 export function captureThought(state, text, source = 'Quick capture') {
   const value = typeof text === 'string' ? text.trim() : ''
   if (!value) return { state, note: null }
-  const capture = { id: uid('capture'), title: value, summary: value, source,
-    createdAt: new Date().toISOString(), type: 'capture', status: 'inbox', bookmarked: false }
-  return noteFromCapture({ ...state, capture, records: [capture, ...state.records] }, capture)
+  const title = value.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A thought'
+  return createNote(state, { title, markdown: value, unsorted: true, source })
+}
+
+export function keepNotes(state, ids) {
+  const set = new Set(ids)
+  return { ...state, notes: state.notes.map((note) => set.has(note.id) && note.unsorted ? { ...note, unsorted: false } : note) }
 }
 
 export function updateNote(state, id, patch) {
@@ -338,13 +344,16 @@ export function updateNote(state, id, patch) {
   if (!before) return state
   const nextTitle = patch.title ?? before.title
   const nextMarkdown = patch.markdown ?? before.markdown
-  let notes = state.notes.map((note) => note.id === id
+  const notes = state.notes.map((note) => note.id === id
     ? { ...note, ...patch, tags: parseTags(`${nextTitle}\n${nextMarkdown}`), updatedAt: now }
     : note)
-  if (patch.title !== undefined && patch.title.trim() && patch.title.trim() !== before.title.trim()) {
-    notes = renameWikilinks(notes, before.title, patch.title)
-  }
   return { ...state, notes }
+}
+
+/* Once a title edit is finished (blur or Return), links written as [[Old title]] follow the note. */
+export function relinkRenamedNote(state, oldTitle, newTitle) {
+  const notes = renameWikilinks(state.notes, oldTitle, newTitle)
+  return notes === state.notes || notes.every((note, index) => note === state.notes[index]) ? state : { ...state, notes }
 }
 
 export function trashNotes(state, ids) {
@@ -369,11 +378,11 @@ export function emptyTrash(state) {
 export function moveNotes(state, ids, folderId) {
   const set = new Set(ids)
   const target = folderId && state.folders.some((folder) => folder.id === folderId) ? folderId : null
-  return { ...state, notes: state.notes.map((note) => set.has(note.id) ? { ...note, folderId: target } : note) }
+  return { ...state, notes: state.notes.map((note) => set.has(note.id) ? { ...note, folderId: target, unsorted: false } : note) }
 }
 
 export function duplicateNote(state, id) {
   const source = state.notes.find((note) => note.id === id)
   if (!source) return { state, note: null }
-  return createNote(state, { ...source, id: undefined, title: `${source.title} copy`, pinned: false, createdAt: undefined, updatedAt: undefined })
+  return createNote(state, { ...source, id: undefined, title: `${source.title} copy`, pinned: false, kind: null, date: null, createdAt: undefined, updatedAt: undefined })
 }

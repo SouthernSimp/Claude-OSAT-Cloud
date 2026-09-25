@@ -8,7 +8,6 @@ import { folderSubtree, isActiveNote, isVisibleNote, uid } from './notes-model.j
 export const PAPERS = ['canary', 'apricot', 'rose', 'lilac', 'sky', 'mint', 'lime', 'bone']
 export const PAPER_LABEL = { canary: 'Canary', apricot: 'Apricot', rose: 'Rose', lilac: 'Lilac', sky: 'Sky', mint: 'Mint', lime: 'Lime', bone: 'Bone' }
 const AUTO_PAPERS = ['canary', 'sky', 'rose', 'mint', 'lilac', 'apricot', 'lime']
-const LEGACY_PAPER = { paper: 'bone', sand: 'apricot' }
 export const GRID = 20
 export const CARD = { minW: 120, minH: 96, maxW: 720, maxH: 720 }
 export const ZOOM = { min: 0.18, max: 3.2 }
@@ -26,7 +25,7 @@ export function hash(text) {
   return h >>> 0
 }
 
-export const paperName = (value) => PAPERS.includes(value) ? value : LEGACY_PAPER[value] || null
+export const paperName = (value) => PAPERS.includes(value) ? value : null
 export const autoPaper = (tag) => AUTO_PAPERS[hash(tag) % AUTO_PAPERS.length]
 
 /* ---------- sizing ---------- */
@@ -108,7 +107,7 @@ export function newBoard(name, scope = { kind: 'manual', folderId: null }) {
   }
 }
 
-export function normalizeBoard(value, index = 0, legacyHidden = []) {
+export function normalizeBoard(value, index = 0) {
   if (!isObject(value)) return null
   const cards = (Array.isArray(value.notes) ? value.notes : []).map(normalizeCard).filter(Boolean)
   const seen = new Set()
@@ -137,7 +136,7 @@ export function normalizeBoard(value, index = 0, legacyHidden = []) {
     groups: (Array.isArray(value.groups) ? value.groups : []).map(normalizeGroup).filter(Boolean),
     views: (Array.isArray(value.views) ? value.views : []).map(normalizeView).filter(Boolean),
     tagColors,
-    hidden: [...new Set([...(Array.isArray(value.hidden) ? value.hidden : []), ...(index === 0 ? legacyHidden : [])].filter((id) => typeof id === 'string' && id))],
+    hidden: [...new Set((Array.isArray(value.hidden) ? value.hidden : []).filter((id) => typeof id === 'string' && id))],
     cam: {
       x: finite(value.cam?.x, 0),
       y: finite(value.cam?.y, 0),
@@ -148,8 +147,7 @@ export function normalizeBoard(value, index = 0, legacyHidden = []) {
 
 export function normalizeBoardDoc(value) {
   const input = isObject(value) ? value : {}
-  const legacyHidden = Array.isArray(input.hiddenNoteIds) ? input.hiddenNoteIds : []
-  let boards = (Array.isArray(input.boards) ? input.boards : []).map((board, index) => normalizeBoard(board, index, legacyHidden)).filter(Boolean)
+  let boards = (Array.isArray(input.boards) ? input.boards : []).map((board, index) => normalizeBoard(board, index)).filter(Boolean)
   const seen = new Set()
   boards = boards.filter((board) => !seen.has(board.id) && seen.add(board.id))
   if (!boards.length) boards = [{ ...newBoard('Desk', { kind: 'all', folderId: null }), id: 'osat-board' }]
@@ -192,11 +190,15 @@ export function findFreeSpot(cards, w, h, origin = { x: 0, y: 0 }) {
   return { x: ox + cards.length * step, y: oy }
 }
 
+const isBoardDoc = (value) => isObject(value) && value.schema === BOARD_SCHEMA && Array.isArray(value.boards) && value.boards.length > 0
+
 /* Keep every board's cards in step with Notes: auto boards gain a card for
    each note in scope and lose cards whose notes left it; manual boards only
-   lose cards for trashed notes. Links and frames never survive their cards. */
+   lose cards for trashed notes. Links and frames never survive their cards.
+   Returns the same object when nothing needed to change, so typing in a note
+   never rewrites the boards. */
 export function reconcileBoards(state) {
-  const doc = normalizeBoardDoc(state.sorter)
+  const doc = isBoardDoc(state.sorter) ? state.sorter : normalizeBoardDoc(state.sorter)
   const notesById = new Map(state.notes.map((note) => [note.id, note]))
   const boards = doc.boards.map((board) => {
     const inScope = board.scope.kind === 'manual' ? null : boardScopeNotes(board, state)
@@ -220,16 +222,13 @@ export function reconcileBoards(state) {
         placed.push(card)
         return card
       })
-    const nextCards = [...cards, ...additions]
-    const ids = new Set(nextCards.map((card) => card.id))
-    return {
-      ...board,
-      notes: nextCards,
-      links: board.links.filter((link) => ids.has(link.a) && ids.has(link.b)),
-      hidden: board.hidden.filter((id) => notesById.has(id)),
-    }
+    const ids = new Set([...present, ...additions.map((card) => card.id)])
+    const links = board.links.filter((link) => ids.has(link.a) && ids.has(link.b))
+    const keptHidden = board.hidden.filter((id) => notesById.has(id))
+    if (cards.length === board.notes.length && !additions.length && links.length === board.links.length && keptHidden.length === board.hidden.length) return board
+    return { ...board, notes: [...cards, ...additions], links, hidden: keptHidden }
   })
-  return { ...doc, boards }
+  return boards.every((board, index) => board === doc.boards[index]) ? doc : { ...doc, boards }
 }
 
 /* ---------- colours and tags ---------- */

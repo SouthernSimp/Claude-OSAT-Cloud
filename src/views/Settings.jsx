@@ -2,17 +2,13 @@ import { useRef } from "react";
 import { Check, DownloadSimple, Monitor, MoonStars, SunHorizon, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
-import { readWorkspaceBackup } from "../osat-data.js";
+import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
+import { workspaceClient } from "../store/useWorkspace.js";
 
 export function SettingsView({ workspace, commit, storage }) {
   const restoreInputRef = useRef(null);
   function backup() {
-    const payload = {
-      format: "osat-local-backup",
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      workspace,
-    };
+    const payload = makeBackup(workspace);
     downloadFile(
       `osat-backup-${localDateKey()}.json`,
       JSON.stringify(payload, null, 2),
@@ -37,10 +33,14 @@ export function SettingsView({ workspace, commit, storage }) {
       window.alert(error.message);
       return;
     }
-    if (!window.confirm(`Replace your current workspace with this backup (${restored.notes.length} notes)? This overwrites the current workspace. Download a JSON backup first if you want to keep it.`)) {
+    if (!window.confirm(`Replace your current workspace with this backup (${restored.notes.length} notes)? OSAT keeps a copy of your current workspace in its data folder first.`)) {
       return;
     }
-    commit(restored);
+    try {
+      await workspaceClient().replace(restored);
+    } catch (error) {
+      window.alert(`The backup couldn't be restored: ${error.message}`);
+    }
   }
   return (
     <section className="settings-grid">

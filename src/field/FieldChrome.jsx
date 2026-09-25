@@ -46,7 +46,7 @@ const MORE = [
   ['Reflection', 'Reflect', BookOpenText],
   ['Budget', 'Money', CurrencyDollar],
   ['Files', 'Files', Files],
-  ['Inbox', 'Inbox', Tray],
+  ['Inbox', 'Unsorted', Tray],
   ['Obsidian', 'Obsidian', UploadSimple],
   ['Settings', 'Settings', GearSix],
 ]

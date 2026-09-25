@@ -25,7 +25,7 @@ export const CORE_NAV = [
 ];
 
 export const TOOL_NAV = [
-  { id: "Inbox", label: "Inbox", icon: Tray, description: "Every capture, as it arrived" },
+  { id: "Inbox", label: "Unsorted", icon: Tray, description: "Thoughts waiting for a home" },
   { id: "Assistant", label: "Local AI", icon: Sparkle, description: "Think out loud, on this Mac" },
   { id: "Calendar", label: "Calendar", icon: CalendarBlank, description: "The month, and the day in it" },
   { id: "Habits", label: "Habits", icon: ListChecks, description: "Small things, kept daily" },

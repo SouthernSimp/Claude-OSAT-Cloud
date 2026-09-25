@@ -1,6 +1,3 @@
-export const HABITS_STORAGE_KEY = 'nateos.habits.v1'
-export const REFLECTIONS_STORAGE_KEY = 'nateos.reflections.v1'
-
 const datePattern = /^\d{4}-\d{2}-\d{2}$/
 const habitTypes = ['build', 'avoid']
 const answerKeys = ['win', 'hard', 'tomorrow']

@@ -1,4 +1,4 @@
-import { normalizeNote } from './osat-data.js'
+import { appendToDay } from './notes-model.js'
 
 const CHECKLIST = /^(\s*[-*+]\s+)\[([ xX])\](?:\s+)(.*)$/
 const FENCE = /^\s*(`{3,}|~{3,})/
@@ -43,14 +43,8 @@ export function toggleNextStep(notes, step, now = new Date().toISOString()) {
   })
 }
 
-export function appendNextStep(notes, text, today) {
-  if (typeof text !== 'string' || !text.trim() || /[\r\n]/.test(text) || typeof today !== 'string' || !today) return notes
-  const cleanText = text.trim()
-  const id = `daily-plan-${today}`
-  const list = Array.isArray(notes) ? notes : []
-  const existing = list.find((note) => note?.id === id)
-  if (existing) {
-    return list.map((note) => note.id === id ? { ...note, trashedAt: null, archived: false, markdown: `${note.markdown || ''}${note.markdown ? '\n' : ''}- [ ] ${cleanText}`, updatedAt: new Date().toISOString() } : note)
-  }
-  return [...list, normalizeNote({ id, title: 'Today’s next steps', tags: ['today'], markdown: `# Today\n\n- [ ] ${cleanText}` })]
+/* A new next step is a checkbox on the day's page. */
+export function addNextStep(state, text, dateKey) {
+  if (typeof text !== 'string' || !text.trim() || /[\r\n]/.test(text) || typeof dateKey !== 'string' || !dateKey) return state
+  return appendToDay(state, dateKey, `- [ ] ${text.trim()}`)
 }

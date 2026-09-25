@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import {
-  backlinks, canMoveFolder, createFolder, dailyNoteFor, deleteFolder, excerpt, folderPath, folderSubtree, folderTree,
+  backlinks, canMoveFolder, createFolder, ensureDayNote, relinkRenamedNote, deleteFolder, excerpt, folderPath, folderSubtree, folderTree,
   moveNotes, noteCounts, normalizeFolders, notesInList, outline, parseWikilinks, renameWikilinks, resolveWikilink,
   searchNotes, sortNotes, tagIndex, trashNotes, restoreNotes, emptyTrash, updateNote, wikilinkPairs, wordCount,
 } from '../src/notes-model.js'
@@ -49,9 +49,11 @@ test('a note whose folder no longer exists is unfiled after normalization', () =
   assert.equal(state.notes[0].folderId, null)
 })
 
-test('a note keeps the capture it came from through workspace normalization', () => {
-  const state = workspaceWith([{ id: 'n1', title: 'Reviewed thought', markdown: 'Useful detail', originCaptureId: 'capture-1' }])
-  assert.equal(state.notes[0].originCaptureId, 'capture-1')
+test('a note keeps where it came from and whether it is sorted through normalization', () => {
+  const state = workspaceWith([{ id: 'n1', title: 'Reviewed thought', markdown: 'Useful detail', unsorted: true, source: 'Quick capture' }])
+  assert.equal(state.notes[0].unsorted, true)
+  assert.equal(state.notes[0].source, 'Quick capture')
+  assert.equal('originCaptureId' in state.notes[0], false)
 })
 
 test('wikilinks parse, resolve case-insensitively, and produce backlinks', () => {
@@ -71,8 +73,11 @@ test('renaming a note rewrites links that pointed at the old title', () => {
     { id: 'plan', title: 'Plan A', markdown: '' },
     { id: 'ref', title: 'Journal', markdown: 'See [[Plan A]] and [[plan a|alias]].' },
   ])
-  const renamed = updateNote(state, 'plan', { title: 'Plan B' })
+  const typed = updateNote(state, 'plan', { title: 'Plan B' })
+  assert.equal(typed.notes.find((note) => note.id === 'ref').markdown, 'See [[Plan A]] and [[plan a|alias]].', 'typing a title does not rewrite other notes')
+  const renamed = relinkRenamedNote(typed, 'Plan A', 'Plan B')
   assert.equal(renamed.notes.find((note) => note.id === 'ref').markdown, 'See [[Plan B]] and [[Plan B|alias]].')
+  assert.equal(relinkRenamedNote(renamed, 'Plan A', 'Plan B'), renamed)
   assert.deepEqual(renameWikilinks(state.notes, 'Plan A', ''), state.notes)
 })
 
@@ -83,7 +88,7 @@ test('smart lists, search grammar, sorting and counts', () => {
     { id: 'a', title: 'Alpha', markdown: 'body #work', pinned: true, updatedAt: '2026-09-12T00:00:00.000Z', createdAt: '2026-09-01T00:00:00.000Z', folderId: folder.id },
     { id: 'b', title: 'Beta', markdown: 'other', updatedAt: '2026-09-13T00:00:00.000Z', createdAt: '2026-09-02T00:00:00.000Z' },
     { id: 'c', title: 'Gamma', markdown: 'archived', archived: true, updatedAt: '2026-08-01T00:00:00.000Z' },
-    { id: 'daily-plan-2026-09-13', title: 'Today’s next steps', markdown: '- [ ] one', updatedAt: '2026-09-13T01:00:00.000Z' },
+    { id: 'daily-plan-2026-09-13', kind: 'day', date: '2026-09-13', title: 'Today’s next steps', markdown: '- [ ] one', updatedAt: '2026-09-13T01:00:00.000Z' },
   ], [folder])
   assert.deepEqual(notesInList(state, 'all').map((note) => note.id).sort(), ['a', 'b', 'daily-plan-2026-09-13'])
   assert.deepEqual(notesInList(state, 'folder', folder.id).map((note) => note.id), ['a'])
@@ -95,7 +100,7 @@ test('smart lists, search grammar, sorting and counts', () => {
   assert.deepEqual(sortNotes(notesInList(state, 'all'), 'title').map((note) => note.id), ['a', 'b', 'daily-plan-2026-09-13'])
   assert.deepEqual(sortNotes(notesInList(state, 'all'), 'updated').map((note) => note.id), ['a', 'daily-plan-2026-09-13', 'b'])
   assert.deepEqual(tagIndex(state.notes), [{ tag: 'work', count: 1 }])
-  assert.deepEqual(noteCounts(state), { all: 3, pinned: 1, unfiled: 2, daily: 1, archived: 1, trashed: 0 })
+  assert.deepEqual(noteCounts(state), { all: 3, unsorted: 0, pinned: 1, unfiled: 2, daily: 1, archived: 1, trashed: 0 })
 })
 
 test('trash is reversible and empty trash is final', () => {
@@ -108,12 +113,14 @@ test('trash is reversible and empty trash is final', () => {
   assert.equal(moveNotes(state, ['b'], 'missing').notes[1].folderId, null)
 })
 
-test('daily note is created once and reused', () => {
+test('the day note is created once and reused', () => {
   const state = workspaceWith([])
-  const first = dailyNoteFor(state, '2026-09-13')
+  const first = ensureDayNote(state, '2026-09-13')
   assert.equal(first.created, true)
-  assert.equal(first.note.id, 'daily-plan-2026-09-13')
-  const second = dailyNoteFor(first.state, '2026-09-13')
+  assert.equal(first.note.id, 'day-2026-09-13')
+  assert.equal(first.note.kind, 'day')
+  assert.equal(first.note.title, 'Sunday, September 13')
+  const second = ensureDayNote(first.state, '2026-09-13')
   assert.equal(second.created, false)
   assert.equal(second.state.notes.length, 1)
 })

@@ -27,10 +27,8 @@ import { ReflectionView } from "./views/Reflection.jsx";
 import { SettingsView } from "./views/Settings.jsx";
 
 import { localDateKey } from "./daily-practice.js";
-import { createDefaultWorkspace, importLegacyStorage } from "./osat-data.js";
-import { reconcileBoards } from "./board-model.js";
 import { captureThought, isActiveNote } from "./notes-model.js";
-import { loadCanonicalWorkspace, saveCanonicalWorkspace, stageWorkspace } from "./osat-store.js";
+import { useWorkspace, workspaceClient } from "./store/useWorkspace.js";
 import { inputActive } from "./lib/ui.js";
 import { useFocusTrap } from "./lib/use-focus-trap.js";
 import { DATE_LABEL } from "./lib/modules.js";
@@ -48,117 +46,16 @@ function readWallpaper() {
 }
 
 
-function useWorkspace() {
-  const initial = useRef(null);
-  if (!initial.current) {
-    try {
-      initial.current = importLegacyStorage(localStorage);
-    } catch {
-      initial.current = createDefaultWorkspace();
-    }
-  }
-  const [workspace, setWorkspace] = useState(initial.current);
-  const currentWorkspace = useRef(workspace);
-  currentWorkspace.current = workspace;
-  const [hydrated, setHydrated] = useState(false);
-  const [previewFallback, setPreviewFallback] = useState(false);
-  const [storage, setStorage] = useState({
-    status: "loading",
-    message: "Opening private local database",
-  });
-
-  useEffect(() => {
-    let active = true;
-    const isBrowserPreview = import.meta.env.DEV && /^https?:$/.test(window.location.protocol);
-    const fallbackTimer = isBrowserPreview
-      ? window.setTimeout(() => {
-          if (!active) return;
-          // The editable browser preview owns a sandbox workspace. If IndexedDB is
-          // blocked by another preview tab, keep the review surface usable without
-          // touching the installed app's canonical database.
-          setPreviewFallback(true);
-          setStorage({ status: "ready", message: "Preview sandbox" });
-          setHydrated(true);
-        }, 1200)
-      : null;
-
-    loadCanonicalWorkspace(localStorage)
-      .then(({ state, imported }) => {
-        if (!active) return;
-        if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
-        setPreviewFallback(false);
-        setWorkspace(state);
-        setStorage({
-          status: "ready",
-          message: imported
-            ? "Earlier data imported once. Original keys left untouched."
-            : "Saved in the private local database.",
-        });
-        setHydrated(true);
-      })
-      .catch((error) => {
-        if (!active) return;
-        if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
-        setStorage({
-          status: "error",
-          message: error.message,
-        });
-      });
-    return () => {
-      active = false;
-      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
-    };
-  }, []);
-
-  // Saves trail edits by 220ms, but never wait longer than two seconds while
-  // someone keeps typing — the recovery copy in localStorage is not the database.
-  const lastSave = useRef(Date.now());
-  useEffect(() => {
-    if (!hydrated || storage.status === "error" || previewFallback) return undefined;
-    const overdue = Date.now() - lastSave.current > 2000;
-    const timer = setTimeout(() => {
-      lastSave.current = Date.now();
-      saveCanonicalWorkspace(workspace)
-        .then(() =>
-          setStorage((current) =>
-            current.status === "ready"
-              ? current
-              : {
-                  status: "ready",
-                  message: "Saved in the private local database.",
-                },
-          ),
-        )
-        .catch((error) =>
-          setStorage({
-            status: "error",
-            message: `${error.message} The original rollback keys were not changed.`,
-          }),
-        );
-    }, overdue ? 0 : 220);
-    return () => clearTimeout(timer);
-  }, [workspace, hydrated, previewFallback]);
-  function updateWorkspace(updater) {
-    const previous = currentWorkspace.current;
-    let next = typeof updater === 'function' ? updater(previous) : updater;
-    // Board creation and scope changes also need to populate their matching notes.
-    if (next.notes !== previous.notes || next.folders !== previous.folders || next.sorter !== previous.sorter) next = { ...next, sorter: reconcileBoards(next) };
-    try {
-      const staged = stageWorkspace(next);
-      currentWorkspace.current = staged;
-      setWorkspace(staged);
-    } catch (error) {
-      // Keep accepting edits in memory and attempt IndexedDB if recovery storage is full.
-      currentWorkspace.current = next;
-      setWorkspace(next);
-      saveCanonicalWorkspace(next).catch(() => setStorage({ status: 'error', message: 'Save failed. Export your workspace before closing.' }));
-    }
-  }
-  return { workspace, setWorkspace: updateWorkspace, storage, hydrated };
+/* The top bar and Settings read a simple saving status. */
+function storageFrom(status, ready) {
+  if (status.state === "error") return { status: "error", message: status.message };
+  return { status: ready ? "ready" : "loading", message: status.message || (ready ? "Saved on this Mac." : "Opening your workspace") };
 }
 
 function WorkspaceApp() {
-  const { workspace, setWorkspace, storage, hydrated } = useWorkspace();
+  const { workspace, status, commit, ready } = useWorkspace();
+  const hydrated = Boolean(ready && workspace);
+  const storage = storageFrom(status, hydrated);
   const [view, setView] = useState("Today");
   const [notesTarget, setNotesTarget] = useState(null);
   const [boardTarget, setBoardTarget] = useState(null);
@@ -183,6 +80,7 @@ function WorkspaceApp() {
   useEffect(() => {
     const media = matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
+      if (!workspace) return;
       const resolved =
         workspace.theme === "system"
           ? media.matches
@@ -195,14 +93,12 @@ function WorkspaceApp() {
     apply();
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
-  }, [workspace.theme]);
+  }, [workspace?.theme]);
 
   useEffect(() => {
     if (previousView.current !== view) titleRef.current?.focus();
     previousView.current = view;
   }, [view]);
-
-  useEffect(() => window.osatQuickCapture?.onCapture?.((text) => saveCaptureText(text, "Global shortcut")), []);
 
   /* The Mac menu bar and Dock menu send commands here, through the same navigate(). */
   const latest = useRef(null);
@@ -266,11 +162,6 @@ function WorkspaceApp() {
       document.startViewTransition(() => flushSync(go)).finished.finally(() => { delete document.documentElement.dataset.vt; });
     }
   }
-  function commit(updater) {
-    setWorkspace((current) =>
-      typeof updater === "function" ? updater(current) : updater,
-    );
-  }
   function saveCaptureText(value, source = "Private note", openInbox = false) {
     const title = String(value || "").trim();
     if (!title) return;
@@ -295,7 +186,7 @@ function WorkspaceApp() {
               <span>LOCAL STORAGE</span>
             </div>
             <h2>{storage.status === "error" ? "Your workspace could not be opened." : "Opening the room."}</h2>
-            <p>{storage.status === "error" ? `${storage.message} Editing is paused to protect saved data.` : "Your notes stay on this Mac."}</p>
+            <p>{storage.status === "error" ? `${storage.message} Nothing has been changed.` : "Your notes stay on this Mac."}</p>
             {storage.status === "error" && <button type="button" className="primary-button" onClick={() => window.location.reload()}>Try again</button>}
           </section>
         </section>
@@ -355,7 +246,7 @@ function WorkspaceApp() {
           <header className="page-heading">
             <div>
               <h1 ref={titleRef} tabIndex="-1">
-                {view === "Assistant" ? "Local AI" : view}
+                {({ Assistant: "Local AI", Inbox: "Unsorted", Budget: "Money" })[view] || view}
               </h1>
             </div>
             <p>{DATE_LABEL}</p>
@@ -441,16 +332,25 @@ function WorkspaceApp() {
 }
 
 function QuickCaptureSurface() {
+  const { commit, ready } = useWorkspace();
   const [text, setText] = useState("");
   const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    const fresh = () => setSaved(false);
+    window.addEventListener("focus", fresh);
+    return () => window.removeEventListener("focus", fresh);
+  }, []);
   function submit(event) {
     event.preventDefault();
     const value = text.trim();
-    if (!value) return;
-    if (window.osatQuickCapture?.submit) window.osatQuickCapture.submit(value);
+    if (!value || !ready) return;
+    commit((state) => captureThought(state, value, "Quick capture").state);
+    workspaceClient().flushNow();
+    setText("");
     setSaved(true);
+    window.osatQuickCapture?.done?.();
   }
-  return <main className="quick-surface"><form onSubmit={submit}><header><Aperture weight="bold" /><span><strong>Quick capture</strong><small>Sent privately to OSAT</small></span></header>{saved ? <div className="quick-saved"><ShieldCheck /><strong>Captured.</strong><span>You can close this window.</span></div> : <><label htmlFor="quick-text">What’s on your mind?</label><textarea id="quick-text" data-autofocus autoFocus rows="7" value={text} onChange={(event) => setText(event.target.value)} placeholder="Paste or type it exactly as it is…" onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") submit(event); }} /><footer><span>⌘ Return to save</span><button className="primary-button" disabled={!text.trim()}><Plus /> Capture</button></footer></>}</form></main>;
+  return <main className="quick-surface"><form onSubmit={submit}><header><Aperture weight="bold" /><span><strong>Quick capture</strong><small>Lands in Unsorted, on this Mac</small></span></header>{saved ? <div className="quick-saved"><ShieldCheck /><strong>Captured.</strong><span>You can close this window.</span></div> : <><label htmlFor="quick-text">What’s on your mind?</label><textarea id="quick-text" data-autofocus autoFocus rows="7" value={text} onChange={(event) => setText(event.target.value)} placeholder="Paste or type it exactly as it is…" onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") submit(event); }} /><footer><span>⌘ Return to save</span><button className="primary-button" disabled={!text.trim() || !ready}><Plus /> Capture</button></footer></>}</form></main>;
 }
 
 export function App() {
