@@ -145,7 +145,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
     { label: note.archived ? "Unarchive" : "Archive", icon: Archive, onSelect: () => actions.setArchived([note.id], !note.archived) },
     { label: "Duplicate", icon: CopySimple, onSelect: () => actions.duplicateNote(note.id) },
     { label: "See on the Map", icon: ShareNetwork, onSelect: () => actions.showOnBoard(note.id, boards[0]?.id) },
-    { label: "See in the Sky", icon: MoonStars, onSelect: () => actions.showInSky(note.id) },
+    ...(isActiveNote(note) ? [{ label: "See in the Sky", icon: MoonStars, onSelect: () => actions.showInSky(note.id) }] : []),
     { label: "Copy as Markdown", icon: Copy, onSelect: () => navigator.clipboard?.writeText(`# ${note.title}\n\n${note.markdown}`) },
     { divider: true },
     { label: "Move to Trash", icon: Trash, danger: true, onSelect: () => actions.trashNotes([note.id]) },
@@ -300,7 +300,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             {tasks.total > 0 && <span>{tasks.done}/{tasks.total} steps done</span>}
             <span>Edited {formatRelativeTime(note.updatedAt)}</span>
             {boards.length > 0 && <button type="button" className="text-button" onClick={() => actions.showOnBoard(note.id, boards[0].id)}><ShareNetwork /> See on the Map</button>}
-            {!note.trashedAt && <button type="button" className="text-button" onClick={() => actions.showInSky(note.id)}><MoonStars /> See in the Sky</button>}
+            {isActiveNote(note) && <button type="button" className="text-button" onClick={() => actions.showInSky(note.id)}><MoonStars /> See in the Sky</button>}
           </footer>
         </div>
 

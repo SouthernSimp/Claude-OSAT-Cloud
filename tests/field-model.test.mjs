@@ -35,6 +35,14 @@ test('the sky links real wikilinks and chains tags instead of clumping them', ()
   assert.ok(graph.nodes.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y)))
 })
 
+test('an old note asked for by "See in the Sky" still gets a star', () => {
+  const notes = Array.from({ length: 5 }, (_, i) => ({ id: `n${i}`, title: `N${i}`, markdown: '', tags: [], updatedAt: `2026-09-2${i}T00:00:00.000Z` }))
+  assert.deepEqual(buildSkyGraph(notes, undefined, 3).nodes.map((node) => node.id).sort(), ['n2', 'n3', 'n4'])
+  const kept = buildSkyGraph(notes, undefined, 3, 'n0').nodes.map((node) => node.id)
+  assert.equal(kept.length, 3)
+  assert.ok(kept.includes('n0'))
+})
+
 test('linked stars draw toward each other without leaving the numbers', () => {
   const nodes = [
     { id: 'a', x: 100, y: 500, vx: 0, vy: 0, pinned: false },

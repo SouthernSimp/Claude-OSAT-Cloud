@@ -28,10 +28,11 @@ export function FieldSky({
   const real = workspace.notes.filter(isActiveNote)
   const source = preview ? sampleNotes() : real
   const signature = signatureOf(source)
+  const keepId = target?.noteId || null
   const graph = useMemo(() => {
-    const built = buildSkyGraph(preview ? sampleNotes() : workspace.notes)
+    const built = buildSkyGraph(preview ? sampleNotes() : workspace.notes, undefined, undefined, keepId)
     return { links: built.links, nodes: runSky(built.nodes, built.links, reduced ? 170 : 140) }
-  }, [signature, preview, reduced])
+  }, [signature, preview, reduced, keepId])
   const [nodes, setNodes] = useState(graph.nodes)
   const [cam, setCam] = useState({ x: 80, y: 60, z: 0.7 })
   const [hover, setHover] = useState(null)

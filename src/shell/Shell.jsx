@@ -149,7 +149,7 @@ export function Appearance({ workspace, commit, placement = 'up' }) {
 }
 
 /* A room, floating over the desk. It grows out of the point you clicked. */
-export function RoomSheet({ view, title, origin, closing, filled, onClose, onClosed, onSearch, onMode, children }) {
+export function RoomSheet({ view, title, origin, closing, filled, onClose, onClosed, onRisen, onSearch, onMode, children }) {
   const sheet = useRef(null)
   const map = view === 'Mindmap' || view === 'Sky'
 
@@ -166,7 +166,11 @@ export function RoomSheet({ view, title, origin, closing, filled, onClose, onClo
       ref={sheet}
       className={`glass room-sheet ${closing ? 'is-closing' : ''}`}
       aria-label={title}
-      onAnimationEnd={(event) => { if (closing && event.target === event.currentTarget) onClosed() }}
+      onAnimationEnd={(event) => {
+        if (event.target !== event.currentTarget) return
+        if (closing) onClosed()
+        else onRisen?.()
+      }}
     >
       <header className="sheet-bar">
         <button type="button" className="sheet-close" aria-label={`Close ${title}`} data-tip="Back to the desk  esc" onClick={onClose}><X weight="bold" /></button>
