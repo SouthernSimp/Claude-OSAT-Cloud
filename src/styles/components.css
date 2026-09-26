@@ -187,7 +187,7 @@
   align-items: start;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 900px) {
   .split-layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -309,7 +309,7 @@ input[type="radio"] {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: var(--z-modal);
   display: grid;
   place-items: center;
   padding: var(--s-5);
@@ -340,7 +340,7 @@ input[type="radio"] {
 }
 
 .eyebrow {
-  font-size: 11px;
+  font-size: var(--t-2xs);
   font-weight: 650;
   letter-spacing: 0.12em;
   text-transform: uppercase;

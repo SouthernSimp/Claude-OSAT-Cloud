@@ -1,62 +1,6 @@
 /* Mindmap: a desk of sticky notes. Rail on the left, an infinite stage on
    the right; the world inside the stage is panned/zoomed with a transform. */
 
-@font-face {
-  font-family: "Fraunces";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url(/fonts/fraunces-600.woff2) format("woff2");
-}
-
-:root {
-  --paper-canary: #f4e7a9;
-  --paper-apricot: #efd2ae;
-  --paper-rose: #e9c2bf;
-  --paper-lilac: #d9cdeb;
-  --paper-sky: #c5dce8;
-  --paper-mint: #c8e0d3;
-  --paper-lime: #dce4b9;
-  --paper-bone: #edf0ef;
-  --paper-ink: #15232b;
-  --paper-ink-2: rgba(21, 35, 43, 0.58);
-  --paper-edge: rgba(24, 45, 58, 0.16);
-  --paper-rule: rgba(24, 45, 58, 0.13);
-  --paper-margin: rgba(176, 58, 49, 0.3);
-  --paper-gloss: rgba(255, 255, 255, 0.5);
-  --desk: #f3efe8;
-  --desk-line: #ddd5c8;
-  --lift-rest: 0 1px 1px rgba(24, 45, 58, 0.08), 0 4px 10px -4px rgba(24, 45, 58, 0.28);
-  --lift-hover: 0 2px 3px rgba(24, 45, 58, 0.1), 0 10px 22px -8px rgba(24, 45, 58, 0.34);
-  --lift-held: 0 6px 8px rgba(24, 45, 58, 0.12), 0 28px 44px -14px rgba(24, 45, 58, 0.42);
-  --wire: #6a5a48;
-  --font-note: "Fraunces", "Iowan Old Style", "Palatino", Georgia, serif;
-}
-
-:root[data-theme="dark"] {
-  /* Coloured paper under a lamp: warm, low, and quiet enough for 200 cards. */
-  --paper-canary: #554a2b;
-  --paper-apricot: #5a412c;
-  --paper-rose: #553535;
-  --paper-lilac: #463b4f;
-  --paper-sky: #2f3f4b;
-  --paper-mint: #2e463d;
-  --paper-lime: #474c2d;
-  --paper-bone: #3b3732;
-  --paper-ink: #f1ebe2;
-  --paper-ink-2: rgba(241, 235, 226, 0.58);
-  --paper-edge: rgba(0, 0, 0, 0.42);
-  --paper-rule: rgba(241, 235, 226, 0.12);
-  --paper-margin: rgba(236, 154, 97, 0.32);
-  --paper-gloss: rgba(255, 255, 255, 0.07);
-  --desk: #151311;
-  --desk-line: #26221d;
-  --lift-rest: 0 1px 1px rgba(0, 0, 0, 0.3), 0 4px 10px -4px rgba(0, 0, 0, 0.6);
-  --lift-hover: 0 2px 3px rgba(0, 0, 0, 0.35), 0 10px 22px -8px rgba(0, 0, 0, 0.7);
-  --lift-held: 0 6px 8px rgba(0, 0, 0, 0.4), 0 28px 44px -14px rgba(0, 0, 0, 0.8);
-  --wire: #cdbfab;
-}
-
 .board-view {
   height: 100%;
   display: grid;
@@ -124,7 +68,7 @@
   padding: 0 5px;
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--ink) 8%, transparent);
-  font-size: 10px;
+  font-size: var(--t-2xs);
   letter-spacing: 0;
 }
 
@@ -292,7 +236,7 @@
 .segmented.mini button {
   min-height: 22px;
   padding: 0 var(--s-2);
-  font-size: 10px;
+  font-size: var(--t-2xs);
 }
 
 .segmented.mini button svg {
@@ -374,7 +318,7 @@
   align-items: baseline;
   gap: 8px;
   max-width: calc(100% - 28px);
-  font-family: var(--font-note);
+  font-family: var(--font-display);
   font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -387,7 +331,7 @@
 
 .frame-title small {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--t-2xs);
   font-weight: 500;
   letter-spacing: 0.04em;
   color: var(--faint);
@@ -471,8 +415,8 @@
 
 .wire-label {
   fill: var(--ink);
-  font-family: var(--font-note);
-  font-size: 13px;
+  font-family: var(--font-display);
+  font-size: var(--t-sm);
   font-style: italic;
   paint-order: stroke;
   stroke: var(--desk);
@@ -567,7 +511,7 @@
 .card-title {
   flex: 0 0 auto;
   margin-bottom: 4px;
-  font-family: var(--font-note);
+  font-family: var(--font-display);
   font-size: calc(var(--fs, 16px) * 1.02);
   font-weight: 650;
   line-height: 1.2;
@@ -882,16 +826,6 @@
   justify-content: center;
 }
 
-.hud-button.hero {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.hud-button.hero:hover:not(:disabled) {
-  background: var(--accent-hover);
-  color: var(--accent-ink);
-}
-
 .board-search {
   flex: 1;
   display: flex;
@@ -949,7 +883,7 @@
 
 .board-blank h2 {
   margin-bottom: var(--s-2);
-  font-family: var(--font-note);
+  font-family: var(--font-display);
   font-size: var(--t-3xl);
   font-weight: 600;
   color: var(--ink);
@@ -1001,7 +935,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  font-family: var(--font-note);
+  font-family: var(--font-display);
   font-size: var(--t-lg);
   line-height: 1.3;
   resize: none;
@@ -1032,39 +966,6 @@
   display: grid;
   gap: var(--s-2);
   pointer-events: none;
-}
-
-.toast {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-2) var(--s-4);
-  border-radius: var(--r-full);
-  background: var(--n-900);
-  color: var(--n-0);
-  font-size: var(--t-xs);
-  font-weight: 500;
-  box-shadow: var(--e-4);
-  pointer-events: auto;
-  animation: toast-in var(--d-base) var(--ease-spring);
-}
-
-:root[data-theme="dark"] .toast {
-  background: var(--n-100);
-  color: var(--n-900);
-}
-
-.toast button {
-  color: #f0a878;
-  font-weight: 700;
-}
-
-:root[data-theme="dark"] .toast button {
-  color: #a3411d;
-}
-
-@keyframes toast-in {
-  from { opacity: 0; translate: 0 8px; }
 }
 
 /* ---- Dialogs ---------------------------------------------------------------- */
@@ -1132,7 +1033,7 @@
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .board-view,
   .board-view.rail-closed {
     grid-template-columns: minmax(0, 1fr);
@@ -1155,7 +1056,6 @@
     display: none;
   }
 
-  .hud-button.hero span,
   .hud-button:not(.square):not(.hero) {
     font-size: 0;
     gap: 0;

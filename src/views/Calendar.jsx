@@ -13,6 +13,7 @@ import {
 } from "@phosphor-icons/react";
 import { calendarMonthDays, localDateKey } from "../daily-practice.js";
 import { calendarToIcs } from "../osat-data.js";
+import { useUndoToast } from "../lib/UndoToast.jsx";
 import {
   calendarProviderUrl,
   downloadFile,
@@ -52,6 +53,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
   const [cursor, setCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1, 12));
   const [selected, setSelected] = useState(initialDate || today);
   const [composing, setComposing] = useState(false);
+  const [toast, showUndo] = useUndoToast();
   const [menuFor, setMenuFor] = useState(null);
   const [form, setForm] = useState({ title: "", start: "", end: "", notes: "" });
 
@@ -117,6 +119,14 @@ export function CalendarView({ workspace, commit, initialDate }) {
   }
 
   function remove(id) {
+    const event = workspace.calendar.events.find((item) => item.id === id);
+    if (event) showUndo(`Removed “${event.title}”`, () => commit((state) => ({
+      ...state,
+      calendar: {
+        ...state.calendar,
+        events: [...state.calendar.events.filter((item) => item.id !== id), event].sort((a, b) => Date.parse(a.start) - Date.parse(b.start)),
+      },
+    })));
     commit((state) => ({
       ...state,
       calendar: {
@@ -412,6 +422,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
           Local events only. No calendar account is connected.
         </footer>
       </aside>
+      {toast}
     </section>
   );
 }

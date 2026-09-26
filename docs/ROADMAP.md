@@ -22,8 +22,8 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 4 | Local AI that sets itself up, Ask everywhere, chats in the workspace | Merged (PR #5) |
 | 5 | Your iPhone, step one: capture from the phone, read your notes there | Merged (PR #6) |
 | 6a | Sync: devices stay in step through iCloud (Mac ↔ Mac now, the iPhone app next) | Merged (PR #7) |
-| 6b | The iPhone app | In PR #8 |
-| 7 | Visual polish | Planned |
+| 6b | The iPhone app | Merged (PR #8) |
+| 7 | Visual polish | In PR #9 |
 
 **The end goal (Nate, Sep 25):** an app that syncs with his iPhone. Phases 5 and 6 get there;
 visual polish moves after them.
@@ -300,18 +300,19 @@ Opt-in in **Settings → iPhone**, because it is the first thing that leaves the
 - **Fixed on the way:** finishing the welcome saved two settings at once, and the saves could collide so the welcome came back; saves now take turns.
 - **Not yet:** old change files are kept (a clean-up can come when there are many).
 
-### Phase 6b: The iPhone app (built, PR #8)
+### Phase 6b: The iPhone app (merged, PR #8)
 - **The app:** three pages. **Today**: drop a thought or a next step, tick off Next, bring earlier steps forward, see Unsorted and recent notes. **Notes**: search, All / Unsorted / Pinned, a full-screen page to write in (Keep, Pin, Trash with Undo). **iCloud**: whether it's in step with the Mac, and Light/Dark.
 - **How it's built:** the same React app and the same store and sync engine as the Mac (`?surface=phone`), inside a small SwiftUI app (`ios/`) that serves it through an `osat://` scheme and gives it its own files and its iCloud folder. The Mac moves its OSAT folder into the app's iCloud folder once it exists, so both share one.
 - **Checks:** the phone's store and sync against a stand-in Swift side (unit test, and in the browser smoke test: it catches up from a Mac snapshot and sends its own change); the Mac's folder handoff (nothing lost); CI builds the app for the iOS simulator and screenshots it.
 - **To put it on the iPhone:** open Xcode once (its license), `brew install xcodegen`, `npm run ios`, pick the team, Run (docs/IPHONE.md).
 - **Later:** TestFlight from CI (an App Store Connect API key as a GitHub secret), Ask on the phone (Apple's on-device model or asking the Mac), a share extension and widgets.
 
-### Phase 7: Visual polish
-- One design language: the glass overlay plus a calm window.
-- Tokens only: remove the alias tokens, fold `board.css`'s tokens into `tokens.css`, cut the type scale to about 8 steps, add z-index tokens, reduce the breakpoints.
-- Empty states that teach one step. Undo toasts everywhere. Reduced-motion-safe transitions.
-- Target: CSS down from about 7.5k lines to about 4k.
+### Phase 7: Visual polish (PR #9)
+- **Tokens only:** the old alias names (`--blue`, `--danger`, `--shadow-sm`…) are gone, unused tokens removed, Mindmap's paper colours moved into `tokens.css`, one Fraunces font declaration. Type is 8 steps (`--t-2xs`…`--t-3xl`) and ~200 hand-typed font sizes now use them; app-wide layers have `--z-*` tokens; 17 breakpoints became three (1100 / 900 / 720).
+- **Undo everywhere (calm rule 2):** one `useUndoToast()` for Notes, Money and Calendar. Deleting a folder, a board, a note for good or emptying the Trash no longer asks a scary question: it happens, and Undo is there. Money entries and calendar events, which vanished without a word, now offer Undo too. The two copies of the toast style became one glass pill.
+- **Calm motion:** one global reduced-motion rule plus the glass one; three duplicates removed.
+- Screenshots of every room before and after show no visible change other than text sizes snapping by half a pixel.
+- **Not done, on purpose:** the "7.5k → 4k lines" target. Nearly every rule is in use (a scan found only a handful unused), so the rest would mean rewriting rooms that work. Empty states already teach one step.
 
 ### Later (after the MVP)
 - Projects become folder properties, and Files become "Linked folders" in Notes.

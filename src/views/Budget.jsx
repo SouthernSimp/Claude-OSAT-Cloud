@@ -1,6 +1,7 @@
 import { ArrowDownLeft, ArrowUpRight, Plus, Trash, Wallet } from "@phosphor-icons/react";
 import { useState } from "react";
 import { makeId } from "../lib/ui.js";
+import { useUndoToast } from "../lib/UndoToast.jsx";
 import { localDateKey } from "../daily-practice.js";
 import { formatMinor, parseBudgetCsv, parseMoneyToMinor } from "../osat-data.js";
 
@@ -19,6 +20,17 @@ export function BudgetView({ workspace, commit }) {
   const [showImport, setShowImport] = useState(false);
   const [adding, setAdding] = useState(false);
   const [month, setMonth] = useState(localDateKey().slice(0, 7));
+  const [toast, showUndo] = useUndoToast();
+  // Removes one entry from a budget list at once; Undo puts it back where it was.
+  function removeFrom(list, entry) {
+    const at = workspace.budget[list].findIndex((item) => item.id === entry.id);
+    commit((state) => ({ ...state, budget: { ...state.budget, [list]: state.budget[list].filter((item) => item.id !== entry.id) } }));
+    showUndo(`Removed “${entry.label}”`, () => commit((state) => {
+      const items = state.budget[list].filter((item) => item.id !== entry.id);
+      items.splice(at, 0, entry);
+      return { ...state, budget: { ...state.budget, [list]: items } };
+    }));
+  }
   const monthly = workspace.budget.transactions.filter((entry) => entry.date.startsWith(month));
   const income = monthly.filter((entry) => entry.amountMinor > 0).reduce((sum, entry) => sum + entry.amountMinor, 0);
   const spending = monthly.filter((entry) => entry.amountMinor < 0).reduce((sum, entry) => sum - entry.amountMinor, 0);
@@ -129,15 +141,7 @@ export function BudgetView({ workspace, commit }) {
                 className="icon-button"
                 type="button"
                 aria-label={`Delete ${entry.label}`}
-                onClick={() =>
-                  commit((state) => ({
-                    ...state,
-                    budget: {
-                      ...state.budget,
-                      transactions: state.budget.transactions.filter((item) => item.id !== entry.id),
-                    },
-                  }))
-                }
+                onClick={() => removeFrom("transactions", entry)}
               >
                 <Trash />
               </button>
@@ -158,15 +162,7 @@ export function BudgetView({ workspace, commit }) {
                 className="icon-button"
                 type="button"
                 aria-label={`Delete ${item.label}`}
-                onClick={() =>
-                  commit((state) => ({
-                    ...state,
-                    budget: {
-                      ...state.budget,
-                      recurring: state.budget.recurring.filter((entry) => entry.id !== item.id),
-                    },
-                  }))
-                }
+                onClick={() => removeFrom("recurring", item)}
               >
                 <Trash />
               </button>
@@ -199,6 +195,7 @@ export function BudgetView({ workspace, commit }) {
           </div>
         </section>
       ) : null}
+      {toast}
     </section>
   );
 }

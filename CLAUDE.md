@@ -131,7 +131,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`),
     `views/` (Calendar, Journal, Projects, Habits, Reflection, Budget, Files, Inbox,
     Obsidian, Settings, command palette), `tools/` (Browser, Terminal).
-  - Styles: `src/styles/`, tokens in `tokens.css`. `glass.css` loads last: the glass kit, the sheet,
+  - Styles: `src/styles/`, tokens in `tokens.css`.
+  - `lib/UndoToast.jsx`: `useUndoToast()`, the one Undo toast (Notes, Money, Calendar); remove at once, offer Undo. `glass.css` loads last: the glass kit, the sheet,
     the dock, transitions, and the token overrides that make every room see-through inside a sheet.
 - Data rules: a captured thought is one note with `unsorted: true` and a `source`; filing,
   pinning or Keep clears it. Each day has one note, `day-YYYY-MM-DD` with `kind: 'day'`
@@ -157,7 +158,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Inside a sheet `--page` is transparent: never use it as a text colour; use `--on-solid-ink`.
 - `.glass` draws its rim and cursor light with `::before`/`::after`; don't give glass elements
   other pseudo-elements.
-- `board.css` owns `--paper-*` and `--desk` on `:root`; never reuse those names elsewhere.
+- Every token lives in `tokens.css` (Mindmap's `--paper-*` and `--desk` too); app-wide layers use
+  `--z-*`, type sizes `--t-*`, and the only breakpoints are 1100, 900 and 720px.
 - Ad-hoc signing a build inside `~/Desktop` (iCloud-synced) fails with "detritus not allowed";
   build elsewhere: `-c.directories.output=<folder outside Desktop>`.
 - Never launch a packaged build against Nate's real `~/Library/Application Support/OSAT` to
