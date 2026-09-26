@@ -103,6 +103,15 @@ contextBridge.exposeInMainWorld('osatApp', Object.freeze({
   },
 }))
 
+/* Your iPhone, through an OSAT folder in iCloud Drive: an Inbox and a copy of your notes. */
+contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
+  status: () => ipcRenderer.invoke('phone:status'),
+  enable: () => ipcRenderer.invoke('phone:enable'),
+  disable: () => ipcRenderer.invoke('phone:disable'),
+  show: () => ipcRenderer.invoke('phone:show'),
+  onStatus: (listener) => listen('phone:status', listener),
+}))
+
 /* The ⌥Space layer: hide it, hand a pop-out to the main window, the hotkey, the app launchers,
    where things sit on it, and Spotify. */
 contextBridge.exposeInMainWorld('osatOverlay', Object.freeze({

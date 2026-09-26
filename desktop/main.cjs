@@ -9,6 +9,7 @@ const { resolveApprovedPath, resolveApprovedWritePath } = require('./path-guard.
 const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile } = require('./text-files.cjs')
 const { localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
 const { createAi } = require('./ai/index.cjs')
+const { createPhoneBridge } = require('./phone.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
@@ -23,7 +24,7 @@ const WRITABLE_EXTENSIONS = new Set(['.canvas', '.markdown', '.md'])
 let mainWindow
 let overlay
 let tray
-let prefs = { hotkey: DEFAULT_HOTKEY, launchers: [], places: {}, ai: { tier: null }, welcomed: false }
+let prefs = { hotkey: DEFAULT_HOTKEY, launchers: [], places: {}, ai: { tier: null }, welcomed: false, phone: false }
 let hotkey = null
 let hotkeyFailed = false
 let ai
@@ -631,6 +632,7 @@ async function loadPrefs() {
       places: Object.entries(saved.places || {}).reduce((places, [id, spot]) => placeItem(places, id, spot), {}),
       ai: { tier: typeof saved.ai?.tier === 'string' ? saved.ai.tier : null },
       welcomed: saved.welcomed === true,
+      phone: saved.phone === true,
     }
   } catch {
     // No preferences yet: the defaults stand.
@@ -875,6 +877,113 @@ function registerAi() {
   })
 }
 
+/* ---- Your iPhone, through an OSAT folder in iCloud Drive (off until turned on) ---- */
+
+// Tests (from source) pass OSAT_ICLOUD_DIR so they never touch the real iCloud Drive.
+const ICLOUD_DRIVE = (!app.isPackaged && process.env.OSAT_ICLOUD_DIR) || path.join(os.homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs')
+const PHONE_ROOT = path.join(ICLOUD_DRIVE, 'OSAT')
+let phone = null
+let phoneClient = null
+let phoneWatcher = null
+let phonePoll = null
+let phoneMirrorTimer = null
+let phoneScanTimer = null
+
+// Never touches iCloud Drive: macOS asks before an app looks there, and that
+// should only happen when Nate turns the link on.
+function phoneStatus() {
+  const base = { enabled: prefs.phone, root: PHONE_ROOT }
+  return phone ? { ...base, ...phone.status(), enabled: prefs.phone } : base
+}
+
+// Both do nothing while the link is off.
+const mirrorSoon = () => {
+  clearTimeout(phoneMirrorTimer)
+  if (prefs.phone) phoneMirrorTimer = setTimeout(() => { if (prefs.phone) phone?.mirror() }, 2000)
+}
+const scanSoon = () => {
+  clearTimeout(phoneScanTimer)
+  if (prefs.phone) phoneScanTimer = setTimeout(() => { if (prefs.phone) phone?.scan() }, 800)
+}
+
+async function bridgePhone() {
+  const { normalizeNote } = await sharedModule('note-core.mjs')
+  return createPhoneBridge({
+    root: PHONE_ROOT,
+    // A thought from the iPhone is one Unsorted note, made the same way the windows make one.
+    capture: (text) => {
+      const now = new Date().toISOString()
+      const title = text.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A thought'
+      const note = normalizeNote({ id: `note-${randomUUID()}`, title, markdown: text, createdAt: now, updatedAt: now, unsorted: true, source: 'iPhone' })
+      store.commit(phoneClient, [{ t: 'add', c: 'notes', v: note, at: 0 }])
+      mirrorSoon()
+    },
+    snapshot: () => {
+      const { doc } = store.load()
+      return { notes: doc.notes || [], folders: doc.folders || [] }
+    },
+    onStatus: () => sendToAllWindows('phone:status', phoneStatus()),
+  })
+}
+
+async function startPhone() {
+  phone ??= await bridgePhone()
+  await phone.prepare()
+  phoneClient ??= store.connect(mirrorSoon)
+  try {
+    phoneWatcher = require('node:fs').watch(path.join(PHONE_ROOT, 'Inbox'), scanSoon)
+  } catch {
+    // The poll below still finds new thoughts.
+  }
+  phonePoll = setInterval(scanSoon, 30000)
+  await phone.scan()
+  await phone.mirror()
+}
+
+function stopPhone() {
+  phoneWatcher?.close()
+  clearInterval(phonePoll)
+  clearTimeout(phoneMirrorTimer)
+  clearTimeout(phoneScanTimer)
+  phoneWatcher = null
+  phonePoll = null
+}
+
+function registerPhone() {
+  handle('phone:status', () => phoneStatus(), { from: 'app' })
+  handle('phone:enable', async () => {
+    if (!require('node:fs').existsSync(ICLOUD_DRIVE)) fail('iCloud Drive is off on this Mac. Turn it on in System Settings → Apple Account → iCloud, then try again.')
+    try {
+      prefs = { ...prefs, phone: true }
+      await savePrefs()
+      stopPhone()
+      await startPhone()
+    } catch (error) {
+      prefs = { ...prefs, phone: false }
+      await savePrefs()
+      stopPhone()
+      fail(error.code === 'EPERM' || error.code === 'EACCES'
+        ? 'OSAT isn’t allowed into iCloud Drive yet. Allow it in System Settings → Privacy & Security → Files and Folders, then try again.'
+        : `OSAT couldn’t make its folder in iCloud Drive (${error.code || error.message}).`)
+    }
+    return phoneStatus()
+  })
+  // Off means OSAT stops, and the copy of the notes leaves iCloud Drive. The Inbox stays.
+  handle('phone:disable', async () => {
+    stopPhone()
+    prefs = { ...prefs, phone: false }
+    await savePrefs()
+    phone ??= await bridgePhone()
+    await phone.removeCopies().catch(() => {})
+    return phoneStatus()
+  })
+  handle('phone:show', async () => {
+    if (await shell.openPath(PHONE_ROOT)) fail('Finder could not open the OSAT folder in iCloud Drive.')
+    return true
+  })
+  if (prefs.phone) startPhone().catch((error) => console.error('The iPhone link could not start:', error))
+}
+
 /* A build can check its own AI engine without opening any notes:
      OSAT.app/Contents/MacOS/OSAT --osat-self-test[=/path/to/model.gguf]
    It prints one line and quits: 0 when the engine (and the model, if given) work. */
@@ -938,6 +1047,7 @@ app.whenReady().then(async () => {
   registerBrowserAndTerminal()
   await loadPrefs()
   registerAi()
+  registerPhone()
   registerOverlay()
   await createWindow()
   createTray()
@@ -957,5 +1067,6 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   terminals?.destroy()
   ai?.dispose()
+  stopPhone()
   for (const id of grantAccessStops.keys()) stopGrantAccess(id)
 })

@@ -5,8 +5,10 @@
 //   3. a thought left on the ⌥Space layer while the main window is closed is not lost
 //   4. the first-launch welcome picks an AI size, and Ask answers on the desk
 //      (OSAT_AI=mock: a practice model answers, nothing is downloaded)
+//   5. the iPhone link: a file in the iCloud Inbox becomes a thought, and the copy of
+//      the notes appears, then leaves when the link is turned off (a stand-in iCloud Drive)
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -15,7 +17,7 @@ import { _electron as electron } from 'playwright'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 const home = await mkdtemp(path.join(os.tmpdir(), 'osat-e2e-'))
-const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock' }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive') }
 const dataFile = path.join(home, 'OSAT Test', 'store', 'workspace.json')
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }
@@ -98,6 +100,28 @@ try {
   await main.getByText('From the second window').first().waitFor({ timeout: 5000 })
     .catch(() => problems.push('the main window did not show the second window\'s note'))
   await main.keyboard.press('Control+1')
+
+  // 5. The iPhone link, through a stand-in iCloud Drive.
+  const icloud = path.join(home, 'iCloud Drive', 'OSAT')
+  await mkdir(path.dirname(icloud), { recursive: true })
+  const phone = await main.evaluate(() => window.osatPhone.enable())
+  check(phone.enabled, 'the iPhone link did not turn on')
+  const dropped = path.join(icloud, 'Inbox', 'Text.txt')
+  await writeFile(dropped, 'From the phone\nwith a second line')
+  const past = new Date(Date.now() - 60_000)
+  await utimes(dropped, past, past)
+  let arrived = false
+  for (let i = 0; i < 40 && !arrived; i += 1) {
+    await sleep(250)
+    arrived = (await notesIn(main)).includes('From the phone')
+  }
+  check(arrived, 'a thought dropped in the iCloud Inbox did not arrive in Unsorted')
+  await sleep(2600)
+  const copy = path.join(icloud, 'Notes', 'Unsorted', 'From the phone.md')
+  check(await access(copy).then(() => true, () => false), 'the copy of the notes was not written to iCloud Drive')
+  check(await access(path.join(icloud, 'Inbox', 'Added', 'Text.txt')).then(() => true, () => false), 'the dropped file did not move to Inbox/Added')
+  await main.evaluate(() => window.osatPhone.disable())
+  check(!(await access(copy).then(() => true, () => false)), 'turning the iPhone link off left the copy of the notes behind')
 
   // 3. Capture on the ⌥Space layer with the main window closed.
   const layer = app.windows().find((page) => page.url().includes('surface=overlay'))

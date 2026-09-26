@@ -60,6 +60,12 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
     the ⌥Space layer (hotkey, menu-bar icon, app launchers, Esc routing), single-instance lock. Files, browser and terminal IPC answer the
     main window only.
   - `media.cjs`: Spotify on the layer through AppleScript (now playing, play/pause, skip).
+  - `phone.cjs`: the iPhone link, off until turned on in Settings → iPhone. An `OSAT` folder in
+    iCloud Drive: text dropped in `Inbox` becomes an Unsorted note (source `iPhone`) and moves to
+    `Inbox/Added`; `Notes` holds a read-only Markdown copy (only files listed in its
+    `.osat-mirror.json` are ever changed). Turning it off removes the copy. macOS asks before an
+    app looks in iCloud Drive, so nothing touches it until the link is on. Tests set
+    `OSAT_ICLOUD_DIR` (from source only).
   - `overlay.cjs`: the layer window — full-screen, see-through, a macOS panel with vibrancy on
     the display under the cursor. Created hidden at launch and only ever hidden, never closed.
   - `store/`: the workspace lives here. `index.cjs` owns the one document (via the shared
@@ -72,6 +78,8 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
     `osatLocalAI` (models, `chatStream` → `{ done, cancel }`, and the built-in AI's status /
     choose / cancel / resume / remove), `osatBrowser`, `osatTerminal`, `osatApp` (incl. the
     first-launch welcome), `osatOverlay`). An AbortSignal can't cross the bridge; pass functions.
+- `shared/note-core.mjs` — the note record (`normalizeNote`, `parseTags`), shared so the main
+  process makes notes exactly like the windows (`src/note-core.js` re-exports it).
 - `shared/store-core.mjs` — pure, used by main, every window and the tests: the schema,
   `createEmptyDoc`, `diffDocs`, `applyOps` (returns the inverse, for undo), `validateOps`,
   `compactOps`, `migrations[]` and the hub. It is unpacked from the app archive

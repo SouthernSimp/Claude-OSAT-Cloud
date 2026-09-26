@@ -139,6 +139,12 @@
 .settings .ai-note { margin-top: 14px; color: var(--faint); font-size: 12.5px; }
 @media (max-width: 760px) { .ai-sizes { grid-template-columns: minmax(0, 1fr); } }
 
+/* Settings → iPhone */
+.settings .phone-privacy { display: flex; gap: 8px; margin: 12px 0 16px; padding: 10px 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--ink) 4%, transparent); font-size: 13px; }
+.phone-privacy svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--accent); }
+.phone-steps { display: grid; gap: 8px; margin: 12px 0; padding-left: 20px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.phone-steps b { color: var(--ink); font-weight: 600; }
+
 .practice-layout, .obsidian-layout {
   max-width: 1320px;
   display: grid;
