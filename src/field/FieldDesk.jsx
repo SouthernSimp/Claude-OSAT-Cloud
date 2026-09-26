@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { ArrowUp, CaretDown, ChatCircle, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PencilSimpleLine, Plus, PushPin, ShareNetwork, Sparkle, Stop, X } from '@phosphor-icons/react'
+import { ArrowUp, CaretDown, ChatCircle, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PencilSimpleLine, PictureInPicture, Plus, PushPin, ShareNetwork, Sparkle, Stop, X } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
 import { applyAction, extractActions, systemPrompt, wantsActions } from '../assistant/actions.js'
@@ -13,8 +13,8 @@ import { Markdown } from '../lib/markdown.jsx'
 import { captureThought, dayNoteId, excerpt, isActiveNote, relatedNotes, relinkRenamedNote, updateNote, wikilinkPairs } from '../notes-model.js'
 import { addNextStep, bringForward, earlierSteps, nextSteps, toggleNextStep } from '../next-steps.js'
 import { clamp, inputActive, timeLabel } from '../lib/ui.js'
-import { sampleEvents, sampleFolders, sampleNotes } from './field-sample.js'
-import { FieldBanner, useReducedMotion } from './FieldChrome.jsx'
+import { FileThumb, filesBridge, openEntry, useFolder, useFreshness } from '../views/Files.jsx'
+import { useReducedMotion } from './FieldChrome.jsx'
 import { FieldSheet } from './FieldSheet.jsx'
 import { dayPhase, fitCells, homeItems, paperFields, phaseCopy } from './field-model.js'
 import { MediaWidget } from './MediaWidget.jsx'
@@ -28,6 +28,7 @@ const MODES = [
 const WEEKDAY = new Intl.DateTimeFormat('en-US', { weekday: 'long' })
 const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long' })
 const ICONS_KEY = 'osat.home.icons.v1'
+const SHELF_KEY = 'osat.home.shelf'
 const CELL = { h: 103 }
 /* Blue hour for the morning and evening, the peaks at midday, the lake at night. */
 const WALL_FOCUS = { morning: '18% 45%', afternoon: '55% 50%', evening: '18% 45%', night: '75% 40%' }
@@ -40,6 +41,11 @@ function markEvening(date) {
   try { localStorage.setItem('osat.evening', date) } catch { /* a convenience only */ }
 }
 
+/* The right side shows your Mac's Desktop, or OSAT's own notes and folders. */
+function readShelf() {
+  try { return localStorage.getItem(SHELF_KEY) === 'osat' ? 'osat' : 'desktop' } catch { return 'desktop' }
+}
+
 function readIconsCollapsed() {
   try {
     return localStorage.getItem(ICONS_KEY) === 'collapsed'
@@ -49,14 +55,15 @@ function readIconsCollapsed() {
 }
 
 /* Home is a quiet desktop: a blurred wallpaper, two small widgets and the
-   next steps, one line that does one thing on Return, your notes as icons,
-   and a dock to the rooms. It reads and writes the same records the rest of
-   OSAT keeps. The ⌥Space layer reuses it with `layer`: no wallpaper (the real
-   desktop shows through), its own dock, and notes open as pop-outs. On the
-   layer, widgets and icons can be picked up and set down anywhere (`places`). */
+   next steps, one line that does one thing on Return, the files on your Mac's
+   Desktop (or your notes) as icons, and a dock to the rooms. It reads and writes
+   the same records the rest of OSAT keeps. The ⌥Space layer reuses it with
+   `layer`: no wallpaper (the real desktop shows through), its own dock, and notes
+   open as pop-outs. On the layer, widgets and icons can be picked up and set down
+   anywhere (`places`). */
 export function FieldDesk({
-  workspace, commit, navigate, preview, sampled, onKeep, onBlank, onRemove, sheet, onSheetDone,
-  storage, onSearch, wallpaper, focusAt, layer = false, dock, onOpenNote, visit, places = {}, onPlace, media,
+  workspace, commit, navigate, sheet, onSheetDone,
+  storage, onSearch, wallpaper, focusAt, layer = false, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
 }) {
   const home = useRef(null)
   const justMoved = useRef(false)
@@ -71,6 +78,12 @@ export function FieldDesk({
   const [arrived] = useState(() => reduced || sessionStorage.getItem('osat.field.arrived') === '1')
   const [capacity, setCapacity] = useState(21)
   const [collapsed, setCollapsed] = useState(readIconsCollapsed)
+  const [shelf, setShelf] = useState(readShelf)
+  const [picked, setPicked] = useState(null)
+  const [fileNote, setFileNote] = useState('')
+  const onDesktop = Boolean(filesBridge()) && shelf === 'desktop'
+  const fresh = useFreshness()
+  const desktop = useFolder(onDesktop ? 'desktop' : null, '', fresh + visit)
   const [focusOpen, setFocusOpen] = useState(false)
   const [openId, setOpenId] = useState(null)
   const { models, status: aiStatus, refresh: checkAi } = useAi()
@@ -85,8 +98,7 @@ export function FieldDesk({
   const phase = dayPhase(now)
   const today = localDateKey(now)
   const [greeting] = phaseCopy(phase)
-  const realNotes = workspace.notes.filter(isActiveNote)
-  const notes = preview ? sampleNotes() : realNotes
+  const notes = workspace.notes.filter(isActiveNote)
   const planId = dayNoteId(today)
   // Steps left on earlier daily pages wait to be brought forward, not piled on here.
   const earlier = earlierSteps(notes, today)
@@ -94,12 +106,11 @@ export function FieldDesk({
   const steps = nextSteps(notes)
     .filter((step) => (!step.done || ghosts.has(step.id)) && !earlierIds.has(step.id))
     .sort((a, b) => (b.noteId === planId) - (a.noteId === planId))
-  const openCount = steps.filter((step) => !step.done).length
-  const allEvents = preview ? sampleEvents() : workspace.calendar.events
+  const allEvents = workspace.calendar.events
   const events = allEvents
     .filter((event) => localDateKey(new Date(event.start)) === today)
     .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
-  const allItems = homeItems({ notes, folders: preview ? sampleFolders() : workspace.folders, boards: workspace.sorter?.boards || [] })
+  const allItems = homeItems({ notes, folders: workspace.folders, boards: workspace.sorter?.boards || [] })
   const placed = (item) => Boolean(places[`${item.kind}:${item.id}`])
   const items = fitCells(allItems.filter((item) => !placed(item)), capacity)
   const placedItems = allItems.filter(placed)
@@ -151,7 +162,7 @@ export function FieldDesk({
     })
     observer.observe(node)
     return () => observer.disconnect()
-  }, [collapsed])
+  }, [collapsed, onDesktop])
 
   /* Ask only ever talks to the model on this Mac. */
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
@@ -274,7 +285,6 @@ export function FieldDesk({
   }
 
   function toggleStep(step) {
-    if (preview) return
     commit((state) => ({ ...state, notes: toggleNextStep(state.notes, step) }))
     if (step.done) return
     setGhosts((value) => new Set(value).add(step.id))
@@ -323,10 +333,62 @@ export function FieldDesk({
 
   function openItem(item, event) {
     if (item.kind === 'note') openNote(item.id, event.currentTarget.querySelector('[data-paper]'))
-    else if (item.kind === 'folder') navigate('Notes', preview ? null : { folderId: item.id })
+    else if (item.kind === 'folder') navigate('Notes', { folderId: item.id })
     else if (item.kind === 'board') navigate('Mindmap', { boardId: item.id })
     else if (item.kind === 'pile') navigate('Notes', { list: 'unsorted' })
     else navigate('Notes')
+  }
+
+  function pickShelf(value) {
+    setShelf(value)
+    setPicked(null)
+    try { localStorage.setItem(SHELF_KEY, value) } catch { /* a convenience only */ }
+  }
+
+  /* Desktop icons behave like the Mac's: click to pick, double-click or Return to
+     open, Space for Quick Look. A folder opens in Files. */
+  async function openFile(entry) {
+    setFileNote('')
+    if (entry.kind === 'folder') {
+      navigate('Files', { rootId: 'desktop', relative: entry.relative })
+      return
+    }
+    try {
+      if (await openEntry('desktop', entry) === 'shown') setFileNote('Shown in Finder: OSAT opens documents, pictures and media itself.')
+    } catch (reason) {
+      setFileNote(cleanError(reason))
+    }
+  }
+
+  function renderFile(item) {
+    if (item.kind === 'more') {
+      return (
+        <button key="more" type="button" className="icon is-more" aria-label={`See ${item.count} more on the Desktop`} onClick={() => navigate('Files', { rootId: 'desktop' })}>
+          <IconArt item={item} />
+          <span className="icon-label">{item.count} more</span>
+        </button>
+      )
+    }
+    const { entry } = item
+    return (
+      <button
+        key={entry.relative}
+        type="button"
+        className={`icon is-file ${picked === entry.relative ? 'is-picked' : ''}`}
+        aria-label={`${entry.name}${entry.kind === 'folder' ? ', folder' : ''}`}
+        aria-pressed={picked === entry.relative}
+        title={entry.name}
+        onClick={() => setPicked(entry.relative)}
+        onDoubleClick={() => openFile(entry)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') { event.preventDefault(); openFile(entry) }
+          if (event.key === ' ' && entry.kind === 'file') { event.preventDefault(); filesBridge()?.quickLook('desktop', entry.relative).catch(() => {}) }
+        }}
+      >
+        <FileThumb rootId="desktop" entry={entry} className="art-file" />
+        <span className="icon-label">{entry.name}</span>
+      </button>
+    )
   }
 
   function toggleIcons() {
@@ -428,21 +490,21 @@ export function FieldDesk({
         <DayWidget now={now} events={events} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:day')} />
         <MonthWidget now={now} today={today} events={allEvents} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:month')} />
         <section className="glass widget widget-next" aria-labelledby="widget-next" {...movable('widget:next')}>
-          <h2 id="widget-next" tabIndex={-1} className="widget-kicker">Next <small>{openCount ? `${openCount} open` : ''}</small></h2>
+          <h2 id="widget-next" tabIndex={-1} className="widget-kicker">Next</h2>
           {steps.length ? (
             <ul>
               {steps.slice(0, 5).map((step) => (
                 <li key={step.id} className={step.done ? 'is-done' : ''}>
-                  <button type="button" className="ring" aria-label={`Complete ${step.text}`} aria-pressed={step.done} disabled={preview} onClick={() => toggleStep(step)} />
+                  <button type="button" className="ring" aria-label={`Complete ${step.text}`} aria-pressed={step.done} onClick={() => toggleStep(step)} />
                   <button type="button" className="step-text" onClick={() => openNote(step.noteId)}>{step.text}</button>
                 </li>
               ))}
             </ul>
           ) : <p className="widget-empty">Nothing waiting. Choose Next step to add one.</p>}
-          {(steps.length > 5 || (earlier.length > 0 && !preview)) && (
+          {(steps.length > 5 || earlier.length > 0) && (
             <div className="widget-next-foot">
               {steps.length > 5 && <button type="button" onClick={() => navigate('Journal')}>{steps.length - 5} more on today’s page</button>}
-              {earlier.length > 0 && !preview && (
+              {earlier.length > 0 && (
                 <button type="button" className="bring" onClick={() => commit((state) => bringForward(state, localDateKey()))}>
                   Bring {earlier.length} from earlier days
                 </button>
@@ -505,12 +567,11 @@ export function FieldDesk({
             {chip.text}
             {chip.setup && <button type="button" onClick={() => navigate('Settings', { section: 'ai' })}>Set it up</button>}
           </p>
-          {(phase === 'evening' || phase === 'night') && !preview && eveningSeenOn !== today && (
+          {(phase === 'evening' || phase === 'night') && eveningSeenOn !== today && (
             <button type="button" className="glass evening-pill" onClick={() => { markEvening(today); setEveningSeenOn(today); navigate('Reflection') }}>
               <MoonStars weight="fill" /> Close the day <span>three quiet questions</span>
             </button>
           )}
-          <FieldBanner preview={preview} sampled={sampled} onKeep={() => onKeep()} onBlank={onBlank} onRemove={onRemove} />
         </form>
         {answer && (
           <section className="glass home-answer" aria-label="Answer" aria-busy={answer.busy}>
@@ -533,6 +594,9 @@ export function FieldDesk({
               {answer.busy
                 ? <button type="button" onClick={() => answerAbort.current?.abort()}><Stop weight="fill" /> Stop</button>
                 : <button type="button" onClick={() => { const chatId = answer.chatId; setAnswer(null); navigate('Assistant', { chatId }) }}><ChatCircle /> Keep talking</button>}
+              {!answer.busy && window.osatChat && (
+                <button type="button" title="Keep talking in a small window over your other apps" onClick={() => { const chatId = answer.chatId; setAnswer(null); window.osatChat.show({ chatId }) }}><PictureInPicture /> Pop out</button>
+              )}
               {!answer.busy && answer.text.trim() && (
                 answer.savedId
                   ? <span className="home-answer-saved"><NotePencil /> Saved to Unsorted</span>
@@ -543,22 +607,32 @@ export function FieldDesk({
         )}
       </div>
 
-      <nav className={`home-icons ${preview ? 'is-sample' : ''}`} aria-label="OSAT items">
-        <button type="button" className="icons-toggle" aria-expanded={!collapsed} aria-label={collapsed ? 'Show notes and folders' : 'Hide notes and folders'} onClick={toggleIcons}>
-          <CaretDown weight="bold" />
-        </button>
+      <nav className="home-icons" aria-label={onDesktop ? 'Your Desktop' : 'OSAT items'}>
+        <div className="icons-head">
+          {filesBridge() && !collapsed && (
+            <div className="icons-switch" role="radiogroup" aria-label="What the desk shows">
+              <button type="button" role="radio" aria-checked={onDesktop} onClick={() => pickShelf('desktop')}>Desktop</button>
+              <button type="button" role="radio" aria-checked={!onDesktop} onClick={() => pickShelf('osat')}>OSAT</button>
+            </div>
+          )}
+          <button type="button" className="icons-toggle" aria-expanded={!collapsed} aria-label={collapsed ? 'Show the icons' : 'Hide the icons'} onClick={toggleIcons}>
+            <CaretDown weight="bold" />
+          </button>
+        </div>
         {!collapsed && (
-          <div className="icon-grid" ref={grid}>
-            {items.map(renderIcon)}
-            {items.every((item) => item.kind === 'board') && (
-              <div className="icons-empty">
-                <p>Your notes will appear here.</p>
-                {!sampled && !layer && <button type="button" onClick={() => onKeep()}>Or lay out a sample room</button>}
-              </div>
+          <div className="icon-grid" ref={grid} onPointerDown={(event) => { if (event.target === event.currentTarget) setPicked(null) }}>
+            {onDesktop
+              ? desktop.entries && (desktop.entries.length
+                ? fitCells(desktop.entries.map((entry) => ({ kind: 'file', id: entry.relative, entry })), capacity).map(renderFile)
+                : <div className="icons-empty"><p>{desktop.error || 'Your Desktop is empty.'}</p></div>)
+              : items.map(renderIcon)}
+            {!onDesktop && items.every((item) => item.kind === 'board') && (
+              <div className="icons-empty"><p>Your notes will appear here.</p></div>
             )}
           </div>
         )}
-        {placedItems.map(renderIcon)}
+        {onDesktop && fileNote && <p className="icons-note" role="status">{fileNote}</p>}
+        {!onDesktop && placedItems.map(renderIcon)}
       </nav>
 
       {dock}
@@ -566,14 +640,12 @@ export function FieldDesk({
       {sheetNote && (
         <FieldSheet
           note={sheetNote}
-          preview={preview}
           onClose={closeSheet}
           onCommit={(id, patch) => commit((state) => {
             const before = state.notes.find((item) => item.id === id)
             const next = updateNote(state, id, patch)
             return before && patch.title !== undefined && patch.title !== before.title ? relinkRenamedNote(next, before.title, patch.title) : next
           })}
-          onKeep={onKeep}
           onOpenNotes={() => { setOpenId(null); onSheetDone?.(); navigate('Notes', { noteId: sheetNote.id }) }}
         />
       )}

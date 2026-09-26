@@ -26,4 +26,4 @@
    drag the window, and both leave room for the traffic lights. */
 .is-mac-app .workspace-content > .home { padding-top: 46px; }
 .is-mac-app .home { -webkit-app-region: drag; }
-.is-mac-app .home :is(.widget, .home-modes, .home-composer-wrap, .icon, .icons-toggle, .icons-empty, .dock, .field-sheet, .field-banner) { -webkit-app-region: no-drag; }
+.is-mac-app .home :is(.widget, .home-modes, .home-composer-wrap, .icon, .icons-head, .icons-empty, .dock, .field-sheet) { -webkit-app-region: no-drag; }

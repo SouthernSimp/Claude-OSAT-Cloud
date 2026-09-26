@@ -211,8 +211,10 @@ function createAi({
   }
 
   async function practiceAnswer(messages, onDelta, signal) {
-    const question = String(messages.at(-1)?.content || '').split('\n')[0].slice(0, 160)
-    const text = `This is OSAT's practice model, used for tests. You asked: “${question}”`
+    const content = String(messages.at(-1)?.content || '')
+    const question = content.split('\n')[0].slice(0, 160)
+    const files = (content.match(/^\[FILE: /gm) || []).length
+    const text = `This is OSAT's practice model, used for tests. You asked: “${question}”${files ? ` It read ${files === 1 ? 'one file' : `${files} files`}.` : ''}`
     for (const word of text.split(/(?<= )/)) {
       if (signal?.aborted) break
       onDelta(word)

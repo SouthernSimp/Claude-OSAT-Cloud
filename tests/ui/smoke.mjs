@@ -8,9 +8,9 @@ import { chromium } from 'playwright'
 
 const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
-// The four spaces (⌃1–4), then every tool from the dock's Tools menu.
-const SPACES = [['Notes', 2], ['Mindmap', 3], ['Assistant', 4]]
-const TOOLS = [['Journal', 'Today’s page'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Reflection', 'Reflect'], ['Budget', 'Money'], ['Projects', 'Projects'], ['Files', 'Files'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
+// The five spaces (⌃1–5), then every tool from the dock's Tools menu.
+const SPACES = [['Notes', 2], ['Mindmap', 3], ['Assistant', 4], ['Files', 5]]
+const TOOLS = [['Journal', 'Today’s page'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Reflection', 'Reflect'], ['Budget', 'Money'], ['Projects', 'Projects'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
 
 let server
 async function start() {
@@ -39,9 +39,8 @@ async function main() {
 
   await page.goto(`${url}?fresh=1`)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
-  const keep = page.getByRole('button', { name: 'Keep this room' })
-  if (await keep.count()) await keep.first().click()
   await sleep(600)
+  if (await page.getByText(/sample room/i).count()) problems.push('desk: the sample room is still offered')
 
   // A thought typed on home is saved, survives a reload, and waits in Unsorted.
   room = 'capture'
@@ -106,8 +105,11 @@ async function main() {
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
     .catch(() => problems.push('layer: the pile of loose thoughts did not open Unsorted'))
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'Open note The room' }).click()
-  await page.getByRole('dialog', { name: 'The room' }).waitFor({ timeout: 5000 })
+  // ⌘K finds a note; on the layer it opens as a pop-out.
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Smoke test')
+  await page.keyboard.press('Enter')
+  await page.getByRole('dialog', { name: 'Smoke test thought' }).waitFor({ timeout: 5000 })
     .catch(() => problems.push('layer: a note did not open as a pop-out'))
   await page.getByRole('button', { name: 'Notes', exact: true }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
@@ -116,6 +118,17 @@ async function main() {
   await page.screenshot({ path: `${OUT}/layer.png` })
   await page.keyboard.press('Escape')
   if (await page.getByRole('dialog', { name: 'Notes' }).count()) problems.push('layer: Esc did not close the top pop-out')
+
+  // The quick chat's window, as the browser preview can show it (no AI here).
+  room = 'quick chat'
+  const chat = await browser.newPage({ viewport: { width: 420, height: 600 } })
+  chat.on('pageerror', (error) => problems.push(`quick chat: ${error.message}`))
+  await chat.goto(`${url}?surface=chat`)
+  await chat.locator('.quick-chat .composer textarea').waitFor({ timeout: 8000 })
+    .catch(() => problems.push('quick chat: the chat did not appear'))
+  await sleep(400)
+  await chat.screenshot({ path: `${OUT}/quick-chat.png` })
+  await chat.close()
 
   // The iPhone app, with a stand-in for its Swift side (files, and an iCloud that
   // already holds a snapshot from a Mac): it catches up, then sends its own change.

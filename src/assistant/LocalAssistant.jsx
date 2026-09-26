@@ -2,12 +2,16 @@ import {
   ArrowClockwise,
   ArrowUp,
   Check,
+  ArrowsOut,
   CircleNotch,
   Copy,
+  FileText,
   LockKey,
   MagnifyingGlass,
   Microphone,
   NotePencil,
+  Paperclip,
+  PictureInPicture,
   Plus,
   Sparkle,
   Stop,
@@ -92,10 +96,12 @@ export function UsedNotes({ ids, notes, onOpen }) {
 }
 
 /* Ask: conversations with the AI on this Mac. Each question reads the notes it
-   matches, shown as chips you can remove before sending. `initialPrompt` is a
-   hand-off from elsewhere: { prompt, at } opens a new chat with the text waiting,
-   { chatId, at } opens that chat. */
-export function LocalAssistant({ workspace, commit, navigate, initialPrompt = null }) {
+   matches, shown as chips you can remove before sending, and any files you drop
+   on it or attach. `initialPrompt` is a hand-off from elsewhere: { prompt, at }
+   opens a new chat with the text waiting, { chatId, at } opens that chat,
+   { file: { rootId, relative }, at } starts one about that file. `compact` is
+   the quick chat's small window. */
+export function LocalAssistant({ workspace, commit, navigate, initialPrompt = null, compact = false }) {
   const { models, status: ai } = useAi();
   const [model, setModel] = useState("");
   const [activeId, setActiveId] = useState(null);
@@ -110,6 +116,10 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const [pending, setPending] = useState({});
   const [railOpen, setRailOpen] = useState(false);
   const [voiceHint, setVoiceHint] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [reading, setReading] = useState(false);
+  const [dropping, setDropping] = useState(false);
+  const fileApi = typeof window === "undefined" ? null : window.nateOSFiles;
 
   const abortRef = useRef(null);
   const inputRef = useRef(null);
@@ -133,9 +143,15 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     if (!initialPrompt || handedOff.current === initialPrompt.at) return;
     handedOff.current = initialPrompt.at;
     abortRef.current?.abort();
+    setFiles([]);
     if (typeof initialPrompt.chatId === "string") {
       setActiveId(initialPrompt.chatId);
       setDraft("");
+    } else if (initialPrompt.file && fileApi?.extract) {
+      setActiveId(null);
+      setDraft("");
+      const { rootId, relative } = initialPrompt.file;
+      attach(() => fileApi.extract(rootId, relative));
     } else {
       setActiveId(null);
       setDraft(String(initialPrompt.prompt || "").slice(0, 8000));
@@ -172,10 +188,33 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     stickRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80;
   }
 
+  /* A file becomes a chip; its text goes with every question until it is removed or the chat changes. */
+  async function attach(load) {
+    setReading(true);
+    setError("");
+    try {
+      const file = await load();
+      if (file) setFiles((list) => [...list.filter((item) => item.name !== file.name), file].slice(-3));
+    } catch (reason) {
+      setError(cleanError(reason));
+    } finally {
+      setReading(false);
+      inputRef.current?.focus();
+    }
+  }
+
+  function onDrop(event) {
+    setDropping(false);
+    if (!fileApi?.attachDropped || !event.dataTransfer?.files?.length) return;
+    event.preventDefault();
+    for (const file of [...event.dataTransfer.files].slice(0, 3)) attach(() => fileApi.attachDropped(file));
+  }
+
   function startChat() {
     abortRef.current?.abort();
     setActiveId(null);
     setDraft("");
+    setFiles([]);
     setDropped(new Set());
     setStreaming("");
     setError("");
@@ -187,6 +226,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     if (id === activeId) return;
     abortRef.current?.abort();
     setActiveId(id);
+    setFiles([]);
     setStreaming("");
     setError("");
     setRailOpen(false);
@@ -208,7 +248,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     const noteIds = text === asking ? using : pickNotes(content);
     let base = active || newChat();
     if (retry && base.messages.at(-1)?.role === "user") base = { ...base, messages: base.messages.slice(0, -1) };
-    const question = newMessage("user", content, noteIds.length ? { noteIds } : {});
+    const question = newMessage("user", content, { ...(noteIds.length ? { noteIds } : {}), ...(files.length ? { files: files.map((file) => file.name) } : {}) });
     const chat = { ...base, messages: [...base.messages, question] };
     commit((state) => putChat(state, chat));
     setActiveId(chat.id);
@@ -225,7 +265,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     try {
       await streamLocalMessage({
         model,
-        messages: outbound(systemPrompt(), base.messages, content, workspace.notes, noteIds),
+        messages: outbound(systemPrompt(), base.messages, content, workspace.notes, noteIds, files),
         signal: controller.signal,
         onDelta: (delta) => {
           full += delta;
@@ -289,8 +329,20 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const lastPrompt = messages.at(-1)?.role === "user" ? messages.at(-1).content : "";
   const noteTitle = (id) => workspace.notes.find((note) => note.id === id)?.title || "Untitled";
 
+  const popOut = !compact && typeof window !== "undefined" && window.osatChat;
+
   return (
-    <section className="assistant" aria-label="Ask">
+    <section
+      className={`assistant ${compact ? "is-compact" : ""} ${dropping ? "is-dropping" : ""}`}
+      aria-label="Ask"
+      onDragOver={(event) => {
+        if (!fileApi?.attachDropped || !event.dataTransfer?.types?.includes("Files")) return;
+        event.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setDropping(false); }}
+      onDrop={onDrop}
+    >
       <aside className={`chat-rail ${railOpen ? "is-open" : ""}`}>
         <div className="rail-head">
           <button className="new-chat" type="button" onClick={startChat}>
@@ -350,6 +402,16 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
             <button className="outline-button" type="button" onClick={startChat}>
               <Plus /> New
             </button>
+            {popOut && (
+              <button className="outline-button" type="button" title="Keep talking in a small window over your other apps" onClick={() => popOut.show(active ? { chatId: active.id } : null)}>
+                <PictureInPicture /> Pop out
+              </button>
+            )}
+            {compact && (
+              <button className="icon-button" type="button" aria-label="Open in the OSAT window" title="Open in the OSAT window" onClick={() => navigate?.("Assistant", active ? { chatId: active.id } : null)}>
+                <ArrowsOut />
+              </button>
+            )}
           </div>
         </header>
 
@@ -389,6 +451,12 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                 <div className="bubble-body">
                   {message.role === "assistant" ? <Markdown text={message.content} headingOffset={2} /> : <p className="user-text">{message.content}</p>}
                   {message.role === "user" && <UsedNotes ids={message.noteIds} notes={workspace.notes} onOpen={openNote} />}
+                  {message.role === "user" && message.files?.length > 0 && (
+                    <p className="bubble-notes">
+                      <span>Read</span>
+                      {message.files.map((name) => <span key={name} className="bubble-file"><FileText /> {name}</span>)}
+                    </p>
+                  )}
                   <ActionCards actions={pending[message.id]} onAdd={(action) => approve(message.id, action)} onDiscard={(action) => discard(message.id, action)} />
                   {message.role === "assistant" && (
                     <div className="bubble-actions">
@@ -438,6 +506,17 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
 
         <div className="composer">
           {voiceHint && <div className="voice-hint" role="status"><Microphone /><span><strong>Speak with Mac Dictation</strong>Press Fn twice, then speak. Your words appear here before anything is sent.</span><button type="button" aria-label="Dismiss voice instructions" onClick={() => setVoiceHint(false)}><X /></button></div>}
+          {(files.length > 0 || reading) && (
+            <div className="ask-notes" aria-label="Files Ask will read">
+              <span>{reading ? "Reading the file…" : `Reading ${files.length === 1 ? "1 file" : `${files.length} files`}`}</span>
+              {files.map((file) => (
+                <span className="ask-note-chip is-file" key={file.name} title={file.truncated ? "A long file: Ask reads the start of it" : undefined}>
+                  <FileText /> {file.name}
+                  <button type="button" aria-label={`Leave out ${file.name}`} onClick={() => setFiles((list) => list.filter((item) => item !== file))}><X /></button>
+                </span>
+              ))}
+            </div>
+          )}
           {using.length > 0 && (
             <div className="ask-notes" aria-label="Notes Ask will read">
               <span>Using {using.length} {using.length === 1 ? "note" : "notes"}</span>
@@ -468,6 +547,9 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
           <div className="composer-foot">
             <span className="composer-note"><LockKey /> Nothing leaves this Mac</span>
             <span className="composer-spacer" />
+            {fileApi?.attachChosen && (
+              <button className="voice-button" type="button" aria-label="Attach a file" title="Attach a file, or drop one here" disabled={busy || reading} onClick={() => attach(() => fileApi.attachChosen())}><Paperclip /> File</button>
+            )}
             <button className="voice-button" type="button" aria-label="Speak with Mac Dictation" title="Speak with Mac Dictation" disabled={busy || !model} onClick={() => { setVoiceHint(true); inputRef.current?.focus(); }}><Microphone /> Speak</button>
             {busy ? (
               <button className="primary-button send" type="button" onClick={cancel}>
@@ -481,13 +563,16 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
           </div>
         </div>
 
-        <footer className="chat-foot">
-          <span><LockKey /> Runs on this Mac · no cloud</span>
-          <button type="button" onClick={() => navigate?.("Settings", { section: "ai" })}>AI settings</button>
-        </footer>
+        {!compact && (
+          <footer className="chat-foot">
+            <span><LockKey /> Runs on this Mac · no cloud</span>
+            <button type="button" onClick={() => navigate?.("Settings", { section: "ai" })}>AI settings</button>
+          </footer>
+        )}
       </div>
 
       {railOpen && <div className="rail-scrim" onClick={() => setRailOpen(false)} />}
+      {dropping && <div className="drop-veil" aria-hidden="true"><FileText /> Drop to ask about it</div>}
     </section>
   );
 }
