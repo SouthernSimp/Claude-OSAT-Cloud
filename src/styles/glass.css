@@ -144,7 +144,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .icon .art-folder { transition: filter 500ms var(--glide), translate 420ms var(--spring), rotate 420ms var(--spring), box-shadow 420ms var(--glide); }
 
 .widget-next-foot { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--on-1) 10%, transparent); }
-.widget-next-foot button { font-size: 11.5px; color: var(--on-3); transition: color 200ms; }
+.widget-next-foot button { font-size: var(--t-xs); color: var(--on-3); transition: color 200ms; }
 .widget-next-foot button:hover { color: var(--on-1); }
 .widget-next-foot .bring { color: var(--accent); }
 
@@ -156,7 +156,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   margin-top: 14px;
   padding: 8px 14px;
   border-radius: 999px;
-  font-size: 12.5px;
+  font-size: var(--t-sm);
   font-weight: 560;
   color: var(--on-1);
   background: var(--glass);
@@ -166,9 +166,8 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .evening-pill span { color: var(--on-3); font-weight: 450; }
 .evening-pill:hover { translate: 0 -1px; }
 
-.notes-view { position: relative; }
-.notes-toasts { position: absolute; z-index: 30; left: 50%; bottom: 20px; translate: -50% 0; pointer-events: none; }
-.notes-toasts .toast { pointer-events: auto; }
+/* At the foot of the room that asked (the sheet's glass is what "fixed" measures from). */
+.undo-toasts { position: fixed; z-index: var(--z-pop); left: 50%; bottom: 24px; translate: -50% 0; pointer-events: none; }
 
 /* The greeting catches a slow sweep of light. */
 .home-greeting {
@@ -192,7 +191,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .dock-slot { grid-column: 1 / -1; grid-row: 2; height: 68px; margin-top: 10px; }
 .app-dock {
   position: absolute;
-  z-index: 40;
+  z-index: var(--z-dock);
   left: 50%;
   bottom: 12px;
   translate: -50% 0;
@@ -276,11 +275,11 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 @keyframes pop-open { from { opacity: 0; scale: 0.92; translate: 0 4px; } }
 .menu-popover button { border-radius: 9px; transition: background 160ms, color 160ms; }
 .menu-popover button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
-.menu-popover button small { margin-left: auto; color: var(--faint); font-size: 11px; }
+.menu-popover button small { margin-left: auto; color: var(--faint); font-size: var(--t-2xs); }
 
 .appearance-pop {
   position: absolute;
-  z-index: 60;
+  z-index: var(--z-pop);
   bottom: calc(100% + 14px);
   left: 50%;
   width: 280px;
@@ -315,7 +314,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   gap: 6px;
   padding: 0 10px;
   border-radius: 9px;
-  font-size: 12.5px;
+  font-size: var(--t-sm);
   font-weight: 560;
   color: var(--on-2);
   transition: background 300ms var(--glide), color 200ms, box-shadow 300ms;
@@ -327,12 +326,12 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .appearance-card { display: grid; gap: 12px; max-width: 420px; margin-top: 14px; }
 .appearance-card .wall-picks img { height: 72px; }
 .wall-picks { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.wall-picks button { display: grid; gap: 5px; font-size: 11.5px; color: var(--on-2); }
+.wall-picks button { display: grid; gap: 5px; font-size: var(--t-xs); color: var(--on-2); }
 .wall-picks img { width: 100%; height: 58px; object-fit: cover; border-radius: 10px; box-shadow: 0 0 0 1px var(--line); transition: box-shadow 300ms var(--glide), scale 400ms var(--spring); }
 .wall-picks button:hover img { scale: 1.03; }
 .wall-picks button[aria-checked="true"] { color: var(--on-1); }
 .wall-picks button[aria-checked="true"] img { box-shadow: 0 0 0 2px var(--accent), 0 6px 16px -8px rgb(0 0 0 / 50%); }
-.blur-control { position: relative; z-index: 1; display: grid; gap: 8px; font-size: 12.5px; font-weight: 560; }
+.blur-control { position: relative; z-index: 1; display: grid; gap: 8px; font-size: var(--t-sm); font-weight: 560; }
 .blur-control > span { display: flex; justify-content: space-between; }
 .blur-control output { color: var(--on-3); font-variant-numeric: tabular-nums; }
 .blur-control input { width: 100%; accent-color: var(--accent); }
@@ -357,7 +356,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 @keyframes palette-in { from { opacity: 0; scale: 0.94; translate: 0 -10px; } }
 .command-palette > label { position: relative; z-index: 1; padding: 18px 20px; border-bottom: 1px solid var(--line-soft); color: var(--muted); }
 .command-palette > label svg { width: 20px; height: 20px; }
-.command-palette input { font-size: 18px; color: var(--ink-strong); }
+.command-palette input { font-size: var(--t-xl); color: var(--ink-strong); }
 .command-palette input::placeholder { color: var(--faint); }
 .command-palette > label kbd { padding: 3px 7px; border-radius: 6px; font: 560 11px var(--font); color: var(--faint); background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .command-palette > p,
@@ -399,22 +398,30 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 @keyframes capture-in { from { opacity: 0; scale: 0.9; translate: 0 20px; rotate: -1.5deg; } }
 
 /* Toasts are small glass pills; Undo is the one bright word. */
-.toast, :root[data-theme="dark"] .toast {
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
   padding: 9px 10px 9px 16px;
+  border-radius: var(--r-full);
+  font-size: var(--t-xs);
+  font-weight: 500;
   color: var(--ink);
   background: var(--glass-strong);
   -webkit-backdrop-filter: blur(30px) saturate(1.8);
   backdrop-filter: blur(30px) saturate(1.8);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-edge) 60%, transparent), 0 0 0 0.5px var(--line-strong), 0 18px 40px -16px rgb(0 0 0 / 45%);
+  pointer-events: auto;
   animation: toast-in 520ms var(--spring) both;
 }
-.toast button, :root[data-theme="dark"] .toast button { padding: 4px 10px; border-radius: 999px; color: var(--accent); background: var(--accent-soft); }
+.toast button { padding: 4px 10px; border-radius: 999px; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
+@keyframes toast-in { from { opacity: 0; translate: 0 8px; } }
 
 /* ---- The room sheet -------------------------------------------------------- */
 
 .sheet-scrim {
   position: absolute;
-  z-index: 15;
+  z-index: var(--z-scrim);
   inset: 0;
   background: rgb(10 9 8 / calc(6% + var(--blur-n, 0.6) * 10%));
   -webkit-backdrop-filter: blur(3px);
@@ -427,7 +434,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 
 .room-sheet {
   position: absolute;
-  z-index: 20;
+  z-index: var(--z-sheet);
   inset: 18px 22px 96px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -484,7 +491,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .sheet-modes::after { display: none; }
 .sheet-modes button { color: var(--muted); }
 .sheet-modes button[aria-checked="true"] { color: var(--ink-strong); }
-.sheet-private { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint); }
+.sheet-private { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--faint); }
 .sheet-private svg { width: 13px; height: 13px; }
 .sheet-search {
   height: 32px;
@@ -494,7 +501,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   padding: 0 8px 0 11px;
   border-radius: 10px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--t-sm);
   background: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .sheet-search:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 10%, transparent); }

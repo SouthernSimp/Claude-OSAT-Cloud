@@ -6,10 +6,7 @@
   --n-0: oklch(99.5% 0.004 85);
   --n-100: oklch(94.5% 0.010 85);
   --n-300: oklch(78% 0.016 85);
-  --n-500: oklch(54% 0.016 85);
-  --n-600: oklch(44% 0.018 85);
   --n-900: oklch(18% 0.014 85);
-  --n-1000: oklch(9% 0.010 85);
 
   /* Status */
   --positive: oklch(52% 0.12 155);
@@ -45,7 +42,6 @@
 
   /* Notes as paper: the desk on Today, the open sheet, the day page. */
   --tabletop: #e8e2d8;
-  --day-page: #f9f6f1;
   --sheet: #fffcf6;
   --sheet-ink: #251d16;
   --sheet-edge: #e6d8c5;
@@ -53,7 +49,6 @@
   --sheet-lift: 0 1px 0 rgb(255 255 255 / 70%) inset, 0 26px 44px -20px rgb(46 28 12 / 55%), 0 4px 10px rgb(46 28 12 / 10%);
 
   --sidebar: var(--surface);
-  --sidebar-ink: var(--ink);
 
   /* Home: a warm-white mist over the wallpaper, and glass laid on top of it. */
   --wall-filter: blur(48px) saturate(0.8) brightness(1.2);
@@ -82,25 +77,25 @@
 
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
   --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  --font-serif: var(--font-display);
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   --t-2xs: 0.6875rem; --t-xs: 0.75rem; --t-sm: 0.8125rem; --t-md: 0.875rem;
-  --t-lg: 1rem; --t-xl: 1.125rem; --t-2xl: 1.5rem; --t-3xl: 2rem; --t-4xl: 2.75rem; --t-5xl: 3.5rem;
+  --t-lg: 1rem; --t-xl: 1.125rem; --t-2xl: 1.5rem; --t-3xl: 2rem;
   --lh-tight: 1.1; --lh-snug: 1.3; --lh-normal: 1.5; --lh-relaxed: 1.65;
   --tr-tight: -0.01em; --tr-display: -0.035em; --tr-wide: 0.06em;
 
   --s-1: 0.25rem; --s-2: 0.5rem; --s-3: 0.75rem; --s-4: 1rem; --s-5: 1.25rem;
-  --s-6: 1.5rem; --s-8: 2rem; --s-10: 2.5rem; --s-12: 3rem; --s-16: 4rem;
+  --s-6: 1.5rem; --s-8: 2rem; --s-10: 2.5rem; --s-12: 3rem;
 
   --r-xs: 6px; --r-sm: 8px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px; --r-2xl: 24px; --r-full: 999px;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --d-fast: 140ms; --d-base: 220ms; --d-slow: 400ms;
 
-  --topbar-h: 52px;
+  /* Layers across the whole app; stacking inside one room stays local. */
+  --z-scrim: 15; --z-sheet: 20; --z-dock: 40; --z-pop: 60; --z-modal: 90; --z-focus: 100;
+
   --content-max: 1240px;
   --gutter: clamp(1.25rem, 4vw, 3rem);
   --shell-radius: 0px;
@@ -148,7 +143,6 @@
   --home-text-shadow: 0 1px 12px rgb(0 0 0 / 30%);
 
   --tabletop: #0f0e0c;
-  --day-page: #181614;
   --sheet: #efe7da;
   --sheet-ink: #241c15;
   --sheet-edge: #cdbfa9;
@@ -171,16 +165,50 @@
   color-scheme: dark;
 }
 
-/* Older rules still ask for these names; they resolve to the palette above. */
-:root, :root[data-theme="dark"] {
-  --surface-strong: var(--surface-raised);
-  --surface-soft: var(--surface-sunken);
-  --blue: var(--accent);
-  --blue-strong: var(--accent-hover);
-  --blue-soft: var(--accent-soft);
-  --danger: var(--critical);
-  --success: var(--positive);
-  --sidebar-text: var(--sidebar-ink);
-  --shadow-sm: var(--e-2);
-  --shadow-lg: var(--e-5);
+/* Mindmap: coloured paper cards on a desk. */
+:root {
+  --paper-canary: #f4e7a9;
+  --paper-apricot: #efd2ae;
+  --paper-rose: #e9c2bf;
+  --paper-lilac: #d9cdeb;
+  --paper-sky: #c5dce8;
+  --paper-mint: #c8e0d3;
+  --paper-lime: #dce4b9;
+  --paper-bone: #edf0ef;
+  --paper-ink: #15232b;
+  --paper-ink-2: rgba(21, 35, 43, 0.58);
+  --paper-edge: rgba(24, 45, 58, 0.16);
+  --paper-rule: rgba(24, 45, 58, 0.13);
+  --paper-margin: rgba(176, 58, 49, 0.3);
+  --paper-gloss: rgba(255, 255, 255, 0.5);
+  --desk: #f3efe8;
+  --desk-line: #ddd5c8;
+  --lift-rest: 0 1px 1px rgba(24, 45, 58, 0.08), 0 4px 10px -4px rgba(24, 45, 58, 0.28);
+  --lift-hover: 0 2px 3px rgba(24, 45, 58, 0.1), 0 10px 22px -8px rgba(24, 45, 58, 0.34);
+  --lift-held: 0 6px 8px rgba(24, 45, 58, 0.12), 0 28px 44px -14px rgba(24, 45, 58, 0.42);
+  --wire: #6a5a48;
+}
+
+:root[data-theme="dark"] {
+  /* Coloured paper under a lamp: warm, low, and quiet enough for 200 cards. */
+  --paper-canary: #554a2b;
+  --paper-apricot: #5a412c;
+  --paper-rose: #553535;
+  --paper-lilac: #463b4f;
+  --paper-sky: #2f3f4b;
+  --paper-mint: #2e463d;
+  --paper-lime: #474c2d;
+  --paper-bone: #3b3732;
+  --paper-ink: #f1ebe2;
+  --paper-ink-2: rgba(241, 235, 226, 0.58);
+  --paper-edge: rgba(0, 0, 0, 0.42);
+  --paper-rule: rgba(241, 235, 226, 0.12);
+  --paper-margin: rgba(236, 154, 97, 0.32);
+  --paper-gloss: rgba(255, 255, 255, 0.07);
+  --desk: #151311;
+  --desk-line: #26221d;
+  --lift-rest: 0 1px 1px rgba(0, 0, 0, 0.3), 0 4px 10px -4px rgba(0, 0, 0, 0.6);
+  --lift-hover: 0 2px 3px rgba(0, 0, 0, 0.35), 0 10px 22px -8px rgba(0, 0, 0, 0.7);
+  --lift-held: 0 6px 8px rgba(0, 0, 0, 0.4), 0 28px 44px -14px rgba(0, 0, 0, 0.8);
+  --wire: #cdbfab;
 }

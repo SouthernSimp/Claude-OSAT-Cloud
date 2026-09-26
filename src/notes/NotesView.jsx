@@ -3,9 +3,10 @@ import { FolderSimple, NotePencil, Plus, X } from "@phosphor-icons/react";
 import { localDateKey } from "../daily-practice.js";
 import { addCardsToBoard, newBoard, normalizeBoardDoc, stockFor, updateBoard } from "../board-model.js";
 import {
-  canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, emptyTrash, isActiveNote, moveNotes, notesInList,
+  canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, folderSubtree, emptyTrash, isActiveNote, moveNotes, notesInList,
   keepNotes, purgeNotes, relinkRenamedNote, resolveWikilink, restoreNotes, trashNotes, updateNote,
 } from "../notes-model.js";
+import { useUndoToast } from "../lib/UndoToast.jsx";
 import { Organizer } from "./Organizer.jsx";
 import { NoteList, useVisibleNotes } from "./NoteList.jsx";
 import { NoteEditor } from "./NoteEditor.jsx";
@@ -39,7 +40,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
   const [selection, setSelection] = useState(() => new Set());
   const [pane, setPane] = useState(target?.noteId ? "editor" : "list");
   const [drawer, setDrawer] = useState(false); // the organizer as a sheet on phones
-  const narrow = useMediaQuery("(max-width: 860px)");
+  const narrow = useMediaQuery("(max-width: 900px)");
   const organizerOpen = narrow ? drawer : ui.organizer;
   const setUi = useCallback((patch) => setUiState((current) => ({ ...current, ...patch })), []);
   useEffect(() => {
@@ -92,13 +93,9 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
 
   const pendingFocus = useRef(null);
   const [folderDraftAt, setFolderDraftAt] = useState(0);
-  // Calm rule 2: trashing happens at once, and Undo is right there for a few seconds.
-  const [toast, setToast] = useState(null);
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = setTimeout(() => setToast(null), 6000);
-    return () => clearTimeout(timer);
-  }, [toast]);
+  const [toast, showUndo] = useUndoToast();
+  // Undo after a delete for good puts the very same notes back (still in the Trash).
+  const bringBack = (gone) => commit((state) => ({ ...state, notes: [...state.notes.filter((note) => !gone.some((item) => item.id === note.id)), ...gone] }));
   const actions = useMemo(() => {
     const open = (id) => { setSelectedId(id); setSelection(new Set()); setPane("editor"); };
     return {
@@ -128,19 +125,23 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         const pinned = new Set(workspace.notes.filter((note) => chosen.has(note.id) && note.pinned).map((note) => note.id));
         commit((state) => trashNotes(state, ids));
         setSelection(new Set());
-        setToast({
-          id: Date.now(),
-          message: ids.length === 1 ? "Moved to Trash" : `${ids.length} notes moved to Trash`,
-          undo: () => commit((state) => ({ ...state, notes: state.notes.map((note) => chosen.has(note.id) ? { ...note, trashedAt: null, pinned: pinned.has(note.id) } : note) })),
-        });
+        showUndo(
+          ids.length === 1 ? "Moved to Trash" : `${ids.length} notes moved to Trash`,
+          () => commit((state) => ({ ...state, notes: state.notes.map((note) => chosen.has(note.id) ? { ...note, trashedAt: null, pinned: pinned.has(note.id) } : note) })),
+        );
       },
       restoreNotes(ids) { commit((state) => restoreNotes(state, ids)); setSelection(new Set()); },
       purgeNotes(ids) {
-        if (!confirm(ids.length === 1 ? "Delete this note forever? This cannot be undone." : `Delete ${ids.length} notes forever? This cannot be undone.`)) return;
+        const gone = workspace.notes.filter((note) => ids.includes(note.id));
         commit((state) => purgeNotes(state, ids));
         setSelection(new Set());
+        showUndo(gone.length === 1 ? "Deleted for good" : `${gone.length} notes deleted for good`, () => bringBack(gone));
       },
-      emptyTrash() { if (confirm("Empty the trash? Notes in it are deleted for good.")) commit((state) => emptyTrash(state)); },
+      emptyTrash() {
+        const gone = workspace.notes.filter((note) => note.trashedAt);
+        commit((state) => emptyTrash(state));
+        if (gone.length) showUndo("Trash emptied", () => bringBack(gone));
+      },
       duplicateNote(id) {
         let copy;
         commit((state) => { const result = duplicateNote(state, id); copy = result.note; return result.state; });
@@ -189,8 +190,16 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       },
       deleteFolder(id) {
         const folder = workspace.folders.find((item) => item.id === id);
-        if (!folder || !confirm(`Delete the folder “${folder.name}”? Its notes stay and move up one level.`)) return;
+        if (!folder) return;
+        const removed = folderSubtree(workspace.folders, id);
+        const folders = workspace.folders.filter((item) => removed.has(item.id));
+        const homes = new Map(workspace.notes.filter((note) => removed.has(note.folderId)).map((note) => [note.id, note.folderId]));
         commit((state) => deleteFolder(state, id));
+        showUndo(`Folder “${folder.name}” removed. Its notes moved up one level.`, () => commit((state) => ({
+          ...state,
+          folders: [...state.folders.filter((item) => !removed.has(item.id)), ...folders],
+          notes: state.notes.map((note) => homes.has(note.id) ? { ...note, folderId: homes.get(note.id) } : note),
+        })));
         if (ui.list === "folder" && ui.folderId === id) setUi({ list: "all", folderId: null });
       },
       startFolder() { setUi({ organizer: true }); setDrawer(true); setFolderDraftAt(Date.now()); },
@@ -283,14 +292,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
           </div>
         </section>
       )}
-      <div className="notes-toasts" aria-live="polite">
-        {toast && (
-          <div className="toast" key={toast.id}>
-            <span>{toast.message}</span>
-            <button type="button" onClick={() => { toast.undo(); setToast(null); }}>Undo</button>
-          </div>
-        )}
-      </div>
+      {toast}
     </div>
   );
 }

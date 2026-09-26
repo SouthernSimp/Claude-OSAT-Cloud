@@ -43,7 +43,7 @@ html:has(.overlay-surface) body,
   touch-action: none;
 }
 .popout-bar:active { cursor: grabbing; }
-.popout-bar strong { flex: 1; min-width: 0; overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.popout-bar strong { flex: 1; min-width: 0; overflow: hidden; font-size: var(--t-sm); text-overflow: ellipsis; white-space: nowrap; }
 .popout-close {
   width: 20px;
   height: 20px;
@@ -55,7 +55,7 @@ html:has(.overlay-surface) body,
 }
 .popout-close:hover { color: #fff; background: var(--critical); }
 .popout-close svg { width: 10px; height: 10px; }
-.popout-window { display: flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 8px; font-size: 11.5px; color: var(--on-2); }
+.popout-window { display: flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 8px; font-size: var(--t-xs); color: var(--on-2); }
 .popout-window:hover { color: var(--on-1); background: color-mix(in srgb, var(--on-1) 11%, transparent); }
 .popout-window svg { width: 13px; height: 13px; }
 /* The room inside is an ordinary OSAT room on the window's own paper. */
@@ -69,10 +69,6 @@ html:has(.overlay-surface) body,
 
 .dock .launcher img { width: 30px; height: 30px; }
 .dock-apps { max-width: 44vw; overflow-x: auto; scrollbar-width: none; }
-
-@media (prefers-reduced-motion: reduce) {
-  .popout { animation: none; }
-}
 
 /* ---- Moving things on the layer ---------------------------------------- */
 
@@ -99,8 +95,8 @@ html:has(.overlay-surface) body,
 .media-art svg { width: 22px; height: 22px; }
 .media-text { min-width: 0; }
 .media-text :is(strong, span) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.media-text strong { margin-top: 6px; font-size: 13px; color: var(--on-1); }
-.media-text span { margin-top: 2px; font-size: 11.5px; color: var(--on-2); }
+.media-text strong { margin-top: 6px; font-size: var(--t-sm); color: var(--on-1); }
+.media-text span { margin-top: 2px; font-size: var(--t-xs); color: var(--on-2); }
 .media-controls { display: flex; align-items: center; gap: 2px; }
 .media-controls button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: var(--on-1); }
 .media-controls button:hover:not(:disabled) { background: color-mix(in srgb, var(--on-1) 14%, transparent); }

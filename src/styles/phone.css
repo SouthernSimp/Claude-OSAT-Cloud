@@ -37,14 +37,14 @@
 }
 
 .phone-head { padding: 8px 6px 2px; }
-.phone-head p { margin: 0 0 2px; color: var(--on-2); font-size: 14px; font-weight: 600; }
+.phone-head p { margin: 0 0 2px; color: var(--on-2); font-size: var(--t-md); font-weight: 600; }
 .phone-head h1 { margin: 0; color: var(--on-1); font: 600 32px/1.1 var(--font-display); letter-spacing: -0.02em; }
 
 .phone-card,
 .phone-capture,
 .phone-search { border-radius: 22px; background: var(--glass-strong); }
 .phone-card { padding: 14px 16px; }
-.phone-card h2 { margin: 0 0 6px; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.phone-card h2 { margin: 0 0 6px; color: var(--accent); font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .phone-card > * { position: relative; z-index: 1; }
 
 /* Capture: one line that becomes a thought or a step. */
@@ -65,7 +65,7 @@
 .phone .phone-capture textarea:focus { outline: none; box-shadow: none; }
 .phone-capture textarea::placeholder { color: var(--on-3); }
 .phone-capture-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.phone-capture-foot span { display: inline-flex; align-items: center; gap: 5px; color: var(--on-3); font-size: 13px; }
+.phone-capture-foot span { display: inline-flex; align-items: center; gap: 5px; color: var(--on-3); font-size: var(--t-sm); }
 .phone-capture-foot span svg { color: var(--positive); }
 .phone-capture-foot button {
   flex: none;
@@ -81,7 +81,7 @@
 .phone-capture-foot button svg { width: 18px; height: 18px; }
 
 .phone-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 7%, transparent); justify-self: start; }
-.phone-seg button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border-radius: 999px; color: var(--on-2); font-size: 14px; font-weight: 600; }
+.phone-seg button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border-radius: 999px; color: var(--on-2); font-size: var(--t-md); font-weight: 600; }
 .phone-seg button[aria-checked="true"] { color: var(--on-solid-ink); background: var(--on-solid); }
 .phone-seg svg { width: 15px; height: 15px; }
 .phone-seg-wide { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); justify-self: stretch; }
@@ -94,7 +94,7 @@
 .phone-steps .ring { flex: none; width: 24px; height: 24px; border: 2px solid var(--on-3); border-radius: 50%; }
 .phone-steps .ring::after { content: ""; position: absolute; inset: -10px; }
 .phone-steps .ring { position: relative; }
-.phone-steps .step-text { flex: 1; min-width: 0; padding: 12px 0; color: var(--on-1); font-size: 16px; text-align: left; }
+.phone-steps .step-text { flex: 1; min-width: 0; padding: 12px 0; color: var(--on-1); font-size: var(--t-lg); text-align: left; }
 .phone-quiet { margin: 4px 0; color: var(--on-3); font-size: 15px; }
 .phone-link { min-height: 44px; margin-top: 4px; color: var(--accent); font-size: 15px; font-weight: 600; }
 
@@ -102,10 +102,10 @@
 .phone-list { display: grid; margin: 0; padding: 0; list-style: none; }
 .phone-list li + li { border-top: 0.5px solid var(--line); }
 .phone-row { width: 100%; display: grid; gap: 2px; padding: 11px 0; text-align: left; }
-.phone-row strong { display: flex; align-items: center; gap: 6px; overflow: hidden; color: var(--on-1); font-size: 16px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.phone-row strong { display: flex; align-items: center; gap: 6px; overflow: hidden; color: var(--on-1); font-size: var(--t-lg); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .phone-row strong svg { flex: none; width: 13px; height: 13px; color: var(--accent); }
-.phone-row span { overflow: hidden; color: var(--on-2); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.phone-row small { color: var(--on-3); font-size: 12px; }
+.phone-row span { overflow: hidden; color: var(--on-2); font-size: var(--t-md); text-overflow: ellipsis; white-space: nowrap; }
+.phone-row small { color: var(--on-3); font-size: var(--t-xs); }
 .phone-card.phone-list { padding: 4px 16px; }
 
 .phone-search { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px; color: var(--on-3); }
@@ -151,7 +151,7 @@
   resize: none;
 }
 .phone .phone-editor-body:focus { outline: none; box-shadow: none; }
-.phone-editor-foot { margin: 0; padding: 8px 20px 10px; color: var(--faint); font-size: 12px; }
+.phone-editor-foot { margin: 0; padding: 8px 20px 10px; color: var(--faint); font-size: var(--t-xs); }
 
 .phone-sync { display: grid; justify-items: start; gap: 6px; padding: 18px; }
 .phone-sync h2 { margin: 6px 0 0; color: var(--on-1); font: 600 22px/1.2 var(--font-display); letter-spacing: 0; text-transform: none; }
@@ -159,7 +159,7 @@
 .phone-sync-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; color: var(--on-3); background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .phone-sync-icon.is-on { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .phone-sync-icon svg { width: 24px; height: 24px; }
-.phone-private { padding: 0 8px; font-size: 13px; }
+.phone-private { padding: 0 8px; font-size: var(--t-sm); }
 
 /* The tab bar floats over the bottom edge. */
 .phone-tabs {
@@ -174,7 +174,7 @@
   border-radius: 28px;
   background: var(--glass-strong);
 }
-.phone-tabs button { position: relative; z-index: 1; display: grid; justify-items: center; gap: 2px; min-height: 52px; padding: 6px 0; border-radius: 22px; color: var(--on-3); font-size: 11px; font-weight: 600; }
+.phone-tabs button { position: relative; z-index: 1; display: grid; justify-items: center; gap: 2px; min-height: 52px; padding: 6px 0; border-radius: 22px; color: var(--on-3); font-size: var(--t-2xs); font-weight: 600; }
 .phone-tabs button[aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--ink) 6%, transparent); }
 .phone-tabs svg { width: 24px; height: 24px; }
 
@@ -196,6 +196,3 @@
 }
 .phone-toast button { position: relative; z-index: 1; min-height: 36px; padding: 0 14px; border-radius: 999px; color: var(--accent); font-weight: 700; }
 
-@media (prefers-reduced-motion: reduce) {
-  .phone-editor { animation: none; }
-}

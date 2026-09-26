@@ -20,10 +20,6 @@
 .workspace-content.is-filled > * { height: 100%; max-width: none; padding: 0; }
 .loading-workspace { display: grid; place-items: center; height: 100%; }
 
-.page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 20px; }
-.page-heading h1 { font-family: var(--font-serif); font-size: clamp(32px, 3vw, 40px); letter-spacing: -0.035em; }
-.page-heading h1:focus { outline: none; }
-.page-heading > p { color: var(--faint); font-size: 12px; letter-spacing: 0.02em; }
 
 /* ---- Inside the Mac app ---------------------------------------------- */
 /* The window has no title bar of its own. The desk and the sheet's top bar

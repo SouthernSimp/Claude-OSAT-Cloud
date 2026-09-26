@@ -253,7 +253,7 @@
 .tag-toggle small {
   margin-left: 3px;
   color: var(--faint);
-  font-size: 10px;
+  font-size: var(--t-2xs);
 }
 
 .tag-toggle:hover {
@@ -991,7 +991,7 @@ button.md-tag:hover {
   padding: 0 5px;
   border-radius: var(--r-full);
   background: color-mix(in oklab, var(--ink) 8%, transparent);
-  font-size: 10px;
+  font-size: var(--t-2xs);
   letter-spacing: 0;
 }
 
@@ -1085,7 +1085,7 @@ button.md-tag:hover {
 .menu-popover {
   position: absolute;
   top: calc(100% + 4px);
-  z-index: 60;
+  z-index: var(--z-pop);
   min-width: 190px;
   max-height: 320px;
   display: grid;
@@ -1166,7 +1166,7 @@ button.md-tag:hover {
   display: none;
 }
 
-@media (max-width: 1240px) {
+@media (max-width: 1100px) {
   .notes-view {
     grid-template-columns: 208px 280px minmax(0, 1fr);
   }
@@ -1190,7 +1190,7 @@ button.md-tag:hover {
   }
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 1100px) {
   .note-editor.with-inspector .editor-body {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1208,7 +1208,7 @@ button.md-tag:hover {
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .notes-view,
   .notes-view.organizer-hidden {
     grid-template-columns: minmax(0, 1fr);

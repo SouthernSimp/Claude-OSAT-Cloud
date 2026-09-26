@@ -513,7 +513,7 @@
 
 /* ---- Responsive ---------------------------------------------------------- */
 
-@media (max-width: 1140px) {
+@media (max-width: 1100px) {
   .calendar-view {
     grid-template-columns: minmax(0, 1fr) 296px;
   }
@@ -523,7 +523,7 @@
   }
 }
 
-@media (max-width: 940px) {
+@media (max-width: 900px) {
   /* Below this width the two columns stack. Dropping out of grid entirely is
      simpler than fighting track sizing: plain block flow lets the month grid
      take its natural height and the view scroll once. */
@@ -562,7 +562,7 @@
   }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 720px) {
   .calendar-main {
     padding-inline: var(--s-4);
   }

@@ -2,7 +2,7 @@
 .focus-environment {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--z-focus);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -74,9 +74,3 @@
 .focus-time i { margin: 0 3px; opacity: 0.45; font-style: normal; }
 .focus-environment-actions { justify-content: center; }
 
-@media (prefers-reduced-motion: reduce) {
-  .focus-environment * {
-    animation: none !important;
-    transition-duration: 0s !important;
-  }
-}

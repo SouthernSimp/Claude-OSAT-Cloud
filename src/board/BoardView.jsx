@@ -30,7 +30,7 @@ export function BoardView({ workspace, commit, navigate, boardTarget }) {
   const notesById = useMemo(() => new Map(workspace.notes.map((note) => [note.id, note])), [workspace.notes]);
   const stageRef = useRef(null);
   const [cam, setCam] = useState(board.cam);
-  const [railOpen, setRailOpen] = useState(() => localStorage.getItem(RAIL_KEY) !== "closed" && !matchMedia("(max-width: 860px)").matches);
+  const [railOpen, setRailOpen] = useState(() => localStorage.getItem(RAIL_KEY) !== "closed" && !matchMedia("(max-width: 900px)").matches);
   const [tool, setTool] = useState("select");
   const [filter, setFilter] = useState(EMPTY_FILTER);
   const [selection, setSelection] = useState(() => new Set());
@@ -372,8 +372,13 @@ export function BoardView({ workspace, commit, navigate, boardTarget }) {
     },
     deleteBoard: (id) => {
       const item = doc.boards.find((entry) => entry.id === id);
-      if (!item || doc.boards.length === 1 || !confirm(`Delete the board “${item.name}”? Notes are never deleted with a board.`)) return;
+      if (!item || doc.boards.length === 1) return;
+      const at = doc.boards.indexOf(item);
       commit((state) => { const current = normalizeBoardDoc(state.sorter); const boards = current.boards.filter((entry) => entry.id !== id); return { ...state, sorter: { ...current, boards, activeId: current.activeId === id ? boards[0].id : current.activeId } }; });
+      showToast(`Board “${item.name}” removed. The notes stay in Notes.`, {
+        label: "Undo",
+        run: () => commit((state) => { const current = normalizeBoardDoc(state.sorter); if (current.boards.some((entry) => entry.id === id)) return state; const boards = [...current.boards]; boards.splice(at, 0, item); return { ...state, sorter: { ...current, boards, activeId: id } }; }),
+      });
     },
     setScope: (id, scope) => commit((state) => updateBoard(state, id, (current) => ({ ...current, scope, hidden: [] }))),
     setTagColor: (tag, color) => patchBoard((item) => ({ ...item, tagColors: { ...item.tagColors, [tag]: color } })),
