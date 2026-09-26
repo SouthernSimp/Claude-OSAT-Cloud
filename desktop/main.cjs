@@ -11,6 +11,7 @@ const { localAiChatStream, localAiModels, validateLocalChatPayload } = require('
 const { createAi } = require('./ai/index.cjs')
 const { createPhoneBridge } = require('./phone.cjs')
 const { createMacSync } = require('./sync.cjs')
+const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
@@ -892,7 +893,12 @@ function registerAi() {
 
 // Tests (from source) pass OSAT_ICLOUD_DIR so they never touch the real iCloud Drive.
 const ICLOUD_DRIVE = (!app.isPackaged && process.env.OSAT_ICLOUD_DIR) || path.join(os.homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs')
-const PHONE_ROOT = path.join(ICLOUD_DRIVE, 'OSAT')
+// The iPhone app's own iCloud folder (Files shows it as "OSAT" too). Once it exists the
+// Mac moves its OSAT folder in there (phone-root.cjs), so both share one folder.
+const APP_CONTAINER = !app.isPackaged && process.env.OSAT_ICLOUD_DIR
+  ? process.env.OSAT_ICLOUD_APP_DIR || null
+  : path.join(os.homedir(), 'Library', 'Mobile Documents', 'iCloud~ai~mccreery~osat', 'Documents')
+let phoneRoot = path.join(ICLOUD_DRIVE, 'OSAT')
 let phone = null
 let macSync = null
 let phoneClient = null
@@ -904,7 +910,7 @@ let phoneScanTimer = null
 // Never touches iCloud Drive: macOS asks before an app looks there, and that
 // should only happen when Nate turns the link on.
 function phoneStatus() {
-  const base = { enabled: prefs.phone, root: PHONE_ROOT, sync: macSync?.status() || null }
+  const base = { enabled: prefs.phone, root: phoneRoot, sync: macSync?.status() || null }
   return phone ? { ...base, ...phone.status(), enabled: prefs.phone } : base
 }
 
@@ -921,7 +927,7 @@ const scanSoon = () => {
 async function bridgePhone() {
   const { normalizeNote } = await sharedModule('note-core.mjs')
   return createPhoneBridge({
-    root: PHONE_ROOT,
+    root: phoneRoot,
     // A thought from the iPhone is one Unsorted note, made the same way the windows make one.
     capture: (text) => {
       const now = new Date().toISOString()
@@ -943,7 +949,7 @@ async function ensureSync() {
   if (!macSync) {
     const { createSyncEngine } = await sharedModule('sync-engine.mjs')
     macSync = createMacSync({
-      root: PHONE_ROOT,
+      root: () => phoneRoot,
       store,
       createSyncEngine,
       statePath: path.join(app.getPath('userData'), 'store', 'sync.json'),
@@ -955,13 +961,17 @@ async function ensureSync() {
 }
 
 async function startPhone() {
-  phone ??= await bridgePhone()
+  const root = await settleRoot({ drive: ICLOUD_DRIVE, container: APP_CONTAINER })
+  if (!phone || root !== phoneRoot) {
+    phoneRoot = root
+    phone = await bridgePhone()
+  }
   await phone.prepare()
   // The same switch keeps this Mac in step with your other devices (OSAT/Sync).
   await (await ensureSync()).start()
   phoneClient ??= store.connect(mirrorSoon)
   try {
-    phoneWatcher = require('node:fs').watch(path.join(PHONE_ROOT, 'Inbox'), scanSoon)
+    phoneWatcher = require('node:fs').watch(path.join(phoneRoot, 'Inbox'), scanSoon)
   } catch {
     // The poll below still finds new thoughts.
   }
@@ -1009,7 +1019,7 @@ async function registerPhone() {
     return phoneStatus()
   })
   handle('phone:show', async () => {
-    if (await shell.openPath(PHONE_ROOT)) fail('Finder could not open the OSAT folder in iCloud Drive.')
+    if (await shell.openPath(phoneRoot)) fail('Finder could not open the OSAT folder in iCloud Drive.')
     return true
   })
   // Before any window opens, so no change goes unnoted; iCloud itself can take its time.

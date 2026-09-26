@@ -9,3 +9,9 @@ work/
 .env.*
 !.env.example
 test-results/
+# The iPhone app's generated project, its copy of the web app, and builds (see ios/project.yml)
+ios/Web/
+ios/OSAT.xcodeproj/
+ios/build/
+ios/OSAT/Info.plist
+ios/OSAT/OSAT.entitlements

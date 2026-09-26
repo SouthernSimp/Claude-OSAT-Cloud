@@ -116,6 +116,48 @@ async function main() {
   await page.screenshot({ path: `${OUT}/layer.png` })
   await page.keyboard.press('Escape')
   if (await page.getByRole('dialog', { name: 'Notes' }).count()) problems.push('layer: Esc did not close the top pop-out')
+
+  // The iPhone app, with a stand-in for its Swift side (files, and an iCloud that
+  // already holds a snapshot from a Mac): it catches up, then sends its own change.
+  room = 'iphone'
+  const phone = await browser.newPage({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
+  phone.on('pageerror', (error) => problems.push(`iphone: ${error.message}`))
+  await phone.addInitScript(() => {
+    const now = new Date().toISOString()
+    const mac = { id: 'from-mac', title: 'Written on the Mac', markdown: 'Written on the Mac\n- [ ] Water the plants\n', tags: [], createdAt: now, updatedAt: now, folderId: null, pinned: false, archived: false, trashedAt: null, unsorted: false, source: null, kind: null, date: null }
+    const cloud = {
+      'Sync/mac-test/snapshot.json': JSON.stringify({
+        device: 'mac-test', seq: 0, seen: {}, at: '0000000001000.000000.mac-test',
+        meta: { rec: { 'notes\u0000from-mac': { a: '0000000001000.000000.mac-test' } }, set: {}, order: {} },
+        doc: { schema: 2, rev: 1, theme: 'system', notes: [mac], folders: [], chats: [], settings: {}, calendar: { events: [] }, budget: { currency: 'USD', transactions: [], recurring: [] }, habits: [], reflections: [], projects: [], sorter: null, focus: { status: 'idle' } },
+      }),
+    }
+    const local = {}
+    window.__cloud = cloud
+    window.webkit = { messageHandlers: { osat: { postMessage(message) {
+      let result = null
+      if (message.type === 'local.read') result = local[message.name] ?? null
+      else if (message.type === 'local.write') { local[message.name] = message.text; result = true }
+      else if (message.type === 'cloud.status') result = { available: true }
+      else if (message.type === 'cloud.list') result = [...new Set(Object.keys(cloud).filter((key) => key.startsWith(`${message.path}/`)).map((key) => key.slice(message.path.length + 1).split('/')[0]))]
+      else if (message.type === 'cloud.read') result = cloud[message.path] ?? null
+      else if (message.type === 'cloud.write') { cloud[message.path] = message.text; result = true }
+      setTimeout(() => window.osatNative.reply(message.id, result, null), 0)
+    } } } }
+  })
+  await phone.goto(`${url}?surface=phone`)
+  await phone.getByText('Written on the Mac').first().waitFor({ timeout: 8000 })
+    .catch(() => problems.push('iphone: the note from the Mac did not arrive'))
+  await phone.fill('#phone-line', 'Thought on the phone')
+  await phone.click('button[aria-label="Save the thought"]')
+  await sleep(2500)
+  const sent = await phone.evaluate(() => Object.entries(window.__cloud).some(([key, text]) => /^Sync\/iphone-[a-z0-9]{8}\/00000001\.json$/.test(key) && text.includes('Thought on the phone')))
+  if (!sent) problems.push('iphone: the thought was not written to iCloud')
+  await phone.screenshot({ path: `${OUT}/iphone-today.png` })
+  await phone.getByRole('button', { name: 'iCloud' }).click()
+  await phone.getByText('In step with your Mac.').waitFor({ timeout: 5000 })
+    .catch(() => problems.push('iphone: the iCloud page did not say it is in step'))
+  await phone.screenshot({ path: `${OUT}/iphone-icloud.png` })
   await browser.close()
 }
 

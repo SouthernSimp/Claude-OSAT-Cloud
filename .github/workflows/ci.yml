@@ -114,3 +114,46 @@ jobs:
           name: OSAT-mac-dmg
           path: release/*.dmg
           retention-days: 14
+
+  iphone:
+    name: iPhone app (simulator)
+    needs: test
+    runs-on: macos-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      NODE_LLAMA_CPP_SKIP_DOWNLOAD: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Build the iPhone app for the simulator
+        run: |
+          brew install xcodegen
+          rm -rf ios/Web && cp -R dist/client ios/Web
+          cd ios
+          xcodegen generate
+          xcodebuild -project OSAT.xcodeproj -scheme OSAT -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build -quiet
+      - name: Open it in the simulator and take a picture
+        run: |
+          DEVICE="$(xcrun simctl list devices available | grep -E '^ +iPhone' | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')"
+          echo "Simulator: $DEVICE"
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" ios/build/Build/Products/Debug-iphonesimulator/OSAT.app
+          xcrun simctl launch "$DEVICE" ai.mccreery.osat
+          sleep 20
+          mkdir -p test-results/iphone
+          xcrun simctl io "$DEVICE" screenshot test-results/iphone/today.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iphone-screenshot
+          path: test-results/iphone/
+          retention-days: 14
+          if-no-files-found: ignore
