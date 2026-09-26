@@ -1,5 +1,6 @@
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
+/* Files: Desktop, Documents and Downloads, plus the folders you add. */
 contextBridge.exposeInMainWorld('nateOSFiles', Object.freeze({
   choose: (kind) => ipcRenderer.invoke('files:choose', kind),
   roots: () => ipcRenderer.invoke('files:roots'),
@@ -9,7 +10,15 @@ contextBridge.exposeInMainWorld('nateOSFiles', Object.freeze({
     ipcRenderer.invoke('files:write-text', rootId, relative, content, expectedHash)
   ),
   open: (rootId, relative = '') => ipcRenderer.invoke('files:open', rootId, relative),
+  reveal: (rootId, relative = '') => ipcRenderer.invoke('files:reveal', rootId, relative),
+  thumb: (rootId, relative = '', size = 128) => ipcRenderer.invoke('files:thumb', rootId, relative, size),
+  quickLook: (rootId, relative = '') => ipcRenderer.invoke('files:quick-look', rootId, relative),
+  search: (query) => ipcRenderer.invoke('files:search', query),
   forget: (rootId) => ipcRenderer.invoke('files:forget', rootId),
+  // The text Ask reads: from a file OSAT can see, a file dropped on a chat, or one chosen now.
+  extract: (rootId, relative = '') => ipcRenderer.invoke('files:extract', rootId, relative),
+  attachDropped: (file) => ipcRenderer.invoke('files:attach', webUtils.getPathForFile(file) || ''),
+  attachChosen: () => ipcRenderer.invoke('files:attach', null),
 }))
 
 let streamSeq = 0
@@ -118,7 +127,8 @@ contextBridge.exposeInMainWorld('osatOverlay', Object.freeze({
   hide: () => ipcRenderer.send('overlay:hide'),
   openInWindow: (view, detail) => ipcRenderer.send('overlay:open-in-window', view, detail),
   prefs: () => ipcRenderer.invoke('overlay:prefs'),
-  setHotkey: (value) => ipcRenderer.invoke('overlay:set-hotkey', value),
+  // which: 'layer' (⌥Space) or 'chat' (⌥⇧Space).
+  setHotkey: (value, which = 'layer') => ipcRenderer.invoke('overlay:set-hotkey', value, which),
   addLauncher: () => ipcRenderer.invoke('overlay:add-launcher'),
   removeLauncher: (appPath) => ipcRenderer.invoke('overlay:remove-launcher', appPath),
   launch: (appPath) => ipcRenderer.invoke('overlay:launch', appPath),
@@ -129,4 +139,14 @@ contextBridge.exposeInMainWorld('osatOverlay', Object.freeze({
   setClear: (clear) => ipcRenderer.send('overlay:clear', clear === true),
   onShown: (listener) => listen('overlay:shown', listener),
   onEscape: (listener) => listen('overlay:escape', listener),
+}))
+
+/* The quick chat: pop a chat out of any window, and, inside it, put it away or move it
+   to the main window. */
+contextBridge.exposeInMainWorld('osatChat', Object.freeze({
+  show: (detail) => ipcRenderer.invoke('chat:show', detail),
+  hide: () => ipcRenderer.send('chat:hide'),
+  openInWindow: (view, detail) => ipcRenderer.send('chat:open-in-window', view, detail),
+  onShown: (listener) => listen('chat:shown', listener),
+  onEscape: (listener) => listen('chat:escape', listener),
 }))

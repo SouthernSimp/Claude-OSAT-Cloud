@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  AppWindow, ArrowCounterClockwise, ArrowSquareOut, BookOpenText, CalendarBlank, GearSix, Globe, MagnifyingGlass, NotePencil, Plus,
+  AppWindow, ArrowCounterClockwise, ArrowSquareOut, BookOpenText, CalendarBlank, Files, GearSix, Globe, MagnifyingGlass, NotePencil, Plus,
   ShareNetwork, Sparkle, TerminalWindow, Toolbox, X,
 } from '@phosphor-icons/react'
 
@@ -20,6 +20,7 @@ import { GlassDefs, magnify, unmagnify, useAlive } from '../shell/glass.jsx'
 import { Appearance } from '../shell/Shell.jsx'
 import { CalendarView } from '../views/Calendar.jsx'
 import { CommandPalette } from '../views/CommandPalette.jsx'
+import { FilesView } from '../views/Files.jsx'
 import { JournalView } from '../views/Journal.jsx'
 
 /* The ⌥Space layer: the home desk laid over the real desktop, with rooms that
@@ -34,6 +35,7 @@ const ROOMS = {
   Terminal: { title: 'Terminal', size: [860, 540] },
   Journal: { title: 'Today', size: [980, 780] },
   Calendar: { title: 'Calendar', size: [1040, 720] },
+  Files: { title: 'Files', size: [1080, 700] },
   note: { title: 'Note', size: [600, 640] },
 }
 
@@ -232,7 +234,8 @@ function PopRoom({ pop, common, covered, onClose, open }) {
     }
     case 'Notes': return <NotesView {...common} target={target} today={localDateKey()} />
     case 'Mindmap': return <BoardView {...common} boardTarget={target} />
-    case 'Assistant': return <LocalAssistant {...common} initialPrompt={typeof pop.detail?.prompt === 'string' || typeof pop.detail?.chatId === 'string' ? { ...pop.detail, at: pop.at } : null} />
+    case 'Assistant': return <LocalAssistant {...common} initialPrompt={typeof pop.detail?.prompt === 'string' || typeof pop.detail?.chatId === 'string' || pop.detail?.file ? { ...pop.detail, at: pop.at } : null} />
+    case 'Files': return <FilesView {...common} target={target} />
     case 'Browser': return <BrowserView {...common} covered={covered} frame={`${pop.x},${pop.y}`} />
     case 'Terminal': return <TerminalView />
     case 'Journal': return <JournalView {...common} />
@@ -302,6 +305,7 @@ function OverlayDock({ navigate, openInWindow, launchers, launcher, canLaunch, s
         {room('Mindmap', 'Map', ShareNetwork)}
         {room('Today', 'Today', BookOpenText)}
         {room('Assistant', 'Ask', Sparkle)}
+        {room('Files', 'Files', Files)}
         <Menu
           align="start"
           className="dock-more"

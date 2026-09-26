@@ -23,7 +23,8 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 5 | Your iPhone, step one: capture from the phone, read your notes there | Merged (PR #6) |
 | 6a | Sync: devices stay in step through iCloud (Mac ↔ Mac now, the iPhone app next) | Merged (PR #7) |
 | 6b | The iPhone app | Merged (PR #8) |
-| 7 | Visual polish | In PR #9 |
+| 7 | Visual polish | Merged (PR #9) |
+| 8 | Your Mac's files in OSAT, the quick chat, Ask reads files | In PR #10 |
 
 **The end goal (Nate, Sep 25):** an app that syncs with his iPhone. Phases 5 and 6 get there;
 visual polish moves after them.
@@ -313,6 +314,39 @@ Opt-in in **Settings → iPhone**, because it is the first thing that leaves the
 - **Calm motion:** one global reduced-motion rule plus the glass one; three duplicates removed.
 - Screenshots of every room before and after show no visible change other than text sizes snapping by half a pixel.
 - **Not done, on purpose:** the "7.5k → 4k lines" target. Nearly every rule is in use (a scan found only a handful unused), so the rest would mean rewriting rooms that work. Empty states already teach one step.
+
+### Phase 8: Your Mac's files, and a quick chat (PR #10)
+Nate, Sep 26: "view my files on my computer inside OSAT… see all the files that sit on my normal
+desktop… explore further down a folder", "the mini pop out chat that almost any AI desktop app
+has now", and three improvements of Claude's choosing. He'd like to "eliminate the need for two
+layers eventually".
+- **The Desktop on the desk.** The right side of the desk (and the ⌥Space layer) shows the files
+  on the Mac's Desktop with their real icons and Quick Look thumbnails. Click picks, double-click
+  or Return opens, Space is Quick Look; a folder opens in Files. A small switch shows OSAT's own
+  notes and folders instead.
+- **Files is a small Finder** and a fifth space (⌘5): Desktop, Documents, Downloads and folders
+  you add; back and forward; a path you can click; an info pane with a large preview, Open,
+  Quick Look, Show in Finder and Ask about it. On the layer it's a pop-out.
+- **The quick chat (⌥⇧Space):** Ask in a small window that floats over every app and every
+  Space, stays where you leave it, keeps the chat you were in, and opens in the OSAT window when
+  you want room. Pop out from the Ask room or the desk's answer. Its shortcut is in Settings.
+- **Claude's three:**
+  1. *Upgrade:* ⌘K finds files on the Mac too (Spotlight, by name, only in those folders).
+  2. *Add:* Ask reads files: drop one on any chat, attach one, or Ask about it from Files. Text,
+     Markdown, PDFs and Word files, read by the Mac's own tools.
+  3. *Remove:* the sample room (its banner, Keep/Start blank, `field-sample.js`) — the Desktop
+     now fills a new desk — and the "7 open" count on Next (calm rule 3).
+- **Fixed on the way:** adding an app to the layer's dock used `app.getFileIcon(…, 'large')`,
+  which crashes Electron 43 on the Mac.
+- **Safety:** only Desktop, Documents, Downloads and folders you add; hidden files never show;
+  apps, scripts and installers are shown in Finder, never run from OSAT; a dropped file's path
+  comes from the preload, never the page.
+- **Not yet:** moving, renaming or trashing files; dragging files out of OSAT; a list view.
+
+**Next: one layer.** The desk in the window and the ⌥Space layer are the same desk twice. With
+the Desktop in it, the window's desk can be *the* desk: ⌥Space would bring the OSAT window
+forward full-screen over the real desktop, and the separate layer goes. To decide with Nate:
+keep the see-through layer (real desktop blurred behind) or the window's wallpaper.
 
 ### Later (after the MVP)
 - Projects become folder properties, and Files become "Linked folders" in Notes.

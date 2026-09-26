@@ -12,6 +12,7 @@ export const SPACES = [
   { id: 'Notes', label: 'Notes', icon: NotePencil, hint: 'Every page, sorted or not' },
   { id: 'Mindmap', label: 'Map', icon: ShareNetwork, hint: 'Your notes as a board, or as a sky' },
   { id: 'Assistant', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac' },
+  { id: 'Files', label: 'Files', icon: Files, hint: 'Your Desktop, Documents and Downloads' },
 ]
 
 export const TOOLS = [
@@ -21,7 +22,6 @@ export const TOOLS = [
   { id: 'Reflection', label: 'Reflect', icon: BookOpenText, hint: 'Three quiet questions' },
   { id: 'Budget', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },
   { id: 'Projects', label: 'Projects', icon: FolderSimple, hint: 'Work and safe links' },
-  { id: 'Files', label: 'Files', icon: Files, hint: 'Folders you approved' },
   { id: 'Browser', label: 'Browser', icon: Globe, hint: 'The web, with a clipper into Notes' },
   { id: 'Terminal', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
 ]
@@ -43,7 +43,7 @@ export function titleFor(view) {
   return spaceFor(view)?.label || view
 }
 
-/* ⌘1–4 go to the four spaces. */
+/* ⌘1–5 go to the five spaces. */
 export function spaceForKey(key) {
   return SPACES[Number(key) - 1]?.id || null
 }

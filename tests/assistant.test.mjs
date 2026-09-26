@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { parseStreamFrame } from '../src/local-ai.js'
 import { applyAction, describeAction, extractActions, systemPrompt, wantsActions } from '../src/assistant/actions.js'
-import { deriveTitle, newChat as newConversation, normalizeChat, outbound, searchChats as searchConversations } from '../src/assistant/chats.js'
+import { FILE_CHARS, deriveTitle, newChat as newConversation, normalizeChat, outbound, searchChats as searchConversations } from '../src/assistant/chats.js'
 import { createDefaultWorkspace } from '../src/osat-data.js'
 
 test('stream frames yield deltas, ignore keep-alives, and end on [DONE]', () => {
@@ -128,4 +128,20 @@ test('action cards only come when the question asks for something to be added', 
   assert.equal(wantsActions('Can you schedule lunch with Sam next Tuesday?'), true)
   assert.equal(wantsActions('What do I need to do in the garden before it gets cold?'), false)
   assert.equal(wantsActions('When should I book the cabin?'), false)
+})
+
+test('files attached to a question go with it, sharing one allowance beside the notes', () => {
+  const notes = [{ id: 'n1', title: 'Trip', markdown: 'Leave Friday' }]
+  const files = [{ name: 'plan.pdf', text: 'a'.repeat(FILE_CHARS), truncated: false }, { name: 'list.md', text: 'Pack the tent', truncated: false }]
+  const sent = outbound('s', [], 'What do I pack?', notes, ['n1'], files).at(-1).content
+  assert.ok(sent.startsWith('What do I pack?\n\n[FROM MY NOTES'))
+  assert.ok(sent.includes(`[FILE: plan.pdf — only the start of it]\n${'a'.repeat(FILE_CHARS / 2)}\n\n[FILE: list.md]\nPack the tent`))
+  assert.ok(sent.length < 32000)
+  assert.equal(outbound('s', [], 'Just the file', notes, [], [files[1]]).at(-1).content, 'Just the file\n\n[FILE: list.md]\nPack the tent')
+})
+
+test('a saved question remembers which files it read, and nothing else about them', () => {
+  const chat = normalizeChat({ id: 'c', messages: [{ id: 'm', role: 'user', content: 'Q', files: ['plan.pdf', 7, 'b', 'c', 'd'] }] })
+  assert.deepEqual(chat.messages[0].files, ['plan.pdf', 'b', 'c'])
+  assert.equal('files' in normalizeChat({ id: 'c', messages: [{ id: 'm', role: 'user', content: 'Q' }] }).messages[0], false)
 })

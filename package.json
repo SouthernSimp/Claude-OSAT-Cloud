@@ -70,7 +70,10 @@
       "category": "public.app-category.productivity",
       "artifactName": "OSAT-${version}-${arch}-mac.${ext}",
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "OSAT shows what is playing in Spotify and lets you play, pause and skip."
+        "NSAppleEventsUsageDescription": "OSAT shows what is playing in Spotify and lets you play, pause and skip.",
+        "NSDesktopFolderUsageDescription": "OSAT shows the files on your Desktop, so you can open them or ask about them without leaving it.",
+        "NSDocumentsFolderUsageDescription": "OSAT shows your Documents folder when you open it in Files, and finds files there from ⌘K.",
+        "NSDownloadsFolderUsageDescription": "OSAT shows your Downloads folder when you open it in Files, and finds files there from ⌘K."
       },
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",

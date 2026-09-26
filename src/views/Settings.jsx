@@ -329,46 +329,63 @@ function keyName(code) {
 function ShortcutCard() {
   const bridge = window.osatOverlay;
   const [info, setInfo] = useState(null);
-  const [recording, setRecording] = useState(false);
+  const [recording, setRecording] = useState(null);
   const [message, setMessage] = useState("");
   useEffect(() => { bridge?.prefs().then(setInfo).catch(() => {}); }, [bridge]);
   if (!bridge) return null;
 
-  async function record(event) {
-    if (!recording) return;
+  async function record(event, which) {
+    if (recording !== which) return;
     event.preventDefault();
-    if (event.key === "Escape") { setRecording(false); return; }
+    if (event.key === "Escape") { setRecording(null); return; }
     const key = keyName(event.code);
     if (!key) return; // only a modifier so far
     const modifiers = [event.metaKey && "Command", event.ctrlKey && "Control", event.altKey && "Alt", event.shiftKey && "Shift"].filter(Boolean);
     if (!modifiers.length) { setMessage("Hold ⌘, ⌃, ⌥ or ⇧ together with a key."); return; }
-    setRecording(false);
+    setRecording(null);
     try {
-      setInfo({ ...info, ...(await bridge.setHotkey([...modifiers, key].join("+"))) });
+      const saved = await bridge.setHotkey([...modifiers, key].join("+"), which);
+      setInfo((value) => (which === "chat" ? { ...value, chat: saved } : { ...value, ...saved }));
       setMessage("Saved. Try it from any app.");
     } catch (error) {
       setMessage(String(error?.message || "That shortcut didn’t work.").replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
     }
   }
 
+  const button = (which, shortcut, fallback) => (
+    <button
+      type="button"
+      className={recording === which ? "primary-button" : "outline-button"}
+      onClick={() => { setMessage(""); setRecording((value) => (value === which ? null : which)); }}
+      onKeyDown={(event) => record(event, which)}
+      onBlur={() => setRecording(null)}
+    >
+      <Keyboard /> {recording === which ? "Press the new shortcut…" : shortcut?.failed ? "Choose a shortcut" : `${shortcut?.label || fallback} · Change`}
+    </button>
+  );
+
   return (
     <section className="content-card">
-      <p className="eyebrow">SHORTCUT</p>
-      <h2>{info?.failed ? "Pick a key for the OSAT layer." : "The OSAT layer, from anywhere."}</h2>
-      <p>
-        {info?.failed
-          ? `${info.label} is already used by another app, so OSAT can’t listen for it. Choose a different shortcut.`
-          : "Press it in any app to drop a thought, find something or ask. Esc puts it away."}
-      </p>
-      <button
-        type="button"
-        className={recording ? "primary-button" : "outline-button"}
-        onClick={() => { setMessage(""); setRecording((value) => !value); }}
-        onKeyDown={record}
-        onBlur={() => setRecording(false)}
-      >
-        <Keyboard /> {recording ? "Press the new shortcut…" : info?.failed ? "Choose a shortcut" : `${info?.label || "⌥Space"} · Change`}
-      </button>
+      <p className="eyebrow">SHORTCUTS</p>
+      <h2>{info?.failed ? "Pick a key for the OSAT layer." : "OSAT, from anywhere."}</h2>
+      <div className="shortcut-row">
+        <p>
+          <strong>The layer</strong>
+          {info?.failed
+            ? `${info.label} is already used by another app, so OSAT can’t listen for it. Choose a different shortcut.`
+            : "Drop a thought, find something or ask. Esc puts it away."}
+        </p>
+        {button("layer", info, "⌥Space")}
+      </div>
+      <div className="shortcut-row">
+        <p>
+          <strong>Quick chat</strong>
+          {info?.chat?.failed
+            ? `${info.chat.label} is already used by another app. Choose a different shortcut.`
+            : "Ask in a small window that floats over your other apps."}
+        </p>
+        {button("chat", info?.chat, "⌥⇧Space")}
+      </div>
       {message && <p role="status">{message}</p>}
     </section>
   );
