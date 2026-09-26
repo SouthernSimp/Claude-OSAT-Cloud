@@ -4,22 +4,25 @@
    process applies them in one order, bumps `rev`, saves, and tells the other
    windows. Everything here is pure and has no dependencies. */
 
-export const SCHEMA = 1
+export const SCHEMA = 2
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
-  'notes', 'folders', 'habits', 'reflections', 'projects',
+  'notes', 'folders', 'habits', 'reflections', 'projects', 'chats',
   'sorter.boards', 'calendar.events', 'budget.transactions', 'budget.recurring',
 ]
 
 /* Top-level keys a window may change. `rev` and `schema` belong to the store. */
 export const ROOTS = [
   'theme', 'notes', 'folders', 'habits', 'reflections', 'focus', 'projects',
-  'sorter', 'calendar', 'budget', 'settings',
+  'sorter', 'calendar', 'budget', 'settings', 'chats',
 ]
 
-/* Future schema changes go here as { from, run(doc) → doc }. Each runs once, in order. */
-export const migrations = []
+/* Schema changes, as { from, run(doc) → doc }. Each runs once, in order. */
+export const migrations = [
+  // 2: Ask's conversations live in the workspace (they were kept per window before).
+  { from: 1, run: (doc) => ({ ...doc, chats: Array.isArray(doc.chats) ? doc.chats : [] }) },
+]
 
 export function createEmptyDoc() {
   return {
@@ -36,6 +39,7 @@ export function createEmptyDoc() {
     calendar: { events: [] },
     budget: { currency: 'USD', transactions: [], recurring: [] },
     settings: {},
+    chats: [],
   }
 }
 

@@ -112,6 +112,33 @@
 .key-list dd { margin: 0; color: var(--muted); font-size: 13.5px; }
 .settings-obsidian > :last-child { margin-top: 10px; }
 
+/* Settings → AI and the welcome: three sizes of built-in AI, one chosen. */
+.ai-sizes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.ai-size {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  text-align: left;
+  transition: border-color 200ms var(--glide), background 200ms var(--glide);
+}
+.ai-size:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.ai-size[aria-checked="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.ai-size strong { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ink-strong); font-size: 15px; }
+.ai-size em { padding: 2px 8px; border-radius: var(--r-full); background: var(--accent-soft); color: var(--accent); font-size: 10.5px; font-style: normal; font-weight: 650; }
+.ai-size span { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.ai-size small { color: var(--faint); font-size: 11.5px; }
+.ai-progress { display: flex; align-items: center; gap: 12px; margin-top: 14px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ai-progress progress { flex: 1; height: 6px; appearance: none; border: 0; border-radius: 99px; overflow: hidden; background: color-mix(in srgb, var(--ink) 9%, transparent); }
+.ai-progress progress::-webkit-progress-bar { background: transparent; }
+.ai-progress progress::-webkit-progress-value { border-radius: 99px; background: var(--accent); transition: width 400ms var(--glide); }
+.ai-remove { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.settings .ai-note { margin-top: 14px; color: var(--faint); font-size: 12.5px; }
+@media (max-width: 760px) { .ai-sizes { grid-template-columns: minmax(0, 1fr); } }
+
 .practice-layout, .obsidian-layout {
   max-width: 1320px;
   display: grid;

@@ -47,34 +47,14 @@ export function parseStreamFrame(frame) {
 
 export { validateLocalChatPayload }
 
-async function request(path, options = {}) {
-  const native = globalThis.window?.osatLocalAI
-  if (native) {
-    options.signal?.throwIfAborted()
-    const body = path === '/models' ? await native.models() : await native.chat(JSON.parse(options.body))
-    options.signal?.throwIfAborted()
-    if (body.error) throw new Error(body.error)
-    return body
-  }
-  const response = await fetch(`${API_ROOT}${path}`, { ...options, headers: { 'content-type': 'application/json', ...options.headers } })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || `Local AI is unavailable (${response.status}).`)
-  return body
-}
-
+/* The built-in model and LM Studio's, through the Mac app; LM Studio alone in the browser preview. */
 export async function getLocalModels({ signal } = {}) {
-  const body = await request('/models', { signal })
-  return Array.isArray(body.models) ? body.models : []
-}
-
-export async function sendLocalMessage({ model, messages, signal }) {
-  const body = await request('/chat', {
-    method: 'POST',
-    signal,
-    body: JSON.stringify(validateLocalChatPayload({ model, messages })),
-  })
-  if (typeof body.response !== 'string') throw new Error('Local AI returned no response.')
-  return body.response
+  const native = globalThis.window?.osatLocalAI
+  const body = native
+    ? await native.models()
+    : await fetch(`${API_ROOT}/models`, { signal }).then((response) => response.json()).catch(() => ({ models: [] }))
+  signal?.throwIfAborted()
+  return Array.isArray(body?.models) ? body.models : []
 }
 
 /* Streams a reply, calling onDelta with each text fragment as it arrives.
@@ -88,7 +68,9 @@ export async function streamLocalMessage({ model, messages, signal, onDelta }) {
   const native = globalThis.window?.osatLocalAI
   if (native?.chatStream) {
     signal?.throwIfAborted()
-    return native.chatStream(payload, emit, signal)
+    const run = native.chatStream(payload, emit)
+    signal?.addEventListener('abort', () => run.cancel(), { once: true })
+    return run.done
   }
 
   const response = await fetch(`${API_ROOT}/chat`, {

@@ -232,7 +232,7 @@ function PopRoom({ pop, common, covered, onClose, open }) {
     }
     case 'Notes': return <NotesView {...common} target={target} today={localDateKey()} />
     case 'Mindmap': return <BoardView {...common} boardTarget={target} />
-    case 'Assistant': return <LocalAssistant {...common} initialPrompt={typeof pop.detail?.prompt === 'string' ? { prompt: pop.detail.prompt, at: pop.at } : null} />
+    case 'Assistant': return <LocalAssistant {...common} initialPrompt={typeof pop.detail?.prompt === 'string' || typeof pop.detail?.chatId === 'string' ? { ...pop.detail, at: pop.at } : null} />
     case 'Browser': return <BrowserView {...common} covered={covered} frame={`${pop.x},${pop.y}`} />
     case 'Terminal': return <TerminalView />
     case 'Journal': return <JournalView {...common} />

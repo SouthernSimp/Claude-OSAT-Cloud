@@ -20,31 +20,12 @@ function validateLocalChatPayload(payload) {
   return { model: model.trim(), messages }
 }
 
-async function localAiFetch(path, options) {
-  const response = await fetch(`${LOCAL_AI_UPSTREAM}${path}`, options)
+async function localAiModels() {
+  const response = await fetch(`${LOCAL_AI_UPSTREAM}/api/v0/models`, { signal: AbortSignal.timeout(1500) })
   const body = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error('LM Studio rejected the local request.')
-  return body
-}
-
-async function localAiModels() {
-  const body = await localAiFetch('/api/v0/models')
   return (body.data || []).filter((model) => model.type === 'llm' && model.state === 'loaded')
     .map((model) => ({ id: model.id, name: model.id === 'osat-local' ? 'Llama 3.3 · 70B' : model.id, runtime: 'lm-studio', offline: true }))
-}
-
-async function localAiChat(payload, signal) {
-  const valid = validateLocalChatPayload(payload)
-  if (!(await localAiModels()).some((model) => model.id === valid.model)) throw new Error('Choose a loaded local model.')
-  const body = await localAiFetch('/v1/chat/completions', {
-    method: 'POST',
-    signal,
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ ...valid, max_tokens: MAX_TOKENS, stream: false }),
-  })
-  const response = body.choices?.[0]?.message?.content
-  if (typeof response !== 'string') throw new Error('Local AI returned no response.')
-  return { runtime: 'lm-studio', model: valid.model, offline: true, response }
 }
 
 /* Streams an answer from LM Studio, invoking onDelta with each text fragment. */
@@ -86,4 +67,4 @@ async function localAiChatStream(payload, onDelta, signal) {
   return text
 }
 
-module.exports = { localAiChat, localAiChatStream, localAiModels, validateLocalChatPayload }
+module.exports = { localAiChatStream, localAiModels, validateLocalChatPayload }

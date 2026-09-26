@@ -94,6 +94,16 @@ test('the hub orders commits, tells the other windows, and never echoes to the s
 test('migration refuses data from a newer OSAT and fills in schema and rev', () => {
   assert.deepEqual(migrate({ theme: 'dark' }), { theme: 'dark', schema: SCHEMA, rev: 0 })
   assert.throws(() => migrate({ schema: SCHEMA + 1 }), /newer OSAT/)
-  const steps = [{ from: 1, run: (doc) => ({ ...doc, upgraded: true }) }]
-  assert.equal(migrate({ schema: 1 }, steps).upgraded, undefined, 'no step runs past the current schema')
+  const steps = [{ from: SCHEMA, run: (doc) => ({ ...doc, upgraded: true }) }]
+  assert.equal(migrate({ schema: SCHEMA }, steps).upgraded, undefined, 'no step runs past the current schema')
+})
+
+test('a workspace from before Ask moved in gains an empty list of chats', () => {
+  const old = { ...createEmptyDoc(), schema: 1, rev: 7, notes: [note('a')] }
+  delete old.chats
+  const upgraded = migrate(old)
+  assert.deepEqual(upgraded.chats, [])
+  assert.equal(upgraded.schema, SCHEMA)
+  assert.equal(upgraded.rev, 7)
+  assert.equal(upgraded.notes[0].id, 'a')
 })

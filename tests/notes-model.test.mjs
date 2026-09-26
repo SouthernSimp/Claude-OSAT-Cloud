@@ -132,3 +132,19 @@ test('outline, word count and excerpt read markdown sensibly', () => {
   assert.equal(excerpt(markdown), 'Some words here. Section ☐ task • item')
   assert.equal(excerpt('# Title\n\nProof first. #work #launch-plan\nEnds here.'), 'Proof first. Ends here.')
 })
+
+test('Ask picks the notes that share the question’s rarer words', async () => {
+  const { relatedNotes } = await import('../src/notes-model.js')
+  const note = (id, title, markdown, extra = {}) => ({ id, title, markdown, tags: [], updatedAt: '2026-09-20T00:00:00.000Z', ...extra })
+  const notes = [
+    note('garden', 'Garden plans', 'Plant the tomatoes before the frost. Buy compost.'),
+    note('taxes', 'Taxes', 'Find last year’s return and the receipts.'),
+    note('day', 'Friday', 'Called mum. Garden looked good.'),
+    note('trash', 'Tomatoes', 'Old tomato list', { trashedAt: '2026-09-21T00:00:00.000Z' }),
+    note('lists', 'Shopping', 'Milk, bread, eggs'),
+  ]
+  assert.deepEqual(relatedNotes(notes, 'When should I plant my tomatoes?').map((item) => item.id), ['garden'])
+  assert.deepEqual(relatedNotes(notes, 'What did I write about the garden?').map((item) => item.id), ['garden', 'day'])
+  assert.deepEqual(relatedNotes(notes, 'hello there, how are you?'), [])
+  assert.deepEqual(relatedNotes(notes, 'receipts'), [notes[1]])
+})

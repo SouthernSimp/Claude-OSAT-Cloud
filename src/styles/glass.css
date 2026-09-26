@@ -369,6 +369,32 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .command-palette > div button[data-active="true"] > svg:first-child { color: var(--accent); }
 .command-palette > div button[data-active="true"] > svg:last-child { opacity: 0.6; translate: 0 0; }
 .command-palette > div button small { padding: 2px 7px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+/* The first-launch welcome: one glass card, three quiet steps. */
+.welcome {
+  position: relative;
+  width: min(100%, 720px);
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 30px 36px 26px;
+  border-radius: 26px;
+  color: var(--ink);
+  background: var(--sheet-glass);
+  -webkit-backdrop-filter: blur(50px) saturate(1.8);
+  backdrop-filter: blur(50px) saturate(1.8);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-edge) 70%, transparent), 0 0 0 0.5px rgb(0 0 0 / 16%), 0 40px 100px -30px rgb(0 0 0 / 55%);
+  animation: palette-in 520ms var(--spring) both;
+}
+.welcome::after { display: none; }
+.welcome-steps { display: flex; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
+.welcome-steps li { width: 16px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 14%, transparent); transition: width 300ms var(--spring), background 300ms var(--glide); }
+.welcome-steps li.is-on { width: 30px; background: var(--accent); }
+.welcome-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 15px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.welcome-icon svg { width: 23px; height: 23px; }
+.welcome h2 { margin: 4px 0 0; color: var(--ink-strong); font-size: 29px; }
+.welcome p { max-width: 54ch; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.welcome .ai-sizes { width: 100%; }
+.welcome-actions { display: flex; justify-content: flex-end; gap: 10px; width: 100%; margin-top: 12px; }
 .capture-dialog { animation: capture-in 560ms var(--spring) both; }
 @keyframes capture-in { from { opacity: 0; scale: 0.9; translate: 0 20px; rotate: -1.5deg; } }
 
@@ -569,6 +595,8 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   .menu-popover,
   .command-palette,
   .capture-dialog,
+  .welcome,
+  .home-answer,
   .modal-backdrop,
   .appearance-pop { animation: none !important; transition: none !important; translate: none; }
   .app-dock { translate: -50% 0; }

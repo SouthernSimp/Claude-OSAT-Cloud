@@ -34,6 +34,7 @@ import { useFocusTrap } from "./lib/use-focus-trap.js";
 import { SETTINGS, spaceFor, spaceForKey, titleFor } from "./lib/spaces.js";
 import { GlassDefs, useAlive } from "./shell/glass.jsx";
 import { Dock, RoomSheet } from "./shell/Shell.jsx";
+import { Welcome } from "./shell/Welcome.jsx";
 
 const FILLED_VIEWS = new Set(["Mindmap", "Assistant", "Notes", "Calendar", "Sky", "Browser", "Terminal"]);
 
@@ -60,6 +61,7 @@ function WorkspaceApp() {
   const [deskSheet, setDeskSheet] = useState(null);
   const [focusAt, setFocusAt] = useState(0);
   const [draft, setDraft] = useState("");
+  const [welcome, setWelcome] = useState(false);
   const modalRef = useRef(null);
   const pointer = useRef({ x: 0, y: 0, at: 0 });
   const today = localDateKey();
@@ -67,6 +69,11 @@ function WorkspaceApp() {
   const closeCommands = useCallback(() => setCommandOpen(false), []);
   useFocusTrap(modalRef, captureOpen, closeCapture);
   useAlive();
+
+  /* The first launch on this Mac starts with the welcome. */
+  useEffect(() => {
+    window.osatApp?.needsWelcome?.().then((need) => setWelcome(need === true)).catch(() => {});
+  }, []);
 
   /* Sheets grow out of the point you clicked, so remember it. */
   useEffect(() => {
@@ -151,7 +158,7 @@ function WorkspaceApp() {
     if (next === "Mindmap") setBoardTarget(detail && typeof detail === "object" ? { ...detail, at: Date.now() } : null);
     if (next === "Calendar") setCalendarTarget(detail?.date || null);
     if (next === "Today" && detail && typeof detail === "object" && typeof detail.noteId === "string") setDeskSheet({ id: detail.noteId, at: Date.now() });
-    if (next === "Assistant") setAssistantTarget(typeof detail?.prompt === "string" ? { prompt: detail.prompt, at: Date.now() } : null);
+    if (next === "Assistant") setAssistantTarget(typeof detail?.prompt === "string" || typeof detail?.chatId === "string" ? { ...detail, at: Date.now() } : null);
     setCommandOpen(false);
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -243,7 +250,7 @@ function WorkspaceApp() {
   return (
     <main className="app-shell field-app">
       <GlassDefs />
-      <section className={`workspace is-home ${open && !closing ? "has-sheet" : ""}`} aria-label="OSAT workspace" inert={captureOpen || commandOpen || undefined}>
+      <section className={`workspace is-home ${open && !closing ? "has-sheet" : ""}`} aria-label="OSAT workspace" inert={captureOpen || commandOpen || welcome || undefined}>
         <div className="workspace-content is-filled desk-layer" data-view="Today" inert={open && !closing ? true : undefined}>
           <FieldDesk
             {...common}
@@ -342,6 +349,7 @@ function WorkspaceApp() {
       {commandOpen && (
         <CommandPalette workspace={workspace} navigate={navigate} close={closeCommands} initialQuery={commandQuery} />
       )}
+      {welcome && <Welcome onDone={() => setWelcome(false)} />}
     </main>
   );
 }

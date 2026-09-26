@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowClockwise, Check, CircleHalf, Database, DownloadSimple, FolderOpen, GearSix, Info, Keyboard, Sparkle, UploadSimple } from "@phosphor-icons/react";
+import { Check, CircleHalf, Database, DownloadSimple, FolderOpen, GearSix, Info, Keyboard, Sparkle, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
 import { workspaceClient } from "../store/useWorkspace.js";
 import { AppearanceControls } from "../shell/Shell.jsx";
-import { getLocalModels } from "../local-ai.js";
+import { setupLine, useAi } from "../assistant/useAi.js";
 import { ObsidianView } from "./Obsidian.jsx";
 
 export function SettingsView({ workspace, commit, storage, target }) {
@@ -147,21 +147,83 @@ function useAbout() {
   return about;
 }
 
-/* Where the AI stands today. Phase 4 makes it set itself up. */
-function AiCard() {
-  const [models, setModels] = useState(null);
-  const check = () => { setModels(null); getLocalModels().then(setModels).catch(() => setModels([])); };
-  useEffect(check, []);
+const gb = (bytes) => `${(bytes / 1e9).toFixed(1)} GB`;
+
+/* The three sizes of built-in AI. Choosing one downloads it once, in the background. */
+export function AiSizes({ status, value, onChoose }) {
   return (
-    <section className="content-card">
+    <div className="ai-sizes" role="radiogroup" aria-label="AI size">
+      {status.tiers.map((tier) => (
+        <button key={tier.id} type="button" role="radio" className="ai-size" aria-checked={value === tier.id} onClick={() => onChoose(tier.id)}>
+          <strong>
+            {tier.label}
+            {tier.id === status.recommended && <em>Best for this Mac</em>}
+          </strong>
+          <span>{tier.blurb}</span>
+          <small>{tier.model} · {gb(tier.size)}{tier.ready ? " · on this Mac" : ""}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AiCard() {
+  const { status, models, bridge } = useAi();
+  const [message, setMessage] = useState("");
+  const act = (work) => work().catch((error) => setMessage(String(error?.message || error).replace(/^Error invoking remote method '[^']+': (Error: )?/, "")));
+  const others = (models || []).filter((model) => model.runtime !== "osat");
+
+  if (!bridge?.status) {
+    return (
+      <section className="content-card">
+        <p className="eyebrow">LOCAL AI</p>
+        <h2>{models?.length ? "A model is ready." : "The AI lives in the Mac app."}</h2>
+        <p>{models?.length ? `${models.map((model) => model.name || model.id).slice(0, 3).join(", ")}, through LM Studio.` : "In the Mac app, OSAT downloads its own AI and runs it on your Mac. Here in the preview, LM Studio's local server works."}</p>
+      </section>
+    );
+  }
+  if (!status) return <section className="content-card"><p className="eyebrow">LOCAL AI</p><h2>Looking at this Mac…</h2></section>;
+
+  const chosen = status.tiers.find((tier) => tier.id === status.chosen);
+  const download = status.download;
+  const percent = download ? Math.floor((download.received / download.total) * 100) : 0;
+  const headline = download?.state === "running" ? `Setting up ${status.tiers.find((tier) => tier.id === download.tier)?.label || "the AI"}…`
+    : download?.state === "failed" ? "The download stopped."
+      : download?.state === "paused" ? `Paused at ${percent}%.`
+        : chosen?.ready ? `${chosen.model} runs on this Mac.`
+          : "Choose how much AI this Mac runs.";
+  const detail = download?.state === "failed" ? download.message
+    : download ? "It downloads once, in the background. OSAT works as usual meanwhile, and a quit or a sleep just pauses it."
+      : status.engine === "error" ? status.message
+        : chosen?.ready ? (status.engine === "ready" ? "Awake now. It rests after ten quiet minutes to give the memory back." : "It wakes on your first question and rests after ten quiet minutes.")
+          : "Everything you ask stays here: the model is one file on your Mac, and nothing is sent anywhere.";
+
+  return (
+    <section className="content-card ai-card">
       <p className="eyebrow">LOCAL AI</p>
-      <h2>{models === null ? "Looking for a model on this Mac…" : models.length ? "A model is ready." : "No model is running yet."}</h2>
-      <p>
-        {models?.length
-          ? `${models.map((model) => model.id || model.name).slice(0, 3).join(", ")}. Nothing you ask leaves this Mac.`
-          : "Ask uses LM Studio on this Mac for now: open it, load a model and start its local server. Soon OSAT will download and run a model by itself."}
-      </p>
-      <button className="outline-button" type="button" onClick={check}><ArrowClockwise /> Check again</button>
+      <h2>{headline}</h2>
+      <p>{detail}</p>
+      {download && (
+        <div className="ai-progress">
+          <progress max="100" value={percent} aria-label={setupLine(status) || "Download"} />
+          <span>{gb(download.received)} of {gb(download.total)}</span>
+          {download.state === "running"
+            ? <button type="button" className="text-button" onClick={() => act(bridge.cancel)}>Pause</button>
+            : <button type="button" className="text-button" onClick={() => act(bridge.resume)}>{download.state === "failed" ? "Try again" : "Resume"}</button>}
+        </div>
+      )}
+      <AiSizes status={status} value={status.chosen} onChoose={(tier) => act(() => bridge.choose(tier))} />
+      {status.tiers.some((tier) => tier.ready && tier.id !== status.chosen) && (
+        <p className="ai-remove">
+          {status.tiers.filter((tier) => tier.ready && tier.id !== status.chosen).map((tier) => (
+            <button key={tier.id} type="button" className="text-button" onClick={() => act(() => bridge.remove(tier.id))}>
+              Remove {tier.label} from this Mac ({gb(tier.size)})
+            </button>
+          ))}
+        </p>
+      )}
+      <p className="ai-note">{others.length ? `LM Studio is running too: ${others.map((model) => model.name).slice(0, 2).join(", ")} ${others.length === 1 ? "appears" : "appear"} in Ask.` : "LM Studio also works: while its local server runs, its models appear in Ask."}</p>
+      {message && <p role="status">{message}</p>}
     </section>
   );
 }

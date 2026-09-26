@@ -1,12 +1,14 @@
 const { randomUUID } = require('node:crypto')
 const fs = require('node:fs/promises')
+const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
-const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell } = require('electron')
+const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell, utilityProcess } = require('electron')
 const { claimDataFolder } = require('./data-folder.cjs')
 const { resolveApprovedPath, resolveApprovedWritePath } = require('./path-guard.cjs')
 const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile } = require('./text-files.cjs')
-const { localAiChat, localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
+const { localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
+const { createAi } = require('./ai/index.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
@@ -21,10 +23,11 @@ const WRITABLE_EXTENSIONS = new Set(['.canvas', '.markdown', '.md'])
 let mainWindow
 let overlay
 let tray
-let prefs = { hotkey: DEFAULT_HOTKEY, launchers: [], places: {} }
+let prefs = { hotkey: DEFAULT_HOTKEY, launchers: [], places: {}, ai: { tier: null }, welcomed: false }
 let hotkey = null
 let hotkeyFailed = false
-let aiStatus = 'Checking for a local model…'
+let ai
+let trayAiLine = ''
 let holdOverlay = false
 let grants = []
 let grantsFile
@@ -626,6 +629,8 @@ async function loadPrefs() {
       hotkey: validHotkey(saved.hotkey) ? saved.hotkey : DEFAULT_HOTKEY,
       launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
       places: Object.entries(saved.places || {}).reduce((places, [id, spot]) => placeItem(places, id, spot), {}),
+      ai: { tier: typeof saved.ai?.tier === 'string' ? saved.ai.tier : null },
+      welcomed: saved.welcomed === true,
     }
   } catch {
     // No preferences yet: the defaults stand.
@@ -762,23 +767,25 @@ function escapeToLayer() {
   globalShortcut.register('Escape', () => overlay.window.webContents.send('overlay:escape'))
 }
 
-async function refreshAiStatus() {
-  try {
-    const models = await localAiModels()
-    aiStatus = models.length ? `Local AI ready · ${models[0].name}` : 'Local AI: no model loaded'
-  } catch {
-    aiStatus = 'Local AI: not running'
-  }
-  updateTray()
+function aiLine() {
+  const status = ai?.status()
+  if (!status) return 'Local AI'
+  const download = status.download
+  if (download?.state === 'running') return `Setting up the AI · ${Math.floor((download.received / download.total) * 100)}%`
+  if (download?.state === 'failed') return 'AI download stopped · see Settings'
+  const tier = status.tiers.find((item) => item.id === status.chosen)
+  if (tier?.ready) return `Local AI · ${tier.model}${status.engine === 'ready' ? ' · awake' : ''}`
+  return 'Local AI: not set up yet'
 }
 
 function updateTray() {
-  if (!tray) return
+  if (!tray || tray.isDestroyed()) return
+  trayAiLine = aiLine()
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Show OSAT Layer', accelerator: hotkey || undefined, registerAccelerator: false, click: () => overlay.show() },
     { label: 'Open OSAT', click: () => focusMain() },
     { type: 'separator' },
-    { label: aiStatus, enabled: false },
+    { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
     { label: hotkeyFailed ? 'Shortcut not set · choose one…' : `Change shortcut (${hotkeyLabel(hotkey)})…`, click: () => command({ view: 'Settings' }) },
     ...(app.isPackaged ? [{
       label: 'Open at Login',
@@ -796,13 +803,117 @@ function createTray() {
   icon.setTemplateImage(true)
   tray = new Tray(icon)
   tray.setToolTip('OSAT')
-  tray.on('mouse-enter', () => { refreshAiStatus() })
   updateTray()
-  refreshAiStatus()
+}
+
+/* ---- The local AI: the built-in model, or LM Studio when that is running ---- */
+
+function sendToAllWindows(channel, ...args) {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.webContents.send(channel, ...args)
+  }
+}
+
+function registerAi() {
+  ai = createAi({
+    dir: path.join(app.getPath('userData'), 'models'),
+    totalMemory: os.totalmem(),
+    chosen: prefs.ai.tier,
+    save: async (tier) => { prefs = { ...prefs, ai: { tier } }; await savePrefs() },
+    fork: () => utilityProcess.fork(path.join(__dirname, 'ai', 'runtime.cjs'), [], { serviceName: 'OSAT AI' }),
+    emit: (status) => {
+      sendToAllWindows('ai:status', status)
+      if (aiLine() !== trayAiLine) updateTray()
+    },
+    // Tests and CI answer with a practice model instead of downloading one.
+    mock: !app.isPackaged && process.env.OSAT_AI === 'mock',
+  })
+  ai.start()
+  // AI messages are written for Nate, so they pass through as they are.
+  const plain = (fn) => async (...args) => {
+    try { return await fn(...args) } catch (error) { throw new FileAccessError(error.message) }
+  }
+  handle('ai:status', () => ai.status(), { from: 'any' })
+  handle('ai:choose', plain((tier) => ai.choose(tier)), { from: 'app' })
+  handle('ai:cancel', () => { ai.cancel(); return ai.status() }, { from: 'app' })
+  handle('ai:resume', () => { ai.resume(); return ai.status() }, { from: 'app' })
+  handle('ai:remove', plain((tier) => ai.remove(tier)), { from: 'app' })
+  handle('app:welcome', () => !prefs.welcomed, { from: 'main' })
+  handle('app:welcomed', async () => { prefs = { ...prefs, welcomed: true }; await savePrefs(); return true }, { from: 'main' })
+
+  // Ask lists the built-in model first, then whatever LM Studio has loaded.
+  handle('local-ai:models', async () => {
+    const own = ai.models()
+    try {
+      return { models: [...own, ...await localAiModels()] }
+    } catch {
+      return { models: own, ...(own.length ? {} : { error: 'Set up the AI in Settings → AI, or start LM Studio.' }) }
+    }
+  }, { from: 'any' })
+  const streams = new Map()
+  ipcMain.on('local-ai:cancel', (event, id) => {
+    assertTrustedSender(event)
+    if (typeof id === 'string') streams.get(id)?.abort()
+  })
+  ipcMain.handle('local-ai:chat-stream', async (event, id, payload) => {
+    assertTrustedSender(event)
+    if (typeof id !== 'string' || !/^stream-\d+$/.test(id)) throw new FileAccessError('Bad stream id.')
+    const valid = validateLocalChatPayload(payload)
+    const controller = new AbortController()
+    streams.set(id, controller)
+    const onDelta = (delta) => { if (!event.sender.isDestroyed()) event.sender.send(`local-ai:delta:${id}`, delta) }
+    try {
+      return valid.model.startsWith('osat:')
+        ? await ai.chatStream(valid, onDelta, controller.signal)
+        : await localAiChatStream(valid, onDelta, controller.signal)
+    } catch (error) {
+      if (error?.name === 'AbortError') return ''
+      throw new FileAccessError(error.message || 'Local AI is unavailable.')
+    } finally {
+      streams.delete(id)
+    }
+  })
+}
+
+/* A build can check its own AI engine without opening any notes:
+     OSAT.app/Contents/MacOS/OSAT --osat-self-test[=/path/to/model.gguf]
+   It prints one line and quits: 0 when the engine (and the model, if given) work. */
+function selfTest(modelPath) {
+  const child = utilityProcess.fork(path.join(__dirname, 'ai', 'runtime.cjs'), [], { serviceName: 'OSAT AI' })
+  let text = ''
+  let finished = false
+  const finish = (ok, line) => {
+    if (finished) return
+    finished = true
+    console.log(`OSAT self-test: ${line}`)
+    child.kill()
+    app.exit(ok ? 0 : 1)
+  }
+  setTimeout(() => finish(false, 'timed out'), 180000).unref()
+  child.on('message', (message) => {
+    if (message.type === 'probe') {
+      if (!modelPath) finish(true, `engine ok (${message.gpu})`)
+      else child.postMessage({ type: 'load', modelPath })
+    } else if (message.type === 'loaded') {
+      child.postMessage({ type: 'chat', id: 'self-test', messages: [{ role: 'user', content: 'Say hello in three words.' }], maxTokens: 24 })
+    } else if (message.type === 'delta') {
+      text += message.text
+    } else if (message.type === 'done') {
+      finish(Boolean(text.trim()), `model answered: ${text.trim()}`)
+    } else if (message.type === 'error') {
+      finish(false, message.message)
+    }
+  })
+  child.on('exit', (code) => finish(false, `engine stopped (${code})`))
+  child.postMessage({ type: 'probe' })
 }
 
 app.whenReady().then(async () => {
   if (!primaryInstance) return
+  if (app.commandLine.hasSwitch('osat-self-test')) {
+    selfTest(app.commandLine.getSwitchValue('osat-self-test'))
+    return
+  }
   try {
     const core = await sharedModule('store-core.mjs')
     store = await createStore({ dir: path.join(app.getPath('userData'), 'store'), core })
@@ -816,43 +927,6 @@ app.whenReady().then(async () => {
   grantsFile = path.join(app.getPath('userData'), 'approved-files.json')
   await loadGrants()
   registerFileHandlers()
-  handle('local-ai:models', async () => {
-    try {
-      return { runtime: 'lm-studio', offline: true, models: await localAiModels() }
-    } catch {
-      return { runtime: 'lm-studio', offline: true, models: [], error: 'Start the LM Studio local server to use offline AI.' }
-    }
-  }, { from: 'any' })
-  handle('local-ai:chat', async (payload) => {
-    validateLocalChatPayload(payload)
-    try {
-      return await localAiChat(payload)
-    } catch (error) {
-      throw new FileAccessError(error.message || 'Local AI is unavailable.')
-    }
-  }, { from: 'any' })
-  const streams = new Map()
-  ipcMain.on('local-ai:cancel', (event, id) => {
-    assertTrustedSender(event)
-    if (typeof id === 'string') streams.get(id)?.abort()
-  })
-  ipcMain.handle('local-ai:chat-stream', async (event, id, payload) => {
-    assertTrustedSender(event)
-    if (typeof id !== 'string' || !/^stream-\d+$/.test(id)) throw new FileAccessError('Bad stream id.')
-    validateLocalChatPayload(payload)
-    const controller = new AbortController()
-    streams.set(id, controller)
-    try {
-      return await localAiChatStream(payload, (delta) => {
-        if (!event.sender.isDestroyed()) event.sender.send(`local-ai:delta:${id}`, delta)
-      }, controller.signal)
-    } catch (error) {
-      if (error?.name === 'AbortError') return ''
-      throw new FileAccessError(error.message || 'Local AI is unavailable.')
-    } finally {
-      streams.delete(id)
-    }
-  })
   ipcMain.on('app:listening', (event) => {
     if (event.sender !== mainWindow?.webContents) return
     mainListening = true
@@ -863,6 +937,7 @@ app.whenReady().then(async () => {
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, respond) => respond(false))
   registerBrowserAndTerminal()
   await loadPrefs()
+  registerAi()
   registerOverlay()
   await createWindow()
   createTray()
@@ -881,5 +956,6 @@ app.on('will-quit', () => {
   try { store?.flushSync() } catch (error) { console.error('Final save failed:', error) }
   globalShortcut.unregisterAll()
   terminals?.destroy()
+  ai?.dispose()
   for (const id of grantAccessStops.keys()) stopGrantAccess(id)
 })

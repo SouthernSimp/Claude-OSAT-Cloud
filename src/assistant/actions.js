@@ -92,6 +92,11 @@ export function extractActions(reply) {
   return { body: body.replace(OPEN_BLOCK, '').trimEnd(), actions }
 }
 
+/* Small models offer actions nobody asked for. Cards only appear when the
+   question itself asks for something to be added, saved or scheduled. */
+const ASKING = /\b(add|create|make|save|capture|remind|schedule|plan|put|jot|note (?:down|that|this)|write (?:down|up)|log)\b/i
+export const wantsActions = (question) => ASKING.test(String(question || ''))
+
 export function describeAction(action) {
   if (action.type === 'next-step') return { label: 'Add next step', detail: action.text }
   if (action.type === 'capture') return { label: 'Save to Unsorted', detail: action.text }

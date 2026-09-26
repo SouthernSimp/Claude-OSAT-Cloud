@@ -4,7 +4,6 @@ import {
   Check,
   CircleNotch,
   Copy,
-  FolderSimple,
   LockKey,
   MagnifyingGlass,
   Microphone,
@@ -16,26 +15,15 @@ import {
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getLocalModels, streamLocalMessage } from "../local-ai.js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { streamLocalMessage } from "../local-ai.js";
 import { normalizeNote } from "../osat-data.js";
 import { localDateKey } from "../daily-practice.js";
 import { Markdown } from "../lib/markdown.jsx";
-import { isActiveNote } from "../notes-model.js";
-import {
-  applyAction,
-  describeAction,
-  extractActions,
-  systemPrompt,
-} from "./actions.js";
-import {
-  deleteConversation,
-  deriveTitle,
-  listConversations,
-  newConversation,
-  saveConversation,
-  searchConversations,
-} from "./chat-store.js";
+import { isActiveNote, relatedNotes } from "../notes-model.js";
+import { applyAction, describeAction, extractActions, systemPrompt, wantsActions } from "./actions.js";
+import { deriveTitle, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
+import { cleanError, setupLine, useAi } from "./useAi.js";
 import "../styles/assistant.css";
 
 const STARTERS = [
@@ -47,7 +35,6 @@ const STARTERS = [
 
 export const modelLabel = (model) =>
   typeof model === "string" ? model : model?.name || model?.id || "Local model";
-const modelId = (model) => (typeof model === "string" ? model : model?.id || "");
 
 const dayLabel = (iso) => {
   const date = new Date(iso);
@@ -59,39 +46,67 @@ const dayLabel = (iso) => {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
 };
 
-/* Only the records the conversation explicitly selected are ever sent. */
-function buildContext(workspace, ids) {
-  const chosen = new Set(ids);
-  const parts = [];
-  for (const project of workspace.projects || []) {
-    if (!chosen.has(project.id)) continue;
-    parts.push(
-      `PROJECT: ${project.title}\n${String(project.summary || "").slice(0, 600)} [${project.status || "active"}]`,
-    );
-  }
-  for (const note of workspace.notes || []) {
-    if (!chosen.has(note.id)) continue;
-    parts.push(`NOTE: ${note.title || "Untitled"}\n${String(note.markdown || "").slice(0, 1400)}`);
-  }
-  return parts.join("\n\n").slice(0, 14000);
+/* Accept or decline what the AI proposes. Nothing is added without a click. */
+export function ActionCards({ actions, onAdd, onDiscard }) {
+  if (!actions?.length) return null;
+  return (
+    <div className="action-cards">
+      <p className="action-lead">Add these to your workspace?</p>
+      {actions.map((action) => {
+        const { label, detail } = describeAction(action);
+        return (
+          <div className="action-card" key={action.id}>
+            <span className="action-copy">
+              <strong>{label}</strong>
+              <small>{detail}</small>
+            </span>
+            <span className="action-buttons">
+              <button className="primary-button" type="button" onClick={() => onAdd(action)}>
+                <Check /> Add
+              </button>
+              <button className="ghost-button" type="button" onClick={() => onDiscard(action)}>
+                Discard
+              </button>
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-/* initialPrompt is a hand-off from elsewhere in OSAT: { prompt, at }. Each new
-   `at` opens a fresh chat with the text waiting in the composer. Nothing is sent
-   until the person presses Return here, and no notes are shared. */
+/* The notes a question used, as small links back to them. */
+export function UsedNotes({ ids, notes, onOpen }) {
+  const used = (ids || []).map((id) => notes.find((note) => note.id === id)).filter(Boolean);
+  if (!used.length) return null;
+  return (
+    <p className="bubble-notes">
+      <span>From your notes</span>
+      {used.map((note) => (
+        <button key={note.id} type="button" onClick={() => onOpen(note.id)}>
+          <NotePencil /> {note.title || "Untitled"}
+        </button>
+      ))}
+    </p>
+  );
+}
+
+/* Ask: conversations with the AI on this Mac. Each question reads the notes it
+   matches, shown as chips you can remove before sending. `initialPrompt` is a
+   hand-off from elsewhere: { prompt, at } opens a new chat with the text waiting,
+   { chatId, at } opens that chat. */
 export function LocalAssistant({ workspace, commit, navigate, initialPrompt = null }) {
-  const [conversations, setConversations] = useState([]);
-  const [activeId, setActiveId] = useState(null);
-  const [models, setModels] = useState([]);
+  const { models, status: ai } = useAi();
   const [model, setModel] = useState("");
+  const [activeId, setActiveId] = useState(null);
   const [draft, setDraft] = useState("");
+  const [asking, setAsking] = useState("");
+  const [dropped, setDropped] = useState(() => new Set());
   const [streaming, setStreaming] = useState("");
-  const [status, setStatus] = useState("checking");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(null);
   const [search, setSearch] = useState("");
-  const [contextOpen, setContextOpen] = useState(false);
   const [pending, setPending] = useState({});
   const [railOpen, setRailOpen] = useState(false);
   const [voiceHint, setVoiceHint] = useState(false);
@@ -101,66 +116,31 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const threadRef = useRef(null);
   const stickRef = useRef(true);
 
-  const active = conversations.find((item) => item.id === activeId) || null;
+  const chats = useMemo(() => newestFirst(workspace.chats), [workspace.chats]);
+  const active = chats.find((chat) => chat.id === activeId) || null;
   const messages = active?.messages || [];
   const today = localDateKey();
-
-  /* ---- load ------------------------------------------------------------ */
+  const status = models === null ? "checking" : models.length ? "ready" : "unavailable";
+  const setup = setupLine(ai);
 
   useEffect(() => {
-    let alive = true;
-    listConversations()
-      .then((all) => {
-        if (!alive) return;
-        const seed = all.length ? all : [newConversation()];
-        setConversations(seed);
-        setActiveId(seed[0].id);
-      })
-      .catch(() => {
-        if (!alive) return;
-        const blank = newConversation();
-        setConversations([blank]);
-        setActiveId(blank.id);
-        setError("Chat history could not be opened. This conversation stays in memory only.");
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
+    if (!models) return;
+    setModel((current) => (current && models.some((item) => item.id === current) ? current : models[0]?.id || ""));
+  }, [models]);
 
   const handedOff = useRef(null);
   useEffect(() => {
-    if (!activeId || !initialPrompt || handedOff.current === initialPrompt.at) return;
+    if (!initialPrompt || handedOff.current === initialPrompt.at) return;
     handedOff.current = initialPrompt.at;
-    const blank = newConversation();
-    setConversations((current) => [blank, ...current.filter((item) => item.messages.length)]);
-    setActiveId(blank.id);
-    setDraft(String(initialPrompt.prompt || "").slice(0, 8000));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId, initialPrompt?.at]);
-
-  const refreshModels = useCallback(async () => {
-    setStatus("checking");
-    try {
-      const value = await getLocalModels();
-      const next = (Array.isArray(value) ? value : value?.models || []).filter(Boolean);
-      setModels(next);
-      setModel((current) =>
-        current && next.some((item) => modelId(item) === current) ? current : modelId(next[0]) || "",
-      );
-      setStatus(next.length ? "ready" : "unavailable");
-      setError(next.length ? "" : "No local model is loaded. Start one in LM Studio, then refresh.");
-    } catch (reason) {
-      setModels([]);
-      setModel("");
-      setStatus("unavailable");
-      setError(reason?.message || "The local runtime could not be reached on this Mac.");
+    abortRef.current?.abort();
+    if (typeof initialPrompt.chatId === "string") {
+      setActiveId(initialPrompt.chatId);
+      setDraft("");
+    } else {
+      setActiveId(null);
+      setDraft(String(initialPrompt.prompt || "").slice(0, 8000));
     }
-  }, []);
-
-  useEffect(() => {
-    refreshModels();
-  }, [refreshModels]);
+  }, [initialPrompt?.at]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => abortRef.current?.abort(), []);
   useEffect(() => {
@@ -174,40 +154,29 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     node.scrollTop = node.scrollHeight;
   }, [messages, streaming]);
 
+  /* The notes this question will read. A follow-up with no matches of its own keeps the notes already in play. */
+  useEffect(() => {
+    const timer = setTimeout(() => setAsking(draft), 250);
+    return () => clearTimeout(timer);
+  }, [draft]);
+  const earlierIds = [...messages].reverse().find((message) => message.role === "user" && message.noteIds?.length)?.noteIds || [];
+  const pickNotes = (text) => {
+    if (!text.trim()) return [];
+    const found = relatedNotes(workspace.notes, text).map((note) => note.id);
+    return (found.length ? found : earlierIds).filter((id) => !dropped.has(id) && isActiveNote(workspace.notes.find((note) => note.id === id)));
+  };
+  const using = useMemo(() => pickNotes(asking), [asking, workspace.notes, dropped, earlierIds.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function onThreadScroll(event) {
     const node = event.currentTarget;
     stickRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80;
   }
 
-  /* ---- conversation plumbing ------------------------------------------- */
-
-  const persist = useCallback((conversation) => {
-    saveConversation(conversation).catch(() =>
-      setError("This conversation could not be written to local history."),
-    );
-  }, []);
-
-  const patchActive = useCallback(
-    (updater) => {
-      let updated = null;
-      setConversations((current) =>
-        current.map((item) => {
-          if (item.id !== activeId) return item;
-          updated = { ...updater(item), updatedAt: new Date().toISOString() };
-          return updated;
-        }),
-      );
-      return updated;
-    },
-    [activeId],
-  );
-
   function startChat() {
     abortRef.current?.abort();
-    const blank = newConversation();
-    setConversations((current) => [blank, ...current.filter((item) => item.messages.length)]);
-    setActiveId(blank.id);
+    setActiveId(null);
     setDraft("");
+    setDropped(new Set());
     setStreaming("");
     setError("");
     setRailOpen(false);
@@ -223,22 +192,10 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     setRailOpen(false);
   }
 
-  function removeChat(id) {
-    deleteConversation(id).catch(() => {});
-    setConversations((current) => {
-      const next = current.filter((item) => item.id !== id);
-      if (id !== activeId) return next;
-      if (next.length) {
-        setActiveId(next[0].id);
-        return next;
-      }
-      const blank = newConversation();
-      setActiveId(blank.id);
-      return [blank];
-    });
+  function deleteChat(id) {
+    if (id === activeId) startChat();
+    commit((state) => removeChat(state, id));
   }
-
-  /* ---- asking ----------------------------------------------------------- */
 
   function cancel() {
     abortRef.current?.abort();
@@ -247,60 +204,36 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
 
   async function ask(text = draft, { retry = false } = {}) {
     const content = text.trim();
-    if (!content || busy || !model || !active || content.length > 8000) return;
-
-    const history = active.messages;
-    const base =
-      retry && history.at(-1)?.role === "user" ? history.slice(0, -1) : history;
-    const question = {
-      id: `m-${crypto.randomUUID()}`,
-      role: "user",
-      content,
-      at: new Date().toISOString(),
-    };
-    const withQuestion = { ...active, messages: [...base, question] };
-
+    if (!content || busy || !model || content.length > 8000) return;
+    const noteIds = text === asking ? using : pickNotes(content);
+    let base = active || newChat();
+    if (retry && base.messages.at(-1)?.role === "user") base = { ...base, messages: base.messages.slice(0, -1) };
+    const question = newMessage("user", content, noteIds.length ? { noteIds } : {});
+    const chat = { ...base, messages: [...base.messages, question] };
+    commit((state) => putChat(state, chat));
+    setActiveId(chat.id);
     setDraft("");
+    setDropped(new Set());
     setError("");
     setBusy(true);
     setStreaming("");
     stickRef.current = true;
-    setConversations((current) =>
-      current.map((item) => (item.id === activeId ? withQuestion : item)),
-    );
 
     const controller = new AbortController();
     abortRef.current = controller;
-
-    const context = active.includeContext ? buildContext(workspace, active.contextIds) : "";
-    const outbound = [
-      { role: "system", content: systemPrompt() },
-      ...base.map(({ role, content: value }) => ({ role, content: value })),
-      {
-        role: "user",
-        content: context
-          ? `${content}\n\n[WORKSPACE CONTEXT — the person shared these records with you]\n${context}`
-          : content,
-      },
-    ];
-
     let full = "";
     try {
       await streamLocalMessage({
         model,
-        messages: outbound,
+        messages: outbound(systemPrompt(), base.messages, content, workspace.notes, noteIds),
         signal: controller.signal,
         onDelta: (delta) => {
           full += delta;
           setStreaming(extractActions(full).body);
         },
       });
-      setStatus("ready");
     } catch (reason) {
-      if (reason?.name !== "AbortError") {
-        setError(reason?.message || "The local model could not answer.");
-        setStatus(models.length ? "ready" : "unavailable");
-      }
+      if (reason?.name !== "AbortError") setError(cleanError(reason) || "The AI could not answer.");
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
@@ -308,56 +241,37 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     const { body, actions } = extractActions(full);
     setStreaming("");
     setBusy(false);
-    if (!body.trim() && !actions.length) return;
-
-    const answer = {
-      id: `m-${crypto.randomUUID()}`,
-      role: "assistant",
-      content: body,
-      at: new Date().toISOString(),
-    };
-    const finished = {
-      ...withQuestion,
-      messages: [...withQuestion.messages, answer],
-      updatedAt: new Date().toISOString(),
-    };
-    setConversations((current) =>
-      current.map((item) => (item.id === activeId ? finished : item)),
-    );
-    if (actions.length) setPending((current) => ({ ...current, [answer.id]: actions }));
-    persist(finished);
+    if (!body.trim()) return;
+    const answer = newMessage("assistant", body);
+    commit((state) => {
+      const saved = (state.chats || []).find((item) => item.id === chat.id) || chat;
+      return putChat(state, { ...saved, messages: [...saved.messages, answer] });
+    });
+    if (actions.length && wantsActions(content)) setPending((current) => ({ ...current, [answer.id]: actions }));
   }
-
-  /* ---- actions & saving -------------------------------------------------- */
 
   function approve(messageId, action) {
     commit((state) => applyAction(state, action, today));
-    discard(messageId, action.id);
+    discard(messageId, action);
   }
 
-  function discard(messageId, actionId) {
-    setPending((current) => ({
-      ...current,
-      [messageId]: (current[messageId] || []).filter((item) => item.id !== actionId),
-    }));
+  function discard(messageId, action) {
+    setPending((current) => ({ ...current, [messageId]: (current[messageId] || []).filter((item) => item.id !== action.id) }));
   }
 
   function saveToNotes(message) {
     const note = normalizeNote({
       id: `note-${crypto.randomUUID()}`,
-      title: deriveTitle(active).slice(0, 80) || "Local response",
+      title: deriveTitle(active).slice(0, 80) || "From Ask",
       markdown: message.content.trim(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    commit((state) => ({ ...state, notes: [note, ...state.notes] }));
-    const updated = patchActive((item) => ({
-      ...item,
-      messages: item.messages.map((entry) =>
-        entry.id === message.id ? { ...entry, savedNoteId: note.id } : entry,
-      ),
-    }));
-    if (updated) persist(updated);
+    commit((state) => {
+      const saved = (state.chats || []).find((item) => item.id === active.id);
+      const next = { ...state, notes: [note, ...state.notes] };
+      return saved ? putChat(next, { ...saved, messages: saved.messages.map((entry) => (entry.id === message.id ? { ...entry, savedNoteId: note.id } : entry)) }) : next;
+    });
   }
 
   async function copyMessage(message) {
@@ -370,133 +284,69 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     }
   }
 
-  function toggleContext(id) {
-    const updated = patchActive((item) => ({
-      ...item,
-      contextIds: item.contextIds.includes(id)
-        ? item.contextIds.filter((value) => value !== id)
-        : [...item.contextIds, id],
-    }));
-    if (updated) persist(updated);
-  }
-
-  function setIncludeContext(value) {
-    const updated = patchActive((item) => ({ ...item, includeContext: value }));
-    if (updated) persist(updated);
-    if (value) setContextOpen(true);
-  }
-
-  /* ---- render ------------------------------------------------------------ */
-
-  const visible = useMemo(
-    () => searchConversations(conversations.filter((item) => item.messages.length), search),
-    [conversations, search],
-  );
-  const contextCount = active?.contextIds.length || 0;
-  const lastPrompt = messages.filter((item) => item.role === "user").at(-1)?.content || "";
+  const openNote = (noteId) => navigate?.("Notes", { noteId });
+  const visible = useMemo(() => searchChats(chats, search), [chats, search]);
+  const lastPrompt = messages.at(-1)?.role === "user" ? messages.at(-1).content : "";
+  const noteTitle = (id) => workspace.notes.find((note) => note.id === id)?.title || "Untitled";
 
   return (
-    <section className="assistant" aria-label="Local AI">
+    <section className="assistant" aria-label="Ask">
       <aside className={`chat-rail ${railOpen ? "is-open" : ""}`}>
         <div className="rail-head">
           <button className="new-chat" type="button" onClick={startChat}>
             <Plus weight="bold" /> New chat
           </button>
-          <button
-            className="icon-button rail-close"
-            type="button"
-            aria-label="Close conversations"
-            onClick={() => setRailOpen(false)}
-          >
+          <button className="icon-button rail-close" type="button" aria-label="Close conversations" onClick={() => setRailOpen(false)}>
             <X />
           </button>
         </div>
         <label className="rail-search">
           <MagnifyingGlass />
-          <input
-            type="search"
-            value={search}
-            placeholder="Search chats"
-            onChange={(event) => setSearch(event.target.value)}
-          />
+          <input type="search" value={search} placeholder="Search chats" onChange={(event) => setSearch(event.target.value)} />
         </label>
         <div className="rail-list">
-          {visible.map((conversation) => (
-            <div
-              className={`rail-item ${conversation.id === activeId ? "active" : ""}`}
-              key={conversation.id}
-            >
-              <button type="button" onClick={() => selectChat(conversation.id)}>
-                <strong>{deriveTitle(conversation)}</strong>
-                <small>
-                  {dayLabel(conversation.updatedAt)} · {conversation.messages.length} messages
-                </small>
+          {visible.map((chat) => (
+            <div className={`rail-item ${chat.id === activeId ? "active" : ""}`} key={chat.id}>
+              <button type="button" onClick={() => selectChat(chat.id)}>
+                <strong>{deriveTitle(chat)}</strong>
+                <small>{dayLabel(chat.updatedAt)} · {chat.messages.length} messages</small>
               </button>
-              <button
-                className="icon-button danger"
-                type="button"
-                aria-label={`Delete ${deriveTitle(conversation)}`}
-                onClick={() => removeChat(conversation.id)}
-              >
+              <button className="icon-button danger" type="button" aria-label={`Delete ${deriveTitle(chat)}`} onClick={() => deleteChat(chat.id)}>
                 <Trash />
               </button>
             </div>
           ))}
-          {!visible.length && (
-            <p className="rail-empty">
-              {search ? "No chat matches that." : "Your conversations will collect here."}
-            </p>
-          )}
+          {!visible.length && <p className="rail-empty">{search ? "No chat matches that." : "Your conversations will collect here."}</p>}
         </div>
         <footer className="rail-foot">
           <LockKey />
-          <span>History stays on this device and is left out of workspace exports.</span>
+          <span>Chats are saved with your notes, on this Mac.</span>
         </footer>
       </aside>
 
       <div className="chat-main">
         <header className="chat-head">
-          <button
-            className="icon-button rail-toggle"
-            type="button"
-            aria-label="Show conversations"
-            onClick={() => setRailOpen(true)}
-          >
+          <button className="icon-button rail-toggle" type="button" aria-label="Show conversations" onClick={() => setRailOpen(true)}>
             <Sparkle />
           </button>
           <div className="chat-title">
-            <h2>{active ? deriveTitle(active) : "Local AI"}</h2>
+            <h2>{active ? deriveTitle(active) : "New chat"}</h2>
             <span className={`chat-status ${status}`}>
-              {status === "checking" ? (
-                <CircleNotch className="spin" />
-              ) : status === "ready" ? (
-                <Check />
-              ) : (
-                <WarningCircle />
-              )}
-              {status === "checking"
-                ? "Checking this Mac"
-                : status === "ready"
-                  ? "Running on this Mac"
-                  : "No local model"}
+              {status === "checking" ? <CircleNotch className="spin" /> : status === "ready" ? <Check /> : <WarningCircle />}
+              {status === "checking" ? "Checking this Mac" : status === "ready" ? `${modelLabel(models.find((item) => item.id === model))} · on this Mac` : setup || "No AI set up yet"}
             </span>
           </div>
           <div className="chat-head-actions">
-            <label className="model-select">
-              <span className="visually-hidden">Local model</span>
-              <select
-                value={model}
-                disabled={!models.length || busy}
-                onChange={(event) => setModel(event.target.value)}
-              >
-                {!models.length && <option value="">No model available</option>}
-                {models.map((item) => (
-                  <option key={modelId(item)} value={modelId(item)}>
-                    {modelLabel(item)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {models?.length > 1 && (
+              <label className="model-select">
+                <span className="visually-hidden">Model</span>
+                <select value={model} disabled={busy} onChange={(event) => setModel(event.target.value)}>
+                  {models.map((item) => (
+                    <option key={item.id} value={item.id}>{modelLabel(item)}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <button className="outline-button" type="button" onClick={startChat}>
               <Plus /> New
             </button>
@@ -507,92 +357,46 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
           <div className="thread-inner">
             {!messages.length && !streaming && !busy && (
               <div className="chat-welcome">
-                <span className="welcome-orb">
-                  <Sparkle weight="fill" />
-                </span>
-                <h3>What are you working through?</h3>
-                <p>
-                  This runs entirely on your Mac. Nothing you type here leaves the device — no
-                  account, no cloud, no fallback.
-                </p>
-                <div className="chat-starters">
-                  {STARTERS.map((starter) => (
-                    <button
-                      key={starter}
-                      type="button"
-                      disabled={busy || !model}
-                      onClick={() => ask(starter)}
-                    >
-                      {starter}
-                      <ArrowUp />
+                <span className="welcome-orb"><Sparkle weight="fill" /></span>
+                {status === "unavailable" ? (
+                  <>
+                    <h3>{setup || "Ask needs its AI."}</h3>
+                    <p>OSAT downloads one model, once, and runs it on this Mac. Choose its size in Settings. LM Studio works too.</p>
+                    <button className="primary-button" type="button" onClick={() => navigate?.("Settings", { section: "ai" })}>
+                      <Sparkle /> Set up the AI
                     </button>
-                  ))}
-                </div>
+                  </>
+                ) : (
+                  <>
+                    <h3>What are you working through?</h3>
+                    <p>This runs entirely on your Mac. Ask reads the notes that match your question, and shows which.</p>
+                    <div className="chat-starters">
+                      {STARTERS.map((starter) => (
+                        <button key={starter} type="button" disabled={busy || !model} onClick={() => ask(starter)}>
+                          {starter}
+                          <ArrowUp />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
             {messages.map((message) => (
               <article className={`bubble ${message.role}`} key={message.id}>
-                {message.role === "assistant" && (
-                  <span className="bubble-avatar">
-                    <Sparkle weight="fill" />
-                  </span>
-                )}
+                {message.role === "assistant" && <span className="bubble-avatar"><Sparkle weight="fill" /></span>}
                 <div className="bubble-body">
-                  {message.role === "assistant" ? (
-                    <Markdown text={message.content} headingOffset={2} />
-                  ) : (
-                    <p className="user-text">{message.content}</p>
-                  )}
-
-                  {(pending[message.id] || []).length > 0 && (
-                    <div className="action-cards">
-                      <p className="action-lead">Add these to your workspace?</p>
-                      {pending[message.id].map((action) => {
-                        const { label, detail } = describeAction(action);
-                        return (
-                          <div className="action-card" key={action.id}>
-                            <span className="action-copy">
-                              <strong>{label}</strong>
-                              <small>{detail}</small>
-                            </span>
-                            <span className="action-buttons">
-                              <button
-                                className="primary-button"
-                                type="button"
-                                onClick={() => approve(message.id, action)}
-                              >
-                                <Check /> Add
-                              </button>
-                              <button
-                                className="ghost-button"
-                                type="button"
-                                onClick={() => discard(message.id, action.id)}
-                              >
-                                Discard
-                              </button>
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
+                  {message.role === "assistant" ? <Markdown text={message.content} headingOffset={2} /> : <p className="user-text">{message.content}</p>}
+                  {message.role === "user" && <UsedNotes ids={message.noteIds} notes={workspace.notes} onOpen={openNote} />}
+                  <ActionCards actions={pending[message.id]} onAdd={(action) => approve(message.id, action)} onDiscard={(action) => discard(message.id, action)} />
                   {message.role === "assistant" && (
                     <div className="bubble-actions">
-                      <button
-                        type="button"
-                        disabled={!!message.savedNoteId}
-                        onClick={() => saveToNotes(message)}
-                      >
+                      <button type="button" disabled={!!message.savedNoteId} onClick={() => saveToNotes(message)}>
                         {message.savedNoteId ? <Check /> : <NotePencil />}
                         {message.savedNoteId ? "Saved" : "Save to Notes"}
                       </button>
-                      <button
-                        type="button"
-                        aria-label="Copy reply"
-                        onClick={() => copyMessage(message)}
-                      >
+                      <button type="button" aria-label="Copy reply" onClick={() => copyMessage(message)}>
                         {copied === message.id ? <Check /> : <Copy />}
                       </button>
                     </div>
@@ -603,9 +407,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
 
             {(streaming || busy) && (
               <article className="bubble assistant">
-                <span className="bubble-avatar">
-                  <Sparkle weight="fill" />
-                </span>
+                <span className="bubble-avatar"><Sparkle weight="fill" /></span>
                 <div className="bubble-body">
                   {streaming ? (
                     <>
@@ -613,9 +415,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                       <span className="caret" aria-hidden="true" />
                     </>
                   ) : (
-                    <p className="thinking">
-                      <CircleNotch className="spin" /> Thinking on this Mac…
-                    </p>
+                    <p className="thinking"><CircleNotch className="spin" /> Thinking on this Mac…</p>
                   )}
                 </div>
               </article>
@@ -627,76 +427,36 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
           <div className="chat-error" role="alert">
             <WarningCircle />
             <span>{error}</span>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => (lastPrompt ? ask(lastPrompt, { retry: true }) : refreshModels())}
-            >
-              <ArrowClockwise /> {lastPrompt ? "Retry" : "Refresh"}
-            </button>
-            <button type="button" aria-label="Dismiss" onClick={() => setError("")}>
-              <X />
-            </button>
-          </div>
-        )}
-
-        {contextOpen && active && (
-          <div className="context-picker">
-            <div className="context-head">
-              <strong>Share specific records with this chat</strong>
-              <button
-                className="icon-button"
-                type="button"
-                aria-label="Close context picker"
-                onClick={() => setContextOpen(false)}
-              >
-                <X />
+            {lastPrompt && (
+              <button type="button" disabled={busy} onClick={() => ask(lastPrompt, { retry: true })}>
+                <ArrowClockwise /> Try again
               </button>
-            </div>
-            <div className="context-list">
-              {(workspace.projects || []).map((project) => (
-                <label key={project.id}>
-                  <input
-                    type="checkbox"
-                    checked={active.contextIds.includes(project.id)}
-                    onChange={() => toggleContext(project.id)}
-                  />
-                  <FolderSimple />
-                  <span>{project.title}</span>
-                </label>
-              ))}
-              {(workspace.notes || []).filter(isActiveNote).map((note) => (
-                <label key={note.id}>
-                  <input
-                    type="checkbox"
-                    checked={active.contextIds.includes(note.id)}
-                    onChange={() => toggleContext(note.id)}
-                  />
-                  <NotePencil />
-                  <span>{note.title || "Untitled note"}</span>
-                </label>
-              ))}
-              {!workspace.notes?.some(isActiveNote) && !workspace.projects?.length && (
-                <p className="rail-empty">Nothing to share yet.</p>
-              )}
-            </div>
+            )}
+            <button type="button" aria-label="Dismiss" onClick={() => setError("")}><X /></button>
           </div>
         )}
 
         <div className="composer">
           {voiceHint && <div className="voice-hint" role="status"><Microphone /><span><strong>Speak with Mac Dictation</strong>Press Fn twice, then speak. Your words appear here before anything is sent.</span><button type="button" aria-label="Dismiss voice instructions" onClick={() => setVoiceHint(false)}><X /></button></div>}
+          {using.length > 0 && (
+            <div className="ask-notes" aria-label="Notes Ask will read">
+              <span>Using {using.length} {using.length === 1 ? "note" : "notes"}</span>
+              {using.map((id) => (
+                <span className="ask-note-chip" key={id}>
+                  <NotePencil /> {noteTitle(id)}
+                  <button type="button" aria-label={`Leave out ${noteTitle(id)}`} onClick={() => setDropped((current) => new Set(current).add(id))}><X /></button>
+                </span>
+              ))}
+            </div>
+          )}
           <textarea
             ref={inputRef}
             rows="1"
             maxLength={8000}
             value={draft}
             disabled={busy || !model}
-            placeholder={
-              status === "unavailable"
-                ? "Start a model in LM Studio to begin…"
-                : "Ask anything. Shift + Return for a new line."
-            }
-            aria-label="Message the local model"
+            placeholder={status === "unavailable" ? "Set up the AI in Settings to begin…" : "Ask anything. Shift + Return for a new line."}
+            aria-label="Ask the AI on this Mac"
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
@@ -706,21 +466,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
             }}
           />
           <div className="composer-foot">
-            <button
-              className={`context-toggle ${active?.includeContext ? "on" : ""}`}
-              type="button"
-              onClick={() => setIncludeContext(!active?.includeContext)}
-            >
-              <LockKey />
-              {active?.includeContext
-                ? `Sharing ${contextCount || "no"} record${contextCount === 1 ? "" : "s"}`
-                : "Private to this chat"}
-            </button>
-            {active?.includeContext && (
-              <button className="context-edit" type="button" onClick={() => setContextOpen(true)}>
-                Choose records
-              </button>
-            )}
+            <span className="composer-note"><LockKey /> Nothing leaves this Mac</span>
             <span className="composer-spacer" />
             <button className="voice-button" type="button" aria-label="Speak with Mac Dictation" title="Speak with Mac Dictation" disabled={busy || !model} onClick={() => { setVoiceHint(true); inputRef.current?.focus(); }}><Microphone /> Speak</button>
             {busy ? (
@@ -728,12 +474,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                 <Stop weight="fill" /> Stop
               </button>
             ) : (
-              <button
-                className="primary-button send"
-                type="button"
-                disabled={!draft.trim() || !model}
-                onClick={() => ask()}
-              >
+              <button className="primary-button send" type="button" disabled={!draft.trim() || !model} onClick={() => ask()}>
                 <ArrowUp weight="bold" /> Ask
               </button>
             )}
@@ -741,12 +482,8 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
         </div>
 
         <footer className="chat-foot">
-          <span>
-            <LockKey /> Local runtime only · no cloud fallback
-          </span>
-          <button type="button" onClick={() => navigate?.("Settings")}>
-            Privacy & storage
-          </button>
+          <span><LockKey /> Runs on this Mac · no cloud</span>
+          <button type="button" onClick={() => navigate?.("Settings", { section: "ai" })}>AI settings</button>
         </footer>
       </div>
 

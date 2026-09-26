@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      # The AI engine ships prebuilt; its install step would only test-load it.
+      NODE_LLAMA_CPP_SKIP_DOWNLOAD: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,6 +53,7 @@ jobs:
     runs-on: macos-latest
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      NODE_LLAMA_CPP_SKIP_DOWNLOAD: "true"
       # Optional. When these repository secrets exist the app is signed with the
       # Developer ID and notarized, so it opens with no warning. Without them the
       # build is ad-hoc signed and needs one "Open Anyway" in System Settings.
@@ -101,6 +104,11 @@ jobs:
           fi
           kill "$PID"
           test -f "$HOME/Library/Application Support/OSAT/osat-data-folder.json"
+      - name: Check the AI engine loads inside the app
+        run: |
+          APP="$(ls -d release/mac-arm64/OSAT.app)"
+          "$APP/Contents/MacOS/OSAT" --osat-self-test 2>&1 | tee self-test.log
+          grep -q "OSAT self-test: engine ok" self-test.log
       - uses: actions/upload-artifact@v4
         with:
           name: OSAT-mac-dmg
