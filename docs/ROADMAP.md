@@ -21,8 +21,8 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 3b | A calm day: Next ≤ 5 + bring forward (in #3), evening invitation, Undo, See in the Sky | Merged (PR #4) |
 | 4 | Local AI that sets itself up, Ask everywhere, chats in the workspace | Merged (PR #5) |
 | 5 | Your iPhone, step one: capture from the phone, read your notes there | Merged (PR #6) |
-| 6a | Sync: devices stay in step through iCloud (Mac ↔ Mac now, the iPhone app next) | In PR #7 |
-| 6b | The iPhone app | Next |
+| 6a | Sync: devices stay in step through iCloud (Mac ↔ Mac now, the iPhone app next) | Merged (PR #7) |
+| 6b | The iPhone app | In PR #8 |
 | 7 | Visual polish | Planned |
 
 **The end goal (Nate, Sep 25):** an app that syncs with his iPhone. Phases 5 and 6 get there;
@@ -292,7 +292,7 @@ Opt-in in **Settings → iPhone**, because it is the first thing that leaves the
 - `shared/note-core.mjs`: the note record moved to `shared/` so the main process makes notes exactly like the windows.
 - Checks: unit tests for the inbox (text becomes one thought, the file moves, half-synced files wait, hidden and non-text files stay) and the copy (folders, renames, trash, name clashes, a tampered manifest can't reach outside `Notes`); the Electron end-to-end test drops a file into a stand-in iCloud Drive and watches it arrive.
 
-### Phase 6a: Sync (built, PR #7)
+### Phase 6a: Sync (merged, PR #7)
 - **How it works:** every change a device makes is an operation (the store already speaks in them) with a hybrid-clock stamp. Each device writes only its own numbered files in `OSAT/Sync/<device>/`, reads everyone else's, and merges field by field, newest stamp winning, so every device ends up the same whatever order iCloud delivers things in. A snapshot per device lets a new device (the iPhone) catch up without reading all history.
 - **On the Mac** it rides the iPhone switch in Settings. Once set up it notes changes even while the switch is off, and sends them when it's back on. Two Macs with OSAT already stay in step.
 - **Checks:** a randomized test (thousands of random edits on four devices, heard in random orders, a late joiner from a snapshot: always identical), engine tests (out-of-order files, damaged files, restarts), two real stores sharing a folder, and two real OSAT apps side by side in the end-to-end test.
@@ -300,9 +300,12 @@ Opt-in in **Settings → iPhone**, because it is the first thing that leaves the
 - **Fixed on the way:** finishing the welcome saved two settings at once, and the saves could collide so the welcome came back; saves now take turns.
 - **Not yet:** old change files are kept (a clean-up can come when there are many).
 
-### Phase 6b: The iPhone app
-- **The app:** capture, Unsorted, Notes, today's Next, and Ask with a small on-device model picked at install. Built in CI on GitHub's Macs (Xcode), shipped to Nate through TestFlight.
-- **Needs from Nate:** accept the Xcode license once (`sudo xcodebuild -license accept`), and the App Store Connect API key as a GitHub secret for TestFlight.
+### Phase 6b: The iPhone app (built, PR #8)
+- **The app:** three pages. **Today**: drop a thought or a next step, tick off Next, bring earlier steps forward, see Unsorted and recent notes. **Notes**: search, All / Unsorted / Pinned, a full-screen page to write in (Keep, Pin, Trash with Undo). **iCloud**: whether it's in step with the Mac, and Light/Dark.
+- **How it's built:** the same React app and the same store and sync engine as the Mac (`?surface=phone`), inside a small SwiftUI app (`ios/`) that serves it through an `osat://` scheme and gives it its own files and its iCloud folder. The Mac moves its OSAT folder into the app's iCloud folder once it exists, so both share one.
+- **Checks:** the phone's store and sync against a stand-in Swift side (unit test, and in the browser smoke test: it catches up from a Mac snapshot and sends its own change); the Mac's folder handoff (nothing lost); CI builds the app for the iOS simulator and screenshots it.
+- **To put it on the iPhone:** open Xcode once (its license), `brew install xcodegen`, `npm run ios`, pick the team, Run (docs/IPHONE.md).
+- **Later:** TestFlight from CI (an App Store Connect API key as a GitHub secret), Ask on the phone (Apple's on-device model or asking the Mac), a share extension and widgets.
 
 ### Phase 7: Visual polish
 - One design language: the glass overlay plus a calm window.

@@ -38,6 +38,8 @@ npm run test:e2e       # launches the real Electron app (needs a display: xvfb-r
                        # Linux; run `node node_modules/electron/install.js` once first).
                        # OSAT_AI=mock inside it: a practice model answers, nothing downloads
 npx electron . --osat-self-test[=model.gguf]   # the AI engine (and a model) work? no notes opened
+npm run ios            # opens the iPhone app in Xcode (needs Xcode's license accepted and
+                       # `brew install xcodegen`); see docs/IPHONE.md
 npm run dev            # web preview at http://127.0.0.1:5173 (its own browser data)
 npm run start:mac      # build and run the Electron app from source (data: "OSAT Dev")
 npm run install:mac    # build the DMG and install /Applications/OSAT.app (macOS only)
@@ -46,6 +48,8 @@ npm run install:mac    # build the DMG and install /Applications/OSAT.app (macOS
 The cloud container is Linux: tests, the build, the web preview and Playwright
 screenshots work there; the Electron app, the global hotkey, vibrancy and the Mac menu
 bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the DMG).
+The iPhone app is built and screenshotted in the simulator by the CI `iphone` job; on
+Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locally.
 
 ## Architecture today
 
@@ -101,13 +105,18 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
   (`asarUnpack`) so the main process can `import()` it.
   - `browser.cjs`, `terminal.cjs`, `local-ai.cjs` (LM Studio on 127.0.0.1:1234),
     `path-guard.cjs`, `text-files.cjs`.
+- `ios/` — the iPhone app: a SwiftUI shell (XcodeGen `project.yml`) showing the web app with
+  `?surface=phone` over an `osat://` scheme; `NativeBridge.swift` gives the page its own files
+  and the app's iCloud folder. `desktop/phone-root.cjs` moves the Mac's OSAT folder into that
+  iCloud folder once it exists. See docs/IPHONE.md.
 - `src/` — React 19 renderer, built by Vite.
   - `store/`: `useWorkspace()` (one client per window), `client.js` (sync `commit(updater)`,
     batched operations, confirmed vs pending so edits never bounce back), `bridges.js`
     (the Mac app's `window.osat.store`, or an IndexedDB-backed hub for the browser preview;
     `?fresh=1` starts the preview empty).
   - `App.jsx`: the desk is always underneath; every other room opens as a glass sheet over it
-    (`shell/Shell.jsx`: `RoomSheet`, `Dock`, `Appearance`). `?surface=overlay` renders the layer.
+    (`shell/Shell.jsx`: `RoomSheet`, `Dock`, `Appearance`). `?surface=overlay` renders the layer,
+    `?surface=phone` the iPhone app (`surfaces/Phone.jsx`: Today, Notes, iCloud).
   - `lib/spaces.js`: the one list of spaces (Desk, Notes, Map, Ask), tools and Settings. The dock,
     ⌘K and ⌘1–4 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
   - `shell/glass.jsx`: the liquid-glass SVG filter (`GlassDefs`), `useAlive()` (cursor light on
