@@ -29,6 +29,7 @@ import { localDateKey } from "./daily-practice.js";
 import { captureThought, isActiveNote } from "./notes-model.js";
 import { storageFrom, useWorkspace } from "./store/useWorkspace.js";
 import { OverlaySurface } from "./surfaces/Overlay.jsx";
+import { PhoneSurface } from "./surfaces/Phone.jsx";
 import { inputActive } from "./lib/ui.js";
 import { useFocusTrap } from "./lib/use-focus-trap.js";
 import { SETTINGS, spaceFor, spaceForKey, titleFor } from "./lib/spaces.js";
@@ -357,5 +358,6 @@ function WorkspaceApp() {
 export function App() {
   const surface = new URLSearchParams(window.location.search).get("surface");
   if (surface === "overlay") return <OverlaySurface />;
+  if (surface === "phone") return <PhoneSurface />;
   return <WorkspaceApp />;
 }

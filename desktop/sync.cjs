@@ -8,9 +8,10 @@ const nodeFs = require('node:fs/promises')
 const fsSync = require('node:fs')
 const { randomUUID } = require('node:crypto')
 
-/* The engine's file API over a real folder. Writes land whole (temp file, rename). */
+/* The engine's file API over a real folder (`root` may be a function: the folder can
+   move once the iPhone app exists). Writes land whole (temp file, rename). */
 function folderFiles(root, fs = nodeFs) {
-  const full = (relative) => path.join(root, relative)
+  const full = (relative) => path.join(typeof root === 'function' ? root() : root, relative)
   return {
     async list(dir) {
       try {
@@ -123,10 +124,11 @@ function createMacSync({ root, store, createSyncEngine, statePath, onStatus = ()
   async function start() {
     if (status.on) return
     await load(true)
-    await fs.mkdir(path.join(root, 'Sync'), { recursive: true })
+    const base = typeof root === 'function' ? root() : root
+    await fs.mkdir(path.join(base, 'Sync'), { recursive: true })
     await run((current) => current.start())
     try {
-      watcher = watch(path.join(root, 'Sync'), { recursive: true }, pullSoon)
+      watcher = watch(path.join(base, 'Sync'), { recursive: true }, pullSoon)
     } catch {
       // The poll below still hears other devices.
     }
