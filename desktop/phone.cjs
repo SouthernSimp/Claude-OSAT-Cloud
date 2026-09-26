@@ -22,6 +22,8 @@ or the Files app). Each file becomes a thought in Unsorted, then moves to Inbox/
 
 Notes: a copy of your notes, kept up to date by OSAT, to read on your iPhone.
 Edit your notes in OSAT; changes made to this copy are not read back.
+
+Sync: how OSAT keeps your Macs and iPhone in step. OSAT looks after it; please leave it be.
 `
 
 /* A title as a file name: no slashes, colons or control characters, not too long. */

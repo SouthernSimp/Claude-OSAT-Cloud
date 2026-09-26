@@ -21,6 +21,7 @@ async function createStore({
   const { doc: saved, recovered } = await files.read()
   const hub = core.createHub(core.migrate(saved || core.createEmptyDoc()))
   const listeners = new Set()
+  const committed = new Set()
   let status = {
     state: 'saved',
     savedAt: null,
@@ -76,6 +77,7 @@ async function createStore({
     commit(from, ops) {
       const result = hub.commit(from, ops)
       schedule()
+      for (const listener of committed) listener(from, ops)
       return result
     },
     /* Import: the current workspace is copied aside first, then replaced for every window. */
@@ -84,7 +86,10 @@ async function createStore({
       const aside = path.join(dir, `workspace.before-import-${now().toISOString().replace(/[:.]/g, '-')}.json`)
       await fs.mkdir(dir, { recursive: true })
       await fs.writeFile(aside, `${JSON.stringify(hub.doc)}\n`, { encoding: 'utf8', mode: 0o600 })
+      const before = hub.doc
       const result = hub.replace(doc)
+      const ops = core.diffDocs(before, hub.doc)
+      for (const listener of committed) listener('replace', ops)
       await flush()
       return result
     },
@@ -97,6 +102,11 @@ async function createStore({
       savedRev = hub.rev
     },
     status: () => status,
+    /* Every change applied, with who sent it: (from, ops). Sync uses it. */
+    onCommit(listener) {
+      committed.add(listener)
+      return () => committed.delete(listener)
+    },
     onStatus(listener) {
       listeners.add(listener)
       return () => listeners.delete(listener)

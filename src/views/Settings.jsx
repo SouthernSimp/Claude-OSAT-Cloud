@@ -282,8 +282,15 @@ function PhoneCards() {
         <p className="eyebrow">IPHONE</p>
         <h2>Your iPhone can reach OSAT.</h2>
         <p>
-          {status.error || (status.lastCapture ? `The last thought from your iPhone arrived ${formatRelativeTime(status.lastCapture)}.` : "Nothing from your iPhone yet. Thoughts land in Unsorted a few seconds after iCloud brings them.")}
+          {status.error || status.sync?.error || (status.lastCapture ? `The last thought from your iPhone arrived ${formatRelativeTime(status.lastCapture)}.` : "Nothing from your iPhone yet. Thoughts land in Unsorted a few seconds after iCloud brings them.")}
         </p>
+        {status.sync?.on && (
+          <p className="phone-sync">
+            {status.sync.devices
+              ? `In step with ${status.sync.devices === 1 ? "one other device" : `${status.sync.devices} other devices`}${status.sync.lastArrival ? `; the last change arrived ${formatRelativeTime(status.sync.lastArrival)}` : ""}.`
+              : "Ready to keep other devices in step. The OSAT iPhone app, and any other Mac with OSAT, will use it."}
+          </p>
+        )}
         <div className="button-row">
           <button className="outline-button" type="button" onClick={() => bridge.show().catch(() => {})}><FolderOpen /> Show the folder</button>
           <button className="text-button" type="button" disabled={busy} onClick={() => act(bridge.disable)}>Turn off and remove the copy of your notes</button>

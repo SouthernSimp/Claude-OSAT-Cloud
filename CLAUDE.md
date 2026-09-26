@@ -66,6 +66,10 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
     `.osat-mirror.json` are ever changed). Turning it off removes the copy. macOS asks before an
     app looks in iCloud Drive, so nothing touches it until the link is on. Tests set
     `OSAT_ICLOUD_DIR` (from source only).
+  - `sync.cjs`: the same switch keeps devices in step through `OSAT/Sync` (see sync-core below).
+    It hooks `store.onCommit` to note every change made here (except what sync applied), keeps
+    its place in `store/sync.json`, and once set up it notes changes even while the link is
+    off (loaded before any window opens) and sends them when it comes back on.
   - `overlay.cjs`: the layer window — full-screen, see-through, a macOS panel with vibrancy on
     the display under the cursor. Created hidden at launch and only ever hidden, never closed.
   - `store/`: the workspace lives here. `index.cjs` owns the one document (via the shared
@@ -80,6 +84,17 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
     first-launch welcome), `osatOverlay`). An AbortSignal can't cross the bridge; pass functions.
 - `shared/note-core.mjs` — the note record (`normalizeNote`, `parseTags`), shared so the main
   process makes notes exactly like the windows (`src/note-core.js` re-exports it).
+- `shared/sync-core.mjs` + `shared/sync-engine.mjs` — pure sync, for the Mac now and the iPhone
+  app next. Every change gets a hybrid-clock stamp (`<ms>.<count>.<device>`, sorts as text);
+  each device keeps per-field stamps (`meta`) and merges others' changes field by field, newest
+  stamp winning, so all devices converge whatever the order (a randomized test proves it). A
+  delete wins over earlier edits; a later add (Undo) brings a record back; an edit that arrives
+  before its record waits in meta. Note text (`notes.markdown`) also carries version vectors:
+  two versions written without seeing each other are merged (`mergeText`: the newer text plus
+  the lines only the older has), and the merging device shares the result as a new change so
+  every device settles on the same text. The engine writes only `Sync/<device>/<seq>.json` and
+  `snapshot.json`, reads the others', and a new device catches up from the newest snapshot.
+  What a device held before its first sync is stamped oldest (`baseStamp`).
 - `shared/store-core.mjs` — pure, used by main, every window and the tests: the schema,
   `createEmptyDoc`, `diffDocs`, `applyOps` (returns the inverse, for undo), `validateOps`,
   `compactOps`, `migrations[]` and the hub. It is unpacked from the app archive

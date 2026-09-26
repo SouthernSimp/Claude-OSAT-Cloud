@@ -10,6 +10,7 @@ const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile }
 const { localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
 const { createAi } = require('./ai/index.cjs')
 const { createPhoneBridge } = require('./phone.cjs')
+const { createMacSync } = require('./sync.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
@@ -639,10 +640,20 @@ async function loadPrefs() {
   }
 }
 
-async function savePrefs() {
-  const temporary = `${prefsFile()}.${process.pid}.tmp`
-  await fs.writeFile(temporary, JSON.stringify(prefs, null, 2))
-  await fs.rename(temporary, prefsFile())
+/* Saves take turns and always write the newest preferences: two saves at once (the
+   welcome saves the AI size and "welcomed" together) must never collide. */
+let prefsSaving = Promise.resolve()
+function savePrefs() {
+  prefsSaving = prefsSaving.catch(() => {}).then(async () => {
+    const temporary = `${prefsFile()}.${process.pid}.${randomUUID()}.tmp`
+    try {
+      await fs.writeFile(temporary, JSON.stringify(prefs, null, 2))
+      await fs.rename(temporary, prefsFile())
+    } finally {
+      await fs.rm(temporary, { force: true })
+    }
+  })
+  return prefsSaving
 }
 
 /* Registers a new hotkey, or keeps the old one when the new one is taken. */
@@ -883,6 +894,7 @@ function registerAi() {
 const ICLOUD_DRIVE = (!app.isPackaged && process.env.OSAT_ICLOUD_DIR) || path.join(os.homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs')
 const PHONE_ROOT = path.join(ICLOUD_DRIVE, 'OSAT')
 let phone = null
+let macSync = null
 let phoneClient = null
 let phoneWatcher = null
 let phonePoll = null
@@ -892,7 +904,7 @@ let phoneScanTimer = null
 // Never touches iCloud Drive: macOS asks before an app looks there, and that
 // should only happen when Nate turns the link on.
 function phoneStatus() {
-  const base = { enabled: prefs.phone, root: PHONE_ROOT }
+  const base = { enabled: prefs.phone, root: PHONE_ROOT, sync: macSync?.status() || null }
   return phone ? { ...base, ...phone.status(), enabled: prefs.phone } : base
 }
 
@@ -926,9 +938,27 @@ async function bridgePhone() {
   })
 }
 
+/* Sync, once set up on this Mac, notes every change even while the link is off. */
+async function ensureSync() {
+  if (!macSync) {
+    const { createSyncEngine } = await sharedModule('sync-engine.mjs')
+    macSync = createMacSync({
+      root: PHONE_ROOT,
+      store,
+      createSyncEngine,
+      statePath: path.join(app.getPath('userData'), 'store', 'sync.json'),
+      onStatus: () => sendToAllWindows('phone:status', phoneStatus()),
+    })
+  }
+  await macSync.load()
+  return macSync
+}
+
 async function startPhone() {
   phone ??= await bridgePhone()
   await phone.prepare()
+  // The same switch keeps this Mac in step with your other devices (OSAT/Sync).
+  await (await ensureSync()).start()
   phoneClient ??= store.connect(mirrorSoon)
   try {
     phoneWatcher = require('node:fs').watch(path.join(PHONE_ROOT, 'Inbox'), scanSoon)
@@ -941,6 +971,7 @@ async function startPhone() {
 }
 
 function stopPhone() {
+  macSync?.pause()
   phoneWatcher?.close()
   clearInterval(phonePoll)
   clearTimeout(phoneMirrorTimer)
@@ -949,7 +980,7 @@ function stopPhone() {
   phonePoll = null
 }
 
-function registerPhone() {
+async function registerPhone() {
   handle('phone:status', () => phoneStatus(), { from: 'app' })
   handle('phone:enable', async () => {
     if (!require('node:fs').existsSync(ICLOUD_DRIVE)) fail('iCloud Drive is off on this Mac. Turn it on in System Settings → Apple Account → iCloud, then try again.')
@@ -981,6 +1012,8 @@ function registerPhone() {
     if (await shell.openPath(PHONE_ROOT)) fail('Finder could not open the OSAT folder in iCloud Drive.')
     return true
   })
+  // Before any window opens, so no change goes unnoted; iCloud itself can take its time.
+  await ensureSync().catch((error) => console.error('Sync could not load:', error))
   if (prefs.phone) startPhone().catch((error) => console.error('The iPhone link could not start:', error))
 }
 
@@ -1047,7 +1080,7 @@ app.whenReady().then(async () => {
   registerBrowserAndTerminal()
   await loadPrefs()
   registerAi()
-  registerPhone()
+  await registerPhone()
   registerOverlay()
   await createWindow()
   createTray()
