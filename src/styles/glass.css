@@ -148,6 +148,28 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .widget-next-foot button:hover { color: var(--on-1); }
 .widget-next-foot .bring { color: var(--accent); }
 
+.evening-pill {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 560;
+  color: var(--on-1);
+  background: var(--glass);
+  animation: pop-open 700ms var(--spring) 600ms both;
+}
+.evening-pill svg { width: 14px; height: 14px; color: #f3c98b; }
+.evening-pill span { color: var(--on-3); font-weight: 450; }
+.evening-pill:hover { translate: 0 -1px; }
+
+.notes-view { position: relative; }
+.notes-toasts { position: absolute; z-index: 30; left: 50%; bottom: 20px; translate: -50% 0; pointer-events: none; }
+.notes-toasts .toast { pointer-events: auto; }
+
 /* The greeting catches a slow sweep of light. */
 .home-greeting {
   background: linear-gradient(100deg, var(--on-1) 40%, color-mix(in srgb, var(--on-1) 55%, #fff) 50%, var(--on-1) 60%) 0 0 / 300% 100%;

@@ -120,11 +120,15 @@ function spiral(index, count, bounds) {
 
 /* Notes become stars. Wikilinks are strong ties. Shared tags form a chain,
    not a clique, so a tag with twenty notes does not become a hairball. */
-export function buildSkyGraph(notes, bounds = WORLD, limit = 180) {
-  const chosen = (Array.isArray(notes) ? notes : [])
+/* `keepId` is a note that must have a star even when it is older than the newest
+   `limit` ("See in the Sky" on an old note). */
+export function buildSkyGraph(notes, bounds = WORLD, limit = 180, keepId = null) {
+  const active = (Array.isArray(notes) ? notes : [])
     .filter(isActiveNote)
     .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-    .slice(0, limit)
+  const chosen = active.slice(0, limit)
+  const kept = keepId && active.slice(limit).find((note) => note.id === keepId)
+  if (kept) chosen.splice(limit - 1, 1, kept)
   const ids = new Set(chosen.map((note) => note.id))
   const wiki = wikilinkPairs(chosen)
     .filter((pair) => ids.has(pair.a) && ids.has(pair.b))

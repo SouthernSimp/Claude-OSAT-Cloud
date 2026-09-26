@@ -43,12 +43,15 @@ function WorkspaceApp() {
   const storage = storageFrom(status, hydrated);
   const [view, setView] = useState("Today");
   const [closing, setClosing] = useState(false);
+  // While a sheet grows out of the desk it is scaled down; native views wait until it has risen.
+  const [rising, setRising] = useState(false);
   const [origin, setOrigin] = useState(null);
   const [notesTarget, setNotesTarget] = useState(null);
   const [boardTarget, setBoardTarget] = useState(null);
   const [calendarTarget, setCalendarTarget] = useState(null);
   const [assistantTarget, setAssistantTarget] = useState(null);
   const [settingsTarget, setSettingsTarget] = useState(null);
+  const [skyTarget, setSkyTarget] = useState(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
@@ -144,6 +147,7 @@ function WorkspaceApp() {
     if (next === "Obsidian") { navigate("Settings", { section: "data" }); return; }
     if (next === "Settings") setSettingsTarget(detail?.section ? { section: detail.section, at: Date.now() } : null);
     if (next === "Notes") setNotesTarget(detail ? { ...(typeof detail === "string" ? { noteId: detail } : detail), at: Date.now() } : null);
+    if (next === "Sky") setSkyTarget(typeof detail?.noteId === "string" ? { noteId: detail.noteId, at: Date.now() } : null);
     if (next === "Mindmap") setBoardTarget(detail && typeof detail === "object" ? { ...detail, at: Date.now() } : null);
     if (next === "Calendar") setCalendarTarget(detail?.date || null);
     if (next === "Today" && detail && typeof detail === "object" && typeof detail.noteId === "string") setDeskSheet({ id: detail.noteId, at: Date.now() });
@@ -164,6 +168,7 @@ function WorkspaceApp() {
     // From the desk: the room rises out of what you clicked.
     if (view === "Today" || closing) {
       setClosing(false);
+      setRising(!reduced);
       setOrigin(originFor(next));
       setView(next);
       return;
@@ -263,12 +268,13 @@ function WorkspaceApp() {
             filled={FILLED_VIEWS.has(view)}
             onClose={() => navigate("Today")}
             onClosed={() => { setClosing(false); setView("Today"); }}
+            onRisen={() => setRising(false)}
             onSearch={() => openCommands()}
             onMode={(mode) => navigate(mode)}
           >
-            {view === "Sky" && <FieldSky {...common} {...room} />}
+            {view === "Sky" && <FieldSky {...common} {...room} target={skyTarget} />}
             {view === "Assistant" && <LocalAssistant {...common} initialPrompt={assistantTarget} />}
-            {view === "Browser" && <BrowserView {...common} covered={captureOpen || commandOpen || closing} command={roomCommand} />}
+            {view === "Browser" && <BrowserView {...common} covered={captureOpen || commandOpen || closing || rising} command={roomCommand} />}
             {view === "Terminal" && <TerminalView command={roomCommand} />}
             {view === "Inbox" && <InboxView {...common} />}
             {view === "Notes" && <NotesView {...common} target={notesTarget} today={today} />}

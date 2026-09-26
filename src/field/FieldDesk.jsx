@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { ArrowUp, CaretDown, CheckCircle, MagnifyingGlass, NotePencil, PencilSimpleLine, Plus, PushPin, ShareNetwork, Sparkle } from '@phosphor-icons/react'
+import { ArrowUp, CaretDown, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PencilSimpleLine, Plus, PushPin, ShareNetwork, Sparkle } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
 import { modelLabel } from '../assistant/LocalAssistant.jsx'
@@ -27,6 +27,14 @@ const ICONS_KEY = 'osat.home.icons.v1'
 const CELL = { h: 103 }
 /* Blue hour for the morning and evening, the peaks at midday, the lake at night. */
 const WALL_FOCUS = { morning: '18% 45%', afternoon: '55% 50%', evening: '18% 45%', night: '75% 40%' }
+
+/* The evening invitation shows once a day, and never again that day once opened. */
+function readEvening() {
+  try { return localStorage.getItem('osat.evening') } catch { return null }
+}
+function markEvening(date) {
+  try { localStorage.setItem('osat.evening', date) } catch { /* a convenience only */ }
+}
 
 function readIconsCollapsed() {
   try {
@@ -63,6 +71,7 @@ export function FieldDesk({
   const [openId, setOpenId] = useState(null)
   const [ai, setAi] = useState({ state: 'checking', label: '' })
   const [hoverId, setHoverId] = useState(null)
+  const [eveningSeenOn, setEveningSeenOn] = useState(readEvening)
   const openRef = useRef(null)
   const focusRef = useRef(false)
   focusRef.current = focusOpen
@@ -439,6 +448,11 @@ export function FieldDesk({
             {chip.text}
             {chip.retry && <button type="button" onClick={checkAi}>Check again</button>}
           </p>
+          {(phase === 'evening' || phase === 'night') && !preview && eveningSeenOn !== today && (
+            <button type="button" className="glass evening-pill" onClick={() => { markEvening(today); setEveningSeenOn(today); navigate('Reflection') }}>
+              <MoonStars weight="fill" /> Close the day <span>three quiet questions</span>
+            </button>
+          )}
           <FieldBanner preview={preview} sampled={sampled} onKeep={() => onKeep()} onBlank={onBlank} onRemove={onRemove} />
         </form>
       </div>
