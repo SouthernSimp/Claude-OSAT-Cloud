@@ -20,8 +20,9 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 3a | One place: the desk, glass sheets, one navigation, Settings sections | Merged (PR #3) |
 | 3b | A calm day: Next ≤ 5 + bring forward (in #3), evening invitation, Undo, See in the Sky | Merged (PR #4) |
 | 4 | Local AI that sets itself up, Ask everywhere, chats in the workspace | Merged (PR #5) |
-| 5 | Your iPhone, step one: capture from the phone, read your notes there | In PR #6 |
-| 6 | The iPhone app, synced through iCloud | Next |
+| 5 | Your iPhone, step one: capture from the phone, read your notes there | Merged (PR #6) |
+| 6a | Sync: devices stay in step through iCloud (Mac ↔ Mac now, the iPhone app next) | In PR #7 |
+| 6b | The iPhone app | Next |
 | 7 | Visual polish | Planned |
 
 **The end goal (Nate, Sep 25):** an app that syncs with his iPhone. Phases 5 and 6 get there;
@@ -282,7 +283,7 @@ Nate asked to condense and connect desk → notes → sky → mindmap, make the 
 - **Checks:** unit tests for the catalog, resumable/verified downloads and the engine lifecycle (a fake engine); the Electron end-to-end test walks the welcome and asks on the desk with a practice model; `--osat-self-test[=model.gguf]` proves the engine (and a model) work inside the built app, and CI runs it on every Mac build.
 - Fixed on the way: Stop in Ask never worked in the Mac app (an AbortSignal can't cross the preload bridge).
 
-### Phase 5: Your iPhone, step one (built, PR #6; no iPhone app needed)
+### Phase 5: Your iPhone, step one (merged, PR #6; no iPhone app needed)
 Opt-in in **Settings → iPhone**, because it is the first thing that leaves the Mac: it goes through Nate's own iCloud Drive (end-to-end encrypted only with Advanced Data Protection on; OSAT says so plainly). Until it's on, OSAT never touches iCloud Drive (macOS asks first).
 - **Capture from the iPhone:** an `OSAT` folder in iCloud Drive with an `Inbox`. Any text file dropped there (an "Add to OSAT" Shortcut, Share → Save to Files, or the Files app) becomes a thought in Unsorted a few seconds after iCloud brings it; the file then moves to `Inbox/Added`, so nothing is lost. Files still arriving wait for the next look.
 - **The Shortcut:** Settings shows four short steps to make it (Ask for Input or Dictate Text → Save File to OSAT/Inbox). A generated, signed `.shortcut` file was left out: it can't be tested without an iPhone, and a broken one would be worse than four steps.
@@ -291,8 +292,13 @@ Opt-in in **Settings → iPhone**, because it is the first thing that leaves the
 - `shared/note-core.mjs`: the note record moved to `shared/` so the main process makes notes exactly like the windows.
 - Checks: unit tests for the inbox (text becomes one thought, the file moves, half-synced files wait, hidden and non-text files stay) and the copy (folders, renames, trash, name clashes, a tampered manifest can't reach outside `Notes`); the Electron end-to-end test drops a file into a stand-in iCloud Drive and watches it arrive.
 
-### Phase 6: The iPhone app
-- **Sync:** each device appends its operations (the store already speaks in operations) to its own log in the app's iCloud container; every device merges all logs with a hybrid clock and per-field last-writer-wins, and note text that two devices changed at once keeps both versions (a conflict copy, nothing lost). The Mac keeps working offline; the logs catch up.
+### Phase 6a: Sync (built, PR #7)
+- **How it works:** every change a device makes is an operation (the store already speaks in them) with a hybrid-clock stamp. Each device writes only its own numbered files in `OSAT/Sync/<device>/`, reads everyone else's, and merges field by field, newest stamp winning, so every device ends up the same whatever order iCloud delivers things in. A snapshot per device lets a new device (the iPhone) catch up without reading all history.
+- **On the Mac** it rides the iPhone switch in Settings. Once set up it notes changes even while the switch is off, and sends them when it's back on. Two Macs with OSAT already stay in step.
+- **Checks:** a randomized test (thousands of random edits on four devices, heard in random orders, a late joiner from a snapshot: always identical), engine tests (out-of-order files, damaged files, restarts), two real stores sharing a folder, and two real OSAT apps side by side in the end-to-end test.
+- **Not yet:** note text changed on two devices at the same moment keeps the later version (a merge of both, or a conflict copy, can come later). Old change files are kept (a clean-up can come when there are many).
+
+### Phase 6b: The iPhone app
 - **The app:** capture, Unsorted, Notes, today's Next, and Ask with a small on-device model picked at install. Built in CI on GitHub's Macs (Xcode), shipped to Nate through TestFlight.
 - **Needs from Nate:** accept the Xcode license once (`sudo xcodebuild -license accept`), and the App Store Connect API key as a GitHub secret for TestFlight.
 

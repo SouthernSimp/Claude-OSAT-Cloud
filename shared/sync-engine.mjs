@@ -6,9 +6,11 @@
    so the Mac (Node) and the iPhone (Swift) each bring their own. `list` returns []
    and `read` returns null for what isn't there (or isn't downloaded yet).
 
-   The caller runs start / pull / flush one at a time and applies what start and pull
-   return to its workspace before running the next; `doc` is always the workspace
-   with every change this engine has seen already applied. */
+   `doc()` returns this device's workspace as it is now and `apply(ops)` applies
+   merged changes to it (through the store, so every window hears them). Both are
+   called in the same moment, so no edit can slip in between. The caller runs start,
+   pull and flush one at a time and hands every change the store applies to record(),
+   except the ones this engine applied itself. */
 
 import { applyOps, validateOps } from './store-core.mjs'
 import { baseStamp, createClock, emptyMeta, mergeEntries, snapshotEntries, stampLocal, stampWorkspace } from './sync-core.mjs'
@@ -38,7 +40,7 @@ async function readJson(files, path) {
   }
 }
 
-export function createSyncEngine({ device, files, state = null, now = Date.now, snapshotEvery = 400 }) {
+export function createSyncEngine({ device, files, doc, apply, state = null, now = Date.now, snapshotEvery = 400 }) {
   if (!DEVICE.test(device)) throw new Error('A device id is letters, digits and dashes.')
   const clock = createClock(device, now, state?.clock || '')
   let meta = state?.meta || null
@@ -57,17 +59,17 @@ export function createSyncEngine({ device, files, state = null, now = Date.now, 
     get waiting() { return queue.length + early.length },
 
     /* The first time this device syncs: stamp what it holds, catch up from the newest
-       snapshot another device left, and leave a snapshot of its own. Returns the
-       operations to apply here (nothing on later starts). */
-    async start(doc) {
-      if (meta) return []
+       snapshot another device left, and leave a snapshot of its own. */
+    async start() {
+      if (meta) return
       let best = null
       for (const other of await others()) {
         const found = await readJson(files, `Sync/${other}/snapshot.json`)
         if (found?.device === other && found.meta && found.doc && (!best || String(found.at) > String(best.at))) best = found
       }
-      // Reading is done; from here nothing can fail before the operations are returned.
-      meta = stampWorkspace(doc, emptyMeta(), baseStamp(device))
+      // Reading is done; from here to apply() nothing waits, so nothing slips in.
+      const current = doc()
+      meta = stampWorkspace(current, emptyMeta(), baseStamp(device))
       const entries = best ? snapshotEntries(best.doc, best.meta).filter(validEntry) : []
       for (const [stamp] of entries) clock.observe(stamp)
       if (best) {
@@ -77,15 +79,16 @@ export function createSyncEngine({ device, files, state = null, now = Date.now, 
       // Changes made here before this first start are newer than anything heard so far.
       queue.push(...stampLocal(meta, early, clock))
       early = []
-      const ops = entries.length ? mergeEntries(doc, meta, entries) : []
+      const ops = entries.length ? mergeEntries(current, meta, entries) : []
+      if (ops.length) apply(ops)
+      const text = snapshotText(applyOps(current, ops).doc, seq)
       sinceSnapshot = snapshotEvery // the next flush leaves a snapshot…
       try {
-        await files.write(`Sync/${device}/snapshot.json`, snapshotText(applyOps(doc, ops).doc, seq))
+        await files.write(`Sync/${device}/snapshot.json`, text)
         sinceSnapshot = 0 // …unless this one was written
       } catch {
         // iCloud will be there next time.
       }
-      return ops
     },
 
     /* This device's own changes, right after the store applied them. */
@@ -96,11 +99,11 @@ export function createSyncEngine({ device, files, state = null, now = Date.now, 
     },
 
     /* Writes the waiting changes as one new file, and now and then a fresh snapshot. */
-    async flush(doc) {
+    async flush() {
       if (!meta || !queue.length) return false
       const entries = queue
       const next = seq + 1
-      const snapshot = sinceSnapshot + entries.length >= snapshotEvery ? snapshotText(doc, next) : null
+      const snapshot = sinceSnapshot + entries.length >= snapshotEvery ? snapshotText(doc(), next) : null
       queue = []
       try {
         await files.write(`Sync/${device}/${pad(next)}.json`, JSON.stringify({ device, seq: next, entries }))
@@ -117,10 +120,10 @@ export function createSyncEngine({ device, files, state = null, now = Date.now, 
       return true
     },
 
-    /* Other devices' new changes, as operations to apply here. A file still on its
-       way from iCloud (or one that arrives out of order) is simply read next time. */
-    async pull(doc) {
-      if (!meta) return []
+    /* Other devices' new changes, merged in. A file still on its way from iCloud (or one
+       that arrives out of order) is simply read next time. Returns how many changes won. */
+    async pull() {
+      if (!meta) return 0
       const entries = []
       const reached = {}
       for (const other of await others()) {
@@ -134,7 +137,9 @@ export function createSyncEngine({ device, files, state = null, now = Date.now, 
       }
       Object.assign(seen, reached)
       for (const [stamp] of entries) clock.observe(stamp)
-      return entries.length ? mergeEntries(doc, meta, entries) : []
+      const ops = entries.length ? mergeEntries(doc(), meta, entries) : []
+      if (ops.length) apply(ops)
+      return ops.length
     },
 
     /* What to keep between launches (the workspace itself is saved by the store). */

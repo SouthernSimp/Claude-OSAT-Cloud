@@ -26,8 +26,7 @@ const now = () => time
 function peer(device, files, doc = createEmptyDoc(), state = null) {
   const hub = createHub(doc)
   const self = hub.connect(() => {})
-  const engine = createSyncEngine({ device, files, now, state, snapshotEvery: 5 })
-  const apply = (ops) => { if (ops.length) hub.commit(self, ops) }
+  const engine = createSyncEngine({ device, files, now, state, snapshotEvery: 5, doc: () => hub.doc, apply: (ops) => hub.commit(self, ops) })
   return {
     engine,
     get doc() { return hub.doc },
@@ -37,10 +36,10 @@ function peer(device, files, doc = createEmptyDoc(), state = null) {
       hub.commit(self, ops)
       engine.record(ops)
     },
-    async start() { apply(await engine.start(hub.doc)) },
+    start: () => engine.start(),
     async sync() {
-      await engine.flush(hub.doc)
-      apply(await engine.pull(hub.doc))
+      await engine.flush()
+      await engine.pull()
     },
   }
 }

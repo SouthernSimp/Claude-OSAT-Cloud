@@ -7,6 +7,7 @@
 //      (OSAT_AI=mock: a practice model answers, nothing is downloaded)
 //   5. the iPhone link: a file in the iCloud Inbox becomes a thought, and the copy of
 //      the notes appears, then leaves when the link is turned off (a stand-in iCloud Drive)
+//   6. two OSATs (their own data, one iCloud Drive) keep each other in step
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import os from 'node:os'
@@ -22,8 +23,8 @@ const dataFile = path.join(home, 'OSAT Test', 'store', 'workspace.json')
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }
 
-async function launch() {
-  const app = await electron.launch({ cwd: root, args: [root, '--no-sandbox'], env })
+async function launch(withEnv = env) {
+  const app = await electron.launch({ cwd: root, args: [root, '--no-sandbox'], env: withEnv })
   // The hidden ⌥Space layer is a window too; the main window is the one without a surface.
   let main
   while (!main) {
@@ -35,6 +36,10 @@ async function launch() {
 }
 
 const notesIn = (page) => page.evaluate(async () => (await window.osat.store.load()).doc.notes.map((note) => note.title))
+async function until(test, ms) {
+  for (const end = Date.now() + ms; Date.now() < end; await sleep(250)) if (await test()) return true
+  return false
+}
 
 async function openSecondWindow(app, surface = '') {
   const count = app.windows().length
@@ -136,6 +141,30 @@ try {
   const afterClose = JSON.parse(await readFile(dataFile, 'utf8'))
   check(afterClose.notes.some((note) => note.title === 'Captured with the window closed'), 'a capture made with the main window closed was lost')
   check(afterClose.notes.some((note) => note.title === 'From the second window'), 'the second window\'s note was not saved')
+
+  // 6. Two OSATs in step: this one turns the link on again, a second one (its own data
+  //    folder, the same iCloud Drive) catches up, then each hears the other's changes.
+  ;({ app, main } = await launch())
+  await main.evaluate(() => window.osatPhone.enable())
+  const otherData = path.join(home, 'OSAT Other')
+  await mkdir(otherData, { recursive: true })
+  await writeFile(path.join(otherData, 'osat-data-folder.json'), '{"app":"ai.mccreery.osat"}')
+  await writeFile(path.join(otherData, 'prefs.json'), '{"welcomed":true}')
+  const other = await launch({ ...env, OSAT_DATA_DIR: otherData })
+  await other.main.evaluate(() => window.osatPhone.enable())
+  check(await until(async () => (await notesIn(other.main)).includes('Captured with the window closed'), 15000),
+    'the second OSAT did not catch up with the first one\'s notes')
+  await other.main.evaluate(async () => {
+    const now = new Date().toISOString()
+    await window.osat.store.commit([{ t: 'add', c: 'notes', v: { id: 'from-other', title: 'Written on the other Mac', markdown: '', tags: [], createdAt: now, updatedAt: now, folderId: null, pinned: false, archived: false, trashedAt: null, unsorted: false, source: null, kind: null, date: null } }])
+  })
+  check(await until(async () => (await notesIn(main)).includes('Written on the other Mac'), 30000),
+    'the first OSAT did not hear the second one\'s new note')
+  await main.evaluate(() => window.osat.store.commit([{ t: 'patch', c: 'notes', id: 'from-other', v: { title: 'Renamed on the first Mac' } }]))
+  check(await until(async () => (await notesIn(other.main)).includes('Renamed on the first Mac'), 30000),
+    'the second OSAT did not hear the first one\'s rename')
+  await other.app.close()
+  await app.close()
 } catch (error) {
   problems.push(error.stack || String(error))
 } finally {
