@@ -1,12 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { ArrowUp, CaretDown, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PencilSimpleLine, Plus, PushPin, ShareNetwork, Sparkle } from '@phosphor-icons/react'
+import { ArrowUp, CaretDown, ChatCircle, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PencilSimpleLine, Plus, PushPin, ShareNetwork, Sparkle, Stop, X } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
-import { modelLabel } from '../assistant/LocalAssistant.jsx'
+import { applyAction, extractActions, systemPrompt, wantsActions } from '../assistant/actions.js'
+import { newChat, newMessage, outbound, putChat } from '../assistant/chats.js'
+import { ActionCards, UsedNotes, modelLabel } from '../assistant/LocalAssistant.jsx'
+import { cleanError, setupLine, useAi } from '../assistant/useAi.js'
 import { calendarMonthDays, localDateKey } from '../daily-practice.js'
-import { getLocalModels } from '../local-ai.js'
-import { captureThought, dayNoteId, excerpt, isActiveNote, relinkRenamedNote, updateNote, wikilinkPairs } from '../notes-model.js'
+import { streamLocalMessage } from '../local-ai.js'
+import { Markdown } from '../lib/markdown.jsx'
+import { captureThought, dayNoteId, excerpt, isActiveNote, relatedNotes, relinkRenamedNote, updateNote, wikilinkPairs } from '../notes-model.js'
 import { addNextStep, bringForward, earlierSteps, nextSteps, toggleNextStep } from '../next-steps.js'
 import { clamp, inputActive, timeLabel } from '../lib/ui.js'
 import { sampleEvents, sampleFolders, sampleNotes } from './field-sample.js'
@@ -18,7 +22,7 @@ import { MediaWidget } from './MediaWidget.jsx'
 const MODES = [
   { id: 'note', label: 'Note', icon: NotePencil, placeholder: 'Leave a thought here.', hint: 'Return saves a note' },
   { id: 'step', label: 'Next step', icon: CheckCircle, placeholder: 'One small next step…', hint: 'Return adds a step' },
-  { id: 'ask', label: 'Ask', icon: Sparkle, placeholder: 'Ask your local AI…', hint: 'Return opens a new chat' },
+  { id: 'ask', label: 'Ask', icon: Sparkle, placeholder: 'Ask your notes, or anything…', hint: 'Return asks, right here' },
   { id: 'find', label: 'Search', icon: MagnifyingGlass, placeholder: 'Search notes, #tags and folders…', hint: 'Return searches' },
 ]
 const WEEKDAY = new Intl.DateTimeFormat('en-US', { weekday: 'long' })
@@ -69,13 +73,14 @@ export function FieldDesk({
   const [collapsed, setCollapsed] = useState(readIconsCollapsed)
   const [focusOpen, setFocusOpen] = useState(false)
   const [openId, setOpenId] = useState(null)
-  const [ai, setAi] = useState({ state: 'checking', label: '' })
+  const { models, status: aiStatus, refresh: checkAi } = useAi()
+  const [answer, setAnswer] = useState(null)
+  const answerAbort = useRef(null)
   const [hoverId, setHoverId] = useState(null)
   const [eveningSeenOn, setEveningSeenOn] = useState(readEvening)
   const openRef = useRef(null)
   const focusRef = useRef(false)
   focusRef.current = focusOpen
-  const aiCheck = useRef(null)
 
   const phase = dayPhase(now)
   const today = localDateKey(now)
@@ -148,20 +153,70 @@ export function FieldDesk({
     return () => observer.disconnect()
   }, [collapsed])
 
-  /* Ask only ever talks to the model on this Mac. Check for one, honestly. */
-  const checkAi = useCallback(() => {
-    aiCheck.current?.abort()
-    const abort = new AbortController()
-    aiCheck.current = abort
-    setAi((value) => ({ ...value, state: 'checking' }))
-    getLocalModels({ signal: abort.signal })
-      .then((models) => setAi(models.length ? { state: 'ready', label: modelLabel(models[0]) } : { state: 'none', label: '' }))
-      .catch((reason) => { if (reason?.name !== 'AbortError') setAi({ state: 'none', label: '' }) })
-  }, [])
+  /* Ask only ever talks to the model on this Mac. */
+  const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
+
+  /* Esc puts an answer away before anything else. */
   useEffect(() => {
-    checkAi()
-    return () => aiCheck.current?.abort()
-  }, [checkAi])
+    if (!answer) return undefined
+    const onKey = (event) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || document.documentElement.dataset.menu === 'open') return
+      if (home.current?.closest('[inert]') || event.target.closest?.('.popout, .room-sheet, [role="dialog"]')) return
+      event.preventDefault()
+      closeAnswer()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [answer]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => answerAbort.current?.abort(), [])
+
+  /* Ask, right here: the answer streams into a card under the line and is kept as a chat. */
+  async function askHere(question) {
+    answerAbort.current?.abort()
+    const active = workspace.notes.filter(isActiveNote)
+    const noteIds = relatedNotes(active, question).map((note) => note.id)
+    const chat = { ...newChat(), messages: [newMessage('user', question, noteIds.length ? { noteIds } : {})] }
+    commit((state) => putChat(state, chat))
+    const controller = new AbortController()
+    answerAbort.current = controller
+    const update = (patch) => setAnswer((value) => (value?.chatId === chat.id ? { ...value, ...patch } : value))
+    setAnswer({ chatId: chat.id, question, text: '', busy: true, error: '', noteIds, actions: [], savedId: null })
+    let full = ''
+    try {
+      await streamLocalMessage({
+        model: ai.id,
+        messages: outbound(systemPrompt(), [], question, active, noteIds),
+        signal: controller.signal,
+        onDelta: (delta) => { full += delta; update({ text: extractActions(full).body }) },
+      })
+    } catch (reason) {
+      if (reason?.name !== 'AbortError') update({ error: cleanError(reason) })
+    }
+    const { body, actions } = extractActions(full)
+    update({ busy: false, text: body, actions: wantsActions(question) ? actions : [] })
+    if (!body.trim()) return
+    commit((state) => {
+      const saved = (state.chats || []).find((item) => item.id === chat.id) || chat
+      return putChat(state, { ...saved, messages: [...saved.messages, newMessage('assistant', body)] })
+    })
+  }
+
+  function closeAnswer() {
+    answerAbort.current?.abort()
+    setAnswer(null)
+    box.current?.focus()
+  }
+
+  function saveAnswer() {
+    if (!answer?.text.trim()) return
+    let note
+    commit((state) => {
+      const result = captureThought(state, `${answer.question.slice(0, 80)}\n\n${answer.text.trim()}`, 'Ask')
+      note = result.note
+      return result.state
+    })
+    if (note) setAnswer((value) => (value ? { ...value, savedId: note.id } : value))
+  }
 
   /* Type anywhere on home and the words land in the line. */
   useEffect(() => {
@@ -180,7 +235,7 @@ export function FieldDesk({
 
   function choose(id, focusLine = true) {
     setMode(id)
-    if (id === 'ask') checkAi()
+    if (id === 'ask' && ai.state !== 'ready') checkAi()
     if (focusLine) box.current?.focus()
   }
 
@@ -200,7 +255,7 @@ export function FieldDesk({
     if (!text) return
     if (mode === 'ask') {
       if (ai.state !== 'ready') return
-      navigate('Assistant', { prompt: text })
+      askHere(text)
     } else if (mode === 'find') {
       onSearch(text)
     } else if (mode === 'step') {
@@ -355,8 +410,10 @@ export function FieldDesk({
         : ai.state === 'ready'
           ? { tone: 'good', text: `${ai.label} · on this Mac · no cloud` }
           : ai.state === 'checking'
-            ? { tone: 'quiet', text: 'Looking for a model on this Mac…' }
-            : { tone: 'bad', text: 'No model loaded · load one in LM Studio', retry: true }
+            ? { tone: 'quiet', text: 'Looking for the AI on this Mac…' }
+            : setupLine(aiStatus)
+              ? { tone: 'quiet', text: setupLine(aiStatus), setup: true }
+              : { tone: 'bad', text: 'No AI on this Mac yet', setup: true }
   const blocked = mode === 'ask' && ai.state !== 'ready'
 
   return (
@@ -437,7 +494,7 @@ export function FieldDesk({
               }}
             />
             <div className="home-composer-bar">
-              <span>{blocked ? 'Ask needs a model running on this Mac' : `${current.hint} · Shift-Return for a new line`}</span>
+              <span>{blocked ? 'Ask needs the AI on this Mac' : `${current.hint} · Shift-Return for a new line`}</span>
               <button type="submit" aria-label={current.label} disabled={!draft.trim() || blocked}>
                 <ArrowUp weight="bold" />
               </button>
@@ -446,7 +503,7 @@ export function FieldDesk({
           <p className={`home-chip is-${chip.tone}`} role="status">
             <i />
             {chip.text}
-            {chip.retry && <button type="button" onClick={checkAi}>Check again</button>}
+            {chip.setup && <button type="button" onClick={() => navigate('Settings', { section: 'ai' })}>Set it up</button>}
           </p>
           {(phase === 'evening' || phase === 'night') && !preview && eveningSeenOn !== today && (
             <button type="button" className="glass evening-pill" onClick={() => { markEvening(today); setEveningSeenOn(today); navigate('Reflection') }}>
@@ -455,6 +512,35 @@ export function FieldDesk({
           )}
           <FieldBanner preview={preview} sampled={sampled} onKeep={() => onKeep()} onBlank={onBlank} onRemove={onRemove} />
         </form>
+        {answer && (
+          <section className="glass home-answer" aria-label="Answer" aria-busy={answer.busy}>
+            <header>
+              <Sparkle weight="fill" />
+              <strong>{answer.question}</strong>
+              <button type="button" aria-label="Put the answer away" onClick={closeAnswer}><X /></button>
+            </header>
+            <div className="home-answer-body" aria-live="polite">
+              {answer.text ? <Markdown text={answer.text} headingOffset={2} /> : answer.busy && <p className="home-answer-wait">Thinking on this Mac…</p>}
+              {answer.error && <p className="home-answer-error" role="alert">{answer.error}</p>}
+            </div>
+            <UsedNotes ids={answer.noteIds} notes={notes} onOpen={(noteId) => openNote(noteId)} />
+            <ActionCards
+              actions={answer.actions}
+              onAdd={(action) => { commit((state) => applyAction(state, action, localDateKey())); setAnswer((value) => ({ ...value, actions: value.actions.filter((item) => item.id !== action.id) })) }}
+              onDiscard={(action) => setAnswer((value) => ({ ...value, actions: value.actions.filter((item) => item.id !== action.id) }))}
+            />
+            <footer>
+              {answer.busy
+                ? <button type="button" onClick={() => answerAbort.current?.abort()}><Stop weight="fill" /> Stop</button>
+                : <button type="button" onClick={() => { const chatId = answer.chatId; setAnswer(null); navigate('Assistant', { chatId }) }}><ChatCircle /> Keep talking</button>}
+              {!answer.busy && answer.text.trim() && (
+                answer.savedId
+                  ? <span className="home-answer-saved"><NotePencil /> Saved to Unsorted</span>
+                  : <button type="button" onClick={saveAnswer}><NotePencil /> Save as a note</button>
+              )}
+            </footer>
+          </section>
+        )}
       </div>
 
       <nav className={`home-icons ${preview ? 'is-sample' : ''}`} aria-label="OSAT items">

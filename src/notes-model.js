@@ -266,6 +266,46 @@ export function searchNotes(notes, query, tagFilter = []) {
   })
 }
 
+/* ---------- notes that help answer a question (Ask picks these by itself) ---------- */
+
+const STOP = new Set(('the and but for with from into onto about than then that this these those there their they them what which who whom whose '
+  + 'how when where why does did done doing can could should would will shall just not you your yours are was were been being have has had '
+  + 'its our ours out off over under again some any all each more most much many very really also only own same too here now get got make '
+  + 'made want need like know think tell give help one two let lets please thing things something anything').split(' '))
+const stem = (word) => (word.length > 3 && word.endsWith('s') && !word.endsWith('ss') ? word.slice(0, -1) : word)
+const wordsOf = (text) => new Set((String(text).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []).filter((word) => !STOP.has(word)).map(stem))
+const noteWords = new WeakMap()
+function wordsOfNote(note) {
+  let cached = noteWords.get(note)
+  if (!cached) noteWords.set(note, cached = { title: wordsOf(note.title), all: wordsOf(`${note.title}\n${note.markdown}`) })
+  return cached
+}
+
+/* Ranks notes by the question's rarer words, title matches counting double.
+   Only notes that match a good share of what the best one matched are kept. */
+export function relatedNotes(notes, question, limit = 3) {
+  const terms = [...wordsOf(question)]
+  if (!terms.length) return []
+  const active = notes.filter(isActiveNote)
+  const seen = new Map(terms.map((term) => [term, 0]))
+  const hits = active.map((note) => {
+    const words = wordsOfNote(note)
+    const found = terms.filter((term) => words.all.has(term))
+    found.forEach((term) => seen.set(term, seen.get(term) + 1))
+    return { note, words, found }
+  }).filter((item) => item.found.length)
+  const scored = hits.map(({ note, words, found }) => ({
+    note,
+    score: found.reduce((sum, term) => sum + Math.log(1 + active.length / seen.get(term)) * (words.title.has(term) ? 2 : 1), 0),
+  }))
+  const best = Math.max(0, ...scored.map((item) => item.score))
+  return scored
+    .filter((item) => item.score >= 1 && item.score >= best * 0.4)
+    .sort((a, b) => b.score - a.score || String(b.note.updatedAt).localeCompare(String(a.note.updatedAt)))
+    .slice(0, limit)
+    .map((item) => item.note)
+}
+
 export const SORTS = [['updated', 'Last edited'], ['created', 'Date created'], ['title', 'Title']]
 
 export function sortNotes(notes, sort = 'updated') {

@@ -3,6 +3,8 @@
 //   1. a thought typed in the main window is saved to disk and survives a restart
 //   2. a second window sees the main window's change, and the other way round
 //   3. a thought left on the ⌥Space layer while the main window is closed is not lost
+//   4. the first-launch welcome picks an AI size, and Ask answers on the desk
+//      (OSAT_AI=mock: a practice model answers, nothing is downloaded)
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import os from 'node:os'
@@ -13,7 +15,7 @@ import { _electron as electron } from 'playwright'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 const home = await mkdtemp(path.join(os.tmpdir(), 'osat-e2e-'))
-const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test') }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock' }
 const dataFile = path.join(home, 'OSAT Test', 'store', 'workspace.json')
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }
@@ -46,8 +48,16 @@ async function openSecondWindow(app, surface = '') {
 }
 
 try {
-  // 1. Type a thought on home, quit, reopen.
+  // 1. The welcome, then a thought on home; quit, reopen.
   let { app, main } = await launch()
+  const welcome = main.getByRole('dialog', { name: /Everything stays on this Mac/ })
+  await welcome.waitFor({ timeout: 10000 }).catch(() => problems.push('the welcome did not appear on first launch'))
+  await main.getByRole('button', { name: 'Continue' }).click()
+  await main.getByRole('button', { name: 'Continue' }).click()
+  await main.getByRole('radio', { name: /Light/ }).click()
+  await main.getByRole('button', { name: 'Start', exact: true }).click()
+  await main.getByRole('dialog', { name: /AI’s size/ }).waitFor({ state: 'detached', timeout: 5000 })
+    .catch(() => problems.push('the welcome did not close after Start'))
   const keep = main.getByRole('button', { name: 'Start blank' })
   if (await keep.count()) await keep.click()
   await main.getByPlaceholder('Leave a thought here.').fill('Saved across a restart')
@@ -58,6 +68,21 @@ try {
   check(onDisk.notes.some((note) => note.title === 'Saved across a restart' && note.unsorted), 'the thought was not written to workspace.json')
   ;({ app, main } = await launch())
   check((await notesIn(main)).includes('Saved across a restart'), 'the thought was not there after a restart')
+  check(!(await main.getByRole('dialog', { name: /Everything stays/ }).count()), 'the welcome came back after it was finished')
+
+  // 4. Ask on the desk: the answer appears under the line and is kept as a chat.
+  await main.getByRole('radio', { name: 'Ask' }).click()
+  await main.getByPlaceholder('Ask your notes, or anything…').fill('What did I save across a restart?')
+  await main.keyboard.press('Enter')
+  await main.locator('.home-answer').getByText('practice model').waitFor({ timeout: 10000 })
+    .catch(() => problems.push('Ask did not answer on the desk'))
+  await main.getByRole('button', { name: 'Keep talking' }).click()
+  await main.locator('.sheet-body[data-view="Assistant"] .bubble.assistant').first().waitFor({ timeout: 5000 })
+    .catch(() => problems.push('Keep talking did not open the chat in Ask'))
+  const chats = await main.evaluate(async () => (await window.osat.store.load()).doc.chats)
+  check(chats.length === 1 && chats[0].messages.length === 2, 'the desk question and its answer were not kept as one chat')
+  check(chats[0]?.messages[0].noteIds?.length === 1, 'Ask did not pick the matching note for the question')
+  await main.keyboard.press('Escape')
 
   // 2. Two windows stay in step.
   const second = await openSecondWindow(app)

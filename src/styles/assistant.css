@@ -674,69 +674,6 @@
   height: 14px;
 }
 
-.context-picker {
-  max-width: 760px;
-  width: calc(100% - var(--gutter) * 2);
-  max-height: 260px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  margin-inline: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--e-3);
-  animation: dialog-in var(--d-base) var(--ease-out);
-}
-
-.context-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--s-3) var(--s-3) var(--s-2) var(--s-4);
-  border-bottom: 1px solid var(--line);
-}
-
-.context-head strong {
-  font-size: var(--t-xs);
-  font-weight: 650;
-}
-
-.context-list {
-  min-height: 0;
-  padding: var(--s-2);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.context-list label {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  min-height: 34px;
-  padding: 0 var(--s-2);
-  border-radius: var(--r-sm);
-  font-size: var(--t-xs);
-  cursor: pointer;
-}
-
-.context-list label:hover {
-  background: var(--surface-hover);
-}
-
-.context-list label svg {
-  width: 14px;
-  height: 14px;
-  color: var(--faint);
-}
-
-.context-list label span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .composer {
   max-width: 760px;
   width: calc(100% - var(--gutter) * 2);
@@ -791,40 +728,108 @@
   flex: 1;
 }
 
-.context-toggle {
-  display: inline-flex;
+/* The notes a question reads: chips above the composer, links under a sent question. */
+.ask-notes,
+.bubble-notes {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--s-1);
-  min-height: 28px;
-  padding: 0 var(--s-2);
-  border-radius: var(--r-full);
+  gap: 6px;
   color: var(--muted);
   font-size: var(--t-2xs);
-  font-weight: 550;
-  transition: background var(--d-fast), color var(--d-fast);
 }
 
-.context-toggle svg {
-  width: 13px;
-  height: 13px;
+.ask-notes {
+  margin: 0 0 var(--s-2);
+  padding: 0 var(--s-1);
 }
 
-.context-toggle:hover {
+.ask-notes > span:first-child,
+.bubble-notes > span {
+  font-weight: 600;
+}
+
+.ask-note-chip,
+.bubble-notes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  min-height: 24px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bubble-notes {
+  justify-content: flex-end;
+  margin: var(--s-1) 0 0;
+}
+
+.bubble-notes button {
+  padding-right: 8px;
+  font-size: var(--t-2xs);
+}
+
+.bubble-notes button:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.bubble.user .bubble-notes {
+  color: color-mix(in srgb, var(--accent-ink) 78%, transparent);
+}
+
+.bubble.user .bubble-notes button {
+  background: color-mix(in srgb, var(--accent-ink) 18%, transparent);
+  color: var(--accent-ink);
+}
+
+.bubble.user .bubble-notes button:hover {
+  background: color-mix(in srgb, var(--accent-ink) 28%, transparent);
+}
+
+.bubble.user .bubble-notes svg {
+  color: inherit;
+}
+
+.ask-note-chip svg,
+.bubble-notes svg {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+}
+
+.ask-note-chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--muted);
+}
+
+.ask-note-chip button:hover {
   background: var(--surface-hover);
   color: var(--ink);
 }
 
-.context-toggle.on {
-  background: var(--accent-soft);
-  color: var(--accent);
+.composer-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding-left: var(--s-1);
+  color: var(--faint);
+  font-size: var(--t-2xs);
 }
 
-.context-edit {
-  color: var(--accent);
-  font-size: var(--t-2xs);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.composer-note svg {
+  width: 12px;
+  height: 12px;
 }
 
 .composer .send {

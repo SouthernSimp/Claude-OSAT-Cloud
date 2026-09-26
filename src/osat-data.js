@@ -2,7 +2,8 @@
    plain JSON; this file turns whatever is stored into a well-formed workspace
    the views can rely on. Opening a window runs it once; only real differences
    are written back. */
-import { createEmptyDoc, SCHEMA } from '../shared/store-core.mjs'
+import { createEmptyDoc, migrate, SCHEMA } from '../shared/store-core.mjs'
+import { normalizeChat } from './assistant/chats.js'
 import { normalizeHabits, normalizeReflections } from './daily-practice.js'
 import { normalizeFocusSession } from './focus-session.js'
 import { normalizeNote, parseTags } from './note-core.js'
@@ -96,6 +97,7 @@ export function normalizeWorkspace(value) {
     budget: normalizeBudget(input.budget),
     calendar: normalizeCalendar(input.calendar),
     settings: isObject(input.settings) ? input.settings : {},
+    chats: (Array.isArray(input.chats) ? input.chats : []).map(normalizeChat).filter(Boolean),
     sorter: null,
   }
   state.sorter = reconcileBoards({ ...state, sorter: normalizeBoardDoc(input.sorter) })
@@ -110,9 +112,11 @@ export function makeBackup(workspace, exportedAt = new Date().toISOString()) {
 }
 
 export function readWorkspaceBackup(payload) {
-  const input = payload?.workspace
-  const lists = ['notes', 'folders', 'projects', 'habits']
-  if (payload?.format !== BACKUP_FORMAT || payload.version !== 1 || !isObject(input) || input.schema !== SCHEMA
+  const raw = payload?.workspace
+  const lists = ['notes', 'folders', 'projects', 'habits', 'chats']
+  // Backups from an earlier schema are upgraded; ones from a newer OSAT are refused.
+  const input = isObject(raw) && Number.isInteger(raw.schema) && raw.schema <= SCHEMA ? migrate(raw) : null
+  if (payload?.format !== BACKUP_FORMAT || payload.version !== 1 || !isObject(input)
     || lists.some((key) => input[key] !== undefined && (!Array.isArray(input[key]) || input[key].some((item) => !isObject(item))))
     || !Array.isArray(input.notes)
     || (input.sorter != null && (!isObject(input.sorter) || !Array.isArray(input.sorter.boards)))) {

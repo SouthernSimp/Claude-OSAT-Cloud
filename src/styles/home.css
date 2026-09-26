@@ -245,6 +245,48 @@
 .home-composer-wrap .field-banner button:not(.primary-button) { color: var(--on-2); }
 .home-composer-wrap .field-banner button:not(.primary-button):hover { color: var(--on-1); }
 
+/* Ask, right here: the answer grows under the line. */
+.home-answer {
+  grid-row: 5;
+  align-self: start;
+  width: min(572px, 100%);
+  max-height: calc(100% - 14px);
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 12px 10px 18px;
+  border-radius: 20px;
+  color: var(--on-1);
+  animation: answer-in 460ms var(--spring) both;
+}
+@keyframes answer-in { from { opacity: 0; translate: 0 -8px; scale: 0.98; } }
+/* While an answer is open the line lifts, so the answer has room. */
+.home-center { transition: grid-template-rows 520ms var(--spring-soft); }
+.home-center:has(.home-answer) { grid-template-rows: auto minmax(0, 0.2fr) auto auto minmax(0, 1.8fr); }
+.home-center:has(.home-answer) :is(.field-banner, .evening-pill) { display: none; }
+.home-answer header { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; color: var(--on-2); }
+.home-answer header > svg { flex: none; width: 14px; height: 14px; color: var(--accent); }
+.home-answer header strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.home-answer header button { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: var(--on-3); }
+.home-answer header button:hover { color: var(--on-1); background: color-mix(in srgb, var(--on-1) 10%, transparent); }
+.home-answer-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; font-size: 14.5px; line-height: 1.55; }
+.home-answer-body :is(p, li, h3, h4, h5, strong) { color: inherit; }
+.home-answer-body > :first-child { margin-top: 0; }
+.home-answer-wait { color: var(--on-3); animation: breathe 1.6s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: 0.45; } }
+.home-answer-error { color: var(--critical); font-size: 13px; }
+.home-answer .bubble-notes { justify-content: flex-start; margin: 0; color: var(--on-3); }
+.home-answer .action-cards { margin: 0; }
+.home-answer footer { display: flex; align-items: center; gap: 6px; }
+.home-answer footer :is(button, span) { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border-radius: 10px; font-size: 12.5px; font-weight: 550; color: var(--on-2); }
+.home-answer footer button:hover { color: var(--on-1); background: color-mix(in srgb, var(--on-1) 10%, transparent); }
+.home-answer footer button:first-child { color: var(--on-solid-ink); background: var(--on-solid); }
+.home-answer footer svg { width: 14px; height: 14px; }
+.home-answer-saved { color: var(--positive); }
+
 /* ---- Icons ----------------------------------------------------------- */
 
 .home-icons { grid-column: 3; grid-row: 1; min-height: 0; display: flex; flex-direction: column; align-items: flex-end; }

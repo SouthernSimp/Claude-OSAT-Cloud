@@ -35,7 +35,9 @@ npm run build          # vite build → dist/client
 npm run test:ui        # opens the built preview in Chromium, visits every room,
                        # fails on page errors, screenshots → test-results/ui/
 npm run test:e2e       # launches the real Electron app (needs a display: xvfb-run -a on
-                       # Linux; run `node node_modules/electron/install.js` once first)
+                       # Linux; run `node node_modules/electron/install.js` once first).
+                       # OSAT_AI=mock inside it: a practice model answers, nothing downloads
+npx electron . --osat-self-test[=model.gguf]   # the AI engine (and a model) work? no notes opened
 npm run dev            # web preview at http://127.0.0.1:5173 (its own browser data)
 npm run start:mac      # build and run the Electron app from source (data: "OSAT Dev")
 npm run install:mac    # build the DMG and install /Applications/OSAT.app (macOS only)
@@ -48,6 +50,12 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
 ## Architecture today
 
 - `desktop/` — Electron main process (CommonJS).
+  - `ai/`: the AI that sets itself up. `catalog.cjs` (Light / Balanced / Deep: Gemma 4, pinned
+    URL + size + SHA-256, `pickTier(memory)`), `download.cjs` (resumable `.part`, checksum, free
+    disk), `runtime.cjs` (node-llama-cpp in a `utilityProcess`, one chat at a time, Gemma's
+    thinking turned off), `index.cjs` (`createAi`: the chosen size in `prefs.json`, background
+    download, engine starts on the first question and stops after 10 idle minutes; `mock`).
+    Model files live in `<data folder>/models`. LM Studio still works through `local-ai.cjs`.
   - `main.cjs`: windows, menu, IPC for the store / files / local AI / browser / terminal,
     the ⌥Space layer (hotkey, menu-bar icon, app launchers, Esc routing), single-instance lock. Files, browser and terminal IPC answer the
     main window only.
@@ -61,7 +69,9 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
   - `data-folder.cjs`: data lives in `~/Library/Application Support/OSAT` (`OSAT Dev` from source).
     An older folder without our marker is renamed aside, never read or deleted.
   - `preload.cjs`: the bridges exposed to the renderer (`osat.store`, `nateOSFiles`,
-    `osatLocalAI`, `osatBrowser`, `osatTerminal`, `osatApp`, `osatOverlay`).
+    `osatLocalAI` (models, `chatStream` → `{ done, cancel }`, and the built-in AI's status /
+    choose / cancel / resume / remove), `osatBrowser`, `osatTerminal`, `osatApp` (incl. the
+    first-launch welcome), `osatOverlay`). An AbortSignal can't cross the bridge; pass functions.
 - `shared/store-core.mjs` — pure, used by main, every window and the tests: the schema,
   `createEmptyDoc`, `diffDocs`, `applyOps` (returns the inverse, for undo), `validateOps`,
   `compactOps`, `migrations[]` and the hub. It is unpacked from the app archive
@@ -84,7 +94,9 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
     `note-core.js`, `board-model.js` (Mindmap), `next-steps.js`, `daily-practice.js`,
     `field/field-model.js`.
-  - Rooms: `field/` (home desk, Sky, `MediaWidget`), `notes/`, `board/` (Mindmap), `assistant/` (Local AI),
+  - `shell/Welcome.jsx`: the first launch — what stays private, the shortcut, the AI's size.
+  - Rooms: `field/` (home desk, Sky, `MediaWidget`), `notes/`, `board/` (Mindmap), `assistant/` (Ask:
+    `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`),
     `views/` (Calendar, Journal, Projects, Habits, Reflection, Budget, Files, Inbox,
     Obsidian, Settings, command palette), `tools/` (Browser, Terminal).
   - Styles: `src/styles/`, tokens in `tokens.css`. `glass.css` loads last: the glass kit, the sheet,
@@ -95,8 +107,10 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
   a renamed note when the title edit ends (`relinkRenamedNote`), not on every keystroke.
   `reconcileBoards` returns the same object when nothing changed. Changing the schema means
   bumping `SCHEMA` and adding a step to `migrations[]` in `shared/store-core.mjs`, with a test.
-- Chat history is still per-window IndexedDB (`osat-field-chats`); it moves into the store
-  with the Phase 4 Ask rework.
+- Ask's chats live in the workspace (`chats`, schema 2). Each question reads the notes
+  `relatedNotes()` picks (shown as removable chips, kept on the message as `noteIds`). Asking
+  on the desk or the layer answers in a card under the line and saves the chat. Action cards
+  (add a step, a note, an event) only appear when the question asks for something to be added.
 
 ## Layout traps worth remembering
 
@@ -112,3 +126,7 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
 - `.glass` draws its rim and cursor light with `::before`/`::after`; don't give glass elements
   other pseudo-elements.
 - `board.css` owns `--paper-*` and `--desk` on `:root`; never reuse those names elsewhere.
+- Ad-hoc signing a build inside `~/Desktop` (iCloud-synced) fails with "detritus not allowed";
+  build elsewhere: `-c.directories.output=<folder outside Desktop>`.
+- Never launch a packaged build against Nate's real `~/Library/Application Support/OSAT` to
+  test: it would upgrade the schema under his installed app. Use `--osat-self-test`.

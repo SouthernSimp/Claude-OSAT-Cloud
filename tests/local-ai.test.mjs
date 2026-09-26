@@ -12,15 +12,21 @@ test('local AI accepts loopback origins and validates chat roles', () => {
   assert.throws(() => validateLocalChatPayload({ model: 'local/model', messages: [{ role: 'tool', content: 'hi' }] }))
 })
 
-test('desktop AI uses the native bridge instead of a file URL', async () => {
-  const { getLocalModels, sendLocalMessage } = await import('../src/local-ai.js');
-  const previous = globalThis.window;
+test('desktop AI lists models and streams through the native bridge', async () => {
+  const { getLocalModels, streamLocalMessage } = await import('../src/local-ai.js')
+  const previous = globalThis.window
   globalThis.window = { osatLocalAI: {
-    models: async () => ({ models: [{ id: 'local-test' }] }),
-    chat: async ({ messages }) => ({ response: `Local: ${messages[0].content}` }),
-  }};
+    models: async () => ({ models: [{ id: 'osat:light' }] }),
+    chatStream: ({ messages }, onDelta) => {
+      onDelta('Local: ')
+      onDelta(messages[0].content)
+      return { done: Promise.resolve(`Local: ${messages[0].content}`), cancel: () => {} }
+    },
+  } }
   try {
-    assert.equal((await getLocalModels())[0].id, 'local-test');
-    assert.equal(await sendLocalMessage({ model: 'local-test', messages: [{ role: 'user', content: 'Hello' }] }), 'Local: Hello');
-  } finally { globalThis.window = previous; }
-});
+    assert.equal((await getLocalModels())[0].id, 'osat:light')
+    const parts = []
+    assert.equal(await streamLocalMessage({ model: 'osat:light', messages: [{ role: 'user', content: 'Hello' }], onDelta: (text) => parts.push(text) }), 'Local: Hello')
+    assert.deepEqual(parts, ['Local: ', 'Hello'])
+  } finally { globalThis.window = previous }
+})

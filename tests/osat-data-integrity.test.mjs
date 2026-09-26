@@ -34,9 +34,12 @@ test('a backup restores exactly, and damaged backups are rejected before anythin
   assert.equal(restored.notes[0].markdown, workspace.notes[0].markdown)
   for (const invalid of [null, 'bad', {}, { ...backup.workspace, notes: null }, { ...backup.workspace, notes: [null] },
     { ...backup.workspace, notes: [{ id: 'kept', markdown: 42 }] }, { ...backup.workspace, notes: [...workspace.notes, ...workspace.notes] },
-    { ...backup.workspace, schema: 99 }, { ...backup.workspace, schema: 2 }]) {
+    { ...backup.workspace, schema: 99 }, { ...backup.workspace, schema: 'two' }]) {
     assert.throws(() => readWorkspaceBackup({ ...backup, workspace: invalid }), /workspace has not changed/)
   }
+  // A backup made before Ask moved into the workspace (schema 1) still restores.
+  const { chats, ...older } = backup.workspace
+  assert.deepEqual(readWorkspaceBackup({ ...backup, workspace: { ...older, schema: 1 } }).chats, [])
   assert.throws(() => readWorkspaceBackup({ ...backup, format: 'osat-local-backup' }), /unsupported/)
   assert.throws(() => readWorkspaceBackup({ ...backup, version: 99 }), /unsupported/)
 })

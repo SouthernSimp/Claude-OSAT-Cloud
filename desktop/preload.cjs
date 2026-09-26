@@ -16,21 +16,28 @@ let streamSeq = 0
 
 contextBridge.exposeInMainWorld('osatLocalAI', Object.freeze({
   models: () => ipcRenderer.invoke('local-ai:models'),
-  chat: (payload) => ipcRenderer.invoke('local-ai:chat', payload),
-  // Streams deltas over a per-request channel, then resolves with the full text.
-  chatStream: (payload, onDelta, signal) => {
+  // The built-in AI: which size, the download, and whether the model is awake.
+  status: () => ipcRenderer.invoke('ai:status'),
+  choose: (tier) => ipcRenderer.invoke('ai:choose', tier),
+  cancel: () => ipcRenderer.invoke('ai:cancel'),
+  resume: () => ipcRenderer.invoke('ai:resume'),
+  remove: (tier) => ipcRenderer.invoke('ai:remove', tier),
+  onStatus: (listener) => {
+    const handler = (_event, status) => listener(status)
+    ipcRenderer.on('ai:status', handler)
+    return () => ipcRenderer.removeListener('ai:status', handler)
+  },
+  // Streams deltas over a per-request channel. `done` resolves with the full text;
+  // `cancel` stops it (an AbortSignal can't cross into the preload, a function can).
+  chatStream: (payload, onDelta) => {
     const id = `stream-${++streamSeq}`
     const channel = `local-ai:delta:${id}`
     const listener = (_event, text) => { if (typeof text === 'string') onDelta(text) }
     ipcRenderer.on(channel, listener)
-    const abort = () => ipcRenderer.send('local-ai:cancel', id)
-    signal?.addEventListener('abort', abort, { once: true })
-    return ipcRenderer
+    const done = ipcRenderer
       .invoke('local-ai:chat-stream', id, payload)
-      .finally(() => {
-        ipcRenderer.removeListener(channel, listener)
-        signal?.removeEventListener('abort', abort)
-      })
+      .finally(() => ipcRenderer.removeListener(channel, listener))
+    return { done, cancel: () => ipcRenderer.send('local-ai:cancel', id) }
   },
 }))
 
@@ -85,6 +92,9 @@ contextBridge.exposeInMainWorld('osat', Object.freeze({
 
 contextBridge.exposeInMainWorld('osatApp', Object.freeze({
   about: () => ipcRenderer.invoke('app:about'),
+  // The first-launch welcome shows once per Mac.
+  needsWelcome: () => ipcRenderer.invoke('app:welcome'),
+  welcomed: () => ipcRenderer.invoke('app:welcomed'),
   showDataFolder: () => ipcRenderer.invoke('app:show-data-folder'),
   onCommand: (listener) => {
     const stop = listen('app:command', listener)

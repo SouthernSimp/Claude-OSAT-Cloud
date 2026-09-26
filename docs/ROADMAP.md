@@ -18,9 +18,14 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 1 | Final data shape and one source of truth | Merged (PR #1) |
 | 2 | The overlay (LYKN-style layer with pop-outs), Spotify, movable widgets | Merged (PR #2) |
 | 3a | One place: the desk, glass sheets, one navigation, Settings sections | Merged (PR #3) |
-| 3b | A calm day: Next ≤ 5 + bring forward (in #3), evening invitation, Undo, See in the Sky | In PR #4 |
-| 4 | Local AI that sets itself up | Next |
-| 5 | Visual polish | Planned |
+| 3b | A calm day: Next ≤ 5 + bring forward (in #3), evening invitation, Undo, See in the Sky | Merged (PR #4) |
+| 4 | Local AI that sets itself up, Ask everywhere, chats in the workspace | In PR #5 |
+| 5 | Your iPhone, step one: capture from the phone, read your notes there | Next |
+| 6 | The iPhone app, synced through iCloud | Planned |
+| 7 | Visual polish | Planned |
+
+**The end goal (Nate, Sep 25):** an app that syncs with his iPhone. Phases 5 and 6 get there;
+visual polish moves after them.
 
 ## Nate's answers (Sep 25)
 - **Overlay:** a **summon panel** on ⌥Space. He'd use all four jobs weekly: unload thoughts, see & sort, run the day, think with local AI.
@@ -251,9 +256,12 @@ Nate asked to condense and connect desk → notes → sky → mindmap, make the 
 
 **Also landed in #3:** Settings in five sections (General, Appearance, AI, Data with the Obsidian export and Show data folder, About); ⌘K as a glass palette.
 
-**Still to do (Phase 5):** retiring `field-sample.js`, the Focus timer look, habit chips on the desk.
+**Still to do (Phase 7):** retiring `field-sample.js`, the Focus timer look, habit chips on the desk.
 
-### Phase 3b: One Today
+### Phase 3b: A calm day (merged, PR #4)
+**Built:** Next shows at most five, with "Bring N from earlier days"; an evening invitation to Reflect (once a day); Undo instead of a question when trashing in Notes; See in the Sky from any note.
+
+**Not built, still wanted (folded into Phase 7):** the single Today room below. The desk already covers most of it (Day/Month widgets, Next, today's page from Tools), so the remaining pieces are the evening answers writing into the day note, Unsorted row actions, and retiring the separate Journal/Habits/Reflect rooms.
 - A date header with a month picker, reusing the grid from `Calendar.jsx`.
 - **Next:** at most 5, the rest collapsed. Unchecked steps from earlier days show as a one-tap "bring forward" offer.
 - **Schedule:** that day's `calendar.events`.
@@ -264,18 +272,28 @@ Nate asked to condense and connect desk → notes → sky → mindmap, make the 
 - **One note editor** (`NoteEditor`), used everywhere. Map cards and Today's page embed it.
 - Delete the Journal, Reflection, Habits, Inbox and Calendar room views and their CSS.
 
-### Phase 4: Local AI that sets itself up
-- `desktop/ai/runtime.cjs` runs in an Electron `utilityProcess`, so a model crash can't take down the store. It has three providers:
-  - **llama:** `node-llama-cpp`, Metal
-  - **openai-compatible:** LM Studio or Ollama on loopback. This replaces the three copies of the client.
-  - **mock:** used in the cloud and in CI.
-- `desktop/ai/catalog.json` has three tiers (Light / Balanced / Deep), each with url, sha256, size and minimum RAM. `pickTier(os.totalmem())` is tested. The exact models are chosen at build time and license-checked.
-- Downloads are resumable and checksum-verified, with a free-disk check. Progress shows in the menu bar and in Settings → AI.
-- **First run** takes three calm steps: what stays private → your hotkey (try it) → AI size, with the recommended tier preselected. The download runs in the background while the app is fully usable.
-- **Ask everywhere:** Ask comes to the overlay. The full Ask space auto-picks relevant notes through Find and shows them as removable chips ("Using 3 notes"). AI actions are always accept/decline cards.
-- Add `asarUnpack` entries for node-llama-cpp.
+### Phase 4: Local AI that sets itself up (built, PR #5)
+- **The engine** (`desktop/ai/runtime.cjs`) runs node-llama-cpp 3.21 with Metal in an Electron `utilityProcess`, so a model that runs out of memory can't take the notes down. It starts on the first question and rests after ten idle minutes. LM Studio still works alongside (its loaded models appear in Ask); Ollama was left out (Nate uses LM Studio).
+- **Three sizes** (`desktop/ai/catalog.cjs`), all Google's Gemma 4 (Apache 2.0, Google's own 4-bit QAT files), pinned to a revision with size and SHA-256: **Light** E2B 3.3 GB (8 GB Macs), **Balanced** E4B 5.2 GB (16 GB), **Deep** 26B-A4B 14.4 GB (32 GB+). `pickTier(memory)` recommends one; Nate's 64 GB M5 Pro gets Deep. Gemma's "thinking out loud" is turned off for calm, direct answers.
+- **Downloads** resume from a `.part` file after a quit, sleep or dropped connection, retry calmly, check free disk first and verify the SHA-256. Progress shows in Settings → AI and the menu-bar icon.
+- **First launch** (`src/shell/Welcome.jsx`): what stays private → the shortcut → the AI's size, recommended one preselected. Esc or "Not now" skips.
+- **Ask everywhere:** on the desk and the ⌥Space layer, Ask mode answers right under the line (Keep talking · Save as a note). The Ask room reads the notes that match each question, shown as removable chips, and links them under the question. Action cards appear only when the question asks for something to be added.
+- **Chats live in the workspace** (schema 2, with a migration and a test), so every window shares them; backups from schema 1 still restore.
+- **Checks:** unit tests for the catalog, resumable/verified downloads and the engine lifecycle (a fake engine); the Electron end-to-end test walks the welcome and asks on the desk with a practice model; `--osat-self-test[=model.gguf]` proves the engine (and a model) work inside the built app, and CI runs it on every Mac build.
+- Fixed on the way: Stop in Ask never worked in the Mac app (an AbortSignal can't cross the preload bridge).
 
-### Phase 5: Visual polish
+### Phase 5: Your iPhone, step one (no iPhone app needed yet)
+Opt-in in Settings, because it is the first thing that leaves the Mac: it goes through Nate's own iCloud Drive (end-to-end encrypted only with Advanced Data Protection on; OSAT says so plainly).
+- **Capture from the iPhone:** an `OSAT` folder in iCloud Drive with an `Inbox`. Any text dropped there (by an "Add to OSAT" Shortcut, the share sheet, or the Files app) becomes a thought in Unsorted within seconds; the file then moves to `Inbox/Added`, so nothing is lost. OSAT writes the Shortcut into the folder (signed with macOS's `shortcuts sign`) so Nate adds it on the phone with one tap.
+- **Read on the iPhone:** OSAT keeps a read-only Markdown copy of every note in `OSAT/Notes/<folder>/<title>.md`, readable in the Files app.
+- Tests: the inbox watcher (a file becomes one note, the file moves, a half-synced file waits), the mirror (renames, trash, folders).
+
+### Phase 6: The iPhone app
+- **Sync:** each device appends its operations (the store already speaks in operations) to its own log in the app's iCloud container; every device merges all logs with a hybrid clock and per-field last-writer-wins, and note text that two devices changed at once keeps both versions (a conflict copy, nothing lost). The Mac keeps working offline; the logs catch up.
+- **The app:** capture, Unsorted, Notes, today's Next, and Ask with a small on-device model picked at install. Built in CI on GitHub's Macs (Xcode), shipped to Nate through TestFlight.
+- **Needs from Nate:** accept the Xcode license once (`sudo xcodebuild -license accept`), and the App Store Connect API key as a GitHub secret for TestFlight.
+
+### Phase 7: Visual polish
 - One design language: the glass overlay plus a calm window.
 - Tokens only: remove the alias tokens, fold `board.css`'s tokens into `tokens.css`, cut the type scale to about 8 steps, add z-index tokens, reduce the breakpoints.
 - Empty states that teach one step. Undo toasts everywhere. Reduced-motion-safe transitions.
@@ -286,7 +304,6 @@ Nate asked to condense and connect desk → notes → sky → mindmap, make the 
 - "Tidy Unsorted": AI proposes a folder, tags and links, and Nate accepts or declines each.
 - Read-only Apple Calendar in Today.
 - A Mac App Store build: sandbox, no terminal.
-- Phone capture (an iCloud Drive inbox or a Shortcut), then a native iPhone app with a model picker at install.
 
 ## Git workflow (Claude manages it)
 - `main` always works.
