@@ -19,9 +19,9 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 2 | The overlay (LYKN-style layer with pop-outs), Spotify, movable widgets | Merged (PR #2) |
 | 3a | One place: the desk, glass sheets, one navigation, Settings sections | Merged (PR #3) |
 | 3b | A calm day: Next ≤ 5 + bring forward (in #3), evening invitation, Undo, See in the Sky | Merged (PR #4) |
-| 4 | Local AI that sets itself up, Ask everywhere, chats in the workspace | In PR #5 |
-| 5 | Your iPhone, step one: capture from the phone, read your notes there | Next |
-| 6 | The iPhone app, synced through iCloud | Planned |
+| 4 | Local AI that sets itself up, Ask everywhere, chats in the workspace | Merged (PR #5) |
+| 5 | Your iPhone, step one: capture from the phone, read your notes there | In PR #6 |
+| 6 | The iPhone app, synced through iCloud | Next |
 | 7 | Visual polish | Planned |
 
 **The end goal (Nate, Sep 25):** an app that syncs with his iPhone. Phases 5 and 6 get there;
@@ -272,7 +272,7 @@ Nate asked to condense and connect desk → notes → sky → mindmap, make the 
 - **One note editor** (`NoteEditor`), used everywhere. Map cards and Today's page embed it.
 - Delete the Journal, Reflection, Habits, Inbox and Calendar room views and their CSS.
 
-### Phase 4: Local AI that sets itself up (built, PR #5)
+### Phase 4: Local AI that sets itself up (merged, PR #5)
 - **The engine** (`desktop/ai/runtime.cjs`) runs node-llama-cpp 3.21 with Metal in an Electron `utilityProcess`, so a model that runs out of memory can't take the notes down. It starts on the first question and rests after ten idle minutes. LM Studio still works alongside (its loaded models appear in Ask); Ollama was left out (Nate uses LM Studio).
 - **Three sizes** (`desktop/ai/catalog.cjs`), all Google's Gemma 4 (Apache 2.0, Google's own 4-bit QAT files), pinned to a revision with size and SHA-256: **Light** E2B 3.3 GB (8 GB Macs), **Balanced** E4B 5.2 GB (16 GB), **Deep** 26B-A4B 14.4 GB (32 GB+). `pickTier(memory)` recommends one; Nate's 64 GB M5 Pro gets Deep. Gemma's "thinking out loud" is turned off for calm, direct answers.
 - **Downloads** resume from a `.part` file after a quit, sleep or dropped connection, retry calmly, check free disk first and verify the SHA-256. Progress shows in Settings → AI and the menu-bar icon.
@@ -282,11 +282,14 @@ Nate asked to condense and connect desk → notes → sky → mindmap, make the 
 - **Checks:** unit tests for the catalog, resumable/verified downloads and the engine lifecycle (a fake engine); the Electron end-to-end test walks the welcome and asks on the desk with a practice model; `--osat-self-test[=model.gguf]` proves the engine (and a model) work inside the built app, and CI runs it on every Mac build.
 - Fixed on the way: Stop in Ask never worked in the Mac app (an AbortSignal can't cross the preload bridge).
 
-### Phase 5: Your iPhone, step one (no iPhone app needed yet)
-Opt-in in Settings, because it is the first thing that leaves the Mac: it goes through Nate's own iCloud Drive (end-to-end encrypted only with Advanced Data Protection on; OSAT says so plainly).
-- **Capture from the iPhone:** an `OSAT` folder in iCloud Drive with an `Inbox`. Any text dropped there (by an "Add to OSAT" Shortcut, the share sheet, or the Files app) becomes a thought in Unsorted within seconds; the file then moves to `Inbox/Added`, so nothing is lost. OSAT writes the Shortcut into the folder (signed with macOS's `shortcuts sign`) so Nate adds it on the phone with one tap.
-- **Read on the iPhone:** OSAT keeps a read-only Markdown copy of every note in `OSAT/Notes/<folder>/<title>.md`, readable in the Files app.
-- Tests: the inbox watcher (a file becomes one note, the file moves, a half-synced file waits), the mirror (renames, trash, folders).
+### Phase 5: Your iPhone, step one (built, PR #6; no iPhone app needed)
+Opt-in in **Settings → iPhone**, because it is the first thing that leaves the Mac: it goes through Nate's own iCloud Drive (end-to-end encrypted only with Advanced Data Protection on; OSAT says so plainly). Until it's on, OSAT never touches iCloud Drive (macOS asks first).
+- **Capture from the iPhone:** an `OSAT` folder in iCloud Drive with an `Inbox`. Any text file dropped there (an "Add to OSAT" Shortcut, Share → Save to Files, or the Files app) becomes a thought in Unsorted a few seconds after iCloud brings it; the file then moves to `Inbox/Added`, so nothing is lost. Files still arriving wait for the next look.
+- **The Shortcut:** Settings shows four short steps to make it (Ask for Input or Dictate Text → Save File to OSAT/Inbox). A generated, signed `.shortcut` file was left out: it can't be tested without an iPhone, and a broken one would be worse than four steps.
+- **Read on the iPhone:** a read-only Markdown copy of every active note in `OSAT/Notes`, in the same folders (Unsorted and Days get their own). It follows renames, moves and the Trash. OSAT only ever changes files it wrote, and turning the link off removes the copy.
+- Rooms say "This Mac, and a copy in your iCloud" while the link is on.
+- `shared/note-core.mjs`: the note record moved to `shared/` so the main process makes notes exactly like the windows.
+- Checks: unit tests for the inbox (text becomes one thought, the file moves, half-synced files wait, hidden and non-text files stay) and the copy (folders, renames, trash, name clashes, a tampered manifest can't reach outside `Notes`); the Electron end-to-end test drops a file into a stand-in iCloud Drive and watches it arrive.
 
 ### Phase 6: The iPhone app
 - **Sync:** each device appends its operations (the store already speaks in operations) to its own log in the app's iCloud container; every device merges all logs with a hybrid clock and per-field last-writer-wins, and note text that two devices changed at once keeps both versions (a conflict copy, nothing lost). The Mac keeps working offline; the logs catch up.

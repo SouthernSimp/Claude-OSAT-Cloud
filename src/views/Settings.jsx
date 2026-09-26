@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, CircleHalf, Database, DownloadSimple, FolderOpen, GearSix, Info, Keyboard, Sparkle, UploadSimple } from "@phosphor-icons/react";
-import { downloadFile } from "../lib/ui.js";
+import { Check, CircleHalf, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Info, Keyboard, LockSimple, Sparkle, UploadSimple } from "@phosphor-icons/react";
+import { downloadFile, formatRelativeTime } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
 import { workspaceClient } from "../store/useWorkspace.js";
@@ -83,6 +83,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
           </section>
         )}
         {section === "ai" && <AiCard />}
+        {section === "iphone" && <PhoneCards />}
         {section === "data" && (
           <>
             <section className="content-card">
@@ -91,7 +92,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
               <p>{storage.message}</p>
               <div className="storage-facts">
                 <span><Check /> Saved a moment after every change, with 14 daily copies kept</span>
-                <span><Check /> No cloud sync, no account</span>
+                <span><Check /> No account, and nothing leaves this Mac unless you link your iPhone</span>
               </div>
               {window.osatApp?.showDataFolder && (
                 <button className="outline-button" type="button" onClick={() => window.osatApp.showDataFolder().catch(() => {})}>
@@ -137,6 +138,7 @@ const SECTIONS = [
   ["general", "General", GearSix],
   ["appearance", "Appearance", CircleHalf],
   ["ai", "AI", Sparkle],
+  ["iphone", "iPhone", DeviceMobile],
   ["data", "Data", Database],
   ["about", "About", Info],
 ];
@@ -225,6 +227,86 @@ function AiCard() {
       <p className="ai-note">{others.length ? `LM Studio is running too: ${others.map((model) => model.name).slice(0, 2).join(", ")} ${others.length === 1 ? "appears" : "appear"} in Ask.` : "LM Studio also works: while its local server runs, its models appear in Ask."}</p>
       {message && <p role="status">{message}</p>}
     </section>
+  );
+}
+
+/* Your iPhone, through an OSAT folder in iCloud Drive. The one thing that leaves the Mac, so it is off until chosen. */
+function PhoneCards() {
+  const bridge = window.osatPhone;
+  const [status, setStatus] = useState(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!bridge) return undefined;
+    bridge.status().then(setStatus).catch(() => {});
+    return bridge.onStatus(setStatus);
+  }, [bridge]);
+  const act = async (work) => {
+    setBusy(true);
+    setMessage("");
+    try {
+      setStatus(await work());
+    } catch (error) {
+      setMessage(String(error?.message || error).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!bridge) {
+    return (
+      <section className="content-card">
+        <p className="eyebrow">IPHONE</p>
+        <h2>The iPhone link lives in the Mac app.</h2>
+        <p>In the Mac app, OSAT can keep a folder in your iCloud Drive for your iPhone.</p>
+      </section>
+    );
+  }
+  if (!status?.enabled) {
+    return (
+      <section className="content-card phone-card">
+        <p className="eyebrow">IPHONE</p>
+        <h2>Reach OSAT from your iPhone.</h2>
+        <p>OSAT can keep a folder in your iCloud Drive. Thoughts you drop into it from your iPhone land in Unsorted, and a copy of your notes waits there to read.</p>
+        <p className="phone-privacy"><LockSimple /> This is the one thing that leaves this Mac. It goes to your own iCloud Drive, which Apple keeps; turn on Advanced Data Protection in iCloud settings for end-to-end encryption.</p>
+        <button className="primary-button" type="button" disabled={busy} onClick={() => act(bridge.enable)}>
+          <DeviceMobile /> Use iCloud Drive
+        </button>
+        {message && <p role="status">{message}</p>}
+      </section>
+    );
+  }
+  return (
+    <>
+      <section className="content-card phone-card">
+        <p className="eyebrow">IPHONE</p>
+        <h2>Your iPhone can reach OSAT.</h2>
+        <p>
+          {status.error || (status.lastCapture ? `The last thought from your iPhone arrived ${formatRelativeTime(status.lastCapture)}.` : "Nothing from your iPhone yet. Thoughts land in Unsorted a few seconds after iCloud brings them.")}
+        </p>
+        <div className="button-row">
+          <button className="outline-button" type="button" onClick={() => bridge.show().catch(() => {})}><FolderOpen /> Show the folder</button>
+          <button className="text-button" type="button" disabled={busy} onClick={() => act(bridge.disable)}>Turn off and remove the copy of your notes</button>
+        </div>
+        {message && <p role="status">{message}</p>}
+      </section>
+      <section className="content-card">
+        <p className="eyebrow">SEND A THOUGHT</p>
+        <h2>Make “Add to OSAT” once.</h2>
+        <ol className="phone-steps">
+          <li>On your iPhone, open <b>Shortcuts</b> and tap <b>+</b>.</li>
+          <li>Add <b>Ask for Input</b>. To speak instead, add <b>Dictate Text</b>.</li>
+          <li>Add <b>Save File</b>, tap its folder, and choose <b>iCloud Drive → OSAT → Inbox</b>.</li>
+          <li>Name it <b>Add to OSAT</b>, then put it on your Home Screen or the Action button.</li>
+        </ol>
+        <p>From any app, Share → Save to Files → OSAT → Inbox works too.</p>
+      </section>
+      <section className="content-card">
+        <p className="eyebrow">READ YOUR NOTES</p>
+        <h2>Files → iCloud Drive → OSAT → Notes.</h2>
+        <p>A copy that follows your notes as you write, in the same folders. Write in OSAT; changes made to the copy aren’t read back.</p>
+      </section>
+    </>
   );
 }
 

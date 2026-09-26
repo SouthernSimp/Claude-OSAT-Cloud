@@ -148,10 +148,23 @@ export function Appearance({ workspace, commit, placement = 'up' }) {
   )
 }
 
+/* Whether the iPhone link is on (then a copy of the notes also sits in iCloud Drive). */
+function usePhoneLinked() {
+  const [linked, setLinked] = useState(false)
+  useEffect(() => {
+    const bridge = window.osatPhone
+    if (!bridge) return undefined
+    bridge.status().then((status) => setLinked(Boolean(status?.enabled))).catch(() => {})
+    return bridge.onStatus((status) => setLinked(Boolean(status?.enabled)))
+  }, [])
+  return linked
+}
+
 /* A room, floating over the desk. It grows out of the point you clicked. */
 export function RoomSheet({ view, title, origin, closing, filled, onClose, onClosed, onRisen, onSearch, onMode, children }) {
   const sheet = useRef(null)
   const map = view === 'Mindmap' || view === 'Sky'
+  const linked = usePhoneLinked()
 
   useLayoutEffect(() => {
     const node = sheet.current
@@ -181,7 +194,7 @@ export function RoomSheet({ view, title, origin, closing, filled, onClose, onClo
             <button type="button" role="radio" aria-checked={view === 'Sky'} onClick={() => onMode('Sky')}><MoonStars weight={view === 'Sky' ? 'fill' : 'regular'} />Sky</button>
           </div>
         )}
-        <span className="sheet-private"><LockSimple /> Only on this Mac</span>
+        <span className="sheet-private"><LockSimple /> {linked ? 'This Mac, and a copy in your iCloud' : 'Only on this Mac'}</span>
         <button type="button" className="sheet-search" onClick={onSearch}><MagnifyingGlass /><span>Find</span><kbd>⌘K</kbd></button>
       </header>
       <div className={`sheet-body workspace-content ${filled ? 'is-filled' : ''}`} data-view={view}>{children}</div>
