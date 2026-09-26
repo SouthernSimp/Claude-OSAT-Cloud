@@ -81,6 +81,7 @@ export function createSyncEngine({ device, files, doc, apply, state = null, now 
       early = []
       const ops = entries.length ? mergeEntries(current, meta, entries) : []
       if (ops.length) apply(ops)
+      if (ops.share?.length) queue.push(...stampLocal(meta, ops.share, clock))
       const text = snapshotText(applyOps(current, ops).doc, seq)
       sinceSnapshot = snapshotEvery // the next flush leaves a snapshot…
       try {
@@ -139,6 +140,8 @@ export function createSyncEngine({ device, files, doc, apply, state = null, now 
       for (const [stamp] of entries) clock.observe(stamp)
       const ops = entries.length ? mergeEntries(doc(), meta, entries) : []
       if (ops.length) apply(ops)
+      // Merged note texts go out as this device's own change (see mergeEntries).
+      if (ops.share?.length) queue.push(...stampLocal(meta, ops.share, clock))
       return ops.length
     },
 

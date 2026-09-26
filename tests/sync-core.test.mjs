@@ -30,6 +30,7 @@ function device(name, time, doc = createEmptyDoc()) {
       for (const [stamp] of entries) clock.observe(stamp)
       const ops = mergeEntries(hub.doc, meta, entries)
       if (ops.length) hub.commit(self, ops)
+      if (ops.share.length) log.push(...stampLocal(meta, ops.share, clock))
     },
   }
 }
@@ -177,5 +178,83 @@ test('devices making random changes always end up the same', () => {
     for (let pass = 0; pass < 2; pass += 1) for (const d of devices) for (const other of devices) if (other !== d) d.hear(other)
     for (const d of devices.slice(1)) assert.deepEqual(content(d.doc), content(devices[0].doc), `seed ${seed}: ${d.name} differs from the Mac`)
     assert.ok(devices[0].doc.notes.some((n) => n.id === 'late-note'), `seed ${seed}: the late device's own note was lost`)
+  }
+})
+
+test('two devices adding to the same page without seeing each other keep both', () => {
+  let now = 10
+  const mac = device('mac', () => now)
+  mac.change((doc) => ({ ...doc, notes: [note('day', { markdown: '- [ ] Water the plants\n' })] }))
+  const phone = device('phone', () => now)
+  phone.hear(mac)
+  now = 20
+  mac.change((doc) => ({ ...doc, notes: doc.notes.map((n) => ({ ...n, markdown: `${n.markdown}- [ ] Call the vet\n` })) }))
+  now = 21
+  phone.change((doc) => ({ ...doc, notes: doc.notes.map((n) => ({ ...n, markdown: `${n.markdown.replace('[ ] Water', '[x] Water')}- [ ] Buy milk\n` })) }))
+  mac.hear(phone)
+  phone.hear(mac)
+  const text = mac.doc.notes[0].markdown
+  assert.equal(phone.doc.notes[0].markdown, text)
+  assert.match(text, /\[x\] Water the plants/, 'the newer version of a shared line wins')
+  assert.match(text, /Buy milk/)
+  assert.match(text, /Call the vet/)
+  assert.equal(text.match(/Water the plants/g).length, 1)
+})
+
+test('an edit made after seeing the other version replaces it (removing a line works)', () => {
+  let now = 10
+  const mac = device('mac', () => now)
+  mac.change((doc) => ({ ...doc, notes: [note('n', { markdown: 'one\ntwo\n' })] }))
+  const phone = device('phone', () => now)
+  phone.hear(mac)
+  now = 20
+  phone.change((doc) => ({ ...doc, notes: doc.notes.map((n) => ({ ...n, markdown: 'one\n' })) }))
+  mac.hear(phone)
+  assert.equal(mac.doc.notes[0].markdown, 'one\n')
+})
+
+test('the same day page made on two devices before they ever met is merged', () => {
+  let now = 10
+  const mac = device('mac', () => now)
+  const phone = device('phone', () => now)
+  mac.change((doc) => ({ ...doc, notes: [note('day-2026-09-25', { markdown: '- [ ] From the Mac\n' })] }))
+  now = 11
+  phone.change((doc) => ({ ...doc, notes: [note('day-2026-09-25', { markdown: '- [ ] From the phone\n' })] }))
+  mac.hear(phone)
+  phone.hear(mac)
+  assert.equal(mac.doc.notes.length, 1)
+  assert.equal(mac.doc.notes[0].markdown, phone.doc.notes[0].markdown)
+  assert.match(mac.doc.notes[0].markdown, /From the Mac/)
+  assert.match(mac.doc.notes[0].markdown, /From the phone/)
+})
+
+test('three devices writing into the same notes at random still end up the same, losing no line', () => {
+  for (let seed = 1; seed <= 40; seed += 1) {
+    let state = seed
+    const random = () => { state = (state * 1103515245 + 12345) % 2147483648; return state / 2147483648 }
+    const pick = (list) => list[Math.floor(random() * list.length)]
+    let now = 1000
+    const time = () => now
+    const devices = [device('mac', time), device('phone', time), device('ipad', time)]
+    devices[0].change((doc) => ({ ...doc, notes: [note('a', { markdown: 'start\n' }), note('b', { markdown: '' })] }))
+    for (const d of devices.slice(1)) d.hear(devices[0])
+    const written = new Set(['start'])
+    for (let round = 0; round < 200; round += 1) {
+      now += Math.floor(random() * 2)
+      const d = pick(devices)
+      const id = pick(['a', 'b'])
+      const roll = random()
+      if (roll < 0.55) {
+        const line = `${d.name} ${round}`
+        written.add(line)
+        d.change((doc) => ({ ...doc, notes: doc.notes.map((n) => (n.id === id ? { ...n, markdown: `${n.markdown}${line}\n` } : n)) }))
+      } else {
+        d.hear(pick(devices.filter((x) => x !== d)))
+      }
+    }
+    for (let pass = 0; pass < 4; pass += 1) for (const d of devices) for (const other of devices) if (other !== d) d.hear(other)
+    for (const d of devices.slice(1)) assert.deepEqual(content(d.doc), content(devices[0].doc), `seed ${seed}: ${d.name} differs`)
+    const all = devices[0].doc.notes.map((n) => n.markdown).join('\n')
+    for (const line of written) assert.ok(all.includes(line), `seed ${seed}: the line "${line}" was lost`)
   }
 })

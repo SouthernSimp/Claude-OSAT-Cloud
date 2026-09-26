@@ -640,10 +640,20 @@ async function loadPrefs() {
   }
 }
 
-async function savePrefs() {
-  const temporary = `${prefsFile()}.${process.pid}.tmp`
-  await fs.writeFile(temporary, JSON.stringify(prefs, null, 2))
-  await fs.rename(temporary, prefsFile())
+/* Saves take turns and always write the newest preferences: two saves at once (the
+   welcome saves the AI size and "welcomed" together) must never collide. */
+let prefsSaving = Promise.resolve()
+function savePrefs() {
+  prefsSaving = prefsSaving.catch(() => {}).then(async () => {
+    const temporary = `${prefsFile()}.${process.pid}.${randomUUID()}.tmp`
+    try {
+      await fs.writeFile(temporary, JSON.stringify(prefs, null, 2))
+      await fs.rename(temporary, prefsFile())
+    } finally {
+      await fs.rm(temporary, { force: true })
+    }
+  })
+  return prefsSaving
 }
 
 /* Registers a new hotkey, or keeps the old one when the new one is taken. */

@@ -89,7 +89,10 @@ bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the 
   each device keeps per-field stamps (`meta`) and merges others' changes field by field, newest
   stamp winning, so all devices converge whatever the order (a randomized test proves it). A
   delete wins over earlier edits; a later add (Undo) brings a record back; an edit that arrives
-  before its record waits in meta. The engine writes only `Sync/<device>/<seq>.json` and
+  before its record waits in meta. Note text (`notes.markdown`) also carries version vectors:
+  two versions written without seeing each other are merged (`mergeText`: the newer text plus
+  the lines only the older has), and the merging device shares the result as a new change so
+  every device settles on the same text. The engine writes only `Sync/<device>/<seq>.json` and
   `snapshot.json`, reads the others', and a new device catches up from the newest snapshot.
   What a device held before its first sync is stamped oldest (`baseStamp`).
 - `shared/store-core.mjs` — pure, used by main, every window and the tests: the schema,
