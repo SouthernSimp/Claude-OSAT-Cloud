@@ -2,37 +2,25 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, Minus, Plus } from '@phosphor-icons/react'
 
 import { isActiveNote } from '../notes-model.js'
-import { sampleNotes } from './field-sample.js'
-import { FieldBanner, useReducedMotion } from './FieldChrome.jsx'
+import { useReducedMotion } from './FieldChrome.jsx'
 import { buildSkyGraph, constellationLabels, fitCamera, runSky, skyEnergy, stepSky } from './field-model.js'
 
 function signatureOf(notes) {
   return notes.map((note) => `${note.id}:${note.updatedAt}:${note.title}`).join('|')
 }
 
-export function FieldSky({
-  workspace,
-  navigate,
-  preview,
-  sampled,
-  onKeep,
-  onBlank,
-  onRemove,
-  target,
-}) {
+export function FieldSky({ workspace, navigate, target }) {
   const viewport = useRef(null)
   const nodesRef = useRef([])
   const linksRef = useRef([])
   const loopRef = useRef(0)
   const reduced = useReducedMotion()
-  const real = workspace.notes.filter(isActiveNote)
-  const source = preview ? sampleNotes() : real
-  const signature = signatureOf(source)
+  const signature = signatureOf(workspace.notes.filter(isActiveNote))
   const keepId = target?.noteId || null
   const graph = useMemo(() => {
-    const built = buildSkyGraph(preview ? sampleNotes() : workspace.notes, undefined, undefined, keepId)
+    const built = buildSkyGraph(workspace.notes, undefined, undefined, keepId)
     return { links: built.links, nodes: runSky(built.nodes, built.links, reduced ? 170 : 140) }
-  }, [signature, preview, reduced, keepId])
+  }, [signature, reduced, keepId]) // eslint-disable-line react-hooks/exhaustive-deps
   const [nodes, setNodes] = useState(graph.nodes)
   const [cam, setCam] = useState({ x: 80, y: 60, z: 0.7 })
   const [hover, setHover] = useState(null)
@@ -133,7 +121,7 @@ export function FieldSky({
   })
 
   function panFrom(event) {
-    if (event.button !== 0 || event.target.closest('.sky-star, .sky-card, .sky-tools, .field-banner, .sky-search')) return
+    if (event.button !== 0 || event.target.closest('.sky-star, .sky-card, .sky-tools, .sky-search')) return
     stopIntro()
     const startX = event.clientX
     const startY = event.clientY
@@ -183,8 +171,7 @@ export function FieldSky({
   }
 
   function openNote(id) {
-    if (preview) onKeep(id)
-    else navigate('Today', { noteId: id })
+    navigate('Today', { noteId: id })
   }
 
   const q = query.trim().toLowerCase()
@@ -303,11 +290,9 @@ export function FieldSky({
           <span>{selectedNode.excerpt}</span>
           <div>
             <button type="button" className="primary-button" onClick={() => openNote(selectedNode.id)}>
-              {preview ? 'Keep and read it' : 'Lay it on the desk'} <ArrowRight />
+              Lay it on the desk <ArrowRight />
             </button>
-            {!preview && (
-              <button type="button" onClick={() => navigate('Mindmap', { focusNoteId: selectedNode.id })}>On the Map</button>
-            )}
+            <button type="button" onClick={() => navigate('Mindmap', { focusNoteId: selectedNode.id })}>On the Map</button>
           </div>
         </aside>
       )}
@@ -318,7 +303,6 @@ export function FieldSky({
           <button type="button" className="primary-button" onClick={() => navigate('Today')}>Back to the desk</button>
         </div>
       )}
-      <FieldBanner preview={preview} sampled={sampled} onKeep={() => onKeep()} onBlank={onBlank} onRemove={onRemove} />
     </div>
   )
 }

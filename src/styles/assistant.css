@@ -925,3 +925,51 @@
     max-width: 62%;
   }
 }
+
+/* ---- Files in Ask ----------------------------------------------------------- */
+
+.assistant { position: relative; }
+.ask-note-chip.is-file { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.bubble-file { display: inline-flex; align-items: center; gap: 4px; max-width: 220px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.bubble.user .bubble-file { color: var(--accent-ink); }
+/* A file held over the chat. */
+.drop-veil {
+  position: absolute;
+  inset: var(--s-2);
+  z-index: 70;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--s-2);
+  border: 2px dashed var(--accent-line);
+  border-radius: var(--r-xl);
+  font-weight: 650;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  pointer-events: none;
+}
+.drop-veil svg { width: 28px; height: 28px; }
+
+/* ---- The quick chat: a small window over every app ---------------------------- */
+
+html:has(.quick-chat),
+html:has(.quick-chat) body { background: transparent; }
+.quick-chat { height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; color: var(--ink); background: var(--sheet-glass); }
+.quick-bar { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 12px; font-size: var(--t-xs); font-weight: 650; color: var(--muted); user-select: none; -webkit-app-region: drag; }
+.quick-bar span { display: inline-flex; align-items: center; gap: 6px; }
+.quick-bar span svg { width: 13px; height: 13px; color: var(--accent); }
+.quick-bar button { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: var(--muted); -webkit-app-region: no-drag; }
+.quick-bar button:hover { color: var(--ink); background: var(--surface-hover); }
+.quick-bar button svg { width: 11px; height: 11px; }
+.quick-body { min-height: 0; }
+.assistant.is-compact { --gutter: var(--s-3); }
+.assistant.is-compact .chat-head { padding: var(--s-2) var(--s-3); }
+.assistant.is-compact .chat-title h2 { font-size: var(--t-md); }
+.assistant.is-compact .chat-head-actions .outline-button { display: inline-flex; }
+.assistant.is-compact .model-select select { min-width: 0; max-width: 120px; }
+.assistant.is-compact .thread-inner { padding-top: var(--s-4); gap: var(--s-4); }
+.assistant.is-compact .chat-welcome { padding: var(--s-6) 0 var(--s-4); }
+.assistant.is-compact .chat-welcome h3 { font-size: var(--t-xl); }
+.assistant.is-compact .chat-starters { grid-template-columns: minmax(0, 1fr); }
+.assistant.is-compact .composer { margin-bottom: var(--s-3); }
+.assistant.is-compact .composer-note { display: none; }

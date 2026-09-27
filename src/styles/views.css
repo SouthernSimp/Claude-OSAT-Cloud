@@ -5,21 +5,10 @@
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
-.bridge-preview, .connection-gate, .files-layout {
+.bridge-preview, .connection-gate {
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   box-shadow: var(--e-2);
-}
-.files-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-}
-.files-top h2 {
-  margin: 0;
-  font-size: 23px;
-  letter-spacing: -0.025em;
 }
 .check-row input, .habit-row input, .bridge-source-list input {
   accent-color: var(--accent);
@@ -381,132 +370,6 @@
 .connection-gate small {
   color: var(--faint);
 }
-.files-layout {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 28px;
-  border-radius: 20px;
-}
-.file-browser-grid {
-  min-height: 580px;
-  display: grid;
-  grid-template-columns: 220px minmax(260px, 0.8fr) minmax(300px, 1.2fr);
-  margin-top: 24px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-}
-.file-roots, .file-list, .file-preview {
-  min-width: 0;
-  overflow: auto;
-}
-.file-roots, .file-list {
-  border-right: 1px solid var(--line);
-}
-.file-roots h3, .breadcrumbs {
-  min-height: 50px;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-size: var(--t-2xs);
-}
-.file-roots > div {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
-  border-bottom: 1px solid var(--line);
-}
-.file-roots > div.active {
-  background: var(--accent-soft);
-}
-.file-roots > div > button:first-child, .file-list > button {
-  min-width: 0;
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  text-align: left;
-}
-.file-roots > p {
-  padding: 12px;
-  color: var(--muted);
-  font-size: var(--t-2xs);
-}
-.breadcrumbs {
-  gap: 4px;
-  overflow-x: auto;
-}
-.breadcrumbs button {
-  min-width: 34px;
-  min-height: 34px;
-  border: 0;
-  background: transparent;
-}
-.breadcrumbs span {
-  display: flex;
-  align-items: center;
-}
-.file-list > button {
-  width: 100%;
-  border-bottom: 1px solid var(--line);
-}
-.file-list > button span {
-  min-width: 0;
-  flex: 1;
-  display: grid;
-  gap: 3px;
-}
-.file-list > button strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.file-list > button small {
-  color: var(--muted);
-}
-.file-preview {
-  padding: 18px;
-}
-.file-preview > div {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.file-preview > div span {
-  display: grid;
-  gap: 3px;
-}
-.file-preview pre {
-  min-height: 430px;
-  overflow: auto;
-  margin: 18px 0;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface-sunken);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font:
-    11px/1.55 ui-monospace,
-    "SFMono-Regular",
-    Menlo,
-    monospace;
-}
-.file-preview > button {
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-}
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -517,19 +380,6 @@
     box-shadow:
       0 0 0 6px rgba(36, 87, 230, 0.12),
       0 16px 38px rgba(22, 31, 29, 0.16);
-  }
-}
-@media (max-width: 1100px) {
-.file-browser-grid {
-    grid-template-columns: 190px minmax(0, 1fr);
-  }
-.file-preview {
-    grid-column: 1 / -1;
-    min-height: 300px;
-    border-top: 1px solid var(--line);
-  }
-.file-preview pre {
-    min-height: 220px;
   }
 }
 @media (max-width: 900px) {
@@ -545,13 +395,9 @@
     grid-template-columns: minmax(0, 1fr);
   }
 .settings-rail { position: static; grid-auto-flow: column; overflow-x: auto; }
-.bridge-preview, .files-layout {
+.bridge-preview {
     padding: 20px;
     border-radius: 16px;
-  }
-.files-top {
-    align-items: flex-start;
-    flex-direction: column;
   }
 .review-row, .project-row, .money-row {
     align-items: flex-start;
@@ -571,18 +417,6 @@
   }
 .bridge-diff {
     grid-template-columns: minmax(0, 1fr);
-  }
-.file-browser-grid {
-    display: block;
-    min-height: 0;
-  }
-.file-roots, .file-list {
-    max-height: 320px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-.file-preview pre {
-    min-height: 220px;
   }
 .connection-gate {
     min-height: 360px;
@@ -872,3 +706,8 @@
 .settings-obsidian .bridge-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .settings-obsidian .bridge-steps span { min-height: 0; padding: 10px 12px; }
 .settings-obsidian .bridge-preview pre { max-height: 240px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+
+/* Settings → Shortcuts: one row each for the layer and the quick chat. */
+.shortcut-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-3) 0; border-top: 1px solid var(--line); }
+.shortcut-row p { margin: 0; }
+.shortcut-row strong { display: block; color: var(--ink); }

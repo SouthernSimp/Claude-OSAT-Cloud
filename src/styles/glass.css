@@ -116,9 +116,11 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .widget:hover:not(.is-moving) { translate: 0 -2px; }
 .icon .art-note,
 .icon .art-folder,
+.icon .art-file,
 .icon .art-board { transition: translate 420ms var(--spring), rotate 420ms var(--spring), box-shadow 420ms var(--glide); }
 .icon:hover .art-note { translate: 0 -4px; rotate: -2.5deg; box-shadow: var(--sheet-lift); }
 .icon:hover .art-folder,
+.icon:hover .art-file,
 .icon:hover .art-board { translate: 0 -3px; }
 .icon.is-moving .art-note { rotate: 3deg; box-shadow: var(--sheet-lift); }
 
@@ -513,7 +515,8 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 
 /* Inside a sheet every room wears glass: the same tokens, made see-through. */
 .room-sheet,
-.popout-body {
+.popout-body,
+.quick-chat {
   --page: transparent;
   --surface: rgb(255 255 255 / 30%);
   --surface-raised: rgb(255 255 255 / 58%);
@@ -528,7 +531,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   --tabletop: transparent;
   --day-page: rgb(255 255 255 / 40%);
 }
-:root[data-theme="dark"] :is(.room-sheet, .popout-body) {
+:root[data-theme="dark"] :is(.room-sheet, .popout-body, .quick-chat) {
   --surface: rgb(255 255 255 / 3%);
   --surface-raised: rgb(255 255 255 / 7%);
   --surface-sunken: rgb(0 0 0 / 16%);

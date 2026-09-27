@@ -14,10 +14,12 @@ const TEXT_EXTENSIONS = new Set([
 ])
 const TEXT_FILENAMES = new Set(['.gitignore'])
 const SECRET_FILENAMES = /^(?:\.env(?:\..*)?|\.netrc|\.npmrc|\.pypirc|client[_-]?secret.*\.json|credentials\.json|secrets?\.json)$/i
+// Documents, pictures and media. Apps, scripts and installers are shown in Finder instead.
 const SAFE_OPEN_EXTENSIONS = new Set([
-  '.avif', '.canvas', '.conf', '.csv', '.docx', '.gif', '.heic', '.ini', '.jpeg', '.jpg', '.json',
-  '.log', '.markdown', '.md', '.pdf', '.png', '.pptx', '.rtf', '.toml', '.tsv', '.txt', '.webp',
-  '.xlsx', '.xml', '.yaml', '.yml',
+  '.aif', '.aiff', '.avif', '.bmp', '.canvas', '.conf', '.csv', '.doc', '.docx', '.epub', '.flac', '.gif', '.heic',
+  '.ini', '.jpeg', '.jpg', '.json', '.key', '.log', '.m4a', '.m4v', '.markdown', '.md', '.mov', '.mp3', '.mp4',
+  '.numbers', '.odp', '.ods', '.odt', '.pages', '.pdf', '.png', '.ppt', '.pptx', '.psd', '.rtf', '.rtfd', '.tif',
+  '.tiff', '.toml', '.tsv', '.txt', '.wav', '.webp', '.xls', '.xlsx', '.xml', '.yaml', '.yml', '.zip',
 ])
 
 function sha256(buffer) {

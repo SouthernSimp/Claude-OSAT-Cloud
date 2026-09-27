@@ -24,6 +24,7 @@ export function deriveTitle(chat) {
 
 const text = (value, fallback = '') => (typeof value === 'string' ? value : fallback)
 const ids = (value) => (Array.isArray(value) ? value.filter((id) => typeof id === 'string').slice(0, 8) : [])
+const names = (value) => (Array.isArray(value) ? value.filter((name) => typeof name === 'string').slice(0, 3).map((name) => name.slice(0, 200)) : [])
 
 /* Deterministic, so loading a workspace never rewrites chats that were fine. */
 export function normalizeChat(value) {
@@ -37,6 +38,7 @@ export function normalizeChat(value) {
       content: message.content,
       at: text(message.at),
       ...(ids(message.noteIds).length ? { noteIds: ids(message.noteIds) } : {}),
+      ...(names(message.files).length ? { files: names(message.files) } : {}),
       ...(typeof message.savedNoteId === 'string' ? { savedNoteId: message.savedNoteId } : {}),
     }))
   return { id: value.id, title: text(value.title), messages, createdAt: text(value.createdAt), updatedAt: text(value.updatedAt, text(value.createdAt)) }
@@ -66,13 +68,29 @@ export function notesContext(notes, noteIds) {
   return chosen.map((note) => `NOTE: ${note.title || 'Untitled'}\n${String(note.markdown || '').slice(0, 1600)}`).join('\n\n').slice(0, 12000)
 }
 
+/* Files attached to a question, sharing one allowance so they fit beside the notes.
+   ponytail: 12,000 characters in all; the engine's 8k-token context is the ceiling
+   (desktop/ai/runtime.cjs) if longer files ever matter. */
+export const FILE_CHARS = 12000
+export function filesContext(files) {
+  const share = Math.floor(FILE_CHARS / Math.max(files.length, 1))
+  return files.map((file) => {
+    const cut = file.truncated || file.text.length > share
+    return `[FILE: ${file.name}${cut ? ' — only the start of it' : ''}]\n${file.text.slice(0, share)}`
+  }).join('\n\n')
+}
+
 /* The messages sent to the model: the system prompt, the conversation so far,
-   and the new question with the chosen notes attached. */
-export function outbound(system, history, question, notes, noteIds) {
-  const context = noteIds.length ? notesContext(notes, noteIds) : ''
+   and the new question with the chosen notes and any attached files. */
+export function outbound(system, history, question, notes, noteIds, files = []) {
+  const fromNotes = noteIds.length ? notesContext(notes, noteIds) : ''
+  const context = [
+    fromNotes && `[FROM MY NOTES — use them if they help]\n${fromNotes}`,
+    files.length && filesContext(files),
+  ].filter(Boolean).join('\n\n')
   return [
     { role: 'system', content: system },
     ...history.filter((message) => message.content.trim()).slice(-20).map(({ role, content }) => ({ role, content })),
-    { role: 'user', content: context ? `${question}\n\n[FROM MY NOTES — use them if they help]\n${context}` : question },
+    { role: 'user', content: context ? `${question}\n\n${context}` : question },
   ]
 }

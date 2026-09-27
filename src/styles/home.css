@@ -230,20 +230,6 @@
 .home-chip.is-good i { background: var(--positive); }
 .home-chip.is-bad i { background: var(--critical); }
 .home-chip button { color: var(--on-1); text-decoration: underline; text-underline-offset: 2px; }
-.home-composer-wrap .field-banner {
-  position: absolute;
-  top: calc(100% + 22px);
-  left: 50%;
-  translate: -50% 0;
-  width: max-content;
-  max-width: min(620px, 100%);
-  border: 0;
-  background: var(--glass-strong);
-  box-shadow: var(--glass-rim), var(--glass-shadow);
-}
-.home-composer-wrap .field-banner p,
-.home-composer-wrap .field-banner button:not(.primary-button) { color: var(--on-2); }
-.home-composer-wrap .field-banner button:not(.primary-button):hover { color: var(--on-1); }
 
 /* Ask, right here: the answer grows under the line. */
 .home-answer {
@@ -266,7 +252,7 @@
 /* While an answer is open the line lifts, so the answer has room. */
 .home-center { transition: grid-template-rows 520ms var(--spring-soft); }
 .home-center:has(.home-answer) { grid-template-rows: auto minmax(0, 0.2fr) auto auto minmax(0, 1.8fr); }
-.home-center:has(.home-answer) :is(.field-banner, .evening-pill) { display: none; }
+.home-center:has(.home-answer) .evening-pill { display: none; }
 .home-answer header { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--t-sm); color: var(--on-2); }
 .home-answer header > svg { flex: none; width: 14px; height: 14px; color: var(--accent); }
 .home-answer header strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -290,7 +276,13 @@
 /* ---- Icons ----------------------------------------------------------- */
 
 .home-icons { grid-column: 3; grid-row: 1; min-height: 0; display: flex; flex-direction: column; align-items: flex-end; }
-.icons-toggle { width: 28px; height: 22px; margin: -6px 8px 2px 0; display: grid; place-items: center; border-radius: 8px; color: var(--on-3); }
+.icons-head { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin: -6px 8px 4px 0; }
+.icons-toggle { width: 28px; height: 22px; display: grid; place-items: center; border-radius: 8px; color: var(--on-3); }
+/* Desktop · OSAT: what the right side shows. */
+.icons-switch { display: inline-flex; padding: 2px; border-radius: var(--r-full); background: color-mix(in srgb, var(--on-1) 10%, transparent); }
+.icons-switch button { padding: 3px 10px; border-radius: var(--r-full); font: 620 var(--t-2xs)/1.3 var(--font); color: var(--on-2); }
+.icons-switch button:hover { color: var(--on-1); }
+.icons-switch button[aria-checked="true"] { color: var(--on-solid-ink); background: var(--on-solid); }
 .icons-toggle:hover { color: var(--on-1); background: color-mix(in srgb, var(--on-1) 12%, transparent); }
 .icons-toggle svg { width: 13px; height: 13px; transition: rotate var(--d-base) var(--ease-out); }
 .icons-collapsed .icons-toggle svg { rotate: 90deg; }
@@ -371,11 +363,16 @@
   color: var(--on-1);
   background: color-mix(in srgb, var(--on-1) 14%, transparent);
 }
-.home-icons.is-sample .art-note { outline: 1px dashed color-mix(in srgb, var(--on-1) 45%, transparent); outline-offset: 2px; }
+.art-file { width: 58px; height: 58px; object-fit: contain; filter: drop-shadow(0 2px 3px rgb(0 0 0 / 18%)); }
+.art-file.file-glyph { color: var(--on-2); filter: none; }
+/* Like the Mac's desktop: two lines of name, and the picked one lit. */
+.icon.is-file .icon-label { white-space: normal; display: -webkit-box; text-align: center; overflow-wrap: anywhere; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.icon.is-picked { background: color-mix(in srgb, var(--on-1) 15%, transparent); }
+.icon.is-picked .icon-label { padding: 0 4px; border-radius: 4px; color: var(--accent-ink); background: var(--accent); text-shadow: none; }
+.icons-note { max-width: 300px; margin: 4px 10px 0; font-size: var(--t-2xs); text-align: right; color: var(--on-2); text-shadow: var(--home-text-shadow); }
 .icon.is-fresh { animation: icon-pop 420ms var(--ease-spring) both; }
 .icons-empty { grid-column: 1 / -1; padding: 8px 10px; text-align: right; }
 .icons-empty p { font-size: var(--t-sm); color: var(--on-2); text-shadow: var(--home-text-shadow); }
-.icons-empty button { margin-top: 6px; font-size: var(--t-sm); color: var(--on-1); text-decoration: underline; text-underline-offset: 3px; }
 @keyframes icon-pop { from { opacity: 0; scale: 0.8; } }
 
 /* ---- Dock ------------------------------------------------------------ */
@@ -512,13 +509,12 @@
   .mode-pill button { justify-content: center; padding: 0 4px; font-size: var(--t-xs); }
   .home-greeting { margin: 26px 0 16px; font-size: 28px; }
   .home-composer-wrap { width: 100%; }
-  .home-composer-wrap .field-banner { position: static; translate: none; width: 100%; }
   .home-widgets { order: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .widget-day,
   .widget-month { height: auto; aspect-ratio: 1; }
   .widget-next { grid-column: 1 / -1; }
   .home-icons { order: 2; align-items: stretch; }
-  .icons-toggle { align-self: flex-end; }
+  .icons-head { align-self: flex-end; }
   .icon-grid { flex: none; height: 206px; grid-template-columns: repeat(4, minmax(0, 1fr)); justify-content: stretch; }
   .dock { display: none; }
 }

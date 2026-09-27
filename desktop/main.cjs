@@ -16,6 +16,8 @@ const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
 const { DEFAULT_HOTKEY, addLauncher, createOverlay, hotkeyLabel, placeItem, validHotkey } = require('./overlay.cjs')
+const { createQuickChat } = require('./quick-chat.cjs')
+const { PLACES, extractText, isPackage, locate, run, searchArgs } = require('./mac-files.cjs')
 const { createMedia } = require('./media.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
@@ -23,12 +25,18 @@ const APP_URL = pathToFileURL(APP_ENTRY).href
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const WRITABLE_EXTENSIONS = new Set(['.canvas', '.markdown', '.md'])
 
+const CHAT_HOTKEY = 'Alt+Shift+Space'
+
 let mainWindow
 let overlay
+let quickChat
 let tray
-let prefs = { hotkey: DEFAULT_HOTKEY, launchers: [], places: {}, ai: { tier: null }, welcomed: false, phone: false }
-let hotkey = null
-let hotkeyFailed = false
+let prefs = { hotkey: DEFAULT_HOTKEY, chatHotkey: CHAT_HOTKEY, chatBounds: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, phone: false }
+// The two shortcuts: the layer and the quick chat. `value` is null when another app has it.
+const shortcuts = {
+  layer: { value: null, failed: false, run: () => overlay?.toggle() },
+  chat: { value: null, failed: false, run: () => quickChat?.toggle() },
+}
 let ai
 let trayAiLine = ''
 let holdOverlay = false
@@ -61,11 +69,21 @@ function publicGrant(grant) {
   return {
     id: grant.id,
     kind: grant.kind,
-    name: path.basename(grant.root) || (grant.kind === 'folder' ? 'Folder' : 'File'),
+    name: grant.name || path.basename(grant.root) || (grant.kind === 'folder' ? 'Folder' : 'File'),
+    ...(grant.place ? { place: true } : {}),
   }
 }
 
+/* Desktop, Documents and Downloads are always there to look in; macOS asks once
+   before OSAT opens each. Tests (from source) keep them in a stand-in folder. */
+function places() {
+  const stand = !app.isPackaged && process.env.OSAT_PLACES_DIR
+  return PLACES.map((place) => ({ ...place, kind: 'folder', place: true, root: stand ? path.join(stand, place.name) : app.getPath(place.id) }))
+}
+
 function getGrant(id) {
+  const place = places().find((item) => item.id === id)
+  if (place) return place
   if (typeof id !== 'string' || !UUID.test(id)) fail('Invalid file access grant.')
   const grant = grants.find((item) => item.id === id)
   if (!grant) fail('That file access grant is no longer available.')
@@ -93,7 +111,8 @@ function ensureGrantAccess(grant) {
   }
 }
 
-/* Files answer only the main OSAT window; the browser and the terminal also answer the layer. */
+/* Choosing, writing and forgetting answer only the main OSAT window; looking at files,
+   the browser and the terminal also answer the layer. */
 function assertMainWindow(event) {
   if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) fail('Only the main OSAT window can do that.')
 }
@@ -113,10 +132,13 @@ function assertTrustedSender(event) {
 
 async function approvedPath(grant, relative = '') {
   if (grant.kind === 'file' && relative !== '') fail('A selected file has no child items.')
+  // Hidden files and folders stay hidden, as in Finder.
+  if (grant.place && String(relative).split('/').some((part) => part.startsWith('.'))) fail('Invalid relative file path.')
   ensureGrantAccess(grant)
   try {
-    return await resolveApprovedPath(grant.root, relative)
+    return await resolveApprovedPath(grant.place ? await fs.realpath(grant.root) : grant.root, relative)
   } catch (error) {
+    if (error.code === 'EPERM' || error.code === 'EACCES') fail(NOT_ALLOWED)
     if (error.message === 'INVALID_RELATIVE_PATH' || error.message === 'PATH_OUTSIDE_ROOT') {
       fail('Invalid relative file path.')
     }
@@ -183,6 +205,8 @@ function mutateGrants(change) {
   return result
 }
 
+const NOT_ALLOWED = 'OSAT isn’t allowed into that folder yet. Allow it in System Settings → Privacy & Security → Files and Folders.'
+
 /* from: 'main' (the default), 'app' (main or the layer), 'overlay' (the layer) or 'any'. */
 function handle(channel, operation, { from = 'main' } = {}) {
   ipcMain.handle(channel, async (event, ...args) => {
@@ -194,6 +218,7 @@ function handle(channel, operation, { from = 'main' } = {}) {
       return await operation(...args)
     } catch (error) {
       if (error instanceof FileAccessError) throw error
+      if (error.code === 'EPERM' || error.code === 'EACCES') throw new FileAccessError(NOT_ALLOWED)
       console.error(`Local file operation failed (${channel}):`, error)
       throw new FileAccessError('Local file access failed.')
     }
@@ -203,8 +228,8 @@ function handle(channel, operation, { from = 'main' } = {}) {
 function registerFileHandlers() {
   handle('files:roots', async () => {
     await mutation
-    return grants.map(publicGrant)
-  })
+    return [...places(), ...grants].map(publicGrant)
+  }, { from: 'app' })
 
   handle('files:choose', async (kind) => {
     if (!['folder', 'file', 'files'].includes(kind)) fail('Choose either a folder or files.')
@@ -258,25 +283,27 @@ function registerFileHandlers() {
 
     const entries = []
     for (const item of await fs.readdir(directory, { withFileTypes: true })) {
+      if (item.name.startsWith('.')) continue
       const itemRelative = relative ? `${relative}/${item.name}` : item.name
       try {
         const resolved = await approvedPath(grant, itemRelative)
         const stat = await fs.stat(resolved)
-        const kind = stat.isDirectory() ? 'folder' : stat.isFile() ? 'file' : null
+        // An app or a Pages document is a folder underneath; Finder shows it as one file.
+        const kind = stat.isDirectory() ? (isPackage(item.name) ? 'file' : 'folder') : stat.isFile() ? 'file' : null
         if (!kind) continue
         entries.push({
           kind,
           name: item.name,
           relative: itemRelative,
-          size: kind === 'file' ? stat.size : undefined,
+          size: stat.isFile() ? stat.size : undefined,
           modifiedAt: stat.mtime.toISOString(),
         })
       } catch {
         // Broken links and links escaping the approved root stay invisible.
       }
     }
-    return entries.sort((a, b) => Number(a.kind === 'file') - Number(b.kind === 'file') || a.name.localeCompare(b.name))
-  })
+    return entries.sort((a, b) => Number(a.kind === 'file') - Number(b.kind === 'file') || a.name.localeCompare(b.name, undefined, { numeric: true }))
+  }, { from: 'app' })
 
   handle('files:read-text', async (rootId, relative = '') => {
     const grant = getGrant(rootId)
@@ -317,26 +344,106 @@ function registerFileHandlers() {
     }
   })
 
+  // Documents, pictures and media open in their app. Folders, apps, scripts and
+  // installers are shown in Finder instead, so nothing runs from inside OSAT.
   handle('files:open', async (rootId, relative = '') => {
     const target = await approvedPath(getGrant(rootId), relative)
-    const stat = await fs.stat(target)
-    if (stat.isDirectory()) {
+    if (!isSafeOpenFilename(path.basename(target))) {
       shell.showItemInFolder(target)
-      return true
-    }
-    if (!stat.isFile() || !isSafeOpenFilename(path.basename(target))) {
-      fail('Only safe documents, text files, images, and PDFs can be opened.')
+      return 'shown'
     }
     if (await shell.openPath(target)) fail('The system could not open that item.')
+    return 'opened'
+  }, { from: 'app' })
+
+  handle('files:reveal', async (rootId, relative = '') => {
+    shell.showItemInFolder(await approvedPath(getGrant(rootId), relative))
     return true
-  })
+  }, { from: 'app' })
+
+  // What Finder would show for it: a picture of the page, or the file's own icon.
+  handle('files:thumb', async (rootId, relative = '', size = 128) => thumbnail(await approvedPath(getGrant(rootId), relative), size), { from: 'app' })
+
+  // The Mac's own Quick Look, over whichever OSAT window asked.
+  handle('files:quick-look', async (rootId, relative = '') => {
+    const target = await approvedPath(getGrant(rootId), relative)
+    const window = BrowserWindow.getFocusedWindow() || mainWindow
+    if (process.platform !== 'darwin' || !window) return false
+    // Over the layer OSAT holds Esc, so the next Esc closes Quick Look first.
+    if (window === overlay?.window) quickLooking = true
+    window.previewFile(target)
+    return true
+  }, { from: 'app' })
+
+  // Spotlight, by name, only in Desktop, Documents, Downloads and folders Nate added.
+  handle('files:search', async (query) => {
+    const words = typeof query === 'string' ? query.trim() : ''
+    if (process.platform !== 'darwin' || words.length < 2 || words.length > 100) return []
+    const roots = await Promise.all([...places(), ...grants.filter((grant) => grant.kind === 'folder')]
+      .map(async (grant) => ({ id: grant.id, root: await fs.realpath(grant.root).catch(() => grant.root) })))
+    const out = await run('mdfind', searchArgs(words, roots.map((item) => item.root)), { timeout: 4000 }).catch(() => '')
+    const found = locate(out.split('\n').filter(Boolean).slice(0, 400), roots, words)
+    return (await Promise.all(found.map(async (item) => {
+      const stat = await fs.stat(path.join(roots.find((root) => root.id === item.rootId).root, item.relative)).catch(() => null)
+      return stat && { ...item, kind: stat.isDirectory() && !isPackage(item.name) ? 'folder' : 'file' }
+    }))).filter(Boolean)
+  }, { from: 'app' })
+
+  // The text Ask reads from a file in a folder OSAT can see…
+  handle('files:extract', async (rootId, relative = '') => {
+    const target = await approvedPath(getGrant(rootId), relative)
+    return { name: path.basename(target), ...await readForAsk(target) }
+  }, { from: 'app' })
+
+  // …or from one dropped on a chat (the preload turns the dropped file into its path;
+  // a page can't make up a path) or chosen here. null asks with the open panel.
+  handle('files:attach', async (dropped) => {
+    let target = dropped
+    if (target === null) {
+      const result = await holdingLayer(() => dialog.showOpenDialog({ title: 'Choose a file for Ask', properties: ['openFile'] }))
+      if (result.canceled || !result.filePaths[0]) return null
+      target = result.filePaths[0]
+    }
+    if (typeof target !== 'string' || !path.isAbsolute(target)) fail('Drop a file from Finder to read it.')
+    return { name: path.basename(target), ...await readForAsk(target) }
+  }, { from: 'any' })
 
   handle('files:forget', async (rootId) => {
-    getGrant(rootId)
+    if (getGrant(rootId).place) fail('Desktop, Documents and Downloads are always here.')
     stopGrantAccess(rootId)
     await mutateGrants(async (current) => current.filter((grant) => grant.id !== rootId))
     return grants.map(publicGrant)
   })
+}
+
+async function readForAsk(file) {
+  try {
+    return await extractText(file)
+  } catch (error) {
+    if (error.message === 'UNREADABLE') fail('Ask can read text, Markdown, PDFs and Word files.')
+    if (error.message === 'EMPTY') fail('That file has no text to read. A scanned PDF is only pictures of pages.')
+    if (error.message === 'FILE_TOO_LARGE') fail('That file is too large to read.')
+    if (error.message === 'INVALID_UTF8') fail('That file isn’t plain text.')
+    if (error.code === 'ENOENT') fail('That file is no longer there.')
+    if (error.killed) fail('Reading that file took too long.')
+    throw error
+  }
+}
+
+/* Thumbnails come from Quick Look (a page, a picture, or the file's own icon) and
+   are kept while the file stays the same. Elsewhere there is only the plain icon. */
+const thumbs = new Map()
+async function thumbnail(file, size = 128) {
+  const px = Math.min(Math.max(Math.round(Number(size) || 128), 32), 1024)
+  const stat = await fs.stat(file)
+  const key = `${file}\0${stat.mtimeMs}\0${px}`
+  if (!thumbs.has(key)) {
+    if (thumbs.size > 600) thumbs.delete(thumbs.keys().next().value)
+    thumbs.set(key, process.platform === 'darwin' || process.platform === 'win32'
+      ? nativeImage.createThumbnailFromPath(file, { width: px, height: px }).then((image) => image.toDataURL(), () => null)
+      : Promise.resolve(null))
+  }
+  return thumbs.get(key)
 }
 
 function windowStateFile() {
@@ -445,7 +552,8 @@ function buildMenu() {
       submenu: [
         { label: 'New Thought', accelerator: 'CmdOrCtrl+Shift+N', click: () => command({ view: 'Capture' }) },
         { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => command({ view: 'Notes', detail: { action: 'new' } }) },
-        { label: 'Show OSAT Layer', accelerator: hotkey || undefined, registerAccelerator: false, click: () => overlay?.show() },
+        { label: 'Show OSAT Layer', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => overlay?.show() },
+        { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
         { type: 'separator' },
         { label: 'New Browser Tab', accelerator: 'CmdOrCtrl+T', click: () => command({ view: 'Browser', action: 'new-tab' }) },
         ...(terminals?.available ? [{ label: 'New Terminal', accelerator: 'CmdOrCtrl+Shift+T', click: () => command({ view: 'Terminal', action: 'new-terminal' }) }] : []),
@@ -464,6 +572,7 @@ function buildMenu() {
         room('Notes', 'Notes', 'CmdOrCtrl+2'),
         room('Map', 'Mindmap', 'CmdOrCtrl+3'),
         room('Ask', 'Assistant', 'CmdOrCtrl+4'),
+        room('Files', 'Files', 'CmdOrCtrl+5'),
         room('Sky', 'Sky'),
         { type: 'separator' },
         room('Today’s Page', 'Journal'),
@@ -472,7 +581,6 @@ function buildMenu() {
         room('Reflect', 'Reflection'),
         room('Money', 'Budget'),
         room('Projects', 'Projects'),
-        room('Files', 'Files'),
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
       ],
@@ -493,7 +601,7 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   app.dock?.setMenu(Menu.buildFromTemplate([
     { label: 'Show OSAT Layer', click: () => overlay?.show() },
-    { label: 'Local AI', click: () => command({ view: 'Assistant' }) },
+    { label: 'Quick Chat', click: () => quickChat?.show() },
     { label: 'New Browser Tab', click: () => command({ view: 'Browser', action: 'new-tab' }) },
   ]))
 }
@@ -630,6 +738,9 @@ async function loadPrefs() {
     const saved = JSON.parse(await fs.readFile(prefsFile(), 'utf8'))
     prefs = {
       hotkey: validHotkey(saved.hotkey) ? saved.hotkey : DEFAULT_HOTKEY,
+      chatHotkey: validHotkey(saved.chatHotkey) ? saved.chatHotkey : CHAT_HOTKEY,
+      chatBounds: ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(saved.chatBounds?.[key]))
+        ? { x: saved.chatBounds.x, y: saved.chatBounds.y, width: saved.chatBounds.width, height: saved.chatBounds.height } : null,
       launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
       places: Object.entries(saved.places || {}).reduce((places, [id, spot]) => placeItem(places, id, spot), {}),
       ai: { tier: typeof saved.ai?.tier === 'string' ? saved.ai.tier : null },
@@ -657,26 +768,69 @@ function savePrefs() {
   return prefsSaving
 }
 
-/* Registers a new hotkey, or keeps the old one when the new one is taken. */
-function useHotkey(value) {
+/* Registers a new shortcut ('layer' or 'chat'), or keeps the old one when the new one is taken. */
+function useHotkey(which, value) {
+  const shortcut = shortcuts[which]
   if (!validHotkey(value)) return false
-  if (value === hotkey) return true
-  if (hotkey) globalShortcut.unregister(hotkey)
-  const ok = globalShortcut.register(value, () => overlay?.toggle())
-  if (!ok && hotkey) globalShortcut.register(hotkey, () => overlay?.toggle())
-  if (ok) hotkey = value
-  hotkeyFailed = !hotkey
+  if (value === shortcut.value) return true
+  if (shortcut.value) globalShortcut.unregister(shortcut.value)
+  // A panel shown while the keys are still going down can lose focus a moment later,
+  // and then typing goes nowhere; 60 ms later it keeps it.
+  const run = () => setTimeout(shortcut.run, 60)
+  const ok = globalShortcut.register(value, run)
+  if (!ok && shortcut.value) globalShortcut.register(shortcut.value, run)
+  if (ok) shortcut.value = value
+  shortcut.failed = !shortcut.value
   buildMenu()
   updateTray()
   return ok
 }
 
+const shortcutInfo = (which) => {
+  const shortcut = shortcuts[which]
+  return { hotkey: shortcut.value, label: hotkeyLabel(shortcut.value || (which === 'chat' ? prefs.chatHotkey : prefs.hotkey)), failed: shortcut.failed }
+}
+
+/* A macOS panel swallows Esc before the page sees it, so while the layer is up or the
+   quick chat has focus, OSAT takes Esc itself and hands it to that page. */
+// ponytail: closing Quick Look with Space or its button leaves this set, so the next Esc
+// only closes nothing; a Quick Look panel delegate would know, if that ever matters.
+let quickLooking = false
+function routeEscape() {
+  if (quickLooking) {
+    quickLooking = false
+    overlay?.window.closeFilePreview()
+  } else if (quickChat?.window.isFocused()) quickChat.window.webContents.send('chat:escape')
+  else if (overlay?.visible()) overlay.window.webContents.send('overlay:escape')
+}
+function claimEscape() {
+  if (process.platform === 'darwin' && !globalShortcut.isRegistered('Escape')) globalShortcut.register('Escape', routeEscape)
+}
+function releaseEscape() {
+  if (!overlay?.visible() && !quickChat?.window.isFocused()) globalShortcut.unregister('Escape')
+}
+
+/* An open panel takes focus from the layer, which would put it away; it waits instead. */
+async function holdingLayer(task) {
+  const shown = overlay?.visible()
+  holdOverlay = true
+  globalShortcut.unregister('Escape')
+  try {
+    return await task()
+  } finally {
+    holdOverlay = false
+    if (shown) {
+      overlay.show()
+      claimEscape()
+    }
+  }
+}
+
 const launcherIcons = new Map()
 async function launcherList() {
   return Promise.all(prefs.launchers.map(async (item) => {
-    if (!launcherIcons.has(item.path)) {
-      launcherIcons.set(item.path, await app.getFileIcon(item.path, { size: 'large' }).then((icon) => icon.toDataURL()).catch(() => ''))
-    }
+    // getFileIcon's large size crashes Electron 43 on the Mac; Quick Look gives the same icon.
+    if (!launcherIcons.has(item.path)) launcherIcons.set(item.path, await thumbnail(item.path, 128).catch(() => null) || '')
     return { ...item, icon: launcherIcons.get(item.path) }
   }))
 }
@@ -696,10 +850,13 @@ function registerOverlay() {
     },
     onBlur: () => { if (!holdOverlay && !overlay.window.webContents.isDevToolsOpened()) overlay.hide() },
   })
-  // A macOS panel swallows Esc before the page sees it, so while the layer is up
-  // OSAT takes Esc itself and hands it to the page as an ordinary key press.
-  overlay.window.on('show', escapeToLayer)
-  overlay.window.on('hide', () => globalShortcut.unregister('Escape'))
+  overlay.window.on('show', claimEscape)
+  // Quick Look opened over the layer goes away with it.
+  overlay.window.on('hide', () => {
+    if (quickLooking) overlay.window.closeFilePreview()
+    quickLooking = false
+    releaseEscape()
+  })
 
   const fromOverlay = (event) => {
     assertTrustedSender(event)
@@ -718,33 +875,27 @@ function registerOverlay() {
     if (process.platform === 'darwin') app.focus({ steal: true })
     command({ view, detail: detail && typeof detail === 'object' ? detail : null })
   })
-  // The hotkey can be read and changed from the layer or from Settings in the main window.
-  handle('overlay:prefs', async () => ({ hotkey, label: hotkeyLabel(hotkey || prefs.hotkey), failed: hotkeyFailed, launchers: await launcherList(), places: prefs.places }), { from: 'app' })
-  handle('overlay:set-hotkey', async (value) => {
+  // The shortcuts can be read and changed from the layer or from Settings in the main window.
+  handle('overlay:prefs', async () => ({ ...shortcutInfo('layer'), chat: shortcutInfo('chat'), launchers: await launcherList(), places: prefs.places }), { from: 'app' })
+  handle('overlay:set-hotkey', async (value, which = 'layer') => {
+    if (!shortcuts[which]) fail('That isn’t one of OSAT’s shortcuts.')
     if (!validHotkey(value)) fail('Use one or more of ⌘ ⌃ ⌥ ⇧ with one key.')
-    if (!useHotkey(value)) fail(`${hotkeyLabel(value)} is taken by another app. Try a different one.`)
-    prefs = { ...prefs, hotkey: value }
+    if (Object.entries(shortcuts).some(([id, other]) => id !== which && other.value === value)) fail(`${hotkeyLabel(value)} already opens the ${which === 'chat' ? 'OSAT layer' : 'quick chat'}.`)
+    if (!useHotkey(which, value)) fail(`${hotkeyLabel(value)} is taken by another app. Try a different one.`)
+    prefs = { ...prefs, [which === 'chat' ? 'chatHotkey' : 'hotkey']: value }
     await savePrefs()
-    return { hotkey, label: hotkeyLabel(hotkey), failed: false }
+    return shortcutInfo(which)
   }, { from: 'app' })
   handle('overlay:add-launcher', async () => {
-    holdOverlay = true
-    globalShortcut.unregister('Escape')
-    try {
-      const result = await dialog.showOpenDialog(overlay.window, {
-        title: 'Add an app to the dock',
-        defaultPath: '/Applications',
-        properties: ['openFile'],
-        filters: [{ name: 'Applications', extensions: ['app'] }],
-      })
-      if (!result.canceled && result.filePaths[0]) {
-        prefs = { ...prefs, launchers: addLauncher(prefs.launchers, result.filePaths[0]) }
-        await savePrefs()
-      }
-    } finally {
-      holdOverlay = false
-      overlay.show()
-      escapeToLayer()
+    const result = await holdingLayer(() => dialog.showOpenDialog(overlay.window, {
+      title: 'Add an app to the dock',
+      defaultPath: '/Applications',
+      properties: ['openFile'],
+      filters: [{ name: 'Applications', extensions: ['app'] }],
+    }))
+    if (!result.canceled && result.filePaths[0]) {
+      prefs = { ...prefs, launchers: addLauncher(prefs.launchers, result.filePaths[0]) }
+      await savePrefs()
     }
     return launcherList()
   }, { from: 'overlay' })
@@ -776,9 +927,52 @@ function registerOverlay() {
   }, { from: 'overlay' })
 }
 
-function escapeToLayer() {
-  if (process.platform !== 'darwin' || globalShortcut.isRegistered('Escape')) return
-  globalShortcut.register('Escape', () => overlay.window.webContents.send('overlay:escape'))
+/* ---- The quick chat (⌥⇧Space): Ask in a small window over every app ---- */
+
+let chatSaveTimer
+function registerQuickChat() {
+  quickChat = createQuickChat({
+    BrowserWindow,
+    screen,
+    platform: process.platform,
+    preload: path.join(__dirname, 'preload.cjs'),
+    saved: prefs.chatBounds,
+    load: (window) => {
+      window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+      window.webContents.on('will-navigate', (event, url) => {
+        if (url !== window.webContents.getURL()) event.preventDefault()
+      })
+      window.loadFile(APP_ENTRY, { query: { surface: 'chat' } })
+    },
+    onMoved: (bounds) => {
+      prefs = { ...prefs, chatBounds: bounds }
+      clearTimeout(chatSaveTimer)
+      chatSaveTimer = setTimeout(() => savePrefs().catch(() => {}), 800)
+    },
+  })
+  quickChat.window.on('focus', claimEscape)
+  quickChat.window.on('blur', releaseEscape)
+  quickChat.window.on('hide', releaseEscape)
+
+  const fromChat = (event) => {
+    assertTrustedSender(event)
+    if (event.sender !== quickChat.window.webContents) fail('Only the quick chat can do that.')
+  }
+  ipcMain.on('chat:hide', (event) => { try { fromChat(event); quickChat.hide() } catch { /* ignored */ } })
+  // "Open in OSAT": the chat moves to the Ask room in the main window.
+  ipcMain.on('chat:open-in-window', (event, view, detail) => {
+    try { fromChat(event) } catch { return }
+    if (typeof view !== 'string') return
+    quickChat.hide()
+    if (process.platform === 'darwin') app.focus({ steal: true })
+    command({ view, detail: detail && typeof detail === 'object' ? detail : null })
+  })
+  // Pop a chat out of the window or the layer: { chatId } or { prompt }, or nothing for the last one.
+  handle('chat:show', (detail) => {
+    overlay?.hide()
+    quickChat.show(detail && typeof detail === 'object' ? { chatId: typeof detail.chatId === 'string' ? detail.chatId : undefined, prompt: typeof detail.prompt === 'string' ? detail.prompt.slice(0, 8000) : undefined } : null)
+    return true
+  }, { from: 'app' })
 }
 
 function aiLine() {
@@ -796,11 +990,12 @@ function updateTray() {
   if (!tray || tray.isDestroyed()) return
   trayAiLine = aiLine()
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Show OSAT Layer', accelerator: hotkey || undefined, registerAccelerator: false, click: () => overlay.show() },
+    { label: 'Show OSAT Layer', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => overlay.show() },
+    { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
     { label: 'Open OSAT', click: () => focusMain() },
     { type: 'separator' },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
-    { label: hotkeyFailed ? 'Shortcut not set · choose one…' : `Change shortcut (${hotkeyLabel(hotkey)})…`, click: () => command({ view: 'Settings' }) },
+    { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'shortcut' } }) },
     ...(app.isPackaged ? [{
       label: 'Open at Login',
       type: 'checkbox',
@@ -1092,10 +1287,13 @@ app.whenReady().then(async () => {
   registerAi()
   await registerPhone()
   registerOverlay()
+  registerQuickChat()
   await createWindow()
   createTray()
-  // If the shortcut is taken by another app, open Settings so a new one can be picked.
-  if (!useHotkey(prefs.hotkey)) command({ view: 'Settings', detail: { section: 'shortcut' } })
+  // If the layer's shortcut is taken by another app, open Settings so a new one can be picked.
+  // The quick chat's is quieter: Settings says so when you look.
+  useHotkey('chat', prefs.chatHotkey)
+  if (!useHotkey('layer', prefs.hotkey)) command({ view: 'Settings', detail: { section: 'shortcut' } })
   // Clicking the Dock icon reopens the main window, even while the hidden layer exists.
   app.on('activate', () => focusMain())
 })

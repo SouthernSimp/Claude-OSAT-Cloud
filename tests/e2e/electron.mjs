@@ -8,6 +8,8 @@
 //   5. the iPhone link: a file in the iCloud Inbox becomes a thought, and the copy of
 //      the notes appears, then leaves when the link is turned off (a stand-in iCloud Drive)
 //   6. two OSATs (their own data, one iCloud Drive) keep each other in step
+//   7. the Mac's Desktop on the desk (a stand-in folder): a folder opens in Files, and Ask reads a file
+//   8. the quick chat: its own window answers, and Esc puts it away
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import os from 'node:os'
@@ -18,7 +20,7 @@ import { _electron as electron } from 'playwright'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 const home = await mkdtemp(path.join(os.tmpdir(), 'osat-e2e-'))
-const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive') }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac') }
 const dataFile = path.join(home, 'OSAT Test', 'store', 'workspace.json')
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }
@@ -55,6 +57,14 @@ async function openSecondWindow(app, surface = '') {
 }
 
 try {
+  // A stand-in Desktop, Documents and Downloads.
+  await mkdir(path.join(home, 'Mac', 'Desktop', 'Plans'), { recursive: true })
+  await mkdir(path.join(home, 'Mac', 'Documents'), { recursive: true })
+  await mkdir(path.join(home, 'Mac', 'Downloads'), { recursive: true })
+  await writeFile(path.join(home, 'Mac', 'Desktop', 'Trip notes.md'), '# Trip\nLeave Friday')
+  await writeFile(path.join(home, 'Mac', 'Desktop', '.hidden'), 'never shown')
+  await writeFile(path.join(home, 'Mac', 'Desktop', 'Plans', 'packing.txt'), 'Tent, stove, a good book')
+
   // 1. The welcome, then a thought on home; quit, reopen.
   let { app, main } = await launch()
   const welcome = main.getByRole('dialog', { name: /Everything stays on this Mac/ })
@@ -90,6 +100,49 @@ try {
   check(chats.length === 1 && chats[0].messages.length === 2, 'the desk question and its answer were not kept as one chat')
   check(chats[0]?.messages[0].noteIds?.length === 1, 'Ask did not pick the matching note for the question')
   await main.keyboard.press('Escape')
+
+  // 7. The Desktop on the desk; a folder opens in Files; Ask reads a file from there.
+  await main.keyboard.press('Control+1')
+  const icons = main.locator('.home-icons')
+  await icons.getByRole('button', { name: 'Trip notes.md' }).waitFor({ timeout: 8000 })
+    .catch(() => problems.push('the Desktop\'s files did not appear on the desk'))
+  check(!(await icons.getByRole('button', { name: '.hidden' }).count()), 'a hidden file showed on the desk')
+  await icons.getByRole('button', { name: 'Plans, folder' }).dblclick()
+  const packing = main.locator('.sheet-body[data-view="Files"] .finder-item', { hasText: 'packing.txt' })
+  await packing.waitFor({ timeout: 5000 }).catch(() => problems.push('a Desktop folder did not open in Files'))
+  await packing.click()
+  await main.getByRole('button', { name: 'Ask about it' }).click()
+  await main.locator('.ask-note-chip.is-file', { hasText: 'packing.txt' }).waitFor({ timeout: 5000 })
+    .catch(() => problems.push('Ask about it did not attach the file'))
+  await main.getByLabel('Ask the AI on this Mac').fill('What should I pack?')
+  await main.keyboard.press('Enter')
+  await main.locator('.bubble.assistant', { hasText: 'It read one file' }).waitFor({ timeout: 10000 })
+    .catch(() => problems.push('Ask did not send the file to the AI'))
+  const asked = async () => (await main.evaluate(async () => (await window.osat.store.load()).doc.chats)).find((chat) => chat.messages[0]?.content === 'What should I pack?')
+  check(await until(async () => (await asked())?.messages[0].files?.[0] === 'packing.txt', 3000),
+    `the question did not remember the file it read: ${JSON.stringify((await asked())?.messages[0])}`)
+
+  // 8. The quick chat, in its own window.
+  const quick = app.windows().find((page) => page.url().includes('surface=chat'))
+  check(Boolean(quick), 'the quick chat window was not created at launch')
+  const chatShown = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((window) => window.webContents.getURL().includes('surface=chat') && window.isVisible()))
+  if (quick) {
+    await main.evaluate(() => window.osatChat.show())
+    check(await until(chatShown, 3000), 'the quick chat did not show')
+    await quick.locator('.composer textarea').fill('Hello from the quick chat')
+    await quick.keyboard.press('Enter')
+    await quick.locator('.bubble.assistant', { hasText: 'Hello from the quick chat' }).waitFor({ timeout: 10000 })
+      .catch(() => problems.push('the quick chat did not answer'))
+    await quick.keyboard.press('Escape')
+    check(await until(async () => !(await chatShown()), 3000), 'Esc did not put the quick chat away')
+    // Pop out: the desk's chat moves into the quick chat.
+    const deskChat = (await asked()).id
+    await main.evaluate((chatId) => window.osatChat.show({ chatId }), deskChat)
+    await quick.locator('.chat-title h2', { hasText: 'What should I pack?' }).waitFor({ timeout: 5000 })
+      .catch(() => problems.push('Pop out did not open that chat in the quick chat'))
+    await quick.keyboard.press('Escape')
+  }
+  await main.keyboard.press('Control+1')
 
   // 2. Two windows stay in step.
   const second = await openSecondWindow(app)

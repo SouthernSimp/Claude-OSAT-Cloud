@@ -14,24 +14,22 @@ function remember(snapshot, note, title, body) {
 }
 
 /* `inline` drops the backdrop and focus trap, for a note that opens as a pop-out on the layer. */
-export function FieldSheet({ note, preview, onClose, onCommit, onKeep, onOpenNotes, inline = false }) {
+export function FieldSheet({ note, onClose, onCommit, onOpenNotes, inline = false }) {
   const origin = paperFields(note)
   const [title, setTitle] = useState(origin.title)
   const [body, setBody] = useState(origin.body)
   const titleRef = useRef(null)
   const bodyRef = useRef(null)
   const snapshot = useRef(null)
-  const previewRef = useRef(preview)
   const commitRef = useRef(onCommit)
   const closeRef = useRef(onClose)
   if (!snapshot.current) snapshot.current = { id: note.id, note, title: origin.title, body: origin.body }
   remember(snapshot, note, title, body)
-  previewRef.current = preview
   commitRef.current = onCommit
   closeRef.current = onClose
 
   function flush(snap = snapshot.current) {
-    if (!snap || previewRef.current) return
+    if (!snap) return
     const patch = paperWrite(snap.note, snap.title, snap.body)
     if (patch.title === snap.note.title && patch.markdown === snap.note.markdown) return
     commitRef.current(snap.note.id, patch)
@@ -54,10 +52,9 @@ export function FieldSheet({ note, preview, onClose, onCommit, onKeep, onOpenNot
   }, [note.id])
 
   useEffect(() => {
-    if (preview) return undefined
     const handle = window.setTimeout(() => flush(), 280)
     return () => window.clearTimeout(handle)
-  }, [title, body, preview, note.id])
+  }, [title, body, note.id])
 
   useEffect(() => () => flush(), [])
 
@@ -96,14 +93,9 @@ export function FieldSheet({ note, preview, onClose, onCommit, onKeep, onOpenNot
       />
       <footer>
         <span>{words === 1 ? '1 word' : `${words} words`}</span>
-        {preview ? (
-          <button type="button" className="primary-button" onClick={() => onKeep(note.id)}>Keep this room</button>
-        ) : (
-          <button type="button" onClick={() => { flush(); onOpenNotes() }}>Open in Notes <ArrowRight /></button>
-        )}
+        <button type="button" onClick={() => { flush(); onOpenNotes() }}>Open in Notes <ArrowRight /></button>
         <button type="button" className="field-sheet-down" onClick={() => { flush(); onClose() }}>Set it down</button>
       </footer>
-      {preview && <p className="field-sheet-note">This page is the sample. It is saved only when you keep the room.</p>}
     </article>
   )
   if (inline) return paper

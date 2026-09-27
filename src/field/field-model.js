@@ -5,7 +5,6 @@ import { excerpt, folderChildren, isActiveNote, wikilinkPairs } from '../notes-m
 
 export const WORLD = { width: 1600, height: 1000 }
 export const POSE_KEY = 'osat.field.papers.v1'
-export const BLANK_KEY = 'osat.field.blank.v1'
 
 const PHASES = {
   morning: ['Good morning.', 'The day has not asked for much yet.'],

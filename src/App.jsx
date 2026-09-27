@@ -8,8 +8,6 @@ import { BrowserView } from "./tools/Browser.jsx";
 import { TerminalView } from "./tools/Terminal.jsx";
 import { FieldDesk } from "./field/FieldDesk.jsx";
 import { FieldSky } from "./field/FieldSky.jsx";
-import { addFieldSample, hasFieldSample, removeFieldSample } from "./field/field-sample.js";
-import { BLANK_KEY } from "./field/field-model.js";
 
 
 import { CalendarView } from "./views/Calendar.jsx";
@@ -26,10 +24,11 @@ import { ReflectionView } from "./views/Reflection.jsx";
 import { SettingsView } from "./views/Settings.jsx";
 
 import { localDateKey } from "./daily-practice.js";
-import { captureThought, isActiveNote } from "./notes-model.js";
+import { captureThought } from "./notes-model.js";
 import { storageFrom, useWorkspace } from "./store/useWorkspace.js";
 import { OverlaySurface } from "./surfaces/Overlay.jsx";
 import { PhoneSurface } from "./surfaces/Phone.jsx";
+import { QuickChatSurface } from "./surfaces/QuickChat.jsx";
 import { inputActive } from "./lib/ui.js";
 import { useFocusTrap } from "./lib/use-focus-trap.js";
 import { SETTINGS, spaceFor, spaceForKey, titleFor } from "./lib/spaces.js";
@@ -37,7 +36,7 @@ import { GlassDefs, useAlive } from "./shell/glass.jsx";
 import { Dock, RoomSheet } from "./shell/Shell.jsx";
 import { Welcome } from "./shell/Welcome.jsx";
 
-const FILLED_VIEWS = new Set(["Mindmap", "Assistant", "Notes", "Calendar", "Sky", "Browser", "Terminal"]);
+const FILLED_VIEWS = new Set(["Mindmap", "Assistant", "Notes", "Calendar", "Sky", "Browser", "Terminal", "Files"]);
 
 function WorkspaceApp() {
   const { workspace, status, commit, ready } = useWorkspace();
@@ -54,11 +53,11 @@ function WorkspaceApp() {
   const [assistantTarget, setAssistantTarget] = useState(null);
   const [settingsTarget, setSettingsTarget] = useState(null);
   const [skyTarget, setSkyTarget] = useState(null);
+  const [filesTarget, setFilesTarget] = useState(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [roomCommand, setRoomCommand] = useState(null);
-  const [sampleHidden, setSampleHidden] = useState(() => localStorage.getItem(BLANK_KEY) === "1");
   const [deskSheet, setDeskSheet] = useState(null);
   const [focusAt, setFocusAt] = useState(0);
   const [draft, setDraft] = useState("");
@@ -159,7 +158,8 @@ function WorkspaceApp() {
     if (next === "Mindmap") setBoardTarget(detail && typeof detail === "object" ? { ...detail, at: Date.now() } : null);
     if (next === "Calendar") setCalendarTarget(detail?.date || null);
     if (next === "Today" && detail && typeof detail === "object" && typeof detail.noteId === "string") setDeskSheet({ id: detail.noteId, at: Date.now() });
-    if (next === "Assistant") setAssistantTarget(typeof detail?.prompt === "string" || typeof detail?.chatId === "string" ? { ...detail, at: Date.now() } : null);
+    if (next === "Assistant") setAssistantTarget(typeof detail?.prompt === "string" || typeof detail?.chatId === "string" || detail?.file ? { ...detail, at: Date.now() } : null);
+    if (next === "Files") setFilesTarget(typeof detail?.rootId === "string" ? { ...detail, at: Date.now() } : null);
     setCommandOpen(false);
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -220,26 +220,6 @@ function WorkspaceApp() {
     );
 
   const common = { workspace, commit, navigate };
-  const preview = workspace.notes.filter(isActiveNote).length === 0 && !sampleHidden;
-  const sampled = hasFieldSample(workspace);
-  const keepSample = (noteId) => {
-    commit((state) => addFieldSample(state));
-    localStorage.removeItem(BLANK_KEY);
-    setSampleHidden(false);
-    if (typeof noteId === "string") {
-      setDeskSheet({ id: noteId, at: Date.now() });
-      navigate("Today");
-    }
-  };
-  const hideSample = () => {
-    localStorage.setItem(BLANK_KEY, "1");
-    setSampleHidden(true);
-  };
-  const clearSample = () => {
-    commit((state) => removeFieldSample(state));
-    hideSample();
-  };
-  const room = { preview, sampled, onKeep: keepSample, onBlank: hideSample, onRemove: clearSample };
   const openCommands = (query = "") => {
     setCommandQuery(query);
     setCommandOpen(true);
@@ -255,7 +235,6 @@ function WorkspaceApp() {
         <div className="workspace-content is-filled desk-layer" data-view="Today" inert={open && !closing ? true : undefined}>
           <FieldDesk
             {...common}
-            {...room}
             today={today}
             sheet={deskSheet}
             onSheetDone={() => setDeskSheet(null)}
@@ -280,7 +259,7 @@ function WorkspaceApp() {
             onSearch={() => openCommands()}
             onMode={(mode) => navigate(mode)}
           >
-            {view === "Sky" && <FieldSky {...common} {...room} target={skyTarget} />}
+            {view === "Sky" && <FieldSky {...common} target={skyTarget} />}
             {view === "Assistant" && <LocalAssistant {...common} initialPrompt={assistantTarget} />}
             {view === "Browser" && <BrowserView {...common} covered={captureOpen || commandOpen || closing || rising} command={roomCommand} />}
             {view === "Terminal" && <TerminalView command={roomCommand} />}
@@ -293,8 +272,8 @@ function WorkspaceApp() {
             {view === "Habits" && <HabitsView {...common} today={today} />}
             {view === "Reflection" && <ReflectionView {...common} today={today} />}
             {view === "Journal" && <JournalView {...common} />}
-            {view === "Files" && <FilesView />}
-                        {view === "Settings" && <SettingsView {...common} storage={storage} target={settingsTarget} />}
+            {view === "Files" && <FilesView {...common} target={filesTarget} />}
+            {view === "Settings" && <SettingsView {...common} storage={storage} target={settingsTarget} />}
           </RoomSheet>
         )}
         <Dock
@@ -359,5 +338,6 @@ export function App() {
   const surface = new URLSearchParams(window.location.search).get("surface");
   if (surface === "overlay") return <OverlaySurface />;
   if (surface === "phone") return <PhoneSurface />;
+  if (surface === "chat") return <QuickChatSurface />;
   return <WorkspaceApp />;
 }

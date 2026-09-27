@@ -115,32 +115,9 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
   color: var(--sheet) !important;
   font-weight: 550;
 }
-.field-sheet-note { margin: 8px 0 0; font-size: var(--t-xs); color: color-mix(in srgb, var(--sheet-ink) 55%, transparent); }
 ::view-transition-group(open-paper) { animation-duration: 420ms; animation-timing-function: var(--ease-out); }
 ::view-transition-old(open-paper),
 ::view-transition-new(open-paper) { height: 100%; animation-duration: 260ms; }
-
-/* ---- Sample banner ----------------------------------------------------- */
-
-.field-banner {
-  z-index: 7;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: min(640px, calc(100% - 28px));
-  padding: 9px 10px 9px 16px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--surface-raised) 90%, transparent);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--e-3);
-}
-.field-sky .field-banner { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); }
-.field-banner p { flex: 1; margin: 0; font-size: var(--t-sm); color: var(--muted); text-align: left; }
-.field-banner button:not(.primary-button) { padding: 0 6px; font-size: var(--t-sm); color: var(--muted); white-space: nowrap; }
-.field-banner button:not(.primary-button):hover { color: var(--ink); }
-.field-banner-quiet { width: auto; padding-block: 6px; }
-.field-banner .primary-button { min-height: 32px; }
 
 /* ---- The sky ----------------------------------------------------------- */
 
@@ -307,9 +284,7 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
   .field-sheet { position: fixed; z-index: 45; padding: 10px 10px calc(72px + env(safe-area-inset-bottom)); }
   .field-sheet-paper { padding: 22px 20px 14px; }
   .field-sheet-paper textarea:not(.field-sheet-title) { font-size: var(--t-lg); }
-  .field-banner { flex-wrap: wrap; }
   .sky-card { top: auto; right: 12px; bottom: 76px; left: 12px; width: auto; }
-  .field-sky .field-banner { bottom: 14px; width: calc(100% - 16px); }
 }
 
 /* ---- The journal: one sheet on the desk, a question in the margin ------- */

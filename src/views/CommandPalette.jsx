@@ -1,5 +1,5 @@
-import { ArrowRight, CalendarBlank, FolderSimple, MagnifyingGlass, MoonStars, NotePencil, Plus, ShareNetwork } from "@phosphor-icons/react";
-import { useRef, useState } from "react";
+import { ArrowRight, CalendarBlank, File, FolderSimple, MagnifyingGlass, MoonStars, NotePencil, Plus, ShareNetwork } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
 import { EVERYWHERE } from "../lib/spaces.js";
 import { useFocusTrap } from "../lib/use-focus-trap.js";
 import { folderPath, isActiveNote, parseQuery } from "../notes-model.js";
@@ -12,6 +12,30 @@ export function CommandPalette({ workspace, navigate, close, initialQuery = "" }
   const q = query.trim().toLowerCase();
   const { tags, words } = parseQuery(q);
   const matchesWords = (text) => words.every((word) => text.includes(word));
+
+  /* Files on this Mac, by name, from Spotlight (the Mac app only). */
+  const [found, setFound] = useState([]);
+  useEffect(() => {
+    const api = window.nateOSFiles;
+    if (!api?.search || q.length < 2 || tags.length) { setFound([]); return undefined; }
+    let live = true;
+    const timer = setTimeout(() => api.search(q).then((items) => { if (live) setFound(Array.isArray(items) ? items : []); }, () => {}), 180);
+    return () => { live = false; clearTimeout(timer); };
+  }, [q, tags.length]);
+  const PLACE = { desktop: "Desktop", documents: "Documents", downloads: "Downloads" };
+  const macFiles = found.slice(0, 8).map((item) => {
+    const parent = item.relative.split("/").slice(0, -1);
+    return {
+      key: `file:${item.rootId}:${item.relative}`,
+      label: item.name,
+      hint: [PLACE[item.rootId] || "Your folder", ...parent].join(" / "),
+      icon: item.kind === "folder" ? FolderSimple : File,
+      kind: "On this Mac",
+      run: () => navigate("Files", item.kind === "folder"
+        ? { rootId: item.rootId, relative: item.relative }
+        : { rootId: item.rootId, relative: parent.join("/"), select: item.relative }),
+    };
+  });
 
   const actions = [
     { key: "act:new-note", label: "New note", icon: Plus, kind: "Action", run: () => navigate("Notes", { action: "new" }) },
@@ -42,7 +66,7 @@ export function CommandPalette({ workspace, navigate, close, initialQuery = "" }
     : [];
   const routes = EVERYWHERE.filter((route) => route.label.toLowerCase().includes(q) && !tags.length)
     .map((route) => ({ key: `route:${route.id}`, label: route.label, icon: route.icon, kind: "Go to", run: () => navigate(route.id) }));
-  const results = [...notes, ...folders, ...boards, ...projects, ...actions, ...routes].slice(0, 40);
+  const results = [...notes, ...macFiles, ...folders, ...boards, ...projects, ...actions, ...routes].slice(0, 40);
   const pick = (item) => { item.run(); close(); };
 
   return (
@@ -52,9 +76,9 @@ export function CommandPalette({ workspace, navigate, close, initialQuery = "" }
           <MagnifyingGlass />
           <input
             data-autofocus
-            aria-label="Search notes, folders, boards, and tools"
+            aria-label="Search notes, files, folders, boards, and tools"
             value={query}
-            placeholder="Search notes, #tags, folders, boards…"
+            placeholder={window.nateOSFiles ? "Search notes, files on this Mac, #tags…" : "Search notes, #tags, folders, boards…"}
             onChange={(event) => { setQuery(event.target.value); setCursor(0); }}
             onKeyDown={(event) => {
               if (event.key === "ArrowDown") { event.preventDefault(); setCursor((index) => Math.min(index + 1, results.length - 1)); }
@@ -64,7 +88,7 @@ export function CommandPalette({ workspace, navigate, close, initialQuery = "" }
           />
           <kbd>esc</kbd>
         </label>
-        <p className="command-result-group">{q ? "IN YOUR WORKSPACE" : "JUMP TO ANYWHERE"}</p>
+        <p className="command-result-group">{!q ? "JUMP TO ANYWHERE" : macFiles.length ? "IN OSAT AND ON THIS MAC" : "IN YOUR WORKSPACE"}</p>
         <div>
           {results.map((item, index) => (
             <button key={item.key} className={index === cursor ? "active" : ""} data-active={index === cursor} onClick={() => pick(item)}>

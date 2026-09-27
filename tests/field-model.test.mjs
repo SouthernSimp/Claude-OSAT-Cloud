@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createDefaultWorkspace } from '../src/osat-data.js'
-import { addFieldSample, hasFieldSample, removeFieldSample } from '../src/field/field-sample.js'
 import { WARM, buildSkyGraph, constellationLabels, dayPhase, homeItems, paperFields, paperPose, paperWrite, runSky, stepSky } from '../src/field/field-model.js'
 
 test('day phase follows the clock', () => {
@@ -93,16 +91,6 @@ test('a page whose first line is not the title keeps its words', () => {
   const written = paperWrite(note, 'Evening', note.markdown)
   assert.equal(written.title, 'Evening')
   assert.equal(written.markdown, note.markdown)
-})
-
-test('keeping and removing the sample room is explicit and repeatable', () => {
-  const once = addFieldSample(createDefaultWorkspace())
-  const twice = addFieldSample(once)
-  assert.equal(hasFieldSample(once), true)
-  assert.equal(twice.notes.filter((note) => note.id.startsWith('field-sample-')).length, once.notes.filter((note) => note.id.startsWith('field-sample-')).length)
-  const cleared = removeFieldSample(twice)
-  assert.equal(hasFieldSample(cleared), false)
-  assert.ok(cleared.notes.every((note) => !note.id.startsWith('field-sample-')))
 })
 
 test('home icons put pinned notes, folders and the mindmap first, and count what does not fit', () => {
