@@ -24,7 +24,10 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 6a | Sync: devices stay in step through iCloud (Mac ↔ Mac now, the iPhone app next) | Merged (PR #7) |
 | 6b | The iPhone app | Merged (PR #8) |
 | 7 | Visual polish | Merged (PR #9) |
-| 8 | Your Mac's files in OSAT, the quick chat, Ask reads files | In PR #10 |
+| 8 | Your Mac's files in OSAT, the quick chat, Ask reads files | Merged (PR #10) |
+
+**Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
+CI build stay as they are, ready to pick up again.
 
 **The end goal (Nate, Sep 25):** an app that syncs with his iPhone. Phases 5 and 6 get there;
 visual polish moves after them.
