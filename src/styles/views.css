@@ -126,7 +126,8 @@
 .ai-progress progress::-webkit-progress-value { border-radius: 99px; background: var(--accent); transition: width 400ms var(--glide); }
 .ai-remove { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
 .settings .ai-note { margin-top: 14px; color: var(--faint); font-size: var(--t-sm); }
-@media (max-width: 720px) { .ai-sizes { grid-template-columns: minmax(0, 1fr); } }
+/* The welcome sits on the desk, so it follows the screen; Settings follows its pop-out (below). */
+@media (max-width: 720px) { .welcome .ai-sizes { grid-template-columns: minmax(0, 1fr); } }
 
 /* Settings → iPhone */
 .settings .phone-privacy { display: flex; gap: 8px; margin: 12px 0 16px; padding: 10px 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--ink) 4%, transparent); font-size: var(--t-sm); }
@@ -244,7 +245,7 @@
 
 .bridge-steps {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 .bridge-steps span {
@@ -340,7 +341,6 @@
   border-radius: var(--shell-radius);
   background: var(--surface);
   box-shadow: var(--e-3);
-  backdrop-filter: blur(24px);
   text-align: center;
 }
 .connection-gate > div {
@@ -382,47 +382,36 @@
       0 16px 38px rgba(22, 31, 29, 0.16);
   }
 }
-@media (max-width: 900px) {
-.practice-layout, .obsidian-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-.bridge-preview {
-    grid-row: auto;
-  }
+/* ---- In a pop-out ------------------------------------------------------- */
+/* Page rooms scroll inside their pop-out and keep a page's margins (the pop-out
+   body is "filled", which takes both away). The full-bleed rooms scroll themselves. */
+.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"], [data-view="Inbox"], [data-view="Settings"]) { overflow-y: auto; }
+.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"], [data-view="Inbox"], [data-view="Settings"]) > * { height: auto; padding: 28px clamp(16px, 5cqi, 44px) 56px; }
+/* Unsorted is one card; the pop-out is already its card. */
+.popout-body[data-view="Inbox"] > .content-card { border: 0; border-radius: 0; background: none; box-shadow: none; }
+
+/* Rooms lay themselves out for their own pop-out (the "room" container), not the screen. */
+@container room (max-width: 760px) {
+  .practice-layout, .obsidian-layout { grid-template-columns: minmax(0, 1fr); }
+  .bridge-preview { grid-row: auto; }
+  /* Settings' page column is narrow here, beside its rail. */
+  .ai-sizes { grid-template-columns: minmax(0, 1fr); }
 }
+@container room (max-width: 560px) {
+  .settings { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .settings-rail { position: static; grid-auto-flow: column; justify-content: start; overflow-x: auto; scrollbar-width: none; }
+  .bridge-preview { padding: 20px; border-radius: 16px; }
+  .review-row, .project-row, .money-row { align-items: flex-start; flex-wrap: wrap; }
+  .review-row .row-actions, .project-row .row-actions { width: 100%; }
+  .review-row .row-actions button, .project-row .row-actions button { flex: 1; }
+  .habit-groups, .bridge-steps { grid-template-columns: minmax(0, 1fr); }
+  .bridge-steps span { min-height: 52px; }
+  .bridge-diff { grid-template-columns: minmax(0, 1fr); }
+  .shortcut-row { flex-wrap: wrap; }
+}
+/* The desk's "can't reach your workspace" card follows the screen. */
 @media (max-width: 720px) {
-.settings {
-    grid-template-columns: minmax(0, 1fr);
-  }
-.settings-rail { position: static; grid-auto-flow: column; overflow-x: auto; }
-.bridge-preview {
-    padding: 20px;
-    border-radius: 16px;
-  }
-.review-row, .project-row, .money-row {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-.review-row .row-actions, .project-row .row-actions {
-    width: 100%;
-  }
-.review-row .row-actions button, .project-row .row-actions button {
-    flex: 1;
-  }
-.habit-groups, .bridge-steps {
-    grid-template-columns: minmax(0, 1fr);
-  }
-.bridge-steps span {
-    min-height: 52px;
-  }
-.bridge-diff {
-    grid-template-columns: minmax(0, 1fr);
-  }
-.connection-gate {
-    min-height: 360px;
-    margin-top: 0;
-    padding: 30px 20px;
-  }
+  .connection-gate { min-height: 360px; margin-top: 0; padding: 30px 20px; }
 }
 /* ---- Journal ------------------------------------------------------------- */
 
@@ -445,7 +434,7 @@
 .journal-hero h1 {
   margin: 0 0 10px;
   font-family: var(--font-display);
-  font-size: clamp(34px, 5vw, 44px);
+  font-size: clamp(34px, 5cqi, 44px);
   font-weight: 600;
   letter-spacing: -0.03em;
   color: var(--ink-strong);
@@ -550,7 +539,7 @@
 }
 .money-hero h1 {
   margin: 0 0 8px;
-  font-size: clamp(32px, 4vw, 40px);
+  font-size: clamp(32px, 4cqi, 40px);
   letter-spacing: -0.04em;
 }
 .money-note {
@@ -592,7 +581,7 @@
 
 .money-composer {
   display: grid;
-  grid-template-columns: 1.4fr 0.8fr 0.9fr 0.9fr;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
   gap: 10px;
   margin-bottom: 22px;
   padding: 14px;
@@ -682,21 +671,29 @@
   font-size: var(--t-xs);
 }
 
-@media (max-width: 720px) {
-  .money-hero { flex-direction: column; align-items: stretch; }
-  .money-balance { text-align: left; }
-  .money-composer { grid-template-columns: 1fr; }
-}
-
 /* The journal and file shelf are connected, quiet destinations from Home. */
 
 .journal-history { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 30px; }.journal-history > aside { display: flex; flex-direction: column; gap: 8px; }.journal-history > aside > button { display: flex; align-items: center; gap: 12px; text-align: left; padding: 16px; border-radius: 12px; background: var(--surface); font-size: var(--t-xs); border: 1px solid var(--line); }.journal-history > aside > button.active { border-color: var(--accent-line); }.journal-history small { display: block; color: var(--faint); font-size: var(--t-2xs); margin-top: 5px; }.journal-history p { color: var(--muted); line-height: 1.8; }.journal-history article { min-width: 0; border-radius: 18px; background: var(--surface); padding: 30px; }.journal-history h2 { margin: 20px 0; font-family: var(--font-display); }
 
-@media (max-width: 720px) { .journal-history { grid-template-columns: minmax(0,1fr); } }
-.money-hero h1 { font-family: var(--font-display); font-size: clamp(29px, 3vw, 42px); }
+/* Earlier pages: the list sits above the page once the room is too narrow for both. */
+@container room (max-width: 760px) { .journal-history { grid-template-columns: minmax(0, 1fr); gap: 18px; } }
+.money-hero h1 { font-family: var(--font-display); font-size: clamp(29px, 3cqi, 42px); }
 .money-period { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin: 28px 0 18px; }.money-period h2 { font-size: 15px; letter-spacing: -.02em; }.money-period input { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: var(--t-xs); padding: 8px 12px; }
-.money-overview { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 28px; }.money-overview article { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }.money-overview article svg { grid-column: 2; grid-row: 1; color: var(--accent); width: 20px; height: 20px; }.money-overview article span { grid-column: 1; grid-row: 1; color: var(--muted); font-size: var(--t-2xs); }.money-overview article strong { grid-column: 1/-1; font-family: var(--font-display); font-size: clamp(23px, 3vw, 35px); font-weight: 600; margin-top: 19px; }
-@media (max-width: 720px) { .money-overview { gap: 8px; }.money-overview article { padding: 13px; }.money-overview article svg { display: none; }.money-overview article span { font-size: var(--t-2xs); }.money-overview article strong { font-size: 22px; }.money-hero { flex-wrap: wrap; gap: 25px; } }
+.money-overview { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 28px; }.money-overview article { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }.money-overview article svg { grid-column: 2; grid-row: 1; color: var(--accent); width: 20px; height: 20px; }.money-overview article span { grid-column: 1; grid-row: 1; color: var(--muted); font-size: var(--t-2xs); }.money-overview article strong { grid-column: 1/-1; font-family: var(--font-display); font-size: clamp(23px, 3cqi, 35px); font-weight: 600; margin-top: 19px; }
+/* Money in a narrower room: the entry form goes to two columns, then one, and the
+   month's three totals become three short lines. */
+@container room (max-width: 760px) {
+  .money-composer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container room (max-width: 560px) {
+  .money-hero { flex-direction: column; align-items: stretch; gap: 20px; }
+  .money-balance { text-align: left; }
+  .money-composer { grid-template-columns: minmax(0, 1fr); }
+  .money-overview { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .money-overview article { align-items: center; padding: 12px 16px; }
+  .money-overview article svg { display: none; }
+  .money-overview article strong { grid-column: 2; grid-row: 1; margin-top: 0; font-size: 22px; }
+}
 
 /* Obsidian lives inside Settings → Data: one calm column, no card inside a card. */
 .settings-obsidian .obsidian-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 12px; }
@@ -705,6 +702,7 @@
 .settings-obsidian .section-intro { display: none; }
 .settings-obsidian .bridge-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .settings-obsidian .bridge-steps span { min-height: 0; padding: 10px 12px; }
+@container room (max-width: 760px) { .settings-obsidian .bridge-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .settings-obsidian .bridge-preview pre { max-height: 240px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
 
 /* Settings → Shortcuts: one row each for the layer and the quick chat. */

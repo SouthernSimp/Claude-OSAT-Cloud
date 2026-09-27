@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FolderSimple, NotePencil, Plus, X } from "@phosphor-icons/react";
 import { localDateKey } from "../daily-practice.js";
 import { addCardsToBoard, newBoard, normalizeBoardDoc, stockFor, updateBoard } from "../board-model.js";
@@ -23,15 +23,20 @@ function loadUi() {
   }
 }
 
-function useMediaQuery(query) {
-  const [matches, setMatches] = useState(() => matchMedia(query).matches);
-  useEffect(() => {
-    const media = matchMedia(query);
-    const update = () => setMatches(media.matches);
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, [query]);
-  return matches;
+// Narrow follows the pop-out Notes sits in (the desk fills the screen, so the
+// screen is never narrow), or the window when there is no pop-out. Same width as
+// the @container room (max-width: 760px) rule in notes.css.
+function useNarrowRoom(ref, max = 760) {
+  const [narrow, setNarrow] = useState(false);
+  useLayoutEffect(() => {
+    const box = ref.current?.closest(".popout-body") || document.documentElement;
+    const check = () => setNarrow(box.clientWidth <= max);
+    const observer = new ResizeObserver(check);
+    observer.observe(box);
+    check();
+    return () => observer.disconnect();
+  }, [ref, max]);
+  return narrow;
 }
 
 export function NotesView({ workspace, commit, navigate, target, today = localDateKey() }) {
@@ -39,8 +44,9 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
   const [selectedId, setSelectedId] = useState(target?.noteId || null);
   const [selection, setSelection] = useState(() => new Set());
   const [pane, setPane] = useState(target?.noteId ? "editor" : "list");
-  const [drawer, setDrawer] = useState(false); // the organizer as a sheet on phones
-  const narrow = useMediaQuery("(max-width: 900px)");
+  const [drawer, setDrawer] = useState(false); // the organizer as a sheet when Notes is narrow
+  const rootRef = useRef(null);
+  const narrow = useNarrowRoom(rootRef);
   const organizerOpen = narrow ? drawer : ui.organizer;
   const setUi = useCallback((patch) => setUiState((current) => ({ ...current, ...patch })), []);
   useEffect(() => {
@@ -84,7 +90,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
   }, [target]);
 
   // When the visible list no longer holds the open note, open the first one
-  // (on a phone the list is its own screen, so leave it alone there).
+  // (when Notes is narrow the list is its own screen, so leave it alone there).
   useEffect(() => {
     if (selectedId && notes.some((note) => note.id === selectedId)) return;
     if (!narrow) setSelectedId(notes[0]?.id || null);
@@ -253,7 +259,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
   };
 
   return (
-    <div className={`notes-view ${organizerOpen ? "" : "organizer-hidden"} pane-${pane}`}>
+    <div ref={rootRef} className={`notes-view ${organizerOpen ? "" : "organizer-hidden"} pane-${pane}`}>
       {organizerOpen && (
         <Organizer
           workspace={workspace}

@@ -151,14 +151,15 @@ test('platform metadata uses the OSAT identity and its own data folder in both m
   assert.match(entitlements, /com\.apple\.security\.app-sandbox/)
   assert.match(entitlements, /com\.apple\.security\.files\.user-selected\.read-write/)
   assert.match(main, /globalShortcut\.register\(value, run\)/)
-  assert.match(main, /layer: \{ value: null, failed: false, run: \(\) => overlay\?\.toggle\(\) \}/)
+  assert.match(main, /layer: \{ value: null, failed: false, run: \(\) => toggleDesk\(\) \}/)
   assert.match(main, /chat: \{ value: null, failed: false, run: \(\) => quickChat\?\.toggle\(\) \}/)
-  assert.match(main, /surface: 'overlay'/)
+  // One desk: no separate layer window any more.
+  assert.doesNotMatch(main, /surface: 'overlay'/)
   assert.match(main, /surface: 'chat'/)
   // A dropped file's path comes from the preload, never from the page.
   assert.match(preload, /webUtils\.getPathForFile\(file\)/)
   assert.doesNotMatch(main, /quick-capture|surface: 'assistant'/)
-  assert.match(preload, /overlay:open-in-window/)
+  assert.match(preload, /desk:hide/)
   assert.match(preload, /store:commit-sync/)
   assert.match(main, /requestSingleInstanceLock/)
   assert.deepEqual(pkg.build.asarUnpack.includes('shared/**'), true)

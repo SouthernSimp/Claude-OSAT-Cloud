@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
-import { ArrowUp, CaretDown, ChatCircle, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PencilSimpleLine, PictureInPicture, Plus, PushPin, ShareNetwork, Sparkle, Stop, X } from '@phosphor-icons/react'
+import { ArrowUp, CaretDown, ChatCircle, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PictureInPicture, Plus, PushPin, ShareNetwork, Sparkle, Stop, X } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
 import { applyAction, extractActions, systemPrompt, wantsActions } from '../assistant/actions.js'
@@ -10,12 +9,11 @@ import { cleanError, setupLine, useAi } from '../assistant/useAi.js'
 import { calendarMonthDays, localDateKey } from '../daily-practice.js'
 import { streamLocalMessage } from '../local-ai.js'
 import { Markdown } from '../lib/markdown.jsx'
-import { captureThought, dayNoteId, excerpt, isActiveNote, relatedNotes, relinkRenamedNote, updateNote, wikilinkPairs } from '../notes-model.js'
+import { captureThought, dayNoteId, excerpt, isActiveNote, relatedNotes, wikilinkPairs } from '../notes-model.js'
 import { addNextStep, bringForward, earlierSteps, nextSteps, toggleNextStep } from '../next-steps.js'
 import { clamp, inputActive, timeLabel } from '../lib/ui.js'
 import { FileThumb, filesBridge, openEntry, useFolder, useFreshness } from '../views/Files.jsx'
 import { useReducedMotion } from './FieldChrome.jsx'
-import { FieldSheet } from './FieldSheet.jsx'
 import { dayPhase, fitCells, homeItems, paperFields, phaseCopy } from './field-model.js'
 import { MediaWidget } from './MediaWidget.jsx'
 
@@ -23,15 +21,13 @@ const MODES = [
   { id: 'note', label: 'Note', icon: NotePencil, placeholder: 'Leave a thought here.', hint: 'Return saves a note' },
   { id: 'step', label: 'Next step', icon: CheckCircle, placeholder: 'One small next step…', hint: 'Return adds a step' },
   { id: 'ask', label: 'Ask', icon: Sparkle, placeholder: 'Ask your notes, or anything…', hint: 'Return asks, right here' },
-  { id: 'find', label: 'Search', icon: MagnifyingGlass, placeholder: 'Search notes, #tags and folders…', hint: 'Return searches' },
+  { id: 'find', label: 'Find', icon: MagnifyingGlass, placeholder: 'Search notes, #tags and folders…', hint: 'Return searches' },
 ]
 const WEEKDAY = new Intl.DateTimeFormat('en-US', { weekday: 'long' })
 const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long' })
 const ICONS_KEY = 'osat.home.icons.v1'
 const SHELF_KEY = 'osat.home.shelf'
 const CELL = { h: 103 }
-/* Blue hour for the morning and evening, the peaks at midday, the lake at night. */
-const WALL_FOCUS = { morning: '18% 45%', afternoon: '55% 50%', evening: '18% 45%', night: '75% 40%' }
 
 /* The evening invitation shows once a day, and never again that day once opened. */
 function readEvening() {
@@ -54,18 +50,23 @@ function readIconsCollapsed() {
   }
 }
 
-/* Home is a quiet desktop: a blurred wallpaper, two small widgets and the
-   next steps, one line that does one thing on Return, the files on your Mac's
-   Desktop (or your notes) as icons, and a dock to the rooms. It reads and writes
-   the same records the rest of OSAT keeps. The ⌥Space layer reuses it with
-   `layer`: no wallpaper (the real desktop shows through), its own dock, and notes
-   open as pop-outs. On the layer, widgets and icons can be picked up and set down
-   anywhere (`places`). */
+/* Home is a quiet desktop over the real one (it shows through, blurred): two small
+   widgets and the next steps, one line that does one thing on Return, the files on
+   your Mac's Desktop (or your notes) as icons, and a dock to the rooms. It reads and
+   writes the same records the rest of OSAT keeps. Notes open as pop-outs
+   (`onOpenNote`); widgets and icons can be picked up and set down anywhere (`places`).
+   The line reports where it rests (`onLine`), so rooms open beside it; when a room
+   covers it anyway, it rises to the top of the desk and stays above the rooms (`raised`). */
 export function FieldDesk({
-  workspace, commit, navigate, sheet, onSheetDone,
-  storage, onSearch, wallpaper, focusAt, layer = false, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
+  workspace, commit, navigate,
+  storage, onSearch, focusAt, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
+  raised = false, onLine,
 }) {
   const home = useRef(null)
+  const center = useRef(null)
+  const greetingRef = useRef(null)
+  const lineRef = useRef(null)
+  const lastLine = useRef('')
   const justMoved = useRef(false)
   const box = useRef(null)
   const grid = useRef(null)
@@ -85,13 +86,11 @@ export function FieldDesk({
   const fresh = useFreshness()
   const desktop = useFolder(onDesktop ? 'desktop' : null, '', fresh + visit)
   const [focusOpen, setFocusOpen] = useState(false)
-  const [openId, setOpenId] = useState(null)
   const { models, status: aiStatus, refresh: checkAi } = useAi()
   const [answer, setAnswer] = useState(null)
   const answerAbort = useRef(null)
   const [hoverId, setHoverId] = useState(null)
   const [eveningSeenOn, setEveningSeenOn] = useState(readEvening)
-  const openRef = useRef(null)
   const focusRef = useRef(false)
   focusRef.current = focusOpen
 
@@ -119,8 +118,6 @@ export function FieldDesk({
   const pairs = useMemo(() => wikilinkPairs(notes), [notes])
   const linked = new Set(hoverId ? pairs.flatMap((pair) => (pair.a === hoverId ? [pair.b] : pair.b === hoverId ? [pair.a] : [])) : [])
   const linkedFolders = new Set(notes.filter((note) => linked.has(note.id) && note.folderId).map((note) => note.folderId))
-  const sheetNote = notes.find((item) => item.id === openId) || null
-  openRef.current = sheetNote ? openId : null
   const current = MODES.find((item) => item.id === mode)
 
   useEffect(() => {
@@ -132,7 +129,7 @@ export function FieldDesk({
     if (!arrived) sessionStorage.setItem('osat.field.arrived', '1')
   }, [arrived])
 
-  /* Each time the layer is shown the line is back on Note and ready to type into. */
+  /* Each time the desk is shown the line is back on Note and ready to type into. */
   useEffect(() => {
     if (!visit) return
     setMode('note')
@@ -142,13 +139,6 @@ export function FieldDesk({
   useEffect(() => {
     if (focusAt) setFocusOpen(true)
   }, [focusAt])
-
-  useEffect(() => {
-    if (!sheet?.id) return
-    setOpenId(sheet.id)
-    onSheetDone?.()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sheet?.id, sheet?.at])
 
   /* The icon grid shows as many cells as fit; it never scrolls. */
   useEffect(() => {
@@ -164,6 +154,36 @@ export function FieldDesk({
     return () => observer.disconnect()
   }, [collapsed, onDesktop])
 
+  /* Where the line rests (offsets ignore the rise, which is only a translate), and how far
+     it has to travel to reach the top of the desk. */
+  useEffect(() => {
+    const middle = center.current
+    const form = lineRef.current
+    if (!middle || !form) return undefined
+    const measure = () => {
+      const box = middle.getBoundingClientRect()
+      const greeting = greetingRef.current
+      const top = box.top + (greeting ? greeting.offsetTop : form.offsetTop)
+      const rest = {
+        left: Math.round(box.left + form.offsetLeft),
+        right: Math.round(box.left + form.offsetLeft + form.offsetWidth),
+        top: Math.round(top),
+        bottom: Math.round(box.top + form.offsetTop + form.offsetHeight),
+      }
+      middle.style.setProperty('--rise', `${form.offsetTop}px`)
+      const key = JSON.stringify(rest)
+      if (key === lastLine.current) return
+      lastLine.current = key
+      onLine?.(rest)
+    }
+    // An answer lifts the line (a grid transition): measure again once it settles.
+    const observer = new ResizeObserver(measure)
+    observer.observe(middle)
+    observer.observe(form)
+    middle.addEventListener('transitionend', measure)
+    return () => { observer.disconnect(); middle.removeEventListener('transitionend', measure) }
+  }, [onLine])
+
   /* Ask only ever talks to the model on this Mac. */
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
 
@@ -172,7 +192,7 @@ export function FieldDesk({
     if (!answer) return undefined
     const onKey = (event) => {
       if (event.key !== 'Escape' || event.defaultPrevented || document.documentElement.dataset.menu === 'open') return
-      if (home.current?.closest('[inert]') || event.target.closest?.('.popout, .room-sheet, [role="dialog"]')) return
+      if (home.current?.closest('[inert]') || event.target.closest?.('.popout, [role="dialog"]')) return
       event.preventDefault()
       closeAnswer()
     }
@@ -232,7 +252,7 @@ export function FieldDesk({
   /* Type anywhere on home and the words land in the line. */
   useEffect(() => {
     const onKey = (event) => {
-      if (openRef.current || focusRef.current) return
+      if (focusRef.current || document.activeElement?.closest?.('.popout')) return
       if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1 || inputActive()) return
       if (box.current?.closest('[inert]')) return
       if (event.key === ' ' && document.activeElement && document.activeElement !== document.body) return
@@ -298,41 +318,12 @@ export function FieldDesk({
     }), 1400)
   }
 
-  /* Opening and setting down morph the icon's page into the sheet and back. */
-  function openNote(id, paper = null) {
-    if (onOpenNote) {
-      onOpenNote(id)
-      return
-    }
-    if (reduced || !document.startViewTransition) {
-      setOpenId(id)
-      return
-    }
-    if (paper) paper.style.viewTransitionName = 'open-paper'
-    const run = document.startViewTransition(() => {
-      if (paper) paper.style.viewTransitionName = ''
-      flushSync(() => setOpenId(id))
-    })
-    run.finished.finally(() => { if (paper) paper.style.viewTransitionName = '' })
-  }
-
-  function closeSheet() {
-    const id = openRef.current
-    const paper = id ? grid.current?.querySelector(`[data-paper="${CSS.escape(id)}"]`) : null
-    onSheetDone?.()
-    if (reduced || !document.startViewTransition) {
-      setOpenId(null)
-      return
-    }
-    const run = document.startViewTransition(() => {
-      if (paper) paper.style.viewTransitionName = 'open-paper'
-      flushSync(() => setOpenId(null))
-    })
-    run.finished.finally(() => { if (paper) paper.style.viewTransitionName = '' })
+  function openNote(id) {
+    onOpenNote?.(id)
   }
 
   function openItem(item, event) {
-    if (item.kind === 'note') openNote(item.id, event.currentTarget.querySelector('[data-paper]'))
+    if (item.kind === 'note') openNote(item.id)
     else if (item.kind === 'folder') navigate('Notes', { folderId: item.id })
     else if (item.kind === 'board') navigate('Mindmap', { boardId: item.id })
     else if (item.kind === 'pile') navigate('Notes', { list: 'unsorted' })
@@ -479,13 +470,7 @@ export function FieldDesk({
   const blocked = mode === 'ask' && ai.state !== 'ready'
 
   return (
-    <div ref={home} className={`home ${layer ? 'is-layer' : ''} ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''}`} data-phase={phase} data-wall={wallpaper}>
-      {!layer && (
-        <div className="home-wall" aria-hidden="true">
-          <img src={wallpaper === 'moss' ? './images/wall-moss.jpg' : './images/wall-lake.jpg'} alt="" decoding="async" style={{ objectPosition: wallpaper === 'moss' ? '50% 62%' : WALL_FOCUS[phase] }} />
-        </div>
-      )}
-
+    <div ref={home} className={`home is-layer ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''} ${raised ? 'is-raised' : ''}`} data-phase={phase}>
       <aside className="home-widgets" aria-label="Today at a glance">
         <DayWidget now={now} events={events} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:day')} />
         <MonthWidget now={now} today={today} events={allEvents} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:month')} />
@@ -515,24 +500,10 @@ export function FieldDesk({
         {media && <MediaWidget media={media} visit={visit} move={movable('widget:media')} />}
       </aside>
 
-      <div className="home-center">
-        <div className="home-modes">
-          <button type="button" className="glass pod" aria-label="New chat with local AI" title="New chat with local AI" onClick={() => navigate('Assistant', { prompt: '' })}>
-            <PencilSimpleLine />
-          </button>
-          <div className="glass mode-pill" role="radiogroup" aria-label="What Return does" onKeyDown={onModeKey}>
-            {MODES.map(({ id, label, icon: Icon }) => (
-              <button key={id} type="button" role="radio" data-mode={id} aria-checked={mode === id} tabIndex={mode === id ? 0 : -1} onClick={() => choose(id)}>
-                <Icon weight={mode === id ? 'bold' : 'regular'} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+      <div ref={center} className="home-center">
+        <h1 ref={greetingRef} className="home-greeting" aria-hidden={raised || undefined}>{greeting}</h1>
 
-        <h1 className="home-greeting">{greeting}</h1>
-
-        <form className="home-composer-wrap" onSubmit={submit}>
+        <form ref={lineRef} className="home-composer-wrap" onSubmit={submit}>
           <div className={`glass home-composer ${draft.trim() ? 'has-text' : ''}`}>
             <label className="visually-hidden" htmlFor="home-line">{current.label}</label>
             <textarea
@@ -556,17 +527,25 @@ export function FieldDesk({
               }}
             />
             <div className="home-composer-bar">
-              <span>{blocked ? 'Ask needs the AI on this Mac' : `${current.hint} · Shift-Return for a new line`}</span>
-              <button type="submit" aria-label={current.label} disabled={!draft.trim() || blocked}>
+              {/* What Return does: four verbs in one small switch; the chosen one says its name. */}
+              <div className="verbs" role="radiogroup" aria-label="What Return does" onKeyDown={onModeKey}>
+                {MODES.map(({ id, label, icon: Icon }) => (
+                  <button key={id} type="button" role="radio" data-mode={id} aria-checked={mode === id} aria-label={label} title={mode === id ? undefined : label} tabIndex={mode === id ? 0 : -1} onClick={() => choose(id)}>
+                    <Icon weight={mode === id ? 'bold' : 'regular'} />
+                    <span aria-hidden="true">{label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className={`home-chip is-${chip.tone}`} role="status">
+                <i />
+                <span>{chip.text}</span>
+                {chip.setup && <button type="button" onClick={() => navigate('Settings', { section: 'ai' })}>Set it up</button>}
+              </p>
+              <button type="submit" className="home-send" aria-label={current.label} title={`${current.hint} · Shift-Return for a new line`} disabled={!draft.trim() || blocked}>
                 <ArrowUp weight="bold" />
               </button>
             </div>
           </div>
-          <p className={`home-chip is-${chip.tone}`} role="status">
-            <i />
-            {chip.text}
-            {chip.setup && <button type="button" onClick={() => navigate('Settings', { section: 'ai' })}>Set it up</button>}
-          </p>
           {(phase === 'evening' || phase === 'night') && eveningSeenOn !== today && (
             <button type="button" className="glass evening-pill" onClick={() => { markEvening(today); setEveningSeenOn(today); navigate('Reflection') }}>
               <MoonStars weight="fill" /> Close the day <span>three quiet questions</span>
@@ -637,18 +616,6 @@ export function FieldDesk({
 
       {dock}
 
-      {sheetNote && (
-        <FieldSheet
-          note={sheetNote}
-          onClose={closeSheet}
-          onCommit={(id, patch) => commit((state) => {
-            const before = state.notes.find((item) => item.id === id)
-            const next = updateNote(state, id, patch)
-            return before && patch.title !== undefined && patch.title !== before.title ? relinkRenamedNote(next, before.title, patch.title) : next
-          })}
-          onOpenNotes={() => { setOpenId(null); onSheetDone?.(); navigate('Notes', { noteId: sheetNote.id }) }}
-        />
-      )}
       {focusOpen && (
         <FocusEnvironment
           session={workspace.focus}

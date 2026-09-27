@@ -2,7 +2,7 @@
 // checks the store end to end:
 //   1. a thought typed in the main window is saved to disk and survives a restart
 //   2. a second window sees the main window's change, and the other way round
-//   3. a thought left on the ⌥Space layer while the main window is closed is not lost
+//   3. a thought on the desk survives putting the desk away (closing only hides it)
 //   4. the first-launch welcome picks an AI size, and Ask answers on the desk
 //      (OSAT_AI=mock: a practice model answers, nothing is downloaded)
 //   5. the iPhone link: a file in the iCloud Inbox becomes a thought, and the copy of
@@ -27,13 +27,13 @@ const check = (ok, message) => { if (!ok) problems.push(message) }
 
 async function launch(withEnv = env) {
   const app = await electron.launch({ cwd: root, args: [root, '--no-sandbox'], env: withEnv })
-  // The hidden ⌥Space layer is a window too; the main window is the one without a surface.
+  // The quick chat is a window too; the desk is the one without a surface.
   let main
   while (!main) {
     main = app.windows().find((page) => !page.url().includes('surface='))
     if (!main) await sleep(100)
   }
-  await main.waitForSelector('.workspace', { timeout: 20000 })
+  await main.waitForSelector('.overlay-surface .workspace-content', { timeout: 20000 })
   return { app, main }
 }
 
@@ -94,12 +94,16 @@ try {
   await main.locator('.home-answer').getByText('practice model').waitFor({ timeout: 10000 })
     .catch(() => problems.push('Ask did not answer on the desk'))
   await main.getByRole('button', { name: 'Keep talking' }).click()
-  await main.locator('.sheet-body[data-view="Assistant"] .bubble.assistant').first().waitFor({ timeout: 5000 })
+  await main.locator('.popout-body[data-view="Assistant"] .bubble.assistant').first().waitFor({ timeout: 5000 })
     .catch(() => problems.push('Keep talking did not open the chat in Ask'))
   const chats = await main.evaluate(async () => (await window.osat.store.load()).doc.chats)
   check(chats.length === 1 && chats[0].messages.length === 2, 'the desk question and its answer were not kept as one chat')
   check(chats[0]?.messages[0].noteIds?.length === 1, 'Ask did not pick the matching note for the question')
+  // Esc leaves the chat's box, then closes the Ask pop-out.
   await main.keyboard.press('Escape')
+  await main.keyboard.press('Escape')
+  await main.locator('.popout-body[data-view="Assistant"]').waitFor({ state: 'detached', timeout: 3000 })
+    .catch(() => problems.push('Esc did not close the Ask pop-out'))
 
   // 7. The Desktop on the desk; a folder opens in Files; Ask reads a file from there.
   await main.keyboard.press('Control+1')
@@ -108,7 +112,7 @@ try {
     .catch(() => problems.push('the Desktop\'s files did not appear on the desk'))
   check(!(await icons.getByRole('button', { name: '.hidden' }).count()), 'a hidden file showed on the desk')
   await icons.getByRole('button', { name: 'Plans, folder' }).dblclick()
-  const packing = main.locator('.sheet-body[data-view="Files"] .finder-item', { hasText: 'packing.txt' })
+  const packing = main.locator('.popout-body[data-view="Files"] .finder-item', { hasText: 'packing.txt' })
   await packing.waitFor({ timeout: 5000 }).catch(() => problems.push('a Desktop folder did not open in Files'))
   await packing.click()
   await main.getByRole('button', { name: 'Ask about it' }).click()
@@ -181,18 +185,19 @@ try {
   await main.evaluate(() => window.osatPhone.disable())
   check(!(await access(copy).then(() => true, () => false)), 'turning the iPhone link off left the copy of the notes behind')
 
-  // 3. Capture on the ⌥Space layer with the main window closed.
-  const layer = app.windows().find((page) => page.url().includes('surface=overlay'))
-  check(Boolean(layer), 'the layer window was not created at launch')
-  await layer.waitForSelector('#home-line', { timeout: 10000 })
-  await main.close()
+  // 3. The desk put away (⌘W / Esc / ⌥Space) is only hidden: it comes back with what was left on it.
+  // (The hidden second window from step 2 has no surface either; the desk is the visible one.)
+  await main.fill('#home-line', 'Captured before putting it away')
+  await main.press('#home-line', 'Enter')
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((window) => !window.webContents.getURL().includes('surface=') && window.isVisible())?.close())
   await sleep(300)
-  await layer.fill('#home-line', 'Captured with the window closed')
-  await layer.press('#home-line', 'Enter')
-  await sleep(1500)
+  const deskShown = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((window) => !window.webContents.getURL().includes('surface=') && window.isVisible()))
+  check(!(await deskShown()), 'closing the desk did not put it away')
+  check(app.windows().includes(main), 'closing the desk destroyed it instead of hiding it')
+  await sleep(1200)
   await app.close()
   const afterClose = JSON.parse(await readFile(dataFile, 'utf8'))
-  check(afterClose.notes.some((note) => note.title === 'Captured with the window closed'), 'a capture made with the main window closed was lost')
+  check(afterClose.notes.some((note) => note.title === 'Captured before putting it away'), 'a thought left on the desk before putting it away was lost')
   check(afterClose.notes.some((note) => note.title === 'From the second window'), 'the second window\'s note was not saved')
 
   // 6. Two OSATs in step: this one turns the link on again, a second one (its own data
@@ -205,7 +210,7 @@ try {
   await writeFile(path.join(otherData, 'prefs.json'), '{"welcomed":true}')
   const other = await launch({ ...env, OSAT_DATA_DIR: otherData })
   await other.main.evaluate(() => window.osatPhone.enable())
-  check(await until(async () => (await notesIn(other.main)).includes('Captured with the window closed'), 15000),
+  check(await until(async () => (await notesIn(other.main)).includes('Captured before putting it away'), 15000),
     'the second OSAT did not catch up with the first one\'s notes')
   await other.main.evaluate(async () => {
     const now = new Date().toISOString()

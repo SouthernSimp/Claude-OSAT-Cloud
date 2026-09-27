@@ -431,6 +431,7 @@
   min-height: 0;
   flex: 1;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 2px;
   padding: 0 var(--s-2) var(--s-6);
@@ -440,6 +441,7 @@
 
 .note-row {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 3px;
   padding: var(--s-3) var(--s-3);
   border-radius: var(--r-md);
@@ -498,6 +500,7 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: anywhere;
   color: var(--muted);
   font-size: var(--t-xs);
   line-height: 1.4;
@@ -602,8 +605,11 @@ button.meta-tag:hover {
   border: 0;
 }
 
+/* When the editor is narrow, the folder name gives way first, then the bar wraps
+   rather than pushing a button (Restore, Delete forever) out of reach. */
 .editor-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--s-2);
   min-height: 48px;
@@ -621,6 +627,16 @@ button.meta-tag:hover {
 
 .editor-bar > .menu-root {
   max-width: 45%;
+}
+
+/* The folder name takes the spare room, so it needs no spacer after it. */
+.editor-bar > .menu-root:not(:last-child) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.editor-bar > .menu-root + .editor-bar-spacer {
+  display: none;
 }
 
 .editor-crumb {
@@ -1161,12 +1177,15 @@ button.md-tag:hover {
 
 /* ---- Responsive ------------------------------------------------------------ */
 
+/* Notes lives in a pop-out, so these follow the pop-out's width (the "room"
+   container), not the screen's. */
+
 .organizer-scrim,
 .organizer-reveal {
   display: none;
 }
 
-@media (max-width: 1100px) {
+@container room (max-width: 960px) {
   .notes-view {
     grid-template-columns: 208px 280px minmax(0, 1fr);
   }
@@ -1175,7 +1194,7 @@ button.md-tag:hover {
     grid-template-columns: 280px minmax(0, 1fr);
   }
 
-  .note-title,
+  input.note-title,
   .note-tags-row,
   .editor-toolbar,
   .note-source,
@@ -1188,9 +1207,18 @@ button.md-tag:hover {
     margin-inline: var(--s-5);
     padding: 3px;
   }
+
+  .editor-bar {
+    gap: var(--s-1);
+    padding-inline: var(--s-2);
+  }
+
+  .editor-bar .segmented button {
+    padding: 0 var(--s-2);
+  }
 }
 
-@media (max-width: 1100px) {
+@container room (max-width: 960px) {
   .note-editor.with-inspector .editor-body {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1199,7 +1227,7 @@ button.md-tag:hover {
     position: absolute;
     inset: 48px 0 0 auto;
     z-index: 30;
-    width: min(300px, 90vw);
+    width: min(300px, 90cqw);
     box-shadow: var(--e-4);
   }
 
@@ -1208,7 +1236,7 @@ button.md-tag:hover {
   }
 }
 
-@media (max-width: 900px) {
+@container room (max-width: 760px) {
   .notes-view,
   .notes-view.organizer-hidden {
     grid-template-columns: minmax(0, 1fr);
@@ -1219,7 +1247,7 @@ button.md-tag:hover {
     position: absolute;
     inset: 0 auto 0 0;
     z-index: 40;
-    width: min(280px, 84vw);
+    width: min(280px, 84cqw);
     box-shadow: var(--e-5);
   }
 
@@ -1264,16 +1292,12 @@ button.md-tag:hover {
     display: grid;
   }
 
-  .editor-bar .segmented button {
-    padding: 0 var(--s-2);
-  }
-
-  .note-title {
+  input.note-title {
     margin-top: var(--s-3);
     font-size: var(--t-2xl);
   }
 
-  .note-title,
+  input.note-title,
   .note-tags-row,
   .note-source,
   .read-pane,

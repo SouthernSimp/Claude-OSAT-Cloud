@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { MusicNotes, Pause, Play, SkipBack, SkipForward } from '@phosphor-icons/react'
 
 /* What Spotify is playing, with play/pause and skip. It only asks while the
-   layer is showing, and never opens Spotify unless you press play. */
+   desk is showing, and never opens Spotify unless you press play. */
 export function MediaWidget({ media, visit, move }) {
   const [track, setTrack] = useState(null)
 

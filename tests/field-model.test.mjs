@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { WARM, buildSkyGraph, constellationLabels, dayPhase, homeItems, paperFields, paperPose, paperWrite, runSky, stepSky } from '../src/field/field-model.js'
+import { WARM, buildSkyGraph, constellationLabels, dayPhase, fitCamera, homeItems, paperFields, paperPose, paperWrite, runSky, stepSky } from '../src/field/field-model.js'
 
 test('day phase follows the clock', () => {
   assert.equal(dayPhase(new Date('2026-09-22T08:00:00')), 'morning')
@@ -125,4 +125,15 @@ test('loose thoughts gather into one pile and only a few recent notes stay out',
   assert.deepEqual(items.slice(1).map((item) => item.id), ['filed-0', 'filed-1', 'filed-2', 'filed-3'])
   // One loose thought is just a note; no pile of one.
   assert.equal(homeItems({ notes: [notes[0]], folders: [], boards: [] })[0].kind, 'note')
+})
+
+test('the sky fits its stars and their names into the window', () => {
+  const stars = [{ x: 0, y: 0 }, { x: 300, y: 200 }]
+  for (const [w, h] of [[1120, 700], [420, 300]]) {
+    const cam = fitCamera(stars, w, h)
+    for (const star of stars) {
+      assert.ok(star.x * cam.z + cam.x >= 0, 'a star is off the left')
+      assert.ok((star.x + 200) * cam.z + cam.x <= w, 'a name runs off the right')
+    }
+  }
 })

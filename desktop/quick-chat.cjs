@@ -1,7 +1,7 @@
 /* The quick chat: a small Ask window that floats over every app, on every Space,
    and stays where you leave it. On the Mac it is a panel, so the app you were in
    keeps focus while you type. ⌥⇧Space shows it (or brings it forward); Esc puts it away. */
-const { displayAt } = require('./overlay.cjs')
+const { displayAt } = require('./desk.cjs')
 
 const SIZE = { width: 420, height: 600 }
 

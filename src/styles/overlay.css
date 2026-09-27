@@ -1,6 +1,6 @@
-/* The ⌥Space layer. The window is see-through with macOS vibrancy, so the real
-   desktop shows blurred behind everything here; the page itself paints no
-   background. The browser preview has no desktop, so it shows a stand-in. */
+/* The desk. The window is see-through with macOS vibrancy, so the real desktop
+   shows blurred behind everything here; the page itself paints no background.
+   The browser preview has no desktop, so it shows a stand-in. */
 
 html:has(.overlay-surface),
 html:has(.overlay-surface) body,
@@ -26,18 +26,22 @@ html:has(.overlay-surface) body,
   overflow: hidden;
   resize: both;
   border-radius: 16px;
-  background: var(--glass-strong);
+  /* Solid, like a Mac window: nothing on the desk shows through a room. */
+  background: var(--page);
+  box-shadow: 0 0 0 0.5px var(--line-strong), 0 24px 60px -28px rgb(0 0 0 / 45%);
   pointer-events: auto;
   animation: pop-in 220ms var(--ease-out) both;
 }
-.popout.is-top { box-shadow: var(--glass-rim), 0 30px 70px -24px rgb(0 0 0 / 50%); }
+.popout.is-top { box-shadow: 0 0 0 0.5px var(--line-strong), 0 34px 80px -26px rgb(0 0 0 / 60%); }
 .popout-bar {
   display: flex;
   align-items: center;
   gap: 10px;
   height: 38px;
   padding: 0 10px;
-  color: var(--on-1);
+  color: var(--ink);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-soft);
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -50,18 +54,19 @@ html:has(.overlay-surface) body,
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: var(--on-2);
-  background: color-mix(in srgb, var(--on-1) 12%, transparent);
+  color: var(--muted);
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
 }
 .popout-close:hover { color: #fff; background: var(--critical); }
 .popout-close svg { width: 10px; height: 10px; }
-.popout-window { display: flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 8px; font-size: var(--t-xs); color: var(--on-2); }
-.popout-window:hover { color: var(--on-1); background: color-mix(in srgb, var(--on-1) 11%, transparent); }
-.popout-window svg { width: 13px; height: 13px; }
-/* The room inside is an ordinary OSAT room on the window's own paper. */
-.popout-body { background: var(--page); color: var(--ink); border-radius: 0 0 16px 16px; }
+.popout-modes { padding: 2px; background: color-mix(in srgb, var(--ink) 7%, transparent); box-shadow: none; }
+.popout-modes button { height: 24px; padding: 0 9px; font-size: var(--t-xs); }
+/* The room inside is an ordinary OSAT room on the window's own paper. It is a size
+   container, so a room lays itself out for its pop-out, not for the screen. */
+.popout-body { container: room / size; background: var(--page); color: var(--ink); border-radius: 0 0 16px 16px; }
 .popout-body[data-view="note"] { display: grid; padding: 10px; background: transparent; }
 .popout-body[data-view="note"] > .field-sheet-paper { width: 100%; min-height: 0; height: 100%; padding: 26px 34px 14px; view-transition-name: none; }
+@container room (max-width: 560px) { .popout-body[data-view="note"] > .field-sheet-paper { padding: 18px 18px 12px; } }
 .pop-gone { padding: 24px; color: var(--on-2); }
 @keyframes pop-in { from { opacity: 0; scale: 0.97; } }
 
@@ -70,7 +75,7 @@ html:has(.overlay-surface) body,
 .dock .launcher img { width: 30px; height: 30px; }
 .dock-apps { max-width: 44vw; overflow-x: auto; scrollbar-width: none; }
 
-/* ---- Moving things on the layer ---------------------------------------- */
+/* ---- Moving things on the desk ---------------------------------------- */
 
 /* Anything set down leaves its column and sits where it was dropped. */
 .home.is-layer [data-placed] { z-index: 2; margin: 0; }

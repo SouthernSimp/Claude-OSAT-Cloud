@@ -11,7 +11,8 @@ export const SPACES = [
   { id: 'Today', label: 'Desk', icon: House, hint: 'The desk and your day' },
   { id: 'Notes', label: 'Notes', icon: NotePencil, hint: 'Every page, sorted or not' },
   { id: 'Mindmap', label: 'Map', icon: ShareNetwork, hint: 'Your notes as a board, or as a sky' },
-  { id: 'Assistant', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac' },
+  // Ask lives in the desk's line; its room (every chat) is under Tools and ⌘4.
+  { id: 'Assistant', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac', dock: false },
   { id: 'Files', label: 'Files', icon: Files, hint: 'Your Desktop, Documents and Downloads' },
 ]
 

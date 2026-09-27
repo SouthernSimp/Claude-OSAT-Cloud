@@ -764,8 +764,7 @@
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  background: color-mix(in oklab, var(--surface-raised) 88%, transparent);
-  backdrop-filter: blur(14px) saturate(1.4);
+  background: var(--surface-raised);
   box-shadow: var(--e-2);
   pointer-events: auto;
 }
@@ -906,8 +905,7 @@
   padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
-  background: color-mix(in oklab, var(--surface-raised) 92%, transparent);
-  backdrop-filter: blur(16px) saturate(1.4);
+  background: var(--surface-raised);
   box-shadow: var(--e-4);
 }
 
@@ -1025,15 +1023,16 @@
   height: 15px;
 }
 
-/* ---- Responsive ------------------------------------------------------------- */
+/* ---- Narrow pop-outs --------------------------------------------------------- */
+/* These follow the Map's own pop-out (the "room" container), not the screen. */
 
-@media (max-width: 1100px) {
+@container room (max-width: 960px) {
   .board-view {
     grid-template-columns: 232px minmax(0, 1fr);
   }
 }
 
-@media (max-width: 900px) {
+@container room (max-width: 760px) {
   .board-view,
   .board-view.rail-closed {
     grid-template-columns: minmax(0, 1fr);
@@ -1044,7 +1043,7 @@
     position: absolute;
     inset: 0 auto 0 0;
     z-index: 70;
-    width: min(280px, 84vw);
+    width: min(280px, 84cqi);
     box-shadow: var(--e-5);
   }
 
