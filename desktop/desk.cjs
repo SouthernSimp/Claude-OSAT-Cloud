@@ -1,10 +1,7 @@
-/* The OSAT layer: one full-screen, see-through window over the real desktop.
-   On the Mac it is a non-activating panel with vibrancy, so the desktop shows
-   blurred behind it, it floats over full-screen apps and follows you to every
-   Space, and the app you were in keeps focus when it hides. It is created
-   hidden at launch and only ever hidden, never closed, so it opens instantly.
-
-   Everything Electron-specific is passed in, so the pure pieces can be tested. */
+/* The desk: OSAT's one window. It fills the screen under the cursor, see-through
+   with macOS vibrancy so the real desktop shows blurred behind it. ⌥Space brings it
+   up (or forward), and puts it away when it is already in front. These are the pure
+   pieces; main.cjs owns the window. */
 
 const DEFAULT_HOTKEY = 'Alt+Space'
 const MODIFIERS = new Set(['Command', 'Control', 'Alt', 'Shift'])
@@ -38,7 +35,7 @@ function addLauncher(list, appPath) {
   return [...list, { path: appPath, name }].slice(0, 12)
 }
 
-/* Where Nate set a widget or icon down on the layer, as fractions of the layer
+/* Where Nate set a widget or icon down on the desk, as fractions of the desk
    (so it survives a different display). null puts it back in its usual place. */
 function placeItem(places, id, spot) {
   if (typeof id !== 'string' || !/^[\w:.-]{1,120}$/.test(id)) return places
@@ -53,43 +50,11 @@ function placeItem(places, id, spot) {
   return Object.fromEntries(Object.entries(next).slice(-200))
 }
 
-function createOverlay({ BrowserWindow, screen, platform, preload, load, onBlur }) {
-  const mac = platform === 'darwin'
-  const window = new BrowserWindow({
-    show: false,
-    frame: false,
-    transparent: true,
-    hasShadow: false,
-    resizable: false,
-    movable: false,
-    minimizable: false,
-    maximizable: false,
-    fullscreenable: false,
-    skipTaskbar: true,
-    backgroundColor: '#00000000',
-    title: 'OSAT',
-    ...(mac ? { type: 'panel', vibrancy: 'fullscreen-ui', visualEffectState: 'active' } : {}),
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload },
-  })
-  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-  window.setAlwaysOnTop(true, 'floating')
-  // Switching to another app puts the layer away, like Spotlight.
-  window.on('blur', () => onBlur?.())
-  load(window)
-
-  const visible = () => window.isVisible()
-  function show() {
-    // The usable area: the Mac's menu bar and Dock stay visible and reachable.
-    window.setBounds(displayAt(screen.getAllDisplays(), screen.getCursorScreenPoint()).workArea)
-    window.show()
-    window.focus()
-    window.webContents.focus()
-    window.webContents.send('overlay:shown')
-  }
-  function hide() {
-    if (visible()) window.hide()
-  }
-  return { window, show, hide, visible, toggle: () => (visible() ? hide() : show()) }
+/* What ⌥Space does: show a hidden desk, bring forward one behind other apps, put away
+   the one you are looking at. */
+function deskAction({ visible, focused }) {
+  if (!visible) return 'show'
+  return focused ? 'hide' : 'show'
 }
 
-module.exports = { DEFAULT_HOTKEY, addLauncher, placeItem, createOverlay, displayAt, hotkeyLabel, validHotkey }
+module.exports = { DEFAULT_HOTKEY, addLauncher, placeItem, deskAction, displayAt, hotkeyLabel, validHotkey }

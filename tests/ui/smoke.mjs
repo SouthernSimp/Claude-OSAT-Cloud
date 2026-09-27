@@ -54,26 +54,18 @@ async function main() {
   await page.locator('.note-row', { hasText: 'Smoke test thought' }).first().waitFor({ timeout: 5000 })
     .catch(() => problems.push('capture: a thought typed on home was not in Unsorted after a reload'))
 
-  // Each room opens as a sheet over the desk, and Esc takes you back to the desk.
+  // Each room opens as a pop-out over the desk, and Esc closes it again.
   async function visit(view, go, theme) {
     room = view
     await go()
-    await page.waitForSelector(`.sheet-body[data-view="${view}"]`, { timeout: 5000 })
-      .catch(() => problems.push(`${view}: the room did not open`))
+    const body = page.locator(`.popout-body[data-view="${view}"]`)
+    await body.waitFor({ timeout: 5000 }).catch(() => problems.push(`${view}: the room did not open`))
     await sleep(900)
-    const empty = await page.$eval('.sheet-body', (node) => node.children.length === 0).catch(() => true)
-    if (empty) problems.push(`${view}: rendered nothing`)
+    if (!await body.evaluate((node) => node.children.length > 0).catch(() => false)) problems.push(`${view}: rendered nothing`)
     await page.screenshot({ path: `${OUT}/${theme}-${view}.png` })
-  }
-
-  async function backToDesk(theme) {
-    room = 'desk'
-    await page.locator('.sheet-title').click()
+    await page.locator('.popout.is-top .popout-bar strong').click()
     await page.keyboard.press('Escape')
-    await page.waitForSelector('.room-sheet', { state: 'detached', timeout: 3000 })
-      .catch(() => problems.push('desk: Esc did not close the room'))
-    await sleep(500)
-    await page.screenshot({ path: `${OUT}/${theme}-Desk.png` })
+    await body.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push(`${view}: Esc did not close the pop-out`))
   }
 
   for (const theme of ['light', 'dark']) {
@@ -85,7 +77,9 @@ async function main() {
         await page.getByRole('menuitem', { name: label }).click()
       }, theme)
     }
-    await backToDesk(theme)
+    room = 'desk'
+    await sleep(400)
+    await page.screenshot({ path: `${OUT}/${theme}-Desk.png` })
     if (theme === 'light') {
       await page.locator('.app-dock .appearance > button').click()
       await page.getByRole('radio', { name: 'Dark' }).click()
@@ -94,30 +88,30 @@ async function main() {
     }
   }
 
-  // The ⌥Space layer over a stand-in desktop: a thought, a note pop-out, a room pop-out, Esc.
-  room = 'layer'
-  await page.goto(`${url}?surface=overlay`)
-  await page.waitForSelector('#home-line', { timeout: 15000 })
-  await page.fill('#home-line', 'Left on the layer')
+  // On the desk: a thought, the pile of loose thoughts, a note from ⌘K, stacked pop-outs, Esc.
+  room = 'pop-outs'
+  await page.fill('#home-line', 'Left on the desk')
   await page.press('#home-line', 'Enter')
   // Two loose thoughts now: they rest in one pile, which opens Unsorted.
   await page.getByRole('button', { name: /loose thoughts/ }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
-    .catch(() => problems.push('layer: the pile of loose thoughts did not open Unsorted'))
+    .catch(() => problems.push('pop-outs: the pile of loose thoughts did not open Unsorted'))
+  await page.locator('.popout.is-top .popout-bar strong').click()
   await page.keyboard.press('Escape')
-  // ⌘K finds a note; on the layer it opens as a pop-out.
   await page.keyboard.press('Control+k')
   await page.keyboard.type('Smoke test')
   await page.keyboard.press('Enter')
   await page.getByRole('dialog', { name: 'Smoke test thought' }).waitFor({ timeout: 5000 })
-    .catch(() => problems.push('layer: a note did not open as a pop-out'))
+    .catch(() => problems.push('pop-outs: a note did not open as a pop-out'))
   await page.getByRole('button', { name: 'Notes', exact: true }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
-    .catch(() => problems.push('layer: Notes did not open as a pop-out'))
+    .catch(() => problems.push('pop-outs: Notes did not open as a pop-out'))
   await sleep(400)
-  await page.screenshot({ path: `${OUT}/layer.png` })
+  await page.screenshot({ path: `${OUT}/pop-outs.png` })
+  await page.locator('.popout.is-top .popout-bar strong').click()
   await page.keyboard.press('Escape')
-  if (await page.getByRole('dialog', { name: 'Notes' }).count()) problems.push('layer: Esc did not close the top pop-out')
+  if (await page.getByRole('dialog', { name: 'Notes' }).count()) problems.push('pop-outs: Esc did not close the top pop-out')
+  if (!await page.getByRole('dialog', { name: 'Smoke test thought' }).count()) problems.push('pop-outs: Esc closed more than the top pop-out')
 
   // The quick chat's window, as the browser preview can show it (no AI here).
   room = 'quick chat'

@@ -2,9 +2,9 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import test from 'node:test'
 
-const { addLauncher, createOverlay, displayAt, hotkeyLabel, validHotkey } = createRequire(import.meta.url)('../desktop/overlay.cjs')
+const { addLauncher, deskAction, displayAt, hotkeyLabel, placeItem, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
 
-test('the layer opens on the display under the cursor', () => {
+test('the desk opens on the display under the cursor', () => {
   const left = { id: 1, bounds: { x: 0, y: 0, width: 1440, height: 900 } }
   const right = { id: 2, bounds: { x: 1440, y: -200, width: 2560, height: 1440 } }
   assert.equal(displayAt([left, right], { x: 2000, y: 100 }).id, 2)
@@ -27,34 +27,13 @@ test('launchers keep real apps, once', () => {
   assert.deepEqual(list, [{ path: '/Applications/Safari.app', name: 'Safari' }])
 })
 
-test('the layer is created hidden, shows on the cursor display and hides again', () => {
-  const calls = []
-  class FakeWindow {
-    constructor(options) { this.options = options; this.shown = false; this.webContents = { focus() {}, send: (channel) => calls.push(channel) } }
-    setVisibleOnAllWorkspaces(value, options) { this.everywhere = [value, options] }
-    setAlwaysOnTop(value, level) { this.top = [value, level] }
-    on() {}
-    setBounds(bounds) { this.bounds = bounds }
-    show() { this.shown = true }
-    hide() { this.shown = false }
-    focus() {}
-    isVisible() { return this.shown }
-  }
-  const screen = { getAllDisplays: () => [{ bounds: { x: 0, y: 0, width: 800, height: 600 }, workArea: { x: 0, y: 25, width: 800, height: 520 } }], getCursorScreenPoint: () => ({ x: 5, y: 5 }) }
-  const layer = createOverlay({ BrowserWindow: FakeWindow, screen, platform: 'darwin', preload: 'p.cjs', load: () => calls.push('load') })
-  assert.equal(layer.window.options.show, false)
-  assert.equal(layer.window.options.type, 'panel')
-  assert.deepEqual(layer.window.everywhere, [true, { visibleOnFullScreen: true }])
-  layer.toggle()
-  assert.equal(layer.visible(), true)
-  assert.deepEqual(layer.window.bounds, { x: 0, y: 25, width: 800, height: 520 })
-  assert.deepEqual(calls, ['load', 'overlay:shown'])
-  layer.toggle()
-  assert.equal(layer.visible(), false)
+test('⌥Space shows the desk, brings it forward, or puts it away', () => {
+  assert.equal(deskAction({ visible: false, focused: false }), 'show')
+  assert.equal(deskAction({ visible: true, focused: false }), 'show')
+  assert.equal(deskAction({ visible: true, focused: true }), 'hide')
 })
 
-test('a spot on the layer is kept inside it, and null puts the item back', () => {
-  const { placeItem } = createRequire(import.meta.url)('../desktop/overlay.cjs')
+test('a spot on the desk is kept inside it, and null puts the item back', () => {
   let places = placeItem({}, 'widget:day', { x: 0.4, y: 1.8 })
   assert.deepEqual(places, { 'widget:day': { x: 0.4, y: 0.97 } })
   places = placeItem(places, 'note:abc', { x: -2, y: 0.1 })

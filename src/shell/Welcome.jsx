@@ -28,7 +28,7 @@ export function Welcome({ onDone }) {
       setAi(status)
       setTier(status.chosen || status.recommended)
     }).catch(() => {})
-    window.osatOverlay?.prefs?.().then((prefs) => { if (prefs?.label) setHotkey(prefs.label) }).catch(() => {})
+    window.osatDesk?.prefs?.().then((prefs) => { if (prefs?.label) setHotkey(prefs.label) }).catch(() => {})
   }, [])
 
   useEffect(() => {

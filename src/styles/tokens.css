@@ -94,7 +94,7 @@
   --d-fast: 140ms; --d-base: 220ms; --d-slow: 400ms;
 
   /* Layers across the whole app; stacking inside one room stays local. */
-  --z-scrim: 15; --z-sheet: 20; --z-dock: 40; --z-pop: 60; --z-modal: 90; --z-focus: 100;
+  --z-dock: 40; --z-pop: 60; --z-modal: 90; --z-focus: 100;
 
   --content-max: 1240px;
   --gutter: clamp(1.25rem, 4vw, 3rem);

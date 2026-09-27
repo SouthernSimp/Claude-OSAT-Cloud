@@ -66,7 +66,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
               <p className="eyebrow">KEYBOARD</p>
               <h2>Everything is a key away.</h2>
               <dl className="key-list">
-                {[["⌘1 – ⌘4", "Desk, Notes, Map, Ask"], ["⌘K", "Find anything"], ["⇧⌘N", "A new thought"], ["⌘,", "Settings"], ["esc", "Back out, one step at a time"]].map(([keys, what]) => (
+                {[["⌘1 – ⌘5", "Desk, Notes, Map, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new thought"], ["⌘,", "Settings"], ["esc", "Back out, one step at a time"]].map(([keys, what]) => (
                   <div key={keys}><dt><kbd>{keys}</kbd></dt><dd>{what}</dd></div>
                 ))}
               </dl>
@@ -317,7 +317,7 @@ function PhoneCards() {
   );
 }
 
-/* The key that shows the OSAT layer from anywhere. Recorded from event.code,
+/* The key that shows the OSAT desk from anywhere. Recorded from event.code,
    because ⌥ changes event.key on a Mac. */
 const KEY_NAMES = { Space: "Space", Tab: "Tab", Enter: "Return", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right" };
 function keyName(code) {
@@ -327,7 +327,7 @@ function keyName(code) {
 }
 
 function ShortcutCard() {
-  const bridge = window.osatOverlay;
+  const bridge = window.osatDesk;
   const [info, setInfo] = useState(null);
   const [recording, setRecording] = useState(null);
   const [message, setMessage] = useState("");
@@ -367,13 +367,13 @@ function ShortcutCard() {
   return (
     <section className="content-card">
       <p className="eyebrow">SHORTCUTS</p>
-      <h2>{info?.failed ? "Pick a key for the OSAT layer." : "OSAT, from anywhere."}</h2>
+      <h2>{info?.failed ? "Pick a key for OSAT." : "OSAT, from anywhere."}</h2>
       <div className="shortcut-row">
         <p>
-          <strong>The layer</strong>
+          <strong>The desk</strong>
           {info?.failed
             ? `${info.label} is already used by another app, so OSAT can’t listen for it. Choose a different shortcut.`
-            : "Drop a thought, find something or ask. Esc puts it away."}
+            : "Brings OSAT up over your desktop. Press it again, or Esc, to put it away."}
         </p>
         {button("layer", info, "⌥Space")}
       </div>

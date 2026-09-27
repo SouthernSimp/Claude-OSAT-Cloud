@@ -121,24 +121,22 @@ contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
   onStatus: (listener) => listen('phone:status', listener),
 }))
 
-/* The ⌥Space layer: hide it, hand a pop-out to the main window, the hotkey, the app launchers,
-   where things sit on it, and Spotify. */
-contextBridge.exposeInMainWorld('osatOverlay', Object.freeze({
-  hide: () => ipcRenderer.send('overlay:hide'),
-  openInWindow: (view, detail) => ipcRenderer.send('overlay:open-in-window', view, detail),
-  prefs: () => ipcRenderer.invoke('overlay:prefs'),
-  // which: 'layer' (⌥Space) or 'chat' (⌥⇧Space).
-  setHotkey: (value, which = 'layer') => ipcRenderer.invoke('overlay:set-hotkey', value, which),
-  addLauncher: () => ipcRenderer.invoke('overlay:add-launcher'),
-  removeLauncher: (appPath) => ipcRenderer.invoke('overlay:remove-launcher', appPath),
-  launch: (appPath) => ipcRenderer.invoke('overlay:launch', appPath),
-  place: (id, spot) => ipcRenderer.invoke('overlay:place', id, spot),
-  tidy: () => ipcRenderer.invoke('overlay:tidy'),
+/* The desk (⌥Space): put it away, the shortcuts, the app launchers, where things sit
+   on it, Spotify, and the frosting behind it. */
+contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
+  hide: () => ipcRenderer.send('desk:hide'),
+  prefs: () => ipcRenderer.invoke('desk:prefs'),
+  // which: 'layer' (⌥Space, the desk) or 'chat' (⌥⇧Space).
+  setHotkey: (value, which = 'layer') => ipcRenderer.invoke('desk:set-hotkey', value, which),
+  addLauncher: () => ipcRenderer.invoke('desk:add-launcher'),
+  removeLauncher: (appPath) => ipcRenderer.invoke('desk:remove-launcher', appPath),
+  launch: (appPath) => ipcRenderer.invoke('desk:launch', appPath),
+  place: (id, spot) => ipcRenderer.invoke('desk:place', id, spot),
+  tidy: () => ipcRenderer.invoke('desk:tidy'),
   nowPlaying: () => ipcRenderer.invoke('media:now'),
   media: (action) => ipcRenderer.invoke('media:control', action),
-  setClear: (clear) => ipcRenderer.send('overlay:clear', clear === true),
-  onShown: (listener) => listen('overlay:shown', listener),
-  onEscape: (listener) => listen('overlay:escape', listener),
+  setClear: (clear) => ipcRenderer.send('desk:clear', clear === true),
+  onShown: (listener) => listen('desk:shown', listener),
 }))
 
 /* The quick chat: pop a chat out of any window, and, inside it, put it away or move it

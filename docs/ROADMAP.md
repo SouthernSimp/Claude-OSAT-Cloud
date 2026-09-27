@@ -25,6 +25,8 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 6b | The iPhone app | Merged (PR #8) |
 | 7 | Visual polish | Merged (PR #9) |
 | 8 | Your Mac's files in OSAT, the quick chat, Ask reads files | Merged (PR #10) |
+| 9 | One desk: the window and the ⌥Space layer become one | In progress |
+| 10 | Floating windows: quick note, any room, now playing, Today / Next | Next |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -346,10 +348,26 @@ layers eventually".
   comes from the preload, never the page.
 - **Not yet:** moving, renaming or trashing files; dragging files out of OSAT; a list view.
 
-**Next: one layer.** The desk in the window and the ⌥Space layer are the same desk twice. With
-the Desktop in it, the window's desk can be *the* desk: ⌥Space would bring the OSAT window
-forward full-screen over the real desktop, and the separate layer goes. To decide with Nate:
-keep the see-through layer (real desktop blurred behind) or the window's wallpaper.
+### Phase 9: One desk
+Nate, Sep 27: "make sure we have the one layer but also still the popout window for quick chat".
+His choices: the desk is a real window; rooms open as pop-outs you can drag; the real desktop,
+blurred, sits behind it.
+- **One desk.** The OSAT window *is* the desk now: ⌥Space brings it up filling the screen over
+  your desktop (on the Space you're on, on the display under the pointer), it stays when you
+  click another app, ⌘Tab reaches it, and ⌥Space again, Esc or ⌘W puts it away and hands focus
+  back to the app you were in. The separate see-through layer window is gone.
+- **Every room is a pop-out.** Notes, Map (with a Board / Sky switch), Ask, Files, Today's page,
+  Calendar, Habits, Reflect, Money, Projects, Browser, Terminal and Settings all open as glass
+  windows on the desk that you can drag, resize and stack. Esc closes the top one.
+- **The dock** is the one from the window (Desk, Notes, Map, Ask, Files, Tools, Find, Look,
+  Capture) with the layer's app launchers beside it; right-click an app to take it off.
+- **The quick chat (⌥⇧Space)** stays exactly as it was.
+- **Removed:** the room sheets, the wallpaper choice (Lake / Moss) and the moss picture, the
+  saved window size (the desk is always the screen), "Open in window".
+
+### Phase 10: Floating windows (next)
+Small windows that float over every app, like the quick chat: a quick note, any room torn off the
+desk, now playing, and Today / Next.
 
 ### Later (after the MVP)
 - Projects become folder properties, and Files become "Linked folders" in Notes.

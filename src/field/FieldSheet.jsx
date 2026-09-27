@@ -13,7 +13,7 @@ function remember(snapshot, note, title, body) {
   }
 }
 
-/* `inline` drops the backdrop and focus trap, for a note that opens as a pop-out on the layer. */
+/* `inline` drops the backdrop and focus trap, for a note that opens as a pop-out on the desk. */
 export function FieldSheet({ note, onClose, onCommit, onOpenNotes, inline = false }) {
   const origin = paperFields(note)
   const [title, setTitle] = useState(origin.title)

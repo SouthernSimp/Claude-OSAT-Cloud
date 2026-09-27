@@ -15,7 +15,7 @@ const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, addLauncher, createOverlay, hotkeyLabel, placeItem, validHotkey } = require('./overlay.cjs')
+const { DEFAULT_HOTKEY, addLauncher, deskAction, displayAt, hotkeyLabel, placeItem, validHotkey } = require('./desk.cjs')
 const { createQuickChat } = require('./quick-chat.cjs')
 const { PLACES, extractText, isPackage, locate, run, searchArgs } = require('./mac-files.cjs')
 const { createMedia } = require('./media.cjs')
@@ -28,18 +28,17 @@ const WRITABLE_EXTENSIONS = new Set(['.canvas', '.markdown', '.md'])
 const CHAT_HOTKEY = 'Alt+Shift+Space'
 
 let mainWindow
-let overlay
+let quitting = false
 let quickChat
 let tray
 let prefs = { hotkey: DEFAULT_HOTKEY, chatHotkey: CHAT_HOTKEY, chatBounds: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, phone: false }
-// The two shortcuts: the layer and the quick chat. `value` is null when another app has it.
+// The two shortcuts: the desk and the quick chat. `value` is null when another app has it.
 const shortcuts = {
-  layer: { value: null, failed: false, run: () => overlay?.toggle() },
+  layer: { value: null, failed: false, run: () => toggleDesk() },
   chat: { value: null, failed: false, run: () => quickChat?.toggle() },
 }
 let ai
 let trayAiLine = ''
-let holdOverlay = false
 let grants = []
 let grantsFile
 let mutation = Promise.resolve()
@@ -111,14 +110,13 @@ function ensureGrantAccess(grant) {
   }
 }
 
-/* Choosing, writing and forgetting answer only the main OSAT window; looking at files,
-   the browser and the terminal also answer the layer. */
+/* Everything here answers only the OSAT window (the desk). */
 function assertMainWindow(event) {
   if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) fail('Only the main OSAT window can do that.')
 }
 
+// ponytail: the same as the main window today; floating room windows will join it.
 function assertAppWindow(event) {
-  if (overlay && event.sender === overlay.window.webContents) return
   assertMainWindow(event)
 }
 
@@ -207,13 +205,12 @@ function mutateGrants(change) {
 
 const NOT_ALLOWED = 'OSAT isn’t allowed into that folder yet. Allow it in System Settings → Privacy & Security → Files and Folders.'
 
-/* from: 'main' (the default), 'app' (main or the layer), 'overlay' (the layer) or 'any'. */
+/* from: 'main' (the default), 'app' (any window that shows rooms) or 'any'. */
 function handle(channel, operation, { from = 'main' } = {}) {
   ipcMain.handle(channel, async (event, ...args) => {
     assertTrustedSender(event)
     if (from === 'main') assertMainWindow(event)
     if (from === 'app') assertAppWindow(event)
-    if (from === 'overlay' && event.sender !== overlay?.window.webContents) fail('Only the OSAT layer can do that.')
     try {
       return await operation(...args)
     } catch (error) {
@@ -369,8 +366,6 @@ function registerFileHandlers() {
     const target = await approvedPath(getGrant(rootId), relative)
     const window = BrowserWindow.getFocusedWindow() || mainWindow
     if (process.platform !== 'darwin' || !window) return false
-    // Over the layer OSAT holds Esc, so the next Esc closes Quick Look first.
-    if (window === overlay?.window) quickLooking = true
     window.previewFile(target)
     return true
   }, { from: 'app' })
@@ -400,7 +395,7 @@ function registerFileHandlers() {
   handle('files:attach', async (dropped) => {
     let target = dropped
     if (target === null) {
-      const result = await holdingLayer(() => dialog.showOpenDialog({ title: 'Choose a file for Ask', properties: ['openFile'] }))
+      const result = await dialog.showOpenDialog({ title: 'Choose a file for Ask', properties: ['openFile'] })
       if (result.canceled || !result.filePaths[0]) return null
       target = result.filePaths[0]
     }
@@ -446,37 +441,26 @@ async function thumbnail(file, size = 128) {
   return thumbs.get(key)
 }
 
-function windowStateFile() {
-  return path.join(app.getPath('userData'), 'window-state.json')
-}
-
-async function readWindowState() {
-  try {
-    const saved = JSON.parse(await fs.readFile(windowStateFile(), 'utf8'))
-    const area = screen.getDisplayMatching(saved).workArea
-    const fits = saved.width >= 960 && saved.height >= 600 && saved.x < area.x + area.width && saved.y < area.y + area.height && saved.x + saved.width > area.x && saved.y + saved.height > area.y
-    return fits ? saved : null
-  } catch {
-    return null
-  }
-}
-
 function send(channel, ...args) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args)
 }
 
-async function createWindow() {
-  const saved = await readWindowState()
+/* The desk: one see-through window over the real desktop. It fills the screen under
+   the cursor each time it comes up, and closing it only puts it away. */
+function createWindow() {
+  const mac = process.platform === 'darwin'
   const window = new BrowserWindow({
-    width: saved?.width || 1487,
-    height: saved?.height || 1058,
-    ...(saved ? { x: saved.x, y: saved.y } : {}),
-    minWidth: 960,
-    minHeight: 600,
     show: false,
-    backgroundColor: '#f8f5ef',
+    frame: false,
+    transparent: true,
+    hasShadow: false,
+    resizable: false,
+    movable: false,
+    maximizable: false,
+    fullscreenable: false,
+    backgroundColor: '#00000000',
     title: 'OSAT',
-    titleBarStyle: 'hiddenInset',
+    ...(mac ? { vibrancy: 'fullscreen-ui', visualEffectState: 'active', roundedCorners: false } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -487,10 +471,10 @@ async function createWindow() {
 
   mainWindow = window
   mainListening = false
-  if (saved?.maximized) window.maximize()
-  window.on('close', () => {
-    const bounds = window.getNormalBounds()
-    fs.writeFile(windowStateFile(), JSON.stringify({ ...bounds, maximized: window.isMaximized() })).catch(() => {})
+  window.on('close', (event) => {
+    if (quitting) return
+    event.preventDefault()
+    hideDesk()
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https:\/\//i.test(url)) shell.openExternal(url)
@@ -499,20 +483,46 @@ async function createWindow() {
   window.webContents.on('will-navigate', (event, url) => {
     if (url !== window.webContents.getURL()) event.preventDefault()
   })
-  window.once('ready-to-show', () => window.show())
+  window.once('ready-to-show', () => showDesk())
   window.once('closed', () => {
     if (mainWindow === window) mainWindow = undefined
   })
   window.loadFile(APP_ENTRY)
 }
 
-function focusMain() {
+function showDesk() {
   if (!mainWindow || mainWindow.isDestroyed()) return createWindow()
-  if (mainWindow.isMinimized()) mainWindow.restore()
-  mainWindow.show()
-  mainWindow.focus()
+  const window = mainWindow
+  const mac = process.platform === 'darwin'
+  if (window.isMinimized()) window.restore()
+  window.setBounds(displayAt(screen.getAllDisplays(), screen.getCursorScreenPoint()).workArea)
+  // Shown on every Space for a moment, so it comes to the Space you are on instead of
+  // taking you back to the one it was last on.
+  if (mac) window.setVisibleOnAllWorkspaces(true)
+  window.show()
+  if (mac) {
+    app.focus({ steal: true })
+    window.setVisibleOnAllWorkspaces(false)
+  }
+  window.focus()
+  window.webContents.send('desk:shown')
   return undefined
 }
+
+/* Put away, and the app you were in has focus again (unless the quick chat is up). */
+function hideDesk() {
+  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return
+  mainWindow.hide()
+  if (process.platform === 'darwin' && !quickChat?.window.isVisible()) app.hide()
+}
+
+function toggleDesk() {
+  const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+  if (deskAction({ visible: Boolean(window?.isVisible()), focused: Boolean(window?.isFocused()) }) === 'hide') hideDesk()
+  else showDesk()
+}
+
+const focusMain = showDesk
 
 /* Everything in the menu bar goes through the same navigate() the app uses. */
 // A command for a window that is closed or still loading waits until it is listening.
@@ -552,7 +562,7 @@ function buildMenu() {
       submenu: [
         { label: 'New Thought', accelerator: 'CmdOrCtrl+Shift+N', click: () => command({ view: 'Capture' }) },
         { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => command({ view: 'Notes', detail: { action: 'new' } }) },
-        { label: 'Show OSAT Layer', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => overlay?.show() },
+        { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
         { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
         { type: 'separator' },
         { label: 'New Browser Tab', accelerator: 'CmdOrCtrl+T', click: () => command({ view: 'Browser', action: 'new-tab' }) },
@@ -591,8 +601,6 @@ function buildMenu() {
         { role: 'resetZoom' },
         { role: 'zoomIn' },
         { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' },
         ...(app.isPackaged ? [] : [{ type: 'separator' }, { role: 'reload' }, { role: 'toggleDevTools' }]),
       ],
     },
@@ -600,14 +608,14 @@ function buildMenu() {
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   app.dock?.setMenu(Menu.buildFromTemplate([
-    { label: 'Show OSAT Layer', click: () => overlay?.show() },
+    { label: 'Show OSAT', click: () => showDesk() },
     { label: 'Quick Chat', click: () => quickChat?.show() },
     { label: 'New Browser Tab', click: () => command({ view: 'Browser', action: 'new-tab' }) },
   ]))
 }
 
 /* Browser and terminal calls pass their own messages back to the room.
-   Each window (the main one and the layer) gets its own browser tabs. */
+   Each window gets its own browser tabs. */
 function handleApp(channel, operation) {
   ipcMain.handle(channel, async (event, ...args) => {
     assertTrustedSender(event)
@@ -642,11 +650,6 @@ function browserFor(sender) {
   return browser
 }
 
-/* Terminal output goes to every window that can show a terminal. */
-function sendToAppWindows(channel, ...args) {
-  send(channel, ...args)
-  if (overlay && !overlay.window.isDestroyed()) overlay.window.webContents.send(channel, ...args)
-}
 
 function registerBrowserAndTerminal() {
   // Settings → Data and About.
@@ -667,7 +670,7 @@ function registerBrowserAndTerminal() {
   handleApp('browser:clip', (sender) => browserFor(sender).clip())
   onTrusted('browser:place', (sender, rect) => browserFor(sender).place(rect))
 
-  terminals = process.mas ? { available: false, destroy() {} } : createTerminals({ emit: sendToAppWindows })
+  terminals = process.mas ? { available: false, destroy() {} } : createTerminals({ emit: send })
   handleApp('terminal:available', () => terminals.available)
   handleApp('terminal:list', () => terminals.list())
   handleApp('terminal:start', (_sender, size) => terminals.start(size))
@@ -727,7 +730,7 @@ function registerStore() {
   })
 }
 
-/* ---- The layer (⌥Space), its hotkey, launchers and the menu-bar icon ---- */
+/* ---- The desk (⌥Space), its hotkey, launchers and the menu-bar icon ---- */
 
 function prefsFile() {
   return path.join(app.getPath('userData'), 'prefs.json')
@@ -791,39 +794,16 @@ const shortcutInfo = (which) => {
   return { hotkey: shortcut.value, label: hotkeyLabel(shortcut.value || (which === 'chat' ? prefs.chatHotkey : prefs.hotkey)), failed: shortcut.failed }
 }
 
-/* A macOS panel swallows Esc before the page sees it, so while the layer is up or the
-   quick chat has focus, OSAT takes Esc itself and hands it to that page. */
-// ponytail: closing Quick Look with Space or its button leaves this set, so the next Esc
-// only closes nothing; a Quick Look panel delegate would know, if that ever matters.
-let quickLooking = false
+/* A macOS panel swallows Esc before the page sees it, so while the quick chat has
+   focus, OSAT takes Esc itself and hands it to the chat. */
 function routeEscape() {
-  if (quickLooking) {
-    quickLooking = false
-    overlay?.window.closeFilePreview()
-  } else if (quickChat?.window.isFocused()) quickChat.window.webContents.send('chat:escape')
-  else if (overlay?.visible()) overlay.window.webContents.send('overlay:escape')
+  if (quickChat?.window.isFocused()) quickChat.window.webContents.send('chat:escape')
 }
 function claimEscape() {
   if (process.platform === 'darwin' && !globalShortcut.isRegistered('Escape')) globalShortcut.register('Escape', routeEscape)
 }
 function releaseEscape() {
-  if (!overlay?.visible() && !quickChat?.window.isFocused()) globalShortcut.unregister('Escape')
-}
-
-/* An open panel takes focus from the layer, which would put it away; it waits instead. */
-async function holdingLayer(task) {
-  const shown = overlay?.visible()
-  holdOverlay = true
-  globalShortcut.unregister('Escape')
-  try {
-    return await task()
-  } finally {
-    holdOverlay = false
-    if (shown) {
-      overlay.show()
-      claimEscape()
-    }
-  }
+  if (!quickChat?.window.isFocused()) globalShortcut.unregister('Escape')
 }
 
 const launcherIcons = new Map()
@@ -835,96 +815,66 @@ async function launcherList() {
   }))
 }
 
-function registerOverlay() {
-  overlay = createOverlay({
-    BrowserWindow,
-    screen,
-    platform: process.platform,
-    preload: path.join(__dirname, 'preload.cjs'),
-    load: (window) => {
-      window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-      window.webContents.on('will-navigate', (event, url) => {
-        if (url !== window.webContents.getURL()) event.preventDefault()
-      })
-      window.loadFile(APP_ENTRY, { query: { surface: 'overlay' } })
-    },
-    onBlur: () => { if (!holdOverlay && !overlay.window.webContents.isDevToolsOpened()) overlay.hide() },
-  })
-  overlay.window.on('show', claimEscape)
-  // Quick Look opened over the layer goes away with it.
-  overlay.window.on('hide', () => {
-    if (quickLooking) overlay.window.closeFilePreview()
-    quickLooking = false
-    releaseEscape()
-  })
-
-  const fromOverlay = (event) => {
+function registerDesk() {
+  const fromDesk = (event) => {
     assertTrustedSender(event)
-    if (event.sender !== overlay.window.webContents) fail('Only the OSAT layer can do that.')
+    assertMainWindow(event)
   }
-  ipcMain.on('overlay:hide', (event) => { try { fromOverlay(event); overlay.hide() } catch { /* ignored */ } })
+  ipcMain.on('desk:hide', (event) => { try { fromDesk(event); hideDesk() } catch { /* ignored */ } })
   // Blur set to zero in Appearance: no frosting, the desktop shows through clear.
-  ipcMain.on('overlay:clear', (event, clear) => {
-    try { fromOverlay(event) } catch { return }
-    if (process.platform === 'darwin') overlay.window.setVibrancy(clear === true ? null : 'fullscreen-ui')
+  ipcMain.on('desk:clear', (event, clear) => {
+    try { fromDesk(event) } catch { return }
+    if (process.platform === 'darwin') mainWindow.setVibrancy(clear === true ? null : 'fullscreen-ui')
   })
-  ipcMain.on('overlay:open-in-window', (event, view, detail) => {
-    try { fromOverlay(event) } catch { return }
-    if (typeof view !== 'string') return
-    overlay.hide()
-    if (process.platform === 'darwin') app.focus({ steal: true })
-    command({ view, detail: detail && typeof detail === 'object' ? detail : null })
-  })
-  // The shortcuts can be read and changed from the layer or from Settings in the main window.
-  handle('overlay:prefs', async () => ({ ...shortcutInfo('layer'), chat: shortcutInfo('chat'), launchers: await launcherList(), places: prefs.places }), { from: 'app' })
-  handle('overlay:set-hotkey', async (value, which = 'layer') => {
+  // The shortcuts, read on the desk and changed in Settings.
+  handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), chat: shortcutInfo('chat'), launchers: await launcherList(), places: prefs.places }), { from: 'app' })
+  handle('desk:set-hotkey', async (value, which = 'layer') => {
     if (!shortcuts[which]) fail('That isn’t one of OSAT’s shortcuts.')
     if (!validHotkey(value)) fail('Use one or more of ⌘ ⌃ ⌥ ⇧ with one key.')
-    if (Object.entries(shortcuts).some(([id, other]) => id !== which && other.value === value)) fail(`${hotkeyLabel(value)} already opens the ${which === 'chat' ? 'OSAT layer' : 'quick chat'}.`)
+    if (Object.entries(shortcuts).some(([id, other]) => id !== which && other.value === value)) fail(`${hotkeyLabel(value)} already opens ${which === 'chat' ? 'OSAT' : 'the quick chat'}.`)
     if (!useHotkey(which, value)) fail(`${hotkeyLabel(value)} is taken by another app. Try a different one.`)
     prefs = { ...prefs, [which === 'chat' ? 'chatHotkey' : 'hotkey']: value }
     await savePrefs()
     return shortcutInfo(which)
   }, { from: 'app' })
-  handle('overlay:add-launcher', async () => {
-    const result = await holdingLayer(() => dialog.showOpenDialog(overlay.window, {
+  handle('desk:add-launcher', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Add an app to the dock',
       defaultPath: '/Applications',
       properties: ['openFile'],
       filters: [{ name: 'Applications', extensions: ['app'] }],
-    }))
+    })
     if (!result.canceled && result.filePaths[0]) {
       prefs = { ...prefs, launchers: addLauncher(prefs.launchers, result.filePaths[0]) }
       await savePrefs()
     }
     return launcherList()
-  }, { from: 'overlay' })
-  handle('overlay:remove-launcher', async (appPath) => {
+  })
+  handle('desk:remove-launcher', async (appPath) => {
     prefs = { ...prefs, launchers: prefs.launchers.filter((item) => item.path !== appPath) }
     await savePrefs()
     return launcherList()
-  }, { from: 'overlay' })
-  // Widgets and icons Nate moved on the layer. null puts one back; tidy puts all back.
-  handle('overlay:place', async (id, spot) => {
+  })
+  // Widgets and icons Nate moved on the desk. null puts one back; tidy puts all back.
+  handle('desk:place', async (id, spot) => {
     prefs = { ...prefs, places: placeItem(prefs.places, id, spot) }
     await savePrefs()
     return prefs.places
-  }, { from: 'overlay' })
-  handle('overlay:tidy', async () => {
+  })
+  handle('desk:tidy', async () => {
     prefs = { ...prefs, places: {} }
     await savePrefs()
     return prefs.places
-  }, { from: 'overlay' })
+  })
   const media = createMedia()
-  handle('media:now', () => (process.platform === 'darwin' ? media.nowPlaying() : null), { from: 'overlay' })
-  handle('media:control', (action) => media.control(action), { from: 'overlay' })
+  handle('media:now', () => (process.platform === 'darwin' ? media.nowPlaying() : null))
+  handle('media:control', (action) => media.control(action))
   // Only apps Nate added can be opened this way.
-  handle('overlay:launch', async (appPath) => {
+  handle('desk:launch', async (appPath) => {
     if (!prefs.launchers.some((item) => item.path === appPath)) fail('That app is not in the dock.')
-    overlay.hide()
     if (await shell.openPath(appPath)) fail('macOS could not open that app.')
     return true
-  }, { from: 'overlay' })
+  })
 }
 
 /* ---- The quick chat (⌥⇧Space): Ask in a small window over every app ---- */
@@ -967,9 +917,8 @@ function registerQuickChat() {
     if (process.platform === 'darwin') app.focus({ steal: true })
     command({ view, detail: detail && typeof detail === 'object' ? detail : null })
   })
-  // Pop a chat out of the window or the layer: { chatId } or { prompt }, or nothing for the last one.
+  // Pop a chat out of the desk: { chatId } or { prompt }, or nothing for the last one.
   handle('chat:show', (detail) => {
-    overlay?.hide()
     quickChat.show(detail && typeof detail === 'object' ? { chatId: typeof detail.chatId === 'string' ? detail.chatId : undefined, prompt: typeof detail.prompt === 'string' ? detail.prompt.slice(0, 8000) : undefined } : null)
     return true
   }, { from: 'app' })
@@ -990,9 +939,8 @@ function updateTray() {
   if (!tray || tray.isDestroyed()) return
   trayAiLine = aiLine()
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Show OSAT Layer', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => overlay.show() },
+    { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
     { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
-    { label: 'Open OSAT', click: () => focusMain() },
     { type: 'separator' },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
     { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'shortcut' } }) },
@@ -1286,17 +1234,19 @@ app.whenReady().then(async () => {
   await loadPrefs()
   registerAi()
   await registerPhone()
-  registerOverlay()
+  registerDesk()
   registerQuickChat()
-  await createWindow()
+  createWindow()
   createTray()
-  // If the layer's shortcut is taken by another app, open Settings so a new one can be picked.
+  // If the desk's shortcut is taken by another app, open Settings so a new one can be picked.
   // The quick chat's is quieter: Settings says so when you look.
   useHotkey('chat', prefs.chatHotkey)
   if (!useHotkey('layer', prefs.hotkey)) command({ view: 'Settings', detail: { section: 'shortcut' } })
-  // Clicking the Dock icon reopens the main window, even while the hidden layer exists.
-  app.on('activate', () => focusMain())
+  // Clicking the Dock icon brings the desk up.
+  app.on('activate', () => showDesk())
 })
+
+app.on('before-quit', () => { quitting = true })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
