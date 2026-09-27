@@ -159,9 +159,10 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   }, [initialPrompt?.at]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => abortRef.current?.abort(), []);
+  // The box is disabled until a model is known, so focus it again once it is.
   useEffect(() => {
     inputRef.current?.focus();
-  }, [activeId]);
+  }, [activeId, Boolean(model)]);
 
   /* Follow the stream only while the reader is already near the bottom. */
   useEffect(() => {
