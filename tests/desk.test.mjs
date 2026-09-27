@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import test from 'node:test'
 
-const { addLauncher, deskAction, displayAt, hotkeyLabel, placeItem, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
+const { addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
 
 test('the desk opens on the display under the cursor', () => {
   const left = { id: 1, bounds: { x: 0, y: 0, width: 1440, height: 900 } }
@@ -41,4 +41,13 @@ test('a spot on the desk is kept inside it, and null puts the item back', () => 
   assert.equal(placeItem(places, 'bad id!', { x: 0, y: 0 }), places)
   assert.equal(placeItem(places, 'note:abc', { x: 'a', y: 0 }), places)
   assert.deepEqual(Object.keys(placeItem(places, 'widget:day', null)), ['note:abc'])
+})
+
+test('the widgets out on the desk: up to five short ids, once each, in order', () => {
+  assert.deepEqual(pickWidgets(['calendar', 'next', 'calendar', 'from-before']), ['calendar', 'next', 'from-before'])
+  assert.deepEqual(pickWidgets(['a', 'b', 'c', 'd', 'e', 'f']), ['a', 'b', 'c', 'd', 'e'])
+  assert.deepEqual(pickWidgets(['Next', '../x', '', 'x'.repeat(25), 3, null, 'habits']), ['habits'])
+  assert.deepEqual(pickWidgets([]), [], 'an empty desk is a choice, not the defaults')
+  assert.equal(pickWidgets(undefined), null)
+  assert.equal(pickWidgets('calendar'), null)
 })

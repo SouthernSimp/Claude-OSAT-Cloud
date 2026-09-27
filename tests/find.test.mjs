@@ -57,6 +57,14 @@ test('actions answer to their other words', () => {
     assert.deepEqual(findAll(workspace, word)[0].go, ['Focus'], word)
   }
   assert.deepEqual(findAll(workspace, 'new note').find((row) => row.kind === 'action').go, ['Notes', { action: 'new' }])
+  for (const word of ['add a widget', 'widget', 'widgets']) {
+    assert.deepEqual(findAll(workspace, word)[0].go, ['Widgets'], word)
+  }
+  assert.ok(!findAll(workspace, 'habits').some((row) => row.go[0] === 'Widgets'), 'a room\'s name finds the room, not the tray')
+})
+
+test('hidden rooms are found by name: Now playing', () => {
+  assert.deepEqual(findAll(workspace, 'now playing')[0].go, ['NowPlaying'])
 })
 
 test('files on this Mac come in as rows, and notes make room for them', () => {

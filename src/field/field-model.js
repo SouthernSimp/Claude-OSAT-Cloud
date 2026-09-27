@@ -1,7 +1,7 @@
 /* Layout for the desk and the sky. Pure functions so the motion can be tested
    without a browser. Positions stay finite; pinned stars do not get moved. */
 
-import { excerpt, folderChildren, isActiveNote, wikilinkPairs } from '../notes-model.js'
+import { excerpt, folderChildren, isActiveNote, relatedNotes, wikilinkPairs } from '../notes-model.js'
 
 export const WORLD = { width: 1600, height: 1000 }
 export const POSE_KEY = 'osat.field.papers.v1'
@@ -83,6 +83,30 @@ export function fitCells(items, capacity = Infinity) {
   const room = Math.max(1, Math.floor(capacity))
   if (items.length <= room) return items
   return [...items.slice(0, room - 1), { kind: 'more', id: 'more', count: items.length - room + 1 }]
+}
+
+const DAY = 86400000
+const noonOf = (dateKey) => Date.parse(`${dateKey}T12:00:00`)
+
+/* From before: one older note (made 30 or more days ago, not touched this week, not a day
+   page, not resting after "Not now") that fits what was written this week. When none fits,
+   a pick hashed from the date, so the widget keeps the same note all day. */
+export function pickSurfacing(notes, today, rested = {}) {
+  const now = noonOf(today)
+  const age = (value) => (now - Date.parse(value)) / DAY
+  const thisWeek = (note) => age(note.updatedAt) < 7
+  const resting = (id) => (now - noonOf(rested[id])) / DAY < 30
+  const active = notes.filter(isActiveNote)
+  const old = active.filter((note) => note.kind !== 'day' && age(note.createdAt) >= 30 && !thisWeek(note) && !resting(note.id))
+  if (!old.length) return null
+  const written = active.filter(thisWeek).map((note) => `${note.title}\n${note.markdown}`).join('\n').slice(0, 20000)
+  return relatedNotes(old, written, 1)[0] || [...old].sort((a, b) => a.id.localeCompare(b.id))[Math.floor(hashUnit(today) * old.length)]
+}
+
+/* "Not now" rests a note for 30 days; rests older than that are dropped as this one is kept. */
+export function restSurfacing(rested, id, today) {
+  const now = noonOf(today)
+  return { ...Object.fromEntries(Object.entries(rested || {}).filter(([, day]) => (now - noonOf(day)) / DAY < 30)), [id]: today }
 }
 
 /* Where a moment sits on the day ribbon, 6am to midnight, as 0..1. */

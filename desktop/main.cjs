@@ -38,7 +38,7 @@ const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, addLauncher, deskAction, displayAt, hotkeyLabel, placeItem, validHotkey } = require('./desk.cjs')
+const { DEFAULT_HOTKEY, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = require('./desk.cjs')
 const { createQuickChat } = require('./quick-chat.cjs')
 const { PLACES, extractText, isPackage, locate, run, searchArgs } = require('./mac-files.cjs')
 const { createMedia } = require('./media.cjs')
@@ -780,6 +780,7 @@ async function loadPrefs() {
         ? { x: saved.chatBounds.x, y: saved.chatBounds.y, width: saved.chatBounds.width, height: saved.chatBounds.height } : null,
       launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
       places: Object.entries(saved.places || {}).reduce((places, [id, spot]) => placeItem(places, id, spot), {}),
+      widgets: pickWidgets(saved.widgets),
       ai: { tier: typeof saved.ai?.tier === 'string' ? saved.ai.tier : null },
       welcomed: saved.welcomed === true,
       phone: saved.phone === true,
@@ -862,7 +863,7 @@ function registerDesk() {
     if (process.platform === 'darwin') mainWindow.setVibrancy(clear === true ? null : 'fullscreen-ui')
   })
   // The shortcuts, read on the desk and changed in Settings.
-  handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), chat: shortcutInfo('chat'), launchers: await launcherList(), places: prefs.places }), { from: 'app' })
+  handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), chat: shortcutInfo('chat'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
   handle('desk:set-hotkey', async (value, which = 'layer') => {
     if (!shortcuts[which]) fail('That isn’t one of OSAT’s shortcuts.')
     if (!validHotkey(value)) fail('Use one or more of ⌘ ⌃ ⌥ ⇧ with one key.')
@@ -901,9 +902,16 @@ function registerDesk() {
     await savePrefs()
     return prefs.places
   })
+  // Which widgets are out, in order (per Mac, like places). null brings back the defaults.
+  handle('desk:widgets', async (list) => {
+    prefs = { ...prefs, widgets: pickWidgets(list) }
+    await savePrefs()
+    return prefs.widgets
+  })
   const media = createMedia()
   handle('media:now', () => (process.platform === 'darwin' ? media.nowPlaying() : null))
   handle('media:control', (action) => media.control(action))
+  handle('media:seek', (seconds) => media.seek(seconds))
   // Only apps Nate added can be opened this way.
   handle('desk:launch', async (appPath) => {
     if (!prefs.launchers.some((item) => item.path === appPath)) fail('That app is not in the dock.')

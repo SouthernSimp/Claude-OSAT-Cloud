@@ -2,20 +2,22 @@
    `line` is the line's resting box ({ left, top, right, bottom }). The side with more
    room (and fewer rooms already on it) wins; each new room on a side steps down a little.
    A room that can't keep most of its size beside the line opens in the middle, under the
-   band the line rises into (`raised` in Desk.jsx lifts it there). */
+   band the line rises into (`raised` in Desk.jsx lifts it there). A room opened from a
+   widget `prefer`s the widget's side ('left' or 'right'): that side, or else the middle. */
 
 const EDGE = 16
 const DOCK = 96 // the dock's band at the foot of the desk
 const RAISED = 170 // the band at the top the line rises into
 const STEP = 28
 
-export function placeRoom(view, [w, h], line, pops = []) {
+export function placeRoom(view, [w, h], line, pops = [], { prefer } = {}) {
   const bottom = view.height - DOCK
   const sides = line ? [
-    { left: line.right + EDGE, right: view.width - EDGE },
-    { left: EDGE, right: line.left - EDGE },
+    { name: 'right', left: line.right + EDGE, right: view.width - EDGE },
+    { name: 'left', left: EDGE, right: line.left - EDGE },
   ] : []
   const fits = sides
+    .filter((side) => !prefer || side.name === prefer)
     .map((side) => ({ ...side, room: side.right - side.left, taken: pops.filter((pop) => pop.x < side.right && pop.x + pop.w > side.left).length }))
     .filter((side) => side.room >= Math.min(w, Math.max(560, w * 0.7)))
     .sort((a, b) => a.taken - b.taken || b.room - a.room)
@@ -40,6 +42,23 @@ export function placeRoom(view, [w, h], line, pops = []) {
     x: Math.round(Math.min((view.width - width) / 2 + step, view.width - width - EDGE)),
     y: Math.round(Math.min(RAISED + step, bottom - height)),
   }
+}
+
+/* The transform that lays a box `to` over the rectangle `from` (both { left, top, width,
+   height }; origin at the top left), so a room can grow out of the widget or dock button
+   it came from, and shrink back into it. */
+export const shrinkTo = (from, to) => `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`
+
+/* Plays `element` growing out of the rectangle `from` (or, `back`, shrinking into it and
+   staying there until it is removed). Only a transform moves, so nothing inside reflows.
+   With reduced motion, or from nowhere in particular, it only fades. Returns the Animation. */
+export function grow(element, from, { back = false } = {}) {
+  const still = !from || matchMedia('(prefers-reduced-motion: reduce)').matches
+  const small = still ? { opacity: 0 } : { transformOrigin: '0 0', transform: shrinkTo(from, element.getBoundingClientRect()), opacity: 0 }
+  const full = still ? { opacity: 1 } : { transformOrigin: '0 0', transform: 'none', opacity: 1 }
+  return back
+    ? element.animate([full, { opacity: 1, offset: 0.55 }, small], { duration: still ? 140 : 240, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' })
+    : element.animate([small, { opacity: 1, offset: 0.3 }, full], { duration: still ? 160 : 320, easing: 'cubic-bezier(0.3, 0.5, 0.1, 1)' })
 }
 
 /* A room covers the line when their boxes meet. */

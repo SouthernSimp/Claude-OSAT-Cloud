@@ -133,8 +133,10 @@ contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   launch: (appPath) => ipcRenderer.invoke('desk:launch', appPath),
   place: (id, spot) => ipcRenderer.invoke('desk:place', id, spot),
   tidy: () => ipcRenderer.invoke('desk:tidy'),
+  setWidgets: (list) => ipcRenderer.invoke('desk:widgets', list),
   nowPlaying: () => ipcRenderer.invoke('media:now'),
   media: (action) => ipcRenderer.invoke('media:control', action),
+  seek: (seconds) => ipcRenderer.invoke('media:seek', seconds),
   setClear: (clear) => ipcRenderer.send('desk:clear', clear === true),
   onShown: (listener) => listen('desk:shown', listener),
 }))

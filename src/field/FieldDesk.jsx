@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CaretDown, MoonStars, PushPin, ShareNetwork } from '@phosphor-icons/react'
+import { CaretDown, PushPin, ShareNetwork } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
 import { cleanError } from '../assistant/useAi.js'
@@ -10,22 +10,12 @@ import { FileThumb, filesBridge, openEntry, useFolder, useFreshness } from '../v
 import { useReducedMotion } from './FieldChrome.jsx'
 import { dayPhase, fitCells, homeItems, paperFields, phaseCopy } from './field-model.js'
 import { Line } from './Line.jsx'
-import { DayWidget } from './widgets/DayWidget.jsx'
-import { MediaWidget } from './widgets/MediaWidget.jsx'
-import { MonthWidget } from './widgets/MonthWidget.jsx'
-import { NextWidget, openSteps } from './widgets/NextWidget.jsx'
+import { Widgets } from './Widgets.jsx'
+import { openSteps } from './widgets/NextWidget.jsx'
 
 const ICONS_KEY = 'osat.home.icons.v1'
 const SHELF_KEY = 'osat.home.shelf'
 const CELL = { h: 103 }
-
-/* The evening invitation shows once a day, and never again that day once opened. */
-function readEvening() {
-  try { return localStorage.getItem('osat.evening') } catch { return null }
-}
-function markEvening(date) {
-  try { localStorage.setItem('osat.evening', date) } catch { /* a convenience only */ }
-}
 
 /* The right side shows your Mac's Desktop, or OSAT's own notes and folders. */
 function readShelf() {
@@ -40,15 +30,16 @@ function readIconsCollapsed() {
   }
 }
 
-/* Home is a quiet desktop over the real one (it shows through, blurred): small widgets
-   on the left, one line in the middle (`Line`: write it down, find it, or ask), the files
-   on your Mac's Desktop (or your notes) as icons on the right, and a dock to the rooms.
-   It reads and writes the same records the rest of OSAT keeps. Notes open as pop-outs
-   (`onOpenNote`); widgets and icons can be picked up and set down anywhere (`places`). */
+/* Home is a quiet desktop over the real one (it shows through, blurred): widgets on the
+   left (`Widgets`, which `widgets` configures), one line in the middle (`Line`: write it
+   down, find it, or ask), the files on your Mac's Desktop (or your notes) as icons on the
+   right, and a dock to the rooms. It reads and writes the same records the rest of OSAT
+   keeps. Notes open as pop-outs (`onOpenNote`); widgets and icons can be picked up and set
+   down anywhere (`places`). */
 export function FieldDesk({
   workspace, commit, navigate,
   storage, focusAt, summon, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
-  raised = false, onLine,
+  raised = false, onLine, widgets,
 }) {
   const home = useRef(null)
   const justMoved = useRef(false)
@@ -67,16 +58,11 @@ export function FieldDesk({
   const desktop = useFolder(onDesktop ? 'desktop' : null, '', fresh + visit)
   const [focusOpen, setFocusOpen] = useState(false)
   const [hoverId, setHoverId] = useState(null)
-  const [eveningSeenOn, setEveningSeenOn] = useState(readEvening)
 
   const phase = dayPhase(now)
   const today = localDateKey(now)
   const [greeting] = phaseCopy(phase)
   const notes = workspace.notes.filter(isActiveNote)
-  const allEvents = workspace.calendar.events
-  const events = allEvents
-    .filter((event) => localDateKey(new Date(event.start)) === today)
-    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
   const allItems = homeItems({ notes, folders: workspace.folders, boards: workspace.sorter?.boards || [] })
   const placed = (item) => Boolean(places[`${item.kind}:${item.id}`])
   const items = fitCells(allItems.filter((item) => !placed(item)), capacity)
@@ -192,9 +178,8 @@ export function FieldDesk({
 
   /* Pick a widget or icon up and set it down anywhere, like a sticky. A press
      that barely moves is still a click. */
-  function movable(id) {
+  function movable(id, spot = places[id]) {
     if (!onPlace) return {}
-    const spot = places[id]
     return {
       'data-placed': spot ? '' : undefined,
       style: spot ? { position: 'absolute', left: `${spot.x * 100}%`, top: `${spot.y * 100}%` } : undefined,
@@ -257,12 +242,12 @@ export function FieldDesk({
 
   return (
     <div ref={home} className={`home is-layer ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''} ${raised ? 'is-raised' : ''}`} data-phase={phase}>
-      <aside className="home-widgets" aria-label="Today at a glance">
-        <DayWidget now={now} events={events} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:day')} />
-        <MonthWidget now={now} today={today} events={allEvents} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:month')} />
-        <NextWidget notes={notes} today={today} commit={commit} navigate={navigate} onOpen={openNote} move={movable('widget:next')} />
-        {media && <MediaWidget media={media} visit={visit} move={movable('widget:media')} />}
-      </aside>
+      <Widgets
+        {...widgets}
+        places={places}
+        move={movable}
+        props={{ workspace, commit, navigate, now, today, notes, media, visit, onOpenNote: openNote }}
+      />
 
       <Line
         workspace={workspace}
@@ -277,11 +262,6 @@ export function FieldDesk({
         onLine={onLine}
         onOpenNote={openNote}
         onSaved={setFreshId}
-        foot={(phase === 'evening' || phase === 'night') && eveningSeenOn !== today && (
-          <button type="button" className="glass evening-pill" onClick={() => { markEvening(today); setEveningSeenOn(today); navigate('Reflection') }}>
-            <MoonStars weight="fill" /> Close the day <span>three quiet questions</span>
-          </button>
-        )}
       />
 
       <nav className="home-icons" aria-label={onDesktop ? 'Your Desktop' : 'OSAT items'}>

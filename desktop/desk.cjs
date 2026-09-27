@@ -50,6 +50,13 @@ function placeItem(places, id, spot) {
   return Object.fromEntries(Object.entries(next).slice(-200))
 }
 
+/* Which widgets are out on the desk, in order. Only the shape is checked (the desk ignores
+   ids it doesn't know): up to five distinct short ids. Not a list: the desk's defaults. */
+function pickWidgets(list) {
+  if (!Array.isArray(list)) return null
+  return [...new Set(list.filter((id) => typeof id === 'string' && /^[a-z-]{1,24}$/.test(id)))].slice(0, 5)
+}
+
 /* What ⌥Space does: show a hidden desk, bring forward one behind other apps, put away
    the one you are looking at. */
 function deskAction({ visible, focused }) {
@@ -57,4 +64,4 @@ function deskAction({ visible, focused }) {
   return focused ? 'hide' : 'show'
 }
 
-module.exports = { DEFAULT_HOTKEY, addLauncher, placeItem, deskAction, displayAt, hotkeyLabel, validHotkey }
+module.exports = { DEFAULT_HOTKEY, addLauncher, placeItem, pickWidgets, deskAction, displayAt, hotkeyLabel, validHotkey }

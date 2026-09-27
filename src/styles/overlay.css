@@ -32,6 +32,10 @@ html:has(.overlay-surface) body,
   pointer-events: auto;
   animation: pop-in 220ms var(--ease-out) both;
 }
+/* Grown out of a widget or the dock by a Web Animation instead (see grow in placement.js);
+   a room shrinking back into its widget can't be caught mid-way. */
+.popout.is-grown { animation: none; }
+.popout.is-closing { pointer-events: none; }
 .popout.is-top { box-shadow: 0 0 0 0.5px var(--line-strong), 0 34px 80px -26px rgb(0 0 0 / 60%); }
 .popout-bar {
   display: flex;
@@ -79,15 +83,13 @@ html:has(.overlay-surface) body,
 
 /* Anything set down leaves its column and sits where it was dropped. */
 .home.is-layer [data-placed] { z-index: 2; margin: 0; }
-.home.is-layer .widget[data-placed] { width: 148px; }
-.home.is-layer :is(.widget-next, .widget-media)[data-placed] { width: 311px; }
+.home.is-layer .widget[data-placed] { width: 311px; }
 .home.is-layer .icon[data-placed] { width: 92px; }
 .home.is-layer :is(.widget, .icon).is-moving { position: relative; z-index: 6; cursor: grabbing; transition: none; animation: none; }
 
 /* ---- Spotify ----------------------------------------------------------- */
 
 .widget-media {
-  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr) auto;
   align-items: center;
@@ -108,3 +110,46 @@ html:has(.overlay-surface) body,
 .media-controls button:disabled { color: var(--on-4); }
 .media-controls svg { width: 14px; height: 14px; }
 .media-controls .media-play svg { width: 18px; height: 18px; }
+
+/* The Now playing room: the cover large, a position bar, the three controls. */
+.now-playing {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 24px 28px;
+  overflow-y: auto;
+  text-align: center;
+}
+.now-cover {
+  width: min(320px, 46cqh, 80cqw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  object-fit: cover;
+  color: var(--faint);
+  background: var(--surface-sunken);
+  box-shadow: 0 0 0 0.5px var(--line), 0 24px 48px -24px rgb(0 0 0 / 55%);
+}
+.now-cover svg { width: 30%; height: 30%; }
+.now-title { min-width: 0; max-width: 100%; }
+.now-title h2 { margin: 0; overflow: hidden; font-size: var(--t-lg); color: var(--ink-strong); text-overflow: ellipsis; white-space: nowrap; }
+.now-title p { margin: 4px 0 0; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.now-seek { width: min(340px, 100%); display: grid; gap: 4px; }
+.now-seek input { width: 100%; margin: 0; accent-color: var(--accent); }
+.now-times { display: flex; justify-content: space-between; font-size: var(--t-2xs); font-variant-numeric: tabular-nums; color: var(--faint); }
+.now-controls { display: flex; align-items: center; gap: 18px; }
+.now-controls button { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: var(--ink); }
+.now-controls button:hover:not(:disabled) { background: var(--surface-hover); }
+.now-controls button:disabled { color: var(--faint); }
+.now-controls svg { width: 20px; height: 20px; }
+.now-controls .now-play { width: 54px; height: 54px; color: var(--accent-ink); background: var(--accent); }
+.now-controls .now-play:hover:not(:disabled) { background: var(--accent-hover); }
+.now-controls .now-play svg { width: 24px; height: 24px; }
+.now-note { display: inline-flex; align-items: center; gap: 7px; margin: 0; padding: 7px 12px; border-radius: 999px; font-size: var(--t-sm); color: var(--muted); }
+button.now-note:hover { color: var(--ink); background: var(--surface-hover); }
+.now-note.is-done { color: var(--positive); }
+.now-note svg { width: 15px; height: 15px; }

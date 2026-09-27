@@ -1,6 +1,6 @@
 import {
   BookOpenText, CalendarBlank, CurrencyDollar, Files, FolderSimple, GearSix, Globe, House, ListChecks,
-  NotePencil, ShareNetwork, Sparkle, TerminalWindow, UploadSimple,
+  MusicNotes, NotePencil, ShareNetwork, Sparkle, TerminalWindow, UploadSimple,
 } from '@phosphor-icons/react'
 
 /* The one definition of where things live. The dock, the sheet titles, ⌘K and
@@ -28,7 +28,10 @@ export const TOOLS = [
 ]
 
 export const SETTINGS = { id: 'Settings', label: 'Settings', icon: GearSix, hint: 'Appearance, data, the shortcut' }
-export const HIDDEN = [{ id: 'Obsidian', label: 'Export to Obsidian', icon: UploadSimple, hint: 'In Settings → Data' }]
+export const HIDDEN = [
+  { id: 'Obsidian', label: 'Export to Obsidian', icon: UploadSimple, hint: 'In Settings → Data' },
+  { id: 'NowPlaying', label: 'Now playing', icon: MusicNotes, hint: 'Spotify, bigger' },
+]
 
 const ALL = [...SPACES, ...TOOLS, SETTINGS, ...HIDDEN]
 

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { ArrowCounterClockwise, AppWindow, Database, MoonStars, Plus, ShareNetwork, X } from '@phosphor-icons/react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { AppWindow, Database, MoonStars, Plus, ShareNetwork, X } from '@phosphor-icons/react'
 
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
 import { BoardView } from '../board/BoardView.jsx'
@@ -19,19 +19,21 @@ import { CalendarView } from '../views/Calendar.jsx'
 import { FilesView } from '../views/Files.jsx'
 import { HabitsView } from '../views/Habits.jsx'
 import { JournalView } from '../views/Journal.jsx'
+import { NowPlayingView } from '../views/NowPlaying.jsx'
 import { ProjectsView } from '../views/Projects.jsx'
 import { ReflectionView } from '../views/Reflection.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
-import { covers, placeRoom } from './placement.js'
+import { covers, grow, placeRoom } from './placement.js'
 import { Dock } from './Shell.jsx'
 import { Welcome } from './Welcome.jsx'
 
 /* The desk: OSAT's one window, laid over the real desktop (see-through, blurred),
-   with every room opening as a pop-out you can drag, resize and stack. ⌥Space brings
-   it up and puts it away. ⌘K, ⇧⌘N and Find in the menu all land in the desk's line.
-   Esc backs out of the line first (see Line.jsx), then closes the top pop-out, then
-   puts the desk away. */
+   with every room opening as a pop-out you can drag, resize and stack. A room opened
+   from a widget or the dock grows out of it; one opened from a widget shrinks back into
+   it. ⌥Space brings it up and puts it away. ⌘K, ⇧⌘N and Find in the menu all land in
+   the desk's line. Esc backs out of the line first (see Line.jsx), then closes the top
+   pop-out, then puts the desk away. */
 
 const ROOMS = {
   Notes: [1100, 720],
@@ -48,7 +50,19 @@ const ROOMS = {
   Browser: [1120, 760],
   Terminal: [860, 540],
   Settings: [980, 760],
+  NowPlaying: [520, 660],
   note: [600, 640],
+}
+
+/* Which widgets are out: saved per Mac by the app; the browser preview keeps them here. */
+const WIDGETS_KEY = 'osat.widgets'
+function readWidgets() {
+  try {
+    const list = JSON.parse(localStorage.getItem(WIDGETS_KEY))
+    return Array.isArray(list) ? list : null
+  } catch {
+    return null
+  }
 }
 
 export function Desk() {
@@ -58,10 +72,11 @@ export function Desk() {
   const bridge = window.osatDesk
   const [pops, setPops] = useState([])
   const [visit, setVisit] = useState(0)
-  const [prefs, setPrefs] = useState({ launchers: [], places: {} })
+  const [prefs, setPrefs] = useState(() => ({ launchers: [], places: {}, widgets: bridge ? null : readWidgets() }))
   const [welcome, setWelcome] = useState(false)
   const [focusAt, setFocusAt] = useState(0)
   const [summon, setSummon] = useState(0)
+  const [trayAt, setTrayAt] = useState(0)
   const [roomCommand, setRoomCommand] = useState(null)
   const [line, setLine] = useState(null)
   useAlive()
@@ -121,9 +136,10 @@ export function Desk() {
         return
       }
       if (event.key !== 'Escape' || event.defaultPrevented || document.documentElement.dataset.menu === 'open') return
-      const { pops: open, welcome: welcoming } = latest.current
+      const { pops: all, welcome: welcoming } = latest.current
       if (welcoming) return
       const active = document.activeElement
+      const open = all.filter((pop) => !pop.closing)
       event.preventDefault()
       if (open.length) {
         if (active?.closest?.('.popout') && active.closest('.xterm, .browser-view')) return
@@ -139,17 +155,29 @@ export function Desk() {
     bridge?.hide()
   }
 
-  function open(view, detail = null) {
+  /* `from` is the rectangle the room grows out of; `widget` the widget it is the room of,
+     which it opens beside (on its side of the line) and shrinks back into. */
+  function open(view, detail = null, { from = null, widget = null } = {}) {
     const key = view === 'note' ? `note:${detail.noteId}` : view
     setPops((list) => {
       const existing = list.find((pop) => pop.key === key)
-      if (existing) return [...list.filter((pop) => pop !== existing), { ...existing, detail, at: Date.now() }]
-      const spot = placeRoom({ width: innerWidth, height: innerHeight }, ROOMS[view], latest.current.line, list)
-      return [...list, { key, view, detail, at: Date.now(), ...spot }]
+      if (existing) return [...list.filter((pop) => pop !== existing), { ...existing, detail, at: Date.now(), closing: false }]
+      const { line } = latest.current
+      const prefer = widget && line && from ? (from.left + from.width / 2 < (line.left + line.right) / 2 ? 'left' : 'right') : undefined
+      const spot = placeRoom({ width: innerWidth, height: innerHeight }, ROOMS[view], line, list.filter((pop) => !pop.closing), { prefer })
+      return [...list, { key, view, detail, at: Date.now(), ...spot, from, widget }]
     })
   }
 
+  /* A widget's room shrinks back into the widget while it is still on the desk (PopOut
+     lets it go once it has); anything else simply closes. */
   function close(key) {
+    const pop = latest.current.pops.find((item) => item.key === key)
+    if (pop?.widget && document.querySelector(`[data-widget="${pop.widget}"]`)) setPops((list) => list.map((item) => (item.key === key ? { ...item, closing: true } : item)))
+    else gone(key)
+  }
+
+  function gone(key) {
     setPops((list) => list.filter((pop) => pop.key !== key))
   }
 
@@ -168,19 +196,21 @@ export function Desk() {
   function swap(key, view) {
     setPops((list) => (list.some((pop) => pop.key === view)
       ? [...list.filter((pop) => pop.key !== key && pop.key !== view), { ...list.find((pop) => pop.key === view), at: Date.now() }]
-      : list.map((pop) => (pop.key === key ? { ...pop, key: view, view, detail: null, at: Date.now() } : pop))))
+      : list.map((pop) => (pop.key === key ? { ...pop, key: view, view, detail: null, at: Date.now(), from: null } : pop))))
   }
 
-  function navigate(view, detail = null) {
+  // `origin`: where it was opened from ({ from, widget }), so the room can grow out of it.
+  function navigate(view, detail = null, origin) {
     // A new thought, or a search: the line takes it (it rises if a room covers it).
     if (view === 'Capture') { if (!latest.current.welcome) setSummon(Date.now()) }
     else if (view === 'Focus') setFocusAt(Date.now())
+    else if (view === 'Widgets') setTrayAt(Date.now())
     // The Obsidian export lives in Settings → Data.
     else if (view === 'Obsidian') open('Settings', { section: 'data' })
-    else if ((view === 'Notes' || view === 'Today') && typeof detail === 'string') open('note', { noteId: detail })
-    else if ((view === 'Notes' || view === 'Today') && typeof detail?.noteId === 'string') open('note', { noteId: detail.noteId })
+    else if ((view === 'Notes' || view === 'Today') && typeof detail === 'string') open('note', { noteId: detail }, origin)
+    else if ((view === 'Notes' || view === 'Today') && typeof detail?.noteId === 'string') open('note', { noteId: detail.noteId }, origin)
     else if (view === 'Today') setVisit((value) => value + 1)
-    else if (ROOMS[view]) open(view, detail)
+    else if (ROOMS[view]) open(view, detail, origin)
   }
   latest.current = { navigate, pops, welcome, line }
 
@@ -204,6 +234,12 @@ export function Desk() {
     bridge?.tidy().catch(() => {})
   }
 
+  function setWidgets(widgets) {
+    setPrefs((value) => ({ ...value, widgets }))
+    if (bridge) bridge.setWidgets(widgets).then((saved) => setPrefs((value) => ({ ...value, widgets: saved }))).catch(() => {})
+    else try { localStorage.setItem(WIDGETS_KEY, JSON.stringify(widgets)) } catch { /* a convenience only */ }
+  }
+
   if (!hydrated) {
     return (
       <main className="overlay-surface">
@@ -223,7 +259,8 @@ export function Desk() {
   }
 
   const common = { workspace, commit, navigate }
-  const top = pops.at(-1)
+  const shown = pops.filter((pop) => !pop.closing)
+  const top = shown.at(-1)
   const covered = welcome
   const hasPlaces = Object.keys(prefs.places || {}).length > 0
 
@@ -241,8 +278,16 @@ export function Desk() {
           places={prefs.places || {}}
           onPlace={place}
           media={bridge?.nowPlaying ? bridge : null}
-          raised={pops.some((pop) => covers(pop, line))}
+          raised={shown.some((pop) => covers(pop, line))}
           onLine={setLine}
+          widgets={{
+            list: prefs.widgets,
+            onList: setWidgets,
+            openIds: new Set(shown.map((pop) => pop.widget).filter(Boolean)),
+            tray: trayAt,
+            hasPlaces,
+            onTidy: tidy,
+          }}
           dock={(
             <Dock
               view={top?.view === 'note' ? 'Notes' : top?.view || 'Today'}
@@ -250,7 +295,6 @@ export function Desk() {
               storage={storage}
               workspace={workspace}
               commit={commit}
-              extra={hasPlaces ? [{ label: 'Put widgets and icons back', icon: ArrowCounterClockwise, onSelect: tidy }] : []}
             >
               {bridge && (
                 <>
@@ -277,14 +321,15 @@ export function Desk() {
             key={pop.key}
             pop={pop}
             z={index + 1}
-            top={pop.key === top.key}
+            top={pop.key === top?.key}
             title={pop.view === 'note' ? workspace.notes.find((note) => note.id === pop.detail.noteId)?.title || 'Note' : titleFor(pop.view)}
             onRaise={() => raise(pop.key)}
             onClose={() => close(pop.key)}
+            onGone={() => gone(pop.key)}
             onChange={(patch) => change(pop.key, patch)}
             onMode={(view) => swap(pop.key, view)}
           >
-            <PopRoom pop={pop} common={common} storage={storage} command={roomCommand} covered={pop.key !== top.key || covered} onClose={() => close(pop.key)} open={open} />
+            <PopRoom pop={pop} common={common} storage={storage} command={roomCommand} covered={pop.key !== top?.key || covered} onClose={() => close(pop.key)} open={open} />
           </PopOut>
         ))}
       </div>
@@ -333,17 +378,34 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Budget': return <BudgetView {...room} />
     case 'Projects': return <ProjectsView {...room} />
     case 'Settings': return <SettingsView {...room} storage={storage} target={pop.detail?.section ? target : null} />
+    case 'NowPlaying': return <NowPlayingView {...room} media={window.osatDesk?.nowPlaying ? window.osatDesk : null} />
     default: return null
   }
 }
 
-/* A floating glass window on the desk: drag it by its bar, resize it from the corner. */
-function PopOut({ pop, z, top, title, onRaise, onClose, onChange, onMode, children }) {
+/* A floating window on the desk: drag it by its bar, resize it from the corner. It grows
+   out of where it was opened from (`pop.from`) and, closing, shrinks into its widget. */
+function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, onMode, children }) {
   const map = pop.view === 'Mindmap' || pop.view === 'Sky'
   const node = useRef(null)
   const drag = useRef(null)
   const changeRef = useRef(onChange)
   changeRef.current = onChange
+  const goneRef = useRef(onGone)
+  goneRef.current = onGone
+
+  useLayoutEffect(() => {
+    if (pop.from) grow(node.current, pop.from)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!pop.closing) return undefined
+    const widget = document.querySelector(`[data-widget="${pop.widget}"]`)
+    if (!widget) { goneRef.current(); return undefined }
+    const shrink = grow(node.current, widget.getBoundingClientRect(), { back: true })
+    shrink.finished.then(() => goneRef.current(), () => {})
+    return () => shrink.cancel()
+  }, [pop.closing, pop.widget])
 
   useEffect(() => {
     const element = node.current
@@ -355,7 +417,7 @@ function PopOut({ pop, z, top, title, onRaise, onClose, onChange, onMode, childr
   return (
     <section
       ref={node}
-      className={`popout ${top ? 'is-top' : ''}`}
+      className={`popout ${top ? 'is-top' : ''} ${pop.from ? 'is-grown' : ''} ${pop.closing ? 'is-closing' : ''}`}
       style={{ left: pop.x, top: pop.y, width: pop.w, height: pop.h, zIndex: z }}
       role="dialog"
       aria-label={title}

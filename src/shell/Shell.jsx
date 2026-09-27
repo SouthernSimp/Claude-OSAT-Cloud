@@ -36,7 +36,7 @@ export function Dock({ view, navigate, storage, aiReady, workspace, commit, extr
           data-tip={`${space.hint}  ⌘${index + 1}`}
           aria-current={current === space.id ? 'page' : undefined}
           className={space.id === 'Assistant' && aiReady ? 'is-running' : undefined}
-          onClick={() => navigate(space.id)}
+          onClick={(event) => navigate(space.id, null, { from: event.currentTarget.getBoundingClientRect() })}
         >
           <space.icon weight={current === space.id ? 'fill' : 'regular'} />
           <span className="dock-label">{space.label}</span>

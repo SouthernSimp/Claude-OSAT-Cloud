@@ -103,6 +103,40 @@ async function main() {
     }
   }
 
+  // A widget opens its room, growing out of it, and its spot stays empty; Esc shrinks it back.
+  room = 'widgets'
+  await page.locator('.widget-calendar .widget-date').click()
+  await page.getByRole('dialog', { name: 'Calendar' }).waitFor({ timeout: 5000 }).catch(() => problems.push('widgets: clicking the Calendar widget did not open the Calendar'))
+  if (!await page.locator('.widget-calendar[data-open]').count()) problems.push('widgets: the Calendar widget kept its spot while its room was open')
+  await sleep(400)
+  await page.locator('.popout.is-top .popout-bar strong').click()
+  await page.keyboard.press('Escape')
+  await page.getByRole('dialog', { name: 'Calendar' }).waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('widgets: Esc did not put the Calendar away'))
+  // ⌘K finds "Add a widget", which raises the tray; Esc puts just the tray away.
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('add a widget')
+  for (let step = 0; step < 6 && await picked() !== 'Add a widget'; step += 1) await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  const tray = page.getByRole('dialog', { name: 'Add a widget' })
+  await tray.waitFor({ timeout: 3000 }).catch(() => problems.push('widgets: "Add a widget" in the line did not raise the tray'))
+  await page.keyboard.press('Escape')
+  await tray.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('widgets: Esc did not put the tray away'))
+  // The + adds Habits to the foot of the column; its – takes it off at once, and Undo brings it back.
+  await page.locator('.home-widgets').hover()
+  await page.getByRole('button', { name: 'Add a widget', exact: true }).click()
+  await sleep(500)
+  await page.screenshot({ path: `${OUT}/widget-tray.png` })
+  await page.getByRole('button', { name: /^Add Habits/ }).click()
+  const habits = page.locator('.home-widgets > .widget-habits')
+  await habits.waitFor({ timeout: 3000 }).catch(() => problems.push('widgets: Habits was not added from the tray'))
+  if (!await page.locator('.home-widgets > .widget').last().evaluate((node) => node.classList.contains('widget-habits')).catch(() => false)) problems.push('widgets: Habits did not land at the foot of the column')
+  await habits.hover()
+  await page.getByRole('button', { name: 'Take Habits off the desk' }).click()
+  if (await habits.count()) problems.push('widgets: the – did not take Habits off')
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await habits.waitFor({ timeout: 3000 }).catch(() => problems.push('widgets: Undo did not bring Habits back'))
+  await page.mouse.move(720, 700)
+
   // On the desk: a thought, the pile of loose thoughts, a note found from the line, stacked pop-outs, Esc.
   room = 'pop-outs'
   await page.fill('#home-line', 'Left on the desk')

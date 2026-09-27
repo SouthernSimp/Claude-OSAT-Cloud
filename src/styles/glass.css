@@ -119,23 +119,6 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .widget-next-foot button:hover { color: var(--on-1); }
 .widget-next-foot .bring { color: var(--accent); }
 
-.evening-pill {
-  justify-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 14px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: var(--t-sm);
-  font-weight: 560;
-  color: var(--on-1);
-  background: var(--glass);
-  animation: pop-open 700ms var(--spring) 600ms both;
-}
-.evening-pill svg { width: 14px; height: 14px; color: #f3c98b; }
-.evening-pill span { color: var(--on-3); font-weight: 450; }
-.evening-pill:hover { translate: 0 -1px; }
 
 /* At the foot of the room that asked (the pop-out's glass is what "fixed" measures from). */
 .undo-toasts { position: fixed; z-index: var(--z-pop); left: 50%; bottom: 24px; translate: -50% 0; pointer-events: none; }
@@ -390,6 +373,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 @media (prefers-reduced-motion: reduce) {
   .home-greeting,
   .home > *,
+  .widget,
   .popout,
   .app-dock,
   .menu-popover,

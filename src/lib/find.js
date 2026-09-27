@@ -17,6 +17,7 @@ const ACTIONS = [
   { key: 'act:board', label: 'Open the Map', also: 'board mindmap', go: ['Mindmap'] },
   { key: 'act:sky', label: 'See the Sky', also: 'stars constellation', go: ['Sky'] },
   { key: 'act:focus', label: 'Focus for 25 minutes', also: 'timer pomodoro quiet concentrate', go: ['Focus'] },
+  { key: 'act:widget', label: 'Add a widget', hint: 'Calendar, Next, Focus, Habits…', also: 'widgets tray', go: ['Widgets'] },
   { key: 'act:under', label: 'Go under', hint: 'Incognito · OSAT with the internet off', also: 'incognito offline private', go: ['Under'] },
 ]
 

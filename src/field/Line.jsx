@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowUp, CalendarBlank, ChatCircle, CheckCircle, File, FolderSimple, HourglassMedium, MoonStars, NotePencil,
-  PictureInPicture, Plus, ShareNetwork, Sparkle, Stop, WifiSlash, X,
+  PictureInPicture, Plus, ShareNetwork, Sparkle, SquaresFour, Stop, WifiSlash, X,
 } from '@phosphor-icons/react'
 
 import { applyAction, extractActions, systemPrompt, wantsActions } from '../assistant/actions.js'
@@ -35,6 +35,7 @@ const ACTION_ICONS = {
   'act:sky': MoonStars,
   'act:focus': HourglassMedium,
   'act:under': WifiSlash,
+  'act:widget': SquaresFour,
 }
 const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceFor(row.go[0])?.icon || Sparkle
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { covers, placeRoom } from '../src/shell/placement.js'
+import { covers, placeRoom, shrinkTo } from '../src/shell/placement.js'
 
 const wide = { width: 3440, height: 1410 }
 const laptop = { width: 1440, height: 900 }
@@ -54,4 +54,24 @@ test('covers needs the boxes to meet', () => {
   assert.equal(covers({ x: 300, y: 100, w: 50, h: 50 }, line), false)
   assert.equal(covers({ x: 299, y: 199, w: 50, h: 50 }, line), true)
   assert.equal(covers({ x: 0, y: 0, w: 50, h: 50 }, null), false)
+})
+
+test('a room from a widget opens on the widget\'s side when it fits, else in the middle', () => {
+  const view = { width: 2560, height: 1300 }
+  const line = lineOn(view)
+  const left = placeRoom(view, [1040, 720], line, [], { prefer: 'left' })
+  assert.ok(left.x + left.w <= line.left, 'on the left of the line')
+  const right = placeRoom(view, [1040, 720], line, [], { prefer: 'right' })
+  assert.ok(right.x >= line.right, 'on the right of the line')
+  // The left side holds more rooms than the right, and still wins when it is preferred.
+  assert.ok(placeRoom(view, [600, 640], line, [left], { prefer: 'left' }).x < line.left)
+  // Too narrow on a laptop: the middle, never the other side.
+  const laptopLine = lineOn(laptop)
+  const middle = placeRoom(laptop, [1040, 720], laptopLine, [], { prefer: 'left' })
+  assert.equal(middle.y, 170)
+  assert.equal(covers(middle, laptopLine), true)
+})
+
+test('a room grows out of the rectangle it came from', () => {
+  assert.equal(shrinkTo({ left: 30, top: 40, width: 300, height: 150 }, { left: 530, top: 240, width: 1200, height: 600 }), 'translate(-500px, -200px) scale(0.25, 0.25)')
 })
