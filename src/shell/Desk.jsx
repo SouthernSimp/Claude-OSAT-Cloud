@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowCounterClockwise, AppWindow, Database, MoonStars, Plus, ShareNetwork, X } from '@phosphor-icons/react'
 
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
@@ -8,19 +8,16 @@ import { FieldDesk } from '../field/FieldDesk.jsx'
 import { FieldSheet } from '../field/FieldSheet.jsx'
 import { FieldSky } from '../field/FieldSky.jsx'
 import { clamp, inputActive } from '../lib/ui.js'
-import { useFocusTrap } from '../lib/use-focus-trap.js'
 import { SETTINGS, spaceForKey, titleFor } from '../lib/spaces.js'
 import { NotesView } from '../notes/NotesView.jsx'
-import { captureThought, relinkRenamedNote, updateNote } from '../notes-model.js'
+import { relinkRenamedNote, updateNote } from '../notes-model.js'
 import { storageFrom, useWorkspace } from '../store/useWorkspace.js'
 import { BrowserView } from '../tools/Browser.jsx'
 import { TerminalView } from '../tools/Terminal.jsx'
 import { BudgetView } from '../views/Budget.jsx'
 import { CalendarView } from '../views/Calendar.jsx'
-import { CommandPalette } from '../views/CommandPalette.jsx'
 import { FilesView } from '../views/Files.jsx'
 import { HabitsView } from '../views/Habits.jsx'
-import { InboxView } from '../views/Inbox.jsx'
 import { JournalView } from '../views/Journal.jsx'
 import { ProjectsView } from '../views/Projects.jsx'
 import { ReflectionView } from '../views/Reflection.jsx'
@@ -32,7 +29,9 @@ import { Welcome } from './Welcome.jsx'
 
 /* The desk: OSAT's one window, laid over the real desktop (see-through, blurred),
    with every room opening as a pop-out you can drag, resize and stack. ⌥Space brings
-   it up and puts it away; Esc closes the top pop-out, then puts the desk away. */
+   it up and puts it away. ⌘K, ⇧⌘N and Find in the menu all land in the desk's line.
+   Esc backs out of the line first (see Line.jsx), then closes the top pop-out, then
+   puts the desk away. */
 
 const ROOMS = {
   Notes: [1100, 720],
@@ -46,7 +45,6 @@ const ROOMS = {
   Reflection: [820, 680],
   Budget: [980, 720],
   Projects: [980, 720],
-  Inbox: [900, 700],
   Browser: [1120, 760],
   Terminal: [860, 540],
   Settings: [980, 760],
@@ -59,18 +57,13 @@ export function Desk() {
   const storage = storageFrom(status, hydrated)
   const bridge = window.osatDesk
   const [pops, setPops] = useState([])
-  const [palette, setPalette] = useState(null)
   const [visit, setVisit] = useState(0)
   const [prefs, setPrefs] = useState({ launchers: [], places: {} })
-  const [captureOpen, setCaptureOpen] = useState(false)
-  const [draft, setDraft] = useState('')
   const [welcome, setWelcome] = useState(false)
   const [focusAt, setFocusAt] = useState(0)
+  const [summon, setSummon] = useState(0)
   const [roomCommand, setRoomCommand] = useState(null)
   const [line, setLine] = useState(null)
-  const modalRef = useRef(null)
-  const closeCapture = useCallback(() => setCaptureOpen(false), [])
-  useFocusTrap(modalRef, captureOpen, closeCapture)
   useAlive()
 
   /* Blur at zero means a clear desk: the Mac's frosting comes off entirely. */
@@ -96,20 +89,20 @@ export function Desk() {
   const latest = useRef(null)
   useEffect(() => window.osatApp?.onCommand?.((detail) => {
     if (!detail || typeof detail !== 'object') return
-    if (detail.action === 'search') { setPalette(''); return }
+    if (detail.action === 'search') { latest.current?.navigate('Capture'); return }
     if (typeof detail.view === 'string') latest.current?.navigate(detail.view, detail.detail || null)
     if (typeof detail.action === 'string') setRoomCommand({ action: detail.action, at: Date.now() })
   }), [])
 
-  /* ⌘K finds anything, ⌘1–5 and ⌘, open rooms, ⇧⌘N a new thought. Esc backs out one
-     step: out of a field in a pop-out, then the top pop-out, then the desk goes away. */
+  /* ⌘K and ⇧⌘N go to the line, ⌘1–5 and ⌘, open rooms. Esc backs out one step: out of a
+     field in a pop-out, then the top pop-out, then the desk goes away. */
   useEffect(() => {
     const onKey = (event) => {
       const mod = event.metaKey || event.ctrlKey
       const key = event.key.toLowerCase()
-      if (mod && key === 'k') {
+      if (mod && !event.shiftKey && !event.altKey && key === 'k') {
         event.preventDefault()
-        setPalette((value) => (value === null ? '' : null))
+        latest.current?.navigate('Capture')
         return
       }
       if (mod && !event.shiftKey && !event.altKey && spaceForKey(event.key)) {
@@ -124,16 +117,15 @@ export function Desk() {
       }
       if (mod && event.shiftKey && key === 'n') {
         event.preventDefault()
-        setCaptureOpen(true)
+        latest.current?.navigate('Capture')
         return
       }
       if (event.key !== 'Escape' || event.defaultPrevented || document.documentElement.dataset.menu === 'open') return
-      const { pops: open, palette: finding, captureOpen: capturing, welcome: welcoming } = latest.current
-      if (capturing || welcoming) return
+      const { pops: open, welcome: welcoming } = latest.current
+      if (welcoming) return
       const active = document.activeElement
       event.preventDefault()
-      if (finding !== null) setPalette(null)
-      else if (open.length) {
+      if (open.length) {
         if (active?.closest?.('.popout') && active.closest('.xterm, .browser-view')) return
         if (active?.closest?.('.popout') && inputActive()) { active.blur(); return }
         close(open.at(-1).key)
@@ -149,7 +141,6 @@ export function Desk() {
 
   function open(view, detail = null) {
     const key = view === 'note' ? `note:${detail.noteId}` : view
-    setPalette(null)
     setPops((list) => {
       const existing = list.find((pop) => pop.key === key)
       if (existing) return [...list.filter((pop) => pop !== existing), { ...existing, detail, at: Date.now() }]
@@ -181,8 +172,9 @@ export function Desk() {
   }
 
   function navigate(view, detail = null) {
-    setPalette(null)
-    if (view === 'Capture') setCaptureOpen(true)
+    // A new thought, or a search: the line takes it (it rises if a room covers it).
+    if (view === 'Capture') { if (!latest.current.welcome) setSummon(Date.now()) }
+    else if (view === 'Focus') setFocusAt(Date.now())
     // The Obsidian export lives in Settings → Data.
     else if (view === 'Obsidian') open('Settings', { section: 'data' })
     else if ((view === 'Notes' || view === 'Today') && typeof detail === 'string') open('note', { noteId: detail })
@@ -190,7 +182,7 @@ export function Desk() {
     else if (view === 'Today') setVisit((value) => value + 1)
     else if (ROOMS[view]) open(view, detail)
   }
-  latest.current = { navigate, pops, palette, captureOpen, welcome, line }
+  latest.current = { navigate, pops, welcome, line }
 
   async function launcher(action, ...args) {
     try {
@@ -210,17 +202,6 @@ export function Desk() {
   function tidy() {
     setPrefs((value) => ({ ...value, places: {} }))
     bridge?.tidy().catch(() => {})
-  }
-
-  function saveCapture(event) {
-    event.preventDefault()
-    const title = draft.trim()
-    if (!title) return
-    let saved
-    commit((current) => { const result = captureThought(current, title, 'Private note'); saved = result.note; return result.state })
-    setDraft('')
-    setCaptureOpen(false)
-    if (saved) open('note', { noteId: saved.id })
   }
 
   if (!hydrated) {
@@ -243,19 +224,19 @@ export function Desk() {
 
   const common = { workspace, commit, navigate }
   const top = pops.at(-1)
-  const covered = palette !== null || captureOpen || welcome
+  const covered = welcome
   const hasPlaces = Object.keys(prefs.places || {}).length > 0
 
   return (
     <main className={`overlay-surface ${bridge ? '' : 'is-preview'}`}>
       <GlassDefs />
-      <div className="workspace-content is-filled" inert={captureOpen || welcome || undefined}>
+      <div className="workspace-content is-filled" inert={welcome || undefined}>
         <FieldDesk
           {...common}
           visit={visit}
           storage={storage}
           focusAt={focusAt}
-          onSearch={(query) => setPalette(query)}
+          summon={summon}
           onOpenNote={(noteId) => open('note', { noteId })}
           places={prefs.places || {}}
           onPlace={place}
@@ -269,8 +250,6 @@ export function Desk() {
               storage={storage}
               workspace={workspace}
               commit={commit}
-              onCapture={() => setCaptureOpen(true)}
-              onFocus={() => setFocusAt(Date.now())}
               extra={hasPlaces ? [{ label: 'Put widgets and icons back', icon: ArrowCounterClockwise, onSelect: tidy }] : []}
             >
               {bridge && (
@@ -292,7 +271,7 @@ export function Desk() {
         />
       </div>
 
-      <div className="popouts" inert={captureOpen || welcome || undefined}>
+      <div className="popouts" inert={welcome || undefined}>
         {pops.map((pop, index) => (
           <PopOut
             key={pop.key}
@@ -310,23 +289,6 @@ export function Desk() {
         ))}
       </div>
 
-      {palette !== null && <CommandPalette workspace={workspace} navigate={navigate} close={() => setPalette(null)} initialQuery={palette} />}
-
-      {captureOpen && (
-        <div className="modal-backdrop" onPointerDown={closeCapture}>
-          <form ref={modalRef} className="capture-dialog" role="dialog" aria-modal="true" aria-labelledby="capture-title" onSubmit={saveCapture} onPointerDown={(event) => event.stopPropagation()}>
-            <button className="icon-button modal-close" type="button" aria-label="Close capture" onClick={closeCapture}><X /></button>
-            <p className="eyebrow">MAKE A LITTLE ROOM</p>
-            <h2 id="capture-title">Let it land here.</h2>
-            <p>A thought, a loose end, a possibility. No need to organize it yet.</p>
-            <textarea data-autofocus value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Type the thought exactly as it is..." rows="7" />
-            <div className="dialog-actions">
-              <span>It waits in Unsorted until you give it a home.</span>
-              <button className="primary-button" disabled={!draft.trim()}><Plus /> Capture</button>
-            </div>
-          </form>
-        </div>
-      )}
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
     </main>
   )
@@ -370,7 +332,6 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Reflection': return <ReflectionView {...room} today={today} />
     case 'Budget': return <BudgetView {...room} />
     case 'Projects': return <ProjectsView {...room} />
-    case 'Inbox': return <InboxView {...room} />
     case 'Settings': return <SettingsView {...room} storage={storage} target={pop.detail?.section ? target : null} />
     default: return null
   }

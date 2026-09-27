@@ -1,14 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /* Holds keyboard focus inside an open dialog and restores it on close. */
 export function useFocusTrap(ref, open, close) {
+  // The latest close, so a parent's re-render never pulls focus back to the first control.
+  const latest = useRef(close);
+  latest.current = close;
   useEffect(() => {
     if (!open) return undefined;
     const prior = document.activeElement;
     const keydown = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        close();
+        latest.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -39,5 +42,5 @@ export function useFocusTrap(ref, open, close) {
       document.removeEventListener("keydown", keydown);
       prior?.focus?.();
     };
-  }, [open, close, ref]);
+  }, [open, ref]);
 }

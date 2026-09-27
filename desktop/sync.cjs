@@ -80,9 +80,10 @@ function createMacSync({ root, store, createSyncEngine, statePath, onStatus = ()
     return chain
   }
 
+  // Checked when the task runs, not when it's queued: a pause meanwhile (Incognito) wins.
   const flushSoon = () => {
     clearTimeout(flushTimer)
-    flushTimer = setTimeout(() => run((current) => current.flush()), 1500)
+    flushTimer = setTimeout(() => run((current) => status.on && current.flush()), 1500)
   }
   const pull = async (current) => {
     const arrived = await current.pull()
@@ -91,7 +92,7 @@ function createMacSync({ root, store, createSyncEngine, statePath, onStatus = ()
   }
   const pullSoon = () => {
     clearTimeout(pullTimer)
-    pullTimer = setTimeout(() => run(pull), 700)
+    pullTimer = setTimeout(() => run((current) => status.on && pull(current)), 700)
   }
 
   /* Picks up where this Mac left off, without touching iCloud. Only when sync was

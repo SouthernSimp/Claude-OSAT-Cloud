@@ -10,8 +10,12 @@
 //   6. two OSATs (their own data, one iCloud Drive) keep each other in step
 //   7. the Mac's Desktop on the desk (a stand-in folder): a folder opens in Files, and Ask reads a file
 //   8. the quick chat: its own window answers, and Esc puts it away
+//   9. Incognito: going under closes the browser's tabs and shuts every way out (the
+//      desk's and the browser's requests, main's fetch, downloads, files); coming up
+//      brings the tabs back; a relaunch stays under (driven through window.osatUnder)
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
+import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -77,8 +81,8 @@ try {
     .catch(() => problems.push('the welcome did not close after Start'))
   const keep = main.getByRole('button', { name: 'Start blank' })
   if (await keep.count()) await keep.click()
-  await main.getByPlaceholder('Leave a thought here.').fill('Saved across a restart')
-  await main.keyboard.press('Enter')
+  await main.fill('#home-line', 'Saved across a restart')
+  await main.press('#home-line', 'Enter')
   await sleep(1500)
   await app.close()
   const onDisk = JSON.parse(await readFile(dataFile, 'utf8'))
@@ -87,23 +91,27 @@ try {
   check((await notesIn(main)).includes('Saved across a restart'), 'the thought was not there after a restart')
   check(!(await main.getByRole('dialog', { name: /Everything stays/ }).count()), 'the welcome came back after it was finished')
 
-  // 4. Ask on the desk: the answer appears under the line and is kept as a chat.
-  await main.getByRole('radio', { name: 'Ask' }).click()
-  await main.getByPlaceholder('Ask your notes, or anything…').fill('What did I save across a restart?')
-  await main.keyboard.press('Enter')
-  await main.locator('.home-answer').getByText('practice model').waitFor({ timeout: 10000 })
-    .catch(() => problems.push('Ask did not answer on the desk'))
-  await main.getByRole('button', { name: 'Keep talking' }).click()
-  await main.locator('.popout-body[data-view="Assistant"] .bubble.assistant').first().waitFor({ timeout: 5000 })
-    .catch(() => problems.push('Keep talking did not open the chat in Ask'))
-  const chats = await main.evaluate(async () => (await window.osat.store.load()).doc.chats)
-  check(chats.length === 1 && chats[0].messages.length === 2, 'the desk question and its answer were not kept as one chat')
-  check(chats[0]?.messages[0].noteIds?.length === 1, 'Ask did not pick the matching note for the question')
-  // Esc leaves the chat's box, then closes the Ask pop-out.
-  await main.keyboard.press('Escape')
-  await main.keyboard.press('Escape')
-  await main.locator('.popout-body[data-view="Assistant"]').waitFor({ state: 'detached', timeout: 3000 })
-    .catch(() => problems.push('Esc did not close the Ask pop-out'))
+  // 4. Ask on the desk: a question in the line and ⌘↵ (Ctrl↵ elsewhere); the answer
+  //    appears under the line and is kept as a chat.
+  await main.fill('#home-line', 'What did I save across a restart?')
+  await main.press('#home-line', 'ControlOrMeta+Enter')
+  const answered = await main.locator('.home-answer').getByText('practice model').waitFor({ timeout: 10000 }).then(() => true, () => false)
+  check(answered, 'Ask did not answer on the desk (⌘↵ in the line)')
+  if (answered) {
+    await main.getByRole('button', { name: 'Keep talking' }).click()
+    await main.locator('.popout-body[data-view="Assistant"] .bubble.assistant').first().waitFor({ timeout: 5000 })
+      .catch(() => problems.push('Keep talking did not open the chat in Ask'))
+    const chats = await main.evaluate(async () => (await window.osat.store.load()).doc.chats)
+    check(chats.length === 1 && chats[0].messages.length === 2, 'the desk question and its answer were not kept as one chat')
+    check(chats[0]?.messages[0].noteIds?.length === 1, 'Ask did not pick the matching note for the question')
+    // Esc leaves the chat's box, then closes the Ask pop-out.
+    await main.keyboard.press('Escape')
+    await main.keyboard.press('Escape')
+    await main.locator('.popout-body[data-view="Assistant"]').waitFor({ state: 'detached', timeout: 3000 })
+      .catch(() => problems.push('Esc did not close the Ask pop-out'))
+  }
+  // Whatever happened above, the line starts the next steps empty.
+  await main.fill('#home-line', '')
 
   // 7. The Desktop on the desk; a folder opens in Files; Ask reads a file from there.
   await main.keyboard.press('Control+1')
@@ -223,6 +231,102 @@ try {
     'the second OSAT did not hear the first one\'s rename')
   await other.app.close()
   await app.close()
+
+  // 9. Incognito, through window.osatUnder. A page on this Mac (loopback) stands in for
+  //    the web, so no internet is needed; example.com is never actually reached.
+  const local = http.createServer((request, response) => {
+    if (request.url !== '/big') return response.end('<title>A page on this Mac</title>Hello')
+    // A file that takes its time, like a real download.
+    response.writeHead(200, { 'content-type': 'application/octet-stream', 'content-disposition': 'attachment; filename="big.bin"' })
+    const drip = setInterval(() => response.write(Buffer.alloc(64 * 1024)), 50)
+    response.on('close', () => clearInterval(drip))
+  })
+  await new Promise((resolve) => local.listen(0, '127.0.0.1', resolve))
+  const page = `http://127.0.0.1:${local.address().port}/`
+  // Loads https://example.com in a hidden window of the desk's session or the browser's.
+  const loadRemote = (partition) => app.evaluate(async ({ BrowserWindow }, partition) => {
+    const window = new BrowserWindow({ show: false, webPreferences: partition ? { partition } : {} })
+    try {
+      await window.loadURL('https://example.com/')
+      return 'loaded'
+    } catch (error) {
+      return error.code || error.message
+    } finally {
+      window.destroy()
+    }
+  }, partition)
+  const mainFetch = () => app.evaluate(() => fetch('https://example.com/').then(() => 'reached', (error) => error.name))
+  const refused = (call) => main.evaluate(call).then(() => 'answered', (error) => error.message)
+  const tabUrls = async () => (await main.evaluate(() => window.osatBrowser.state())).tabs.map((tab) => tab.url)
+  const goMenu = () => app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.map((item) => item.label))
+  const icloudCopy = path.join(icloud, 'Notes')
+  try {
+    ;({ app, main } = await launch())
+    check((await main.evaluate(() => window.osatUnder.status())).on === false, 'OSAT started under before anyone went under')
+    await main.evaluate((url) => window.osatBrowser.open(url), page)
+    check(await until(async () => (await tabUrls()).includes(page), 5000), 'the browser did not open the page on this Mac')
+    // A blank tab too, and a file the browser is still fetching.
+    await main.evaluate(() => window.osatBrowser.open())
+    await app.evaluate(({ session }, { url, saveTo }) => {
+      const part = session.fromPartition('persist:osat-browser')
+      part.once('will-download', (_event, item) => { item.setSavePath(saveTo); globalThis.e2eDownload = item })
+      part.downloadURL(url)
+    }, { url: `${page}big`, saveTo: path.join(home, 'big.bin') })
+    const downloadState = () => app.evaluate(() => globalThis.e2eDownload?.getState())
+    check(await until(async () => await downloadState() === 'progressing', 5000), 'the browser did not start the download')
+    await main.evaluate(() => { window.underHeard = []; window.osatUnder.onChange((status) => window.underHeard.push(status.on)) })
+    await until(async () => app.windows().some((win) => win.url().includes('surface=chat')), 5000)
+    const quick = app.windows().find((win) => win.url().includes('surface=chat'))
+    await quick.waitForFunction(() => Boolean(window.osatUnder))
+    check(/Only the main OSAT window/.test(await quick.evaluate(() => window.osatUnder.set(true).then(() => 'went under', (error) => error.message))),
+      'the quick chat was allowed to take OSAT under')
+
+    // Going under.
+    const down = await main.evaluate(() => window.osatUnder.set(true))
+    check(down.on === true, 'going under did not answer that OSAT is under')
+    check(JSON.stringify(await main.evaluate(() => window.underHeard)) === '[true]', 'the desk did not hear that OSAT went under')
+    check((await tabUrls()).length === 0, 'going under left browser tabs open')
+    check(await downloadState() === 'cancelled', 'a browser download kept going while under')
+    check(/web waits/.test(await refused(() => window.osatBrowser.open('https://example.com/'))), 'the browser still opened a page while under')
+    check(await loadRemote() === 'ERR_BLOCKED_BY_CLIENT', 'the desk\'s session reached the internet while under')
+    check(await loadRemote('persist:osat-browser') === 'ERR_BLOCKED_BY_CLIENT', 'the browser\'s session reached the internet while under')
+    check(await main.evaluate(() => fetch('https://example.com/').then(() => 'reached', () => 'failed')) === 'failed', 'the desk fetched from the internet while under')
+    check(await mainFetch() === 'OfflineError', 'the main process fetched from the internet while under')
+    check(await app.evaluate((_electron, url) => fetch(url).then((response) => response.ok), page), 'loopback (LM Studio\'s road) was shut while under')
+    check(/Downloads wait/.test(await refused(() => window.osatLocalAI.resume())), 'the AI download was not waiting while under')
+    check(/Files wait/.test(await refused(() => window.nateOSFiles.list('desktop'))), 'files were read while under')
+    check(/iPhone link waits/.test(await refused(() => window.osatPhone.enable())), 'the iPhone link could be turned on while under')
+    check((await main.evaluate(() => window.osatPhone.status())).sync?.on !== true, 'the iPhone link kept syncing while under')
+    check(await access(icloudCopy).then(() => true, () => false), 'going under took the copy of the notes out of iCloud Drive')
+    check((await goMenu()).includes('Come Up'), 'the Go menu did not offer Come Up while under')
+
+    // Coming up.
+    const up = await main.evaluate(() => window.osatUnder.set(false))
+    check(up.on === false, 'coming up did not answer that OSAT is back up')
+    check(await until(async () => {
+      const urls = await tabUrls()
+      return urls.length === 2 && urls.includes(page)
+    }, 5000), 'coming up did not bring both browser tabs back (the page and the blank one)')
+    check(await refused(() => window.osatLocalAI.resume()) === 'answered', 'the AI download still waited after coming up')
+    check(await refused(() => window.nateOSFiles.list('desktop')) === 'answered', 'files still waited after coming up')
+    check(await until(async () => (await main.evaluate(() => window.osatPhone.status())).sync?.on === true, 10000), 'the iPhone link did not start again after coming up')
+    check((await goMenu()).includes('Go Under'), 'the Go menu did not offer Go Under again')
+
+    // A relaunch stays under.
+    await main.evaluate(() => window.osatUnder.set(true))
+    await app.close()
+    ;({ app, main } = await launch())
+    check((await main.evaluate(() => window.osatUnder.status())).on === true, 'a relaunch did not stay under')
+    check(await loadRemote() === 'ERR_BLOCKED_BY_CLIENT', 'a relaunch under reached the internet')
+    check(await mainFetch() === 'OfflineError', 'a relaunch under let the main process fetch')
+    check((await main.evaluate(() => window.osatPhone.status())).sync?.on !== true, 'a relaunch under started the iPhone link')
+    check(/web waits/.test(await refused(() => window.osatBrowser.open('https://example.com/'))), 'a relaunch under opened a web page')
+    await main.evaluate(() => window.osatUnder.set(false))
+    await app.close()
+  } finally {
+    local.closeAllConnections()
+    local.close()
+  }
 } catch (error) {
   problems.push(error.stack || String(error))
 } finally {

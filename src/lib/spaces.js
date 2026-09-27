@@ -32,8 +32,8 @@ export const HIDDEN = [{ id: 'Obsidian', label: 'Export to Obsidian', icon: Uplo
 
 const ALL = [...SPACES, ...TOOLS, SETTINGS, ...HIDDEN]
 
-/* Sky is the Map seen from far away; Unsorted lives in Notes. */
-const ALIASES = { Sky: 'Mindmap', Inbox: 'Notes' }
+/* Sky is the Map seen from far away. */
+const ALIASES = { Sky: 'Mindmap' }
 
 export function spaceFor(view) {
   const id = ALIASES[view] || view

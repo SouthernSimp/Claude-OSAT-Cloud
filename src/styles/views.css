@@ -13,7 +13,7 @@
 .check-row input, .habit-row input, .bridge-source-list input {
   accent-color: var(--accent);
 }
-.review-row, .project-row, .money-row {
+.project-row, .money-row {
   min-height: 96px;
   display: flex;
   align-items: center;
@@ -21,15 +21,15 @@
   padding: 20px 0;
   border-top: 1px solid var(--line);
 }
-.review-row > div:first-child, .project-row > div:first-child, .money-row > div:first-child {
+.project-row > div:first-child, .money-row > div:first-child {
   min-width: 0;
   flex: 1;
 }
-.review-row h3, .project-row h3, .money-row h3 {
+.project-row h3, .money-row h3 {
   margin: 7px 0 4px;
   font-size: var(--t-lg);
 }
-.review-row p, .project-row p, .money-row p {
+.project-row p, .money-row p {
   margin: 0;
   color: var(--muted);
   font-size: var(--t-sm);
@@ -385,10 +385,8 @@
 /* ---- In a pop-out ------------------------------------------------------- */
 /* Page rooms scroll inside their pop-out and keep a page's margins (the pop-out
    body is "filled", which takes both away). The full-bleed rooms scroll themselves. */
-.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"], [data-view="Inbox"], [data-view="Settings"]) { overflow-y: auto; }
-.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"], [data-view="Inbox"], [data-view="Settings"]) > * { height: auto; padding: 28px clamp(16px, 5cqi, 44px) 56px; }
-/* Unsorted is one card; the pop-out is already its card. */
-.popout-body[data-view="Inbox"] > .content-card { border: 0; border-radius: 0; background: none; box-shadow: none; }
+.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"], [data-view="Settings"]) { overflow-y: auto; }
+.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"], [data-view="Settings"]) > * { height: auto; padding: 28px clamp(16px, 5cqi, 44px) 56px; }
 
 /* Rooms lay themselves out for their own pop-out (the "room" container), not the screen. */
 @container room (max-width: 760px) {
@@ -401,9 +399,9 @@
   .settings { grid-template-columns: minmax(0, 1fr); gap: 18px; }
   .settings-rail { position: static; grid-auto-flow: column; justify-content: start; overflow-x: auto; scrollbar-width: none; }
   .bridge-preview { padding: 20px; border-radius: 16px; }
-  .review-row, .project-row, .money-row { align-items: flex-start; flex-wrap: wrap; }
-  .review-row .row-actions, .project-row .row-actions { width: 100%; }
-  .review-row .row-actions button, .project-row .row-actions button { flex: 1; }
+  .project-row, .money-row { align-items: flex-start; flex-wrap: wrap; }
+  .project-row .row-actions { width: 100%; }
+  .project-row .row-actions button { flex: 1; }
   .habit-groups, .bridge-steps { grid-template-columns: minmax(0, 1fr); }
   .bridge-steps span { min-height: 52px; }
   .bridge-diff { grid-template-columns: minmax(0, 1fr); }

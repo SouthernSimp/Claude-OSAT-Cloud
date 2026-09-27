@@ -4,6 +4,29 @@ const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell, utilityProcess } = require('electron')
+const { createUnder, guardFetch, isLocal, refusal } = require('./under.cjs')
+
+/* Incognito (see "Incognito" below). Two locks, set before any of OSAT's own modules load:
+   the main process's own fetch (the model download, Spotify's covers, LM Studio),
+   and every session's requests (the desk's, the quick chat's and the browser's).
+   While under, only this Mac answers. */
+const under = createUnder({ save: saveUnder, down: goingUnder, up: comingUp, changed: underChanged })
+globalThis.fetch = guardFetch(globalThis.fetch, () => under.on)
+const guardedSessions = new WeakSet()
+// A download belongs to its session, not its tab: closing the tabs alone wouldn't stop it.
+const downloads = new Set()
+function guardSession(ses) {
+  if (guardedSessions.has(ses)) return
+  guardedSessions.add(ses)
+  // A session keeps one listener per event: a second onBeforeRequest would replace this lock.
+  ses.webRequest.onBeforeRequest((details, callback) => callback({ cancel: under.on && !isLocal(details.url) }))
+  ses.on('will-download', (_event, item) => {
+    downloads.add(item)
+    item.once('done', () => downloads.delete(item))
+  })
+}
+app.on('session-created', guardSession)
+
 const { claimDataFolder } = require('./data-folder.cjs')
 const { resolveApprovedPath, resolveApprovedWritePath } = require('./path-guard.cjs')
 const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile } = require('./text-files.cjs')
@@ -31,7 +54,7 @@ let mainWindow
 let quitting = false
 let quickChat
 let tray
-let prefs = { hotkey: DEFAULT_HOTKEY, chatHotkey: CHAT_HOTKEY, chatBounds: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, phone: false }
+let prefs = { hotkey: DEFAULT_HOTKEY, chatHotkey: CHAT_HOTKEY, chatBounds: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, phone: false, under: false }
 // The two shortcuts: the desk and the quick chat. `value` is null when another app has it.
 const shortcuts = {
   layer: { value: null, failed: false, run: () => toggleDesk() },
@@ -205,12 +228,20 @@ function mutateGrants(change) {
 
 const NOT_ALLOWED = 'OSAT isn’t allowed into that folder yet. Allow it in System Settings → Privacy & Security → Files and Folders.'
 
+/* In Incognito, what would reach out (the web, files, Spotify, downloads, iCloud)
+   answers in plain words instead. */
+function refuseUnder(channel) {
+  const waits = under.on && refusal(channel)
+  if (waits) fail(waits)
+}
+
 /* from: 'main' (the default), 'app' (any window that shows rooms) or 'any'. */
 function handle(channel, operation, { from = 'main' } = {}) {
   ipcMain.handle(channel, async (event, ...args) => {
     assertTrustedSender(event)
     if (from === 'main') assertMainWindow(event)
     if (from === 'app') assertAppWindow(event)
+    refuseUnder(channel)
     try {
       return await operation(...args)
     } catch (error) {
@@ -477,7 +508,7 @@ function createWindow() {
     hideDesk()
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https:\/\//i.test(url)) shell.openExternal(url)
+    if (!under.on && /^https:\/\//i.test(url)) shell.openExternal(url)
     return { action: 'deny' }
   })
   window.webContents.on('will-navigate', (event, url) => {
@@ -593,6 +624,8 @@ function buildMenu() {
         room('Projects', 'Projects'),
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
+        { type: 'separator' },
+        { label: under.on ? 'Come Up' : 'Go Under', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
     },
     {
@@ -620,6 +653,7 @@ function handleApp(channel, operation) {
   ipcMain.handle(channel, async (event, ...args) => {
     assertTrustedSender(event)
     assertAppWindow(event)
+    refuseUnder(channel)
     try {
       return await operation(event.sender, ...args)
     } catch (error) {
@@ -749,6 +783,7 @@ async function loadPrefs() {
       ai: { tier: typeof saved.ai?.tier === 'string' ? saved.ai.tier : null },
       welcomed: saved.welcomed === true,
       phone: saved.phone === true,
+      under: saved.under === true,
     }
   } catch {
     // No preferences yet: the defaults stand.
@@ -935,12 +970,26 @@ function aiLine() {
   return 'Local AI: not set up yet'
 }
 
+const trayIcons = {}
+function trayIcon(name) {
+  if (!trayIcons[name]) {
+    trayIcons[name] = nativeImage.createFromPath(path.join(__dirname, 'assets', `${name}.png`))
+    trayIcons[name].setTemplateImage(true)
+  }
+  return trayIcons[name]
+}
+
+/* The menu-bar icon is a moon while under, so the state shows with the desk away. */
 function updateTray() {
   if (!tray || tray.isDestroyed()) return
   trayAiLine = aiLine()
+  tray.setImage(trayIcon(under.on ? 'trayUnderTemplate' : 'trayTemplate'))
+  tray.setToolTip(under.on ? 'OSAT · Incognito' : 'OSAT')
   tray.setContextMenu(Menu.buildFromTemplate([
+    ...(under.on ? [{ label: 'Incognito · Come up', click: () => toggleUnder(false) }, { type: 'separator' }] : []),
     { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
     { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
+    ...(under.on ? [] : [{ label: 'Go Under', click: () => toggleUnder(true) }]),
     { type: 'separator' },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
     { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'shortcut' } }) },
@@ -956,10 +1005,7 @@ function updateTray() {
 }
 
 function createTray() {
-  const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'trayTemplate.png'))
-  icon.setTemplateImage(true)
-  tray = new Tray(icon)
-  tray.setToolTip('OSAT')
+  tray = new Tray(trayIcon('trayTemplate'))
   updateTray()
 }
 
@@ -985,13 +1031,19 @@ function registerAi() {
     // Tests and CI answer with a practice model instead of downloading one.
     mock: !app.isPackaged && process.env.OSAT_AI === 'mock',
   })
-  ai.start()
+  // A download under way carries on at launch, unless OSAT opens under.
+  if (under.on) aiWaiting = 'start'
+  else ai.start()
   // AI messages are written for Nate, so they pass through as they are.
   const plain = (fn) => async (...args) => {
     try { return await fn(...args) } catch (error) { throw new FileAccessError(error.message) }
   }
   handle('ai:status', () => ai.status(), { from: 'any' })
-  handle('ai:choose', plain((tier) => ai.choose(tier)), { from: 'app' })
+  handle('ai:choose', plain((tier) => {
+    // Under, only a size already on this Mac can be chosen.
+    if (under.on && !ai.status().tiers.some((item) => item.id === tier && item.ready)) throw new Error('Downloads wait until you come up.')
+    return ai.choose(tier)
+  }), { from: 'app' })
   handle('ai:cancel', () => { ai.cancel(); return ai.status() }, { from: 'app' })
   handle('ai:resume', () => { ai.resume(); return ai.status() }, { from: 'app' })
   handle('ai:remove', plain((tier) => ai.remove(tier)), { from: 'app' })
@@ -1057,14 +1109,15 @@ function phoneStatus() {
   return phone ? { ...base, ...phone.status(), enabled: prefs.phone } : base
 }
 
-// Both do nothing while the link is off.
+// Both do nothing while the link is off, or paused in Incognito.
+const phoneLive = () => prefs.phone && !under.on
 const mirrorSoon = () => {
   clearTimeout(phoneMirrorTimer)
-  if (prefs.phone) phoneMirrorTimer = setTimeout(() => { if (prefs.phone) phone?.mirror() }, 2000)
+  if (phoneLive()) phoneMirrorTimer = setTimeout(() => { if (phoneLive()) phone?.mirror() }, 2000)
 }
 const scanSoon = () => {
   clearTimeout(phoneScanTimer)
-  if (prefs.phone) phoneScanTimer = setTimeout(() => { if (prefs.phone) phone?.scan() }, 800)
+  if (phoneLive()) phoneScanTimer = setTimeout(() => { if (phoneLive()) phone?.scan() }, 800)
 }
 
 async function bridgePhone() {
@@ -1104,14 +1157,23 @@ async function ensureSync() {
 }
 
 async function startPhone() {
+  // Asked after every wait: gone under (or off) meanwhile, it stops before touching iCloud again.
+  const waits = () => {
+    if (phoneLive()) return false
+    stopPhone()
+    return true
+  }
   const root = await settleRoot({ drive: ICLOUD_DRIVE, container: APP_CONTAINER })
   if (!phone || root !== phoneRoot) {
     phoneRoot = root
     phone = await bridgePhone()
   }
+  if (waits()) return
   await phone.prepare()
+  if (waits()) return
   // The same switch keeps this Mac in step with your other devices (OSAT/Sync).
   await (await ensureSync()).start()
+  if (waits()) return
   phoneClient ??= store.connect(mirrorSoon)
   try {
     phoneWatcher = require('node:fs').watch(path.join(phoneRoot, 'Inbox'), scanSoon)
@@ -1120,6 +1182,7 @@ async function startPhone() {
   }
   phonePoll = setInterval(scanSoon, 30000)
   await phone.scan()
+  if (waits()) return
   await phone.mirror()
 }
 
@@ -1167,7 +1230,82 @@ async function registerPhone() {
   })
   // Before any window opens, so no change goes unnoted; iCloud itself can take its time.
   await ensureSync().catch((error) => console.error('Sync could not load:', error))
-  if (prefs.phone) startPhone().catch((error) => console.error('The iPhone link could not start:', error))
+  if (phoneLive()) startPhone().catch((error) => console.error('The iPhone link could not start:', error))
+}
+
+/* ---- Incognito: OSAT with the internet off (Go under / Come up, ⇧⌘U) ---- */
+
+// Each window's browser tabs, closed on the way down and opened again on the way up.
+const sleepingTabs = new Map()
+// 'resume' (a download was running) or 'start' (OSAT opened under): what the AI does on the way up.
+let aiWaiting = null
+// A cancelled download takes a moment to stop; resuming before then would do nothing.
+let aiStopped = Promise.resolve()
+
+function underStatus() {
+  // A terminal Nate started keeps running; the page says so. Ended shells don't count.
+  return { on: under.on, terminal: Boolean(terminals?.list?.().some((session) => session.alive)) }
+}
+
+async function saveUnder(on) {
+  prefs = { ...prefs, under: on }
+  try {
+    await savePrefs()
+  } catch (error) {
+    prefs = { ...prefs, under: !on }
+    throw error
+  }
+}
+
+// The flag is already on (both locks are closed) when this runs.
+async function goingUnder() {
+  for (const [id, browser] of browsers) sleepingTabs.set(id, browser.sleep())
+  for (const item of downloads) item.cancel()
+  if (ai?.status().download?.state === 'running') {
+    aiWaiting = 'resume'
+    aiStopped = Promise.resolve(ai.cancel())
+  }
+  // Pausing, never turning the link off: that would take the copy of the notes out of iCloud.
+  stopPhone()
+}
+
+async function comingUp() {
+  for (const [id, pages] of sleepingTabs) browsers.get(id)?.wake(pages)
+  sleepingTabs.clear()
+  const wake = aiWaiting
+  aiWaiting = null
+  if (wake) aiStopped.then(() => {
+    // Gone back under before it stopped: it waits for the next time up.
+    if (under.on) aiWaiting ??= wake
+    else if (wake === 'resume') ai.resume()
+    else ai.start()
+  })
+  if (phoneLive()) startPhone().catch((error) => console.error('The iPhone link could not start:', error))
+}
+
+function underChanged() {
+  sendToAllWindows('under:changed', underStatus())
+  buildMenu()
+  updateTray()
+}
+
+// From the Go menu and the menu-bar icon; the page hears it through under:changed,
+// and, when it didn't work, why (calm rule 7: there is no other place to say so).
+function toggleUnder(on = !under.on) {
+  under.set(on).catch((error) => sendToAllWindows('under:changed', { ...underStatus(), error: error.message }))
+}
+
+function registerUnder() {
+  handle('under:status', () => underStatus(), { from: 'any' })
+  // Only the desk asks; main decides, and answers once everything has paused (or woken).
+  handle('under:set', async (on) => {
+    try {
+      await under.set(on === true)
+    } catch (error) {
+      fail(error.message)
+    }
+    return underStatus()
+  })
 }
 
 /* A build can check its own AI engine without opening any notes:
@@ -1230,8 +1368,12 @@ app.whenReady().then(async () => {
     pendingCommand = undefined
   })
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, respond) => respond(false))
+  guardSession(session.defaultSession)
   registerBrowserAndTerminal()
   await loadPrefs()
+  // Before the AI, the iPhone link or any window starts, so nothing reaches out first.
+  under.begin(prefs.under)
+  registerUnder()
   registerAi()
   await registerPhone()
   registerDesk()

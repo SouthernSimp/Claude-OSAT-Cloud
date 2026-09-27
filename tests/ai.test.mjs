@@ -177,6 +177,27 @@ test('a failed download says why and can be tried again', async () => {
   assert.equal(ai.models().length, 1)
 })
 
+test('a stopped download says when it has really stopped, so it can resume at once', async () => {
+  let started = 0
+  // Re-hashing a large .part at the start doesn't hear the stop straight away.
+  const slowStart = async ({ signal }) => {
+    started += 1
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    if (!signal.aborted) await new Promise((resolve) => signal.addEventListener('abort', resolve))
+    throw new Error('aborted')
+  }
+  const ai = createAi({ dir: await temp(), totalMemory: 8 * GB, fork: fakeEngine([]), download: slowStart })
+  await ai.choose('light')
+  const stopping = ai.cancel()
+  assert.equal(ai.status().download.state, 'running', 'still stopping')
+  await stopping
+  assert.equal(ai.status().download.state, 'paused')
+  ai.resume()
+  assert.equal(ai.status().download.state, 'running')
+  assert.equal(started, 2)
+  ai.dispose()
+})
+
 test('the practice model answers without any download', async () => {
   const ai = createAi({ dir: await temp(), totalMemory: 8 * GB, mock: true })
   await ai.choose('light')
