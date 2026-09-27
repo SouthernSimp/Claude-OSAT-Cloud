@@ -186,9 +186,10 @@ try {
   check(!(await access(copy).then(() => true, () => false)), 'turning the iPhone link off left the copy of the notes behind')
 
   // 3. The desk put away (⌘W / Esc / ⌥Space) is only hidden: it comes back with what was left on it.
+  // (The hidden second window from step 2 has no surface either; the desk is the visible one.)
   await main.fill('#home-line', 'Captured before putting it away')
   await main.press('#home-line', 'Enter')
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((window) => !window.webContents.getURL().includes('surface='))?.close())
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((window) => !window.webContents.getURL().includes('surface=') && window.isVisible())?.close())
   await sleep(300)
   const deskShown = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((window) => !window.webContents.getURL().includes('surface=') && window.isVisible()))
   check(!(await deskShown()), 'closing the desk did not put it away')
