@@ -4,11 +4,15 @@
 
    Glass rule: backdrop-filter only blurs what shares its backdrop root, so
    nothing that contains glass may carry opacity, filter or a view-transition name. Arrival animations run
-   on each glass element itself, never on a wrapper. */
+   on each glass element itself, never on a wrapper.
 
+   Layers: the desk (.overlay-surface) is the one stacking context. Rooms (.popouts) sit
+   over the widgets and icons; the dock and a risen line sit over the rooms. */
+
+.overlay-surface { isolation: isolate; }
+.popouts { z-index: 10; }
 .home {
   position: relative;
-  isolation: isolate;
   height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 311px) minmax(0, 1fr) minmax(0, 288px);
@@ -138,6 +142,7 @@
 /* ---- The line in the middle -------------------------------------------- */
 
 .home-center {
+  position: relative;
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
@@ -146,26 +151,6 @@
   grid-template-rows: auto minmax(0, 0.9fr) auto auto minmax(0, 1.1fr);
   justify-items: center;
 }
-.home-modes { grid-row: 1; display: flex; align-items: center; gap: 12px; padding-top: 2px; }
-.pod { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--on-2); transition: color var(--d-fast); }
-.pod:hover { color: var(--on-1); }
-.pod svg { width: 16px; height: 16px; }
-.mode-pill { display: flex; gap: 2px; height: 38px; padding: 4px; border-radius: 999px; }
-.mode-pill button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 13px;
-  border-radius: 999px;
-  font: 600 12.5px/1 var(--font);
-  color: var(--on-2);
-  white-space: nowrap;
-  transition: background 180ms var(--ease-out), color 180ms, box-shadow 180ms;
-}
-.mode-pill button:hover { color: var(--on-1); }
-.mode-pill button[aria-checked="true"] { background: var(--on-solid); color: var(--on-solid-ink); box-shadow: 0 1px 3px rgb(0 0 0 / 22%); }
-.mode-pill svg { width: 14px; height: 14px; }
-
 .home-greeting {
   grid-row: 3;
   margin: 0 0 26px;
@@ -193,9 +178,8 @@
 }
 .home-composer textarea:focus-visible { outline: none; box-shadow: none; }
 .home-composer textarea::placeholder { color: var(--on-3); }
-.home-composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.home-composer-bar span { overflow: hidden; font-size: var(--t-xs); color: var(--on-4); text-overflow: ellipsis; white-space: nowrap; }
-.home-composer-bar button {
+.home-composer-bar { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.home-send {
   flex: none;
   width: 32px;
   height: 32px;
@@ -206,25 +190,59 @@
   color: var(--on-1);
   transition: background var(--d-fast), color var(--d-fast), transform var(--d-base) var(--ease-spring);
 }
-.home-composer-bar button:disabled { opacity: 0.55; }
-.home-composer.has-text .home-composer-bar button:not(:disabled) { background: var(--on-solid); color: var(--on-solid-ink); }
-.home-composer.has-text .home-composer-bar button:not(:disabled):hover { transform: scale(1.06); }
-.home-composer-bar button svg { width: 15px; height: 15px; }
+.home-send:disabled { opacity: 0.55; }
+.home-composer.has-text .home-send:not(:disabled) { background: var(--on-solid); color: var(--on-solid-ink); }
+.home-composer.has-text .home-send:not(:disabled):hover { transform: scale(1.06); }
+.home-send svg { width: 15px; height: 15px; }
+
+/* What Return does: four verbs in one small switch. The chosen one opens up to say its
+   name; the others wait as icons. */
+.verbs { flex: none; display: flex; gap: 1px; padding: 2px; border-radius: 999px; background: color-mix(in srgb, var(--on-1) 8%, transparent); }
+.verbs button {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  font: 600 12px/1 var(--font);
+  color: var(--on-3);
+  white-space: nowrap;
+  transition: background 260ms var(--glide), color 180ms, padding 360ms var(--spring);
+}
+.verbs button:hover { color: var(--on-1); }
+.verbs button svg { flex: none; width: 14px; height: 14px; }
+.verbs button span { max-width: 0; overflow: hidden; opacity: 0; transition: max-width 360ms var(--spring), opacity 200ms, margin 360ms var(--spring); }
+.verbs button[aria-checked="true"] { padding: 0 10px 0 8px; color: var(--on-solid-ink); background: var(--on-solid); box-shadow: 0 1px 3px rgb(0 0 0 / 22%); }
+.verbs button[aria-checked="true"] span { max-width: 90px; margin-left: 6px; opacity: 1; }
+
 .home-chip {
-  justify-self: end;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 7px;
-  margin: 0 6px 0 0;
+  margin: 0;
   font-size: var(--t-xs);
   font-weight: 500;
-  color: var(--on-2);
-  text-shadow: var(--home-text-shadow);
+  color: var(--on-3);
 }
-.home-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--on-4); }
+.home-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-chip i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--on-4); }
 .home-chip.is-good i { background: var(--positive); }
 .home-chip.is-bad i { background: var(--critical); }
-.home-chip button { color: var(--on-1); text-decoration: underline; text-underline-offset: 2px; }
+.home-chip button { flex: none; color: var(--on-1); text-decoration: underline; text-underline-offset: 2px; }
+
+/* When a room covers the line's resting place, the line rises to the top of the desk and
+   stays above the rooms, so there is always somewhere to leave a thought. */
+.home-greeting,
+.home-composer-wrap,
+.home-answer { transition: translate 560ms var(--spring-soft), opacity 360ms var(--glide); }
+.home.is-raised .home-center { z-index: 11; pointer-events: none; }
+.home.is-raised .home-center > :not(.home-greeting) { pointer-events: auto; }
+.home.is-raised .home-greeting { opacity: 0; translate: 0 -24px; }
+.home.is-raised :is(.home-composer-wrap, .home-answer) { translate: 0 calc(var(--rise, 0px) * -1); }
+.home.is-raised .evening-pill { display: none; }
 
 /* Ask, right here: the answer grows under the line. */
 .home-answer {
@@ -445,18 +463,14 @@
 /* ---- Arrival --------------------------------------------------------- */
 
 .home.is-arriving .widget,
-.home.is-arriving .pod,
-.home.is-arriving .mode-pill,
 .home.is-arriving .home-greeting,
 .home.is-arriving .home-composer,
-.home.is-arriving .home-chip,
 .home.is-arriving .icon,
 .home.is-arriving .dock { animation: home-rise 640ms var(--ease-out) both; }
 .home.is-arriving .widget-month { animation-delay: 60ms; }
 .home.is-arriving .widget-next { animation-delay: 120ms; }
 .home.is-arriving .home-greeting { animation-delay: 100ms; }
 .home.is-arriving .home-composer { animation-delay: 160ms; }
-.home.is-arriving .home-chip { animation-delay: 220ms; }
 .home.is-arriving .icon { animation-delay: 200ms; }
 .home.is-arriving .dock { animation-delay: 260ms; }
 @keyframes home-rise { from { opacity: 0; translate: 0 8px; } }
@@ -481,11 +495,9 @@
   .home { grid-template-columns: 148px minmax(0, 1fr) minmax(0, 196px); column-gap: 20px; }
   .home-widgets { grid-template-columns: 148px; }
   .widget-next { grid-column: 1; }
-  .mode-pill button { padding: 0 10px; }
 }
 @media (max-width: 900px) {
   .home { grid-template-columns: 148px minmax(0, 1fr) minmax(0, 100px); }
-  .mode-pill svg { display: none; }
 }
 
 /* ---- Phone ------------------------------------------------------------ */
@@ -495,9 +507,6 @@
   .workspace-content > .home { padding: 18px 16px 28px; }
 .home::before { position: fixed; }
   .home-center { order: 0; display: flex; flex-direction: column; align-items: stretch; }
-  .home-modes { width: 100%; }
-  .mode-pill { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .mode-pill button { justify-content: center; padding: 0 4px; font-size: var(--t-xs); }
   .home-greeting { margin: 26px 0 16px; font-size: 28px; }
   .home-composer-wrap { width: 100%; }
   .home-widgets { order: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); }

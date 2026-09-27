@@ -107,7 +107,7 @@
 .browser-toast button { padding: 2px 8px; border-radius: 6px; font-weight: 600; background: color-mix(in srgb, currentColor 16%, transparent); }
 
 .browser-page { position: relative; min-height: 0; background: var(--page); }
-.browser-start { height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 12vh 24px 40px; text-align: center; }
+.browser-start { height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 12cqh 24px 40px; text-align: center; }
 .browser-start > svg { width: 44px; height: 44px; color: var(--accent); }
 .browser-start h2 { margin-top: 14px; font-size: 34px; letter-spacing: -0.03em; }
 .browser-start > p { max-width: 460px; margin-top: 10px; font-size: var(--t-md); line-height: 1.5; color: var(--muted); }
@@ -131,8 +131,10 @@
 .terminal-new { color: rgb(238 232 222 / 60%); }
 .terminal-new:hover { background: rgb(255 255 255 / 8%); color: #faf6ef; }
 .terminal-error { margin-left: 10px; font-size: var(--t-xs); color: #f08a78; }
-.terminal-host { position: relative; min-height: 0; padding: 10px 6px 6px 14px; }
-.terminal-host .xterm { height: 100%; }
+/* The padding sits on xterm's own box: fitting to the pop-out subtracts it there,
+   so the last row and column aren't cut off. */
+.terminal-host { position: relative; min-height: 0; }
+.terminal-host .xterm { height: 100%; padding: 10px 6px 6px 14px; }
 .terminal-host .xterm-viewport { scrollbar-width: thin; }
 .terminal-empty { position: absolute; inset: 50% auto auto 50%; translate: -50% -50%; display: grid; justify-items: center; gap: 12px; color: rgb(238 232 222 / 70%); }
 .terminal { position: relative; }
@@ -153,7 +155,7 @@
 .finder-side button[aria-current] { font-weight: 620; background: var(--accent-soft); }
 .finder-side button svg { flex: none; width: 16px; height: 16px; color: var(--home-folder); }
 .finder-side-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-.finder-side-row button:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.finder-side button span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .finder-side .finder-forget { width: 26px; justify-content: center; padding: 0; opacity: 0; }
 .finder-side .finder-forget svg { width: 12px; height: 12px; color: var(--muted); }
 .finder-side-row:hover .finder-forget,
@@ -200,15 +202,37 @@
 .finder-actions svg { width: 15px; height: 15px; }
 .finder-actions kbd { font: 560 var(--t-2xs) var(--font); color: var(--faint); }
 
-@media (max-width: 1100px) {
+/* The rooms follow their own pop-out's size, not the screen's. */
+@container room (max-width: 560px) {
+  .browser-clip span { display: none; }
+}
+
+@container room (max-width: 960px) {
   .finder { grid-template-columns: 170px minmax(0, 1fr) 220px; }
 }
-@media (max-width: 900px) {
-  .finder { grid-template-columns: 160px minmax(0, 1fr); }
-  .finder-info { display: none; }
+/* The selected item's card becomes a strip under the files, so its actions stay in reach. */
+@container room (max-width: 760px) {
+  .finder { grid-template-columns: 160px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .finder-side { grid-row: 1 / -1; }
+  .finder-info { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; padding: var(--s-2) var(--s-4); border-left: 0; border-top: 1px solid var(--line); text-align: left; }
+  .finder-info:not(:has(h3)),
+  .finder-info > :is(.file-thumb, p) { display: none; }
+  .finder-info h3 { flex: 1 1 120px; min-width: 0; margin: 0; overflow: hidden; font-size: var(--t-sm); white-space: nowrap; text-overflow: ellipsis; }
+  .finder-actions { width: auto; display: flex; flex-wrap: wrap; margin-top: 0; }
+  .finder-actions button { padding: 0 var(--s-3); }
 }
-@media (max-width: 720px) {
-  .finder { grid-template-columns: minmax(0, 1fr); }
-  .finder-side { display: none; }
-  .finder-hint { display: none; }
+/* Places and your folders become one row across the top. */
+@container room (max-width: 560px) {
+  .finder { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .finder-side { grid-row: auto; flex-direction: row; align-items: center; gap: var(--s-1); padding: var(--s-2) var(--s-3); overflow: auto hidden; border-right: 0; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+  .finder-side button,
+  .finder-side-row { flex: none; white-space: nowrap; }
+  .finder-side .finder-add { margin-top: 0; }
+  .finder-kicker,
+  .finder-hint,
+  .finder-actions kbd { display: none; }
+  .finder-info { grid-column: auto; }
+  /* The actions stay on one row that slides sideways, so the files keep their room. */
+  .finder-actions { flex-wrap: nowrap; overflow: auto hidden; scrollbar-width: none; }
+  .finder-actions button { flex: none; }
 }

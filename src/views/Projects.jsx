@@ -72,7 +72,7 @@ export function ProjectsView({ workspace, commit, navigate }) {
             type="button"
             onClick={() => navigate("Mindmap")}
           >
-            <ShareNetwork /> Mindmap
+            <ShareNetwork /> Map
           </button>
         </div>
         {workspace.projects.map((project) => (

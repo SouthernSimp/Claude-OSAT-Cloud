@@ -53,9 +53,13 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
     const observer = new ResizeObserver(place)
     if (node) observer.observe(node)
     window.addEventListener('resize', place)
+    // The pop-out opens slightly scaled down; measure again once it has settled.
+    const popout = node?.closest('.popout')
+    popout?.addEventListener('animationend', place)
     return () => {
       observer.disconnect()
       window.removeEventListener('resize', place)
+      popout?.removeEventListener('animationend', place)
       bridge.place(null)
     }
   }, [bridge, covered, menuOpen, blank, state.active, frame])
@@ -159,7 +163,7 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
             {tab?.loading && <i className="browser-loading" aria-hidden="true" />}
           </form>
           <button type="button" className="browser-clip" disabled={blank} onClick={clip} title="Save the selection, or this page, as a note">
-            <Scissors /> Clip to OSAT
+            <Scissors /> <span>Clip to OSAT</span>
           </button>
         </div>
         {toast && (

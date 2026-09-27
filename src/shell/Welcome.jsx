@@ -39,7 +39,7 @@ export function Welcome({ onDone }) {
 
   return (
     <div className="modal-backdrop welcome-backdrop">
-      <section ref={ref} className="glass welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+      <section ref={ref} className="welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
         <ol className="welcome-steps" aria-label={`Step ${step + 1} of 3`}>
           {[0, 1, 2].map((index) => <li key={index} className={index === step ? 'is-on' : ''} />)}
         </ol>

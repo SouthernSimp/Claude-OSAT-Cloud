@@ -209,14 +209,14 @@ export function FilesView({ navigate, target = null }) {
         <p className="finder-kicker">On this Mac</p>
         {places.map((item) => (
           <button key={item.id} type="button" aria-current={spot.rootId === item.id ? "true" : undefined} onClick={() => go({ rootId: item.id, relative: "" })}>
-            <FolderSimple weight={spot.rootId === item.id ? "fill" : "regular"} /> {item.name}
+            <FolderSimple weight={spot.rootId === item.id ? "fill" : "regular"} /> <span>{item.name}</span>
           </button>
         ))}
         <p className="finder-kicker">Your folders</p>
         {folders.map((item) => (
           <span key={item.id} className="finder-side-row">
             <button type="button" aria-current={spot.rootId === item.id ? "true" : undefined} onClick={() => go({ rootId: item.id, relative: "" })}>
-              <FolderSimple weight={spot.rootId === item.id ? "fill" : "regular"} /> {item.name}
+              <FolderSimple weight={spot.rootId === item.id ? "fill" : "regular"} /> <span>{item.name}</span>
             </button>
             <button type="button" className="finder-forget" aria-label={`Take ${item.name} out of the list`} title="Take it out of the list (the folder stays)" onClick={() => forget(item)}><X /></button>
           </span>

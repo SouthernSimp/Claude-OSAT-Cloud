@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
-  CircleHalf, HourglassMedium, MagnifyingGlass, Monitor, Moon, Plus, Sun, Toolbox,
+  CircleHalf, HourglassMedium, Monitor, Moon, Plus, Sun, Toolbox,
 } from '@phosphor-icons/react'
 
 import { Menu } from '../lib/Menu.jsx'
@@ -10,10 +10,10 @@ import { magnify, unmagnify } from './glass.jsx'
 /* The desk's chrome: one dock, and the look (light or dark, how much blur). */
 
 export const DEFAULT_BLUR = 60
-export function Dock({ view, navigate, storage, aiReady, onSearch, onCapture, onFocus, workspace, commit, extra = [], children }) {
+export function Dock({ view, navigate, storage, aiReady, onCapture, onFocus, workspace, commit, extra = [], children }) {
   const dock = useRef(null)
   const current = spaceFor(view)?.id || 'Today'
-  const inTools = TOOLS.some((tool) => tool.id === current) || current === SETTINGS.id
+  const inTools = TOOLS.some((tool) => tool.id === current) || current === SETTINGS.id || spaceFor(view)?.dock === false
 
   /* The soft pill behind the current space glides to the next one. */
   useLayoutEffect(() => {
@@ -29,7 +29,7 @@ export function Dock({ view, navigate, storage, aiReady, onSearch, onCapture, on
   return (
     <nav ref={dock} className="glass liquid dock app-dock" aria-label="OSAT" onPointerMove={magnify} onPointerLeave={unmagnify}>
       <span className="dock-pill" aria-hidden="true" />
-      {SPACES.map((space, index) => (
+      {SPACES.map((space, index) => space.dock !== false && (
         <button
           key={space.id}
           type="button"
@@ -49,7 +49,7 @@ export function Dock({ view, navigate, storage, aiReady, onSearch, onCapture, on
         className="dock-more"
         ariaLabel="Tools"
         items={[
-          ...TOOLS.map((tool) => ({ label: tool.label, icon: tool.icon, checked: current === tool.id, onSelect: () => navigate(tool.id) })),
+          ...[...SPACES.filter((space) => space.dock === false), ...TOOLS].map((tool) => ({ label: tool.label, icon: tool.icon, checked: current === tool.id, onSelect: () => navigate(tool.id) })),
           { label: 'Focus for 25 minutes', icon: HourglassMedium, onSelect: onFocus },
           ...extra,
           { divider: true },
@@ -64,10 +64,6 @@ export function Dock({ view, navigate, storage, aiReady, onSearch, onCapture, on
       />
       {children}
       <i className="dock-rule" />
-      <button type="button" data-mag data-tip="Find anything  ⌘K" onClick={onSearch}>
-        <MagnifyingGlass />
-        <span className="dock-label">Find</span>
-      </button>
       <Appearance workspace={workspace} commit={commit} />
       <button type="button" data-mag className="dock-new" data-tip="A new thought  ⇧⌘N" onClick={onCapture}>
         <Plus weight="bold" />

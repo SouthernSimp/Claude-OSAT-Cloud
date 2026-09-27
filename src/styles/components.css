@@ -187,7 +187,8 @@
   align-items: start;
 }
 
-@media (max-width: 900px) {
+/* Follows its room's pop-out (Projects), not the screen. */
+@container room (max-width: 760px) {
   .split-layout {
     grid-template-columns: minmax(0, 1fr);
   }

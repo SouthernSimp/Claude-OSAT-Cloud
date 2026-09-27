@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUp, CaretDown, ChatCircle, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PencilSimpleLine, PictureInPicture, Plus, PushPin, ShareNetwork, Sparkle, Stop, X } from '@phosphor-icons/react'
+import { ArrowUp, CaretDown, ChatCircle, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PictureInPicture, Plus, PushPin, ShareNetwork, Sparkle, Stop, X } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
 import { applyAction, extractActions, systemPrompt, wantsActions } from '../assistant/actions.js'
@@ -21,7 +21,7 @@ const MODES = [
   { id: 'note', label: 'Note', icon: NotePencil, placeholder: 'Leave a thought here.', hint: 'Return saves a note' },
   { id: 'step', label: 'Next step', icon: CheckCircle, placeholder: 'One small next step…', hint: 'Return adds a step' },
   { id: 'ask', label: 'Ask', icon: Sparkle, placeholder: 'Ask your notes, or anything…', hint: 'Return asks, right here' },
-  { id: 'find', label: 'Search', icon: MagnifyingGlass, placeholder: 'Search notes, #tags and folders…', hint: 'Return searches' },
+  { id: 'find', label: 'Find', icon: MagnifyingGlass, placeholder: 'Search notes, #tags and folders…', hint: 'Return searches' },
 ]
 const WEEKDAY = new Intl.DateTimeFormat('en-US', { weekday: 'long' })
 const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long' })
@@ -54,12 +54,19 @@ function readIconsCollapsed() {
    widgets and the next steps, one line that does one thing on Return, the files on
    your Mac's Desktop (or your notes) as icons, and a dock to the rooms. It reads and
    writes the same records the rest of OSAT keeps. Notes open as pop-outs
-   (`onOpenNote`); widgets and icons can be picked up and set down anywhere (`places`). */
+   (`onOpenNote`); widgets and icons can be picked up and set down anywhere (`places`).
+   The line reports where it rests (`onLine`), so rooms open beside it; when a room
+   covers it anyway, it rises to the top of the desk and stays above the rooms (`raised`). */
 export function FieldDesk({
   workspace, commit, navigate,
   storage, onSearch, focusAt, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
+  raised = false, onLine,
 }) {
   const home = useRef(null)
+  const center = useRef(null)
+  const greetingRef = useRef(null)
+  const lineRef = useRef(null)
+  const lastLine = useRef('')
   const justMoved = useRef(false)
   const box = useRef(null)
   const grid = useRef(null)
@@ -146,6 +153,36 @@ export function FieldDesk({
     observer.observe(node)
     return () => observer.disconnect()
   }, [collapsed, onDesktop])
+
+  /* Where the line rests (offsets ignore the rise, which is only a translate), and how far
+     it has to travel to reach the top of the desk. */
+  useEffect(() => {
+    const middle = center.current
+    const form = lineRef.current
+    if (!middle || !form) return undefined
+    const measure = () => {
+      const box = middle.getBoundingClientRect()
+      const greeting = greetingRef.current
+      const top = box.top + (greeting ? greeting.offsetTop : form.offsetTop)
+      const rest = {
+        left: Math.round(box.left + form.offsetLeft),
+        right: Math.round(box.left + form.offsetLeft + form.offsetWidth),
+        top: Math.round(top),
+        bottom: Math.round(box.top + form.offsetTop + form.offsetHeight),
+      }
+      middle.style.setProperty('--rise', `${form.offsetTop}px`)
+      const key = JSON.stringify(rest)
+      if (key === lastLine.current) return
+      lastLine.current = key
+      onLine?.(rest)
+    }
+    // An answer lifts the line (a grid transition): measure again once it settles.
+    const observer = new ResizeObserver(measure)
+    observer.observe(middle)
+    observer.observe(form)
+    middle.addEventListener('transitionend', measure)
+    return () => { observer.disconnect(); middle.removeEventListener('transitionend', measure) }
+  }, [onLine])
 
   /* Ask only ever talks to the model on this Mac. */
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
@@ -433,7 +470,7 @@ export function FieldDesk({
   const blocked = mode === 'ask' && ai.state !== 'ready'
 
   return (
-    <div ref={home} className={`home is-layer ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''}`} data-phase={phase}>
+    <div ref={home} className={`home is-layer ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''} ${raised ? 'is-raised' : ''}`} data-phase={phase}>
       <aside className="home-widgets" aria-label="Today at a glance">
         <DayWidget now={now} events={events} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:day')} />
         <MonthWidget now={now} today={today} events={allEvents} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:month')} />
@@ -463,24 +500,10 @@ export function FieldDesk({
         {media && <MediaWidget media={media} visit={visit} move={movable('widget:media')} />}
       </aside>
 
-      <div className="home-center">
-        <div className="home-modes">
-          <button type="button" className="glass pod" aria-label="New chat with local AI" title="New chat with local AI" onClick={() => navigate('Assistant', { prompt: '' })}>
-            <PencilSimpleLine />
-          </button>
-          <div className="glass mode-pill" role="radiogroup" aria-label="What Return does" onKeyDown={onModeKey}>
-            {MODES.map(({ id, label, icon: Icon }) => (
-              <button key={id} type="button" role="radio" data-mode={id} aria-checked={mode === id} tabIndex={mode === id ? 0 : -1} onClick={() => choose(id)}>
-                <Icon weight={mode === id ? 'bold' : 'regular'} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+      <div ref={center} className="home-center">
+        <h1 ref={greetingRef} className="home-greeting" aria-hidden={raised || undefined}>{greeting}</h1>
 
-        <h1 className="home-greeting">{greeting}</h1>
-
-        <form className="home-composer-wrap" onSubmit={submit}>
+        <form ref={lineRef} className="home-composer-wrap" onSubmit={submit}>
           <div className={`glass home-composer ${draft.trim() ? 'has-text' : ''}`}>
             <label className="visually-hidden" htmlFor="home-line">{current.label}</label>
             <textarea
@@ -504,17 +527,25 @@ export function FieldDesk({
               }}
             />
             <div className="home-composer-bar">
-              <span>{blocked ? 'Ask needs the AI on this Mac' : `${current.hint} · Shift-Return for a new line`}</span>
-              <button type="submit" aria-label={current.label} disabled={!draft.trim() || blocked}>
+              {/* What Return does: four verbs in one small switch; the chosen one says its name. */}
+              <div className="verbs" role="radiogroup" aria-label="What Return does" onKeyDown={onModeKey}>
+                {MODES.map(({ id, label, icon: Icon }) => (
+                  <button key={id} type="button" role="radio" data-mode={id} aria-checked={mode === id} aria-label={label} title={mode === id ? undefined : label} tabIndex={mode === id ? 0 : -1} onClick={() => choose(id)}>
+                    <Icon weight={mode === id ? 'bold' : 'regular'} />
+                    <span aria-hidden="true">{label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className={`home-chip is-${chip.tone}`} role="status">
+                <i />
+                <span>{chip.text}</span>
+                {chip.setup && <button type="button" onClick={() => navigate('Settings', { section: 'ai' })}>Set it up</button>}
+              </p>
+              <button type="submit" className="home-send" aria-label={current.label} title={`${current.hint} · Shift-Return for a new line`} disabled={!draft.trim() || blocked}>
                 <ArrowUp weight="bold" />
               </button>
             </div>
           </div>
-          <p className={`home-chip is-${chip.tone}`} role="status">
-            <i />
-            {chip.text}
-            {chip.setup && <button type="button" onClick={() => navigate('Settings', { section: 'ai' })}>Set it up</button>}
-          </p>
           {(phase === 'evening' || phase === 'night') && eveningSeenOn !== today && (
             <button type="button" className="glass evening-pill" onClick={() => { markEvening(today); setEveningSeenOn(today); navigate('Reflection') }}>
               <MoonStars weight="fill" /> Close the day <span>three quiet questions</span>

@@ -364,6 +364,19 @@ blurred, sits behind it.
 - **The quick chat (⌥⇧Space)** stays exactly as it was.
 - **Removed:** the room sheets, the wallpaper choice (Lake / Moss) and the moss picture, the
   saved window size (the desk is always the screen), "Open in window".
+- **After Nate tried it (Sep 27):** "overlapping issues with the new opaqueness ... looks tacky",
+  "condense down the part that says note, next step, ask, search", "resizing an opened tool
+  should adjust whatever is within that box", "it should not appear right on top of the middle
+  of the screen as that is where you leave thoughts".
+  - Rooms, menus, dialogs and toasts are solid now; nothing on the desk shows through them.
+  - The four verbs moved into the line as one small switch (the chosen one says its name); the
+    pill at the top, the "new chat" button, and Find and Ask on the dock are gone (Ask's room of
+    chats is under Tools and ⌘4).
+  - Rooms open beside the line, one each side on a wide screen. When there isn't room beside it,
+    the room opens in the middle and the line rises to the top of the desk and stays above the
+    rooms, so there is always a place to leave a thought.
+  - Every room lays itself out for its own pop-out (container queries), so shrinking one reflows
+    it instead of cutting it off.
 
 ### Phase 10: Floating windows (next)
 Small windows that float over every app, like the quick chat: a quick note, any room torn off the

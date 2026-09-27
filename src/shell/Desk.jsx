@@ -26,6 +26,7 @@ import { ProjectsView } from '../views/Projects.jsx'
 import { ReflectionView } from '../views/Reflection.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
+import { covers, placeRoom } from './placement.js'
 import { Dock } from './Shell.jsx'
 import { Welcome } from './Welcome.jsx'
 
@@ -66,6 +67,7 @@ export function Desk() {
   const [welcome, setWelcome] = useState(false)
   const [focusAt, setFocusAt] = useState(0)
   const [roomCommand, setRoomCommand] = useState(null)
+  const [line, setLine] = useState(null)
   const modalRef = useRef(null)
   const closeCapture = useCallback(() => setCaptureOpen(false), [])
   useFocusTrap(modalRef, captureOpen, closeCapture)
@@ -151,15 +153,8 @@ export function Desk() {
     setPops((list) => {
       const existing = list.find((pop) => pop.key === key)
       if (existing) return [...list.filter((pop) => pop !== existing), { ...existing, detail, at: Date.now() }]
-      const [w, h] = ROOMS[view]
-      const width = Math.min(w, innerWidth - 80)
-      const height = Math.min(h, innerHeight - 160)
-      const step = list.length * 28
-      return [...list, {
-        key, view, detail, at: Date.now(), w: width, h: height,
-        x: clamp((innerWidth - width) / 2 + step, 20, innerWidth - width - 20),
-        y: clamp((innerHeight - height) / 2 - 30 + step, 20, innerHeight - height - 90),
-      }]
+      const spot = placeRoom({ width: innerWidth, height: innerHeight }, ROOMS[view], latest.current.line, list)
+      return [...list, { key, view, detail, at: Date.now(), ...spot }]
     })
   }
 
@@ -195,7 +190,7 @@ export function Desk() {
     else if (view === 'Today') setVisit((value) => value + 1)
     else if (ROOMS[view]) open(view, detail)
   }
-  latest.current = { navigate, pops, palette, captureOpen, welcome }
+  latest.current = { navigate, pops, palette, captureOpen, welcome, line }
 
   async function launcher(action, ...args) {
     try {
@@ -265,6 +260,8 @@ export function Desk() {
           places={prefs.places || {}}
           onPlace={place}
           media={bridge?.nowPlaying ? bridge : null}
+          raised={pops.some((pop) => covers(pop, line))}
+          onLine={setLine}
           dock={(
             <Dock
               view={top?.view === 'note' ? 'Notes' : top?.view || 'Today'}
@@ -272,7 +269,6 @@ export function Desk() {
               storage={storage}
               workspace={workspace}
               commit={commit}
-              onSearch={() => setPalette('')}
               onCapture={() => setCaptureOpen(true)}
               onFocus={() => setFocusAt(Date.now())}
               extra={hasPlaces ? [{ label: 'Put widgets and icons back', icon: ArrowCounterClockwise, onSelect: tidy }] : []}
@@ -398,7 +394,7 @@ function PopOut({ pop, z, top, title, onRaise, onClose, onChange, onMode, childr
   return (
     <section
       ref={node}
-      className={`glass popout ${top ? 'is-top' : ''}`}
+      className={`popout ${top ? 'is-top' : ''}`}
       style={{ left: pop.x, top: pop.y, width: pop.w, height: pop.h, zIndex: z }}
       role="dialog"
       aria-label={title}

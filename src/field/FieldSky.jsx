@@ -27,6 +27,8 @@ export function FieldSky({ workspace, navigate, target }) {
   const [selected, setSelected] = useState(null)
   const [query, setQuery] = useState('')
   const intro = useRef(0)
+  // Until Nate pans or zooms, the sky stays fitted to its window, however it is resized.
+  const untouched = useRef(true)
 
   useEffect(() => {
     const seeded = reduced ? runSky(graph.nodes, graph.links, 170) : graph.nodes.map((node) => ({ ...node }))
@@ -54,6 +56,7 @@ export function FieldSky({ workspace, navigate, target }) {
     const view = viewport.current
     if (!view) return undefined
     const fitted = fitCamera(nodesRef.current, view.clientWidth, view.clientHeight)
+    untouched.current = true
     if (reduced) {
       setCam(fitted)
       return undefined
@@ -88,6 +91,7 @@ export function FieldSky({ workspace, navigate, target }) {
       if (!view || !node) return
       cancelAnimationFrame(intro.current)
       const z = 1.3
+      untouched.current = false
       setCam({ x: view.clientWidth / 2 - node.x * z, y: view.clientHeight / 2 - node.y * z, z })
       setSelected(node.id)
     })
@@ -98,9 +102,30 @@ export function FieldSky({ workspace, navigate, target }) {
     cancelAnimationFrame(intro.current)
   }
 
+  /* Resizing the window refits an untouched sky, and otherwise keeps its middle in the middle. */
+  useEffect(() => {
+    const view = viewport.current
+    if (!view) return undefined
+    let size = { w: view.clientWidth, h: view.clientHeight }
+    const observer = new ResizeObserver(() => {
+      const w = view.clientWidth
+      const h = view.clientHeight
+      const dw = w - size.w
+      const dh = h - size.h
+      size = { w, h }
+      if (!dw && !dh) return
+      if (!untouched.current) { setCam((current) => ({ ...current, x: current.x + dw / 2, y: current.y + dh / 2 })); return }
+      stopIntro()
+      setCam(fitCamera(nodesRef.current, w, h))
+    })
+    observer.observe(view)
+    return () => observer.disconnect()
+  }, [])
+
   function onWheel(event) {
     event.preventDefault()
     stopIntro()
+    untouched.current = false
     const rect = viewport.current.getBoundingClientRect()
     const px = event.clientX - rect.left
     const py = event.clientY - rect.top
@@ -126,7 +151,10 @@ export function FieldSky({ workspace, navigate, target }) {
     const startX = event.clientX
     const startY = event.clientY
     const origin = { ...cam }
-    const move = (ev) => setCam({ ...origin, x: origin.x + ev.clientX - startX, y: origin.y + ev.clientY - startY })
+    const move = (ev) => {
+      untouched.current = false
+      setCam({ ...origin, x: origin.x + ev.clientX - startX, y: origin.y + ev.clientY - startY })
+    }
     const up = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
@@ -167,6 +195,7 @@ export function FieldSky({ workspace, navigate, target }) {
     const view = viewport.current
     if (!view) return
     stopIntro()
+    untouched.current = true
     setCam(fitCamera(nodesRef.current, view.clientWidth, view.clientHeight))
   }
 

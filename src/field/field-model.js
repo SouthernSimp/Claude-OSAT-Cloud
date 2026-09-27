@@ -323,6 +323,7 @@ export function fitCamera(nodes, viewW, viewH, padding = 96) {
     maxX = Math.max(maxX, node.x)
     maxY = Math.max(maxY, node.y)
   })
+  maxX += 200 // room for the names, which sit to the right of their stars
   const width = Math.max(280, maxX - minX)
   const height = Math.max(200, maxY - minY)
   const z = Math.max(0.34, Math.min(1.25, (viewW - padding * 2) / width, (viewH - padding * 2) / height))

@@ -1,6 +1,7 @@
 import {
   ArrowClockwise,
   ArrowUp,
+  ChatsCircle,
   Check,
   ArrowsOut,
   CircleNotch,
@@ -379,8 +380,8 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
 
       <div className="chat-main">
         <header className="chat-head">
-          <button className="icon-button rail-toggle" type="button" aria-label="Show conversations" onClick={() => setRailOpen(true)}>
-            <Sparkle />
+          <button className="icon-button rail-toggle" type="button" aria-label="Show conversations" title="Your chats" onClick={() => setRailOpen(true)}>
+            <ChatsCircle />
           </button>
           <div className="chat-title">
             <h2>{active ? deriveTitle(active) : "New chat"}</h2>

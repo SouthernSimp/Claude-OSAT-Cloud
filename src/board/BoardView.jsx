@@ -22,15 +22,17 @@ import { composedNote } from "./board-text.js";
 const RAIL_KEY = "osat.board-rail.v2";
 const uid = (prefix) => `${prefix}-${crypto.randomUUID()}`;
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const railChoice = () => localStorage.getItem(RAIL_KEY) !== "closed";
 const landingRot = (id, x, y) => Math.round((((hash(`${id}:${x},${y}`) % 240) / 100) - 1.2) * 10) / 10;
 
 export function BoardView({ workspace, commit, navigate, boardTarget }) {
   const doc = useMemo(() => normalizeBoardDoc(workspace.sorter), [workspace.sorter]);
   const board = doc.boards.find((item) => item.id === doc.activeId) || doc.boards[0];
   const notesById = useMemo(() => new Map(workspace.notes.map((note) => [note.id, note])), [workspace.notes]);
+  const viewRef = useRef(null);
   const stageRef = useRef(null);
   const [cam, setCam] = useState(board.cam);
-  const [railOpen, setRailOpen] = useState(() => localStorage.getItem(RAIL_KEY) !== "closed" && !matchMedia("(max-width: 900px)").matches);
+  const [railOpen, setRailOpen] = useState(railChoice);
   const [tool, setTool] = useState("select");
   const [filter, setFilter] = useState(EMPTY_FILTER);
   const [selection, setSelection] = useState(() => new Set());
@@ -54,7 +56,25 @@ export function BoardView({ workspace, commit, navigate, boardTarget }) {
   const latest = useRef({});
   latest.current = { board, cam, selection, filter, notesById, editing };
 
-  useEffect(() => { localStorage.setItem(RAIL_KEY, railOpen ? "open" : "closed"); }, [railOpen]);
+  // Only a hand-made choice is remembered; a narrow pop-out tucking the rail away is not.
+  const chooseRail = (open) => { setRailOpen(open); localStorage.setItem(RAIL_KEY, open ? "open" : "closed"); };
+
+  // The rail follows the Map's own pop-out, not the screen: it tucks away when the room gets
+  // narrow (it would cover the board) and comes back, as it was left, when the room widens.
+  useLayoutEffect(() => {
+    const room = viewRef.current;
+    let narrow = null;
+    const fit = () => {
+      const now = room.clientWidth <= 760;
+      if (now === narrow) return;
+      narrow = now;
+      setRailOpen(!now && railChoice());
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(room);
+    return () => observer.disconnect();
+  }, []);
 
   // Switching boards resets the camera, selection and history.
   useEffect(() => {
@@ -774,9 +794,9 @@ export function BoardView({ workspace, commit, navigate, boardTarget }) {
   })() : null;
 
   return (
-    <div className={`board-view ${railOpen ? "" : "rail-closed"}`}>
+    <div ref={viewRef} className={`board-view ${railOpen ? "" : "rail-closed"}`}>
       {railOpen && (
-        <BoardRail workspace={workspace} doc={doc} board={board} notesById={notesById} filter={filter} setFilter={setFilter} actions={boardActions} onClose={() => setRailOpen(false)} />
+        <BoardRail workspace={workspace} doc={doc} board={board} notesById={notesById} filter={filter} setFilter={setFilter} actions={boardActions} onClose={() => chooseRail(false)} />
       )}
       <div
         ref={stageRef}
@@ -839,7 +859,7 @@ export function BoardView({ workspace, commit, navigate, boardTarget }) {
 
         <div className="board-hud">
           <div className="hud-group">
-            {!railOpen && <button type="button" className="hud-button" title="Show panel" aria-label="Show panel" onClick={() => setRailOpen(true)}><CaretRight /></button>}
+            {!railOpen && <button type="button" className="hud-button" title="Show panel" aria-label="Show panel" onClick={() => chooseRail(true)}><CaretRight /></button>}
             <span className="hud-title">{board.name}<small>{board.notes.length} {board.notes.length === 1 ? "note" : "notes"}{filtering ? ` · ${matches.size} shown` : ""}</small></span>
           </div>
           <div className="hud-group">

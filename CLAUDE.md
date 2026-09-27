@@ -138,9 +138,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
   - `shell/glass.jsx`: the liquid-glass SVG filter (`GlassDefs`), `useAlive()` (cursor light on
     `.glass`/`.lit`, `--px/--py` for parallax) and the dock's magnify.
-  - `shell/Desk.jsx`: the desk — `FieldDesk` (Day/Month/Next, Note · Find · Ask line, Desktop
-    icons), the dock (`shell/Shell.jsx`: `Dock` with app launchers, `Appearance`), and every room
-    as a draggable pop-out (`ROOMS`, `PopRoom`; Map has a Board/Sky switch). Esc leaves a field in
+  - `shell/Desk.jsx`: the desk — `FieldDesk` (Day/Month/Next, the line with its four verbs
+    Note · Next step · Ask · Find inside it, Desktop icons), the dock (`shell/Shell.jsx`: `Dock`
+    with app launchers, `Appearance`; Find and Ask live in the line, not the dock), and every room
+    as a solid draggable pop-out (`ROOMS`, `PopRoom`; Map has a Board/Sky switch). Rooms open
+    beside the line (`shell/placement.js`: `placeRoom`, `covers`); when one covers the line anyway,
+    the line rises to the top and stays above the rooms (`raised`). Esc leaves a field in
     a pop-out, then closes the top pop-out, then puts the desk away. Also the welcome, capture
     (⇧⌘N) and the menu-bar commands. The browser preview shows a stand-in desktop.
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
@@ -158,7 +161,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     switched to OSAT, the notes and folders.
   - Styles: `src/styles/`, tokens in `tokens.css`.
   - `lib/UndoToast.jsx`: `useUndoToast()`, the one Undo toast (Notes, Money, Calendar); remove at once, offer Undo. `glass.css` loads last: the glass kit, the dock,
-    transitions, and the token overrides that make every room see-through inside a pop-out.
+    transitions, and the token overrides that make the quick chat see-through.
 - Data rules: a captured thought is one note with `unsorted: true` and a `source`; filing,
   pinning or Keep clears it. Each day has one note, `day-YYYY-MM-DD` with `kind: 'day'`
   (`ensureDayNote`): it is the journal page and where new next steps land. Wikilinks follow
@@ -181,11 +184,19 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   children push the track past the viewport.
 - `backdrop-filter` only blurs what shares its backdrop root: no element containing glass
   may carry opacity, filter or a view-transition name.
-- Inside a pop-out `--page` is transparent: never use it as a text colour; use `--on-solid-ink`.
+- Pop-outs, menus, dialogs and toasts are solid (`--page`, `--surface-raised`): in the Mac app
+  `backdrop-filter` doesn't reach the desk behind a pop-out, so anything translucent over other
+  content shows it crisp through. Glass is only for things that sit over the bare desktop.
+- Layers on the desk: widgets and icons, then rooms (`.popouts`, z 10), then the dock and a risen
+  line (z 11+). `.overlay-surface` is the one stacking context; `.home` must not become one.
+- Rooms lay themselves out for their pop-out: `.popout-body` (and `.quick-chat`) is a
+  `container: room / size`, and room styles use `@container room (max-width: 960px | 760px |
+  560px)`. Only the desk itself uses `@media`.
+- In the quick chat `--page` is transparent: never use it as a text colour; use `--on-solid-ink`.
 - `.glass` draws its rim and cursor light with `::before`/`::after`; don't give glass elements
   other pseudo-elements.
 - Every token lives in `tokens.css` (Mindmap's `--paper-*` and `--desk` too); app-wide layers use
-  `--z-*`, type sizes `--t-*`, and the only breakpoints are 1100, 900 and 720px.
+  `--z-*`, type sizes `--t-*`, and the only desk breakpoints are 1100, 900 and 720px.
 - Ad-hoc signing a build inside `~/Desktop` (iCloud-synced) fails with "detritus not allowed";
   build elsewhere: `-c.directories.output=<folder outside Desktop>`.
 - Never launch a packaged build against Nate's real `~/Library/Application Support/OSAT` to
