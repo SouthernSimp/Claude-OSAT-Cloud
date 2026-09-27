@@ -25,8 +25,8 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 6b | The iPhone app | Merged (PR #8) |
 | 7 | Visual polish | Merged (PR #9) |
 | 8 | Your Mac's files in OSAT, the quick chat, Ask reads files | Merged (PR #10) |
-| 9 | One desk: the window and the ⌥Space layer become one | In progress |
-| 10 | Floating windows: quick note, any room, now playing, Today / Next | Next |
+| 9 | One desk: the window and the ⌥Space layer become one | Merged (PR #11) |
+| 10 | A living desk: one line for everything, widgets that open, Incognito (going under) | In progress |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
