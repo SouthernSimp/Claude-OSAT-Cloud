@@ -173,6 +173,9 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
   background: var(--ink);
 }
 :root[data-theme="dark"] .sky-star { background: #f4ecdf; }
+/* A pressed button shrinks a little (glass.css), but `scale` would scale a star's place in
+   the sky too: it would jump away from the pointer and the click would miss it. */
+.sky-star:active:not(:disabled) { scale: none; }
 .sky-star.is-hot { box-shadow: 0 0 18px 4px color-mix(in srgb, var(--field-ember) 55%, transparent); }
 .sky-star.is-selected { outline: 2px solid var(--field-ember); outline-offset: 4px; }
 .sky-star.is-dim { opacity: 0.18; }
@@ -230,8 +233,7 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
   color: var(--ink);
 }
 .sky-search input:focus-visible { outline: none; box-shadow: none; }
-.sky-search span { font-size: var(--t-xs); color: var(--faint); white-space: nowrap; }
-.sky-tools { position: absolute; z-index: 6; left: 18px; bottom: 22px; display: flex; flex-direction: column; gap: 6px; }
+.sky-tools { position: absolute; z-index: 6; left: 18px; bottom: 22px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .sky-tools button {
   min-width: 36px;
   height: 36px;

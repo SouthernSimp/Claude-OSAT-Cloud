@@ -95,6 +95,14 @@ async function main() {
     await sleep(400)
     await page.screenshot({ path: `${OUT}/${theme}-Drawer.png` })
     await page.fill('#home-line', '')
+    // Incognito (the look only in the preview): the Sky under the desk, then back up.
+    room = 'under'
+    await page.locator('.app-dock [data-space="Under"]').click()
+    await page.locator('.under-pill').waitFor({ timeout: 5000 }).catch(() => problems.push(`under: the pill did not appear (${theme})`))
+    await sleep(1800)
+    await page.screenshot({ path: `${OUT}/${theme}-Under.png` })
+    await page.getByRole('button', { name: /Come up/ }).click()
+    await page.locator('.under').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push(`under: Come up did not bring the desk back (${theme})`))
     if (theme === 'light') {
       await page.locator('.app-dock .appearance > button').click()
       await page.getByRole('radio', { name: 'Dark' }).click()
@@ -157,6 +165,48 @@ async function main() {
   await page.keyboard.press('Control+Enter')
   await page.getByRole('dialog', { name: 'Settings' }).waitFor({ timeout: 5000 }).catch(() => problems.push('ask: ⌘↵ with no AI did not open Settings'))
   if (await page.inputValue('#home-line') !== 'A question for later') problems.push('ask: setting up the AI lost the question')
+
+  // Going under from the line: the rooms wait above, the Sky fills the screen, the line waits
+  // at the bottom and saves there (the star glows warmer), only a note or Ask opens, Esc steps
+  // back but never comes up, and Come up brings the desk and its rooms back.
+  room = 'under'
+  const roomsAbove = await page.locator('.popout').count()
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('go under')
+  for (let step = 0; step < 8 && await picked() !== 'Go under'; step += 1) await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await page.locator('.under-pill').waitFor({ timeout: 5000 }).catch(() => problems.push('under: "Go under" in the line did not go under'))
+  await sleep(1400)
+  if (await page.locator('.popout').count()) problems.push('under: the rooms on the desk did not wait above')
+  const sky = await page.locator('.under .field-sky').boundingBox()
+  if (!sky || sky.width < 1440 || sky.height < 900) problems.push(`under: the Sky did not fill the screen (${JSON.stringify(sky)})`)
+  if (await page.locator('.under :is(.sky-search, .sky-tools)').count()) problems.push('under: the Sky kept its search or zoom buttons')
+  const underLine = await page.locator('#under-line').boundingBox()
+  if (!underLine || underLine.y < 900 - 160) problems.push(`under: the line was not at the bottom (${JSON.stringify(underLine)})`)
+  if (!await page.evaluate(() => document.activeElement?.id === 'under-line')) problems.push('under: the line was not ready to type into')
+  await page.keyboard.type('Written under the desk')
+  await page.keyboard.press('Enter')
+  const written = page.getByRole('button', { name: 'Written under the desk', exact: true })
+  await written.waitFor({ timeout: 5000 }).catch(() => problems.push('under: a thought saved under did not become a star'))
+  if (!/is-under/.test(await written.getAttribute('class').catch(() => ''))) problems.push('under: a thought written under did not glow warmer')
+  await page.keyboard.press('Control+2')
+  await sleep(300)
+  if (await page.locator('.popout').count()) problems.push('under: Notes opened under (only a note or Ask should)')
+  // Esc: the drawer, then the picked star, then (with nothing left) the desk would go away, still under.
+  await written.click()
+  await page.locator('#under-line').focus()
+  await page.keyboard.type('x')
+  await page.keyboard.press('Escape')
+  if (await page.getByRole('listbox').count()) problems.push('under: Esc did not close the drawer first')
+  if (!await page.locator('.sky-star.is-selected').count()) problems.push('under: Esc let go of the star before closing the drawer')
+  await page.keyboard.press('Escape')
+  if (await page.locator('.sky-star.is-selected').count()) problems.push('under: Esc did not let go of the picked star')
+  await page.keyboard.press('Escape')
+  if (!await page.locator('.under-pill').count()) problems.push('under: Esc brought the desk back up')
+  await page.getByRole('button', { name: /Come up/ }).click()
+  await page.locator('.under').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('under: Come up did not bring the desk back'))
+  if (await page.locator('.popout').count() !== roomsAbove) problems.push('under: the rooms did not come back from above')
+  await page.getByText('Back up.').waitFor({ timeout: 3000 }).catch(() => problems.push('under: coming up did not say so'))
 
   // The quick chat's window, as the browser preview can show it (no AI here).
   room = 'quick chat'

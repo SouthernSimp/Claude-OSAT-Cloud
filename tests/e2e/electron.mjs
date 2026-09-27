@@ -12,7 +12,8 @@
 //   8. the quick chat: its own window answers, and Esc puts it away
 //   9. Incognito: going under closes the browser's tabs and shuts every way out (the
 //      desk's and the browser's requests, main's fetch, downloads, files); coming up
-//      brings the tabs back; a relaunch stays under (driven through window.osatUnder)
+//      brings the tabs back; a relaunch stays under (driven through window.osatUnder and the
+//      Go menu); the page shows the Sky under the desk, and the desk again when back up
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -299,10 +300,21 @@ try {
     check((await main.evaluate(() => window.osatPhone.status())).sync?.on !== true, 'the iPhone link kept syncing while under')
     check(await access(icloudCopy).then(() => true, () => false), 'going under took the copy of the notes out of iCloud Drive')
     check((await goMenu()).includes('Come Up'), 'the Go menu did not offer Come Up while under')
+    // The page shows it: the desk lifts away and the Sky, the line and the pill are there.
+    await main.locator('.overlay-surface[data-under="under"] .under .field-sky.is-full').waitFor({ timeout: 5000 })
+      .catch(() => problems.push('the page did not show the Sky under the desk'))
+    await main.locator('.under-pill', { hasText: 'offline · nothing leaves OSAT' }).waitFor({ timeout: 5000 })
+      .catch(() => problems.push('the page did not say that nothing leaves OSAT'))
+    check(await main.locator('#under-line').isVisible(), 'the line was not there under the desk')
+    check(!(await main.locator('.home').isVisible()), 'the desk stayed in view under')
 
     // Coming up.
     const up = await main.evaluate(() => window.osatUnder.set(false))
     check(up.on === false, 'coming up did not answer that OSAT is back up')
+    await main.locator('.under').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('the Sky stayed after coming up'))
+    await main.getByText('Back up. Nothing left OSAT while you were under.').waitFor({ timeout: 3000 })
+      .catch(() => problems.push('coming up did not say that nothing left OSAT'))
+    check(await main.locator('.home').isVisible(), 'the desk did not come back after coming up')
     check(await until(async () => {
       const urls = await tabUrls()
       return urls.length === 2 && urls.includes(page)
@@ -321,7 +333,12 @@ try {
     check(await mainFetch() === 'OfflineError', 'a relaunch under let the main process fetch')
     check((await main.evaluate(() => window.osatPhone.status())).sync?.on !== true, 'a relaunch under started the iPhone link')
     check(/web waits/.test(await refused(() => window.osatBrowser.open('https://example.com/'))), 'a relaunch under opened a web page')
-    await main.evaluate(() => window.osatUnder.set(false))
+    await main.locator('.overlay-surface[data-under="under"] .under-pill').waitFor({ timeout: 5000 })
+      .catch(() => problems.push('a relaunch under did not open on the Sky'))
+    // Come Up from the Go menu (what ⇧⌘U does): main decides, and the page follows.
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.find((item) => item.label === 'Come Up').click())
+    await main.locator('.under').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('Come Up in the Go menu did not bring the desk back'))
+    check((await main.evaluate(() => window.osatUnder.status())).on === false, 'Come Up in the Go menu did not come up')
     await app.close()
   } finally {
     local.closeAllConnections()

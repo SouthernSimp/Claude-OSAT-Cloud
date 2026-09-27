@@ -1,0 +1,255 @@
+/* Incognito: OSAT with the internet off, shown as a place under the desk (Under.jsx).
+
+   Going under (data-under="going" on the desk): the desk (.home) and its rooms lift off the
+   top together, one transform, while a deep ink rises from the bottom with a bright
+   waterline; then the Sky fills the screen and, last, the pill appears. Coming up plays it
+   backwards. Reduced motion keeps only a quick fade of the ink.
+
+   Layers, all in the desk's one stacking context: the lifted desk, the ink (1), the Sky (2),
+   rooms opened down here (.popouts, 10), the line (11), the pill (12). Nothing down here is
+   glass: the line and the pill are solid over the stars. */
+
+/* The desk waits unseen until main has said whether OSAT is under (no flash on a relaunch). */
+.overlay-surface[data-under="waiting"] .home { visibility: hidden; }
+/* Only while it is away or on its way is the desk one layer, so its dock can't sit over the
+   ink. At rest above it must not be one: the dock and a risen line stay above the rooms. */
+.overlay-surface[data-under] .home { isolation: isolate; -webkit-app-region: no-drag; }
+.overlay-surface[data-under="going"] :is(.home, .popouts) { animation: desk-lift 450ms cubic-bezier(0.5, 0, 0.75, 0) both; }
+.overlay-surface[data-under="under"] .home { translate: 0 calc(-100% - 80px); visibility: hidden; }
+.overlay-surface[data-under="coming"] :is(.home, .popouts) { animation: desk-land 560ms cubic-bezier(0.2, 0.9, 0.3, 1) 40ms both; }
+@keyframes desk-lift { to { translate: 0 calc(-100% - 80px); } }
+@keyframes desk-land { from { translate: 0 calc(-100% - 80px); } }
+
+/* ---- Down there ------------------------------------------------------------ */
+
+/* Night in either look: the line's drawer, the answer and the Sky read these. */
+.under {
+  --page: var(--under-deep);
+  --surface: var(--under-surface);
+  --surface-raised: var(--under-surface);
+  --surface-hover: color-mix(in srgb, var(--under-text) 7%, var(--under-surface));
+  --ink: var(--under-text);
+  --ink-strong: #fff;
+  --muted: var(--under-muted);
+  --faint: var(--under-faint);
+  --line: var(--under-rim);
+  --line-soft: color-mix(in srgb, var(--under-rim) 60%, transparent);
+  --line-strong: color-mix(in srgb, var(--under-text) 18%, transparent);
+  --accent: var(--under-warm);
+  --accent-ink: var(--under-deep);
+  --accent-soft: color-mix(in srgb, var(--under-warm) 16%, transparent);
+  --on-1: color-mix(in srgb, var(--under-text) 96%, transparent);
+  --on-2: color-mix(in srgb, var(--under-text) 74%, transparent);
+  --on-3: color-mix(in srgb, var(--under-text) 56%, transparent);
+  --on-4: color-mix(in srgb, var(--under-text) 42%, transparent);
+  --on-solid: var(--under-text);
+  --on-solid-ink: var(--under-deep);
+  position: absolute;
+  inset: 0;
+  color: var(--under-text);
+  color-scheme: dark;
+  -webkit-app-region: no-drag;
+}
+
+/* The ink, lit faintly from the surface overhead, with a fine dust of far stars that stays
+   put while the Sky moves (they are only the backdrop, never notes). */
+.under-ink {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background:
+    radial-gradient(1px 1px at 12% 18%, var(--under-dust), transparent),
+    radial-gradient(1px 1px at 31% 64%, var(--under-dust), transparent),
+    radial-gradient(1.5px 1.5px at 47% 11%, var(--under-dust), transparent),
+    radial-gradient(1px 1px at 58% 83%, var(--under-dust), transparent),
+    radial-gradient(1px 1px at 73% 37%, var(--under-dust), transparent),
+    radial-gradient(1.5px 1.5px at 89% 71%, var(--under-dust), transparent),
+    radial-gradient(1px 1px at 6% 88%, var(--under-dust), transparent),
+    radial-gradient(1px 1px at 94% 9%, var(--under-dust), transparent),
+    radial-gradient(110% 70% at 50% -14%, var(--under-glow), transparent 62%),
+    linear-gradient(180deg, var(--under-ink), var(--under-deep) 96%);
+  /* Each on its own odd tile, so the dust never lines up into a grid. */
+  background-size: 530px 370px, 611px 433px, 467px 587px, 709px 353px, 389px 509px, 827px 467px, 571px 641px, 443px 409px, auto, auto;
+}
+/* The waterline: bright while the ink rises, then a faint surface overhead. */
+.under-ink::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: var(--under-line);
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--under-line) 55%, transparent), 0 0 60px 10px color-mix(in srgb, var(--under-line) 14%, transparent);
+  opacity: 0.3;
+}
+.under-ink::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 180px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--under-line) 9%, transparent), transparent);
+}
+.under.is-arriving .under-ink { animation: ink-rise 660ms cubic-bezier(0.3, 0.1, 0.2, 1) 110ms both; }
+.under.is-arriving .under-ink::before { animation: waterline 820ms linear both; }
+.under.is-leaving .under-ink { animation: ink-drain 520ms cubic-bezier(0.45, 0, 0.55, 1) 60ms both; }
+.under.is-leaving .under-ink::before { animation: waterline 580ms linear reverse both; }
+@keyframes ink-rise { from { translate: 0 100%; } }
+@keyframes ink-drain { to { translate: 0 100%; } }
+@keyframes waterline { from, 82% { opacity: 1; } }
+
+.under-sky { position: absolute; z-index: 2; inset: 0; animation: under-fade 1200ms var(--ease-out) both; }
+.under .field-sky.is-full { background: none; }
+/* The cursor's lantern, softer in the dark. */
+.under .sky-viewport::after { opacity: 0.45; }
+.under .field-sky.is-full::after { background: radial-gradient(ellipse at 50% 55%, transparent 48%, rgb(0 0 0 / 34%) 100%); }
+/* Down here a note is a point of light with a halo, not a disc. */
+.field-sky.is-full .sky-star {
+  --light: var(--under-star);
+  background: radial-gradient(circle closest-side, #fff 0 22%, var(--light) 36%, color-mix(in srgb, var(--light) 30%, transparent) 62%, transparent);
+  box-shadow: none;
+}
+.field-sky.is-full .sky-star.is-hot { box-shadow: 0 0 22px 2px color-mix(in srgb, var(--under-line) 22%, transparent); }
+/* Written under: a warmer light, here and in the Map's Sky. */
+.field-sky .sky-star.is-under { background: var(--under-warm); box-shadow: 0 0 16px 4px color-mix(in srgb, var(--under-warm) 50%, transparent); }
+.field-sky.is-full .sky-star.is-under { --light: var(--under-warm); background: radial-gradient(circle closest-side, #fff4e4 0 22%, var(--light) 36%, color-mix(in srgb, var(--light) 34%, transparent) 62%, transparent); box-shadow: 0 0 24px 2px color-mix(in srgb, var(--under-warm) 26%, transparent); }
+/* The star touched last twinkles once, as the Sky settles or when it is written. */
+.field-sky.is-full .sky-star.is-newest { animation: star-glint 1500ms ease-in-out 1100ms; }
+.field-sky.is-full .sky-star.is-newest::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--under-star) 70%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  animation: star-ripple 1500ms var(--ease-out) 1100ms forwards;
+}
+@keyframes star-glint { 35% { box-shadow: 0 0 26px 9px color-mix(in srgb, var(--under-star) 55%, transparent); } }
+@keyframes star-ripple { from { opacity: 0.9; scale: 1; } to { opacity: 0; scale: 3.4; } }
+
+/* ---- The pill: where you are, and the way back up ------------------------------ */
+
+.under-top {
+  position: absolute;
+  z-index: 12;
+  top: 16px;
+  left: 50%;
+  translate: -50% 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  animation: under-drop 620ms var(--spring-soft) both;
+}
+.under-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 5px 5px 5px 14px;
+  border-radius: 999px;
+  font-size: var(--t-sm);
+  color: var(--under-text);
+  background: var(--under-surface);
+  box-shadow: 0 0 0 0.5px var(--under-rim), inset 0 1px 0 rgb(255 255 255 / 6%), 0 18px 40px -18px rgb(0 0 0 / 70%);
+}
+.under-pill > svg { flex: none; width: 17px; height: 17px; color: var(--under-line); }
+.under-pill p { margin: 0; color: var(--under-muted); white-space: nowrap; }
+.under-pill strong { font-weight: 650; color: var(--under-text); }
+.under-pill button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: var(--under-text);
+  background: color-mix(in srgb, var(--under-line) 13%, transparent);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--under-line) 22%, transparent);
+}
+.under-pill button:hover { color: var(--under-deep); background: var(--under-line); }
+.under-pill button svg { width: 12px; height: 12px; }
+.under-detail { max-width: 460px; margin: 0; font-size: var(--t-2xs); line-height: 1.45; text-align: center; color: var(--under-faint); }
+@keyframes under-drop { from { opacity: 0; translate: -50% -12px; } }
+
+/* ---- The line at the bottom: the same line, solid, its drawer opening upward ---- */
+
+.under-line { position: absolute; z-index: 11; inset: 0; pointer-events: none; }
+.under-line .home-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 16px 34px;
+  pointer-events: none;
+}
+.under-line .home-center > * { pointer-events: auto; }
+.under-line .home-greeting { display: none; }
+.under-line .home-composer-wrap { width: min(620px, 100%); animation: under-rise 640ms var(--spring-soft) both; }
+.under-line :is(.home-composer, .home-answer) {
+  background: var(--under-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: 0 0 0 0.5px var(--under-rim), inset 0 1px 0 rgb(255 255 255 / 5%), 0 26px 60px -24px rgb(0 0 0 / 80%);
+}
+.under-line :is(.home-composer, .home-answer)::before,
+.under-line :is(.home-composer, .home-answer)::after { content: none; }
+.under-line .home-composer:focus-within {
+  translate: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--under-warm) 34%, transparent), inset 0 1px 0 rgb(255 255 255 / 5%), 0 26px 60px -24px rgb(0 0 0 / 80%);
+}
+.under-line .home-drawer {
+  top: auto;
+  bottom: calc(100% + 8px);
+  max-height: max(160px, calc(var(--rise) - 110px));
+  box-shadow: 0 0 0 0.5px var(--line-strong), 0 -20px 60px -24px rgb(0 0 0 / 70%);
+  animation-name: drawer-up;
+}
+@keyframes drawer-up { from { clip-path: inset(100% 0 0 0 round 16px); } to { clip-path: inset(0 0 0 0 round 16px); } }
+.under-line .home-answer { order: -1; align-self: center; width: min(620px, 100%); max-height: calc(100% - 250px); margin: 0 0 14px; }
+
+.under.is-leaving :is(.under-sky, .under-top, .under-line) { animation: under-fade 220ms var(--ease-out) reverse both; }
+@keyframes under-fade { from { opacity: 0; } }
+@keyframes under-rise { from { opacity: 0; translate: 0 18px; } }
+
+/* ---- One calm line: why going under didn't work, or that you're back up ---------- */
+
+.under-note {
+  position: absolute;
+  z-index: 45;
+  left: 50%;
+  bottom: 100px;
+  translate: -50% 0;
+  max-width: min(560px, calc(100% - 32px));
+  margin: 0;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: var(--t-xs);
+  font-weight: 520;
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), 0 18px 40px -16px rgb(0 0 0 / 45%);
+  pointer-events: none;
+  animation: under-note-in 520ms var(--spring) both;
+}
+.overlay-surface[data-under="under"] .under-note { top: 112px; bottom: auto; color: var(--under-text); background: var(--under-surface); box-shadow: 0 0 0 0.5px var(--under-rim); }
+@keyframes under-note-in { from { opacity: 0; translate: -50% 8px; } }
+
+/* The Map's Sky has a way down too. */
+.sky-tools .sky-under { display: flex; gap: 6px; margin-top: 6px; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-surface[data-under] :is(.home, .popouts),
+  .under :is(.under-sky, .under-top, .home-composer-wrap),
+  .under-ink::before,
+  .field-sky.is-full .sky-star.is-newest,
+  .field-sky.is-full .sky-star.is-newest::after { animation: none; }
+  .overlay-surface[data-under="going"] .popouts { visibility: hidden; }
+  .under.is-arriving .under-ink { animation: under-fade 150ms linear both; }
+  .under.is-leaving .under-ink { animation: under-fade 150ms linear reverse both; }
+  .under.is-leaving :is(.under-sky, .under-top, .under-line) { visibility: hidden; animation: none; }
+}

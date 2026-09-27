@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowCounterClockwise, AppWindow, Database, MoonStars, Plus, ShareNetwork, X } from '@phosphor-icons/react'
 
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
+import { cleanError } from '../assistant/useAi.js'
 import { BoardView } from '../board/BoardView.jsx'
 import { localDateKey } from '../daily-practice.js'
 import { FieldDesk } from '../field/FieldDesk.jsx'
@@ -25,13 +26,16 @@ import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
 import { covers, placeRoom } from './placement.js'
 import { Dock } from './Shell.jsx'
+import { Under } from './Under.jsx'
 import { Welcome } from './Welcome.jsx'
 
 /* The desk: OSAT's one window, laid over the real desktop (see-through, blurred),
    with every room opening as a pop-out you can drag, resize and stack. ⌥Space brings
    it up and puts it away. ⌘K, ⇧⌘N and Find in the menu all land in the desk's line.
    Esc backs out of the line first (see Line.jsx), then closes the top pop-out, then
-   puts the desk away. */
+   puts the desk away.
+   Under it is Incognito (Under.jsx): going under lifts the desk away and the rooms
+   open on it wait above; down there only a note or Ask opens, and Esc never comes up. */
 
 const ROOMS = {
   Notes: [1100, 720],
@@ -64,13 +68,87 @@ export function Desk() {
   const [summon, setSummon] = useState(0)
   const [roomCommand, setRoomCommand] = useState(null)
   const [line, setLine] = useState(null)
+  // Incognito, as main says it is ({ on, terminal }); null until it has said. The preview has no main.
+  const [under, setUnder] = useState(() => (window.osatUnder ? null : { on: false }))
+  // 'going' or 'coming' while the desk changes places with the Sky.
+  const [phase, setPhase] = useState(null)
+  const [notice, setNotice] = useState('')
+  const [summonUnder, setSummonUnder] = useState(0)
+  const stash = useRef([])
+  const known = under !== null
+  const on = under?.on === true
+  // A change starts moving in the same render that hears it (a relaunch under simply starts there).
+  const [was, setWas] = useState(null)
+  if (known && was !== on) {
+    setWas(on)
+    if (was !== null) setPhase(on ? 'going' : 'coming')
+  }
+  const look = !known ? 'waiting' : phase || (on ? 'under' : null)
   useAlive()
 
-  /* Blur at zero means a clear desk: the Mac's frosting comes off entirely. */
-  const clear = workspace?.settings?.blur === 0
+  /* Blur at zero means a clear desk: the Mac's frosting comes off entirely. Under, the ink
+     covers the desktop, so the frosting rests too. */
+  const clear = workspace?.settings?.blur === 0 || look === 'under'
   useEffect(() => {
     bridge?.setClear?.(clear)
   }, [bridge, clear])
+
+  /* Main decides; the page only shows it, whoever asked: the dock, the line, ⇧⌘U in the Go
+     menu or the menu-bar icon. When one of those didn't work, the status says why. */
+  useEffect(() => {
+    const api = window.osatUnder
+    if (!api) return undefined
+    api.status().then(setUnder, () => setUnder({ on: false }))
+    return api.onChange((status) => {
+      if (status?.error) setNotice(cleanError(status.error))
+      setUnder(status)
+    })
+  }, [])
+
+  /* Going under (about 900 ms): the desk and its rooms lift off the top together while the
+     ink rises; then the rooms wait above. Coming up (about 600 ms) plays it backwards and
+     brings them back where they were. */
+  useEffect(() => {
+    if (!phase) return undefined
+    const quick = matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (phase === 'going') {
+      setNotice('')
+      const timer = setTimeout(() => {
+        stash.current = latest.current.pops
+        setPops([])
+        setPhase(null)
+      }, quick ? 150 : 900)
+      return () => clearTimeout(timer)
+    }
+    const back = stash.current
+    stash.current = []
+    setPops((list) => [...back.filter((pop) => !list.some((item) => item.key === pop.key)), ...list])
+    setSummonUnder(0)
+    // The Desktop's icons look again, and the line is ready.
+    setVisit((value) => value + 1)
+    const timer = setTimeout(() => {
+      setPhase(null)
+      setNotice(window.osatUnder ? 'Back up. Nothing left OSAT while you were under.' : 'Back up.')
+    }, quick ? 150 : 620)
+    return () => clearTimeout(timer)
+  }, [phase])
+
+  useEffect(() => {
+    if (!notice) return undefined
+    const timer = setTimeout(() => setNotice(''), 5000)
+    return () => clearTimeout(timer)
+  }, [notice])
+
+  /* Main pauses (or wakes) everything first and only then answers, so the page moves only
+     once it's true. If it can't, nothing moves and one calm line says why. */
+  async function askUnder(next) {
+    if (!window.osatUnder) { setUnder({ on: next }); return }
+    try {
+      setUnder(await window.osatUnder.set(next))
+    } catch (error) {
+      setNotice(cleanError(error))
+    }
+  }
 
   /* The first launch on this Mac starts with the welcome. */
   useEffect(() => {
@@ -82,6 +160,8 @@ export function Desk() {
     return bridge?.onShown(() => {
       setVisit((value) => value + 1)
       bridge.prefs().then(setPrefs).catch(() => {})
+      // A terminal started before going under may have finished since.
+      window.osatUnder?.status().then(setUnder).catch(() => {})
     })
   }, [bridge])
 
@@ -140,6 +220,8 @@ export function Desk() {
   }
 
   function open(view, detail = null) {
+    // Under, only a note or Ask opens; every other room waits above.
+    if (latest.current.under && view !== 'note' && view !== 'Assistant') return
     const key = view === 'note' ? `note:${detail.noteId}` : view
     setPops((list) => {
       const existing = list.find((pop) => pop.key === key)
@@ -172,8 +254,15 @@ export function Desk() {
   }
 
   function navigate(view, detail = null) {
+    const noteId = typeof detail === 'string' ? detail : detail?.noteId
+    if (view === 'Under') askUnder(true)
+    // Under: the line, a note, or Ask. Everything else says it waits above.
+    else if (latest.current.under && view !== 'Capture' && view !== 'Assistant' && !((view === 'Notes' || view === 'Today') && typeof noteId === 'string')) {
+      // "Set up the AI" in the line or in Ask would mean a download.
+      setNotice(view === 'Settings' && detail?.section === 'ai' ? 'Setting up the AI downloads it, so that waits until you come up.' : `${titleFor(view)} opens again when you come up.`)
+    }
     // A new thought, or a search: the line takes it (it rises if a room covers it).
-    if (view === 'Capture') { if (!latest.current.welcome) setSummon(Date.now()) }
+    else if (view === 'Capture') { if (!latest.current.welcome) (latest.current.under ? setSummonUnder : setSummon)(Date.now()) }
     else if (view === 'Focus') setFocusAt(Date.now())
     // The Obsidian export lives in Settings → Data.
     else if (view === 'Obsidian') open('Settings', { section: 'data' })
@@ -182,7 +271,7 @@ export function Desk() {
     else if (view === 'Today') setVisit((value) => value + 1)
     else if (ROOMS[view]) open(view, detail)
   }
-  latest.current = { navigate, pops, welcome, line }
+  latest.current = { navigate, pops, welcome, line, under: on }
 
   async function launcher(action, ...args) {
     try {
@@ -226,11 +315,13 @@ export function Desk() {
   const top = pops.at(-1)
   const covered = welcome
   const hasPlaces = Object.keys(prefs.places || {}).length > 0
+  // While it lifts away and while it waits above, the desk stays put together but can't be used.
+  const away = look === 'going' || look === 'under'
 
   return (
-    <main className={`overlay-surface ${bridge ? '' : 'is-preview'}`}>
+    <main className={`overlay-surface ${bridge ? '' : 'is-preview'}`} data-under={look || undefined}>
       <GlassDefs />
-      <div className="workspace-content is-filled" inert={welcome || undefined}>
+      <div className="workspace-content is-filled" inert={welcome || away || undefined}>
         <FieldDesk
           {...common}
           visit={visit}
@@ -240,7 +331,7 @@ export function Desk() {
           onOpenNote={(noteId) => open('note', { noteId })}
           places={prefs.places || {}}
           onPlace={place}
-          media={bridge?.nowPlaying ? bridge : null}
+          media={bridge?.nowPlaying && look !== 'under' ? bridge : null}
           raised={pops.some((pop) => covers(pop, line))}
           onLine={setLine}
           dock={(
@@ -271,7 +362,21 @@ export function Desk() {
         />
       </div>
 
-      <div className="popouts" inert={welcome || undefined}>
+      {(on || phase) && (
+        <Under
+          {...common}
+          storage={storage}
+          status={under}
+          arriving={phase === 'going'}
+          leaving={phase === 'coming'}
+          visit={visit}
+          summon={summonUnder}
+          onOpenNote={(noteId) => open('note', { noteId })}
+          onComeUp={() => askUnder(false)}
+        />
+      )}
+
+      <div className="popouts" inert={welcome || look === 'going' || undefined}>
         {pops.map((pop, index) => (
           <PopOut
             key={pop.key}
@@ -289,6 +394,7 @@ export function Desk() {
         ))}
       </div>
 
+      {notice && <p className="under-note" role="status">{notice}</p>}
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
     </main>
   )
