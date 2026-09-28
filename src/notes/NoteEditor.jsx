@@ -23,7 +23,6 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
   const mode = trashed ? "read" : ui.mode;
   const path = folderPath(workspace.folders, note.folderId);
   const folderOptions = [{ id: null, label: "Unfiled" }, ...folderTree(workspace.folders).map(({ folder, depth }) => ({ id: folder.id, label: `${"  ".repeat(depth)}${folder.name}` }))];
-  const boards = (workspace.sorter?.boards || []).filter((board) => board.notes.some((card) => card.id === note.id));
   const tasks = useMemo(() => {
     const lines = note.markdown.split("\n").filter((line) => /^\s*[-*+]\s+\[[ xX]\]\s+\S/.test(line));
     return { total: lines.length, done: lines.filter((line) => /\[[xX]\]/.test(line)).length };
@@ -144,7 +143,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
     { label: note.pinned ? "Unpin" : "Pin to top", icon: PushPin, onSelect: () => actions.setPinned([note.id], !note.pinned) },
     { label: note.archived ? "Unarchive" : "Archive", icon: Archive, onSelect: () => actions.setArchived([note.id], !note.archived) },
     { label: "Duplicate", icon: CopySimple, onSelect: () => actions.duplicateNote(note.id) },
-    { label: "See on the Map", icon: ShareNetwork, onSelect: () => actions.showOnBoard(note.id, boards[0]?.id) },
+    ...(isActiveNote(note) ? [{ label: note.folderId ? "See it in its node" : "See it in the Sky", icon: ShareNetwork, onSelect: () => actions.showInNode(note.id) }] : []),
     ...(isActiveNote(note) ? [{ label: "See in the Sky", icon: MoonStars, onSelect: () => actions.showInSky(note.id) }] : []),
     { label: "Copy as Markdown", icon: Copy, onSelect: () => navigator.clipboard?.writeText(`# ${note.title}\n\n${note.markdown}`) },
     { divider: true },
@@ -299,18 +298,18 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             <span>{wordCount(note.markdown)} words</span>
             {tasks.total > 0 && <span>{tasks.done}/{tasks.total} steps done</span>}
             <span>Edited {formatRelativeTime(note.updatedAt)}</span>
-            {boards.length > 0 && <button type="button" className="text-button" onClick={() => actions.showOnBoard(note.id, boards[0].id)}><ShareNetwork /> See on the Map</button>}
+            {isActiveNote(note) && note.folderId && <button type="button" className="text-button" onClick={() => actions.showInNode(note.id)}><ShareNetwork /> See it in its node</button>}
             {isActiveNote(note) && <button type="button" className="text-button" onClick={() => actions.showInSky(note.id)}><MoonStars /> See in the Sky</button>}
           </footer>
         </div>
 
-        {ui.inspector && <NoteInspector workspace={workspace} note={note} actions={actions} tasks={tasks} boards={boards} textareaRef={textareaRef} />}
+        {ui.inspector && <NoteInspector workspace={workspace} note={note} actions={actions} tasks={tasks} textareaRef={textareaRef} />}
       </div>
     </section>
   );
 }
 
-function NoteInspector({ workspace, note, actions, tasks, boards, textareaRef }) {
+function NoteInspector({ workspace, note, actions, tasks, textareaRef }) {
   const headings = outline(note.markdown);
   const incoming = backlinks(workspace.notes, note);
   const outgoing = outgoingLinks(workspace.notes, note);
@@ -378,14 +377,10 @@ function NoteInspector({ workspace, note, actions, tasks, boards, textareaRef })
         ) : <p className="inspector-empty">No other note links here yet.</p>}
       </section>
       <section>
-        <h4>Mindmap</h4>
-        {boards.length ? (
-          <ul className="link-list">
-            {boards.map((board) => (
-              <li key={board.id}><button type="button" onClick={() => actions.showOnBoard(note.id, board.id)}><ShareNetwork /> <span>{board.name}</span></button></li>
-            ))}
-          </ul>
-        ) : <p className="inspector-empty">{note.archived ? "Archived notes leave the desk." : "Not on a board."} {!note.archived && !note.trashedAt && <button type="button" className="text-button" onClick={() => actions.showOnBoard(note.id)}>Add to the desk</button>}</p>}
+        <h4>Node</h4>
+        {note.folderId
+          ? <ul className="link-list"><li><button type="button" onClick={() => actions.showInNode(note.id)}><ShareNetwork /> <span>{folderPath(workspace.folders, note.folderId).join(" › ")}</span></button></li></ul>
+          : <p className="inspector-empty">Not in a node yet. Drag it into one in the Sky, or pick a folder above.</p>}
       </section>
     </aside>
   );

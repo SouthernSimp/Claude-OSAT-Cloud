@@ -551,8 +551,6 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
       )
     }
     case 'Notes': return <NotesView {...room} target={target} today={today} />
-    case 'Mindmap': return <BoardView {...room} boardTarget={target} />
-    case 'Sky': return <FieldSky {...room} target={typeof pop.detail?.noteId === 'string' ? target : null} />
     case 'Assistant': return <LocalAssistant {...room} initialPrompt={typeof pop.detail?.prompt === 'string' || typeof pop.detail?.chatId === 'string' || pop.detail?.file ? target : null} />
     case 'Files': return <FilesView {...room} target={typeof pop.detail?.rootId === 'string' ? target : null} />
     case 'Browser': return <BrowserView {...room} covered={covered} command={command} frame={`${pop.x},${pop.y},${pop.w},${pop.h}`} />

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FolderSimple, NotePencil, Plus, X } from "@phosphor-icons/react";
 import { localDateKey } from "../daily-practice.js";
-import { addCardsToBoard, newBoard, normalizeBoardDoc, stockFor, updateBoard } from "../board-model.js";
 import {
   canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, folderSubtree, emptyTrash, isActiveNote, moveNotes, notesInList,
   keepNotes, purgeNotes, relinkRenamedNote, resolveWikilink, restoreNotes, trashNotes, updateNote,
@@ -171,16 +170,9 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         commit((state) => { const result = ensureDayNote(state, today); note = result.note; return result.state; });
         if (note) { setUi({ list: "daily", folderId: null, query: "", tags: [] }); open(note.id); }
       },
-      showOnBoard(noteId, boardId = null) {
-        const doc = normalizeBoardDoc(workspace.sorter);
-        const target = doc.boards.find((board) => board.id === boardId) || doc.boards.find((board) => board.notes.some((card) => card.id === noteId)) || doc.boards[0];
-        commit((state) => {
-          const note = state.notes.find((item) => item.id === noteId);
-          const { w, h } = stockFor(note?.markdown || note?.title || "");
-          const next = updateBoard(state, target.id, (board) => board.notes.some((card) => card.id === noteId) ? board : addCardsToBoard(board, [{ id: noteId, w, h }]));
-          return { ...next, sorter: { ...next.sorter, activeId: target.id } };
-        });
-        navigate("Mindmap", { boardId: target.id, focusNoteId: noteId });
+      /* A note in a node opens that node laid out in the Sky; a loose one, the Sky's row. */
+      showInNode(noteId) {
+        navigate("Mindmap", { noteId });
       },
       createFolder(name, parentId) {
         const folder = createFolder(name, parentId);
@@ -209,19 +201,9 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         if (ui.list === "folder" && ui.folderId === id) setUi({ list: "all", folderId: null });
       },
       startFolder() { setUi({ organizer: true }); setDrawer(true); setFolderDraftAt(Date.now()); },
+      /* A folder is a node in the Sky: this lays it out there. */
       openFolderBoard(folderId) {
-        const folder = workspace.folders.find((item) => item.id === folderId);
-        if (!folder) return;
-        const doc = normalizeBoardDoc(workspace.sorter);
-        let board = doc.boards.find((item) => item.scope.kind === "folder" && item.scope.folderId === folderId);
-        commit((state) => {
-          const current = normalizeBoardDoc(state.sorter);
-          board = current.boards.find((item) => item.scope.kind === "folder" && item.scope.folderId === folderId);
-          if (board) return { ...state, sorter: { ...current, activeId: board.id } };
-          board = newBoard(folder.name, { kind: "folder", folderId });
-          return { ...state, sorter: { ...current, boards: [...current.boards, board], activeId: board.id } };
-        });
-        navigate("Mindmap", { boardId: board?.id });
+        navigate("Mindmap", { folderId });
       },
     };
   }, [commit, navigate, workspace, ui.list, ui.folderId, ui.mode, setUi, today]);
