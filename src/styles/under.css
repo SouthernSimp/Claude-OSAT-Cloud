@@ -1,13 +1,13 @@
-/* Incognito: OSAT with the internet off, shown as a place under the desk (Under.jsx).
+/* Incognito: the scratch page under the desk, with the internet off (Under.jsx).
 
    Going under (data-under="going" on the desk): the desk (.home) and its rooms lift off the
    top together, one transform, while a deep ink rises from the bottom with a bright
-   waterline; then the Sky fills the screen and, last, the pill appears. Coming up plays it
-   backwards. Reduced motion keeps only a quick fade of the ink.
+   waterline; then the blank page and, last, the pill appear. Coming up plays it backwards.
+   Reduced motion keeps only a quick fade of the ink.
 
-   Layers, all in the desk's one stacking context: the lifted desk, the ink (1), the Sky (2),
-   rooms opened down here (.popouts, 10), the line (11), the pill (12). Nothing down here is
-   glass: the line and the pill are solid over the stars. */
+   Layers, all in the desk's one stacking context: the lifted desk, the ink (1), the page and
+   its stickies (2), rooms opened down here (.popouts, 10), the line (11), the pill (12).
+   Nothing down here is glass: the line and the pill are solid over the ink. */
 
 /* The desk waits unseen until main has said whether OSAT is under (no flash on a relaunch). */
 .overlay-surface[data-under="waiting"] .home { visibility: hidden; }
@@ -35,9 +35,9 @@
   --line: var(--under-rim);
   --line-soft: color-mix(in srgb, var(--under-rim) 60%, transparent);
   --line-strong: color-mix(in srgb, var(--under-text) 18%, transparent);
-  --accent: var(--under-warm);
-  --accent-ink: var(--under-deep);
-  --accent-soft: color-mix(in srgb, var(--under-warm) 16%, transparent);
+  --accent: var(--mac-accent, #4c9dff);
+  --accent-ink: var(--mac-accent-ink, #ffffff);
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
   --on-1: color-mix(in srgb, var(--under-text) 96%, transparent);
   --on-2: color-mix(in srgb, var(--under-text) 74%, transparent);
   --on-3: color-mix(in srgb, var(--under-text) 56%, transparent);
@@ -96,6 +96,30 @@
 @keyframes ink-drain { to { translate: 0 100%; } }
 @keyframes waterline { from, 82% { opacity: 1; } }
 
+/* The page: blank ink with a faint grid to set stickies down on. */
+.under-page {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background-image: radial-gradient(circle, rgb(255 255 255 / 8%) 1px, transparent 1.5px);
+  background-size: 32px 32px;
+  background-position: 16px 16px;
+  animation: under-fade 900ms var(--ease-out) both;
+}
+.under-page .sticky-layer { z-index: 1; }
+.under-blank {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  translate: -50% -50%;
+  width: min(360px, 80%);
+  margin: 0;
+  font-size: var(--t-md);
+  line-height: 1.5;
+  text-align: center;
+  color: var(--under-faint);
+  pointer-events: none;
+}
 .under-sky { position: absolute; z-index: 2; inset: 0; animation: under-fade 1200ms var(--ease-out) both; }
 .under .field-sky.is-full { background: none; }
 /* The cursor's lantern, softer in the dark. */
@@ -200,7 +224,7 @@
 .under-line :is(.home-composer, .home-answer)::after { content: none; }
 .under-line .home-composer:focus-within {
   translate: none;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--under-warm) 34%, transparent), inset 0 1px 0 rgb(255 255 255 / 5%), 0 26px 60px -24px rgb(0 0 0 / 80%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 rgb(255 255 255 / 5%), 0 26px 60px -24px rgb(0 0 0 / 80%);
 }
 .under-line .home-drawer {
   top: auto;
@@ -212,7 +236,7 @@
 @keyframes drawer-up { from { clip-path: inset(100% 0 0 0 round 16px); } to { clip-path: inset(0 0 0 0 round 16px); } }
 .under-line .home-answer { order: -1; align-self: center; width: min(620px, 100%); max-height: calc(100% - 250px); margin: 0 0 14px; }
 
-.under.is-leaving :is(.under-sky, .under-top, .under-line) { animation: under-fade 220ms var(--ease-out) reverse both; }
+.under.is-leaving :is(.under-page, .under-top, .under-line) { animation: under-fade 220ms var(--ease-out) reverse both; }
 @keyframes under-fade { from { opacity: 0; } }
 @keyframes under-rise { from { opacity: 0; translate: 0 18px; } }
 
@@ -244,12 +268,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .overlay-surface[data-under] :is(.home, .popouts),
-  .under :is(.under-sky, .under-top, .home-composer-wrap),
+  .under :is(.under-page, .under-top, .home-composer-wrap),
   .under-ink::before,
   .field-sky.is-full .sky-star.is-newest,
   .field-sky.is-full .sky-star.is-newest::after { animation: none; }
   .overlay-surface[data-under="going"] .popouts { visibility: hidden; }
   .under.is-arriving .under-ink { animation: under-fade 150ms linear both; }
   .under.is-leaving .under-ink { animation: under-fade 150ms linear reverse both; }
-  .under.is-leaving :is(.under-sky, .under-top, .under-line) { visibility: hidden; animation: none; }
+  .under.is-leaving :is(.under-page, .under-top, .under-line) { visibility: hidden; animation: none; }
 }

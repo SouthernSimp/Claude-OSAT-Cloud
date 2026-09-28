@@ -134,26 +134,41 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `?fresh=1` starts the preview empty).
   - `App.jsx`: picks the surface: the desk (`shell/Desk.jsx`), `?surface=phone` the iPhone app (`surfaces/Phone.jsx`: Today, Notes, iCloud), `?surface=chat`
     the quick chat (`surfaces/QuickChat.jsx`: the Ask room with `compact`).
-  - `lib/spaces.js`: the one list of spaces (Desk, Notes, Map, Ask, Files), tools and Settings. The
-    dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
+  - `lib/spaces.js`: the one list of spaces (Desk, Notes, Sky (id `Mindmap`), Ask, Files), tools and
+    Settings. The dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
+  - `lib/carry.js`: the one drag engine (`carryable(item)` on what's picked up, `useDrop(id, spec)`
+    on places that take it, with `accepts`, an `axis` for lists of `[data-slot]` items, `spring`
+    for hover-to-open; `onCarryEdge` makes the top/bottom of the screen change layers). A ghost
+    follows the pointer, a line shows where in a list it lands, Esc puts it back.
+    `lib/ContextMenu.jsx`: `useContextMenu()` right-click menus (step-in lists, paper swatches).
   - `shell/glass.jsx`: the liquid-glass SVG filter (`GlassDefs`), `useAlive()` (cursor light on
     `.glass`/`.lit`, `--px/--py` for parallax) and the dock's magnify.
-  - `shell/Desk.jsx`: the desk — `FieldDesk` (Day/Month/Next, the line with its four verbs
-    Note · Next step · Ask · Find inside it, Desktop icons), the dock (`shell/Shell.jsx`: `Dock`
-    with app launchers, `Appearance`; Find and Ask live in the line, not the dock), and every room
-    as a solid draggable pop-out (`ROOMS`, `PopRoom`; Map has a Board/Sky switch). Rooms open
-    beside the line (`shell/placement.js`: `placeRoom`, `covers`); when one covers the line anyway,
-    the line rises to the top and stays above the rooms (`raised`). Esc leaves a field in
-    a pop-out, then closes the top pop-out, then puts the desk away. Also the welcome, capture
-    (⇧⌘N) and the menu-bar commands. The browser preview shows a stand-in desktop.
+  - `shell/Desk.jsx`: the desk and its three layers — the Sky above (`sky/Sky.jsx`, state `sky`,
+    ⌘3 / ⌥⌘↑ / a sticky held at the top), the desk (`FieldDesk`: widgets, the line, the shelf of
+    Desktop files or nodes and notes, stickies on the desk via `field/DeskStickies.jsx`, the
+    right-click desk menu), and Incognito under it (`shell/Under.jsx`: the scratch page). The dock
+    (`shell/Shell.jsx`: `Dock` with app launchers, `Appearance`; its Sky button takes a dragged
+    sticky) and every room as a solid draggable pop-out (`ROOMS`, `PopRoom`; double-click the bar
+    to fill the screen). Rooms open beside the line (`shell/placement.js`); when one covers it,
+    the line rises (`raised`). Esc leaves a field in a pop-out, then closes the top pop-out, then
+    comes back to the desk from the Sky or Incognito; it never puts the desk away (⌥Space and ⌘W
+    do). Also the welcome, capture (⇧⌘N) and the menu-bar commands. The browser preview shows a
+    stand-in desktop and keeps `places` in localStorage.
+  - `sky/`: `Sky.jsx` (the layer: Nodes / Stars, find a sticky, the actions and menus, Help me
+    sort), `NodeRow.jsx` (nodes on one ground line, branches up, to-sort below, arcs for links),
+    `NodeFocus.jsx` (one node laid out Across or Down, the node list with a glance, linked nodes
+    beside), `Piles.jsx` (`StickyList`, `AddSticky`, `NameField`), `Sticky.jsx` (one sticky: click
+    to write, carry, right-click).
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
-    `note-core.js`, `board-model.js` (Mindmap), `next-steps.js`, `daily-practice.js`,
-    `field/field-model.js`.
+    `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, links, sorting
+    suggestions and the AI's prompt/answer), `project-direction.js` (the seeded first node),
+    `board-model.js` (the old boards' data only), `next-steps.js`, `daily-practice.js`,
+    `field/field-model.js` (desk items, `freeSpot` for new stickies, the Stars graph).
   - `shell/Welcome.jsx`: the first launch — what stays private, the shortcut, the AI's size.
-  - Rooms: `field/` (home desk, Sky, `MediaWidget`), `notes/`, `board/` (Mindmap), `assistant/` (Ask:
+  - Rooms: `field/` (home desk, the Stars (`FieldSky`), widgets), `notes/`, `assistant/` (Ask:
     `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`),
-    `views/` (Calendar, Journal, Projects, Habits, Reflection, Budget, Inbox, Obsidian, Settings,
-    command palette: notes, then files on the Mac from Spotlight), `tools/` (Browser, Terminal).
+    `views/` (Calendar, Journal, Projects, Habits, Reflection, Budget, NowPlaying, Obsidian,
+    Settings), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).
   - `views/Files.jsx`: a small Finder (places and your folders, back/forward, Space for Quick
     Look, Ask about it) and the pieces the desk reuses: `FileThumb`, `useFolder`,
     `useFreshness` (folders refresh when the window comes back). The desk's right side shows
@@ -162,6 +177,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - Styles: `src/styles/`, tokens in `tokens.css`.
   - `lib/UndoToast.jsx`: `useUndoToast()`, the one Undo toast (Notes, Money, Calendar); remove at once, offer Undo. `glass.css` loads last: the glass kit, the dock,
     transitions, and the token overrides that make the quick chat see-through.
+- Nodes (schema 3): every top-level folder is a node, a folder inside one is a branch, a note is a
+  sticky. Order is `rank` (`rankOf`: a missing rank is the creation time, so only hand-ranked
+  things carry one); folders may have `color`, `links` (other folder ids) and `layout: 'down'`;
+  notes may have `color`. A note in no folder is Unsorted in the Sky; `kind: 'scratch'` is a
+  sticky on the Incognito page (in no pile until moved). Where stickies lie is per Mac:
+  `places['note:<id>']` on the desk, `places['scratch:<id>']` under it ({x, y} fractions, w/h).
 - Data rules: a captured thought is one note with `unsorted: true` and a `source`; filing,
   pinning or Keep clears it. Each day has one note, `day-YYYY-MM-DD` with `kind: 'day'`
   (`ensureDayNote`): it is the journal page and where new next steps land. Wikilinks follow
@@ -184,11 +205,18 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   children push the track past the viewport.
 - `backdrop-filter` only blurs what shares its backdrop root: no element containing glass
   may carry opacity, filter or a view-transition name.
+- Colours: neutral greys and `--accent` (the Mac's accent, painted by main as `--mac-accent`);
+  no brown, orange or green chrome. Sticky papers (`[data-paper]` → `--paper-bg`) stay bright in
+  both looks with dark ink.
+- `.overlay-surface` is `overflow: clip`, never `hidden`: focusing something half off-screen must
+  not be able to scroll the whole desk.
 - Pop-outs, menus, dialogs and toasts are solid (`--page`, `--surface-raised`): in the Mac app
   `backdrop-filter` doesn't reach the desk behind a pop-out, so anything translucent over other
   content shows it crisp through. Glass is only for things that sit over the bare desktop.
-- Layers on the desk: widgets and icons, then rooms (`.popouts`, z 10), then the dock and a risen
-  line (z 11+). `.overlay-surface` is the one stacking context; `.home` must not become one.
+- Layers on the desk: widgets and icons, stickies (`.sticky-layer`, z 3), the line (z 4), rooms
+  (`.popouts`, z 10), then the dock and a risen line (z 11+); the Sky (`.sky-shell`, z 13) covers
+  it all, with rooms opened from it above (14). `.overlay-surface` is the one stacking context;
+  `.home` must not become one.
 - Rooms lay themselves out for their pop-out: `.popout-body` (and `.quick-chat`) is a
   `container: room / size`, and room styles use `@container room (max-width: 960px | 760px |
   560px)`. Only the desk itself uses `@media`.

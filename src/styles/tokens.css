@@ -172,24 +172,24 @@
 /* Incognito (going under): a deep ink under the desk, night in either look, a little
    deeper in dark. A bright waterline, pale stars, and a warm glow for what was written here. */
 :root {
-  --under-ink: #1b2a3b;
-  --under-deep: #080d14;
-  --under-glow: rgb(150 190 230 / 17%);
-  --under-line: #dcefff;
-  --under-surface: #203042;
-  --under-rim: rgb(214 232 255 / 13%);
-  --under-text: #edf1f5;
-  --under-muted: #a3b0be;
-  --under-faint: #74818f;
-  --under-star: #f4ecdf;
-  --under-warm: #f1b56e;
-  --under-dust: rgb(220 232 255 / 34%);
+  --under-ink: #1a1d24;
+  --under-deep: #0a0b0e;
+  --under-glow: rgb(170 190 220 / 12%);
+  --under-line: #dfe8f5;
+  --under-surface: #23262e;
+  --under-rim: rgb(220 230 245 / 12%);
+  --under-text: #eef0f4;
+  --under-muted: #a5acb8;
+  --under-faint: #767d8a;
+  --under-star: #eef2f8;
+  --under-warm: #9ec5ff;
+  --under-dust: rgb(220 232 255 / 28%);
 }
 :root[data-theme="dark"] {
-  --under-ink: #111b27;
-  --under-deep: #04070b;
-  --under-glow: rgb(130 170 215 / 12%);
-  --under-surface: #182432;
+  --under-ink: #14161b;
+  --under-deep: #060709;
+  --under-glow: rgb(150 170 200 / 9%);
+  --under-surface: #1d2027;
 }
 
 /* Stickies: coloured paper, bright in either look like real ones, with dark ink. */

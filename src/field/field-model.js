@@ -154,11 +154,13 @@ function spiral(index, count, bounds) {
   }
 }
 
-/* Notes become stars. Wikilinks are strong ties. Shared tags form a chain,
-   not a clique, so a tag with twenty notes does not become a hairball. */
+/* Notes become stars. Wikilinks are strong ties. The notes of one node, and notes that
+   share a tag, form a chain, not a clique, so a node with twenty notes does not become a
+   hairball; each node is a constellation, named after it (`group`; a note in no node is
+   grouped by its first tag). */
 /* `keepId` is a note that must have a star even when it is older than the newest
    `limit` ("See in the Sky" on an old note). */
-export function buildSkyGraph(notes, bounds = WORLD, limit = 180, keepId = null) {
+export function buildSkyGraph(notes, bounds = WORLD, limit = 180, keepId = null, folders = []) {
   const active = (Array.isArray(notes) ? notes : [])
     .filter(isActiveNote)
     .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
@@ -170,9 +172,17 @@ export function buildSkyGraph(notes, bounds = WORLD, limit = 180, keepId = null)
     .filter((pair) => ids.has(pair.a) && ids.has(pair.b))
     .map((pair) => ({ a: pair.a, b: pair.b, kind: 'wiki' }))
   const seen = new Set(wiki.map((link) => [link.a, link.b].sort().join('|')))
+  const folderById = new Map(folders.map((folder) => [folder.id, folder]))
+  const nodeOf = (folderId) => {
+    let folder = folderById.get(folderId)
+    const seen = new Set()
+    while (folder?.parentId && folderById.has(folder.parentId) && !seen.has(folder.id)) { seen.add(folder.id); folder = folderById.get(folder.parentId) }
+    return folder || null
+  }
   const byTag = new Map()
   chosen.forEach((note) => {
-    ;(note.tags || []).forEach((tag) => {
+    const node = nodeOf(note.folderId)
+    ;[...(node ? [`\u0000${node.id}`] : []), ...(note.tags || [])].forEach((tag) => {
       if (!byTag.has(tag)) byTag.set(tag, [])
       byTag.get(tag).push(note.id)
     })
@@ -199,6 +209,7 @@ export function buildSkyGraph(notes, bounds = WORLD, limit = 180, keepId = null)
       title: note.title || 'Untitled',
       excerpt: excerpt(note.markdown, 160).replace(/☐/g, '').replace(/\s+/g, ' ').trim(),
       tags: note.tags || [],
+      group: nodeOf(note.folderId)?.name || note.tags?.[0] || null,
       updatedAt: note.updatedAt,
       heat: noteHeat(note.updatedAt),
       degree: degree.get(note.id) || 0,
@@ -288,7 +299,7 @@ export function skyEnergy(nodes) {
 export function constellationLabels(nodes) {
   const groups = new Map()
   nodes.forEach((node) => {
-    const tag = node.tags?.[0]
+    const tag = node.group ?? node.tags?.[0]
     if (!tag) return
     if (!groups.has(tag)) groups.set(tag, [])
     groups.get(tag).push(node)

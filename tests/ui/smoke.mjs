@@ -8,8 +8,9 @@ import { chromium } from 'playwright'
 
 const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
-// The five spaces (⌃1–5), then every tool from the dock's Tools menu.
-const SPACES = [['Notes', 2], ['Mindmap', 3], ['Assistant', 4], ['Files', 5]]
+// The spaces that open as pop-outs (⌃2, 4, 5; ⌃3 is the Sky, a layer of its own), then
+// every tool from the dock's Tools menu.
+const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
 const TOOLS = [['Journal', 'Today’s page'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Reflection', 'Reflect'], ['Budget', 'Money'], ['Projects', 'Projects'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
 
 let server
@@ -78,7 +79,21 @@ async function main() {
 
   for (const theme of ['light', 'dark']) {
     for (const [view, key] of SPACES) await visit(view, () => page.keyboard.press(`Control+${key}`), theme)
-    await visit('Sky', () => page.keyboard.press('Control+3').then(() => sleep(900)).then(() => page.getByRole('radio', { name: 'Sky' }).click()), theme)
+    // The Sky: the layer above the desk, the row of nodes and one laid out; Esc steps back down.
+    room = 'sky'
+    await page.keyboard.press('Control+3')
+    await page.locator('.sky-layer').waitFor({ timeout: 5000 }).catch(() => problems.push(`sky: ⌃3 did not bring the Sky (${theme})`))
+    await sleep(700)
+    await page.screenshot({ path: `${OUT}/${theme}-Sky.png` })
+    await page.getByRole('button', { name: 'Lay out Project Direction' }).click().catch(() => problems.push(`sky: Project Direction was not there to lay out (${theme})`))
+    await page.locator('.node-focus .lane').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`sky: laying a node out showed no lanes (${theme})`))
+    await sleep(400)
+    await page.screenshot({ path: `${OUT}/${theme}-Sky-node.png` })
+    await page.keyboard.press('Escape')
+    if (await page.locator('.node-focus').count()) problems.push('sky: Esc did not go back to the row')
+    await page.keyboard.press('Escape')
+    await page.locator('.sky-layer').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Esc did not bring the desk back'))
+    await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => {})
     for (const [view, label] of TOOLS) {
       await visit(view, async () => {
         await page.locator('.app-dock [data-space="tools"]').click()
@@ -95,7 +110,7 @@ async function main() {
     await sleep(400)
     await page.screenshot({ path: `${OUT}/${theme}-Drawer.png` })
     await page.fill('#home-line', '')
-    // Incognito (the look only in the preview): the Sky under the desk, then back up.
+    // Incognito (the look only in the preview): the blank page under the desk, then back up.
     room = 'under'
     await page.locator('.app-dock [data-space="Under"]').click()
     await page.locator('.under-pill').waitFor({ timeout: 5000 }).catch(() => problems.push(`under: the pill did not appear (${theme})`))
@@ -145,11 +160,54 @@ async function main() {
   await habits.waitFor({ timeout: 3000 }).catch(() => problems.push('widgets: Undo did not bring Habits back'))
   await page.mouse.move(720, 700)
 
-  // On the desk: a thought, the pile of loose thoughts, a note found from the line, stacked pop-outs, Esc.
-  room = 'pop-outs'
+  // Stickies on the desk: a thought saved in the line lands there as a sticky; a double-click
+  // writes one where it was clicked.
+  room = 'stickies'
   await page.fill('#home-line', 'Left on the desk')
   await page.press('#home-line', 'Enter')
-  // Two loose thoughts now: they rest in one pile, which opens Unsorted.
+  const left = page.locator('.home .desk-sticky', { hasText: 'Left on the desk' })
+  await left.waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: a thought from the line did not land on the desk'))
+  await page.mouse.dblclick(1150, 620)
+  await page.keyboard.type('Written right here')
+  await page.keyboard.press('Escape')
+  const here = page.locator('.home .desk-sticky', { hasText: 'Written right here' })
+  await here.waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: a double-click on the desk did not write a sticky there'))
+  const spot = await here.boundingBox().catch(() => null)
+  if (!spot || Math.abs(spot.x - 1126) > 40 || Math.abs(spot.y - 600) > 40) problems.push(`stickies: the sticky was not where the desk was double-clicked (${JSON.stringify(spot)})`)
+  await sleep(300)
+  await page.screenshot({ path: `${OUT}/desk-stickies.png` })
+  // Carried to the dock's Sky and held there, the Sky comes down; dropped on a node, it's filed.
+  const from = await left.boundingBox()
+  const skyButton = await page.locator('.app-dock [data-space="Mindmap"]').boundingBox()
+  await page.mouse.move(from.x + 30, from.y + 20)
+  await page.mouse.down()
+  for (let step = 1; step <= 8; step += 1) await page.mouse.move(from.x + 30 + ((skyButton.x + skyButton.width / 2 - from.x - 30) * step) / 8, from.y + 20 + ((skyButton.y + skyButton.height / 2 - from.y - 20) * step) / 8)
+  await sleep(1100)
+  const head = await page.locator('[data-node-head]', { hasText: 'Project Direction' }).boundingBox().catch(() => null)
+  if (!head) problems.push('stickies: holding a sticky on the Sky did not bring the Sky down')
+  else {
+    for (let step = 1; step <= 6; step += 1) await page.mouse.move(skyButton.x + ((head.x + head.width / 2 - skyButton.x) * step) / 6, skyButton.y + ((head.y + head.height / 2 - skyButton.y) * step) / 6)
+    await page.mouse.up()
+    await sleep(300)
+    await page.getByRole('button', { name: 'Lay out Project Direction' }).click()
+    await page.locator('.lane.is-loose .sticky', { hasText: 'Left on the desk' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: the sticky dropped on a node was not in it'))
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Escape')
+    await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('stickies: Esc did not come back down from the Sky'))
+    if (await left.count()) problems.push('stickies: a sticky filed in a node stayed on the desk')
+  }
+  if (!await page.locator('.home').count()) problems.push('stickies: Esc put the desk away')
+
+  // On the desk: the pile of loose thoughts, a note found from the line, stacked pop-outs, Esc.
+  room = 'pop-outs'
+  // Put back on the shelf, the sticky joins the smoke test's thought in the pile of loose thoughts, which opens Unsorted.
+  await here.hover()
+  await page.getByRole('button', { name: 'Put back on the shelf Written right here' }).click()
+  const shelfSticky = page.locator('.home .desk-sticky', { hasText: 'Smoke test thought' })
+  if (await shelfSticky.count()) {
+    await shelfSticky.hover()
+    await page.getByRole('button', { name: 'Put back on the shelf Smoke test thought' }).click()
+  }
   await page.getByRole('button', { name: /loose thoughts/ }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
     .catch(() => problems.push('pop-outs: the pile of loose thoughts did not open Unsorted'))
@@ -200,47 +258,49 @@ async function main() {
   await page.getByRole('dialog', { name: 'Settings' }).waitFor({ timeout: 5000 }).catch(() => problems.push('ask: ⌘↵ with no AI did not open Settings'))
   if (await page.inputValue('#home-line') !== 'A question for later') problems.push('ask: setting up the AI lost the question')
 
-  // Going under from the line: the rooms wait above, the Sky fills the screen, the line waits
-  // at the bottom and saves there (the star glows warmer), only a note or Ask opens, Esc steps
-  // back but never comes up, and Come up brings the desk and its rooms back.
+  // Going under from the line: the rooms wait above, a blank page fills the screen, the line
+  // waits at the bottom and saves onto the page as a sticky, only a note or Ask opens, Esc
+  // closes the drawer and then comes back up; the page can become a node first.
   room = 'under'
   const roomsAbove = await page.locator('.popout').count()
   await page.keyboard.press('Control+k')
   await page.keyboard.type('go under')
-  for (let step = 0; step < 8 && await picked() !== 'Go under'; step += 1) await page.keyboard.press('ArrowDown')
+  for (let step = 0; step < 8 && await picked() !== 'Incognito'; step += 1) await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
-  await page.locator('.under-pill').waitFor({ timeout: 5000 }).catch(() => problems.push('under: "Go under" in the line did not go under'))
+  await page.locator('.under-pill').waitFor({ timeout: 5000 }).catch(() => problems.push('under: "Incognito" in the line did not go under'))
   await sleep(1400)
   if (await page.locator('.popout').count()) problems.push('under: the rooms on the desk did not wait above')
-  const sky = await page.locator('.under .field-sky').boundingBox()
-  if (!sky || sky.width < 1440 || sky.height < 900) problems.push(`under: the Sky did not fill the screen (${JSON.stringify(sky)})`)
-  if (await page.locator('.under :is(.sky-search, .sky-tools)').count()) problems.push('under: the Sky kept its search or zoom buttons')
+  const blank = await page.locator('.under-page').boundingBox()
+  if (!blank || blank.width < 1440 || blank.height < 900) problems.push(`under: the page did not fill the screen (${JSON.stringify(blank)})`)
   const underLine = await page.locator('#under-line').boundingBox()
   if (!underLine || underLine.y < 900 - 160) problems.push(`under: the line was not at the bottom (${JSON.stringify(underLine)})`)
   if (!await page.evaluate(() => document.activeElement?.id === 'under-line')) problems.push('under: the line was not ready to type into')
   await page.keyboard.type('Written under the desk')
   await page.keyboard.press('Enter')
-  const written = page.getByRole('button', { name: 'Written under the desk', exact: true })
-  await written.waitFor({ timeout: 5000 }).catch(() => problems.push('under: a thought saved under did not become a star'))
-  if (!/is-under/.test(await written.getAttribute('class').catch(() => ''))) problems.push('under: a thought written under did not glow warmer')
+  await page.locator('.under-page .desk-sticky', { hasText: 'Written under the desk' }).waitFor({ timeout: 5000 })
+    .catch(() => problems.push('under: a thought saved under did not land on the page'))
   await page.keyboard.press('Control+2')
   await sleep(300)
   if (await page.locator('.popout').count()) problems.push('under: Notes opened under (only a note or Ask should)')
-  // Esc: the drawer, then the picked star, then (with nothing left) the desk would go away, still under.
-  await written.click()
+  await page.screenshot({ path: `${OUT}/under-page.png` })
+  // Make it a node: the page is blank again, and the node waits in the Sky.
+  await page.getByRole('button', { name: /Make it a node/ }).click()
+  await page.getByRole('menuitem', { name: 'Make it a node' }).click()
+  await page.locator('.under-page .desk-sticky').first().waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('under: making the page a node did not clear it'))
+  // Esc: the drawer first, then back up.
   await page.locator('#under-line').focus()
   await page.keyboard.type('x')
   await page.keyboard.press('Escape')
   if (await page.getByRole('listbox').count()) problems.push('under: Esc did not close the drawer first')
-  if (!await page.locator('.sky-star.is-selected').count()) problems.push('under: Esc let go of the star before closing the drawer')
+  if (!await page.locator('.under-pill').count()) problems.push('under: the first Esc came up before closing the drawer')
+  await page.fill('#under-line', '')
   await page.keyboard.press('Escape')
-  if (await page.locator('.sky-star.is-selected').count()) problems.push('under: Esc did not let go of the picked star')
-  await page.keyboard.press('Escape')
-  if (!await page.locator('.under-pill').count()) problems.push('under: Esc brought the desk back up')
-  await page.getByRole('button', { name: /Come up/ }).click()
-  await page.locator('.under').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('under: Come up did not bring the desk back'))
+  await page.locator('.under').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('under: Esc did not bring the desk back up'))
   if (await page.locator('.popout').count() !== roomsAbove) problems.push('under: the rooms did not come back from above')
   await page.getByText('Back up.').waitFor({ timeout: 3000 }).catch(() => problems.push('under: coming up did not say so'))
+  await page.keyboard.press('Control+3')
+  await page.locator('[data-node-head]', { hasText: 'Written under the desk' }).waitFor({ timeout: 3000 }).catch(() => problems.push('under: the page did not become a node in the Sky'))
+  await page.keyboard.press('Escape')
 
   // The quick chat's window, as the browser preview can show it (no AI here).
   room = 'quick chat'

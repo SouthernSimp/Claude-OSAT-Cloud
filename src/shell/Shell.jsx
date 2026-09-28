@@ -51,7 +51,7 @@ export function Dock({ view, navigate, storage, aiReady, workspace, commit, extr
       {children}
       <i className="dock-rule" />
       <Appearance workspace={workspace} commit={commit} />
-      <button type="button" data-mag data-space="Under" data-tip={'Go under: OSAT with the internet off  ⇧⌘U'} onClick={() => navigate('Under')}>
+      <button type="button" data-mag data-space="Under" data-tip={'Incognito: a blank page under the desk, offline  ⌥⌘↓'} onClick={() => navigate('Under')}>
         <Detective />
         <span className="dock-label">Incognito</span>
       </button>

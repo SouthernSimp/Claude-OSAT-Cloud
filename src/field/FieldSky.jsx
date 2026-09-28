@@ -6,7 +6,7 @@ import { useReducedMotion } from './FieldChrome.jsx'
 import { buildSkyGraph, constellationLabels, fitCamera, runSky, skyEnergy, stepSky } from './field-model.js'
 
 function signatureOf(notes) {
-  return notes.map((note) => `${note.id}:${note.updatedAt}:${note.title}`).join('|')
+  return notes.map((note) => `${note.id}:${note.updatedAt}:${note.title}:${note.folderId}`).join('|')
 }
 
 /* Your notes as stars. In the Map's pop-out it has a search and zoom buttons; `full` is
@@ -18,10 +18,10 @@ export function FieldSky({ workspace, navigate, target, full = false }) {
   const linksRef = useRef([])
   const loopRef = useRef(0)
   const reduced = useReducedMotion()
-  const signature = signatureOf(workspace.notes.filter(isActiveNote))
+  const signature = `${signatureOf(workspace.notes.filter(isActiveNote))}#${workspace.folders.map((folder) => `${folder.id}:${folder.name}:${folder.parentId}`).join('|')}`
   const keepId = target?.noteId || null
   const graph = useMemo(() => {
-    const built = buildSkyGraph(workspace.notes, undefined, undefined, keepId)
+    const built = buildSkyGraph(workspace.notes, undefined, undefined, keepId, workspace.folders)
     // Stars already in the sky keep their place, so a new thought doesn't reshuffle it.
     const before = new Map(nodesRef.current.map((node) => [node.id, node]))
     const seeded = built.nodes.map((node) => (before.has(node.id) ? { ...node, x: before.get(node.id).x, y: before.get(node.id).y, pinned: before.get(node.id).pinned } : node))

@@ -65,6 +65,12 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   }, [workspace.folders, focus])
 
   useImperativeHandle(ref, () => ({
+    /* ⌘K up here: find a sticky. */
+    find() {
+      setView('nodes')
+      findField.current?.focus()
+      findField.current?.select()
+    },
     /* Esc: true when it did something here, false when it's time to go back down. */
     back() {
       if (query) { setQuery(''); return true }
@@ -229,7 +235,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
           // The words-and-tags suggestions stand on their own.
         }
       }
-      setSorting({ id: nodeId, busy: false, line: map.size ? 'Tick what fits' : models.length ? 'No good fits yet' : 'Add branches first', map })
+      const branches = folderChildren(latest.current.folders, nodeId).length
+      setSorting({ id: nodeId, busy: false, line: map.size ? 'Tick what fits' : branches || models.length ? 'No good fits yet' : 'Add a branch first', map })
     },
     acceptSuggestion(noteId) {
       const item = sorting?.map.get(noteId)

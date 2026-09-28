@@ -18,7 +18,7 @@ const ACTIONS = [
   { key: 'act:sky', label: 'See every note as a star', also: 'stars constellation sky graph', go: ['Sky'] },
   { key: 'act:focus', label: 'Focus for 25 minutes', also: 'timer pomodoro quiet concentrate', go: ['Focus'] },
   { key: 'act:widget', label: 'Add a widget', hint: 'Calendar, Next, Focus, Habits…', also: 'widgets tray', go: ['Widgets'] },
-  { key: 'act:under', label: 'Go under', hint: 'Incognito · OSAT with the internet off', also: 'incognito offline private', go: ['Under'] },
+  { key: 'act:under', label: 'Incognito', hint: 'A blank page under the desk, offline', also: 'go under offline private scratch temporary blank page', go: ['Under'] },
 ]
 
 const newest = (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))

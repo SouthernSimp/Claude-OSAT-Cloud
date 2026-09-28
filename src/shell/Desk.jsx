@@ -220,7 +220,9 @@ export function Desk() {
       }
       if (mod && !event.shiftKey && !event.altKey && key === 'k') {
         event.preventDefault()
-        latest.current?.navigate('Capture')
+        // Up in the Sky, ⌘K finds a sticky there.
+        if (latest.current?.sky === 'sky' && !latest.current.pops.some((pop) => !pop.closing)) skyRef.current?.find()
+        else latest.current?.navigate('Capture')
         return
       }
       if (mod && !event.shiftKey && !event.altKey && spaceForKey(event.key)) {
@@ -338,7 +340,12 @@ export function Desk() {
       setNotice(view === 'Settings' && detail?.section === 'ai' ? 'Setting up the AI downloads it, so that waits until you come up.' : `${titleFor(view)} opens again when you come up.`)
     }
     // A new thought, or a search: the line takes it (it rises if a room covers it).
-    else if (view === 'Capture') { if (!latest.current.welcome) (latest.current.under ? setSummonUnder : setSummon)(Date.now()) }
+    else if (view === 'Capture') {
+      if (latest.current.welcome) return
+      // A new thought from the Sky (⇧⌘N) comes back down to the line.
+      if (latest.current.sky === 'sky') goDown()
+      ;(latest.current.under ? setSummonUnder : setSummon)(Date.now())
+    }
     // The Map is the Sky now: the layer above the desk.
     else if (view === 'Mindmap' || view === 'Sky') goUp(view === 'Sky' ? { ...(detail || {}), view: 'stars' } : detail)
     else if (view === 'Focus') setFocusAt(Date.now())
@@ -347,7 +354,8 @@ export function Desk() {
     else if (view === 'Obsidian') open('Settings', { section: 'data' })
     else if ((view === 'Notes' || view === 'Today') && typeof detail === 'string') open('note', { noteId: detail }, origin)
     else if ((view === 'Notes' || view === 'Today') && typeof detail?.noteId === 'string') open('note', { noteId: detail.noteId }, origin)
-    else if (view === 'Today') setVisit((value) => value + 1)
+    // The desk: from the Sky, that means coming back down.
+    else if (view === 'Today') { if (latest.current.sky === 'sky') goDown(); else setVisit((value) => value + 1) }
     else if (ROOMS[view]) open(view, detail, origin)
   }
   latest.current = { navigate, pops, welcome, line, under: on, sky, step }
@@ -488,6 +496,8 @@ export function Desk() {
           summon={summonUnder}
           onOpenNote={(noteId) => open('note', { noteId })}
           onComeUp={() => askUnder(false)}
+          places={prefs.places || {}}
+          onPlace={place}
         />
       )}
 

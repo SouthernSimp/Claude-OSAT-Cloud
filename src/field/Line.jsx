@@ -39,7 +39,8 @@ const ACTION_ICONS = {
 }
 const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceFor(row.go[0])?.icon || Sparkle
 
-/* The one line in the middle of the desk. Type, and a drawer folds open under it:
+/* The one line in the middle of the desk (and at the foot of the scratch page, where
+   `write` makes what's saved a sticky there). Type, and a drawer folds open under it:
    Save as a thought (always first, so Return never guesses), Ask the AI on this Mac,
    Add to Next, then up to five matches (notes, files on this Mac, folders, rooms,
    actions). ⌘K and ⇧⌘N land here (`summon`). An answer streams into a card under the
@@ -49,7 +50,7 @@ const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceF
    (`raised`), drawer and all. */
 export function Line({
   workspace, commit, navigate, greeting, storage, visit = 0, summon = 0, paused = false, under = false,
-  raised = false, onLine, onOpenNote, onSaved, foot,
+  raised = false, onLine, onOpenNote, onSaved, foot, write,
 }) {
   const center = useRef(null)
   const greetingRef = useRef(null)
@@ -211,7 +212,8 @@ export function Line({
     if (!text) return
     let note
     commit((state) => {
-      const result = captureThought(state, text.slice(0, 8000), under ? 'Under' : 'Home')
+      // `write` makes something else of it (a sticky on the scratch page); else a thought.
+      const result = write ? write(state, text.slice(0, 8000)) : captureThought(state, text.slice(0, 8000), under ? 'Under' : 'Home')
       note = result.note
       return result.state
     })

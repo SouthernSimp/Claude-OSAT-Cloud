@@ -184,3 +184,15 @@ test('a new sticky lands in the first clear spot near the line, inside the desk'
   const full = freeSpot([{ left: -10, top: -10, right: 2000, bottom: 2000 }], area, size, { x: 950, y: 790 })
   assert.deepEqual(full, { x: 800, y: 650 })
 })
+
+test('each node is a constellation in the Stars, named after it', () => {
+  const at = '2026-09-28T09:00:00.000Z'
+  const note = (id, folderId, tags = []) => ({ id, title: id, markdown: id, tags, folderId, createdAt: at, updatedAt: at, trashedAt: null, archived: false })
+  const folders = [{ id: 'rnd', name: 'RND', parentId: null }, { id: 'ideas', name: 'IDEAS', parentId: 'rnd' }]
+  const notes = [note('a', 'rnd'), note('b', 'ideas'), note('c', 'ideas'), note('d', null, ['home'])]
+  const { nodes, links } = buildSkyGraph(notes, undefined, 180, null, folders)
+  assert.deepEqual(nodes.map((node) => node.group), ['RND', 'RND', 'RND', 'home'], 'a branch counts as its node')
+  assert.equal(links.filter((link) => link.kind === 'tag').length, 2, 'one chain through the node, not every pair')
+  const labels = constellationLabels(nodes)
+  assert.deepEqual(labels.map((label) => label.tag), ['RND'])
+})
