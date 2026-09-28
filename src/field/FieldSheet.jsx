@@ -68,7 +68,7 @@ export function FieldSheet({ note, onClose, onCommit, onOpenNotes, inline = fals
 
   const paper = (
     <article ref={dialog} className="field-sheet-paper" onPointerDown={(event) => event.stopPropagation()}>
-      <small>{tag ? `#${tag}` : 'A thought'}</small>
+      <small>{tag ? `#${tag}` : 'A sticky'}</small>
       <textarea
         ref={titleRef}
         rows={1}

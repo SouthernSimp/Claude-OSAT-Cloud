@@ -15,14 +15,14 @@ import { Markdown } from '../lib/markdown.jsx'
 import { spaceFor } from '../lib/spaces.js'
 import { inputActive } from '../lib/ui.js'
 import { addNextStep } from '../next-steps.js'
-import { fileByMentions, filedAs, mentionName, parseMentions } from '../nodes-model.js'
+import { linkMentions } from '../nodes-model.js'
 import { captureThought, isActiveNote, relatedNotes } from '../notes-model.js'
 
 const KINDS = {
   note: [NotePencil, 'Note'],
   file: [File, 'On this Mac'],
   'mac-folder': [FolderSimple, 'On this Mac'],
-  folder: [FolderSimple, 'Folder'],
+  folder: [FolderSimple, 'Node'],
   board: [ShareNetwork, 'Board'],
   project: [FolderSimple, 'Project'],
   room: [null, 'Room'],
@@ -41,7 +41,7 @@ const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceF
 
 /* The one line in the middle of the desk (and at the foot of the scratch page, where
    `write` makes what's saved a sticky there). Type, and a drawer folds open under it:
-   Save as a thought (always first, so Return never guesses), Ask the AI on this Mac,
+   Save as a sticky (always first, so Return never guesses), Ask the AI on this Mac,
    Add to Next, then up to five matches (notes, files on this Mac, folders, rooms,
    actions). ⌘K and ⇧⌘N land here (`summon`). An answer streams into a card under the
    line and is kept as a chat.
@@ -71,14 +71,9 @@ export function Line({
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
 
   const matches = useMemo(() => (open ? findAll(workspace, text, { files: text ? found : [], under }) : []), [open, workspace, text, found, under])
-  // "@Garden" in it: Return saves it straight into that node, and says first which nodes it makes.
-  const mentions = useMemo(() => (text.includes('@') ? parseMentions(text, workspace.folders) : []), [text, workspace.folders])
-  const making = mentions.filter((mention) => mention.missing.length).map((mention) => mentionName(workspace.folders, mention))
   const rows = [
     ...(text ? [
-      mentions.length
-        ? { key: 'save', label: `Save to ${mentionName(workspace.folders, mentions[0])}`, hint: making.length ? `makes ${making.join(', ')}` : '', keys: '↵', icon: NotePencil, run: save }
-        : { key: 'save', label: 'Save as a thought', keys: '↵', icon: NotePencil, run: save },
+      { key: 'save', label: 'Save as a sticky', keys: '↵', icon: NotePencil, run: save },
       ai.state === 'none'
         ? { key: 'ask', label: 'Set up the AI', hint: setupLine(aiStatus) || 'It runs on this Mac, nothing leaves it', keys: '⌘↵', icon: Sparkle, run: () => { setOpen(false); navigate('Settings', { section: 'ai' }) } }
         : { key: 'ask', label: 'Ask the AI on this Mac', hint: ai.state === 'ready' ? ai.label : 'Looking for it…', keys: '⌘↵', icon: Sparkle, run: ask },
@@ -216,18 +211,14 @@ export function Line({
   function save() {
     if (!text) return
     let note
-    let filing = null
     commit((state) => {
-      // `write` makes something else of it (a sticky on the scratch page); else a thought.
+      // `write` makes something else of it (a sticky on the scratch page); else one in Unsorted.
       const result = write ? write(state, text.slice(0, 8000)) : captureThought(state, text.slice(0, 8000), under ? 'Under' : 'Home')
       note = result.note
-      if (!note) return result.state
-      const filed = fileByMentions(result.state, note.id)
-      filing = filedAs(state, filed, note.id)
-      return filed
+      return note ? linkMentions(result.state, note.id) : result.state
     })
     reset()
-    if (note) onSaved?.(note.id, filing?.where ? filing : null)
+    if (note) onSaved?.(note.id)
     box.current?.focus()
   }
 
@@ -350,7 +341,7 @@ export function Line({
               }}
               onKeyDown={onKeyDown}
             />
-            <button type="submit" className="home-send" aria-label="Save as a thought" title="Save as a thought ↵ · Shift-Return for a new line" disabled={!text}>
+            <button type="submit" className="home-send" aria-label="Save as a sticky" title="Save as a sticky ↵ · Shift-Return for a new line" disabled={!text}>
               <ArrowUp weight="bold" />
             </button>
             {storage?.status === 'error' && (

@@ -1,11 +1,10 @@
 /* Nodes: every folder is a node in the Sky, a folder inside one is a branch, and every
    note is a sticky. A node's own stickies (in no branch) are its pile still to sort; notes
    in no folder at all are Unsorted. Nodes, branches and stickies keep the order Nate ranks
-   them in (`rank`, see rankOf). Folders can be linked to each other. Pure functions over
-   the workspace, like notes-model.js. */
+   them in (`rank`, see rankOf). Pure functions over the workspace, like notes-model.js. */
 
 import { rankOf } from './note-core.js'
-import { canMoveFolder, createFolder, createNote, deleteFolder, folderChildren, folderPath, folderSubtree, isActiveNote, relatedNotes } from './notes-model.js'
+import { canMoveFolder, createFolder, createNote, deleteFolder, folderChildren, folderSubtree, isActiveNote, relatedNotes } from './notes-model.js'
 
 export { rankOf }
 
@@ -24,8 +23,8 @@ export function pileOf(notes, folderId = null) {
     .sort(byRank)
 }
 
-/* The nodes, left to right, each with its number (1 is the first). */
-export const nodesOf = (folders) => folderChildren(folders, null).map((folder, index) => ({ folder, number: index + 1 }))
+/* The nodes, left to right. */
+export const nodesOf = (folders) => folderChildren(folders, null).map((folder) => ({ folder }))
 
 /* Every sticky anywhere in a node, its branches' included. */
 export function stickiesIn(state, folderId) {
@@ -95,13 +94,13 @@ export function addFolder(state, name, parentId = null, index = Infinity) {
   return { state: { ...state, folders: [...withRanks(state.folders, renumber), folder] }, folder }
 }
 
-/* A new sticky in a folder's pile (null: Unsorted), at the end or at `index`. An @node in
-   its words files it there (fileByMentions), wherever it was written. */
+/* A new sticky in a folder's pile (null: Unsorted), at the end or at `index`. Its @s point
+   at their nodes (linkMentions). */
 export function addSticky(state, text, folderId = null, { source = 'Sky', index, color, kind = null } = {}) {
   const value = typeof text === 'string' ? text.trim().slice(0, 8000) : ''
   if (!value) return { state, note: null }
   const target = folderExists(state, folderId) ? folderId : null
-  const title = value.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A thought'
+  const title = value.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A sticky'
   let base = state
   let rank
   if (index !== undefined) {
@@ -110,8 +109,8 @@ export function addSticky(state, text, folderId = null, { source = 'Sky', index,
     rank = placed.rank
   }
   const made = createNote(base, { title, markdown: value, folderId: target, unsorted: !target && kind !== 'scratch', source, color, kind, rank })
-  const filed = fileByMentions(made.state, made.note.id)
-  return { state: filed, note: filed.notes.find((note) => note.id === made.note.id) }
+  const linked = linkMentions(made.state, made.note.id)
+  return { state: linked, note: linked.notes.find((note) => note.id === made.note.id) }
 }
 
 /* Removing a node keeps its stickies: its branches go with it and everything in them lands
@@ -128,41 +127,6 @@ export function removeFolder(state, folderId) {
   }
 }
 
-/* ---------- links between nodes ---------- */
-
-/* Each link once, as { a, b }, between folders that exist. */
-export function folderLinks(folders) {
-  const ids = new Set(folders.map((folder) => folder.id))
-  const seen = new Set()
-  const pairs = []
-  folders.forEach((folder) => (folder.links || []).forEach((other) => {
-    const key = [folder.id, other].sort().join('|')
-    if (!ids.has(other) || other === folder.id || seen.has(key)) return
-    seen.add(key)
-    pairs.push({ a: folder.id, b: other })
-  }))
-  return pairs
-}
-
-export const linkedWith = (folders, id) => folderLinks(folders).flatMap((pair) => (pair.a === id ? [pair.b] : pair.b === id ? [pair.a] : []))
-
-export function linkFolders(state, a, b) {
-  if (a === b || !folderExists(state, a) || !folderExists(state, b) || linkedWith(state.folders, a).includes(b)) return state
-  return { ...state, folders: state.folders.map((folder) => (folder.id === a ? { ...folder, links: [...(folder.links || []), b] } : folder)) }
-}
-
-export function unlinkFolders(state, a, b) {
-  const drop = (folder, other) => {
-    const links = (folder.links || []).filter((id) => id !== other)
-    const { links: _, ...rest } = folder
-    return links.length ? { ...folder, links } : rest
-  }
-  return {
-    ...state,
-    folders: state.folders.map((folder) => (folder.id === a && folder.links?.includes(b) ? drop(folder, b) : folder.id === b && folder.links?.includes(a) ? drop(folder, a) : folder)),
-  }
-}
-
 /* The stickies on the scratch page become one node, in the order given. */
 export function nodeFrom(state, noteIds, name) {
   const made = addFolder(state, name || 'From the scratch page')
@@ -172,13 +136,26 @@ export function nodeFrom(state, noteIds, name) {
   return { state: next, folder: made.folder }
 }
 
+/* The places a sticky can be moved to, as menu items: Unsorted, then each node with its
+   branches under it (↳). `skip` leaves out where it is now. */
+export function moveToItems(folders, onPick, { skip, unsorted = true } = {}) {
+  const items = [
+    unsorted && skip !== null ? { label: 'Unsorted', onSelect: () => onPick(null) } : null,
+    ...nodesOf(folders).flatMap(({ folder }) => [
+      folder.id === skip ? null : { label: folder.name, onSelect: () => onPick(folder.id) },
+      ...folderChildren(folders, folder.id).filter((branch) => branch.id !== skip).map((branch) => ({ label: `↳ ${branch.name}`, onSelect: () => onPick(branch.id) })),
+    ]),
+  ].filter(Boolean)
+  return items.length ? items : [{ note: 'No nodes yet.' }]
+}
+
 /* ---------- sorting help ---------- */
 
 const plainKey = (name) => String(name || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
 
-/* Where each sticky still to sort in a node might go, without the AI: the branch named
-   like one of its #tags first, then the branch whose name and stickies share the most
-   words with it. Stickies with no good fit are left out. */
+/* Where each sticky still to sort in a node might go: the branch named like one of its
+   #tags first, then the branch whose name and stickies share the most words with it.
+   Stickies with no good fit are left out. */
 export function suggestBranches(state, nodeId) {
   const branches = folderChildren(state.folders, nodeId)
   if (!branches.length) return []
@@ -190,186 +167,100 @@ export function suggestBranches(state, nodeId) {
   }))
   return pileOf(state.notes, nodeId).flatMap((note) => {
     const tagged = branches.find((branch) => note.tags.some((tag) => plainKey(tag) === plainKey(branch.name)))
-    if (tagged) return [{ noteId: note.id, folderId: tagged.id, why: 'tag' }]
+    if (tagged) return [{ noteId: note.id, folderId: tagged.id }]
     const [best] = relatedNotes(faces, `${note.title}\n${note.markdown}`, 1)
-    return best ? [{ noteId: note.id, folderId: best.id, why: 'words' }] : []
+    return best ? [{ noteId: note.id, folderId: best.id }] : []
   })
 }
 
-const oneLine = (note) => `${note.title}${note.markdown.trim() !== note.title.trim() ? ` — ${note.markdown.replace(/\s+/g, ' ').slice(0, 160)}` : ''}`
-
-/* What the AI on this Mac is asked, to sort a node's stickies into its branches. */
-export function sortPrompt(branches, loose) {
-  return [
-    {
-      role: 'system',
-      content: 'You help sort sticky notes into branches (groups). Answer only with one line per sticky, like "3 -> 2" (sticky 3 goes in branch 2), "4 -> new: Groceries" (a new branch, a short name), or "5 -> none". No other words.',
-    },
-    {
-      role: 'user',
-      content: `Branches:\n${branches.length ? branches.map((branch, i) => `${i + 1}. ${branch.name}`).join('\n') : '(none yet)'}\n\nStickies:\n${loose.map((note, i) => `${i + 1}. ${oneLine(note)}`).join('\n')}`,
-    },
-  ]
-}
-
-/* The AI's answer as suggestions: { noteId, folderId } or { noteId, branch: 'New name' }.
-   Lines it didn't follow are skipped; a sticky gets at most one suggestion. */
-export function parseSortReply(text, branches, loose) {
-  const out = new Map()
-  for (const line of String(text || '').split('\n')) {
-    const match = line.match(/^\W*(?:sticky\s*)?(\d+)\s*(?:->|→|=>|:|-)\s*(?:branch\s*)?(?:(\d+)|new\s*:?\s*(.+)|none)\s*$/i)
-    if (!match) continue
-    const note = loose[Number(match[1]) - 1]
-    if (!note || out.has(note.id)) continue
-    if (match[2]) {
-      const branch = branches[Number(match[2]) - 1]
-      if (branch) out.set(note.id, { noteId: note.id, folderId: branch.id })
-    } else if (match[3]) {
-      const name = match[3].replace(/["“”*_]/g, '').trim().slice(0, 40)
-      const existing = branches.find((branch) => plainKey(branch.name) === plainKey(name))
-      if (existing) out.set(note.id, { noteId: note.id, folderId: existing.id })
-      else if (name) out.set(note.id, { noteId: note.id, branch: name })
-    }
-  }
-  return [...out.values()]
-}
-
-/* Moves the accepted suggestions, making any new branches they name (once each). */
-export function applySuggestions(state, nodeId, suggestions) {
-  let next = state
-  const made = new Map()
-  for (const item of suggestions) {
-    let folderId = item.folderId
-    if (!folderId && item.branch) {
-      const key = plainKey(item.branch)
-      if (!made.has(key)) {
-        const result = addFolder(next, item.branch, nodeId)
-        next = result.state
-        made.set(key, result.folder?.id)
-      }
-      folderId = made.get(key)
-    }
-    if (folderId) next = moveSticky(next, item.noteId, folderId)
-  }
-  return next
+/* The same suggestions, one group per branch, in the branches' order:
+   [{ folderId, noteIds }]. */
+export function suggestionGroups(state, nodeId) {
+  const found = suggestBranches(state, nodeId)
+  return folderChildren(state.folders, nodeId)
+    .map((branch) => ({ folderId: branch.id, noteIds: found.filter((item) => item.folderId === branch.id).map((item) => item.noteId) }))
+    .filter((group) => group.noteIds.length)
 }
 
 /* ---------- @ in a note ---------- */
 
 const NAME_CHAR = /[\p{L}\p{N}_]/u
 const NOT_AFTER = /[\p{L}\p{N}_.@/:+-]/u
-const WORD = /^\p{L}[\p{L}\p{N}_-]*/u
 
-function longestName(list, rest) {
+/* The longest of `entries` ([name in lowercase, id]) that `rest` starts with, as a whole word. */
+function longest(entries, rest) {
   const low = rest.toLowerCase()
   let best = null
-  for (const folder of list) {
-    const name = folder.name.toLowerCase()
-    if (low.startsWith(name) && !NAME_CHAR.test(rest[name.length] || '') && (!best || name.length > best.length)) best = { id: folder.id, length: name.length }
+  for (const [name, id] of entries) {
+    if (name && low.startsWith(name) && !NAME_CHAR.test(rest[name.length] || '') && (!best || name.length > best.length)) best = { id, length: name.length }
   }
   return best
 }
 
-/* "@Garden" in a note names a node. The longest node name that fits wins, so
-   "@Project Direction" works; "@Garden/Ideas" names a branch. A name that matches nothing
-   (one word, starting with a letter) is a node still to make. Each mention once, in the
-   order written: { folderId (the deepest that exists, or null), missing (names to make
-   under it), key }. An @ right after a letter, digit or dot (an email) is not one. */
-export function parseMentions(text, folders) {
+const namesUnder = (folders, parentId) => folderChildren(folders, parentId).map((folder) => [folder.name.toLowerCase(), folder.id])
+
+/* "@Garden" in a note points at that node, "@Garden/Ideas" at a branch in it. The longest
+   name that fits wins, so "@Project Direction" works. Once written, a note keeps which
+   node each @ meant, by id (`refs`, see linkMentions), so a renamed node still answers to
+   the words that were written and the words are never changed. A name that matches no
+   node is only words. An @ right after a letter, digit or dot (an email) is not one.
+   Each mention where it is: { start, end, folderId, name (as written, lowercase) }. */
+export function findMentions(text, folders, refs) {
   const value = String(text || '')
+  const ids = new Set(folders.map((folder) => folder.id))
+  const kept = Object.entries(refs || {}).filter(([, id]) => ids.has(id))
   const out = []
-  const seen = new Set()
   for (let at = value.indexOf('@'); at >= 0; at = value.indexOf('@', at + 1)) {
     if (at > 0 && NOT_AFTER.test(value[at - 1])) continue
-    let rest = value.slice(at + 1)
-    let folderId = null
-    const missing = []
-    for (;;) {
-      const known = missing.length ? null : longestName(folderChildren(folders, folderId), rest)
-      if (known) {
-        folderId = known.id
-        rest = rest.slice(known.length)
-      } else {
-        const word = rest.match(WORD)?.[0]
-        if (!word) break
-        missing.push(word)
-        rest = rest.slice(word.length)
-      }
-      if (rest[0] !== '/' || !rest[1]) break
-      rest = rest.slice(1)
+    const rest = value.slice(at + 1)
+    // By name as the nodes are called now: a node, then a branch after each slash.
+    let byName = null
+    for (let folderId = null, length = 0; ;) {
+      const next = longest(namesUnder(folders, folderId), rest.slice(length))
+      if (!next) break
+      folderId = next.id
+      length += next.length
+      byName = { id: folderId, length }
+      if (rest[length] !== '/') break
+      length += 1
     }
-    if (!folderId && !missing.length) continue
-    const key = `${folderId || ''}/${missing.join('/').toLowerCase()}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    out.push({ folderId, missing, key })
+    const known = longest(kept, rest)
+    const hit = known && (!byName || known.length >= byName.length) ? known : byName
+    if (!hit) continue
+    out.push({ start: at, end: at + 1 + hit.length, folderId: hit.id, name: rest.slice(0, hit.length).toLowerCase() })
   }
   return out
 }
 
-/* How a mention reads: "Garden › Ideas", with a new name as written. */
-export const mentionName = (folders, mention) => [...(mention.folderId ? folderPath(folders, mention.folderId) : []), ...mention.missing].join(' › ')
+/* The nodes a note mentions, each once, in the order written. */
+export const nodesMentioned = (note, folders) => [...new Set(findMentions(note?.markdown, folders, note?.refs).map((mention) => mention.folderId))]
 
-/* After a note is written (`before` is what it said until then): nodes named with a new @
-   are made, and when the first @ in it is new, the note moves there. Any other @ only
-   links it (see mentionedIn). Nothing happens for mentions that were already there. */
-export function fileByMentions(state, noteId, before = '') {
+/* Words and mentions, in order, for showing a note with its @s as links:
+   ['plain words', { folderId, text: '@Garden' }, …]. */
+export function splitMentions(text, folders, refs) {
+  const value = String(text || '')
+  const parts = []
+  let last = 0
+  for (const mention of findMentions(value, folders, refs)) {
+    if (mention.start > last) parts.push(value.slice(last, mention.start))
+    parts.push({ folderId: mention.folderId, text: value.slice(mention.start, mention.end) })
+    last = mention.end
+  }
+  if (last < value.length) parts.push(value.slice(last))
+  return parts
+}
+
+/* After a note is written, it remembers which node each of its @s means (by id). That
+   is all an @ does: nothing moves and nothing is made. */
+export function linkMentions(state, noteId) {
   const note = state.notes.find((item) => item.id === noteId)
-  if (!note || !isActiveNote(note) || !note.markdown?.includes('@')) return state
-  const old = new Set(parseMentions(before, state.folders).map((mention) => mention.key))
-  const mentions = parseMentions(note.markdown, state.folders)
-  let next = state
-  let home = null
-  mentions.forEach((mention, index) => {
-    if (old.has(mention.key)) return
-    let id = mention.folderId
-    for (const name of mention.missing) {
-      const made = addFolder(next, name, id)
-      next = made.state
-      id = made.folder?.id || null
-      if (!id) break
-    }
-    if (index === 0) home = id
-  })
-  return home && home !== note.folderId ? moveSticky(next, noteId, home) : next
-}
-
-/* The folder at a path like "Garden/Big ideas", made (with any folders above it) when it
-   isn't there yet. */
-export function ensureFolderPath(state, path) {
-  let next = state
-  let folder = null
-  for (const name of String(path || '').split('/').map((part) => part.trim()).filter(Boolean)) {
-    const found = folderChildren(next.folders, folder?.id || null).find((item) => item.name.toLowerCase() === name.toLowerCase())
-    if (found) { folder = found; continue }
-    const made = addFolder(next, name, folder?.id || null)
-    if (!made.folder) break
-    next = made.state
-    folder = made.folder
-  }
-  return { state: next, folder }
-}
-
-/* What an @ did between two states: where the note went ("Garden › Ideas", or null when
-   it stayed put) and the folders it made. */
-export function filedAs(before, after, noteId) {
-  const was = before.notes.find((note) => note.id === noteId)?.folderId || null
-  const now = after.notes.find((note) => note.id === noteId)?.folderId || null
-  const had = new Set(before.folders.map((folder) => folder.id))
-  return {
-    where: now && now !== was ? folderPath(after.folders, now).join(' › ') : null,
-    made: after.folders.filter((folder) => !had.has(folder.id)).map((folder) => folder.id),
-  }
-}
-
-/* Undoing an @: the folders it made go again, if nothing has been put in them since. */
-export function forgetEmptyFolders(state, ids) {
-  let next = state
-  for (const id of [...ids].reverse()) {
-    const used = next.notes.some((note) => note.folderId === id) || next.folders.some((folder) => folder.parentId === id)
-    if (!used) next = { ...next, folders: next.folders.filter((folder) => folder.id !== id) }
-  }
-  return next
+  if (!note) return state
+  const refs = Object.fromEntries(findMentions(note.markdown, state.folders, note.refs).map((mention) => [mention.name, mention.folderId]))
+  const had = note.refs || {}
+  const keys = Object.keys(refs)
+  if (keys.length === Object.keys(had).length && keys.every((key) => had[key] === refs[key])) return state
+  const { refs: _, ...rest } = note
+  return { ...state, notes: state.notes.map((item) => (item.id === noteId ? (keys.length ? { ...rest, refs } : rest) : item)) }
 }
 
 /* The notes that @mention a folder but live somewhere else, by folder id. */
@@ -377,31 +268,67 @@ export function mentionedIn(state) {
   const map = new Map()
   state.notes.forEach((note) => {
     if (!isActiveNote(note) || note.kind === 'scratch' || !note.markdown?.includes('@')) return
-    parseMentions(note.markdown, state.folders).forEach(({ folderId, missing }) => {
-      if (!folderId || missing.length || folderSubtree(state.folders, folderId).has(note.folderId)) return
+    nodesMentioned(note, state.folders).forEach((folderId) => {
+      if (folderSubtree(state.folders, folderId).has(note.folderId)) return
       map.set(folderId, [...(map.get(folderId) || []), note])
     })
   })
   return map
 }
 
-const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-/* A new name for a folder; notes that @mention it (or a branch in it) follow. */
+/* A new name for a folder. Notes that @mention it keep their words and still point at it. */
 export function renameFolder(state, id, name) {
   const folder = state.folders.find((item) => item.id === id)
   const clean = String(name || '').trim().slice(0, 80)
   if (!folder || !clean || clean === folder.name) return state
-  const before = folderPath(state.folders, id).join('/')
-  const folders = state.folders.map((item) => (item.id === id ? { ...item, name: clean } : item))
-  const after = folderPath(folders, id).join('/')
-  const pattern = new RegExp(`(^|[^\\p{L}\\p{N}_.@/:+-])@${escapeRegExp(before)}(?![\\p{L}\\p{N}_])`, 'giu')
-  const notes = state.notes.map((note) => {
-    if (!note.markdown?.includes('@')) return note
-    const markdown = note.markdown.replace(pattern, (whole, lead) => `${lead}@${after}`)
-    return markdown === note.markdown ? note : { ...note, markdown }
-  })
-  return { ...state, folders, notes }
+  return { ...state, folders: state.folders.map((item) => (item.id === id ? { ...item, name: clean } : item)) }
+}
+
+/* ---------- a node from a file ---------- */
+
+/* `name`, or "name 2", "name 3"… when a node is already called that. */
+export function freeNodeName(folders, name) {
+  const taken = new Set(folderChildren(folders, null).map((folder) => folder.name.toLowerCase()))
+  const base = String(name || '').trim().slice(0, 72) || 'Imported'
+  if (!taken.has(base.toLowerCase())) return base
+  let n = 2
+  while (taken.has(`${base} ${n}`.toLowerCase())) n += 1
+  return `${base} ${n}`
+}
+
+const textOf = (value) => (typeof value === 'string' ? value.trim() : '')
+
+/* A node file (JSON: { title, summary, branches: [{ title, summary, leaves: [{ text,
+   done }], sub_branches: [...] }] }) becomes one new node at the end of the Sky, never
+   merged into one that's there: branches and sub-branches become branches, leaves become
+   stickies (a finished one as "- [x] …"), and a summary becomes the first sticky where it
+   is. Returns { state, folder, branches (how many were made) }, or throws when the file
+   isn't a node file. */
+export function importNode(state, data) {
+  const title = textOf(data?.title) || textOf(data?.name)
+  if (!title || (data.branches !== undefined && !Array.isArray(data.branches))) throw new Error('That file isn’t a node file.')
+  const made = addFolder(state, freeNodeName(state.folders, title))
+  let next = made.state
+  let branches = 0
+  const fill = (source, folderId) => {
+    const summary = textOf(source.summary)
+    if (summary) next = addSticky(next, summary, folderId, { source: 'Import', index: Infinity }).state
+    for (const leaf of Array.isArray(source.leaves) ? source.leaves : []) {
+      const text = textOf(typeof leaf === 'string' ? leaf : leaf?.text)
+      if (text) next = addSticky(next, leaf?.done === true ? `- [x] ${text}` : text, folderId, { source: 'Import', index: Infinity }).state
+    }
+    for (const branch of [...(Array.isArray(source.branches) ? source.branches : []), ...(Array.isArray(source.sub_branches) ? source.sub_branches : [])]) {
+      const name = textOf(branch?.title) || textOf(branch?.name)
+      if (!name) continue
+      const made = addFolder(next, name, folderId)
+      if (!made.folder) continue
+      next = made.state
+      branches += 1
+      fill(branch, made.folder.id)
+    }
+  }
+  fill(data, made.folder.id)
+  return { state: next, folder: made.folder, branches }
 }
 
 /* ---------- the whiteboard ---------- */
@@ -427,7 +354,7 @@ export function boardSpots(folders, sizes = new Map()) {
 }
 
 /* Nodes set down on the board (`changes`, by id): every node keeps where it shows now, so
-   nothing else jumps, and the numbers follow them left to right. */
+   nothing else jumps, and their order follows them left to right. */
 export function placeNodes(state, spots, changes) {
   const order = nodesOf(state.folders).map(({ folder }) => folder.id)
   const at = new Map(order.map((id) => [id, changes.get(id) || spots.get(id) || { x: 0, y: 0 }]))

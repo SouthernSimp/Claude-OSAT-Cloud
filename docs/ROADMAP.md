@@ -27,10 +27,12 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 8 | Your Mac's files in OSAT, the quick chat, Ask reads files | Merged (PR #10) |
 | 9 | One desk: the window and the ⌥Space layer become one | Merged (PR #11) |
 | 10 | A living desk: one line for everything, widgets that open, Incognito (going under) | Merged (PR #12) |
-| 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | In progress |
-| 12 | Mac powers: Hyper key, keywords, the ring, clipboard history, window snapping, the Tools wheel, a movable dock, resizing | Next |
-| 13 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
-| 14 | Paper in: a photo of stickies becomes stickies (the Mac reads handwriting) | Planned |
+| 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | In review (PR #13) |
+| 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | In progress |
+| 12b | Offline mode: Incognito becomes a toggle on the line instead of a place (spec in the Phase 12 PR) | Next |
+| 13 | Mac powers: Hyper key, keywords, the ring, clipboard history, window snapping, the Tools wheel, a movable dock, resizing | Planned |
+| 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
+| 15 | Paper in: a photo of stickies becomes stickies (the Mac reads handwriting) | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -439,31 +441,48 @@ notes"; clean light/dark, no brown or orange; Esc must never hide the desk.
   Nothing is rewritten; an older OSAT refuses the data instead of dropping the new fields.
   Where stickies lie on the desk and the scratch page is per Mac (`places`), like widgets.
 
+### Phase 12: Make it simple (in progress)
+Nothing new to learn; fewer words and fewer ways to do the same thing. "Simple and for the
+people": when two options fit, the one a person understands without an explanation.
+- **One word per thing**, everywhere: sticky, note, node, branch, Unsorted, Delete, Move to,
+  New node / New branch, Write a sticky, Color. Node cards show names only, never numbers.
+- **One way for things to relate**: nesting (Move to, drag) and @mentions. "Link to" and each
+  node's Across/Down layout are gone (old links and layouts stay in the data, unused).
+- **@ only links** (schema 4): an @ points at a node by id (`refs` on the note). It never files
+  the note, never makes a node from a typo, and renaming a node changes nobody's words.
+- **Help me sort** without the AI: matching #tags and shared words, one plain line per branch
+  ("These stickies look like they belong in Ideas") with Move and Dismiss.
+- **Import** in the Sky: one node file (JSON) is one new node; a taken name gets "2".
+- **Projects fold into nodes** (schema 4, `projectNodes`): each project is a node of the same name
+  with its summary, site, folder and status as stickies. The projects themselves are kept.
+- Reflection lives only in the Journal; Appearance moved from the dock into Tools (→ Settings).
+- Incognito's menus speak the same words (one Move to); its redesign as Offline mode is next.
+
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |
 |---|---|
-| Nodes, branches, ranking, collapse/expand, horizontal/vertical, links, quick view, AI sorting, Project Direction | 11 |
-| The Sky as an infinite, living whiteboard; @Node in any note files it | 11 |
+| Nodes, branches, ranking, collapse/expand, quick view, AI sorting, Project Direction | 11 |
+| The Sky as an infinite, living whiteboard; @Node in any note links to it | 11, 12 |
 | Stickies on the desk, drag out of the shelf, into nodes, up to the Sky; resize; grid snapping | 11 |
 | Sky ↑ / desk / Incognito ↓ as a blank scratch page that becomes a node | 11 |
 | Esc never hides the desk; right-click desk menu; folders (nodes) on the desk; icon size; full-screen tools | 11 |
 | Clean light/dark, the Mac's accent, no brown/orange/green | 11 |
-| Hyper key (Caps Lock + a letter: V clipboard, S find files, C Chrome…) | 12 |
-| Keywords in the line (type `ss` → Spotify), swappable apps (Apple Music instead) | 12 |
-| The ring: ⌘ + middle-click opens quick tools around the pointer, customisable | 12 |
-| Clipboard history (from Nate's Stash) | 12 |
-| Window snapping like Rectangle (from Nate's WindowFlow) | 12 |
-| Tools as a scrolling wheel with descriptions; a dock you can move anywhere; resizing widgets | 12 |
-| Settings: online / semi-offline / offline, as a "switchboard" of apps, plugins and cloud APIs that says plainly what leaves the Mac | 12 |
-| Email: Apple Mail first, then Gmail in the in-app browser, then Outlook; more connectors | 13 |
-| Messages inside OSAT (beside it: macOS doesn't let one app hold another's window) | 13 |
-| Photos of paper stickies read into stickies | 14 |
+| Hyper key (Caps Lock + a letter: V clipboard, S find files, C Chrome…) | 13 |
+| Keywords in the line (type `ss` → Spotify), swappable apps (Apple Music instead) | 13 |
+| The ring: ⌘ + middle-click opens quick tools around the pointer, customisable | 13 |
+| Clipboard history (from Nate's Stash) | 13 |
+| Window snapping like Rectangle (from Nate's WindowFlow) | 13 |
+| Tools as a scrolling wheel with descriptions; a dock you can move anywhere; resizing widgets | 13 |
+| Settings: online / semi-offline / offline, as a "switchboard" of apps, plugins and cloud APIs that says plainly what leaves the Mac | 13 |
+| Email: Apple Mail first, then Gmail in the in-app browser, then Outlook; more connectors | 14 |
+| Messages inside OSAT (beside it: macOS doesn't let one app hold another's window) | 14 |
+| Photos of paper stickies read into stickies | 15 |
 | iPad: GoodNotes-style pages, hand-drawn mind maps, Apple Pencil Pro squeeze ring, synced | Later (parked) |
 | iPhone: a document scanner | Later (parked) |
 | OSAT's own agents/bots | Later |
 
 ### Later (after the MVP)
-- Projects become folder properties, and Files become "Linked folders" in Notes.
+- Files become "Linked folders" in Notes. (Projects became nodes in Phase 12.)
 - "Tidy Unsorted": AI proposes a folder, tags and links, and Nate accepts or declines each.
 - Read-only Apple Calendar in Today.
 - A Mac App Store build: sandbox, no terminal.

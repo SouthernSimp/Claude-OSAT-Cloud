@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { CircleHalf, Detective, Monitor, Moon, Sun, Toolbox } from '@phosphor-icons/react'
 
 import { useDrop } from '../lib/carry.js'
@@ -6,10 +6,11 @@ import { Menu } from '../lib/Menu.jsx'
 import { SETTINGS, SPACES, TOOLS, spaceFor } from '../lib/spaces.js'
 import { magnify, unmagnify } from './glass.jsx'
 
-/* The desk's chrome: one dock, and the look (light or dark, how much blur). */
+/* The desk's chrome: one dock, and the appearance controls (light or dark, how much blur)
+   that Settings shows. */
 
 export const DEFAULT_BLUR = 60
-export function Dock({ view, navigate, storage, aiReady, workspace, commit, extra = [], onSendUp, children }) {
+export function Dock({ view, navigate, storage, aiReady, extra = [], onSendUp, children }) {
   const dock = useRef(null)
   const current = spaceFor(view)?.id || 'Today'
   const inTools = TOOLS.some((tool) => tool.id === current) || current === SETTINGS.id || spaceFor(view)?.dock === false
@@ -39,6 +40,7 @@ export function Dock({ view, navigate, storage, aiReady, workspace, commit, extr
           ...[...SPACES.filter((space) => space.dock === false), ...TOOLS].map((tool) => ({ label: tool.label, icon: tool.icon, checked: current === tool.id, onSelect: () => navigate(tool.id) })),
           ...extra,
           { divider: true },
+          { label: 'Appearance', icon: CircleHalf, onSelect: () => navigate(SETTINGS.id, { section: 'appearance' }) },
           { label: SETTINGS.label, icon: SETTINGS.icon, hint: '⌘,', checked: current === SETTINGS.id, onSelect: () => navigate(SETTINGS.id) },
         ]}
         trigger={({ toggle, open }) => (
@@ -50,7 +52,6 @@ export function Dock({ view, navigate, storage, aiReady, workspace, commit, extr
       />
       {children}
       <i className="dock-rule" />
-      <Appearance workspace={workspace} commit={commit} />
       <button type="button" data-mag data-space="Under" data-tip={'Incognito: a blank page under the desk, offline  ⌥⌘↓'} onClick={() => navigate('Under')}>
         <Detective />
         <span className="dock-label">Incognito</span>
@@ -90,8 +91,7 @@ function DockSpace({ space, index, current, aiReady, navigate, onSendUp }) {
   )
 }
 
-/* Light or dark, and how much the desktop behind OSAT blurs. The dock and
-   Settings show the same controls. */
+/* Light or dark, and how much the desktop behind OSAT blurs (Settings → Appearance). */
 export function AppearanceControls({ workspace, commit }) {
   const settings = workspace.settings || {}
   const blur = Number.isFinite(settings.blur) ? settings.blur : DEFAULT_BLUR
@@ -111,35 +111,5 @@ export function AppearanceControls({ workspace, commit }) {
         <input type="range" min="0" max="100" step="5" value={blur} onChange={(event) => set({ blur: Number(event.target.value) })} />
       </label>
     </>
-  )
-}
-
-export function Appearance({ workspace, commit, placement = 'up' }) {
-  const [open, setOpen] = useState(false)
-  const root = useRef(null)
-
-  useEffect(() => {
-    if (!open) return undefined
-    document.documentElement.dataset.menu = 'open'
-    const close = (event) => { if (!root.current?.contains(event.target)) setOpen(false) }
-    const key = (event) => { if (event.key === 'Escape') { event.stopPropagation(); event.preventDefault(); setOpen(false) } }
-    addEventListener('pointerdown', close, true)
-    addEventListener('keydown', key, true)
-    return () => { delete document.documentElement.dataset.menu; removeEventListener('pointerdown', close, true); removeEventListener('keydown', key, true) }
-  }, [open])
-
-  return (
-    <span className="menu-root appearance" ref={root}>
-      <button type="button" data-mag data-tip={open ? undefined : 'Appearance'} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((value) => !value)}>
-        <CircleHalf />
-        <span className="dock-label">Look</span>
-      </button>
-      {open && (
-        <div className={`glass liquid appearance-pop is-${placement}`} role="dialog" aria-label="Appearance">
-          <p className="pop-kicker">Appearance</p>
-          <AppearanceControls workspace={workspace} commit={commit} />
-        </div>
-      )}
-    </span>
   )
 }

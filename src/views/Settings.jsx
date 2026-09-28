@@ -66,7 +66,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
               <p className="eyebrow">KEYBOARD</p>
               <h2>Everything is a key away.</h2>
               <dl className="key-list">
-                {[["⌘1 – ⌘5", "Desk, Notes, Map, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new thought"], ["⌘,", "Settings"], ["esc", "Back out, one step at a time"]].map(([keys, what]) => (
+                {[["⌘1 – ⌘5", "Desk, Notes, Sky, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new sticky"], ["⌘,", "Settings"], ["esc", "Back out, one step at a time"]].map(([keys, what]) => (
                   <div key={keys}><dt><kbd>{keys}</kbd></dt><dd>{what}</dd></div>
                 ))}
               </dl>
@@ -103,7 +103,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
             <section className="content-card">
               <p className="eyebrow">BACKUP</p>
               <h2>Take your work with you.</h2>
-              <p>One file with every note, folder and board. Restoring keeps a copy of what it replaces.</p>
+              <p>One file with every note and node. Restoring keeps a copy of what it replaces.</p>
               <div className="button-row">
                 <button className="primary-button" type="button" onClick={backup}>
                   <DownloadSimple /> Download a backup
@@ -219,7 +219,7 @@ function AiCard() {
         <p className="ai-remove">
           {status.tiers.filter((tier) => tier.ready && tier.id !== status.chosen).map((tier) => (
             <button key={tier.id} type="button" className="text-button" onClick={() => act(() => bridge.remove(tier.id))}>
-              Remove {tier.label} from this Mac ({gb(tier.size)})
+              Delete {tier.label} from this Mac ({gb(tier.size)})
             </button>
           ))}
         </p>
@@ -267,7 +267,7 @@ function PhoneCards() {
       <section className="content-card phone-card">
         <p className="eyebrow">IPHONE</p>
         <h2>Reach OSAT from your iPhone.</h2>
-        <p>OSAT can keep a folder in your iCloud Drive. Thoughts you drop into it from your iPhone land in Unsorted, and a copy of your notes waits there to read.</p>
+        <p>OSAT can keep a folder in your iCloud Drive. Text you drop into it from your iPhone becomes a sticky in Unsorted, and a copy of your notes waits there to read.</p>
         <p className="phone-privacy"><LockSimple /> This is the one thing that leaves this Mac. It goes to your own iCloud Drive, which Apple keeps; turn on Advanced Data Protection in iCloud settings for end-to-end encryption.</p>
         <button className="primary-button" type="button" disabled={busy} onClick={() => act(bridge.enable)}>
           <DeviceMobile /> Use iCloud Drive
@@ -282,7 +282,7 @@ function PhoneCards() {
         <p className="eyebrow">IPHONE</p>
         <h2>Your iPhone can reach OSAT.</h2>
         <p>
-          {status.error || status.sync?.error || (status.lastCapture ? `The last thought from your iPhone arrived ${formatRelativeTime(status.lastCapture)}.` : "Nothing from your iPhone yet. Thoughts land in Unsorted a few seconds after iCloud brings them.")}
+          {status.error || status.sync?.error || (status.lastCapture ? `The last sticky from your iPhone arrived ${formatRelativeTime(status.lastCapture)}.` : "Nothing from your iPhone yet. Stickies land in Unsorted a few seconds after iCloud brings them.")}
         </p>
         {status.sync?.on && (
           <p className="phone-sync">
@@ -311,7 +311,7 @@ function PhoneCards() {
       <section className="content-card">
         <p className="eyebrow">READ YOUR NOTES</p>
         <h2>Files → iCloud Drive → OSAT → Notes.</h2>
-        <p>A copy that follows your notes as you write, in the same folders. Write in OSAT; changes made to the copy aren’t read back.</p>
+        <p>A copy that follows your notes as you write, in the same nodes. Write in OSAT; changes made to the copy aren’t read back.</p>
       </section>
     </>
   );

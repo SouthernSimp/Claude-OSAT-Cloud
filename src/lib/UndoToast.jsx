@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 /* Calm rule 2: removing happens at once, and Undo is right there for a few seconds.
-   const [toast, showUndo] = useUndoToast(); showUndo("Moved to Trash", () => …); render {toast}. */
+   const [toast, showUndo] = useUndoToast(); showUndo("Moved to Trash", () => …); render {toast}.
+   With no undo, it is only a calm word (a file that couldn't be read). */
 export function useUndoToast() {
   const [toast, setToast] = useState(null);
   useEffect(() => {
@@ -15,7 +16,7 @@ export function useUndoToast() {
       {toast && (
         <div className="toast" key={toast.id}>
           <span>{toast.message}</span>
-          <button type="button" onClick={() => { toast.undo(); setToast(null); }}>Undo</button>
+          {toast.undo && <button type="button" onClick={() => { toast.undo(); setToast(null); }}>Undo</button>}
         </div>
       )}
     </div>

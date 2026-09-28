@@ -107,3 +107,23 @@ test('a workspace from before Ask moved in gains an empty list of chats', () => 
   assert.equal(upgraded.rev, 7)
   assert.equal(upgraded.notes[0].id, 'a')
 })
+
+test('schema 4: every project becomes a node holding what it said, once, and the projects stay', async () => {
+  const { projectNodes } = await import('../shared/store-core.mjs')
+  const projects = [
+    { id: 'project-1', title: 'Garden', summary: 'Beds by the fence', status: 'done', url: 'https://example.com', folder: 'Garden plans', createdAt: '2026-09-01T00:00:00.000Z' },
+    { id: 'project-2', title: 'Taxes', summary: '', status: 'active', url: '', folder: '' },
+  ]
+  const old = { ...createEmptyDoc(), schema: 3, projects, folders: [{ id: 'f', name: 'Garden', parentId: null, createdAt: '2026-01-01T00:00:00.000Z' }] }
+  const doc = migrate(old)
+  assert.equal(doc.schema, 4)
+  assert.deepEqual(doc.projects, projects, 'nothing is taken away')
+  assert.deepEqual(doc.folders.map((folder) => [folder.id, folder.name]), [['f', 'Garden'], ['folder-project-1', 'Garden 2'], ['folder-project-2', 'Taxes']])
+  assert.deepEqual(doc.notes.map((note) => [note.folderId, note.markdown]), [
+    ['folder-project-1', 'Beds by the fence'],
+    ['folder-project-1', 'Website: https://example.com'],
+    ['folder-project-1', 'Folder on this Mac: Garden plans'],
+    ['folder-project-1', 'Status: done'],
+  ])
+  assert.deepEqual(projectNodes(doc), doc, 'twice (or on another Mac) makes the same nodes once')
+})

@@ -133,22 +133,22 @@ function Today({ notes, commit, open }) {
 
       <form className="phone-capture glass" onSubmit={submit}>
         <div className="phone-seg" role="radiogroup" aria-label="What to add">
-          {[['note', 'Thought', NotePencil], ['step', 'Next step', CheckCircle]].map(([id, label, Icon]) => (
+          {[['note', 'Sticky', NotePencil], ['step', 'Next step', CheckCircle]].map(([id, label, Icon]) => (
             <button key={id} type="button" role="radio" aria-checked={mode === id} onClick={() => setMode(id)}><Icon /> {label}</button>
           ))}
         </div>
-        <label className="visually-hidden" htmlFor="phone-line">{mode === 'step' ? 'A next step' : 'A thought'}</label>
+        <label className="visually-hidden" htmlFor="phone-line">{mode === 'step' ? 'A next step' : 'A sticky'}</label>
         <textarea
           id="phone-line"
           rows={mode === 'step' ? 1 : 3}
           value={draft}
           maxLength={mode === 'step' ? 240 : 8000}
-          placeholder={mode === 'step' ? 'One small next step…' : 'Leave a thought here.'}
+          placeholder={mode === 'step' ? 'One small next step…' : 'Write a sticky'}
           onChange={(event) => setDraft(event.target.value)}
         />
         <div className="phone-capture-foot">
           <span role="status">{saved ? <><Check /> {saved}</> : mode === 'step' ? 'Goes on today’s page' : 'Waits in Unsorted until you sort it'}</span>
-          <button type="submit" aria-label={mode === 'step' ? 'Add the step' : 'Save the thought'} disabled={!draft.trim()}><ArrowUp weight="bold" /></button>
+          <button type="submit" aria-label={mode === 'step' ? 'Add the step' : 'Save the sticky'} disabled={!draft.trim()}><ArrowUp weight="bold" /></button>
         </div>
       </form>
 

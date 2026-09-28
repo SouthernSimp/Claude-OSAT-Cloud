@@ -18,12 +18,12 @@ const BRANCHES = [
   ]],
   ['Now · Phase 11', 'canary', [
     'The Sky is a whiteboard: nodes anywhere, zoom out forever',
-    'Write @Garden in any note and it goes into that node',
-    'Open a node to see its branches Across or Down',
+    'Write @Garden in any note and it links to that node',
+    'Open a node to see its branches as lanes',
     'Stickies on the desk: double-click to write one, drag it into a node',
     'The scratch page under the desk, offline',
     'Help me sort: a branch suggested for every sticky',
-    'Clean light and dark, in the Mac’s own accent colour',
+    'Clean light and dark, in the Mac’s own accent color',
     'Esc never hides the desk; only the shortcut does',
   ]],
   ['Next · Phase 12', 'sky', [

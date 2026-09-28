@@ -2,9 +2,11 @@
    the tests. The document is plain JSON. Windows never send whole documents:
    they send small operations (add / patch / del / order / set), the main
    process applies them in one order, bumps `rev`, saves, and tells the other
-   windows. Everything here is pure and has no dependencies. */
+   windows. Everything here is pure; its one import is the note record (note-core). */
 
-export const SCHEMA = 3
+import { normalizeNote } from './note-core.mjs'
+
+export const SCHEMA = 4
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -26,7 +28,45 @@ export const migrations = [
   // layout; notes get a rank and a colour. All start unset, so nothing needs changing. An
   // older OSAT would drop these fields, so it has to refuse this data instead.
   { from: 2, run: (doc) => doc },
+  // 4: Projects fold into nodes (projectNodes), and a note can remember which node each
+  // of its @s means (`refs`), which an older OSAT would drop.
+  { from: 3, run: (doc) => projectNodes(doc) },
 ]
+
+/* Each project becomes a node of the same name (or "name 2" when one is taken) holding
+   what it said, one sticky each: its summary, its site, its folder on the Mac and how it
+   stands. The ids come from the project's, so doing it twice (or on two Macs) makes the
+   same node once. The projects themselves are kept as they were. */
+export function projectNodes(doc) {
+  const projects = Array.isArray(doc.projects) ? doc.projects : []
+  const folders = Array.isArray(doc.folders) ? [...doc.folders] : []
+  const notes = Array.isArray(doc.notes) ? [...doc.notes] : []
+  const has = (list, id) => list.some((item) => item.id === id)
+  for (const project of projects) {
+    const name = typeof project?.title === 'string' ? project.title.trim().slice(0, 72) : ''
+    if (!name || typeof project.id !== 'string') continue
+    const id = `folder-${project.id}`
+    if (has(folders, id)) continue
+    const taken = new Set(folders.filter((folder) => !folder.parentId).map((folder) => String(folder.name).toLowerCase()))
+    let free = name
+    for (let n = 2; taken.has(free.toLowerCase()); n += 1) free = `${name} ${n}`
+    const createdAt = typeof project.createdAt === 'string' ? project.createdAt : new Date().toISOString()
+    folders.push({ id, name: free, parentId: null, createdAt, collapsed: false })
+    const lines = [
+      ['summary', project.summary],
+      ['site', project.url && `Website: ${project.url}`],
+      ['folder', project.folder && `Folder on this Mac: ${project.folder}`],
+      ['status', project.status && project.status !== 'active' && `Status: ${project.status}`],
+    ]
+    lines.forEach(([key, text], index) => {
+      const value = typeof text === 'string' ? text.trim() : ''
+      const noteId = `note-${project.id}-${key}`
+      if (!value || has(notes, noteId)) return
+      notes.push(normalizeNote({ id: noteId, markdown: value, folderId: id, source: 'Projects', createdAt, updatedAt: createdAt, rank: (index + 1) * 1024 }))
+    })
+  }
+  return { ...doc, folders, notes }
+}
 
 export function createEmptyDoc() {
   return {

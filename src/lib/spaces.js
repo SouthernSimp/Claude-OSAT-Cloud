@@ -1,5 +1,5 @@
 import {
-  BookOpenText, CalendarBlank, CurrencyDollar, Files, FolderSimple, GearSix, Globe, House, ListChecks,
+  BookOpenText, CalendarBlank, CurrencyDollar, Files, GearSix, Globe, House, ListChecks,
   MusicNotes, NotePencil, Sparkle, TerminalWindow, TreeStructure, UploadSimple,
 } from '@phosphor-icons/react'
 
@@ -11,7 +11,7 @@ export const SPACES = [
   { id: 'Today', label: 'Desk', icon: House, hint: 'The desk and your day' },
   { id: 'Notes', label: 'Notes', icon: NotePencil, hint: 'Every page, sorted or not' },
   // The Sky, the layer above the desk: your nodes (it was the Map).
-  { id: 'Mindmap', label: 'Sky', icon: TreeStructure, hint: 'Your nodes: piles to sort stickies into  ⌥⌘↑' },
+  { id: 'Mindmap', label: 'Sky', icon: TreeStructure, hint: 'Your nodes, on one whiteboard  ⌥⌘↑' },
   // Ask lives in the desk's line; its room (every chat) is under Tools and ⌘4.
   { id: 'Assistant', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac', dock: false },
   { id: 'Files', label: 'Files', icon: Files, hint: 'Your Desktop, Documents and Downloads' },
@@ -21,9 +21,7 @@ export const TOOLS = [
   { id: 'Journal', label: 'Today’s page', icon: BookOpenText, hint: 'A page for every day' },
   { id: 'Calendar', label: 'Calendar', icon: CalendarBlank, hint: 'The month, and the day in it' },
   { id: 'Habits', label: 'Habits', icon: ListChecks, hint: 'Small things, kept daily' },
-  { id: 'Reflection', label: 'Reflect', icon: BookOpenText, hint: 'Three quiet questions' },
   { id: 'Budget', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },
-  { id: 'Projects', label: 'Projects', icon: FolderSimple, hint: 'Work and safe links' },
   { id: 'Browser', label: 'Browser', icon: Globe, hint: 'The web, with a clipper into Notes' },
   { id: 'Terminal', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
 ]

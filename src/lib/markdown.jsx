@@ -1,7 +1,7 @@
 /* Markdown → React elements. No HTML strings, so note text and model output
    can never inject markup. Understands what OSAT notes actually use: fences,
    headings, nested lists with task items, quotes, rules, tables, plus inline
-   code/bold/italic/strike/links, [[wikilinks]] and #tags.
+   code/bold/italic/strike/links, [[wikilinks]], #tags and @node mentions.
 
    Task items keep their source line so a click can flip `[ ]` in the note. */
 
@@ -11,6 +11,16 @@ const INLINE =
 const safeHref = (url) => (/^(https?:|mailto:)/i.test(url) ? url : undefined);
 
 export function inline(text, handlers = {}, keyPrefix = "i") {
+  // @node mentions first (`mentions(text)` splits them out, see splitMentions), as links.
+  if (handlers.mentions && handlers.onMention && text.includes("@")) {
+    const parts = handlers.mentions(text);
+    if (parts.some((part) => typeof part !== "string")) {
+      const plain = { ...handlers, mentions: null };
+      return parts.flatMap((part, index) => (typeof part === "string"
+        ? [].concat(inline(part, plain, `${keyPrefix}-m${index}`))
+        : [<button type="button" key={`${keyPrefix}-m${index}`} className="md-mention" title="See it in the Sky" onClick={() => handlers.onMention(part.folderId)}>{part.text}</button>]));
+    }
+  }
   const nodes = [];
   let last = 0;
   let index = 0;

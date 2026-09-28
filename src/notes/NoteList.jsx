@@ -7,7 +7,7 @@ import { formatRelativeTime } from "../lib/ui.js";
 import { SORTS, excerpt, folderPath, folderTree, isDayNote, notesInList, searchNotes, sortNotes } from "../notes-model.js";
 
 const LIST_TITLES = {
-  all: "All notes", pinned: "Pinned", recent: "Recent", daily: "Daily notes", unfiled: "Unfiled", archived: "Archive", trash: "Trash",
+  unsorted: "Unsorted", unfiled: "Unsorted", all: "All notes", pinned: "Pinned", recent: "Recent", daily: "Daily notes", archived: "Archive", trash: "Trash",
 };
 
 export function useVisibleNotes(workspace, ui) {
@@ -24,7 +24,7 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
   const trash = ui.list === "trash";
   const archive = ui.list === "archived";
   const canCreate = !trash && !archive;
-  const folderOptions = [{ id: null, label: "Unfiled" }, ...folderTree(workspace.folders).map(({ folder: item, depth }) => ({ id: item.id, label: `${"  ".repeat(depth)}${item.name}` }))];
+  const folderOptions = [{ id: null, label: "Unsorted" }, ...folderTree(workspace.folders).map(({ folder: item, depth }) => ({ id: item.id, label: `${"  ".repeat(depth)}${item.name}` }))];
 
   useEffect(() => {
     const active = listRef.current?.querySelector('[aria-current="true"]');

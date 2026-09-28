@@ -55,7 +55,7 @@ export function Welcome({ onDone }) {
           <>
             <span className="welcome-icon"><Keyboard weight="fill" /></span>
             <h2 id="welcome-title">{hotkey}, from anywhere.</h2>
-            <p>Press it in any app to drop a thought, find something or ask. Esc puts it away. Try it now if you like; this will wait.</p>
+            <p>Press it in any app to write a sticky, find something or ask. Esc puts it away. Try it now if you like; this will wait.</p>
             <div className="welcome-actions">{next}</div>
           </>
         )}

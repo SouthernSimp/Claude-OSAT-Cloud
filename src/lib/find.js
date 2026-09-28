@@ -2,7 +2,7 @@ import { folderPath, isActiveNote, parseQuery } from '../notes-model.js'
 import { EVERYWHERE, SPACES } from './spaces.js'
 
 /* What the desk's line finds as you type: notes, files on this Mac (Spotlight's answers,
-   passed in as `files`), nodes and branches, projects, rooms and a few actions. Plain rows
+   passed in as `files`), nodes and branches, rooms and a few actions. Plain rows
    `{ key, label, hint, kind, go: [view, detail] }`; the line runs `navigate(...go)`.
    An empty query is "Jump to": the latest notes and the spaces. Under, only notes. */
 
@@ -14,6 +14,7 @@ const ACTIONS = [
   { key: 'act:new-note', label: 'New note', also: 'write page', go: ['Notes', { action: 'new' }] },
   { key: 'act:today', label: 'Today’s note', also: 'journal day page', go: ['Notes', { action: 'today' }] },
   { key: 'act:new-folder', label: 'New node', also: 'folder group pile project', go: ['Mindmap', { action: 'new-node' }] },
+  { key: 'act:reflect', label: 'Reflect', hint: 'Three quiet questions, in the Journal', also: 'reflection evening close the day', go: ['Journal', { tab: 'reflect' }] },
   { key: 'act:board', label: 'Open the Sky', also: 'map mindmap nodes board whiteboard canvas sort stars', go: ['Mindmap'] },
   { key: 'act:focus', label: 'Focus for 25 minutes', also: 'timer pomodoro quiet concentrate', go: ['Focus'] },
   { key: 'act:widget', label: 'Add a widget', hint: 'Calendar, Next, Focus, Habits…', also: 'widgets tray', go: ['Widgets'] },
@@ -73,8 +74,6 @@ export function findAll(workspace, query, { files = [], under = false } = {}) {
   // Nodes and branches open laid out in the Sky.
   const folders = workspace.folders.filter((folder) => folder.name.toLowerCase().includes(q))
     .map((folder) => ({ key: `folder:${folder.id}`, label: folder.name, hint: folder.parentId ? folderPath(workspace.folders, folder.parentId).join(' › ') : 'Node', kind: 'folder', go: ['Mindmap', { folderId: folder.id }] }))
-  const projects = (workspace.projects || []).filter((project) => `${project.title} ${project.summary}`.toLowerCase().includes(q))
-    .map((project) => ({ key: `project:${project.id}`, label: project.title, hint: 'Project', kind: 'project', go: ['Projects'] }))
   // Notes leave room for files on this Mac once Spotlight answers.
-  return [...places, ...found.slice(0, macFiles.length ? 3 : LIMIT), ...macFiles, ...folders, ...projects].slice(0, LIMIT)
+  return [...places, ...found.slice(0, macFiles.length ? 3 : LIMIT), ...macFiles, ...folders].slice(0, LIMIT)
 }

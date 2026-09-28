@@ -54,5 +54,13 @@ export function normalizeNote(value, index = 0) {
     // Only kept once it was ranked by hand (see rankOf), so older notes don't all change.
     ...(Number.isFinite(value.rank) ? { rank: value.rank } : {}),
     ...(PAPERS.includes(value.color) ? { color: value.color } : {}),
+    // Which node each @ in it means, by id, so a renamed node never changes its words.
+    ...refsOf(value.refs),
   }
+}
+
+function refsOf(value) {
+  if (!isObject(value)) return {}
+  const refs = Object.entries(value).filter(([name, id]) => name && name.length <= 120 && typeof id === 'string' && id).slice(0, 50)
+  return refs.length ? { refs: Object.fromEntries(refs) } : {}
 }

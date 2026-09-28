@@ -609,7 +609,7 @@ function buildMenu() {
     {
       label: 'File',
       submenu: [
-        { label: 'New Thought', accelerator: 'CmdOrCtrl+Shift+N', click: () => command({ view: 'Capture' }) },
+        { label: 'New Sticky', accelerator: 'CmdOrCtrl+Shift+N', click: () => command({ view: 'Capture' }) },
         { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => command({ view: 'Notes', detail: { action: 'new' } }) },
         { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
         { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
@@ -636,9 +636,7 @@ function buildMenu() {
         room('Today’s Page', 'Journal'),
         room('Calendar', 'Calendar'),
         room('Habits', 'Habits'),
-        room('Reflect', 'Reflection'),
         room('Money', 'Budget'),
-        room('Projects', 'Projects'),
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         { type: 'separator' },
@@ -1153,7 +1151,7 @@ async function bridgePhone() {
     // A thought from the iPhone is one Unsorted note, made the same way the windows make one.
     capture: (text) => {
       const now = new Date().toISOString()
-      const title = text.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A thought'
+      const title = text.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A sticky'
       const note = normalizeNote({ id: `note-${randomUUID()}`, title, markdown: text, createdAt: now, updatedAt: now, unsorted: true, source: 'iPhone' })
       store.commit(phoneClient, [{ t: 'add', c: 'notes', v: note, at: 0 }])
       mirrorSoon()

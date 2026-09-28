@@ -158,8 +158,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 }
 @keyframes dock-in { from { opacity: 0; translate: -50% 30px; scale: 0.94; } }
 .app-dock > button,
-.app-dock .menu-root > button,
-.app-dock .appearance > button {
+.app-dock .menu-root > button {
   z-index: 1;
   width: 58px;
   height: 56px;
@@ -203,11 +202,6 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 
 /* The layer's dock swells under the cursor too. */
 .dock [data-mag] svg { scale: var(--mag, 1); transform-origin: 50% 85%; transition: scale 260ms var(--spring); }
-.dock:not(.app-dock) .appearance > button { position: relative; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; color: var(--on-2); }
-.dock:not(.app-dock) .appearance > button .dock-label { display: none; }
-.dock:not(.app-dock) .appearance-pop { left: auto; right: -60px; translate: none; }
-.dock .appearance-pop button { width: auto; height: auto; min-height: 0; place-items: initial; translate: none; }
-.dock .appearance-pop button svg { width: 14px; height: 14px; scale: none; }
 
 /* ---- Menus and popovers are glass too -------------------------------------- */
 
@@ -226,25 +220,6 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .menu-popover button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .menu-popover button small { margin-left: auto; color: var(--faint); font-size: var(--t-2xs); }
 
-.appearance-pop {
-  position: absolute;
-  z-index: var(--z-pop);
-  bottom: calc(100% + 14px);
-  left: 50%;
-  width: 280px;
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 20px;
-  translate: -50% 0;
-  color: var(--ink);
-  background: var(--surface-raised);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  transform-origin: bottom center;
-  animation: pop-open 380ms var(--spring) both;
-}
-.appearance-pop.is-down { bottom: auto; top: calc(100% + 12px); transform-origin: top center; }
 .pop-kicker { position: relative; z-index: 1; font: 650 10px/1 var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--on-3); }
 .segmented {
   position: relative;
@@ -380,8 +355,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   .home-drawer,
   .welcome,
   .home-answer,
-  .modal-backdrop,
-  .appearance-pop { animation: none !important; transition: none !important; translate: none; }
+  .modal-backdrop { animation: none !important; transition: none !important; translate: none; }
   .app-dock { translate: -50% 0; }
   button:active:not(:disabled) { scale: none; }
 }
