@@ -129,16 +129,16 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
   height: 100%;
   overflow: hidden;
   color: var(--ink);
-  background: radial-gradient(ellipse at 50% 46%, #fbf7f0 0%, #e7dccb 58%, #d7c8b2 100%);
+  background: radial-gradient(ellipse at 50% 46%, #f7f9fc 0%, #dfe7f1 58%, #cdd8e6 100%);
 }
-:root[data-theme="dark"] .field-sky { background: radial-gradient(ellipse at 50% 40%, #1c1915 0%, #0b0a08 70%); }
+:root[data-theme="dark"] .field-sky { background: radial-gradient(ellipse at 50% 40%, #161a22 0%, #07080b 70%); }
 .field-sky::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 42%, rgb(12 10 8 / 14%) 100%);
+  background: radial-gradient(ellipse at center, transparent 42%, rgb(0 0 0 / 14%) 100%);
 }
 :root[data-theme="dark"] .field-sky::after { background: radial-gradient(ellipse at center, transparent 40%, rgb(0 0 0 / 42%) 100%); }
 .sky-viewport { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; }
@@ -172,7 +172,7 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
   border-radius: 50%;
   background: var(--ink);
 }
-:root[data-theme="dark"] .sky-star { background: #f4ecdf; }
+:root[data-theme="dark"] .sky-star { background: #eef2f8; }
 /* A pressed button shrinks a little (glass.css), but `scale` would scale a star's place in
    the sky too: it would jump away from the pointer and the click would miss it. */
 .sky-star:active:not(:disabled) { scale: none; }
@@ -317,8 +317,8 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
 }
 .journal-tabs button { height: 30px; padding: 0 13px; border-radius: 8px; color: var(--muted); font-size: var(--t-sm); font-weight: 500; }
 .journal-tabs button:hover { color: var(--ink); }
-.journal-tabs button.active { background: var(--surface-raised); color: var(--ink-strong); box-shadow: 0 1px 2px rgb(40 26 14 / 10%), 0 0 0 0.5px var(--line-strong); }
-:root[data-theme="dark"] .journal-tabs button.active { background: #34302a; }
+.journal-tabs button.active { background: var(--surface-raised); color: var(--ink-strong); box-shadow: 0 1px 2px rgb(0 0 0 / 8%), 0 0 0 0.5px var(--line-strong); }
+:root[data-theme="dark"] .journal-tabs button.active { background: #2c2c2f; }
 
 .journal-desk { display: grid; grid-template-columns: minmax(0, 740px) minmax(180px, 250px); justify-content: start; align-items: start; gap: 56px; }
 .journal-sheet {
@@ -346,7 +346,7 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
   border-color: transparent var(--sheet-edge) transparent transparent;
   border-radius: 0 0 0 4px;
 }
-:root[data-theme="dark"] .journal-sheet::before { border-right-color: #3a342d; }
+:root[data-theme="dark"] .journal-sheet::before { border-right-color: #2e2e32; }
 .journal-sheet > header {
   display: flex;
   justify-content: space-between;

@@ -36,11 +36,12 @@ test('#tags require the tag and leave rooms and folders out', () => {
   assert.deepEqual(keys(findAll(workspace, '#nothing')), [])
 })
 
-test('folders and boards by name', () => {
+test('nodes by name open laid out in the Sky', () => {
   const rows = findAll(workspace, 'trip')
   const folder = rows.find((row) => row.kind === 'folder')
-  assert.deepEqual(folder?.go, ['Notes', { folderId: 'f-trips' }])
-  assert.deepEqual(rows.find((row) => row.kind === 'board')?.go, ['Mindmap', { boardId: 'b-trip' }])
+  assert.deepEqual(folder?.go, ['Mindmap', { folderId: 'f-trips' }])
+  assert.equal(folder?.hint, 'Node')
+  assert.ok(!rows.some((row) => row.kind === 'board'), 'the old boards are not offered')
 })
 
 test('rooms by the start of their words, ahead of notes', () => {

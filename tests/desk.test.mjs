@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import test from 'node:test'
 
-const { addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
+const { accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
 
 test('the desk opens on the display under the cursor', () => {
   const left = { id: 1, bounds: { x: 0, y: 0, width: 1440, height: 900 } }
@@ -41,6 +41,9 @@ test('a spot on the desk is kept inside it, and null puts the item back', () => 
   assert.equal(placeItem(places, 'bad id!', { x: 0, y: 0 }), places)
   assert.equal(placeItem(places, 'note:abc', { x: 'a', y: 0 }), places)
   assert.deepEqual(Object.keys(placeItem(places, 'widget:day', null)), ['note:abc'])
+  // A sticky keeps its size, within reason; half a size is no size.
+  assert.deepEqual(placeItem({}, 'note:s', { x: 0.2, y: 0.2, w: 9000, h: 10 })['note:s'], { x: 0.2, y: 0.2, w: 720, h: 90 })
+  assert.deepEqual(placeItem({}, 'note:s', { x: 0.2, y: 0.2, w: 300 })['note:s'], { x: 0.2, y: 0.2 })
 })
 
 test('the widgets out on the desk: up to five short ids, once each, in order', () => {
@@ -50,4 +53,11 @@ test('the widgets out on the desk: up to five short ids, once each, in order', (
   assert.deepEqual(pickWidgets([]), [], 'an empty desk is a choice, not the defaults')
   assert.equal(pickWidgets(undefined), null)
   assert.equal(pickWidgets('calendar'), null)
+})
+
+test('the Mac’s accent colour becomes the page’s, with text that reads on it', () => {
+  assert.equal(accentCss('007AFFFF'), ':root { --mac-accent: #007aff; --mac-accent-ink: #ffffff; }')
+  assert.match(accentCss('ffcc00ff'), /--mac-accent-ink: #1d1d1f/, 'dark text on yellow')
+  assert.equal(accentCss(''), '')
+  assert.equal(accentCss('not a colour'), '')
 })

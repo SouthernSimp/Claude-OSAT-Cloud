@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { CircleHalf, Detective, Monitor, Moon, Sun, Toolbox } from '@phosphor-icons/react'
 
+import { useDrop } from '../lib/carry.js'
 import { Menu } from '../lib/Menu.jsx'
 import { SETTINGS, SPACES, TOOLS, spaceFor } from '../lib/spaces.js'
 import { magnify, unmagnify } from './glass.jsx'
@@ -8,7 +9,7 @@ import { magnify, unmagnify } from './glass.jsx'
 /* The desk's chrome: one dock, and the look (light or dark, how much blur). */
 
 export const DEFAULT_BLUR = 60
-export function Dock({ view, navigate, storage, aiReady, workspace, commit, extra = [], children }) {
+export function Dock({ view, navigate, storage, aiReady, workspace, commit, extra = [], onSendUp, children }) {
   const dock = useRef(null)
   const current = spaceFor(view)?.id || 'Today'
   const inTools = TOOLS.some((tool) => tool.id === current) || current === SETTINGS.id || spaceFor(view)?.dock === false
@@ -28,19 +29,7 @@ export function Dock({ view, navigate, storage, aiReady, workspace, commit, extr
     <nav ref={dock} className="glass liquid dock app-dock" aria-label="OSAT" onPointerMove={magnify} onPointerLeave={unmagnify}>
       <span className="dock-pill" aria-hidden="true" />
       {SPACES.map((space, index) => space.dock !== false && (
-        <button
-          key={space.id}
-          type="button"
-          data-mag
-          data-space={space.id}
-          data-tip={`${space.hint}  ⌘${index + 1}`}
-          aria-current={current === space.id ? 'page' : undefined}
-          className={space.id === 'Assistant' && aiReady ? 'is-running' : undefined}
-          onClick={(event) => navigate(space.id, null, { from: event.currentTarget.getBoundingClientRect() })}
-        >
-          <space.icon weight={current === space.id ? 'fill' : 'regular'} />
-          <span className="dock-label">{space.label}</span>
-        </button>
+        <DockSpace key={space.id} space={space} index={index} current={current} aiReady={aiReady} navigate={navigate} onSendUp={space.id === 'Mindmap' ? onSendUp : null} />
       ))}
       <Menu
         align="start"
@@ -73,6 +62,31 @@ export function Dock({ view, navigate, storage, aiReady, workspace, commit, extr
         </button>
       )}
     </nav>
+  )
+}
+
+/* One space on the dock. The Sky's takes a sticky: rest on it and the Sky comes down to
+   meet you, or drop it there to send it up to Unsorted. */
+function DockSpace({ space, index, current, aiReady, navigate, onSendUp }) {
+  const drop = useDrop(`dock:${space.id}`, {
+    accepts: onSendUp ? ['note'] : [],
+    onDrop: ({ id }) => onSendUp(id),
+    spring: onSendUp ? () => navigate(space.id) : undefined,
+  })
+  return (
+    <button
+      type="button"
+      data-mag
+      data-space={space.id}
+      data-tip={`${space.hint}  ⌘${index + 1}`}
+      aria-current={current === space.id ? 'page' : undefined}
+      className={space.id === 'Assistant' && aiReady ? 'is-running' : undefined}
+      onClick={(event) => navigate(space.id, null, { from: event.currentTarget.getBoundingClientRect() })}
+      {...(onSendUp ? drop : {})}
+    >
+      <space.icon weight={current === space.id ? 'fill' : 'regular'} />
+      <span className="dock-label">{space.label}</span>
+    </button>
   )
 }
 

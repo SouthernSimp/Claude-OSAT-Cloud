@@ -51,31 +51,44 @@ export function paperPose(id, index, total, compact = false) {
   }
 }
 
-/* The desktop icons on home, in order: pinned notes, top-level folders, the
-   Mindmap, loose thoughts gathered into one pile, then the few notes touched
-   most recently. Everything else is a click away in its folder, so the desk
-   stays calm however much you write. Daily pages have their own place. */
+/* The desktop icons on home, in order: pinned notes, the nodes (top-level
+   folders), loose thoughts gathered into one pile, then the few notes in no node
+   touched most recently. Everything else is a click away in its node, so the desk
+   stays calm however much you write. Day pages and the scratch page have their
+   own places; stickies already out on the desk (`out`) aren't shown twice. */
 export const WARM = 4
 
-export function homeItems({ notes = [], folders = [], boards = [] }, capacity = Infinity) {
-  const active = notes.filter((note) => isActiveNote(note) && note.kind !== 'day')
+export function homeItems({ notes = [], folders = [] }, capacity = Infinity, out = new Set()) {
+  const active = notes.filter((note) => isActiveNote(note) && !note.kind && !out.has(note.id))
   const recent = [...active].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-  const board = board0(boards)
   const loose = recent.filter((note) => note.unsorted && !note.pinned)
   const piled = loose.length > 1 ? loose : []
-  const warm = recent.filter((note) => !note.pinned && !piled.includes(note)).slice(0, WARM)
+  // Notes in a node are found in their node.
+  const warm = recent.filter((note) => !note.pinned && !piled.includes(note) && !note.folderId).slice(0, WARM)
   const items = [
     ...recent.filter((note) => note.pinned).map((note) => ({ kind: 'note', id: note.id, note })),
     ...folderChildren(folders, null).map((folder) => ({ kind: 'folder', id: folder.id, folder })),
-    ...(board ? [{ kind: 'board', id: board.id, board }] : []),
     ...(piled.length ? [{ kind: 'pile', id: 'unsorted', count: piled.length, notes: piled }] : []),
     ...warm.map((note) => ({ kind: 'note', id: note.id, note })),
   ]
   return fitCells(items, capacity)
 }
 
-function board0(boards) {
-  return boards.find((item) => item?.scope?.kind === 'all') || boards[0]
+/* Where a new sticky can go on the desk: the first spot, working outward from `near` in
+   rings on a grid, that stays inside `area` and clear of every box in `taken` (all as
+   { left, top, right, bottom }; `size` is { width, height }). */
+export function freeSpot(taken, area, size, near, step = 24, gap = 12) {
+  const fits = (x, y) => x >= area.left && y >= area.top && x + size.width <= area.right && y + size.height <= area.bottom
+    && !taken.some((box) => x < box.right + gap && x + size.width + gap > box.left && y < box.bottom + gap && y + size.height + gap > box.top)
+  for (let ring = 0; ring < 60; ring += 1) {
+    for (let dy = -ring; dy <= ring; dy += 1) {
+      for (let dx = -ring; dx <= ring; dx += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue
+        if (fits(near.x + dx * step, near.y + dy * step)) return { x: near.x + dx * step, y: near.y + dy * step }
+      }
+    }
+  }
+  return { x: Math.max(area.left, Math.min(near.x, area.right - size.width)), y: Math.max(area.top, Math.min(near.y, area.bottom - size.height)) }
 }
 
 /* As many items as fit; when there are more, the last cell says how many more. */

@@ -5,7 +5,8 @@
 html:has(.overlay-surface),
 html:has(.overlay-surface) body,
 .overlay-surface { background: transparent; }
-.overlay-surface { position: relative; height: 100dvh; overflow: hidden; }
+/* clip, not hidden: nothing (focus, a find, scrollIntoView) can ever scroll the desk itself. */
+.overlay-surface { position: relative; height: 100dvh; overflow: clip; }
 .overlay-surface > .workspace-content { height: 100%; view-transition-name: none; }
 .overlay-surface .home.is-layer { padding: 34px 34px 18px 28px; -webkit-app-region: no-drag; }
 /* A soft veil keeps text readable over any wallpaper. */

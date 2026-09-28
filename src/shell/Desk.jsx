@@ -1,16 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { AppWindow, Database, MoonStars, Plus, ShareNetwork, X } from '@phosphor-icons/react'
+import { AppWindow, ArrowsIn, ArrowsOut, Database, Plus, X } from '@phosphor-icons/react'
 
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
 import { cleanError } from '../assistant/useAi.js'
-import { BoardView } from '../board/BoardView.jsx'
 import { localDateKey } from '../daily-practice.js'
 import { FieldDesk } from '../field/FieldDesk.jsx'
 import { FieldSheet } from '../field/FieldSheet.jsx'
-import { FieldSky } from '../field/FieldSky.jsx'
+import { onCarryEdge } from '../lib/carry.js'
 import { clamp, inputActive } from '../lib/ui.js'
 import { SETTINGS, spaceForKey, titleFor } from '../lib/spaces.js'
 import { NotesView } from '../notes/NotesView.jsx'
+import { Sky } from '../sky/Sky.jsx'
 import { relinkRenamedNote, updateNote } from '../notes-model.js'
 import { storageFrom, useWorkspace } from '../store/useWorkspace.js'
 import { BrowserView } from '../tools/Browser.jsx'
@@ -33,16 +33,16 @@ import { Welcome } from './Welcome.jsx'
 /* The desk: OSAT's one window, laid over the real desktop (see-through, blurred),
    with every room opening as a pop-out you can drag, resize and stack. A room opened
    from a widget or the dock grows out of it; one opened from a widget shrinks back into
-   it. ⌥Space brings it up and puts it away. ⌘K, ⇧⌘N and Find in the menu all land in
-   the desk's line. Esc backs out of the line first (see Line.jsx), then closes the top
-   pop-out, then puts the desk away.
-   Under it is Incognito (Under.jsx): going under lifts the desk away and the rooms
-   open on it wait above; down there only a note or Ask opens, and Esc never comes up. */
+   it. ⌥Space brings it up and puts it away (Esc never does). ⌘K, ⇧⌘N and Find in the
+   menu all land in the desk's line. Esc backs out of the line first (see Line.jsx), then
+   closes the top pop-out.
+   Three layers: the Sky above the desk (Sky.jsx, your nodes: ⌘3, ⌥⌘↑, or a sticky held
+   at the top of the screen), the desk, and Incognito under it (Under.jsx): going under
+   lifts the desk away and the rooms open on it wait above; down there only a note or Ask
+   opens. Esc comes back to the desk from either. */
 
 const ROOMS = {
   Notes: [1100, 720],
-  Mindmap: [1120, 740],
-  Sky: [1120, 740],
   Assistant: [780, 720],
   Files: [1080, 700],
   Journal: [980, 780],
@@ -58,14 +58,24 @@ const ROOMS = {
   note: [600, 640],
 }
 
-/* Which widgets are out: saved per Mac by the app; the browser preview keeps them here. */
+/* Which widgets are out, and where things were set down: saved per Mac by the app; the
+   browser preview keeps them here. */
 const WIDGETS_KEY = 'osat.widgets'
+const PLACES_KEY = 'osat.places'
 function readWidgets() {
   try {
     const list = JSON.parse(localStorage.getItem(WIDGETS_KEY))
     return Array.isArray(list) ? list : null
   } catch {
     return null
+  }
+}
+function readPlaces() {
+  try {
+    const places = JSON.parse(localStorage.getItem(PLACES_KEY))
+    return places && typeof places === 'object' && !Array.isArray(places) ? places : {}
+  } catch {
+    return {}
   }
 }
 
@@ -76,7 +86,7 @@ export function Desk() {
   const bridge = window.osatDesk
   const [pops, setPops] = useState([])
   const [visit, setVisit] = useState(0)
-  const [prefs, setPrefs] = useState(() => ({ launchers: [], places: {}, widgets: bridge ? null : readWidgets() }))
+  const [prefs, setPrefs] = useState(() => ({ launchers: [], places: bridge ? {} : readPlaces(), widgets: bridge ? null : readWidgets() }))
   const [welcome, setWelcome] = useState(false)
   const [focusAt, setFocusAt] = useState(0)
   const [summon, setSummon] = useState(0)
@@ -89,6 +99,10 @@ export function Desk() {
   const [phase, setPhase] = useState(null)
   const [notice, setNotice] = useState('')
   const [summonUnder, setSummonUnder] = useState(0)
+  // The Sky, above the desk: null (the desk), 'sky', or 'leaving' while it goes.
+  const [sky, setSky] = useState(null)
+  const [skyTarget, setSkyTarget] = useState(null)
+  const skyRef = useRef(null)
   const stash = useRef([])
   const known = under !== null
   const on = under?.on === true
@@ -97,6 +111,8 @@ export function Desk() {
   if (known && was !== on) {
     setWas(on)
     if (was !== null) setPhase(on ? 'going' : 'coming')
+    // Going under from the Sky: the Sky waits above too.
+    if (on && sky) setSky(null)
   }
   const look = !known ? 'waiting' : phase || (on ? 'under' : null)
   useAlive()
@@ -189,12 +205,19 @@ export function Desk() {
     if (typeof detail.action === 'string') setRoomCommand({ action: detail.action, at: Date.now() })
   }), [])
 
-  /* ⌘K and ⇧⌘N go to the line, ⌘1–5 and ⌘, open rooms. Esc backs out one step: out of a
-     field in a pop-out, then the top pop-out, then the desk goes away. */
+  /* ⌘K and ⇧⌘N go to the line, ⌘1–5 and ⌘, open rooms, ⌥⌘↑ and ⌥⌘↓ move between the
+     Sky, the desk and Incognito. Esc backs out one step: out of a field in a pop-out, then
+     the top pop-out, then back to the desk from the Sky or Incognito. It never puts the
+     desk away: only ⌥Space (or ⌘W) does. */
   useEffect(() => {
     const onKey = (event) => {
       const mod = event.metaKey || event.ctrlKey
       const key = event.key.toLowerCase()
+      if (mod && event.altKey && !event.shiftKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        event.preventDefault()
+        latest.current?.step(event.key === 'ArrowUp' ? 'up' : 'down')
+        return
+      }
       if (mod && !event.shiftKey && !event.altKey && key === 'k') {
         event.preventDefault()
         latest.current?.navigate('Capture')
@@ -216,24 +239,55 @@ export function Desk() {
         return
       }
       if (event.key !== 'Escape' || event.defaultPrevented || document.documentElement.dataset.menu === 'open') return
-      const { pops: all, welcome: welcoming } = latest.current
+      const { pops: all, welcome: welcoming, sky: up, under: down } = latest.current
       if (welcoming) return
       const active = document.activeElement
       const open = all.filter((pop) => !pop.closing)
-      event.preventDefault()
       if (open.length) {
+        event.preventDefault()
         if (active?.closest?.('.popout') && active.closest('.xterm, .browser-view')) return
         if (active?.closest?.('.popout') && inputActive()) { active.blur(); return }
         close(open.at(-1).key)
-      } else hide()
+      } else if (up === 'sky') {
+        event.preventDefault()
+        if (inputActive() && active?.closest?.('.sky-layer')) { active.blur(); return }
+        if (!skyRef.current?.back()) latest.current.step('down')
+      } else if (down) {
+        event.preventDefault()
+        latest.current.step('up')
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  function hide() {
-    bridge?.hide()
+  /* Up to the Sky, or down: from the Sky to the desk, from the desk to Incognito. */
+  function step(way) {
+    const { sky: up, under: down } = latest.current
+    if (way === 'up') {
+      if (down) askUnder(false)
+      else if (up !== 'sky') goUp()
+    } else if (up === 'sky') goDown()
+    else if (!down) askUnder(true)
   }
+
+  function goUp(detail = null) {
+    setSkyTarget(detail ? { ...detail, at: Date.now() } : null)
+    setSky('sky')
+  }
+
+  function goDown() {
+    if (latest.current.sky !== 'sky') return
+    setSky('leaving')
+    setTimeout(() => setSky((value) => (value === 'leaving' ? null : value)), matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 280)
+    setVisit((value) => value + 1)
+  }
+
+  /* A sticky held at the top of the screen goes up to the Sky; at the bottom of the Sky, back down. */
+  useEffect(() => onCarryEdge((side) => {
+    if (side === 'up' && !latest.current.under) goUp()
+    if (side === 'down' && latest.current.sky === 'sky') goDown()
+  }), [])
 
   /* `from` is the rectangle the room grows out of; `widget` the widget it is the room of,
      which it opens beside (on its side of the line) and shrinks back into. */
@@ -274,13 +328,6 @@ export function Desk() {
     }))
   }
 
-  /* The map as a board or as a sky: the same pop-out, seen another way. */
-  function swap(key, view) {
-    setPops((list) => (list.some((pop) => pop.key === view)
-      ? [...list.filter((pop) => pop.key !== key && pop.key !== view), { ...list.find((pop) => pop.key === view), at: Date.now() }]
-      : list.map((pop) => (pop.key === key ? { ...pop, key: view, view, detail: null, at: Date.now(), from: null } : pop))))
-  }
-
   // `origin`: where it was opened from ({ from, widget }), so the room can grow out of it.
   function navigate(view, detail = null, origin) {
     const noteId = typeof detail === 'string' ? detail : detail?.noteId
@@ -292,6 +339,8 @@ export function Desk() {
     }
     // A new thought, or a search: the line takes it (it rises if a room covers it).
     else if (view === 'Capture') { if (!latest.current.welcome) (latest.current.under ? setSummonUnder : setSummon)(Date.now()) }
+    // The Map is the Sky now: the layer above the desk.
+    else if (view === 'Mindmap' || view === 'Sky') goUp(view === 'Sky' ? { ...(detail || {}), view: 'stars' } : detail)
     else if (view === 'Focus') setFocusAt(Date.now())
     else if (view === 'Widgets') setTrayAt(Date.now())
     // The Obsidian export lives in Settings → Data.
@@ -301,7 +350,7 @@ export function Desk() {
     else if (view === 'Today') setVisit((value) => value + 1)
     else if (ROOMS[view]) open(view, detail, origin)
   }
-  latest.current = { navigate, pops, welcome, line, under: on }
+  latest.current = { navigate, pops, welcome, line, under: on, sky, step }
 
   async function launcher(action, ...args) {
     try {
@@ -312,14 +361,21 @@ export function Desk() {
     }
   }
 
-  /* Set down right away; the Mac app keeps the spot for next time. */
+  /* Set down right away (null picks it up); the Mac app keeps the spot for next time. */
   function place(id, spot) {
-    setPrefs((value) => ({ ...value, places: { ...value.places, [id]: spot } }))
+    setPrefs((value) => {
+      const places = { ...value.places }
+      if (spot === null) delete places[id]
+      else places[id] = spot
+      if (!bridge) try { localStorage.setItem(PLACES_KEY, JSON.stringify(places)) } catch { /* a convenience only */ }
+      return { ...value, places }
+    })
     bridge?.place(id, spot).then((places) => setPrefs((value) => ({ ...value, places }))).catch(() => {})
   }
 
+  /* Widgets and icons go back where they were; stickies stay on the desk. */
   function tidy() {
-    setPrefs((value) => ({ ...value, places: {} }))
+    setPrefs((value) => ({ ...value, places: Object.fromEntries(Object.entries(value.places).filter(([key]) => key.startsWith('note:') || key.startsWith('scratch:'))) }))
     bridge?.tidy().catch(() => {})
   }
 
@@ -351,12 +407,12 @@ export function Desk() {
   const shown = pops.filter((pop) => !pop.closing)
   const top = shown.at(-1)
   const covered = welcome
-  const hasPlaces = Object.keys(prefs.places || {}).length > 0
+  const hasPlaces = Object.keys(prefs.places || {}).some((key) => !key.startsWith('note:') && !key.startsWith('scratch:'))
   // While it lifts away and while it waits above, the desk stays put together but can't be used.
-  const away = look === 'going' || look === 'under'
+  const away = look === 'going' || look === 'under' || sky === 'sky'
 
   return (
-    <main className={`overlay-surface ${bridge ? '' : 'is-preview'}`} data-under={look || undefined}>
+    <main className={`overlay-surface ${bridge ? '' : 'is-preview'}`} data-under={look || undefined} data-sky={sky || undefined}>
       <GlassDefs />
       <div className="workspace-content is-filled" inert={welcome || away || undefined}>
         <FieldDesk
@@ -383,6 +439,7 @@ export function Desk() {
             <Dock
               view={top?.view === 'note' ? 'Notes' : top?.view || 'Today'}
               navigate={navigate}
+              onSendUp={(noteId) => { if (prefs.places?.[`note:${noteId}`]) place(`note:${noteId}`, null); goUp() }}
               storage={storage}
               workspace={workspace}
               commit={commit}
@@ -405,6 +462,20 @@ export function Desk() {
           )}
         />
       </div>
+
+      {sky && !on && (
+        <div className={`sky-shell ${sky === 'leaving' ? 'is-leaving' : ''}`} inert={sky === 'leaving' || welcome || undefined}>
+          <Sky
+            ref={skyRef}
+            workspace={workspace}
+            commit={commit}
+            navigate={navigate}
+            target={skyTarget}
+            onClose={goDown}
+            onFiled={(noteId) => { if (prefs.places?.[`note:${noteId}`]) place(`note:${noteId}`, null) }}
+          />
+        </div>
+      )}
 
       {(on || phase) && (
         <Under
@@ -432,7 +503,6 @@ export function Desk() {
             onClose={() => close(pop.key)}
             onGone={() => gone(pop.key)}
             onChange={(patch) => change(pop.key, patch)}
-            onMode={(view) => swap(pop.key, view)}
           >
             <PopRoom pop={pop} common={common} storage={storage} command={roomCommand} covered={pop.key !== top?.key || covered} onClose={() => close(pop.key)} open={open} />
           </PopOut>
@@ -491,8 +561,7 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
 
 /* A floating window on the desk: drag it by its bar, resize it from the corner. It grows
    out of where it was opened from (`pop.from`) and, closing, shrinks into its widget. */
-function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, onMode, children }) {
-  const map = pop.view === 'Mindmap' || pop.view === 'Sky'
+function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, children }) {
   const node = useRef(null)
   const drag = useRef(null)
   const changeRef = useRef(onChange)
@@ -513,9 +582,12 @@ function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, onMode
     return () => shrink.cancel()
   }, [pop.closing, pop.widget])
 
+  // Filling the screen doesn't change the size it goes back to.
+  const full = useRef(pop.full)
+  full.current = pop.full
   useEffect(() => {
     const element = node.current
-    const observer = new ResizeObserver(() => changeRef.current({ w: element.offsetWidth, h: element.offsetHeight }))
+    const observer = new ResizeObserver(() => { if (!full.current) changeRef.current({ w: element.offsetWidth, h: element.offsetHeight }) })
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
@@ -523,16 +595,17 @@ function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, onMode
   return (
     <section
       ref={node}
-      className={`popout ${top ? 'is-top' : ''} ${pop.from ? 'is-grown' : ''} ${pop.closing ? 'is-closing' : ''}`}
-      style={{ left: pop.x, top: pop.y, width: pop.w, height: pop.h, zIndex: z }}
+      className={`popout ${top ? 'is-top' : ''} ${pop.from ? 'is-grown' : ''} ${pop.closing ? 'is-closing' : ''} ${pop.full ? 'is-full' : ''}`}
+      style={pop.full ? { left: 12, top: 12, width: innerWidth - 24, height: innerHeight - 108, zIndex: z } : { left: pop.x, top: pop.y, width: pop.w, height: pop.h, zIndex: z }}
       role="dialog"
       aria-label={title}
       onPointerDownCapture={onRaise}
     >
       <header
         className="popout-bar"
+        onDoubleClick={(event) => { if (!event.target.closest('button')) onChange({ full: !pop.full }) }}
         onPointerDown={(event) => {
-          if (event.button !== 0 || event.target.closest('button')) return
+          if (event.button !== 0 || event.target.closest('button') || pop.full) return
           drag.current = { x: event.clientX, y: event.clientY, px: pop.x, py: pop.y }
           event.currentTarget.setPointerCapture(event.pointerId)
         }}
@@ -549,12 +622,9 @@ function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, onMode
       >
         <button type="button" className="popout-close" aria-label={`Close ${title}`} onClick={onClose}><X weight="bold" /></button>
         <strong>{title}</strong>
-        {map && (
-          <div className="segmented popout-modes" role="radiogroup" aria-label="How to see the map">
-            <button type="button" role="radio" aria-checked={pop.view === 'Mindmap'} onClick={() => onMode('Mindmap')}><ShareNetwork weight={pop.view === 'Mindmap' ? 'fill' : 'regular'} />Board</button>
-            <button type="button" role="radio" aria-checked={pop.view === 'Sky'} onClick={() => onMode('Sky')}><MoonStars weight={pop.view === 'Sky' ? 'fill' : 'regular'} />Sky</button>
-          </div>
-        )}
+        <button type="button" className="popout-fill" aria-label={pop.full ? `Put ${title} back` : `Fill the screen with ${title}`} title={pop.full ? 'Back to its size (double-click the bar)' : 'Fill the screen (double-click the bar)'} onClick={() => onChange({ full: !pop.full })}>
+          {pop.full ? <ArrowsIn weight="bold" /> : <ArrowsOut weight="bold" />}
+        </button>
       </header>
       <div className="popout-body workspace-content is-filled" data-view={pop.view}>{children}</div>
     </section>

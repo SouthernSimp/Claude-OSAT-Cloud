@@ -980,3 +980,8 @@ html:has(.quick-chat) body { background: transparent; }
 .assistant.is-compact .chat-starters { grid-template-columns: minmax(0, 1fr); }
 .assistant.is-compact .composer { margin-bottom: var(--s-3); }
 .assistant.is-compact .composer-note { display: none; }
+
+/* The chats rail's heading. */
+.rail-head { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--s-2); }
+.rail-head h2 { display: flex; align-items: center; gap: var(--s-2); font-size: var(--t-lg); }
+.rail-head h2 svg { color: var(--accent); }
