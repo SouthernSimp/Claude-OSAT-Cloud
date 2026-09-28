@@ -249,6 +249,8 @@ async function main() {
   if (await page.inputValue('#home-line') !== 'One step at a time') problems.push('esc: closing the drawer lost the words')
   const before = await page.locator('.popout').count()
   await page.keyboard.press('Escape')
+  // A room may shrink back into its widget first: give the close a moment to finish.
+  for (let wait = 0; wait < 20 && await page.locator('.popout').count() !== before - 1; wait += 1) await sleep(100)
   if (await page.locator('.popout').count() !== before - 1) problems.push('esc: the third Esc did not close just the top pop-out')
   // No AI here: ⌘↵ opens Settings → AI and the question stays in the line for later.
   room = 'ask'
