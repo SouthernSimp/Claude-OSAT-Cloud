@@ -7,7 +7,7 @@
    on each glass element itself, never on a wrapper.
 
    Layers: the desk (.overlay-surface) is the one stacking context. Rooms (.popouts) sit
-   over the widgets and icons; the dock and a risen line sit over the rooms. */
+   over the widgets and icons; the dock, a risen line and the line's drawer sit over the rooms. */
 
 .overlay-surface { isolation: isolate; }
 .popouts { z-index: 10; }
@@ -41,17 +41,21 @@
 
 /* ---- Widgets --------------------------------------------------------- */
 
+/* One column of up to five; a widget is a room's resting face (src/field/Widgets.jsx). */
 .home-widgets {
   grid-column: 1;
   grid-row: 1;
   align-self: start;
   display: grid;
-  grid-template-columns: repeat(2, 148px);
-  gap: 15px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
 }
 .widget { min-width: 0; padding: 14px; border-radius: 20px; color: var(--on-1); text-align: left; }
-.widget-day,
-.widget-month { height: 148px; display: flex; flex-direction: column; }
+/* A widget just added (or brought back with Undo) settles in. */
+.widget.is-new { animation: widget-in 460ms var(--spring) both; }
+@keyframes widget-in { from { opacity: 0; scale: 0.94; } }
+/* While its room is open the widget's spot stays empty (once the room has grown over it). */
+.widget[data-open] { visibility: hidden; transition: visibility 0s 300ms; }
 .widget-kicker {
   display: flex;
   align-items: baseline;
@@ -63,27 +67,100 @@
   color: var(--accent);
 }
 .widget-kicker small { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--on-3); }
+/* The title is the button that opens the room (a click anywhere else on the widget presses it). */
+.widget-title { position: relative; z-index: 1; width: 100%; text-align: left; }
 .widget-date { margin-top: 6px; font: 600 34px/1 var(--font-display); letter-spacing: -0.03em; color: var(--on-1); }
-.widget-day-foot { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; }
-.widget-day-foot ul { min-width: 0; margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
-.widget-day-foot li { display: grid; min-width: 0; font-size: var(--t-2xs); line-height: 1.3; color: var(--on-2); }
-.widget-day-foot li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.widget-day-foot time { color: var(--on-1); font-weight: 650; font-variant-numeric: tabular-nums; }
-.widget-day-foot > button {
-  flex: none;
-  width: 22px;
-  height: 22px;
+.widget-empty { font-size: var(--t-2xs); line-height: 1.35; color: var(--on-4); }
+
+/* Hovering or focusing a widget shows a small – at its corner, like the Mac's own widgets. */
+.widget-remove {
+  position: absolute;
+  z-index: 2;
+  top: -7px;
+  left: -7px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), 0 2px 8px -2px rgb(0 0 0 / 35%);
+  opacity: 0;
+  scale: 0.6;
+  pointer-events: none;
+  transition: opacity 160ms var(--glide), scale 260ms var(--spring);
+}
+.widget:is(:hover, :focus-within):not(.is-moving) > .widget-remove { opacity: 1; scale: 1; pointer-events: auto; }
+.widget-remove svg { width: 10px; height: 10px; }
+
+/* The faint + under the column, and the Undo that follows a widget taken off. */
+.widgets-foot { position: relative; display: flex; justify-content: center; min-height: 26px; }
+.widgets-add {
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   color: var(--on-2);
+  background: color-mix(in srgb, var(--on-1) 7%, transparent);
+  opacity: 0.45;
+  transition: opacity 240ms var(--glide), background 200ms, color 200ms;
 }
-.widget-day-foot > button:hover { background: color-mix(in srgb, var(--on-1) 14%, transparent); color: var(--on-1); }
-.widget-day-foot > button svg { width: 12px; height: 12px; }
-.widget-empty { font-size: var(--t-2xs); line-height: 1.35; color: var(--on-4); }
+.home-widgets:hover .widgets-add,
+.widgets-add:focus-visible,
+.widgets-add[aria-expanded="true"] { opacity: 1; }
+.widgets-add:hover { color: var(--on-1); background: color-mix(in srgb, var(--on-1) 16%, transparent); }
+.widgets-add svg { width: 12px; height: 12px; }
+.widgets-foot .undo-toasts { position: absolute; top: calc(100% + 8px); bottom: auto; white-space: nowrap; }
 
-.widget-month { cursor: pointer; transition: box-shadow var(--d-base); }
-.widget-month:hover { box-shadow: var(--glass-rim), 0 0 0 1px color-mix(in srgb, var(--on-1) 14%, transparent), var(--glass-shadow); }
+/* The tray: solid, just right of the column, from its top down to the dock; not a modal. */
+.widgets-tray {
+  position: absolute;
+  z-index: 12;
+  grid-column: 2;
+  grid-row: 1;
+  top: 0;
+  left: 0;
+  width: 351px;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 20px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), 0 30px 70px -28px rgb(0 0 0 / 55%);
+  scrollbar-width: thin;
+}
+.widgets-tray-head { margin: 2px 8px 6px; font-size: var(--t-xs); font-weight: 650; color: var(--muted); }
+.widgets-pick { display: grid; gap: 7px; padding: 8px 8px 6px; border-radius: 16px; cursor: pointer; transition: background 160ms; }
+.widgets-pick:hover,
+.widgets-pick:has(:focus-visible) { background: var(--surface-hover); }
+.widgets-pick-line { padding: 0 4px; text-align: left; font-size: var(--t-xs); line-height: 1.35; color: var(--muted); }
+.widgets-pick-line b { margin-right: 3px; font-weight: 650; color: var(--ink); }
+.widgets-pick-line:focus-visible { outline: none; }
+/* A live widget, shown on the tray's own paper instead of glass. */
+.widget-preview { display: block; background: var(--surface); box-shadow: 0 0 0 0.5px var(--line), 0 8px 18px -12px rgb(0 0 0 / 35%); }
+.widgets-tray > .widget-empty { margin: 4px 8px 8px; color: var(--muted); }
+.widgets-tray footer { margin-top: 6px; padding: 10px 8px 2px; border-top: 1px solid var(--line-soft); }
+.widgets-tray footer button { display: inline-flex; align-items: center; gap: 7px; font-size: var(--t-xs); color: var(--muted); }
+.widgets-tray footer button:hover { color: var(--ink); }
+.widgets-tray footer svg { width: 13px; height: 13px; }
+
+/* Calendar: the day beside the month. */
+.widget-calendar { height: 148px; display: grid; grid-template-columns: minmax(0, 1fr) 132px; gap: 14px; }
+.calendar-day { min-width: 0; display: flex; flex-direction: column; }
+.calendar-day ul { min-width: 0; margin: auto 0 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.calendar-day li { display: grid; min-width: 0; font-size: var(--t-2xs); line-height: 1.3; color: var(--on-2); }
+.calendar-day li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-day time { color: var(--on-1); font-weight: 650; font-variant-numeric: tabular-nums; }
+.calendar-day .widget-empty { margin: auto 0 0; }
+.calendar-month { min-width: 0; display: flex; flex-direction: column; }
 .mini-month {
   flex: 1;
   display: grid;
@@ -109,7 +186,7 @@
 }
 .mini-month i.is-today.is-busy::after { background: var(--on-2); }
 
-.widget-next { grid-column: 1 / -1; padding: 14px 16px 12px; }
+.widget-next { padding: 14px 16px 12px; }
 .widget-next ul { display: grid; gap: 2px; margin: 10px 0 0; padding: 0; list-style: none; }
 .widget-next li { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 9px; padding: 4px 0; }
 .widget-next .ring {
@@ -137,6 +214,57 @@
 .widget-next li.is-done .ring { border-color: var(--accent); background: var(--accent); }
 .widget-next li.is-done .step-text { color: var(--on-3); text-decoration: line-through; }
 .widget-next .widget-empty { margin-top: 8px; }
+/* In the evening the foot offers to close the day. */
+.widget-next-foot .evening { display: inline-flex; align-items: center; gap: 6px; color: var(--on-1); font-weight: 560; }
+.widget-next-foot .evening svg { width: 13px; height: 13px; color: #f3c98b; }
+.widget-next-foot .evening span { color: var(--on-3); font-weight: 450; }
+
+/* Focus: a thin ring that fills while a session runs. */
+.focus-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.focus-ring { flex: none; width: 34px; height: 34px; rotate: -90deg; }
+.focus-ring circle { fill: none; stroke: color-mix(in srgb, var(--on-1) 14%, transparent); stroke-width: 2.5; }
+.focus-ring .is-done { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 1; transition: stroke-dashoffset 1.2s var(--glide); }
+.focus-text { min-width: 0; display: grid; gap: 2px; }
+.focus-text strong { font-size: var(--t-sm); font-weight: 650; color: var(--on-1); }
+.focus-text span { overflow: hidden; font-size: var(--t-xs); color: var(--on-3); text-overflow: ellipsis; white-space: nowrap; }
+
+/* Habits: chips, filled once kept today. */
+.habit-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.habit-chip {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: var(--t-xs);
+  font-weight: 560;
+  color: var(--on-1);
+  background: color-mix(in srgb, var(--on-1) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-1) 12%, transparent);
+}
+.habit-chip:hover { background: color-mix(in srgb, var(--on-1) 14%, transparent); }
+.habit-chip[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); box-shadow: none; }
+.habit-chip svg { width: 11px; height: 11px; }
+.widget-habits .widget-empty { margin: 8px 0 0; }
+
+/* From before: an older note, its first words, and Not now. */
+.before-title { display: block; margin-top: 9px; overflow: hidden; font-size: var(--t-sm); font-weight: 650; color: var(--on-1); text-overflow: ellipsis; white-space: nowrap; }
+.before-line {
+  display: -webkit-box;
+  margin: 3px 0 0;
+  overflow: hidden;
+  font-size: var(--t-xs);
+  line-height: 1.4;
+  color: var(--on-2);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.before-later { position: relative; z-index: 1; margin-top: 8px; font-size: var(--t-xs); color: var(--on-3); transition: color 200ms; }
+.before-later:hover { color: var(--on-1); }
+.widget-from-before > .widget-empty { margin: 8px 0 0; }
 @keyframes step-leave { 0%, 65% { opacity: 1; } 100% { opacity: 0; } }
 
 /* ---- The line in the middle -------------------------------------------- */
@@ -162,9 +290,19 @@
   text-shadow: var(--home-text-shadow);
 }
 .home-composer-wrap { grid-row: 4; position: relative; width: min(572px, 100%); display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
-.home-composer { display: grid; gap: 6px; padding: 16px 12px 12px 20px; border-radius: 20px; transition: box-shadow var(--d-base); }
+.home-line { position: relative; }
+.home-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px 10px;
+  padding: 16px 12px 12px 20px;
+  border-radius: 20px;
+  transition: box-shadow var(--d-base);
+}
 .home-composer:focus-within { box-shadow: var(--glass-rim), 0 0 0 1px color-mix(in srgb, var(--on-1) 22%, transparent), var(--glass-shadow); }
 .home-composer textarea {
+  align-self: center;
   min-height: 46px;
   padding: 0 8px 0 0;
   border: 0;
@@ -178,7 +316,6 @@
 }
 .home-composer textarea:focus-visible { outline: none; box-shadow: none; }
 .home-composer textarea::placeholder { color: var(--on-3); }
-.home-composer-bar { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .home-send {
   flex: none;
   width: 32px;
@@ -195,43 +332,51 @@
 .home-composer.has-text .home-send:not(:disabled):hover { transform: scale(1.06); }
 .home-send svg { width: 15px; height: 15px; }
 
-/* What Return does: four verbs in one small switch. The chosen one opens up to say its
-   name; the others wait as icons. */
-.verbs { flex: none; display: flex; gap: 1px; padding: 2px; border-radius: 999px; background: color-mix(in srgb, var(--on-1) 8%, transparent); }
-.verbs button {
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 7px;
-  border-radius: 999px;
-  font: 600 12px/1 var(--font);
-  color: var(--on-3);
-  white-space: nowrap;
-  transition: background 260ms var(--glide), color 180ms, padding 360ms var(--spring);
-}
-.verbs button:hover { color: var(--on-1); }
-.verbs button svg { flex: none; width: 14px; height: 14px; }
-.verbs button span { max-width: 0; overflow: hidden; opacity: 0; transition: max-width 360ms var(--spring), opacity 200ms, margin 360ms var(--spring); }
-.verbs button[aria-checked="true"] { padding: 0 10px 0 8px; color: var(--on-solid-ink); background: var(--on-solid); box-shadow: 0 1px 3px rgb(0 0 0 / 22%); }
-.verbs button[aria-checked="true"] span { max-width: 90px; margin-left: 6px; opacity: 1; }
+/* Only when saving fails: one calm line, and where to look. */
+.home-chip { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; min-width: 0; margin: 0; font-size: var(--t-xs); font-weight: 500; color: var(--on-2); }
+.home-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-chip i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--critical); }
+.home-chip button { flex: none; margin-left: auto; color: var(--on-1); text-decoration: underline; text-underline-offset: 2px; }
 
-.home-chip {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 7px;
-  margin: 0;
-  font-size: var(--t-xs);
-  font-weight: 500;
-  color: var(--on-3);
+/* The drawer that folds open under the line as you type. Solid, like a Mac menu, and over
+   any room below the line (under the dock). Save is always first and picked, so Return never
+   guesses; only the keys move the pick, never the pointer. When the desk is short it scrolls
+   (--below is the room between the line and the dock, measured by Line). */
+.home-drawer {
+  position: absolute;
+  z-index: 11;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  padding: 6px;
+  border-radius: 16px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), 0 26px 60px -24px rgb(0 0 0 / 50%);
+  max-height: calc(var(--below) - 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: drawer-in 200ms var(--ease-out);
 }
-.home-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.home-chip i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--on-4); }
-.home-chip.is-good i { background: var(--positive); }
-.home-chip.is-bad i { background: var(--critical); }
-.home-chip button { flex: none; color: var(--on-1); text-decoration: underline; text-underline-offset: 2px; }
+.home.is-raised .home-drawer { max-height: calc(var(--below) + var(--rise) - 20px); }
+@keyframes drawer-in { from { clip-path: inset(0 0 100% 0 round 16px); } to { clip-path: inset(0 0 0 0 round 16px); } }
+.home-drawer-head { margin: 5px 10px 3px; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.home-row { position: relative; display: flex; align-items: center; gap: 10px; min-height: 33px; padding: 0 10px; border-radius: 10px; font-size: var(--t-sm); user-select: none; }
+.home-row svg { flex: none; width: 16px; height: 16px; color: var(--muted); }
+.home-row-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-row-label em { margin-left: 4px; font-size: var(--t-xs); font-style: normal; color: var(--faint); }
+.home-row kbd,
+.home-row small { flex: none; font: 560 var(--t-2xs)/1.3 var(--font); color: var(--faint); }
+.home-row kbd { padding: 2px 6px; border-radius: 6px; color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.home-row:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.home-row[aria-selected="true"] { color: var(--ink-strong); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.home-row[aria-selected="true"] svg { color: var(--accent); }
+/* Matches sit under a hairline, apart from what Return, ⌘↵ and ⌥↵ do. */
+.home-row.is-first-match { margin-top: 9px; }
+.home-row.is-first-match::before { content: ""; position: absolute; top: -5px; left: 10px; right: 10px; height: 1px; background: var(--line); }
 
 /* When a room covers the line's resting place, the line rises to the top of the desk and
    stays above the rooms, so there is always somewhere to leave a thought. */
@@ -242,7 +387,6 @@
 .home.is-raised .home-center > :not(.home-greeting) { pointer-events: auto; }
 .home.is-raised .home-greeting { opacity: 0; translate: 0 -24px; }
 .home.is-raised :is(.home-composer-wrap, .home-answer) { translate: 0 calc(var(--rise, 0px) * -1); }
-.home.is-raised .evening-pill { display: none; }
 
 /* Ask, right here: the answer grows under the line. */
 .home-answer {
@@ -265,7 +409,8 @@
 /* While an answer is open the line lifts, so the answer has room. */
 .home-center { transition: grid-template-rows 520ms var(--spring-soft); }
 .home-center:has(.home-answer) { grid-template-rows: auto minmax(0, 0.2fr) auto auto minmax(0, 1.8fr); }
-.home-center:has(.home-answer) .evening-pill { display: none; }
+/* Typing again folds the drawer open where the answer was; Esc brings the answer back. */
+.home-center:has(.home-drawer) .home-answer { visibility: hidden; }
 .home-answer header { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--t-sm); color: var(--on-2); }
 .home-answer header > svg { flex: none; width: 14px; height: 14px; color: var(--accent); }
 .home-answer header strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -467,8 +612,10 @@
 .home.is-arriving .home-composer,
 .home.is-arriving .icon,
 .home.is-arriving .dock { animation: home-rise 640ms var(--ease-out) both; }
-.home.is-arriving .widget-month { animation-delay: 60ms; }
-.home.is-arriving .widget-next { animation-delay: 120ms; }
+.home.is-arriving .home-widgets > .widget:nth-child(2) { animation-delay: 60ms; }
+.home.is-arriving .home-widgets > .widget:nth-child(3) { animation-delay: 120ms; }
+.home.is-arriving .home-widgets > .widget:nth-child(4) { animation-delay: 180ms; }
+.home.is-arriving .home-widgets > .widget:nth-child(5) { animation-delay: 240ms; }
 .home.is-arriving .home-greeting { animation-delay: 100ms; }
 .home.is-arriving .home-composer { animation-delay: 160ms; }
 .home.is-arriving .icon { animation-delay: 200ms; }
@@ -493,8 +640,8 @@
 }
 @media (max-width: 1100px) {
   .home { grid-template-columns: 148px minmax(0, 1fr) minmax(0, 196px); column-gap: 20px; }
-  .home-widgets { grid-template-columns: 148px; }
-  .widget-next { grid-column: 1; }
+  .widget-calendar { grid-template-columns: minmax(0, 1fr); }
+  .calendar-month { display: none; }
 }
 @media (max-width: 900px) {
   .home { grid-template-columns: 148px minmax(0, 1fr) minmax(0, 100px); }
@@ -509,10 +656,8 @@
   .home-center { order: 0; display: flex; flex-direction: column; align-items: stretch; }
   .home-greeting { margin: 26px 0 16px; font-size: 28px; }
   .home-composer-wrap { width: 100%; }
-  .home-widgets { order: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .widget-day,
-  .widget-month { height: auto; aspect-ratio: 1; }
-  .widget-next { grid-column: 1 / -1; }
+  .home-widgets { order: 1; }
+  .widgets-tray { position: fixed; inset: auto 16px 16px; width: auto; max-height: 70dvh; }
   .home-icons { order: 2; align-items: stretch; }
   .icons-head { align-self: flex-end; }
   .icon-grid { flex: none; height: 206px; grid-template-columns: repeat(4, minmax(0, 1fr)); justify-content: stretch; }

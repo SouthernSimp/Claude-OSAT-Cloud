@@ -100,8 +100,11 @@ function createAi({
     return status()
   }
 
+  /* Settles once the download has really stopped; a resume before then would find it
+     still running and do nothing. */
   function cancel() {
     transfer?.abort?.()
+    return transfer?.done
   }
 
   async function remove(id) {

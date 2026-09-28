@@ -57,7 +57,8 @@ function createBrowser({ window, emit }) {
       webPreferences: { session: part, sandbox: true, contextIsolation: true, nodeIntegration: false, spellcheck: true },
     })
     view.setBackgroundColor('#ffffff')
-    tabs.set(id, { view, favicon: '' })
+    // `wanted` is the page asked for: getURL() stays empty until the first one arrives.
+    tabs.set(id, { view, favicon: '', wanted: url })
     order.push(id)
     window.contentView.addChildView(view)
     const wc = view.webContents
@@ -90,7 +91,8 @@ function createBrowser({ window, emit }) {
   function close(id) {
     const entry = tabs.get(id)
     if (!entry) return state()
-    window.contentView.removeChildView(entry.view)
+    // As OSAT quits the window is already gone; touching it threw and stopped the quit.
+    if (!window.isDestroyed()) window.contentView.removeChildView(entry.view)
     entry.view.webContents.close()
     tabs.delete(id)
     const index = order.indexOf(id)
@@ -111,6 +113,7 @@ function createBrowser({ window, emit }) {
     navigate(url) {
       if (!WEB.test(url)) throw new Error('Only web addresses open here.')
       if (!current()) return open(url) && state()
+      tabs.get(active).wanted = url
       current().loadURL(url)
       return state()
     },
@@ -133,6 +136,24 @@ function createBrowser({ window, emit }) {
     },
     destroy() {
       for (const id of [...order]) close(id)
+    },
+    // Incognito: every tab closes, and its page (or blank tab) is remembered for the way back up.
+    sleep() {
+      const pages = order.map((id) => {
+        const { view, wanted } = tabs.get(id)
+        const shown = view.webContents.getURL()
+        return { url: WEB.test(shown) ? shown : wanted, active: id === active }
+      })
+      for (const id of [...order]) close(id)
+      return pages
+    },
+    wake(pages = []) {
+      let front = null
+      for (const page of pages) {
+        const id = open(page.url)
+        if (page.active) front = id
+      }
+      return front ? activate(front) : state()
     },
   }
 }

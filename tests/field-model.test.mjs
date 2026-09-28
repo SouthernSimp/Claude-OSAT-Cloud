@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { WARM, buildSkyGraph, constellationLabels, dayPhase, fitCamera, homeItems, paperFields, paperPose, paperWrite, runSky, stepSky } from '../src/field/field-model.js'
+import { WARM, buildSkyGraph, constellationLabels, dayPhase, fitCamera, homeItems, paperFields, paperPose, paperWrite, pickSurfacing, restSurfacing, runSky, stepSky } from '../src/field/field-model.js'
 
 test('day phase follows the clock', () => {
   assert.equal(dayPhase(new Date('2026-09-22T08:00:00')), 'morning')
@@ -136,4 +136,33 @@ test('the sky fits its stars and their names into the window', () => {
       assert.ok((star.x + 200) * cam.z + cam.x <= w, 'a name runs off the right')
     }
   }
+})
+
+test('from before brings back an older note that fits this week\'s writing', () => {
+  const today = '2026-09-27'
+  const note = (id, title, markdown, created, updated = created, extra = {}) => ({ id, title, markdown, createdAt: `${created}T09:00:00.000Z`, updatedAt: `${updated}T09:00:00.000Z`, trashedAt: null, archived: false, ...extra })
+  const notes = [
+    note('week', 'Tomato seedlings', 'Moved the tomato seedlings to the garden bed', '2026-09-25'),
+    note('garden', 'Garden plan', 'Where the tomato beds and the garden path go', '2026-06-01'),
+    note('taxes', 'Tax forms', 'Receipts for the quarter', '2026-05-01'),
+    note('young', 'Tomato ideas', 'More tomato garden thoughts', '2026-09-10'),
+    note('touched', 'Old garden notes', 'Tomato garden, edited this week', '2026-04-01', '2026-09-26'),
+    note('day-2026-07-01', 'Wednesday, July 1', 'Tomato garden day', '2026-07-01', '2026-07-01', { kind: 'day' }),
+    note('binned', 'Garden bin', 'tomato garden', '2026-04-01', '2026-04-01', { trashedAt: '2026-05-01T00:00:00.000Z' }),
+  ]
+  assert.equal(pickSurfacing(notes, today).id, 'garden', 'old and related wins; young, touched, day and binned notes never come back')
+  // Resting after "Not now": the pick moves on, and comes back once 30 days have passed.
+  assert.equal(pickSurfacing(notes, today, { garden: '2026-09-20' }).id, 'taxes')
+  assert.equal(pickSurfacing(notes, today, { garden: '2026-08-20' }).id, 'garden')
+  // With nothing related, one pick for the whole day, whatever order the notes come in.
+  const quiet = notes.filter((item) => item.id !== 'week')
+  const pick = pickSurfacing(quiet, today).id
+  assert.ok(['garden', 'taxes'].includes(pick))
+  assert.equal(pickSurfacing([...quiet].reverse(), today).id, pick)
+  assert.equal(pickSurfacing(notes.slice(3), today), null, 'nothing old enough')
+})
+
+test('not now rests a note, and old rests are let go', () => {
+  assert.deepEqual(restSurfacing({ a: '2026-08-01', b: '2026-09-20', c: 'soon' }, 'd', '2026-09-27'), { b: '2026-09-20', d: '2026-09-27' })
+  assert.deepEqual(restSurfacing(undefined, 'a', '2026-09-27'), { a: '2026-09-27' })
 })

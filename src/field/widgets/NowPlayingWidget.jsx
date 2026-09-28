@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { MusicNotes, Pause, Play, SkipBack, SkipForward } from '@phosphor-icons/react'
 
-/* What Spotify is playing, with play/pause and skip. It only asks while the
-   desk is showing, and never opens Spotify unless you press play. */
-export function MediaWidget({ media, visit, move }) {
+/* Now playing: what Spotify is playing, with play/pause and skip. It only asks while the
+   desk is showing, and never opens Spotify unless you press play. Opens the Now playing
+   room (bigger, with a position bar). */
+export function NowPlayingWidget({ media, visit, open }) {
   const [track, setTrack] = useState(null)
 
   const refresh = useCallback(() => {
@@ -23,10 +24,10 @@ export function MediaWidget({ media, visit, move }) {
   }
 
   return (
-    <section className="glass widget widget-media" aria-label="Spotify" {...move}>
+    <>
       {track?.art ? <img src={track.art} alt="" /> : <span className="media-art" aria-hidden="true"><MusicNotes /></span>}
       <div className="media-text">
-        <p className="widget-kicker">Spotify</p>
+        <button type="button" className="widget-kicker widget-title" onClick={() => open('NowPlaying')}>Now playing</button>
         <strong>{track?.title || 'Nothing playing'}</strong>
         {track?.artist && <span>{track.artist}</span>}
       </div>
@@ -37,6 +38,6 @@ export function MediaWidget({ media, visit, move }) {
         </button>
         <button type="button" aria-label="Next track" disabled={!track} onClick={() => press('next')}><SkipForward weight="fill" /></button>
       </div>
-    </section>
+    </>
   )
 }

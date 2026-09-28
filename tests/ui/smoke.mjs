@@ -31,6 +31,8 @@ async function main() {
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
   let room = 'start'
+  // The name of the drawer row Return would run.
+  const picked = () => page.locator('.home-row[aria-selected="true"] .home-row-label').evaluate((node) => node.firstChild.textContent).catch(() => null)
   page.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
   page.on('console', (message) => {
     // The local AI runtime is not running in CI; a refused request is expected.
@@ -42,9 +44,15 @@ async function main() {
   await sleep(600)
   if (await page.getByText(/sample room/i).count()) problems.push('desk: the sample room is still offered')
 
-  // A thought typed on home is saved, survives a reload, and waits in Unsorted.
+  // A thought typed on home is saved, survives a reload, and waits in Unsorted. Typing
+  // folds the drawer open, and Save is the picked row, so Return saves.
   room = 'capture'
-  await page.getByPlaceholder('Leave a thought here.').fill('Smoke test thought')
+  await page.getByPlaceholder('Write it down, find it, or ask…').fill('Smoke test thought')
+  await page.getByRole('listbox').waitFor({ timeout: 3000 }).catch(() => problems.push('capture: typing did not open the drawer'))
+  if (await picked() !== 'Save as a thought') problems.push(`capture: the first row was not Save (${await picked()})`)
+  // Only the keys move the pick: a pointer resting on the drawer never changes what Return does.
+  await page.locator('.home-row').nth(1).hover()
+  if (await picked() !== 'Save as a thought') problems.push('capture: the pointer moved the picked row')
   await page.keyboard.press('Enter')
   await sleep(800)
   await page.goto(url)
@@ -80,6 +88,21 @@ async function main() {
     room = 'desk'
     await sleep(400)
     await page.screenshot({ path: `${OUT}/${theme}-Desk.png` })
+    room = 'drawer'
+    await page.keyboard.press('Control+k')
+    await page.keyboard.type('Smoke')
+    await page.getByRole('listbox').waitFor({ timeout: 3000 }).catch(() => problems.push('drawer: typing did not open it'))
+    await sleep(400)
+    await page.screenshot({ path: `${OUT}/${theme}-Drawer.png` })
+    await page.fill('#home-line', '')
+    // Incognito (the look only in the preview): the Sky under the desk, then back up.
+    room = 'under'
+    await page.locator('.app-dock [data-space="Under"]').click()
+    await page.locator('.under-pill').waitFor({ timeout: 5000 }).catch(() => problems.push(`under: the pill did not appear (${theme})`))
+    await sleep(1800)
+    await page.screenshot({ path: `${OUT}/${theme}-Under.png` })
+    await page.getByRole('button', { name: /Come up/ }).click()
+    await page.locator('.under').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push(`under: Come up did not bring the desk back (${theme})`))
     if (theme === 'light') {
       await page.locator('.app-dock .appearance > button').click()
       await page.getByRole('radio', { name: 'Dark' }).click()
@@ -88,7 +111,41 @@ async function main() {
     }
   }
 
-  // On the desk: a thought, the pile of loose thoughts, a note from ⌘K, stacked pop-outs, Esc.
+  // A widget opens its room, growing out of it, and its spot stays empty; Esc shrinks it back.
+  room = 'widgets'
+  await page.locator('.widget-calendar .widget-date').click()
+  await page.getByRole('dialog', { name: 'Calendar' }).waitFor({ timeout: 5000 }).catch(() => problems.push('widgets: clicking the Calendar widget did not open the Calendar'))
+  if (!await page.locator('.widget-calendar[data-open]').count()) problems.push('widgets: the Calendar widget kept its spot while its room was open')
+  await sleep(400)
+  await page.locator('.popout.is-top .popout-bar strong').click()
+  await page.keyboard.press('Escape')
+  await page.getByRole('dialog', { name: 'Calendar' }).waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('widgets: Esc did not put the Calendar away'))
+  // ⌘K finds "Add a widget", which raises the tray; Esc puts just the tray away.
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('add a widget')
+  for (let step = 0; step < 6 && await picked() !== 'Add a widget'; step += 1) await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  const tray = page.getByRole('dialog', { name: 'Add a widget' })
+  await tray.waitFor({ timeout: 3000 }).catch(() => problems.push('widgets: "Add a widget" in the line did not raise the tray'))
+  await page.keyboard.press('Escape')
+  await tray.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('widgets: Esc did not put the tray away'))
+  // The + adds Habits to the foot of the column; its – takes it off at once, and Undo brings it back.
+  await page.locator('.home-widgets').hover()
+  await page.getByRole('button', { name: 'Add a widget', exact: true }).click()
+  await sleep(500)
+  await page.screenshot({ path: `${OUT}/widget-tray.png` })
+  await page.getByRole('button', { name: /^Add Habits/ }).click()
+  const habits = page.locator('.home-widgets > .widget-habits')
+  await habits.waitFor({ timeout: 3000 }).catch(() => problems.push('widgets: Habits was not added from the tray'))
+  if (!await page.locator('.home-widgets > .widget').last().evaluate((node) => node.classList.contains('widget-habits')).catch(() => false)) problems.push('widgets: Habits did not land at the foot of the column')
+  await habits.hover()
+  await page.getByRole('button', { name: 'Take Habits off the desk' }).click()
+  if (await habits.count()) problems.push('widgets: the – did not take Habits off')
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await habits.waitFor({ timeout: 3000 }).catch(() => problems.push('widgets: Undo did not bring Habits back'))
+  await page.mouse.move(720, 700)
+
+  // On the desk: a thought, the pile of loose thoughts, a note found from the line, stacked pop-outs, Esc.
   room = 'pop-outs'
   await page.fill('#home-line', 'Left on the desk')
   await page.press('#home-line', 'Enter')
@@ -98,20 +155,92 @@ async function main() {
     .catch(() => problems.push('pop-outs: the pile of loose thoughts did not open Unsorted'))
   await page.locator('.popout.is-top .popout-bar strong').click()
   await page.keyboard.press('Escape')
+  // ⌘K lands in the line; ↓ walks past Save, Ask and Add to Next to the match, ↵ opens it.
   await page.keyboard.press('Control+k')
   await page.keyboard.type('Smoke test')
+  for (let step = 0; step < 8 && await picked() !== 'Smoke test thought'; step += 1) await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   await page.getByRole('dialog', { name: 'Smoke test thought' }).waitFor({ timeout: 5000 })
-    .catch(() => problems.push('pop-outs: a note did not open as a pop-out'))
+    .catch(() => problems.push('pop-outs: a note found from the line did not open as a pop-out'))
+  if (await page.inputValue('#home-line')) problems.push('pop-outs: the search stayed in the line after opening what it found')
   await page.getByRole('button', { name: 'Notes', exact: true }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
     .catch(() => problems.push('pop-outs: Notes did not open as a pop-out'))
   await sleep(400)
   await page.screenshot({ path: `${OUT}/pop-outs.png` })
+  // ⌘K from inside a room still lands in the line; an empty line jumps (↓ then ↵ opens the latest note).
   await page.locator('.popout.is-top .popout-bar strong').click()
+  await page.keyboard.press('Control+k')
+  if (!await page.evaluate(() => document.activeElement?.id === 'home-line')) problems.push('pop-outs: ⌘K over a room did not focus the line')
   await page.keyboard.press('Escape')
-  if (await page.getByRole('dialog', { name: 'Notes' }).count()) problems.push('pop-outs: Esc did not close the top pop-out')
-  if (!await page.getByRole('dialog', { name: 'Smoke test thought' }).count()) problems.push('pop-outs: Esc closed more than the top pop-out')
+  await page.keyboard.press('ArrowDown')
+  const latest = await picked()
+  await page.keyboard.press('Enter')
+  if (!latest) problems.push('pop-outs: ↓ on an empty line did not show Jump to')
+  else await page.getByRole('dialog', { name: latest }).waitFor({ timeout: 5000 }).catch(() => problems.push(`pop-outs: ↓↵ did not open ${latest}`))
+  // Esc, one step at a time: the picked row goes back to Save, the drawer closes and keeps
+  // the words, then the top pop-out closes.
+  room = 'esc'
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('One step at a time')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Escape')
+  if (await picked() !== 'Save as a thought') problems.push('esc: the first Esc did not go back to Save')
+  await page.keyboard.press('Escape')
+  if (await page.getByRole('listbox').count()) problems.push('esc: the second Esc did not close the drawer')
+  if (await page.inputValue('#home-line') !== 'One step at a time') problems.push('esc: closing the drawer lost the words')
+  const before = await page.locator('.popout').count()
+  await page.keyboard.press('Escape')
+  if (await page.locator('.popout').count() !== before - 1) problems.push('esc: the third Esc did not close just the top pop-out')
+  // No AI here: ⌘↵ opens Settings → AI and the question stays in the line for later.
+  room = 'ask'
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('A question for later')
+  await page.keyboard.press('Control+Enter')
+  await page.getByRole('dialog', { name: 'Settings' }).waitFor({ timeout: 5000 }).catch(() => problems.push('ask: ⌘↵ with no AI did not open Settings'))
+  if (await page.inputValue('#home-line') !== 'A question for later') problems.push('ask: setting up the AI lost the question')
+
+  // Going under from the line: the rooms wait above, the Sky fills the screen, the line waits
+  // at the bottom and saves there (the star glows warmer), only a note or Ask opens, Esc steps
+  // back but never comes up, and Come up brings the desk and its rooms back.
+  room = 'under'
+  const roomsAbove = await page.locator('.popout').count()
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('go under')
+  for (let step = 0; step < 8 && await picked() !== 'Go under'; step += 1) await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await page.locator('.under-pill').waitFor({ timeout: 5000 }).catch(() => problems.push('under: "Go under" in the line did not go under'))
+  await sleep(1400)
+  if (await page.locator('.popout').count()) problems.push('under: the rooms on the desk did not wait above')
+  const sky = await page.locator('.under .field-sky').boundingBox()
+  if (!sky || sky.width < 1440 || sky.height < 900) problems.push(`under: the Sky did not fill the screen (${JSON.stringify(sky)})`)
+  if (await page.locator('.under :is(.sky-search, .sky-tools)').count()) problems.push('under: the Sky kept its search or zoom buttons')
+  const underLine = await page.locator('#under-line').boundingBox()
+  if (!underLine || underLine.y < 900 - 160) problems.push(`under: the line was not at the bottom (${JSON.stringify(underLine)})`)
+  if (!await page.evaluate(() => document.activeElement?.id === 'under-line')) problems.push('under: the line was not ready to type into')
+  await page.keyboard.type('Written under the desk')
+  await page.keyboard.press('Enter')
+  const written = page.getByRole('button', { name: 'Written under the desk', exact: true })
+  await written.waitFor({ timeout: 5000 }).catch(() => problems.push('under: a thought saved under did not become a star'))
+  if (!/is-under/.test(await written.getAttribute('class').catch(() => ''))) problems.push('under: a thought written under did not glow warmer')
+  await page.keyboard.press('Control+2')
+  await sleep(300)
+  if (await page.locator('.popout').count()) problems.push('under: Notes opened under (only a note or Ask should)')
+  // Esc: the drawer, then the picked star, then (with nothing left) the desk would go away, still under.
+  await written.click()
+  await page.locator('#under-line').focus()
+  await page.keyboard.type('x')
+  await page.keyboard.press('Escape')
+  if (await page.getByRole('listbox').count()) problems.push('under: Esc did not close the drawer first')
+  if (!await page.locator('.sky-star.is-selected').count()) problems.push('under: Esc let go of the star before closing the drawer')
+  await page.keyboard.press('Escape')
+  if (await page.locator('.sky-star.is-selected').count()) problems.push('under: Esc did not let go of the picked star')
+  await page.keyboard.press('Escape')
+  if (!await page.locator('.under-pill').count()) problems.push('under: Esc brought the desk back up')
+  await page.getByRole('button', { name: /Come up/ }).click()
+  await page.locator('.under').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('under: Come up did not bring the desk back'))
+  if (await page.locator('.popout').count() !== roomsAbove) problems.push('under: the rooms did not come back from above')
+  await page.getByText('Back up.').waitFor({ timeout: 3000 }).catch(() => problems.push('under: coming up did not say so'))
 
   // The quick chat's window, as the browser preview can show it (no AI here).
   room = 'quick chat'

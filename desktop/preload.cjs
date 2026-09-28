@@ -133,10 +133,22 @@ contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   launch: (appPath) => ipcRenderer.invoke('desk:launch', appPath),
   place: (id, spot) => ipcRenderer.invoke('desk:place', id, spot),
   tidy: () => ipcRenderer.invoke('desk:tidy'),
+  setWidgets: (list) => ipcRenderer.invoke('desk:widgets', list),
   nowPlaying: () => ipcRenderer.invoke('media:now'),
   media: (action) => ipcRenderer.invoke('media:control', action),
+  seek: (seconds) => ipcRenderer.invoke('media:seek', seconds),
   setClear: (clear) => ipcRenderer.send('desk:clear', clear === true),
   onShown: (listener) => listen('desk:shown', listener),
+}))
+
+/* Incognito: OSAT with the internet off. status() → { on, terminal }; set(on) answers
+   once main has paused (or woken) everything, and only the desk may ask. onChange
+   hears every change, including ⇧⌘U and the menu-bar icon; when one of those didn't
+   work, the status also carries `error`, one plain line to show. */
+contextBridge.exposeInMainWorld('osatUnder', Object.freeze({
+  status: () => ipcRenderer.invoke('under:status'),
+  set: (on) => ipcRenderer.invoke('under:set', on === true),
+  onChange: (listener) => listen('under:changed', listener),
 }))
 
 /* The quick chat: pop a chat out of any window, and, inside it, put it away or move it

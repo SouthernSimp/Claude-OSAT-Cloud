@@ -1,41 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUp, CaretDown, ChatCircle, CheckCircle, MagnifyingGlass, MoonStars, NotePencil, PictureInPicture, Plus, PushPin, ShareNetwork, Sparkle, Stop, X } from '@phosphor-icons/react'
+import { CaretDown, PushPin, ShareNetwork } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
-import { applyAction, extractActions, systemPrompt, wantsActions } from '../assistant/actions.js'
-import { newChat, newMessage, outbound, putChat } from '../assistant/chats.js'
-import { ActionCards, UsedNotes, modelLabel } from '../assistant/LocalAssistant.jsx'
-import { cleanError, setupLine, useAi } from '../assistant/useAi.js'
-import { calendarMonthDays, localDateKey } from '../daily-practice.js'
-import { streamLocalMessage } from '../local-ai.js'
-import { Markdown } from '../lib/markdown.jsx'
-import { captureThought, dayNoteId, excerpt, isActiveNote, relatedNotes, wikilinkPairs } from '../notes-model.js'
-import { addNextStep, bringForward, earlierSteps, nextSteps, toggleNextStep } from '../next-steps.js'
-import { clamp, inputActive, timeLabel } from '../lib/ui.js'
+import { cleanError } from '../assistant/useAi.js'
+import { localDateKey } from '../daily-practice.js'
+import { excerpt, isActiveNote, wikilinkPairs } from '../notes-model.js'
+import { clamp } from '../lib/ui.js'
 import { FileThumb, filesBridge, openEntry, useFolder, useFreshness } from '../views/Files.jsx'
 import { useReducedMotion } from './FieldChrome.jsx'
 import { dayPhase, fitCells, homeItems, paperFields, phaseCopy } from './field-model.js'
-import { MediaWidget } from './MediaWidget.jsx'
+import { Line } from './Line.jsx'
+import { Widgets } from './Widgets.jsx'
+import { openSteps } from './widgets/NextWidget.jsx'
 
-const MODES = [
-  { id: 'note', label: 'Note', icon: NotePencil, placeholder: 'Leave a thought here.', hint: 'Return saves a note' },
-  { id: 'step', label: 'Next step', icon: CheckCircle, placeholder: 'One small next step…', hint: 'Return adds a step' },
-  { id: 'ask', label: 'Ask', icon: Sparkle, placeholder: 'Ask your notes, or anything…', hint: 'Return asks, right here' },
-  { id: 'find', label: 'Find', icon: MagnifyingGlass, placeholder: 'Search notes, #tags and folders…', hint: 'Return searches' },
-]
-const WEEKDAY = new Intl.DateTimeFormat('en-US', { weekday: 'long' })
-const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long' })
 const ICONS_KEY = 'osat.home.icons.v1'
 const SHELF_KEY = 'osat.home.shelf'
 const CELL = { h: 103 }
-
-/* The evening invitation shows once a day, and never again that day once opened. */
-function readEvening() {
-  try { return localStorage.getItem('osat.evening') } catch { return null }
-}
-function markEvening(date) {
-  try { localStorage.setItem('osat.evening', date) } catch { /* a convenience only */ }
-}
 
 /* The right side shows your Mac's Desktop, or OSAT's own notes and folders. */
 function readShelf() {
@@ -50,32 +30,23 @@ function readIconsCollapsed() {
   }
 }
 
-/* Home is a quiet desktop over the real one (it shows through, blurred): two small
-   widgets and the next steps, one line that does one thing on Return, the files on
-   your Mac's Desktop (or your notes) as icons, and a dock to the rooms. It reads and
-   writes the same records the rest of OSAT keeps. Notes open as pop-outs
-   (`onOpenNote`); widgets and icons can be picked up and set down anywhere (`places`).
-   The line reports where it rests (`onLine`), so rooms open beside it; when a room
-   covers it anyway, it rises to the top of the desk and stays above the rooms (`raised`). */
+/* Home is a quiet desktop over the real one (it shows through, blurred): widgets on the
+   left (`Widgets`, which `widgets` configures), one line in the middle (`Line`: write it
+   down, find it, or ask), the files on your Mac's Desktop (or your notes) as icons on the
+   right, and a dock to the rooms. It reads and writes the same records the rest of OSAT
+   keeps. Notes open as pop-outs (`onOpenNote`); widgets and icons can be picked up and set
+   down anywhere (`places`). */
 export function FieldDesk({
   workspace, commit, navigate,
-  storage, onSearch, focusAt, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
-  raised = false, onLine,
+  storage, focusAt, summon, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
+  raised = false, onLine, widgets,
 }) {
   const home = useRef(null)
-  const center = useRef(null)
-  const greetingRef = useRef(null)
-  const lineRef = useRef(null)
-  const lastLine = useRef('')
   const justMoved = useRef(false)
-  const box = useRef(null)
   const grid = useRef(null)
   const reduced = useReducedMotion()
   const [now, setNow] = useState(() => new Date())
-  const [mode, setMode] = useState('note')
-  const [draft, setDraft] = useState('')
   const [freshId, setFreshId] = useState(null)
-  const [ghosts, setGhosts] = useState(() => new Set())
   const [arrived] = useState(() => reduced || sessionStorage.getItem('osat.field.arrived') === '1')
   const [capacity, setCapacity] = useState(21)
   const [collapsed, setCollapsed] = useState(readIconsCollapsed)
@@ -86,29 +57,12 @@ export function FieldDesk({
   const fresh = useFreshness()
   const desktop = useFolder(onDesktop ? 'desktop' : null, '', fresh + visit)
   const [focusOpen, setFocusOpen] = useState(false)
-  const { models, status: aiStatus, refresh: checkAi } = useAi()
-  const [answer, setAnswer] = useState(null)
-  const answerAbort = useRef(null)
   const [hoverId, setHoverId] = useState(null)
-  const [eveningSeenOn, setEveningSeenOn] = useState(readEvening)
-  const focusRef = useRef(false)
-  focusRef.current = focusOpen
 
   const phase = dayPhase(now)
   const today = localDateKey(now)
   const [greeting] = phaseCopy(phase)
   const notes = workspace.notes.filter(isActiveNote)
-  const planId = dayNoteId(today)
-  // Steps left on earlier daily pages wait to be brought forward, not piled on here.
-  const earlier = earlierSteps(notes, today)
-  const earlierIds = new Set(earlier.map((step) => step.id))
-  const steps = nextSteps(notes)
-    .filter((step) => (!step.done || ghosts.has(step.id)) && !earlierIds.has(step.id))
-    .sort((a, b) => (b.noteId === planId) - (a.noteId === planId))
-  const allEvents = workspace.calendar.events
-  const events = allEvents
-    .filter((event) => localDateKey(new Date(event.start)) === today)
-    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
   const allItems = homeItems({ notes, folders: workspace.folders, boards: workspace.sorter?.boards || [] })
   const placed = (item) => Boolean(places[`${item.kind}:${item.id}`])
   const items = fitCells(allItems.filter((item) => !placed(item)), capacity)
@@ -118,7 +72,6 @@ export function FieldDesk({
   const pairs = useMemo(() => wikilinkPairs(notes), [notes])
   const linked = new Set(hoverId ? pairs.flatMap((pair) => (pair.a === hoverId ? [pair.b] : pair.b === hoverId ? [pair.a] : [])) : [])
   const linkedFolders = new Set(notes.filter((note) => linked.has(note.id) && note.folderId).map((note) => note.folderId))
-  const current = MODES.find((item) => item.id === mode)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60000)
@@ -129,16 +82,14 @@ export function FieldDesk({
     if (!arrived) sessionStorage.setItem('osat.field.arrived', '1')
   }, [arrived])
 
-  /* Each time the desk is shown the line is back on Note and ready to type into. */
-  useEffect(() => {
-    if (!visit) return
-    setMode('note')
-    box.current?.focus()
-  }, [visit])
-
   useEffect(() => {
     if (focusAt) setFocusOpen(true)
   }, [focusAt])
+
+  // ⌘K during Focus puts its screen away (the session keeps running) and lands in the line.
+  useEffect(() => {
+    if (summon) setFocusOpen(false)
+  }, [summon])
 
   /* The icon grid shows as many cells as fit; it never scrolls. */
   useEffect(() => {
@@ -153,170 +104,6 @@ export function FieldDesk({
     observer.observe(node)
     return () => observer.disconnect()
   }, [collapsed, onDesktop])
-
-  /* Where the line rests (offsets ignore the rise, which is only a translate), and how far
-     it has to travel to reach the top of the desk. */
-  useEffect(() => {
-    const middle = center.current
-    const form = lineRef.current
-    if (!middle || !form) return undefined
-    const measure = () => {
-      const box = middle.getBoundingClientRect()
-      const greeting = greetingRef.current
-      const top = box.top + (greeting ? greeting.offsetTop : form.offsetTop)
-      const rest = {
-        left: Math.round(box.left + form.offsetLeft),
-        right: Math.round(box.left + form.offsetLeft + form.offsetWidth),
-        top: Math.round(top),
-        bottom: Math.round(box.top + form.offsetTop + form.offsetHeight),
-      }
-      middle.style.setProperty('--rise', `${form.offsetTop}px`)
-      const key = JSON.stringify(rest)
-      if (key === lastLine.current) return
-      lastLine.current = key
-      onLine?.(rest)
-    }
-    // An answer lifts the line (a grid transition): measure again once it settles.
-    const observer = new ResizeObserver(measure)
-    observer.observe(middle)
-    observer.observe(form)
-    middle.addEventListener('transitionend', measure)
-    return () => { observer.disconnect(); middle.removeEventListener('transitionend', measure) }
-  }, [onLine])
-
-  /* Ask only ever talks to the model on this Mac. */
-  const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
-
-  /* Esc puts an answer away before anything else. */
-  useEffect(() => {
-    if (!answer) return undefined
-    const onKey = (event) => {
-      if (event.key !== 'Escape' || event.defaultPrevented || document.documentElement.dataset.menu === 'open') return
-      if (home.current?.closest('[inert]') || event.target.closest?.('.popout, [role="dialog"]')) return
-      event.preventDefault()
-      closeAnswer()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [answer]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => answerAbort.current?.abort(), [])
-
-  /* Ask, right here: the answer streams into a card under the line and is kept as a chat. */
-  async function askHere(question) {
-    answerAbort.current?.abort()
-    const active = workspace.notes.filter(isActiveNote)
-    const noteIds = relatedNotes(active, question).map((note) => note.id)
-    const chat = { ...newChat(), messages: [newMessage('user', question, noteIds.length ? { noteIds } : {})] }
-    commit((state) => putChat(state, chat))
-    const controller = new AbortController()
-    answerAbort.current = controller
-    const update = (patch) => setAnswer((value) => (value?.chatId === chat.id ? { ...value, ...patch } : value))
-    setAnswer({ chatId: chat.id, question, text: '', busy: true, error: '', noteIds, actions: [], savedId: null })
-    let full = ''
-    try {
-      await streamLocalMessage({
-        model: ai.id,
-        messages: outbound(systemPrompt(), [], question, active, noteIds),
-        signal: controller.signal,
-        onDelta: (delta) => { full += delta; update({ text: extractActions(full).body }) },
-      })
-    } catch (reason) {
-      if (reason?.name !== 'AbortError') update({ error: cleanError(reason) })
-    }
-    const { body, actions } = extractActions(full)
-    update({ busy: false, text: body, actions: wantsActions(question) ? actions : [] })
-    if (!body.trim()) return
-    commit((state) => {
-      const saved = (state.chats || []).find((item) => item.id === chat.id) || chat
-      return putChat(state, { ...saved, messages: [...saved.messages, newMessage('assistant', body)] })
-    })
-  }
-
-  function closeAnswer() {
-    answerAbort.current?.abort()
-    setAnswer(null)
-    box.current?.focus()
-  }
-
-  function saveAnswer() {
-    if (!answer?.text.trim()) return
-    let note
-    commit((state) => {
-      const result = captureThought(state, `${answer.question.slice(0, 80)}\n\n${answer.text.trim()}`, 'Ask')
-      note = result.note
-      return result.state
-    })
-    if (note) setAnswer((value) => (value ? { ...value, savedId: note.id } : value))
-  }
-
-  /* Type anywhere on home and the words land in the line. */
-  useEffect(() => {
-    const onKey = (event) => {
-      if (focusRef.current || document.activeElement?.closest?.('.popout')) return
-      if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1 || inputActive()) return
-      if (box.current?.closest('[inert]')) return
-      if (event.key === ' ' && document.activeElement && document.activeElement !== document.body) return
-      event.preventDefault()
-      box.current?.focus()
-      setDraft((value) => value + event.key)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
-  function choose(id, focusLine = true) {
-    setMode(id)
-    if (id === 'ask' && ai.state !== 'ready') checkAi()
-    if (focusLine) box.current?.focus()
-  }
-
-  function onModeKey(event) {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key]
-    if (!step) return
-    event.preventDefault()
-    const index = MODES.findIndex((item) => item.id === mode)
-    const next = MODES[(index + step + MODES.length) % MODES.length]
-    choose(next.id, false)
-    event.currentTarget.querySelector(`[data-mode="${next.id}"]`)?.focus()
-  }
-
-  function submit(event) {
-    event?.preventDefault()
-    const text = draft.trim().slice(0, 8000)
-    if (!text) return
-    if (mode === 'ask') {
-      if (ai.state !== 'ready') return
-      askHere(text)
-    } else if (mode === 'find') {
-      onSearch(text)
-    } else if (mode === 'step') {
-      commit((state) => addNextStep(state, text.replace(/\s*\n\s*/g, ' ').slice(0, 240), localDateKey()))
-    } else {
-      let note
-      commit((state) => {
-        const result = captureThought(state, text, 'Home')
-        note = result.note
-        return result.state
-      })
-      if (note) setFreshId(note.id)
-    }
-    setDraft('')
-    if (box.current) box.current.style.height = ''
-  }
-
-  function toggleStep(step) {
-    commit((state) => ({ ...state, notes: toggleNextStep(state.notes, step) }))
-    if (step.done) return
-    setGhosts((value) => new Set(value).add(step.id))
-    window.setTimeout(() => {
-      if (document.activeElement?.closest('.widget-next li.is-done')) document.getElementById('widget-next')?.focus()
-    }, 1380)
-    window.setTimeout(() => setGhosts((value) => {
-      const next = new Set(value)
-      next.delete(step.id)
-      return next
-    }), 1400)
-  }
 
   function openNote(id) {
     onOpenNote?.(id)
@@ -391,9 +178,8 @@ export function FieldDesk({
 
   /* Pick a widget or icon up and set it down anywhere, like a sticky. A press
      that barely moves is still a click. */
-  function movable(id) {
+  function movable(id, spot = places[id]) {
     if (!onPlace) return {}
-    const spot = places[id]
     return {
       'data-placed': spot ? '' : undefined,
       style: spot ? { position: 'absolute', left: `${spot.x * 100}%`, top: `${spot.y * 100}%` } : undefined,
@@ -454,137 +240,29 @@ export function FieldDesk({
     )
   }
 
-  const chip = mode === 'note'
-    ? { tone: storage?.status === 'error' ? 'bad' : 'good', text: storage?.status === 'error' ? 'Check storage' : 'Saved privately on this Mac' }
-    : mode === 'step'
-      ? (storage?.status === 'error' ? { tone: 'bad', text: 'Check storage' } : { tone: 'good', text: 'Adds to today’s plan' })
-      : mode === 'find'
-        ? { tone: 'quiet', text: 'Opens search with these words' }
-        : ai.state === 'ready'
-          ? { tone: 'good', text: `${ai.label} · on this Mac · no cloud` }
-          : ai.state === 'checking'
-            ? { tone: 'quiet', text: 'Looking for the AI on this Mac…' }
-            : setupLine(aiStatus)
-              ? { tone: 'quiet', text: setupLine(aiStatus), setup: true }
-              : { tone: 'bad', text: 'No AI on this Mac yet', setup: true }
-  const blocked = mode === 'ask' && ai.state !== 'ready'
-
   return (
     <div ref={home} className={`home is-layer ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''} ${raised ? 'is-raised' : ''}`} data-phase={phase}>
-      <aside className="home-widgets" aria-label="Today at a glance">
-        <DayWidget now={now} events={events} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:day')} />
-        <MonthWidget now={now} today={today} events={allEvents} onOpen={() => navigate('Calendar', { date: today })} move={movable('widget:month')} />
-        <section className="glass widget widget-next" aria-labelledby="widget-next" {...movable('widget:next')}>
-          <h2 id="widget-next" tabIndex={-1} className="widget-kicker">Next</h2>
-          {steps.length ? (
-            <ul>
-              {steps.slice(0, 5).map((step) => (
-                <li key={step.id} className={step.done ? 'is-done' : ''}>
-                  <button type="button" className="ring" aria-label={`Complete ${step.text}`} aria-pressed={step.done} onClick={() => toggleStep(step)} />
-                  <button type="button" className="step-text" onClick={() => openNote(step.noteId)}>{step.text}</button>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="widget-empty">Nothing waiting. Choose Next step to add one.</p>}
-          {(steps.length > 5 || earlier.length > 0) && (
-            <div className="widget-next-foot">
-              {steps.length > 5 && <button type="button" onClick={() => navigate('Journal')}>{steps.length - 5} more on today’s page</button>}
-              {earlier.length > 0 && (
-                <button type="button" className="bring" onClick={() => commit((state) => bringForward(state, localDateKey()))}>
-                  Bring {earlier.length} from earlier days
-                </button>
-              )}
-            </div>
-          )}
-        </section>
-        {media && <MediaWidget media={media} visit={visit} move={movable('widget:media')} />}
-      </aside>
+      <Widgets
+        {...widgets}
+        places={places}
+        move={movable}
+        props={{ workspace, commit, navigate, now, today, notes, media, visit, onOpenNote: openNote }}
+      />
 
-      <div ref={center} className="home-center">
-        <h1 ref={greetingRef} className="home-greeting" aria-hidden={raised || undefined}>{greeting}</h1>
-
-        <form ref={lineRef} className="home-composer-wrap" onSubmit={submit}>
-          <div className={`glass home-composer ${draft.trim() ? 'has-text' : ''}`}>
-            <label className="visually-hidden" htmlFor="home-line">{current.label}</label>
-            <textarea
-              id="home-line"
-              ref={box}
-              rows={2}
-              value={draft}
-              maxLength={mode === 'step' ? 240 : 8000}
-              placeholder={current.placeholder}
-              onChange={(event) => {
-                setDraft(event.target.value)
-                const el = event.target
-                el.style.height = 'auto'
-                el.style.height = `${Math.min(el.scrollHeight, 180)}px`
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault()
-                  submit(event)
-                }
-              }}
-            />
-            <div className="home-composer-bar">
-              {/* What Return does: four verbs in one small switch; the chosen one says its name. */}
-              <div className="verbs" role="radiogroup" aria-label="What Return does" onKeyDown={onModeKey}>
-                {MODES.map(({ id, label, icon: Icon }) => (
-                  <button key={id} type="button" role="radio" data-mode={id} aria-checked={mode === id} aria-label={label} title={mode === id ? undefined : label} tabIndex={mode === id ? 0 : -1} onClick={() => choose(id)}>
-                    <Icon weight={mode === id ? 'bold' : 'regular'} />
-                    <span aria-hidden="true">{label}</span>
-                  </button>
-                ))}
-              </div>
-              <p className={`home-chip is-${chip.tone}`} role="status">
-                <i />
-                <span>{chip.text}</span>
-                {chip.setup && <button type="button" onClick={() => navigate('Settings', { section: 'ai' })}>Set it up</button>}
-              </p>
-              <button type="submit" className="home-send" aria-label={current.label} title={`${current.hint} · Shift-Return for a new line`} disabled={!draft.trim() || blocked}>
-                <ArrowUp weight="bold" />
-              </button>
-            </div>
-          </div>
-          {(phase === 'evening' || phase === 'night') && eveningSeenOn !== today && (
-            <button type="button" className="glass evening-pill" onClick={() => { markEvening(today); setEveningSeenOn(today); navigate('Reflection') }}>
-              <MoonStars weight="fill" /> Close the day <span>three quiet questions</span>
-            </button>
-          )}
-        </form>
-        {answer && (
-          <section className="glass home-answer" aria-label="Answer" aria-busy={answer.busy}>
-            <header>
-              <Sparkle weight="fill" />
-              <strong>{answer.question}</strong>
-              <button type="button" aria-label="Put the answer away" onClick={closeAnswer}><X /></button>
-            </header>
-            <div className="home-answer-body" aria-live="polite">
-              {answer.text ? <Markdown text={answer.text} headingOffset={2} /> : answer.busy && <p className="home-answer-wait">Thinking on this Mac…</p>}
-              {answer.error && <p className="home-answer-error" role="alert">{answer.error}</p>}
-            </div>
-            <UsedNotes ids={answer.noteIds} notes={notes} onOpen={(noteId) => openNote(noteId)} />
-            <ActionCards
-              actions={answer.actions}
-              onAdd={(action) => { commit((state) => applyAction(state, action, localDateKey())); setAnswer((value) => ({ ...value, actions: value.actions.filter((item) => item.id !== action.id) })) }}
-              onDiscard={(action) => setAnswer((value) => ({ ...value, actions: value.actions.filter((item) => item.id !== action.id) }))}
-            />
-            <footer>
-              {answer.busy
-                ? <button type="button" onClick={() => answerAbort.current?.abort()}><Stop weight="fill" /> Stop</button>
-                : <button type="button" onClick={() => { const chatId = answer.chatId; setAnswer(null); navigate('Assistant', { chatId }) }}><ChatCircle /> Keep talking</button>}
-              {!answer.busy && window.osatChat && (
-                <button type="button" title="Keep talking in a small window over your other apps" onClick={() => { const chatId = answer.chatId; setAnswer(null); window.osatChat.show({ chatId }) }}><PictureInPicture /> Pop out</button>
-              )}
-              {!answer.busy && answer.text.trim() && (
-                answer.savedId
-                  ? <span className="home-answer-saved"><NotePencil /> Saved to Unsorted</span>
-                  : <button type="button" onClick={saveAnswer}><NotePencil /> Save as a note</button>
-              )}
-            </footer>
-          </section>
-        )}
-      </div>
+      <Line
+        workspace={workspace}
+        commit={commit}
+        navigate={navigate}
+        greeting={greeting}
+        storage={storage}
+        visit={visit}
+        summon={summon}
+        paused={focusOpen}
+        raised={raised}
+        onLine={onLine}
+        onOpenNote={openNote}
+        onSaved={setFreshId}
+      />
 
       <nav className="home-icons" aria-label={onDesktop ? 'Your Desktop' : 'OSAT items'}>
         <div className="icons-head">
@@ -619,48 +297,12 @@ export function FieldDesk({
       {focusOpen && (
         <FocusEnvironment
           session={workspace.focus}
-          task={steps.find((step) => !step.done)?.text}
+          task={openSteps(notes, today).find((step) => !step.done)?.text}
           onChange={(focus) => commit((state) => ({ ...state, focus }))}
           close={() => setFocusOpen(false)}
         />
       )}
     </div>
-  )
-}
-
-function DayWidget({ now, events, onOpen, move }) {
-  return (
-    <section className="glass widget widget-day" aria-label="Today" {...move}>
-      <p className="widget-kicker">{WEEKDAY.format(now)}</p>
-      <strong className="widget-date">{now.getDate()}</strong>
-      <div className="widget-day-foot">
-        {events.length ? (
-          <ul>
-            {events.slice(0, 2).map((event) => (
-              <li key={event.id}><time dateTime={event.start}>{timeLabel(event.start)}</time><span>{event.title}</span></li>
-            ))}
-          </ul>
-        ) : <p className="widget-empty">Nothing planned</p>}
-        <button type="button" aria-label="Open today in Calendar" title="Open today in Calendar" onClick={onOpen}><Plus weight="bold" /></button>
-      </div>
-    </section>
-  )
-}
-
-function MonthWidget({ now, today, events, onOpen, move }) {
-  const busy = new Set(events.map((event) => localDateKey(new Date(event.start))))
-  const cells = calendarMonthDays(now.getFullYear(), now.getMonth())
-  const weeks = Array.from({ length: 6 }, (_, row) => cells.slice(row * 7, row * 7 + 7)).filter((week) => week.some((day) => day.inMonth))
-  return (
-    <button type="button" className="glass widget widget-month" aria-label={`${MONTH.format(now)}. Open the calendar`} onClick={onOpen} {...move}>
-      <span className="widget-kicker">{MONTH.format(now)}</span>
-      <span className="mini-month" aria-hidden="true">
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => <b key={index}>{day}</b>)}
-        {weeks.flat().map((day) => (
-          <i key={day.key} className={`${day.inMonth ? '' : 'is-out'} ${day.key === today ? 'is-today' : ''} ${busy.has(day.key) && day.inMonth ? 'is-busy' : ''}`}>{day.inMonth ? day.date.getDate() : ''}</i>
-        ))}
-      </span>
-    </button>
   )
 }
 

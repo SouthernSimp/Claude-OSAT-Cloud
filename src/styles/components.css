@@ -327,19 +327,6 @@ input[type="radio"] {
   from { opacity: 0; translate: 0 10px; scale: 0.98; }
 }
 
-.capture-dialog,
-.command-palette {
-  width: min(100%, 560px);
-  display: grid;
-  gap: var(--s-3);
-  padding: var(--s-6);
-  border: 1px solid var(--line);
-  border-radius: var(--r-2xl);
-  background: var(--surface-raised);
-  box-shadow: var(--e-5);
-  animation: dialog-in var(--d-slow) var(--ease-out);
-}
-
 .eyebrow {
   font-size: var(--t-2xs);
   font-weight: 650;
@@ -347,65 +334,6 @@ input[type="radio"] {
   text-transform: uppercase;
   color: var(--faint);
 }
-
-/* Capture is a fresh sheet of the same paper the desk uses. */
-.capture-dialog {
-  position: relative;
-  width: min(100%, 600px);
-  gap: 10px;
-  padding: 30px 34px 22px;
-  border: 0;
-  border-radius: 3px 20px 20px 20px;
-  color: var(--sheet-ink);
-  background: linear-gradient(180deg, rgb(255 255 255 / 50%), transparent 22%), var(--sheet);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 70%) inset, 0 44px 90px -34px rgb(24 12 4 / 62%);
-}
-
-.capture-dialog::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  border-style: solid;
-  border-width: 0 22px 22px 0;
-  border-color: transparent var(--sheet-edge) transparent transparent;
-  border-radius: 0 0 0 4px;
-}
-
-.capture-dialog .eyebrow,
-.capture-dialog > p,
-.capture-dialog .dialog-actions > span,
-.capture-dialog .modal-close { color: color-mix(in srgb, var(--sheet-ink) 52%, transparent); }
-
-.capture-dialog h2 {
-  color: inherit;
-  font-size: 30px;
-}
-
-.capture-dialog > p {
-  font-size: var(--t-sm);
-}
-
-.capture-dialog textarea {
-  min-height: 170px;
-  margin-top: 6px;
-  padding: 12px 0 0;
-  border: 0;
-  border-top: 1px solid color-mix(in srgb, var(--sheet-ink) 10%, transparent);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  resize: none;
-  color: inherit;
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  font-size: 19px;
-  line-height: 1.55;
-}
-
-.capture-dialog textarea:focus-visible { box-shadow: none; }
-.capture-dialog textarea::placeholder { color: color-mix(in srgb, var(--sheet-ink) 36%, transparent); }
-.capture-dialog .modal-close { top: 18px; right: 30px; }
-.capture-dialog .modal-close:hover { background: color-mix(in srgb, var(--sheet-ink) 7%, transparent); color: var(--sheet-ink); }
 
 .modal-close {
   position: absolute;
@@ -423,105 +351,6 @@ input[type="radio"] {
 .dialog-actions > span {
   color: var(--faint);
   font-size: var(--t-xs);
-}
-
-
-/* ---- Command palette --------------------------------------------------- */
-
-.command-palette {
-  align-self: start;
-  margin-top: 10vh;
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-.command-palette > label {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-4) var(--s-5);
-  border-bottom: 1px solid var(--line);
-  color: var(--faint);
-}
-
-.command-palette input {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font-size: var(--t-lg);
-}
-
-.command-palette input:focus-visible {
-  box-shadow: none;
-}
-
-.command-palette > div {
-  max-height: min(52vh, 440px);
-  padding: var(--s-2);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.command-result-group {
-  padding: var(--s-3) var(--s-3) var(--s-1);
-  color: var(--faint);
-  font-size: var(--t-2xs);
-  font-weight: 650;
-  letter-spacing: var(--tr-wide);
-  text-transform: uppercase;
-}
-
-.command-palette > div button {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  width: 100%;
-  min-height: 40px;
-  padding: 0 var(--s-3);
-  border-radius: var(--r-md);
-  color: var(--ink);
-  font-size: var(--t-sm);
-  text-align: left;
-}
-
-.command-palette > div button svg {
-  width: 16px;
-  height: 16px;
-  color: var(--muted);
-}
-
-.command-palette > div button > span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.command-palette > div button > span em {
-  margin-left: var(--s-2);
-  color: var(--faint);
-  font-size: var(--t-2xs);
-  font-style: normal;
-}
-
-.command-palette > div button small {
-  margin-left: auto;
-  color: var(--faint);
-  font-size: var(--t-2xs);
-}
-
-.command-palette > div button:hover,
-.command-palette > div button[data-active="true"] {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.command-palette > div button:hover svg,
-.command-palette > div button[data-active="true"] svg {
-  color: var(--accent);
 }
 
 /* ---- Empty states ------------------------------------------------------ */

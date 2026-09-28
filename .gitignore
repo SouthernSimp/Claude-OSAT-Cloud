@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 dist/
 release/
 work/
@@ -15,3 +15,5 @@ ios/OSAT.xcodeproj/
 ios/build/
 ios/OSAT/Info.plist
 ios/OSAT/OSAT.entitlements
+# Worktrees Claude builds in
+.claude/worktrees/

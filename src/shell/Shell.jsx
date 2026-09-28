@@ -1,7 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import {
-  CircleHalf, HourglassMedium, Monitor, Moon, Plus, Sun, Toolbox,
-} from '@phosphor-icons/react'
+import { CircleHalf, Detective, Monitor, Moon, Sun, Toolbox } from '@phosphor-icons/react'
 
 import { Menu } from '../lib/Menu.jsx'
 import { SETTINGS, SPACES, TOOLS, spaceFor } from '../lib/spaces.js'
@@ -10,7 +8,7 @@ import { magnify, unmagnify } from './glass.jsx'
 /* The desk's chrome: one dock, and the look (light or dark, how much blur). */
 
 export const DEFAULT_BLUR = 60
-export function Dock({ view, navigate, storage, aiReady, onCapture, onFocus, workspace, commit, extra = [], children }) {
+export function Dock({ view, navigate, storage, aiReady, workspace, commit, extra = [], children }) {
   const dock = useRef(null)
   const current = spaceFor(view)?.id || 'Today'
   const inTools = TOOLS.some((tool) => tool.id === current) || current === SETTINGS.id || spaceFor(view)?.dock === false
@@ -38,7 +36,7 @@ export function Dock({ view, navigate, storage, aiReady, onCapture, onFocus, wor
           data-tip={`${space.hint}  ⌘${index + 1}`}
           aria-current={current === space.id ? 'page' : undefined}
           className={space.id === 'Assistant' && aiReady ? 'is-running' : undefined}
-          onClick={() => navigate(space.id)}
+          onClick={(event) => navigate(space.id, null, { from: event.currentTarget.getBoundingClientRect() })}
         >
           <space.icon weight={current === space.id ? 'fill' : 'regular'} />
           <span className="dock-label">{space.label}</span>
@@ -50,7 +48,6 @@ export function Dock({ view, navigate, storage, aiReady, onCapture, onFocus, wor
         ariaLabel="Tools"
         items={[
           ...[...SPACES.filter((space) => space.dock === false), ...TOOLS].map((tool) => ({ label: tool.label, icon: tool.icon, checked: current === tool.id, onSelect: () => navigate(tool.id) })),
-          { label: 'Focus for 25 minutes', icon: HourglassMedium, onSelect: onFocus },
           ...extra,
           { divider: true },
           { label: SETTINGS.label, icon: SETTINGS.icon, hint: '⌘,', checked: current === SETTINGS.id, onSelect: () => navigate(SETTINGS.id) },
@@ -65,14 +62,16 @@ export function Dock({ view, navigate, storage, aiReady, onCapture, onFocus, wor
       {children}
       <i className="dock-rule" />
       <Appearance workspace={workspace} commit={commit} />
-      <button type="button" data-mag className="dock-new" data-tip="A new thought  ⇧⌘N" onClick={onCapture}>
-        <Plus weight="bold" />
-        <span className="dock-label">Capture</span>
+      <button type="button" data-mag data-space="Under" data-tip={'Go under: OSAT with the internet off  ⇧⌘U'} onClick={() => navigate('Under')}>
+        <Detective />
+        <span className="dock-label">Incognito</span>
       </button>
-      <span className={`dock-status ${storage?.status || ''}`} role="status" data-tip={storage?.status === 'error' ? 'Check storage' : 'Saved on this Mac'} title={storage?.message}>
-        <i />
-        <span className="visually-hidden">{storage?.status === 'error' ? `Check storage. ${storage.message || ''}` : 'Saved on this Mac'}</span>
-      </span>
+      {/* Saving is invisible unless it fails; then a calm dot leads to what to do. */}
+      {storage?.status === 'error' && (
+        <button type="button" className="dock-status error" data-tip="Saving needs attention" aria-label={`Saving needs attention. ${storage.message || ''}`} onClick={() => navigate('Settings', { section: 'data' })}>
+          <i />
+        </button>
+      )}
     </nav>
   )
 }
