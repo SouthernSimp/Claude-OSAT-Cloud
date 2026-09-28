@@ -4,7 +4,7 @@
    process applies them in one order, bumps `rev`, saves, and tells the other
    windows. Everything here is pure and has no dependencies. */
 
-export const SCHEMA = 2
+export const SCHEMA = 3
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -22,6 +22,10 @@ export const ROOTS = [
 export const migrations = [
   // 2: Ask's conversations live in the workspace (they were kept per window before).
   { from: 1, run: (doc) => ({ ...doc, chats: Array.isArray(doc.chats) ? doc.chats : [] }) },
+  // 3: folders are nodes in the Sky: a rank, a paper colour, links to other folders and a
+  // layout; notes get a rank and a colour. All start unset, so nothing needs changing. An
+  // older OSAT would drop these fields, so it has to refuse this data instead.
+  { from: 2, run: (doc) => doc },
 ]
 
 export function createEmptyDoc() {

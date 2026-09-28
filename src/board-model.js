@@ -2,10 +2,10 @@
    Every card is a note from Notes; the board only owns geometry, links,
    frames (groups), saved views and paper colours. Pure functions, no DOM. */
 
-import { normalizeNote } from './note-core.js'
+import { PAPERS, normalizeNote } from './note-core.js'
 import { folderSubtree, isActiveNote, isVisibleNote, uid } from './notes-model.js'
 
-export const PAPERS = ['canary', 'apricot', 'rose', 'lilac', 'sky', 'mint', 'lime', 'bone']
+export { PAPERS }
 export const PAPER_LABEL = { canary: 'Canary', apricot: 'Apricot', rose: 'Rose', lilac: 'Lilac', sky: 'Sky', mint: 'Mint', lime: 'Lime', bone: 'Bone' }
 const AUTO_PAPERS = ['canary', 'sky', 'rose', 'mint', 'lilac', 'apricot', 'lime']
 export const GRID = 20
