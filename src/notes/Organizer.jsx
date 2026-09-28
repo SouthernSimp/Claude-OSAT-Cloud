@@ -138,7 +138,7 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
                       { label: "New note here", icon: Notebook, onSelect: () => actions.createNote(folder.id) },
                       { label: "New subfolder", icon: FolderPlus, onSelect: () => { if (folder.collapsed) actions.toggleFolder(folder.id); setDraft({ parentId: folder.id, name: "" }); } },
                       { label: "Rename", onSelect: () => setRenaming({ id: folder.id, name: folder.name }) },
-                      { label: "Lay it out in the Sky", icon: ShareNetwork, onSelect: () => actions.openFolderBoard(folder.id) },
+                      { label: "Open it in the Sky", icon: ShareNetwork, onSelect: () => actions.openFolderBoard(folder.id) },
                       { divider: true },
                       { label: "Delete folder", hint: "keeps notes", danger: true, onSelect: () => actions.deleteFolder(folder.id) },
                     ]}

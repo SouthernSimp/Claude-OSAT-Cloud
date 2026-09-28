@@ -1,9 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsOut, LinkSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, ShareNetwork, Sparkle, Star, Trash, TreeStructure,
+  ArrowDown, ArrowsHorizontal, ArrowsIn, ArrowsVertical, CornersOut, LinkSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus,
+  ShareNetwork, Sparkle, Trash, TreeStructure,
 } from '@phosphor-icons/react'
 
-import { FieldSky } from '../field/FieldSky.jsx'
 import { useCarrying, useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
@@ -12,11 +12,10 @@ import { PAPERS } from '../note-core.js'
 import { folderChildren, folderPath, folderSubtree, isActiveNote, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
 import {
   addFolder, addSticky, applySuggestions, linkFolders, linkedWith, moveFolder, moveSticky, nodesOf, parseSortReply, pileOf, removeFolder,
-  sortPrompt, suggestBranches, unlinkFolders,
+  renameFolder, sortPrompt, suggestBranches, tidyBoard, unlinkFolders,
 } from '../nodes-model.js'
 import { seedDirection } from '../project-direction.js'
-import { NodeFocus } from './NodeFocus.jsx'
-import { NodeRow } from './NodeRow.jsx'
+import { Board } from './Board.jsx'
 
 const OPEN_KEY = 'osat.sky.open.v1'
 function readOpen() {
@@ -24,13 +23,11 @@ function readOpen() {
 }
 
 /* The Sky: the layer above the desk (⌘3, the dock's Sky, ⌥⌘↑, or a sticky held at the top
-   of the screen). Your nodes, as a row of piles (NodeRow) or one laid out (NodeFocus), or
-   every note as a star (Stars). `target` says what to show on arriving ({ folderId },
-   { noteId }, { view: 'stars' }). Esc: out of a laid-out node, then back down (Desk.jsx
-   asks `back()`). `onFiled` hears when a sticky from the desk went into a node. */
+   of the screen). Your nodes on one whiteboard (Board). `target` says where to fly on
+   arriving ({ folderId } or { noteId }). Esc: a node being named, the search, then back
+   down (Desk.jsx asks `back()`). `onFiled` hears when a sticky from the desk went into a node. */
 export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target, onClose, onFiled }, ref) {
-  const [view, setView] = useState(target?.view === 'stars' ? 'stars' : 'nodes')
-  const [focus, setFocus] = useState(null)
+  const board = useRef(null)
   const [open, setOpen] = useState(readOpen)
   const [query, setQuery] = useState('')
   const [sorting, setSorting] = useState(null)
@@ -50,33 +47,22 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   /* Arriving with somewhere to go: a node, or the node a note is in. */
   useEffect(() => {
     if (!target) return
-    if (target.view === 'stars') { setView('stars'); return }
+    if (target.action === 'new-node') { board.current?.newNode(); return }
     const noteId = target.noteId || target.focusNoteId
     const folderId = target.folderId || (noteId && workspace.notes.find((note) => note.id === noteId)?.folderId)
-    if (folderId && workspace.folders.some((folder) => folder.id === folderId)) {
-      setView('nodes')
-      setFocus(folderId)
-    }
+    if (folderId || noteId) board.current?.goTo({ folderId: workspace.folders.some((folder) => folder.id === folderId) ? folderId : null, noteId })
   }, [target?.at]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // A laid-out node that was removed (or undone away) goes back to the row.
-  useEffect(() => {
-    if (focus && !workspace.folders.some((folder) => folder.id === focus)) setFocus(null)
-  }, [workspace.folders, focus])
 
   useImperativeHandle(ref, () => ({
     /* ⌘K up here: find a sticky. */
     find() {
-      setView('nodes')
       findField.current?.focus()
       findField.current?.select()
     },
     /* Esc: true when it did something here, false when it's time to go back down. */
     back() {
       if (query) { setQuery(''); return true }
-      if (focus) { setFocus(null); return true }
-      if (view === 'stars') { setView('nodes'); return true }
-      return false
+      return Boolean(board.current?.back())
     },
   }))
 
@@ -132,7 +118,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       showUndo(`Tossed “${note.title.slice(0, 40)}”`, () => commit((state) => restoreNotes(state, [note.id])))
     },
     rename(id, name) {
-      commit((state) => ({ ...state, folders: state.folders.map((folder) => (folder.id === id ? { ...folder, name: name.slice(0, 80) } : folder)) }))
+      commit((state) => renameFolder(state, id, name))
     },
     setLayout(id, layout) {
       commit((state) => ({
@@ -144,7 +130,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
         }),
       }))
     },
-    focusOn(id) { setView('nodes'); setFocus(id) },
+    openNote(noteId) { navigate('Notes', { noteId }) },
     renaming,
     startRename(id) { setRenaming(id) },
     endRename(id, name) {
@@ -163,10 +149,14 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     nodeMenu(event, folder) {
       const others = nodesList.filter((item) => item.folder.id !== folder.id)
       const linked = linkedWith(workspace.folders, folder.id)
+      const down = folder.layout === 'down'
       openMenu(event, [
-        { label: 'Lay it out', icon: ArrowsOut, onSelect: () => actions.focusOn(folder.id) },
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(folder.id) },
-        { label: 'Help me sort', icon: Sparkle, onSelect: () => { actions.focusOn(folder.id); actions.sort(folder.id) } },
+        { label: 'Help me sort', icon: Sparkle, onSelect: () => { toggle(folder.id, true); actions.sort(folder.id) } },
+        { label: 'Lay it out', icon: down ? ArrowsVertical : ArrowsHorizontal, items: [
+          { label: 'Across (branches as rows)', checked: !down, onSelect: () => actions.setLayout(folder.id, 'across') },
+          { label: 'Down (branches as columns)', checked: down, onSelect: () => actions.setLayout(folder.id, 'down') },
+        ] },
         { label: 'See it in Notes', icon: NotePencil, onSelect: () => navigate('Notes', { folderId: folder.id }) },
         { divider: true },
         { label: 'Colour', icon: PaintBucket, items: [{ swatches: PAPERS, picked: folder.color || 'canary', onPick: (paper) => actions.paint(folder.id, paper) }] },
@@ -174,13 +164,24 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
           label: 'Link to', icon: LinkSimple,
           items: others.map(({ folder: other, number }) => ({ label: `${number}. ${other.name}`, checked: linked.includes(other.id), onSelect: () => actions.link(folder.id, other.id) })),
         } : null,
+        others.length ? {
+          label: 'Put inside', icon: ShareNetwork,
+          items: others.map(({ folder: other, number }) => ({ label: `${number}. ${other.name}`, onSelect: () => actions.moveFolder(folder.id, other.id) })),
+        } : null,
         { divider: true },
         { label: 'Remove node', icon: Trash, danger: true, onSelect: () => actions.remove(folder) },
       ])
     },
+    /* Right-click the open board. */
+    boardMenu(event, { fit, newNode }) {
+      openMenu(event, [
+        { label: 'New node here', icon: Plus, onSelect: newNode },
+        { label: 'See everything', icon: CornersOut, onSelect: fit },
+        { label: 'Line them up again', icon: ArrowsIn, onSelect: () => commit(tidyBoard) },
+      ])
+    },
     branchMenu(event, branch) {
       openMenu(event, [
-        { label: 'Lay it out', icon: ArrowsOut, onSelect: () => actions.focusOn(branch.id) },
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(branch.id) },
         { label: 'Colour', icon: PaintBucket, items: [{ swatches: PAPERS, picked: branch.color || 'bone', onPick: (paper) => actions.paint(branch.id, paper) }] },
         { label: 'Make it a node', icon: TreeStructure, onSelect: () => actions.moveFolder(branch.id, null) },
@@ -192,7 +193,6 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     stickyMenu(event, note) {
       openMenu(event, [
         { label: 'Open as a page', icon: NotePencil, onSelect: () => navigate('Notes', { noteId: note.id }) },
-        { label: 'See it as a star', icon: Star, onSelect: () => { setView('stars') } },
         { label: 'Colour', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
         { label: 'Move to', icon: ShareNetwork, items: menuPlaces((folderId) => actions.moveSticky(note.id, folderId), note.folderId) },
         { divider: true },
@@ -267,13 +267,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   })
 
   return (
-    <div className={`sky-layer ${focus ? 'is-focused' : ''}`} role="region" aria-label="Sky">
+    <div className="sky-layer" role="region" aria-label="Sky">
       <header className="sky-bar">
         <button type="button" className="sky-down" onClick={onClose} title="Back to the desk  Esc · ⌥⌘↓"><ArrowDown weight="bold" /> Desk</button>
-        <div className="segmented sky-views" role="radiogroup" aria-label="How to see the Sky">
-          <button type="button" role="radio" aria-checked={view === 'nodes'} onClick={() => setView('nodes')}><TreeStructure weight={view === 'nodes' ? 'fill' : 'regular'} /> Nodes</button>
-          <button type="button" role="radio" aria-checked={view === 'stars'} onClick={() => setView('stars')}><Star weight={view === 'stars' ? 'fill' : 'regular'} /> Stars</button>
-        </div>
+        <button type="button" className="sky-new" onClick={() => board.current?.newNode()}><Plus weight="bold" /> New node</button>
         <div className="sky-find">
           <MagnifyingGlass aria-hidden="true" />
           <input
@@ -301,14 +298,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       </header>
 
       <div className="sky-body">
-        {view === 'stars'
-          ? <FieldSky workspace={workspace} navigate={navigate} target={target?.noteId ? target : null} />
-          : focus
-            ? <NodeFocus workspace={workspace} actions={actions} nodeId={focus} onFocus={actions.focusOn} onBack={() => setFocus(null)} sorting={sorting} />
-            : <NodeRow workspace={workspace} actions={actions} open={open} toggle={toggle} onFocus={actions.focusOn} />}
+        <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} />
       </div>
 
-      {carrying?.kind === 'note' && view === 'nodes' && (
+      {carrying?.kind === 'note' && (
         <div className="sky-toss" {...toss}><Trash /> Toss</div>
       )}
       {toast}
@@ -318,17 +311,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
 
   function pick(note) {
     setQuery('')
-    setView('nodes')
-    if (note.folderId) {
-      setFocus(note.folderId)
-    } else {
-      setFocus(null)
-    }
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      const element = document.querySelector(`.sky-layer [data-note="${note.id}"]`)
-      element?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' })
-      element?.classList.add('is-found')
-      setTimeout(() => element?.classList.remove('is-found'), 1600)
-    }))
+    findField.current?.blur()
+    board.current?.goTo({ folderId: note.folderId || null, noteId: note.id })
   }
 })

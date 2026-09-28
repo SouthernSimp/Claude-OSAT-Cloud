@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  Archive, ArrowCounterClockwise, ArrowLeft, ArrowUpRight, CheckSquare, Code, Copy, CopySimple, DotsThree, FolderSimple, Hash, Link as LinkIcon,
+  Archive, ArrowCounterClockwise, At, ArrowLeft, ArrowUpRight, CheckSquare, Code, Copy, CopySimple, DotsThree, FolderSimple, Hash, Link as LinkIcon,
   LinkSimple, ListBullets, ListNumbers, Minus, PushPin, Quotes, ShareNetwork, Sidebar, TextB, TextHOne, TextItalic, TextStrikethrough, Trash, BracketsSquare, MoonStars } from "@phosphor-icons/react";
 import { Markdown } from "../lib/markdown.jsx";
 import { Menu } from "../lib/Menu.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
+import { parseMentions } from "../nodes-model.js";
 import { backlinks, folderPath, folderTree, isActiveNote, outgoingLinks, outline, resolveWikilink, wordCount } from "../notes-model.js";
 import { caretPosition } from "./caret.js";
 import {
@@ -17,6 +18,8 @@ const MODES = [["write", "Write"], ["split", "Split"], ["read", "Read"]];
 export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
   const textareaRef = useRef(null);
   const titleAtFocus = useRef(null);
+  const writingFrom = useRef(null); // { id, before }: what the note said when writing began, until it ends
+  const mentions = useMemo(() => (note.markdown.includes("@") ? parseMentions(note.markdown, workspace.folders).filter((item) => item.folderId && !item.missing.length) : []), [note.markdown, workspace.folders]);
   const [complete, setComplete] = useState(null); // { context, items, cursor, top, left }
   const [pendingSelection, setPendingSelection] = useState(null);
   const trashed = Boolean(note.trashedAt);
@@ -27,6 +30,14 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
     const lines = note.markdown.split("\n").filter((line) => /^\s*[-*+]\s+\[[ xX]\]\s+\S/.test(line));
     return { total: lines.length, done: lines.filter((line) => /\[[xX]\]/.test(line)).length };
   }, [note.markdown]);
+
+  /* When writing ends (the field lets go, or the note closes), a new @node files it. */
+  const doneWriting = useCallback(() => {
+    const pending = writingFrom.current;
+    writingFrom.current = null;
+    if (pending) actions.fileMentions(pending.id, pending.before);
+  }, [actions]);
+  useEffect(() => doneWriting, [note.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Restore caret after a programmatic edit (React re-renders the textarea value first).
   useLayoutEffect(() => {
@@ -84,6 +95,13 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
         .sort((a, b) => a.title.toLowerCase().indexOf(query) - b.title.toLowerCase().indexOf(query) || a.title.localeCompare(b.title))
         .slice(0, 8).map((item) => ({ value: item.title, label: item.title, hint: folderPath(workspace.folders, item.folderId).join(" / ") }));
       if (context.query.trim() && !items.some((item) => item.value.toLowerCase() === query)) items.push({ value: context.query.trim(), label: `Create “${context.query.trim()}”`, hint: "new note", create: true });
+    } else if (context.kind === "mention") {
+      const paths = workspace.folders.map((folder) => folderPath(workspace.folders, folder.id));
+      const at = (path) => path.join("/").toLowerCase().indexOf(query);
+      items = paths.filter((path) => at(path) >= 0).sort((a, b) => a.length - b.length || at(a) - at(b)).slice(0, 8)
+        .map((path) => ({ value: path.join("/"), label: path.join(" › "), hint: path.length > 1 ? "branch" : "node" }));
+      const name = context.query.trim();
+      if (name && !paths.some((path) => path.join("/").toLowerCase() === name.toLowerCase())) items.push({ value: name, label: `New node “${name}”`, hint: "files this note there", create: true });
     } else {
       const counts = new Map();
       workspace.notes.filter(isActiveNote).forEach((item) => item.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1)));
@@ -98,6 +116,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
   function choose(item) {
     const element = textareaRef.current;
     const state = { text: element.value, start: element.selectionStart, end: element.selectionEnd };
+    if (item.create && complete.context.kind === "mention") actions.createNode(item.value);
     apply(applyAutocomplete(state, complete.context, item.value));
     setComplete(null);
   }
@@ -143,8 +162,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
     { label: note.pinned ? "Unpin" : "Pin to top", icon: PushPin, onSelect: () => actions.setPinned([note.id], !note.pinned) },
     { label: note.archived ? "Unarchive" : "Archive", icon: Archive, onSelect: () => actions.setArchived([note.id], !note.archived) },
     { label: "Duplicate", icon: CopySimple, onSelect: () => actions.duplicateNote(note.id) },
-    ...(isActiveNote(note) ? [{ label: note.folderId ? "See it in its node" : "See it in the Sky", icon: ShareNetwork, onSelect: () => actions.showInNode(note.id) }] : []),
-    ...(isActiveNote(note) ? [{ label: "See in the Sky", icon: MoonStars, onSelect: () => actions.showInSky(note.id) }] : []),
+    ...(isActiveNote(note) ? [{ label: "See it in the Sky", icon: MoonStars, onSelect: () => actions.showInNode(note.id) }] : []),
     { label: "Copy as Markdown", icon: Copy, onSelect: () => navigator.clipboard?.writeText(`# ${note.title}\n\n${note.markdown}`) },
     { divider: true },
     { label: "Move to Trash", icon: Trash, danger: true, onSelect: () => actions.trashNotes([note.id]) },
@@ -256,11 +274,12 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
                   aria-label="Note text"
                   spellCheck="true"
                   value={note.markdown}
-                  placeholder={"Start writing. Use #tags to organize, [[Note title]] to link, and - [ ] for next steps."}
+                  placeholder={"Start writing. @Node puts it in a node, #tags organize, [[Note title]] links, - [ ] is a next step."}
                   onChange={(event) => { actions.updateNote(note.id, { markdown: event.target.value }); setTimeout(refreshAutocomplete, 0); }}
                   onKeyDown={onKeyDown}
                   onClick={() => setComplete(null)}
-                  onBlur={() => setTimeout(() => setComplete(null), 120)}
+                  onFocus={() => { writingFrom.current ??= { id: note.id, before: note.markdown }; }}
+                  onBlur={() => { doneWriting(); setTimeout(() => setComplete(null), 120); }}
                 />
                 {complete && (
                   <div className="autocomplete" role="listbox" style={{ top: complete.top, left: Math.max(0, complete.left) }}>
@@ -274,7 +293,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
                         onMouseDown={(event) => { event.preventDefault(); choose(item); }}
                         onMouseEnter={() => setComplete({ ...complete, cursor: index })}
                       >
-                        {complete.context.kind === "wikilink" ? <BracketsSquare /> : <Hash />}
+                        {complete.context.kind === "wikilink" ? <BracketsSquare /> : complete.context.kind === "mention" ? <At /> : <Hash />}
                         <span>{item.label}</span>
                         {item.hint && <small>{item.hint}</small>}
                       </button>
@@ -298,8 +317,12 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             <span>{wordCount(note.markdown)} words</span>
             {tasks.total > 0 && <span>{tasks.done}/{tasks.total} steps done</span>}
             <span>Edited {formatRelativeTime(note.updatedAt)}</span>
-            {isActiveNote(note) && note.folderId && <button type="button" className="text-button" onClick={() => actions.showInNode(note.id)}><ShareNetwork /> See it in its node</button>}
-            {isActiveNote(note) && <button type="button" className="text-button" onClick={() => actions.showInSky(note.id)}><MoonStars /> See in the Sky</button>}
+            {mentions.map((mention) => (
+              <button key={mention.key} type="button" className="text-button mention-chip" title="See it in the Sky" onClick={() => actions.openFolderBoard(mention.folderId)}>
+                <At /> {folderPath(workspace.folders, mention.folderId).join(" › ")}
+              </button>
+            ))}
+            {isActiveNote(note) && <button type="button" className="text-button" onClick={() => actions.showInNode(note.id)}><MoonStars /> See it in the Sky</button>}
           </footer>
         </div>
 

@@ -13,7 +13,7 @@ import { useUndoToast } from '../lib/UndoToast.jsx'
 import { clamp } from '../lib/ui.js'
 import { PAPERS } from '../note-core.js'
 import { excerpt, folderChildren, isActiveNote, restoreNotes, trashNotes, wikilinkPairs } from '../notes-model.js'
-import { addFolder, addSticky, moveSticky, nodesOf } from '../nodes-model.js'
+import { addFolder, addSticky, filedAs, forgetEmptyFolders, moveSticky, nodesOf } from '../nodes-model.js'
 import { NameField } from '../sky/Piles.jsx'
 import { FileThumb, filesBridge, openEntry, useFolder, useFreshness } from '../views/Files.jsx'
 import { GRID, STICKY, StickyLayer, spotOn, useStickySurface } from './DeskStickies.jsx'
@@ -137,7 +137,7 @@ export function FieldDesk({
 
   function openItem(item) {
     if (item.kind === 'note') openNote(item.id)
-    // A folder is a node: it opens laid out in the Sky.
+    // A folder is a node: it opens in the Sky.
     else if (item.kind === 'folder') navigate('Mindmap', { folderId: item.id })
     else if (item.kind === 'pile') navigate('Notes', { list: 'unsorted' })
     else navigate('Notes')
@@ -188,9 +188,26 @@ export function FieldDesk({
     setDraft(null)
     if (!text.trim() || !at) return
     let made
-    commit((state) => { const result = addSticky(state, text, null, { source: 'Desk' }); made = result.note; return result.state })
+    let filing = null
+    commit((state) => {
+      const result = addSticky(state, text, null, { source: 'Desk' })
+      made = result.note
+      if (made) filing = filedAs(state, result.state, made.id)
+      return result.state
+    })
     const box = home.current.getBoundingClientRect()
-    if (made) onPlace(`note:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null, snap))
+    if (filing?.where) wentTo(made.id, filing)
+    else if (made) onPlace(`note:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null, snap))
+  }
+
+  /* A thought with an @node in it went straight there: say where; Undo sets it down here
+     (and takes away any node it made). */
+  function wentTo(noteId, { where, made }) {
+    showUndo(`Put in ${where}`, () => {
+      commit((state) => forgetEmptyFolders(moveSticky(state, noteId, null), made))
+      setFreshId(noteId)
+      landOnDesk(noteId)
+    })
   }
 
   function makeNode(name) {
@@ -420,7 +437,7 @@ export function FieldDesk({
         raised={raised}
         onLine={onLine}
         onOpenNote={openNote}
-        onSaved={(id) => { setFreshId(id); landOnDesk(id) }}
+        onSaved={(id, filing) => { if (filing) wentTo(id, filing); else { setFreshId(id); landOnDesk(id) } }}
       />
 
       <nav className="home-icons" aria-label={onDesktop ? 'Your Desktop' : 'OSAT items'} data-size={iconSize}>

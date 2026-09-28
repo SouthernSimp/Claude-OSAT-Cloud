@@ -9,7 +9,7 @@ import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { PAPERS } from '../note-core.js'
 import { folderChildren, isActiveNote, restoreNotes, trashNotes } from '../notes-model.js'
-import { addFolder, addSticky, isScratch, moveSticky, nodeFrom, nodesOf } from '../nodes-model.js'
+import { addFolder, addSticky, filedAs, forgetEmptyFolders, isScratch, moveSticky, nodeFrom, nodesOf } from '../nodes-model.js'
 
 const day = () => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date())
 
@@ -56,9 +56,25 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
     setDraft(null)
     if (!text.trim() || !at) return
     let made
-    commit((state) => { const result = addSticky(state, text, null, { kind: 'scratch', source: 'Scratch' }); made = result.note; return result.state })
+    let filing = null
+    commit((state) => {
+      const result = addSticky(state, text, null, { kind: 'scratch', source: 'Scratch' })
+      made = result.note
+      if (made) filing = filedAs(state, result.state, made.id)
+      return result.state
+    })
     const box = page.current.getBoundingClientRect()
     if (made) onPlace(`scratch:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null, true))
+    if (filing?.where) wentTo(made.id, filing)
+  }
+
+  /* A sticky with an @node in it went there: say where; Undo brings it back to the page
+     (and takes away any node it made). */
+  function wentTo(noteId, { where, made }) {
+    showUndo(`Put in ${where}`, () => commit((state) => forgetEmptyFolders({
+      ...state,
+      notes: state.notes.map((note) => (note.id === noteId ? { ...note, folderId: null, unsorted: false, kind: 'scratch' } : note)),
+    }, made)))
   }
 
   /* The page, as it is now, into a node (or into one that's there): its spots are let go. */
@@ -194,6 +210,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
             onAway={toss}
             onToss={toss}
             onMenu={stickyMenu}
+            onFiled={(note, filing) => wentTo(note.id, filing)}
             draft={draft}
             onDraft={writeDraft}
             snap
@@ -228,7 +245,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
               under
               onOpenNote={onOpenNote}
               write={(state, text) => addSticky(state, text, null, { kind: 'scratch', source: 'Scratch' })}
-              onSaved={land}
+              onSaved={(id, filing) => (filing ? wentTo(id, filing) : land(id))}
             />
           </div>
         </>

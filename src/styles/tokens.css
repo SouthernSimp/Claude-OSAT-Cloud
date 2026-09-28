@@ -159,14 +159,16 @@
   color-scheme: dark;
 }
 
-/* The Sky, the layer above the desk: a calm sky, with the ground line the nodes sit on. */
+/* The Sky, the layer above the desk: a calm sky, dotted like a whiteboard, with a slow glow. */
 :root {
   --sky-ground: radial-gradient(130% 90% at 50% -20%, #ffffff 0%, #f0f3f8 48%, #e8ecf3 100%);
-  --sky-horizon: rgb(60 70 90 / 22%);
+  --board-dot: rgb(60 70 90 / 16%);
+  --board-glow: rgb(255 255 255 / 85%);
 }
 :root[data-theme="dark"] {
   --sky-ground: radial-gradient(130% 90% at 50% -20%, #1f2430 0%, #15181f 50%, #0f1115 100%);
-  --sky-horizon: rgb(200 210 230 / 18%);
+  --board-dot: rgb(200 210 230 / 13%);
+  --board-glow: rgb(150 170 210 / 10%);
 }
 
 /* Incognito (going under): a deep ink under the desk, night in either look, a little
@@ -181,8 +183,6 @@
   --under-text: #eef0f4;
   --under-muted: #a5acb8;
   --under-faint: #767d8a;
-  --under-star: #eef2f8;
-  --under-warm: #9ec5ff;
   --under-dust: rgb(220 232 255 / 28%);
 }
 :root[data-theme="dark"] {

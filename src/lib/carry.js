@@ -103,6 +103,8 @@ function begin(down, item, source) {
   const start = { x: down.clientX, y: down.clientY }
   const box = source.getBoundingClientRect()
   const offset = { x: start.x - box.left, y: start.y - box.top }
+  // Picked up from a zoomed board: the copy keeps its size on screen.
+  const zoom = source.offsetWidth ? box.width / source.offsetWidth : 1
   let ghost = null
   let marker = null
   let over = null
@@ -156,7 +158,8 @@ function begin(down, item, source) {
       ghost.removeAttribute('id')
       ghost.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'))
       ghost.setAttribute('aria-hidden', 'true')
-      Object.assign(ghost.style, { position: 'fixed', left: '0px', top: '0px', width: `${box.width}px`, height: `${box.height}px`, margin: '0', zIndex: '2147483000', pointerEvents: 'none' })
+      Object.assign(ghost.style, { position: 'fixed', left: '0px', top: '0px', width: `${box.width / zoom}px`, height: `${box.height / zoom}px`, margin: '0', zIndex: '2147483000', pointerEvents: 'none' })
+      if (Math.abs(zoom - 1) > 0.01) Object.assign(ghost.style, { transformOrigin: '0 0', scale: String(zoom * 1.03) })
       document.body.append(ghost)
       marker = document.createElement('i')
       marker.className = 'carry-line'

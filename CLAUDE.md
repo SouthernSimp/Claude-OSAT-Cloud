@@ -154,18 +154,20 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     comes back to the desk from the Sky or Incognito; it never puts the desk away (⌥Space and ⌘W
     do). Also the welcome, capture (⇧⌘N) and the menu-bar commands. The browser preview shows a
     stand-in desktop and keeps `places` in localStorage.
-  - `sky/`: `Sky.jsx` (the layer: Nodes / Stars, find a sticky, the actions and menus, Help me
-    sort), `NodeRow.jsx` (nodes on one ground line, branches up, to-sort below, arcs for links),
-    `NodeFocus.jsx` (one node laid out Across or Down, the node list with a glance, linked nodes
-    beside), `Piles.jsx` (`StickyList`, `AddSticky`, `NameField`), `Sticky.jsx` (one sticky: click
-    to write, carry, right-click).
+  - `sky/`: `Sky.jsx` (the layer: find a sticky, the actions and menus, Help me sort),
+    `Board.jsx` (the infinite whiteboard: the camera `{x, y, z}` in CSS vars `--cx/--cy/--z`,
+    registered with `@property` so a flight glides; node cards at `boardSpots`, dragged directly,
+    opened in place as lanes; `makeRoom` slides neighbours aside; lines for links and @mentions;
+    far out (`z < 0.5`) names grow and insides fade), `Piles.jsx` (`StickyList`, `AddSticky`,
+    `NameField`), `Sticky.jsx` (one sticky: click to write, carry, right-click).
+    Cards drift forever, so Playwright clicks on them need `{ force: true }`.
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
-    `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, links, sorting
-    suggestions and the AI's prompt/answer), `project-direction.js` (the seeded first node),
-    `board-model.js` (the old boards' data only), `next-steps.js`, `daily-practice.js`,
-    `field/field-model.js` (desk items, `freeSpot` for new stickies, the Stars graph).
+    `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, links, @mentions, the
+    board's spots, sorting suggestions and the AI's prompt/answer), `project-direction.js` (the
+    seeded first node), `board-model.js` (the old boards' data only), `next-steps.js`,
+    `daily-practice.js`, `field/field-model.js` (desk items, `freeSpot` for new stickies).
   - `shell/Welcome.jsx`: the first launch — what stays private, the shortcut, the AI's size.
-  - Rooms: `field/` (home desk, the Stars (`FieldSky`), widgets), `notes/`, `assistant/` (Ask:
+  - Rooms: `field/` (home desk, widgets), `notes/`, `assistant/` (Ask:
     `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`),
     `views/` (Calendar, Journal, Projects, Habits, Reflection, Budget, NowPlaying, Obsidian,
     Settings), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).
@@ -179,8 +181,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     transitions, and the token overrides that make the quick chat see-through.
 - Nodes (schema 3): every top-level folder is a node, a folder inside one is a branch, a note is a
   sticky. Order is `rank` (`rankOf`: a missing rank is the creation time, so only hand-ranked
-  things carry one); folders may have `color`, `links` (other folder ids) and `layout: 'down'`;
-  notes may have `color`. A note in no folder is Unsorted in the Sky; `kind: 'scratch'` is a
+  things carry one); folders may have `color`, `links` (other folder ids), `layout: 'down'` and
+  `at` ({x, y} on the Sky's board; `placeNodes` freezes every node's spot and re-ranks left to
+  right); notes may have `color`.
+- @mentions (`nodes-model.js`): `parseMentions` (longest node name wins, `/` for a branch, a new
+  word is a node to make, never after a letter/dot, so emails don't count), `fileByMentions(state,
+  id, before)` (only mentions new since `before`; the first @ is the home, others link, see
+  `mentionedIn`), `renameFolder` rewrites them. `addSticky` files by mentions itself; the line,
+  `writeSticky` and the note editor (when writing ends) call `fileByMentions`. A note in no folder is Unsorted in the Sky; `kind: 'scratch'` is a
   sticky on the Incognito page (in no pile until moved). Where stickies lie is per Mac:
   `places['note:<id>']` on the desk, `places['scratch:<id>']` under it ({x, y} fractions, w/h).
 - Data rules: a captured thought is one note with `unsorted: true` and a `source`; filing,

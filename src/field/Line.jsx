@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowUp, CalendarBlank, ChatCircle, CheckCircle, File, FolderSimple, HourglassMedium, MoonStars, NotePencil,
+  ArrowUp, CalendarBlank, ChatCircle, CheckCircle, File, FolderSimple, HourglassMedium, NotePencil,
   PictureInPicture, Plus, ShareNetwork, Sparkle, SquaresFour, Stop, WifiSlash, X,
 } from '@phosphor-icons/react'
 
@@ -15,6 +15,7 @@ import { Markdown } from '../lib/markdown.jsx'
 import { spaceFor } from '../lib/spaces.js'
 import { inputActive } from '../lib/ui.js'
 import { addNextStep } from '../next-steps.js'
+import { fileByMentions, filedAs, mentionName, parseMentions } from '../nodes-model.js'
 import { captureThought, isActiveNote, relatedNotes } from '../notes-model.js'
 
 const KINDS = {
@@ -32,7 +33,6 @@ const ACTION_ICONS = {
   'act:today': CalendarBlank,
   'act:new-folder': FolderSimple,
   'act:board': ShareNetwork,
-  'act:sky': MoonStars,
   'act:focus': HourglassMedium,
   'act:under': WifiSlash,
   'act:widget': SquaresFour,
@@ -71,9 +71,14 @@ export function Line({
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
 
   const matches = useMemo(() => (open ? findAll(workspace, text, { files: text ? found : [], under }) : []), [open, workspace, text, found, under])
+  // "@Garden" in it: Return saves it straight into that node, and says first which nodes it makes.
+  const mentions = useMemo(() => (text.includes('@') ? parseMentions(text, workspace.folders) : []), [text, workspace.folders])
+  const making = mentions.filter((mention) => mention.missing.length).map((mention) => mentionName(workspace.folders, mention))
   const rows = [
     ...(text ? [
-      { key: 'save', label: 'Save as a thought', keys: '↵', icon: NotePencil, run: save },
+      mentions.length
+        ? { key: 'save', label: `Save to ${mentionName(workspace.folders, mentions[0])}`, hint: making.length ? `makes ${making.join(', ')}` : '', keys: '↵', icon: NotePencil, run: save }
+        : { key: 'save', label: 'Save as a thought', keys: '↵', icon: NotePencil, run: save },
       ai.state === 'none'
         ? { key: 'ask', label: 'Set up the AI', hint: setupLine(aiStatus) || 'It runs on this Mac, nothing leaves it', keys: '⌘↵', icon: Sparkle, run: () => { setOpen(false); navigate('Settings', { section: 'ai' }) } }
         : { key: 'ask', label: 'Ask the AI on this Mac', hint: ai.state === 'ready' ? ai.label : 'Looking for it…', keys: '⌘↵', icon: Sparkle, run: ask },
@@ -211,14 +216,18 @@ export function Line({
   function save() {
     if (!text) return
     let note
+    let filing = null
     commit((state) => {
       // `write` makes something else of it (a sticky on the scratch page); else a thought.
       const result = write ? write(state, text.slice(0, 8000)) : captureThought(state, text.slice(0, 8000), under ? 'Under' : 'Home')
       note = result.note
-      return result.state
+      if (!note) return result.state
+      const filed = fileByMentions(result.state, note.id)
+      filing = filedAs(state, filed, note.id)
+      return filed
     })
     reset()
-    if (note) onSaved?.(note.id)
+    if (note) onSaved?.(note.id, filing?.where ? filing : null)
     box.current?.focus()
   }
 

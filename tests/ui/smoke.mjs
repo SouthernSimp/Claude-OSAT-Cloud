@@ -79,18 +79,16 @@ async function main() {
 
   for (const theme of ['light', 'dark']) {
     for (const [view, key] of SPACES) await visit(view, () => page.keyboard.press(`Control+${key}`), theme)
-    // The Sky: the layer above the desk, the row of nodes and one laid out; Esc steps back down.
+    // The Sky: the layer above the desk, a whiteboard of nodes; one opens in place; Esc goes back down.
     room = 'sky'
     await page.keyboard.press('Control+3')
     await page.locator('.sky-layer').waitFor({ timeout: 5000 }).catch(() => problems.push(`sky: ⌃3 did not bring the Sky (${theme})`))
     await sleep(700)
     await page.screenshot({ path: `${OUT}/${theme}-Sky.png` })
-    await page.getByRole('button', { name: 'Lay out Project Direction' }).click().catch(() => problems.push(`sky: Project Direction was not there to lay out (${theme})`))
-    await page.locator('.node-focus .lane').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`sky: laying a node out showed no lanes (${theme})`))
-    await sleep(400)
+    await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true }).catch(() => problems.push(`sky: Project Direction was not there to open (${theme})`))
+    await page.locator('.board-card.is-open .lane').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`sky: opening a node showed no lanes (${theme})`))
+    await sleep(900)
     await page.screenshot({ path: `${OUT}/${theme}-Sky-node.png` })
-    await page.keyboard.press('Escape')
-    if (await page.locator('.node-focus').count()) problems.push('sky: Esc did not go back to the row')
     await page.keyboard.press('Escape')
     await page.locator('.sky-layer').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Esc did not bring the desk back'))
     await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => {})
@@ -189,9 +187,8 @@ async function main() {
     for (let step = 1; step <= 6; step += 1) await page.mouse.move(skyButton.x + ((head.x + head.width / 2 - skyButton.x) * step) / 6, skyButton.y + ((head.y + head.height / 2 - skyButton.y) * step) / 6)
     await page.mouse.up()
     await sleep(300)
-    await page.getByRole('button', { name: 'Lay out Project Direction' }).click()
+    await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true })
     await page.locator('.lane.is-loose .sticky', { hasText: 'Left on the desk' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: the sticky dropped on a node was not in it'))
-    await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
     await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('stickies: Esc did not come back down from the Sky'))
     if (await left.count()) problems.push('stickies: a sticky filed in a node stayed on the desk')

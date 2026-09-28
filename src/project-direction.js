@@ -17,8 +17,9 @@ const BRANCHES = [
     'Phase 10 · One line for everything, widgets that open up, Incognito',
   ]],
   ['Now · Phase 11', 'canary', [
-    'Nodes in the Sky: piles on one line, branches up, to-sort below',
-    'Lay a node out Across or Down to rank what’s in it',
+    'The Sky is a whiteboard: nodes anywhere, zoom out forever',
+    'Write @Garden in any note and it goes into that node',
+    'Open a node to see its branches Across or Down',
     'Stickies on the desk: double-click to write one, drag it into a node',
     'The scratch page under the desk, offline',
     'Help me sort: a branch suggested for every sticky',
@@ -46,7 +47,7 @@ const BRANCHES = [
     'OSAT’s own agents',
   ]],
   ['Questions', 'rose', [
-    'Nodes as piles on one line: does it match your desk?',
+    'A switchboard for what may use the internet or the cloud: where should it live?',
     'Which tools should the ring hold first?',
   ]],
 ]

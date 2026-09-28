@@ -36,7 +36,7 @@ export const HIDDEN = [
 
 const ALL = [...SPACES, ...TOOLS, SETTINGS, ...HIDDEN]
 
-/* Stars are the Sky seen from far away. */
+/* The Sky is the room once called the Map. */
 const ALIASES = { Sky: 'Mindmap' }
 
 export function spaceFor(view) {

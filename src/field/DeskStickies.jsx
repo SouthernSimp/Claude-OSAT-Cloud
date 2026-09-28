@@ -35,7 +35,7 @@ export function useStickySurface({ id, surface, prefix, places, onPlace, snap })
   })
 }
 
-export function StickyLayer({ stickies, prefix, commit, onPlace, onAway, onToss, onMenu, draft, onDraft, snap, fresh }) {
+export function StickyLayer({ stickies, prefix, commit, onPlace, onAway, onToss, onMenu, onFiled, draft, onDraft, snap, fresh }) {
   return (
     <div className="sticky-layer">
       {stickies.map(({ note, spot }) => (
@@ -50,6 +50,7 @@ export function StickyLayer({ stickies, prefix, commit, onPlace, onAway, onToss,
           onAway={() => onAway(note)}
           onToss={() => onToss(note)}
           onMenu={(event) => onMenu(event, note)}
+          onFiled={onFiled && ((filing) => onFiled(note, filing))}
         />
       ))}
       {draft && <DraftSticky draft={draft} onDone={onDraft} />}
@@ -57,7 +58,7 @@ export function StickyLayer({ stickies, prefix, commit, onPlace, onAway, onToss,
   )
 }
 
-function DeskSticky({ note, spot, fresh, commit, snap, onResize, onAway, onToss, onMenu }) {
+function DeskSticky({ note, spot, fresh, commit, snap, onResize, onAway, onToss, onMenu, onFiled }) {
   const [size, setSize] = useState(null)
   const shown = size || (spot.w ? { w: spot.w, h: spot.h } : null)
   // A little tilt, the same every time, like paper put down by hand.
@@ -91,7 +92,7 @@ function DeskSticky({ note, spot, fresh, commit, snap, onResize, onAway, onToss,
       className={`desk-sticky ${fresh ? 'is-fresh' : ''} ${shown ? 'is-sized' : ''}`}
       style={{ left: `${spot.x * 100}%`, top: `${spot.y * 100}%`, width: shown?.w || STICKY.w, height: shown?.h, '--tilt': `${tilt}deg` }}
     >
-      <Sticky note={note} commit={commit} paper={note.color || 'canary'} slot={false} onAway={onAway} awayLabel="Put back on the shelf" onToss={onToss} onMenu={onMenu} />
+      <Sticky note={note} commit={commit} paper={note.color || 'canary'} slot={false} onAway={onAway} awayLabel="Put back on the shelf" onToss={onToss} onMenu={onMenu} onFiled={onFiled} />
       <span className="desk-sticky-size" role="presentation" title="Drag to resize" onPointerDown={resize} />
     </div>
   )

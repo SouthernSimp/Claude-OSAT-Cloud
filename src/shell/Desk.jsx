@@ -347,7 +347,7 @@ export function Desk() {
       ;(latest.current.under ? setSummonUnder : setSummon)(Date.now())
     }
     // The Map is the Sky now: the layer above the desk.
-    else if (view === 'Mindmap' || view === 'Sky') goUp(view === 'Sky' ? { ...(detail || {}), view: 'stars' } : detail)
+    else if (view === 'Mindmap' || view === 'Sky') goUp(detail)
     else if (view === 'Focus') setFocusAt(Date.now())
     else if (view === 'Widgets') setTrayAt(Date.now())
     // The Obsidian export lives in Settings → Data.

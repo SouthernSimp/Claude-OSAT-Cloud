@@ -632,7 +632,6 @@ function buildMenu() {
         room('Sky', 'Mindmap', 'CmdOrCtrl+3'),
         room('Ask', 'Assistant', 'CmdOrCtrl+4'),
         room('Files', 'Files', 'CmdOrCtrl+5'),
-        room('Stars', 'Sky'),
         { type: 'separator' },
         room('Today’s Page', 'Journal'),
         room('Calendar', 'Calendar'),

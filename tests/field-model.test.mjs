@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { WARM, buildSkyGraph, freeSpot, constellationLabels, dayPhase, fitCamera, homeItems, paperFields, paperPose, paperWrite, pickSurfacing, restSurfacing, runSky, stepSky } from '../src/field/field-model.js'
+import { WARM, freeSpot, dayPhase, homeItems, paperFields, paperPose, paperWrite, pickSurfacing, restSurfacing } from '../src/field/field-model.js'
 
 test('day phase follows the clock', () => {
   assert.equal(dayPhase(new Date('2026-09-22T08:00:00')), 'morning')
@@ -16,53 +16,6 @@ test('paper poses stay on the desk and do not drift between calls', () => {
   assert.deepEqual(first, again)
   assert.ok(first.x >= 0 && first.x <= 0.82)
   assert.ok(first.y >= 0 && first.y <= 1)
-})
-
-test('the sky links real wikilinks and chains tags instead of clumping them', () => {
-  const notes = [
-    { id: 'a', title: 'A', markdown: 'See [[B]] #room', tags: ['room'], updatedAt: '2026-09-22T00:00:00.000Z', trashedAt: null, archived: false },
-    { id: 'b', title: 'B', markdown: 'Alone #room', tags: ['room'], updatedAt: '2026-09-21T00:00:00.000Z', trashedAt: null, archived: false },
-    { id: 'c', title: 'C', markdown: 'Third #room', tags: ['room'], updatedAt: '2026-09-20T00:00:00.000Z', trashedAt: null, archived: false },
-  ]
-  const graph = buildSkyGraph(notes)
-  const wiki = graph.links.filter((link) => link.kind === 'wiki')
-  const tags = graph.links.filter((link) => link.kind === 'tag')
-  assert.equal(wiki.length, 1)
-  assert.ok(tags.length >= 1)
-  assert.ok(tags.length < 3)
-  assert.ok(graph.nodes.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y)))
-})
-
-test('an old note asked for by "See in the Sky" still gets a star', () => {
-  const notes = Array.from({ length: 5 }, (_, i) => ({ id: `n${i}`, title: `N${i}`, markdown: '', tags: [], updatedAt: `2026-09-2${i}T00:00:00.000Z` }))
-  assert.deepEqual(buildSkyGraph(notes, undefined, 3).nodes.map((node) => node.id).sort(), ['n2', 'n3', 'n4'])
-  const kept = buildSkyGraph(notes, undefined, 3, 'n0').nodes.map((node) => node.id)
-  assert.equal(kept.length, 3)
-  assert.ok(kept.includes('n0'))
-})
-
-test('linked stars draw toward each other without leaving the numbers', () => {
-  const nodes = [
-    { id: 'a', x: 100, y: 500, vx: 0, vy: 0, pinned: false },
-    { id: 'b', x: 1400, y: 500, vx: 0, vy: 0, pinned: false },
-  ]
-  const end = runSky(nodes, [{ a: 'a', b: 'b', kind: 'wiki' }], 80)
-  const distance = Math.hypot(end[0].x - end[1].x, end[0].y - end[1].y)
-  assert.ok(distance < 1300)
-  assert.ok(end.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y)))
-  const pinned = stepSky([{ ...nodes[0], pinned: true }, nodes[1]], [{ a: 'a', b: 'b', kind: 'wiki' }])
-  assert.equal(pinned[0].x, 100)
-})
-
-test('a constellation name sits above its stars', () => {
-  const nodes = [
-    { id: 'a', tags: ['room'], x: 100, y: 400 },
-    { id: 'b', tags: ['room'], x: 180, y: 460 },
-    { id: 'c', tags: ['room'], x: 140, y: 520 },
-  ]
-  const [label] = constellationLabels(nodes)
-  assert.equal(label.tag, 'room')
-  assert.ok(label.y < 400)
 })
 
 test('a sheet lifts the title off the page and sets the same words back down', () => {
@@ -131,17 +84,6 @@ test('loose thoughts gather into one pile and only a few recent notes stay out',
   assert.equal(homeItems({ notes: [notes[0]], folders: [] })[0].kind, 'note')
 })
 
-test('the sky fits its stars and their names into the window', () => {
-  const stars = [{ x: 0, y: 0 }, { x: 300, y: 200 }]
-  for (const [w, h] of [[1120, 700], [420, 300]]) {
-    const cam = fitCamera(stars, w, h)
-    for (const star of stars) {
-      assert.ok(star.x * cam.z + cam.x >= 0, 'a star is off the left')
-      assert.ok((star.x + 200) * cam.z + cam.x <= w, 'a name runs off the right')
-    }
-  }
-})
-
 test('from before brings back an older note that fits this week\'s writing', () => {
   const today = '2026-09-27'
   const note = (id, title, markdown, created, updated = created, extra = {}) => ({ id, title, markdown, createdAt: `${created}T09:00:00.000Z`, updatedAt: `${updated}T09:00:00.000Z`, trashedAt: null, archived: false, ...extra })
@@ -183,16 +125,4 @@ test('a new sticky lands in the first clear spot near the line, inside the desk'
   // Nowhere clear: it still lands on the desk.
   const full = freeSpot([{ left: -10, top: -10, right: 2000, bottom: 2000 }], area, size, { x: 950, y: 790 })
   assert.deepEqual(full, { x: 800, y: 650 })
-})
-
-test('each node is a constellation in the Stars, named after it', () => {
-  const at = '2026-09-28T09:00:00.000Z'
-  const note = (id, folderId, tags = []) => ({ id, title: id, markdown: id, tags, folderId, createdAt: at, updatedAt: at, trashedAt: null, archived: false })
-  const folders = [{ id: 'rnd', name: 'RND', parentId: null }, { id: 'ideas', name: 'IDEAS', parentId: 'rnd' }]
-  const notes = [note('a', 'rnd'), note('b', 'ideas'), note('c', 'ideas'), note('d', null, ['home'])]
-  const { nodes, links } = buildSkyGraph(notes, undefined, 180, null, folders)
-  assert.deepEqual(nodes.map((node) => node.group), ['RND', 'RND', 'RND', 'home'], 'a branch counts as its node')
-  assert.equal(links.filter((link) => link.kind === 'tag').length, 2, 'one chain through the node, not every pair')
-  const labels = constellationLabels(nodes)
-  assert.deepEqual(labels.map((label) => label.tag), ['RND'])
 })

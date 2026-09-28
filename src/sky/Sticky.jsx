@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, X } from '@phosphor-icons/react'
 
 import { carryable } from '../lib/carry.js'
+import { fileByMentions, filedAs } from '../nodes-model.js'
 import { relinkRenamedNote, updateNote } from '../notes-model.js'
 
 /* The title (the first line) and what's under it, as a sticky shows them: steps as boxes,
@@ -17,24 +18,29 @@ export function stickyText(note) {
   return { title, body }
 }
 
-/* Saves what was written on a sticky: its first line is its title. */
+/* Saves what was written on a sticky: its first line is its title, and a new @node files
+   it there. Returns what filing did ({ where, made }, see filedAs), or null. */
 export function writeSticky(commit, note, text) {
   const markdown = text.replace(/\s+$/, '')
   const title = markdown.split('\n').find((line) => line.trim())?.replace(/^#{1,6}\s+/, '').trim().slice(0, 120) || note.title
-  if (markdown === note.markdown) return
+  if (markdown === note.markdown) return null
+  let filing = null
   commit((state) => {
     const next = updateNote(state, note.id, { title, markdown })
-    return title !== note.title ? relinkRenamedNote(next, note.title, title) : next
+    const filed = fileByMentions(title !== note.title ? relinkRenamedNote(next, note.title, title) : next, note.id, note.markdown)
+    filing = filedAs(state, filed, note.id)
+    return filed
   })
+  return filing
 }
 
 /* One sticky: a note on coloured paper. Click it to write on it; Esc, ⌘Return or clicking
    away keeps what was written, and emptying it tosses it (onToss offers Undo). Its × tosses
    it too, or, with `onAway`, only takes it off the desk. It can be carried anywhere that
    takes stickies, and right-clicked (onMenu). A `suggestion` from sorting shows under it,
-   with a tick and a cross. */
+   with a tick and a cross. `onFiled` hears where an @node sent it ({ where, made }). */
 export function Sticky({
-  note, commit, paper = 'canary', onToss, onAway, awayLabel = 'Put away', onMenu, carry = true, editing: startEditing = false, onEditingDone,
+  note, commit, paper = 'canary', onToss, onAway, awayLabel = 'Put away', onMenu, onFiled, carry = true, editing: startEditing = false, onEditingDone,
   suggestion, onAccept, onDecline, className = '', style, slot = true, children,
 }) {
   const [editing, setEditing] = useState(startEditing)
@@ -53,7 +59,10 @@ export function Sticky({
     setEditing(false)
     if (save) {
       if (!text.trim()) onToss?.()
-      else writeSticky(commit, note, text)
+      else {
+        const filing = writeSticky(commit, note, text)
+        if (filing?.where) onFiled?.(filing)
+      }
     }
     onEditingDone?.()
   }
