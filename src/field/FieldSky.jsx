@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, Minus, Plus } from '@phosphor-icons/react'
+import { ArrowRight, Detective, Minus, Plus } from '@phosphor-icons/react'
 
 import { isActiveNote } from '../notes-model.js'
 import { useReducedMotion } from './FieldChrome.jsx'
@@ -9,7 +9,10 @@ function signatureOf(notes) {
   return notes.map((note) => `${note.id}:${note.updatedAt}:${note.title}`).join('|')
 }
 
-export function FieldSky({ workspace, navigate, target }) {
+/* Your notes as stars. In the Map's pop-out it has a search and zoom buttons; `full` is
+   the Sky under the desk (Incognito): nothing on it but the stars (the wheel and a pinch
+   still zoom). Notes written under glow warmer. */
+export function FieldSky({ workspace, navigate, target, full = false }) {
   const viewport = useRef(null)
   const nodesRef = useRef([])
   const linksRef = useRef([])
@@ -19,14 +22,21 @@ export function FieldSky({ workspace, navigate, target }) {
   const keepId = target?.noteId || null
   const graph = useMemo(() => {
     const built = buildSkyGraph(workspace.notes, undefined, undefined, keepId)
-    return { links: built.links, nodes: runSky(built.nodes, built.links, reduced ? 170 : 140) }
+    // Stars already in the sky keep their place, so a new thought doesn't reshuffle it.
+    const before = new Map(nodesRef.current.map((node) => [node.id, node]))
+    const seeded = built.nodes.map((node) => (before.has(node.id) ? { ...node, x: before.get(node.id).x, y: before.get(node.id).y, pinned: before.get(node.id).pinned } : node))
+    return { links: built.links, nodes: runSky(seeded, built.links, reduced ? 170 : before.size ? 60 : 140) }
   }, [signature, reduced, keepId]) // eslint-disable-line react-hooks/exhaustive-deps
+  const warm = useMemo(() => new Set(workspace.notes.filter((note) => note.source === 'Under').map((note) => note.id)), [workspace.notes])
   const [nodes, setNodes] = useState(graph.nodes)
   const [cam, setCam] = useState({ x: 80, y: 60, z: 0.7 })
   const [hover, setHover] = useState(null)
   const [selected, setSelected] = useState(null)
   const [query, setQuery] = useState('')
   const intro = useRef(0)
+  const introduced = useRef(false)
+  const camRef = useRef(cam)
+  camRef.current = cam
   // Until Nate pans or zooms, the sky stays fitted to its window, however it is resized.
   const untouched = useRef(true)
 
@@ -35,7 +45,7 @@ export function FieldSky({ workspace, navigate, target }) {
     nodesRef.current = seeded
     linksRef.current = graph.links
     setNodes(seeded)
-    setSelected(null)
+    setSelected((id) => (seeded.some((node) => node.id === id) ? id : null))
   }, [graph, reduced])
 
   function wake() {
@@ -52,35 +62,45 @@ export function FieldSky({ workspace, navigate, target }) {
     loopRef.current = requestAnimationFrame(tick)
   }
 
-  useEffect(() => {
-    const view = viewport.current
-    if (!view) return undefined
-    const fitted = fitCamera(nodesRef.current, view.clientWidth, view.clientHeight)
-    untouched.current = true
-    if (reduced) {
-      setCam(fitted)
-      return undefined
-    }
-    const hot = [...nodesRef.current].sort((a, b) => b.heat - a.heat || b.degree - a.degree)[0]
-    const z0 = Math.min(1.65, Math.max(fitted.z + 0.45, 1.05))
-    const from = hot
-      ? { x: view.clientWidth / 2 - hot.x * z0, y: view.clientHeight / 2 - hot.y * z0, z: z0 }
-      : fitted
+  function glide(from, to, ms) {
+    cancelAnimationFrame(intro.current)
     const started = performance.now()
     setCam(from)
     const tick = (now) => {
-      const t = Math.min(1, (now - started) / 1500)
+      introduced.current = true
+      const t = Math.min(1, (now - started) / ms)
       const eased = 1 - (1 - t) ** 3
       setCam({
-        x: from.x + (fitted.x - from.x) * eased,
-        y: from.y + (fitted.y - from.y) * eased,
-        z: from.z + (fitted.z - from.z) * eased,
+        x: from.x + (to.x - from.x) * eased,
+        y: from.y + (to.y - from.y) * eased,
+        z: from.z + (to.z - from.z) * eased,
       })
       if (t < 1) intro.current = requestAnimationFrame(tick)
     }
     intro.current = requestAnimationFrame(tick)
+  }
+
+  /* The first time: close on the brightest star, then it pulls back. After that, a new or
+     changed note only lets an untouched sky glide to its new fit. */
+  useEffect(() => {
+    const view = viewport.current
+    if (!view) return undefined
+    const fitted = fitCamera(nodesRef.current, view.clientWidth, view.clientHeight)
+    if (introduced.current) {
+      if (untouched.current) glide(camRef.current, fitted, reduced ? 1 : 700)
+      return () => cancelAnimationFrame(intro.current)
+    }
+    untouched.current = true
+    if (reduced) {
+      setCam(fitted)
+      introduced.current = nodesRef.current.length > 0
+      return undefined
+    }
+    const hot = [...nodesRef.current].sort((a, b) => b.heat - a.heat || b.degree - a.degree)[0]
+    const z0 = Math.min(1.65, Math.max(fitted.z + 0.45, 1.05))
+    glide(hot ? { x: view.clientWidth / 2 - hot.x * z0, y: view.clientHeight / 2 - hot.y * z0, z: z0 } : fitted, fitted, 1500)
     return () => cancelAnimationFrame(intro.current)
-  }, [signature, reduced])
+  }, [signature, reduced]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Arriving from a note ("See in the Sky"): its star is picked and centred. */
   useEffect(() => {
@@ -222,12 +242,23 @@ export function FieldSky({ workspace, navigate, target }) {
     namedIds.add(node.id)
   }
   const selectedNode = byId.get(selected)
+  // Under, the star touched last twinkles once.
+  const newestId = full ? nodes.reduce((best, node) => (!best || String(node.updatedAt) > String(best.updatedAt) ? node : best), null)?.id : null
 
+  /* On the document, so Esc reaches it after the line (which closes its drawer first) and
+     before the desk (which closes the room or puts the desk away): a picked star is let go
+     first. */
   useEffect(() => {
     const onKey = (event) => {
+      if (event.key === 'Escape') {
+        if (selected && !event.defaultPrevented && !viewport.current?.closest('.popout:not(.is-top)')) {
+          event.preventDefault()
+          setSelected(null)
+        }
+        return
+      }
       if (event.metaKey || event.ctrlKey || event.altKey || event.target.closest('input, textarea')) return
-      if (event.key === 'Escape') setSelected(null)
-      if (event.key === '/' ) {
+      if (event.key === '/' && !full) {
         event.preventDefault()
         viewport.current?.querySelector('.sky-search input')?.focus()
       }
@@ -240,12 +271,12 @@ export function FieldSky({ workspace, navigate, target }) {
       }
       if (event.key === 'Enter' && selected) openNote(selected)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
   })
 
   return (
-    <div className="field-sky">
+    <div className={`field-sky ${full ? 'is-full' : ''}`}>
       <div
         className="sky-viewport lit"
         ref={viewport}
@@ -283,7 +314,7 @@ export function FieldSky({ workspace, navigate, target }) {
               <button
                 key={node.id}
                 type="button"
-                className={`sky-star ${node.heat > 0.8 ? 'is-hot' : ''} ${selected === node.id ? 'is-selected' : ''} ${namedIds.has(node.id) ? 'is-named' : ''} ${!match || !connected ? 'is-dim' : ''}`}
+                className={`sky-star ${node.heat > 0.8 ? 'is-hot' : ''} ${warm.has(node.id) ? 'is-under' : ''} ${node.id === newestId ? 'is-newest' : ''} ${selected === node.id ? 'is-selected' : ''} ${namedIds.has(node.id) ? 'is-named' : ''} ${!match || !connected ? 'is-dim' : ''}`}
                 style={{ width: node.r * 2, height: node.r * 2, transform: `translate(${node.x}px, ${node.y}px) translate(-50%, -50%)` }}
                 aria-label={node.title}
                 aria-pressed={selected === node.id}
@@ -302,16 +333,20 @@ export function FieldSky({ workspace, navigate, target }) {
           })}
         </div>
       </div>
-      <form className="sky-search" onSubmit={(event) => event.preventDefault()}>
-        <label className="visually-hidden" htmlFor="sky-find">Find a thought</label>
-        <input id="sky-find" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a thought" />
-        <span>{nodes.length} {nodes.length === 1 ? 'thought' : 'thoughts'}</span>
-      </form>
-      <div className="sky-tools">
-        <button type="button" aria-label="Zoom in" onClick={() => setCam((current) => ({ ...current, z: Math.min(2.2, current.z * 1.12) }))}><Plus /></button>
-        <button type="button" aria-label="Zoom out" onClick={() => setCam((current) => ({ ...current, z: Math.max(0.32, current.z / 1.12) }))}><Minus /></button>
-        <button type="button" onClick={fit}>Fit</button>
-      </div>
+      {!full && (
+        <>
+          <form className="sky-search" onSubmit={(event) => event.preventDefault()}>
+            <label className="visually-hidden" htmlFor="sky-find">Find a thought</label>
+            <input id="sky-find" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a thought" />
+          </form>
+          <div className="sky-tools">
+            <button type="button" aria-label="Zoom in" onClick={() => setCam((current) => ({ ...current, z: Math.min(2.2, current.z * 1.12) }))}><Plus /></button>
+            <button type="button" aria-label="Zoom out" onClick={() => setCam((current) => ({ ...current, z: Math.max(0.32, current.z / 1.12) }))}><Minus /></button>
+            <button type="button" onClick={fit}>Fit</button>
+            <button type="button" className="sky-under" title="Go under: OSAT with the internet off" onClick={() => navigate('Under')}><Detective /> Go under</button>
+          </div>
+        </>
+      )}
       {selectedNode && (
         <aside className="sky-card">
           <p>{selectedNode.tags[0] ? `#${selectedNode.tags[0]}` : 'A thought'}</p>
@@ -319,17 +354,17 @@ export function FieldSky({ workspace, navigate, target }) {
           <span>{selectedNode.excerpt}</span>
           <div>
             <button type="button" className="primary-button" onClick={() => openNote(selectedNode.id)}>
-              Lay it on the desk <ArrowRight />
+              {full ? 'Open it' : 'Lay it on the desk'} <ArrowRight />
             </button>
-            <button type="button" onClick={() => navigate('Mindmap', { focusNoteId: selectedNode.id })}>On the Map</button>
+            {!full && <button type="button" onClick={() => navigate('Mindmap', { focusNoteId: selectedNode.id })}>On the Map</button>}
           </div>
         </aside>
       )}
       {!nodes.length && (
         <div className="sky-empty">
           <h2>The sky is clear.</h2>
-          <p>Write on the desk. Each note becomes a star, and links draw the lines between them.</p>
-          <button type="button" className="primary-button" onClick={() => navigate('Today')}>Back to the desk</button>
+          <p>{full ? 'Write below.' : 'Write on the desk.'} Each note becomes a star, and links draw the lines between them.</p>
+          {!full && <button type="button" className="primary-button" onClick={() => navigate('Today')}>Back to the desk</button>}
         </div>
       )}
     </div>

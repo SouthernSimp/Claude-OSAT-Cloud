@@ -165,6 +165,29 @@
   color-scheme: dark;
 }
 
+/* Incognito (going under): a deep ink under the desk, night in either look, a little
+   deeper in dark. A bright waterline, pale stars, and a warm glow for what was written here. */
+:root {
+  --under-ink: #1b2a3b;
+  --under-deep: #080d14;
+  --under-glow: rgb(150 190 230 / 17%);
+  --under-line: #dcefff;
+  --under-surface: #203042;
+  --under-rim: rgb(214 232 255 / 13%);
+  --under-text: #edf1f5;
+  --under-muted: #a3b0be;
+  --under-faint: #74818f;
+  --under-star: #f4ecdf;
+  --under-warm: #f1b56e;
+  --under-dust: rgb(220 232 255 / 34%);
+}
+:root[data-theme="dark"] {
+  --under-ink: #111b27;
+  --under-deep: #04070b;
+  --under-glow: rgb(130 170 215 / 12%);
+  --under-surface: #182432;
+}
+
 /* Mindmap: coloured paper cards on a desk. */
 :root {
   --paper-canary: #f4e7a9;

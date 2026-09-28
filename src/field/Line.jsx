@@ -82,6 +82,8 @@ export function Line({
   ]
   const active = Math.min(cursor, rows.length - 1)
   const showing = open && rows.length > 0
+  // Under, the desk's line is still there (inert, lifted away), so this one has its own ids.
+  const ids = under ? 'under' : 'home'
 
   /* Where the line rests (offsets ignore the rise, which is only a translate), and how far
      it has to travel to reach the top of the desk. */
@@ -139,7 +141,7 @@ export function Line({
 
   // The picked row stays in sight when the drawer has to scroll.
   useEffect(() => {
-    const row = showing && document.getElementById(`home-row-${active}`)
+    const row = showing && document.getElementById(`${ids}-row-${active}`)
     if (!row) return
     const drawer = row.parentElement
     if (row.offsetTop < drawer.scrollTop) drawer.scrollTop = active ? row.offsetTop : 0
@@ -314,9 +316,9 @@ export function Line({
       >
         <div className="home-line">
           <div className={`glass home-composer ${text ? 'has-text' : ''}`}>
-            <label className="visually-hidden" htmlFor="home-line">Write it down, find it, or ask</label>
+            <label className="visually-hidden" htmlFor={`${ids}-line`}>Write it down, find it, or ask</label>
             <textarea
-              id="home-line"
+              id={`${ids}-line`}
               ref={box}
               rows={2}
               value={draft}
@@ -324,9 +326,9 @@ export function Line({
               placeholder="Write it down, find it, or ask…"
               role="combobox"
               aria-expanded={showing}
-              aria-controls={showing ? 'home-drawer' : undefined}
+              aria-controls={showing ? `${ids}-drawer` : undefined}
               aria-autocomplete="list"
-              aria-activedescendant={showing ? `home-row-${active}` : undefined}
+              aria-activedescendant={showing ? `${ids}-row-${active}` : undefined}
               onChange={(event) => {
                 setDraft(event.target.value)
                 setCursor(0)
@@ -350,12 +352,12 @@ export function Line({
           </div>
 
           {showing && (
-            <div id="home-drawer" className="home-drawer" role="listbox" aria-label={text ? 'What to do with it' : 'Jump to'}>
+            <div id={`${ids}-drawer`} className="home-drawer" role="listbox" aria-label={text ? 'What to do with it' : 'Jump to'}>
               {!text && <p className="home-drawer-head" aria-hidden="true">Jump to</p>}
               {rows.map((row, index) => (
                 <div
                   key={row.key}
-                  id={`home-row-${index}`}
+                  id={`${ids}-row-${index}`}
                   role="option"
                   aria-selected={index === active}
                   className={`home-row ${text && index === 3 ? 'is-first-match' : ''}`}
