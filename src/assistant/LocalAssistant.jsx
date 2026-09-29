@@ -27,6 +27,7 @@ import { localDateKey } from "../daily-practice.js";
 import { Markdown } from "../lib/markdown.jsx";
 import { isActiveNote, relatedNotes } from "../notes-model.js";
 import { applyAction, describeAction, extractActions, systemPrompt, wantsActions } from "./actions.js";
+import { askContext } from "./ask-context.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { deriveTitle, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
 import { cleanError, setupLine, useAi } from "./useAi.js";
@@ -43,7 +44,7 @@ export const modelLabel = (model) =>
   typeof model === "string" ? model : model?.name || model?.id || "Local model";
 
 /* Where the answer comes from, said plainly: this Mac, or the cloud provider it goes to. */
-const whereLine = (model) => (model?.offline === false ? `Sent to ${model.where} · ${modelLabel(model).replace(` · ${model.where}`, "")}` : `${modelLabel(model)} · on this Mac`);
+export const whereLine = (model) => (model?.offline === false ? `Sent to ${model.where} · ${modelLabel(model).replace(` · ${model.where}`, "")}` : `${modelLabel(model)} · on this Mac`);
 
 const dayLabel = (iso) => {
   const date = new Date(iso);
@@ -274,7 +275,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     try {
       await streamLocalMessage({
         model,
-        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || ''), base.messages, content, workspace.notes, noteIds, files),
+        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content)), base.messages, content, workspace.notes, noteIds, files),
         signal: controller.signal,
         onDelta: (delta) => {
           full += delta;

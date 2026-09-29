@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Broom, CaretDown, NotePencil, PaintBucket, PushPin, ShareNetwork, SquaresFour, Trash, TreeStructure } from '@phosphor-icons/react'
+import { Broom, CaretDown, CaretUp, NotePencil, PaintBucket, PushPin, ShareNetwork, SquaresFour, Trash, TreeStructure } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
 import { cleanError } from '../assistant/useAi.js'
@@ -261,7 +261,7 @@ export function FieldDesk({
       { label: 'Open as a page', icon: NotePencil, onSelect: () => openNote(note.id) },
       { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
       { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => fileSticky(note.id, folderId), { skip: note.folderId || null }) },
-      { label: 'Take off the desk', icon: CaretDown, onSelect: () => onPlace(`note:${note.id}`, null) },
+      { label: 'Send up to the Sky', icon: CaretUp, onSelect: () => onPlace(`note:${note.id}`, null) },
       { divider: true },
       { label: 'Delete', icon: Trash, danger: true, onSelect: () => toss(note) },
     ])

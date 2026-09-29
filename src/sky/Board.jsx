@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ArrowRight, At, CalendarPlus, DotsThree, Minus, Plus, Question, Sparkle } from '@phosphor-icons/react'
+import { ArrowRight, At, CalendarPlus, CaretDown, DotsThree, Minus, Plus, Question, Sparkle } from '@phosphor-icons/react'
 
 import { hashUnit } from '../field/field-model.js'
 import { carryable, useDrop } from '../lib/carry.js'
@@ -59,6 +59,8 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const spots = useMemo(() => boardSpots(workspace.folders, sizes), [workspace.folders, sizes])
   const mentions = useMemo(() => mentionedIn(workspace), [workspace])
   const unsorted = pileOf(workspace.notes, null)
+  // Folded, Unsorted is a pile that shows its first few stickies.
+  const folded = actions.folds.has('unsorted') && unsorted.length > 0
   const latest = useRef(null)
   latest.current = { camera, spots, sizes, folders: workspace.folders }
 
@@ -332,9 +334,11 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
         </svg>
 
         <div ref={measure} className="board-card is-unsorted" data-card="unsorted" style={{ translate: `${spots.get(null).x}px ${spots.get(null).y}px`, '--i': 0 }}>
-          <UnsortedHead actions={actions} count={unsorted.length} />
+          <UnsortedHead actions={actions} count={unsorted.length} folded={folded} />
           <div className="card-body">
-            <StickyList id="sky:unsorted" folderId={null} notes={unsorted} actions={actions} empty="Stickies from the desk land here." />
+            {folded
+              ? <FoldedPile notes={unsorted} actions={actions} />
+              : <StickyList id="sky:unsorted" folderId={null} notes={unsorted} actions={actions} empty="Stickies from the desk land here." />}
           </div>
           <b className="card-far" aria-hidden="true">Unsorted</b>
         </div>
@@ -383,13 +387,30 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   )
 })
 
-function UnsortedHead({ actions, count }) {
+function UnsortedHead({ actions, count, folded }) {
   const drop = useDrop('sky:unsorted-head', { accepts: ['note'], onDrop: ({ id }) => actions.moveSticky(id, null, 0) })
   return (
     <div className="node-head is-unsorted" data-layers={layersFor(count)} {...drop}>
-      <strong>Unsorted</strong>
+      {count > 0
+        ? (
+          <button type="button" className="fold-name" aria-expanded={!folded} title={folded ? 'Open Unsorted' : 'Fold Unsorted into a pile'} onClick={() => actions.fold('unsorted')}>
+            <CaretDown className="fold-caret" weight="bold" /><strong>Unsorted</strong>
+          </button>
+        )
+        : <strong>Unsorted</strong>}
       <small>Stickies in no node yet</small>
     </div>
+  )
+}
+
+/* Unsorted, folded: its first few stickies, then "and N more"; a click opens it, and a sticky can still be dropped on it. */
+function FoldedPile({ notes, actions }) {
+  const drop = useDrop('sky:unsorted-fold', { accepts: ['note'], onDrop: ({ id }) => actions.moveSticky(id, null, 0) })
+  return (
+    <button type="button" className="fold-pile" title="Open Unsorted" onClick={() => actions.fold('unsorted', false)} {...drop}>
+      {notes.slice(0, 3).map((note) => <span key={note.id} className="fold-strip" data-paper={note.color || 'canary'}>{note.title}</span>)}
+      {notes.length > 3 && <span className="fold-more">and {notes.length - 3} more</span>}
+    </button>
   )
 }
 
@@ -509,10 +530,11 @@ function Branches({ parentId, list, depth, workspace, actions }) {
     <ul className="branch-tree">
       {list.map((branch) => {
         const inner = folderChildren(workspace.folders, branch.id)
+        const folded = actions.folds.has(branch.id)
         return (
           <li key={branch.id} className="branch" data-slot={depth ? undefined : ''}>
-            <Lane folder={branch} depth={depth} notes={pileOf(workspace.notes, branch.id)} actions={actions} workspace={workspace} />
-            {(inner.length > 0 || actions.branching === branch.id) && <Branches parentId={branch.id} list={inner} depth={depth + 1} workspace={workspace} actions={actions} />}
+            <Lane folder={branch} depth={depth} notes={pileOf(workspace.notes, branch.id)} actions={actions} workspace={workspace} folded={folded} />
+            {!folded && (inner.length > 0 || actions.branching === branch.id) && <Branches parentId={branch.id} list={inner} depth={depth + 1} workspace={workspace} actions={actions} />}
           </li>
         )
       })}
@@ -525,7 +547,13 @@ function Branches({ parentId, list, depth, workspace, actions }) {
   )
 }
 
-function Lane({ folder, notes, actions, depth = 0, loose = false, labelled = true, sorting, workspace }) {
+/* What a folded branch says in its one line: the branches inside it, then its stickies. */
+function foldedLine(workspace, folder, notes) {
+  const parts = [...folderChildren(workspace.folders, folder.id).map((branch) => branch.name), ...notes.map((note) => note.title)]
+  return parts.length ? parts.join(' · ') : 'Nothing in it yet'
+}
+
+function Lane({ folder, notes, actions, depth = 0, loose = false, labelled = true, sorting, workspace, folded = false }) {
   const head = useDrop(`sky:lane-head:${loose ? 'loose:' : ''}${folder.id}`, {
     // A sticky goes in; another branch (never one that holds this one) goes inside.
     accepts: (carried) => carried.kind === 'note' || (!loose && carried.kind === 'folder' && !folderSubtree(workspace.folders, carried.id).has(folder.id)),
@@ -543,6 +571,11 @@ function Lane({ folder, notes, actions, depth = 0, loose = false, labelled = tru
           onDoubleClick={() => { if (!loose) actions.startRename(folder.id) }}
           onContextMenu={loose ? undefined : (event) => actions.branchMenu(event, folder)}
         >
+          {!loose && (
+            <button type="button" className="lane-fold" aria-expanded={!folded} aria-label={`${folded ? 'Open' : 'Fold'} ${folder.name}`} title={folded ? 'Open this branch' : 'Fold this branch to one line'} onClick={() => actions.fold(folder.id)} onDoubleClick={(event) => event.stopPropagation()}>
+              <CaretDown weight="bold" />
+            </button>
+          )}
           {loose
             ? <strong>Not in a branch yet</strong>
             : renaming
@@ -551,16 +584,20 @@ function Lane({ folder, notes, actions, depth = 0, loose = false, labelled = tru
           {!loose && <button type="button" className="lane-more" aria-label={`More for ${folder.name}`} onClick={(event) => actions.branchMenu(event, folder)}><DotsThree weight="bold" /></button>}
         </div>
       )}
-      <StickyList
-        id={`sky:${loose ? 'loose' : 'lane'}:${folder.id}`}
-        folderId={folder.id}
-        notes={notes}
-        axis="x"
-        actions={actions}
-        paper={!loose && folder.color && folder.color !== 'bone' ? folder.color : 'canary'}
-        empty={loose && !labelled ? 'Nothing here yet. Write a sticky, or add a branch to group stickies.' : undefined}
-      />
-      {sorting && <SortHelp sorting={sorting} workspace={workspace} actions={actions} />}
+      {folded
+        ? <p className="lane-folded">{foldedLine(workspace, folder, notes)}</p>
+        : (
+          <StickyList
+            id={`sky:${loose ? 'loose' : 'lane'}:${folder.id}`}
+            folderId={folder.id}
+            notes={notes}
+            axis="x"
+            actions={actions}
+            paper={!loose && folder.color && folder.color !== 'bone' ? folder.color : 'canary'}
+            empty={loose && !labelled ? 'Nothing here yet. Write a sticky, or add a branch to group stickies.' : undefined}
+          />
+        )}
+      {sorting && !folded && <SortHelp sorting={sorting} workspace={workspace} actions={actions} />}
     </section>
   )
 }

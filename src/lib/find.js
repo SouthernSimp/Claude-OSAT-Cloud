@@ -69,9 +69,12 @@ export function findAll(workspace, query, { files = [] } = {}) {
       .map(({ key, label, hint = '', go }) => ({ key, label, hint, kind: 'action', go })),
   ]
   const macFiles = files.map(fileRow)
-  // Nodes and branches open laid out in the Sky.
-  const folders = workspace.folders.filter((folder) => folder.name.toLowerCase().includes(q))
+  // Nodes and branches (by their name, every word of it) open laid out in the Sky. They come
+  // before the notes: a name is what someone types when they know where it is.
+  const folders = workspace.folders.filter((folder) => words.every((word) => folder.name.toLowerCase().includes(word)))
     .map((folder) => ({ key: `folder:${folder.id}`, label: folder.name, hint: folder.parentId ? folderPath(workspace.folders, folder.parentId).join(' › ') : 'Node', kind: 'folder', go: ['Mindmap', { folderId: folder.id }] }))
   // Notes leave room for files on this Mac once Spotlight answers.
-  return [...places, ...found.slice(0, macFiles.length ? 3 : LIMIT), ...macFiles, ...folders].slice(0, LIMIT)
+  const nodeRows = folders.slice(0, 3)
+  const fileRows = macFiles.slice(0, 2)
+  return [...places, ...nodeRows, ...found.slice(0, Math.max(0, LIMIT - places.length - nodeRows.length - fileRows.length)), ...fileRows].slice(0, LIMIT)
 }

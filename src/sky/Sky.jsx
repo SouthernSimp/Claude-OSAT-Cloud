@@ -18,10 +18,16 @@ import { answeringLabel, askModel } from '../assistant/ask-model.js'
 import { cleanError, useAi } from '../assistant/useAi.js'
 import { seedDirection } from '../project-direction.js'
 import { Board } from './Board.jsx'
+import { SkyAsk } from './SkyAsk.jsx'
 
 const OPEN_KEY = 'osat.sky.open.v1'
 function readOpen() {
   try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY)) || []) } catch { return new Set() }
+}
+// What is folded (Unsorted, branches), per Mac.
+const FOLD_KEY = 'osat.sky.folds.v1'
+function readFolds() {
+  try { return new Set(JSON.parse(localStorage.getItem(FOLD_KEY)) || []) } catch { return new Set() }
 }
 // The guide shows itself once on this Mac; ? and the board's menu bring it back.
 const GUIDE_KEY = 'osat.sky.guide.v1'
@@ -36,6 +42,8 @@ function guideSeen() {
 export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target, onClose, onFiled }, ref) {
   const board = useRef(null)
   const [open, setOpen] = useState(readOpen)
+  const [folds, setFolds] = useState(readFolds)
+  const [asking, setAsking] = useState(false)
   const [query, setQuery] = useState('')
   const [sorting, setSorting] = useState(null)
   const [renaming, setRenaming] = useState(null)
@@ -81,6 +89,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     back() {
       if (guide) { endGuide(); return true }
       if (query) { setQuery(''); return true }
+      if (asking) { setAsking(false); return true }
       return Boolean(board.current?.back())
     },
   }))
@@ -100,6 +109,17 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       if (force === true || (force === undefined && !next.has(id))) next.add(id)
       else next.delete(id)
       try { localStorage.setItem(OPEN_KEY, JSON.stringify([...next])) } catch { /* a convenience only */ }
+      return next
+    })
+  }
+
+  /* Fold or open Unsorted ('unsorted') or a branch (its id); `force` says which way. */
+  function fold(key, force) {
+    setFolds((current) => {
+      const next = new Set(current)
+      if (force === true || (force === undefined && !next.has(key))) next.add(key)
+      else next.delete(key)
+      try { localStorage.setItem(FOLD_KEY, JSON.stringify([...next])) } catch { /* a convenience only */ }
       return next
     })
   }
@@ -183,7 +203,9 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     startRename(id) { setRenaming(id) },
     /* New branch: named in place, at the end of the node's (or a branch's) branches. */
     branching,
-    startBranch(parentId) { setBranching(parentId) },
+    startBranch(parentId) { fold(parentId, false); setBranching(parentId) },
+    folds,
+    fold,
     endBranch(parentId, name) {
       setBranching(null)
       if (name) actions.addBranch(name, parentId)
@@ -393,6 +415,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
 
       <div className="sky-body">
         <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} />
+        <SkyAsk workspace={workspace} commit={commit} models={models} open={open} asking={asking} setAsking={setAsking} navigate={navigate} showUndo={showUndo} />
       </div>
 
       {carrying?.kind === 'note' && (

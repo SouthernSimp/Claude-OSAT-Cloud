@@ -4,19 +4,18 @@ import {
   PictureInPicture, Plus, ShareNetwork, Sparkle, SquaresFour, Stop, WifiSlash, X,
 } from '@phosphor-icons/react'
 
-import { applyAction, extractActions, systemPrompt, wantsActions } from '../assistant/actions.js'
-import { newChat, newMessage, outbound, putChat } from '../assistant/chats.js'
+import { applyAction } from '../assistant/actions.js'
 import { ActionCards, UsedNotes, modelLabel } from '../assistant/LocalAssistant.jsx'
-import { cleanError, setupLine, useAi } from '../assistant/useAi.js'
+import { setupLine, useAi } from '../assistant/useAi.js'
+import { useAskHere } from '../assistant/useAskHere.js'
 import { localDateKey } from '../daily-practice.js'
-import { streamLocalMessage } from '../local-ai.js'
 import { findAll } from '../lib/find.js'
 import { Markdown } from '../lib/markdown.jsx'
 import { spaceFor } from '../lib/spaces.js'
 import { inputActive } from '../lib/ui.js'
 import { addNextStep } from '../next-steps.js'
 import { linkMentions } from '../nodes-model.js'
-import { captureThought, isActiveNote, relatedNotes } from '../notes-model.js'
+import { captureThought, isActiveNote } from '../notes-model.js'
 
 const KINDS = {
   note: [NotePencil, 'Note'],
@@ -59,15 +58,14 @@ export function Line({
   const [open, setOpen] = useState(false)
   const [cursor, setCursor] = useState(0)
   const [found, setFound] = useState([])
-  const [answer, setAnswer] = useState(null)
-  const answerAbort = useRef(null)
   const { models, status: aiStatus, refresh: checkAi } = useAi()
   const notes = workspace.notes.filter(isActiveNote)
   const text = draft.trim()
   const isOffline = offline?.on === true
 
-  /* Ask only ever talks to the model on this Mac. */
+  /* Ask talks to the model chosen in Settings (the AI on this Mac unless a cloud one was picked). */
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
+  const { answer, setAnswer, ask: askHere, stop, close } = useAskHere({ workspace, commit, modelId: ai.id })
 
   const matches = useMemo(() => (open ? findAll(workspace, text, { files: text ? found : [] }) : []), [open, workspace, text, found])
   const rows = [
@@ -182,7 +180,6 @@ export function Line({
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => answerAbort.current?.abort(), [])
 
   /* Type anywhere on the desk and the words land in the line. */
   useEffect(() => {
@@ -236,40 +233,8 @@ export function Line({
     reset()
   }
 
-  /* Ask, right here: the answer streams into a card under the line and is kept as a chat. */
-  async function askHere(question) {
-    answerAbort.current?.abort()
-    const active = workspace.notes.filter(isActiveNote)
-    const noteIds = relatedNotes(active, question).map((note) => note.id)
-    const chat = { ...newChat(), messages: [newMessage('user', question, noteIds.length ? { noteIds } : {})] }
-    commit((state) => putChat(state, chat))
-    const controller = new AbortController()
-    answerAbort.current = controller
-    const update = (patch) => setAnswer((value) => (value?.chatId === chat.id ? { ...value, ...patch } : value))
-    setAnswer({ chatId: chat.id, question, text: '', busy: true, error: '', noteIds, actions: [], savedId: null })
-    let full = ''
-    try {
-      await streamLocalMessage({
-        model: ai.id,
-        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || ''), [], question, active, noteIds),
-        signal: controller.signal,
-        onDelta: (delta) => { full += delta; update({ text: extractActions(full).body }) },
-      })
-    } catch (reason) {
-      if (reason?.name !== 'AbortError') update({ error: cleanError(reason) })
-    }
-    const { body, actions } = extractActions(full)
-    update({ busy: false, text: body, actions: wantsActions(question) ? actions : [] })
-    if (!body.trim()) return
-    commit((state) => {
-      const saved = (state.chats || []).find((item) => item.id === chat.id) || chat
-      return putChat(state, { ...saved, messages: [...saved.messages, newMessage('assistant', body)] })
-    })
-  }
-
   function closeAnswer() {
-    answerAbort.current?.abort()
-    setAnswer(null)
+    close()
     box.current?.focus()
   }
 
@@ -406,7 +371,7 @@ export function Line({
           />
           <footer>
             {answer.busy
-              ? <button type="button" onClick={() => answerAbort.current?.abort()}><Stop weight="fill" /> Stop</button>
+              ? <button type="button" onClick={stop}><Stop weight="fill" /> Stop</button>
               : <button type="button" onClick={() => { const chatId = answer.chatId; setAnswer(null); navigate('Assistant', { chatId }) }}><ChatCircle /> Keep talking</button>}
             {!answer.busy && window.osatChat && (
               <button type="button" title="Keep talking in a small window over your other apps" onClick={() => { const chatId = answer.chatId; setAnswer(null); window.osatChat.show({ chatId }) }}><PictureInPicture /> Pop out</button>

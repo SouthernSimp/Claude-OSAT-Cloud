@@ -68,3 +68,63 @@ export function readSortAnswer(text, branchCount, stickyCount) {
   }
   return [...found].filter(([, branch]) => branch >= 0 && branch < branchCount).map(([sticky, branch]) => ({ sticky, branch }))
 }
+
+/* ---------- Sort Unsorted ---------- */
+
+const plain = (value) => String(value || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
+
+/* Every sticky in Unsorted against every place it could go (a node or a branch, with a
+   couple of the stickies already in it as examples). `places` are { name, peek: [words] },
+   `stickies` the words of each. */
+export function sortUnsortedMessages({ places, stickies }) {
+  return [SYSTEM, {
+    role: 'user',
+    content: `These are someone's notes. A sticky is one thought. A node is a topic, and a branch is a group inside a node.
+
+Places a sticky can go:
+${places.map(({ name, peek = [] }, index) => `${index + 1}. ${clip(name, 80)}${peek.length ? ` (has: ${peek.slice(0, 2).map((words) => clip(words, 30).replace(/\s+/g, ' ')).join('; ')})` : ''}`).join('\n') || '(none yet)'}
+
+Stickies that have no place yet:
+${stickies.map((words, index) => `${index + 1}. ${clip(words, 160).replace(/\s+/g, ' ')}`).join('\n')}
+
+For each sticky, write one line: its number, a colon, and the number of the place it belongs in. If two or more stickies belong together but no place fits, give them the same new name, like "new: Cats". If you are not sure, write "none". For example:
+1: 2
+2: new: Cats
+3: none`,
+  }]
+}
+
+/* What the model said for each sticky: { homes: [{ sticky, place }], made: [{ name, stickies }] }
+   (0-based; each sticky once). A new name given to only one sticky is dropped: a single
+   leftover never becomes a node of its own. A "new" name that is really a place, or a place
+   written as its name, is that place. */
+export function readSortUnsortedAnswer(text, placeNames, stickyCount) {
+  const byName = new Map()
+  placeNames.forEach((name, index) => {
+    for (const key of [plain(name), plain(String(name).split('/').pop())]) if (key && !byName.has(key)) byName.set(key, index)
+  })
+  const seen = new Set()
+  const homes = []
+  const fresh = new Map()
+  for (const line of unwrap(text).split('\n')) {
+    const match = /^\s*(?:sticky\s*)?#?(\d+)\s*(?:[:.)=→]|-+>?)+\s*(.+?)\s*$/i.exec(line)
+    if (!match) continue
+    const sticky = Number(match[1]) - 1
+    if (sticky < 0 || sticky >= stickyCount || seen.has(sticky)) continue
+    const value = match[2].replace(/[*_`]/g, '').trim()
+    if (/^(none|n\/a|unsure|unknown|skip|no place|-+)(\s|$|[.,])/i.test(value)) { seen.add(sticky); continue }
+    const number = /^(?:place\s*)?#?(\d+)\b/i.exec(value)
+    const named = /^(?:a\s+)?(?:new|make|create)\b\s*(?:node|place|branch)?\s*[:\-–—]?\s*(.+)$/i.exec(value)
+    let place = -1
+    let name = ''
+    if (number) place = Number(number[1]) - 1
+    else if (named) name = named[1].replace(/^["“'‘]+|["”'’.]+$/g, '').replace(/^(?:node|place)\s*[:\-–—]?\s*/i, '').trim().slice(0, 60)
+    else place = byName.get(plain(value)) ?? -1
+    if (name && byName.has(plain(name))) { place = byName.get(plain(name)); name = '' }
+    if (place >= 0 && place < placeNames.length) homes.push({ sticky, place })
+    else if (name && plain(name)) fresh.set(plain(name), { name: fresh.get(plain(name))?.name || name, stickies: [...(fresh.get(plain(name))?.stickies || []), sticky] })
+    else continue
+    seen.add(sticky)
+  }
+  return { homes, made: [...fresh.values()].filter((group) => group.stickies.length > 1) }
+}
