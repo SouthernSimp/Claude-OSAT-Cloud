@@ -135,3 +135,12 @@ test('schema 4: every project becomes a node holding what it said, once, and the
   ])
   assert.deepEqual(projectNodes(doc), doc, 'twice (or on another Mac) makes the same nodes once')
 })
+
+test('schema 6: a sticky keeps a real day it names to ask about; nothing else changes', async () => {
+  const { normalizeNote } = await import('../shared/note-core.mjs')
+  const doc = migrate({ ...createEmptyDoc(), schema: 5, notes: [note('a')] })
+  assert.deepEqual(doc.notes, [note('a')])
+  const asked = normalizeNote({ ...note('b'), ask: { event: { title: ' Wedding ', date: '2026-10-05', time: '9am' } } })
+  assert.deepEqual(asked.ask, { event: { title: 'Wedding', date: '2026-10-05', time: '' } })
+  assert.equal('ask' in normalizeNote({ ...note('c'), ask: { event: { title: 'X', date: 'Oct 5' } } }), false)
+})

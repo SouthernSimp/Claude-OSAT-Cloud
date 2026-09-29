@@ -129,8 +129,8 @@ contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
 }))
 
 /* Bots (Settings → Bots): the drop folder where Muse and other bots save node files, cloud
-   models (keys go straight to the Keychain in main; status never carries them), scans and
-   the connector. */
+   models (keys go straight to the Keychain in main; status never carries them) and the
+   connector. */
 contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   status: () => ipcRenderer.invoke('bots:status'),
   showNodes: () => ipcRenderer.invoke('bots:show-nodes'),
@@ -139,11 +139,6 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   removeProvider: (id) => ipcRenderer.invoke('bots:remove-provider', id),
   chooseModel: (model) => ipcRenderer.invoke('bots:choose-model', model),
   openPage: (url) => ipcRenderer.invoke('bots:open-page', url),
-  // Scans: the folder they arrive in (Google Drive's, on this Mac), and a scan's own copy.
-  chooseScanFolder: () => ipcRenderer.invoke('bots:choose-scan-folder'),
-  stopScans: () => ipcRenderer.invoke('bots:stop-scans'),
-  bringScans: () => ipcRenderer.invoke('bots:bring-scans'),
-  showScan: (scan) => ipcRenderer.invoke('bots:show-scan', scan),
   // The connector (MCP, on this Mac only): its key never comes here, only to the clipboard.
   connectorOn: () => ipcRenderer.invoke('bots:connector-on'),
   connectorOff: () => ipcRenderer.invoke('bots:connector-off'),
@@ -151,6 +146,19 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   copySetup: (which) => ipcRenderer.invoke('bots:copy-setup', which),
   undoConnector: (at) => ipcRenderer.invoke('bots:undo-connector', at),
   onStatus: (listener) => listen('bots:status', listener),
+}))
+
+/* Scans: the folder a scanner saves to. The desk takes each sorted scan, imports it and
+   says done. */
+contextBridge.exposeInMainWorld('osatScans', Object.freeze({
+  status: () => ipcRenderer.invoke('scans:status'),
+  choose: () => ipcRenderer.invoke('scans:choose'),
+  stop: () => ipcRenderer.invoke('scans:stop'),
+  show: () => ipcRenderer.invoke('scans:show'),
+  take: () => ipcRenderer.invoke('scans:take'),
+  done: (id) => ipcRenderer.invoke('scans:done', id),
+  onStatus: (listener) => listen('scans:status', listener),
+  onReady: (listener) => listen('scans:ready', listener),
 }))
 
 /* The desk (⌥Space): put it away, the shortcuts, the app launchers, where things sit

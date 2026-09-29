@@ -55,7 +55,17 @@ export function normalizeNote(value, index = 0) {
     ...(PAPERS.includes(value.color) ? { color: value.color } : {}),
     // Which node each @ in it means, by id, so a renamed node never changes its words.
     ...refsOf(value.refs),
+    // A day it names (from a scan), until Nate adds it to the Calendar or says Not now.
+    ...askOf(value.ask),
   }
+}
+
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
+
+function askOf(value) {
+  const event = isObject(value) && isObject(value.event) ? value.event : null
+  if (!event || !DATE_KEY.test(event.date) || typeof event.title !== 'string' || !event.title.trim()) return {}
+  return { ask: { event: { title: event.title.trim().slice(0, 120), date: event.date, time: TIME.test(event.time) ? event.time : '' } } }
 }
 
 function refsOf(value) {

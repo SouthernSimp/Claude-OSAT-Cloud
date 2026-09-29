@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 6
+export const SCHEMA = 7
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -40,11 +40,13 @@ export const migrations = [
       notes: (Array.isArray(doc.notes) ? doc.notes : []).map((note) => (note?.kind === 'scratch' ? { ...note, kind: null, unsorted: !note.folderId } : note)),
     }),
   },
-  // 6: nodes arrive from outside (the drop folder, scans, the connector): a node may be
-  // `packed` (only a summary so far), `fresh` (New until opened) and say where it came
-  // `from`. All start unset, so nothing changes; an older OSAT would drop them, so it
-  // refuses this data instead.
+  // 6: a sticky from a scan can carry a day it names (`ask`), offered to the Calendar when
+  // its node is opened. Nothing starts with one; an older OSAT would drop it.
   { from: 5, run: (doc) => doc },
+  // 7: nodes arrive from outside (the drop folder, the connector): a node may be `packed`
+  // (only a summary so far), `fresh` (New until opened) and say where it came `from`. All
+  // start unset, so nothing changes; an older OSAT would drop them, so it refuses this data.
+  { from: 6, run: (doc) => doc },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding

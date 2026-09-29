@@ -42,7 +42,7 @@ const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
 const { DEFAULT_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = require('./desk.cjs')
 const { createQuickChat } = require('./quick-chat.cjs')
-const { PLACES, extractText, isPackage, locate, readScan, run, searchArgs } = require('./mac-files.cjs')
+const { PLACES, extractText, isPackage, locate, run, searchArgs } = require('./mac-files.cjs')
 const { createMedia } = require('./media.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
@@ -1116,13 +1116,6 @@ function chatWith(valid, onDelta, signal) {
   return valid.model.startsWith('osat:') ? ai.chatStream(valid, onDelta, signal) : localAiChatStream(valid, onDelta, signal)
 }
 
-/* One question from the bots' small jobs (naming a scan), to the model that answers. */
-async function askAnswering(messages) {
-  const [model] = (await answeringModels()).models
-  if (!model) throw new Error('no AI is set up yet (Settings → AI, or a cloud model in Settings → Bots).')
-  return chatWith(validateLocalChatPayload({ model: model.id, messages }), () => {}, AbortSignal.timeout(180000))
-}
-
 /* ---- Your iPhone, through an OSAT folder in iCloud Drive (off until turned on) ---- */
 
 // Tests (from source) pass OSAT_ICLOUD_DIR so they never touch the real iCloud Drive.
@@ -1266,24 +1259,9 @@ async function registerBots() {
   // ~/Documents/OSAT Nodes. From source it is "OSAT Nodes (Dev)", so development never takes
   // the real app's files; tests pass OSAT_NODES_DIR (from source only).
   const nodesDir = (!app.isPackaged && process.env.OSAT_NODES_DIR) || path.join(app.getPath('documents'), app.isPackaged ? 'OSAT Nodes' : 'OSAT Nodes (Dev)')
-  // Google Drive for Desktop keeps Drive in ~/Library/CloudStorage/GoogleDrive-<account>/My Drive:
-  // where the scan folder picker opens, and what Settings names.
-  const cloudStorage = path.join(os.homedir(), 'Library', 'CloudStorage')
-  const drive = (await fs.readdir(cloudStorage).catch(() => [])).find((name) => name.startsWith('GoogleDrive-'))
   bots = await createBots({
     dataDir: app.getPath('userData'),
     nodesDir,
-    driveDir: drive ? path.join(cloudStorage, drive, 'My Drive') : '',
-    ask: askAnswering,
-    // A scan's words, read on this Mac. From source with OSAT_AI=mock, a practice page (no Mac to read with).
-    read: !app.isPackaged && process.env.OSAT_AI === 'mock'
-      ? async (file) => `A practice scan (${path.basename(file)}): the car insurance renewal notice, due October 12.`
-      : readScan,
-    preview: (file) => {
-      const window = BrowserWindow.getFocusedWindow() || mainWindow
-      if (process.platform === 'darwin' && window) window.previewFile(file)
-    },
-    chooseFolder: (options) => dialog.showOpenDialog(mainWindow, options),
     version: app.getVersion(),
     // Where keys sit in the Keychain; from source its own, so development never reads the app's.
     service: app.isPackaged ? 'OSAT' : 'OSAT-Dev',
@@ -1297,6 +1275,87 @@ async function registerBots() {
     offline: () => under.on,
   })
   bots.start().catch((error) => console.error('Bots could not start:', error))
+}
+
+/* ---- Scans: the folder a scanner saves to; each new scan becomes a node (scans.cjs) ---- */
+
+let scans = null
+let scansWatcher = null
+let scansPoll = null
+let scansTimer = null
+const scansSoon = () => {
+  clearTimeout(scansTimer)
+  scansTimer = setTimeout(() => scans?.scan().catch((error) => console.error('Scans:', error)), 1500)
+}
+
+// Google Drive for desktop keeps the Brother's folder here; offered first when choosing.
+function scansGuess() {
+  const cloud = path.join(os.homedir(), 'Library', 'CloudStorage')
+  try {
+    for (const name of require('node:fs').readdirSync(cloud)) {
+      const folder = path.join(cloud, name, 'My Drive', 'From_BrotherDevice')
+      if (name.startsWith('GoogleDrive') && require('node:fs').existsSync(folder)) return folder
+    }
+  } catch {
+    // No Google Drive on this Mac: start from home.
+  }
+  return os.homedir()
+}
+
+// A streamed Google Drive folder may never tell fs.watch, so it is looked at every half minute too.
+function watchScans() {
+  scansWatcher?.close()
+  clearInterval(scansPoll)
+  scansWatcher = null
+  scansPoll = null
+  const { dir } = scans.status()
+  if (!dir) return
+  try {
+    scansWatcher = require('node:fs').watch(dir, scansSoon)
+  } catch {
+    // The poll still finds new scans.
+  }
+  scansPoll = setInterval(scansSoon, 30000)
+  scansSoon()
+}
+
+async function registerScans() {
+  const { createScans, scanMessages, SCAN_SCHEMA } = require('./scans.cjs')
+  scans = createScans({
+    seenPath: path.join(app.getPath('userData'), 'scans.json'),
+    read: async (file) => (await extractText(file)).text,
+    // The built-in AI sorts it, knowing the nodes there are so it can @ them.
+    organize: async (text) => {
+      const names = (store.load().doc.folders || []).filter((folder) => !folder.parentId).map((folder) => folder.name)
+      return JSON.parse(await ai.chatStream({ messages: scanMessages({ text, names }), schema: SCAN_SCHEMA }, () => {}))
+    },
+    onChange: () => {
+      sendToAllWindows('scans:status', scans.status())
+      if (scans.status().waiting) sendToAllWindows('scans:ready')
+    },
+  })
+  handle('scans:status', () => scans.status())
+  handle('scans:choose', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, { title: 'Choose the folder your scanner saves to', defaultPath: scansGuess(), properties: ['openDirectory'] })
+    if (!result.canceled && result.filePaths[0]) {
+      await scans.use(result.filePaths[0])
+      watchScans()
+    }
+    return scans.status()
+  })
+  handle('scans:stop', async () => {
+    await scans.stop()
+    watchScans()
+    return scans.status()
+  })
+  handle('scans:show', async () => {
+    if (await shell.openPath(scans.status().dir || '')) fail('Finder could not open the scans folder.')
+    return true
+  })
+  handle('scans:take', () => scans.take())
+  handle('scans:done', (id) => scans.done(String(id)))
+  await scans.load()
+  watchScans()
 }
 
 /* ---- Offline: OSAT with the internet off (the switch on the line, ⇧⌘U) ---- */
@@ -1443,6 +1502,7 @@ app.whenReady().then(async () => {
   registerUnder()
   registerAi()
   await registerPhone()
+  await registerScans()
   await registerBots()
   registerDesk()
   registerQuickChat()

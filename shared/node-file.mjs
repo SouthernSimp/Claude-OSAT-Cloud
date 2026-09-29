@@ -37,7 +37,9 @@ export function nodeTree(data) {
     const words = text(typeof leaf === 'string' ? leaf : leaf?.text)
     if (!words || count.stickies >= LIMITS.stickies) return []
     count.stickies += 1
-    return [{ text: words, done: leaf?.done === true }]
+    // A day it names (a scan's), offered to the Calendar; normalizeNote checks it.
+    const event = leaf?.event && typeof leaf.event === 'object' && !Array.isArray(leaf.event) ? leaf.event : null
+    return [{ text: words, done: leaf?.done === true, ...(event ? { event } : {}) }]
   })
   const branchesOf = (source, depth) => {
     if (depth >= LIMITS.depth) return []
@@ -165,10 +167,14 @@ export function nodeRecords(folders, tree, { now = new Date().toISOString(), mak
   const folder = { id: makeId('folder'), name: freeNodeName(folders, tree.title), parentId: null, createdAt: now, collapsed: false, rank: last + GAP, ...node }
   const made = { folder, folders: [folder], notes: [] }
   const fill = (part, folderId) => {
-    const pile = [part.summary, ...part.leaves.map((leaf) => (leaf.done ? `- [x] ${leaf.text}` : leaf.text))].filter(Boolean)
-    pile.forEach((words, index) => {
+    const pile = [
+      ...(part.summary ? [{ words: part.summary }] : []),
+      ...part.leaves.map((leaf) => ({ words: leaf.done ? `- [x] ${leaf.text}` : leaf.text, event: leaf.event })),
+    ]
+    pile.forEach(({ words, event }, index) => {
       made.notes.push(normalizeNote({
         id: makeId('note'), title: titleOf(words), markdown: words, folderId, unsorted: false, source, createdAt: now, updatedAt: now, rank: (index + 1) * GAP,
+        ...(event ? { ask: { event } } : {}),
       }))
     })
     part.branches.forEach((branch, index) => {

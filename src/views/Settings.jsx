@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, Robot, Sparkle, UploadSimple } from "@phosphor-icons/react";
+import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, Printer, Robot, Sparkle, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile, formatRelativeTime } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
@@ -120,6 +120,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
               <h2>Send notes to a vault.</h2>
               <ObsidianView workspace={workspace} commit={commit} />
             </section>
+            <ScansCard />
             <PhoneCards />
             <section className="content-card">
               <p className="eyebrow">ABOUT</p>
@@ -226,6 +227,57 @@ function AiCard() {
         </p>
       )}
       <p className="ai-note">{others.length ? `LM Studio is running too: ${others.map((model) => model.name).slice(0, 2).join(", ")} ${others.length === 1 ? "appears" : "appear"} in Ask.` : "LM Studio also works: while its local server runs, its models appear in Ask."}</p>
+      {message && <p role="status">{message}</p>}
+    </section>
+  );
+}
+
+/* Scans: the folder a scanner saves to. Each new scan is read and sorted into a node on this Mac. */
+function ScansCard() {
+  const bridge = window.osatScans;
+  const [status, setStatus] = useState(null);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    if (!bridge) return undefined;
+    bridge.status().then(setStatus).catch(() => {});
+    return bridge.onStatus(setStatus);
+  }, [bridge]);
+  const act = async (work) => {
+    setMessage("");
+    try {
+      setStatus(await work());
+    } catch (error) {
+      setMessage(String(error?.message || error).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
+    }
+  };
+  if (!bridge) return null;
+  const folder = status?.dir ? status.dir.split("/").filter(Boolean).at(-1) : "";
+  return (
+    <section className="content-card">
+      <p className="eyebrow">SCANS</p>
+      {status?.dir ? (
+        <>
+          <h2>Scans become nodes.</h2>
+          <p>
+            {status.error || (status.waiting
+              ? "A scan is being sorted now."
+              : status.last
+                ? `Watching ${folder}. The last scan came in ${formatRelativeTime(status.last)}.`
+                : `Watching ${folder}. Scan something and it appears in the Sky in a minute or two.`)}
+          </p>
+          <div className="button-row">
+            <button className="outline-button" type="button" onClick={() => bridge.show().catch(() => {})}><FolderOpen /> Show the folder</button>
+            <button className="text-button" type="button" onClick={() => act(bridge.choose)}>Choose another folder</button>
+            <button className="text-button" type="button" onClick={() => act(bridge.stop)}>Stop</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <h2>Turn paper into a node.</h2>
+          <p>Choose the folder your scanner saves to. Each new scan is read on this Mac, and the AI sorts it into a node with branches, waiting for you in the Sky. A single sticky comes in as one sticky. A date becomes a question: add it to your Calendar? Scans already in the folder are left alone.</p>
+          <button className="primary-button" type="button" onClick={() => act(bridge.choose)}><Printer /> Choose the scans folder</button>
+        </>
+      )}
       {message && <p role="status">{message}</p>}
     </section>
   );

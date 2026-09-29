@@ -94,7 +94,7 @@ export function addFolder(state, name, parentId = null, index = Infinity) {
 
 /* A new sticky in a folder's pile (null: Unsorted), at the end or at `index`. Its @s point
    at their nodes (linkMentions). */
-export function addSticky(state, text, folderId = null, { source = 'Sky', index, color } = {}) {
+export function addSticky(state, text, folderId = null, { source = 'Sky', index, color, ask } = {}) {
   const value = typeof text === 'string' ? text.trim().slice(0, 8000) : ''
   if (!value) return { state, note: null }
   const target = folderExists(state, folderId) ? folderId : null
@@ -106,7 +106,7 @@ export function addSticky(state, text, folderId = null, { source = 'Sky', index,
     base = { ...state, notes: withRanks(state.notes, placed.renumber) }
     rank = placed.rank
   }
-  const made = createNote(base, { title, markdown: value, folderId: target, unsorted: !target, source, color, rank })
+  const made = createNote(base, { title, markdown: value, folderId: target, unsorted: !target, source, color, rank, ask })
   const linked = linkMentions(made.state, made.note.id)
   return { state: linked, note: linked.notes.find((note) => note.id === made.note.id) }
 }
@@ -277,14 +277,19 @@ export function renameFolder(state, id, name) {
 
 export { freeNodeName }
 
+const textOf = (value) => (typeof value === 'string' ? value.trim() : '')
+
 /* A node file (JSON: { title, summary, branches: [{ title, summary, leaves: [{ text,
    done }], sub_branches: [...] }] }, or the tree readNodeFile makes of Markdown) becomes
    one new node at the end of the Sky, never merged into one that's there: branches and
    sub-branches become branches, leaves become stickies (a finished one as "- [x] …"), and
    a summary becomes the first sticky where it is (shared/node-file.mjs, which the drop
-   folder uses too). Returns { state, folder, branches (how many were made) }, or throws
-   when the file isn't a node file. */
-export function importNode(state, data, { source = 'Import', node } = {}) {
+   folder uses too). A leaf's `event` ({ title, date, time }) is kept on its sticky, to
+   offer to the Calendar. `options` is { source, node } or just the source ('Scan').
+   Returns { state, folder, branches (how many were made) }, or throws when the file
+   isn't a node file. */
+export function importNode(state, data, options = {}) {
+  const { source = 'Import', node } = typeof options === 'string' ? { source: options } : options
   const made = nodeRecords(state.folders, nodeTree(data), { makeId: uid, source, node })
   let next = { ...state, folders: [...state.folders, ...made.folders], notes: [...made.notes.slice().reverse(), ...state.notes] }
   for (const note of made.notes) next = linkMentions(next, note.id)
@@ -346,6 +351,48 @@ export function unpackInto(state, nodeId, tree, { source = 'AI' } = {}) {
   }
   fill({ leaves: tree.leaves || [], branches: tree.branches || [] }, nodeId)
   return { state: next, folders, notes }
+}
+
+/* A scan (a node file sorted from it): one sticky alone is just a sticky in Unsorted;
+   more is a node to open. Returns { state, folder } or { state, note }. */
+export function importScan(state, data) {
+  const leaves = Array.isArray(data?.leaves) ? data.leaves : []
+  const branched = [data?.branches, data?.sub_branches].some((list) => Array.isArray(list) && list.length)
+  if (leaves.length === 1 && !branched && !textOf(data?.summary)) {
+    const leaf = leaves[0]
+    return addSticky(state, textOf(typeof leaf === 'string' ? leaf : leaf?.text), null, { source: 'Scan', ask: leaf?.event ? { event: leaf.event } : undefined })
+  }
+  return importNode(state, data, 'Scan')
+}
+
+/* ---------- a day a sticky names ---------- */
+
+/* When the asked-about event starts: its day at its time, or 9 in the morning when the
+   scan gave none. */
+export function askStart({ date, time }) {
+  const [y, m, d] = date.split('-').map(Number)
+  const [h, min] = (time || '09:00').split(':').map(Number)
+  return new Date(y, m - 1, d, h, min)
+}
+
+/* The stickies in a node (and its branches) with a day to offer to the Calendar. */
+export function asksIn(state, nodeId) {
+  const ids = folderSubtree(state.folders, nodeId)
+  return state.notes.filter((note) => note.ask?.event && ids.has(note.folderId) && isActiveNote(note))
+}
+
+/* Add to Calendar: the event goes in and the sticky stops asking. */
+export function addAskedEvent(state, noteId) {
+  const note = state.notes.find((item) => item.id === noteId)
+  if (!note?.ask?.event) return { state, event: null }
+  const event = { id: `event-${globalThis.crypto.randomUUID()}`, title: note.ask.event.title, start: askStart(note.ask.event).toISOString(), end: '', notes: note.markdown.slice(0, 1000) }
+  const events = [...state.calendar.events, event].sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
+  return { state: { ...skipAsk(state, noteId), calendar: { ...state.calendar, events } }, event }
+}
+
+/* Not now: the sticky stops asking. */
+export function skipAsk(state, noteId) {
+  return { ...state, notes: state.notes.map((note) => (note.id === noteId && note.ask ? (({ ask, ...rest }) => rest)(note) : note)) }
 }
 
 /* ---------- the whiteboard ---------- */

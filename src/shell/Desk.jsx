@@ -11,6 +11,7 @@ import { clamp, inputActive } from '../lib/ui.js'
 import { SETTINGS, spaceForKey, titleFor } from '../lib/spaces.js'
 import { NotesView } from '../notes/NotesView.jsx'
 import { Sky } from '../sky/Sky.jsx'
+import { importScan } from '../nodes-model.js'
 import { relinkRenamedNote, updateNote } from '../notes-model.js'
 import { storageFrom, useWorkspace } from '../store/useWorkspace.js'
 import { BrowserView } from '../tools/Browser.jsx'
@@ -96,6 +97,9 @@ export function Desk() {
   // Offline, as main says it is ({ on, terminal }). The preview has no main: the look only.
   const [offline, setOffline] = useState({ on: false })
   const [notice, setNotice] = useState('')
+  // Scans that came in since the Sky was last open: [{ name, folderId, noteId }]. Their line
+  // stays until Nate looks, so a scan made at the printer is waiting when he walks over.
+  const [arrived, setArrived] = useState([])
   // The Sky, above the desk: null (the desk), 'sky', or 'leaving' while it goes.
   const [sky, setSky] = useState(null)
   const [skyTarget, setSkyTarget] = useState(null)
@@ -137,6 +141,43 @@ export function Desk() {
       setNotice(cleanError(error))
     }
   }
+
+  /* Scans (Settings → Data): each one the AI has sorted comes in as a node in the Sky, or
+     as one sticky in Unsorted when it held only one. Main counts it done only once it's in. */
+  useEffect(() => {
+    const api = window.osatScans
+    if (!api || !hydrated) return undefined
+    let busy = false
+    let again = false
+    const bringIn = async () => {
+      if (busy) { again = true; return }
+      busy = true
+      try {
+        do {
+          again = false
+          for (const item of await api.take()) {
+            let made = null
+            try {
+              commit((state) => { made = importScan(state, item.node); return made.state })
+            } catch {
+              made = null
+            }
+            await api.done(item.id)
+            if (made?.folder) setArrived((list) => [...list, { name: made.folder.name, folderId: made.folder.id }])
+            else if (made?.note) setArrived((list) => [...list, { name: made.note.title, noteId: made.note.id }])
+          }
+        } while (again)
+      } catch {
+        // Main keeps what's waiting; the next scan brings it in.
+      } finally {
+        busy = false
+      }
+    }
+    bringIn()
+    return api.onReady(bringIn)
+  }, [hydrated]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { if (sky === 'sky') setArrived([]) }, [sky])
 
   /* The first launch on this Mac starts with the welcome. */
   useEffect(() => {
@@ -448,7 +489,14 @@ export function Desk() {
         ))}
       </div>
 
-      {notice && <p className="desk-note" role="status">{notice}</p>}
+      {notice
+        ? <p className="desk-note" role="status">{notice}</p>
+        : arrived.length > 0 && (
+          <p className="desk-note is-arrival" role="status">
+            New from a scan: {arrived.slice(-3).map((item) => `“${item.name.slice(0, 40)}”`).join(', ')}
+            <button type="button" onClick={() => { const last = arrived.at(-1); goUp(last.folderId ? { folderId: last.folderId, open: true } : { noteId: last.noteId }) }}>Show me</button>
+          </p>
+        )}
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
     </main>
   )

@@ -81,6 +81,13 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     JavaScript`, Word/RTF through `textutil`, capped at 12,000 characters).
   - `quick-chat.cjs`: the quick chat window, a floating panel on every Space that stays where
     it's left (`chatBounds` in `prefs.json`).
+  - `scans.cjs`: Paper in (Phase 15). Watches the folder chosen in Settings → Data → Scans (the Brother's
+    Google Drive `From_BrotherDevice`; the iPhone's Scan Documents saves there too). Each new scan is read
+    (`extractText`: Vision for scans and pictures), sorted by the built-in AI into a node file (`SCAN_SCHEMA`,
+    a JSON-schema grammar via `chatStream({ schema })`), cleaned in code (`toNode`), and handed to the desk
+    (`osatScans.take`/`done`), which imports it with `importScan` (one sticky → Unsorted, more → a node).
+    Scans present when the folder was chosen are left alone; the folder is never changed. `scans.json` in
+    the data folder remembers what came in.
   - `media.cjs`: Spotify on the desk through AppleScript (now playing, play/pause, skip).
   - `phone.cjs`: the iPhone link, off until turned on in Settings → iPhone. An `OSAT` folder in
     iCloud Drive: text dropped in `Inbox` becomes an Unsorted note (source `iPhone`) and moves to
@@ -90,17 +97,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `OSAT_ICLOUD_DIR` (from source only).
   - `folder-watch.cjs`: the one way OSAT takes files in from a folder (`settledFiles`: settled a
     few seconds, not hidden; `watchFolder`: fs.watch plus a 30 s poll; `oneAtATime`, `moveInto`),
-    shared by the iPhone Inbox, the drop folder and scans.
-  - `bots/` (Phase 16, Settings → Bots; `index.cjs` wires it, main only calls `registerBots`):
+    shared by the iPhone Inbox and the drop folder (Phase 15's scans still watch on their own).
+  - `bots/` (Phase 18, Settings → Bots; `index.cjs` wires it, main only calls `registerBots`):
     `drop-folder.cjs` (`~/Documents/OSAT Nodes`, from source `OSAT Nodes (Dev)`, tests set
     `OSAT_NODES_DIR`: a node file becomes a New node, then moves to `Added`; unreadable ones to
     `Set aside`; nothing deleted; works offline), `cloud.cjs` (cloud models: OpenAI-style providers,
     keys checked by listing models, usage totals), `keychain.cjs` (keys through `security -i`'s
     input, never argv; off the Mac held in memory), `settings.cjs` (`bots.json`: model, providers,
-    usage, scan folder, connector, never a key), `scans.cjs` (a watched folder, Google Drive's:
-    copies into `<data>/scans`, never touches the original, known by fingerprint in `seen.json`;
-    what was there when picked waits; words via `readScan` in mac-files, then a proposed name;
-    `OSAT_AI=mock` from source reads a practice page), `connector.cjs` (MCP over HTTP on
+    usage, connector, never a key), `connector.cjs` (MCP over HTTP on
     127.0.0.1 only, Bearer key from the Keychain, refuses other Hosts and web Origins; tools in
     shared/connector-tools.mjs; each change commits through the store with its inverse for Undo).
     Main routes models in one place: `answeringModels()` (the model chosen in Bots first, a cloud
@@ -121,7 +125,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     An older folder without our marker is renamed aside, never read or deleted.
   - `preload.cjs`: the bridges exposed to the renderer (`osat.store`, `nateOSFiles`,
     `osatLocalAI` (models, `chatStream` → `{ done, cancel }`, and the built-in AI's status /
-    choose / cancel / resume / remove), `osatBrowser`, `osatTerminal`, `osatApp` (incl. the
+    choose / cancel / resume / remove), `osatScans`, `osatBrowser`, `osatTerminal`, `osatApp` (incl. the
     first-launch welcome), `osatDesk`, `osatChat`). An AbortSignal can't cross the bridge; pass
     functions. A dropped file's path comes from `webUtils.getPathForFile` in the preload, never
     from the page.
@@ -135,7 +139,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - `shared/providers.mjs` — cloud model presets, `cleanKey`/`cleanBaseUrl`/`providerFrom`, model ids
   `cloud:<provider>:<model>`, `explainFailure` (one plain line), usage and `cleanBotSettings`.
 - `shared/ai-tasks.mjs` — the model's small jobs, each a question and a forgiving reader:
-  Unpack with AI (Markdown back), Help me sort ("sticky: branch" lines), a scan's name and summary.
+  Unpack with AI (Markdown back) and Help me sort ("sticky: branch" lines).
 - `shared/connector-tools.mjs` — the connector's four tools as pure `runTool(name, args, { doc })`
   → `{ text, ops }`, names or ids, and `connectorSetup` (the lines for Claude Code / Desktop).
 - `shared/sync-core.mjs` + `shared/sync-engine.mjs` — pure sync, for the Mac now and the iPhone
@@ -178,8 +182,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     same Status table, so keep the table's three columns (Phase | What | State: "Merged (PR #n)",
     "In review", "Planned"); a date in the State cell shows, none is needed.
   - `views/Bots.jsx`: Settings → Bots, the one place for bots, models and what leaves the Mac:
-    the drop folder, which model answers, cloud models (keys never reach the page), scans, the
-    connector (its key only ever goes to the clipboard).
+    the drop folder, which model answers, cloud models (keys never reach the page), the
+    connector (its key only ever goes to the clipboard). Scans stay in Settings → Data (Phase 15).
   - `lib/carry.js`: the one drag engine (`carryable(item)` on what's picked up, `useDrop(id, spec)`
     on places that take it, with `accepts`, an `axis` for lists of `[data-slot]` items, `spring`
     for hover-to-open; `onCarryEdge` makes the top/bottom of the screen change layers). A ghost
@@ -203,12 +207,19 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - `sky/`: `Sky.jsx` (the layer: find a sticky, Import a node file, the actions and menus,
     Help me sort: `suggestionGroups`, one line per branch with Move and Dismiss; with a model, it is
     asked about the stickies matching words couldn't place; Unpack with AI / By hand on a packed
-    node; a scan's proposed name to confirm; `useAi` reads the model list again when Bots changes),
+    node; `useAi` reads the model list again when Bots changes),
     `Board.jsx` (the infinite whiteboard: the camera `{x, y, z}` in CSS vars `--cx/--cy/--z`,
     registered with `@property` so a flight glides; node cards at `boardSpots`, dragged directly,
-    opened in place as lanes (one layout); `makeRoom` slides neighbours aside; lines for @mentions;
+    opened in place as a tree (Phase 16: `NodeLanes` → `Branches` → `Lane`: the node's own stickies
+    first, under "Not in a branch yet" once it has branches; each branch a label (a dot of its colour
+    and its name) on a line, its stickies in a row, its own branches on a line under it; only stickies
+    are paper; a branch dropped on a branch's name goes inside it; a closed card lists its first three
+    branches); `makeRoom` slides neighbours aside; lines for @mentions;
     far out (`z < 0.5`) names grow and insides fade), `Piles.jsx` (`StickyList`, `AddSticky`,
-    `NameField`), `Sticky.jsx` (one sticky: click to write, carry, right-click).
+    `NameField`), `Sticky.jsx` (one sticky: click to write, carry, right-click). `SkyGuide` (in Sky.jsx):
+    "How the Sky works", shown once per Mac (`osat.sky.guide.v1`), again from ? or the board's menu.
+    New branch / New branch inside are named in place (`actions.branching`); Rename for a branch
+    goes through `actions.renaming` like a node's.
     Cards drift forever, so Playwright clicks on them need `{ force: true }`.
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
     `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, `moveToItems` (every
@@ -234,7 +245,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   folder (for a node), Unfiled, To sort, Toss, Clear, Put inside, Make it a node. Nodes show
   names only, never numbers. (Files keeps "folder": those are the Mac's real folders.)
   Offline (Go Offline / Go Online), never Incognito, Under, Come up or scratch page.
-  Phase 16: New (a node that just arrived), packed / Unpack (only a summary so far), "from Muse",
+  Phase 16: a node's own stickies, once it has branches, are "Not in a branch yet" (never
+  "Stickies"); Unsorted says "Stickies in no node yet"; "New branch inside" makes a sub-branch.
+  The one-line model everywhere: a sticky is one thought, a node is a topic, branches group the
+  stickies in a node (and can hold smaller branches). "Leaves" is only the node file's word.
+  Phase 18: New (a node that just arrived), packed / Unpack (only a summary so far), "from Muse",
   Bots, cloud model, key, the connector.
 - Nodes (schema 3): every top-level folder is a node, a folder inside one is a branch, a note is a
   sticky. Order is `rank` (`rankOf`: a missing rank is the creation time, so only hand-ranked
@@ -252,10 +267,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `places['note:<id>']` on the desk ({x, y} fractions, w/h). Schema 5 turned the old scratch
   page's stickies (`kind: 'scratch'`) into ordinary ones in Unsorted; a sticky saved while
   offline is ordinary too, with `source: 'Offline'`.
-- Arrivals (schema 6): a node from the drop folder, a scan or the connector carries `fresh`
-  (New until first opened: `markOpened`), `packed` when it is only a summary (until a branch, By
-  hand or Unpack with AI: `markUnpacked`, `unpackInto`) and `from` ({ source, file, hash, scan,
-  proposal }, cleaned by `fromOf`; `acceptProposal` / `dismissProposal` for a scan's name).
+- A sticky from a scan may carry `ask: { event: { title, date, time } }` (schema 6): its node, when
+  opened, asks "Add it to your Calendar?" (`asksIn`, `addAskedEvent`, `skipAsk` in nodes-model).
+- Arrivals (schema 7): a node from the drop folder or the connector carries `fresh` (New until
+  first opened: `markOpened`), `packed` when it is only a summary (until a branch, By hand or Unpack
+  with AI: `markUnpacked`, `unpackInto`) and `from` ({ source, file, hash }, cleaned by `fromOf`).
 - Data rules: a captured sticky is one note with `unsorted: true` and a `source`; filing,
   pinning or Keep clears it. Each day has one note, `day-YYYY-MM-DD` with `kind: 'day'`
   (`ensureDayNote`): it is the journal page and where new next steps land. Wikilinks follow

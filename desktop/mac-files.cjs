@@ -26,60 +26,56 @@ function run(command, args, { timeout = 20000 } = {}) {
 }
 
 /* What Ask reads from one file: plain text as it is, PDFs through the Mac's own
-   PDFKit, Word and rich text through textutil. Enough to answer about, not the whole book. */
+   PDFKit, Word and rich text through textutil. Enough to answer about, not the whole book.
+   A scan (a PDF with no words in it, or a picture) is read by the Mac's own text
+   recognition (Vision, the engine behind Live Text; it reads handwriting too), up to
+   10 pages. A wide gap between lines becomes a blank line. */
 const MAX_CHARS = 12000
 const RICH = new Set(['.doc', '.docx', '.htm', '.html', '.odt', '.rtf', '.rtfd', '.webarchive'])
-const PDF_TEXT = 'ObjC.import("PDFKit"); function run(argv) { const d = $.PDFDocument.alloc.initWithURL($.NSURL.fileURLWithPath(argv[0])); if (d.isNil()) return ""; const s = d.string; return s.isNil() ? "" : s.js.slice(0, 20000) }'
+const PICTURES = new Set(['.jpg', '.jpeg', '.png', '.heic', '.tif', '.tiff'])
+// ponytail: a picture with a see-through background reads as nothing; scanners never make one.
+const PDF_TEXT = `ObjC.import("PDFKit"); ObjC.import("Vision"); ObjC.import("AppKit")
+function lines(data) {
+  const req = $.VNRecognizeTextRequest.alloc.init
+  req.usesLanguageCorrection = true
+  $.VNImageRequestHandler.alloc.initWithDataOptions(data, $({})).performRequestsError($([req]), null)
+  const out = []
+  let last = null
+  for (let i = 0; i < req.results.count; i++) {
+    const found = req.results.objectAtIndex(i)
+    const box = found.boundingBox
+    if (last && last.origin.y - (box.origin.y + box.size.height) > box.size.height * 1.5) out.push("")
+    out.push(found.topCandidates(1).objectAtIndex(0).string.js)
+    last = box
+  }
+  return out.join("\\n")
+}
+function run(argv) {
+  if (!/\\.pdf$/i.test(argv[0])) return lines($.NSData.dataWithContentsOfFile(argv[0]))
+  const d = $.PDFDocument.alloc.initWithURL($.NSURL.fileURLWithPath(argv[0]))
+  if (d.isNil()) return ""
+  const text = d.string.isNil() ? "" : d.string.js.slice(0, 20000)
+  if (text.trim().length > 20) return text
+  const pages = []
+  for (let i = 0; i < Math.min(d.pageCount, 10); i++) {
+    const page = d.pageAtIndex(i)
+    const size = page.boundsForBox(0).size
+    const scale = 2000 / Math.max(size.width, size.height)
+    pages.push(lines(page.thumbnailOfSizeForBox({ width: size.width * scale, height: size.height * scale }, 0).TIFFRepresentation))
+  }
+  return pages.join("\\n\\n")
+}`
 
 async function extractText(file, { exec = run, readText = readTextFile } = {}) {
   const ext = path.extname(file).toLowerCase()
   let text
-  if (ext === '.pdf') text = await exec('osascript', ['-l', 'JavaScript', '-e', PDF_TEXT, file])
+  if (ext === '.pdf' || PICTURES.has(ext)) text = await exec('osascript', ['-l', 'JavaScript', '-e', PDF_TEXT, file], { timeout: 90000 })
   else if (RICH.has(ext)) text = await exec('textutil', ['-convert', 'txt', '-stdout', file])
   else if (isSafeTextPreviewName(file)) text = (await readText(file)).content
   else throw new Error('UNREADABLE')
   text = text.replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
   if (!text) throw new Error('EMPTY')
   return { text: text.slice(0, MAX_CHARS), truncated: text.length > MAX_CHARS }
-}
-
-/* The words on a scan (Settings → Bots → Scans), read on this Mac: a PDF's own text when it
-   has some, else the Mac's own text recognition (Vision) on the image, or on the first
-   pages of a PDF that is only pictures. */
-const SCAN_TYPES = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.heic', '.tif', '.tiff'])
-const SCAN_TEXT = `ObjC.import("PDFKit"); ObjC.import("Vision"); ObjC.import("AppKit");
-function recognise(handler) {
-  const request = $.VNRecognizeTextRequest.alloc.init;
-  request.usesLanguageCorrection = true;
-  if (!handler.performRequestsError($.NSArray.arrayWithObject(request), null)) return "";
-  const results = request.results, lines = [];
-  for (let i = 0; i < results.count; i++) {
-    const best = results.objectAtIndex(i).topCandidates(1);
-    if (best.count) lines.push(best.objectAtIndex(0).string.js);
-  }
-  return lines.join("\\n");
-}
-function run(argv) {
-  const url = $.NSURL.fileURLWithPath(argv[0]);
-  if (!/\\.pdf$/i.test(argv[0])) return recognise($.VNImageRequestHandler.alloc.initWithURLOptions(url, $.NSDictionary.dictionary)).slice(0, 20000);
-  const doc = $.PDFDocument.alloc.initWithURL(url);
-  if (doc.isNil()) return "";
-  const own = doc.string;
-  if (!own.isNil() && own.js.trim().length > 40) return own.js.slice(0, 20000);
-  const pages = [];
-  for (let i = 0; i < Math.min(doc.pageCount, 5); i++) {
-    const page = doc.pageAtIndex(i), box = page.boundsForBox(0);
-    const image = page.thumbnailOfSizeForBox($.NSMakeSize(box.size.width * 2, box.size.height * 2), 0);
-    pages.push(recognise($.VNImageRequestHandler.alloc.initWithDataOptions(image.TIFFRepresentation, $.NSDictionary.dictionary)));
-  }
-  return pages.join("\\n\\n").slice(0, 20000);
-}`
-
-async function readScan(file, { exec = run } = {}) {
-  if (!SCAN_TYPES.has(path.extname(file).toLowerCase())) throw new Error('UNREADABLE')
-  const text = (await exec('osascript', ['-l', 'JavaScript', '-e', SCAN_TEXT, file], { timeout: 120000 }))
-    .replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
-  return text.slice(0, MAX_CHARS)
 }
 
 /* Spotlight by file name, only inside the folders OSAT may show. */
@@ -108,4 +104,4 @@ function locate(paths, roots, query, limit = 12) {
     .map(({ depth, ...item }) => item)
 }
 
-module.exports = { MAX_CHARS, PLACES, SCAN_TEXT, SCAN_TYPES, extractText, isPackage, locate, readScan, run, searchArgs }
+module.exports = { MAX_CHARS, PICTURES, PLACES, extractText, isPackage, locate, run, searchArgs }

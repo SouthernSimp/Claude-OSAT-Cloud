@@ -83,6 +83,16 @@ async function main() {
     room = 'sky'
     await page.keyboard.press('Control+3')
     await page.locator('.sky-layer').waitFor({ timeout: 5000 }).catch(() => problems.push(`sky: ⌃3 did not bring the Sky (${theme})`))
+    // The first time, the Sky says how it works; Got it puts that away for good.
+    const guide = page.getByRole('dialog', { name: 'How the Sky works' })
+    if (theme === 'light') {
+      await guide.waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the first visit did not say how the Sky works'))
+      await sleep(500)
+      await page.screenshot({ path: `${OUT}/sky-guide.png` })
+      await page.getByRole('button', { name: 'Got it' }).click().catch(() => {})
+    }
+    await sleep(300)
+    if (await guide.count()) problems.push(`sky: the guide showed again after Got it (${theme})`)
     await sleep(700)
     await page.screenshot({ path: `${OUT}/${theme}-Sky.png` })
     await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true }).catch(() => problems.push(`sky: Project Direction was not there to open (${theme})`))
@@ -224,10 +234,24 @@ async function main() {
   await page.locator('.sort-help').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Help me sort said nothing'))
   await sleep(300)
   await page.screenshot({ path: `${OUT}/sky-sort.png` })
+  // A branch's menu: New branch inside puts one inside it, on its own line, and Rename works.
+  await page.locator('.lane-head', { hasText: 'Later' }).first().click({ button: 'right', force: true })
+  await page.getByRole('menuitem', { name: 'New branch inside' }).click().catch(() => problems.push('sky: a branch menu has no "New branch inside"'))
+  await page.keyboard.type('Mac apps')
+  await page.keyboard.press('Enter')
+  await page.locator('.branch:has(> .lane[aria-label="Branch: Later"]) .branch-tree .lane[aria-label="Branch: Mac apps"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: New branch inside did not make a branch inside'))
+  await page.locator('.lane-head', { hasText: 'Mac apps' }).click({ button: 'right', force: true })
+  await page.getByRole('menuitem', { name: 'Rename' }).click().catch(() => {})
+  await page.keyboard.type('Apps')
+  await page.keyboard.press('Enter')
+  await page.locator('.lane[aria-label="Branch: Apps"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Rename in a branch menu did nothing'))
+  await sleep(400)
+  await page.screenshot({ path: `${OUT}/sky-tree.png` })
   const nodeFile = { title: 'Garden', summary: 'What grows where.', branches: [{ title: 'Beds', leaves: [{ text: 'Tomatoes', done: false }, { text: 'Dig', done: true }], sub_branches: [{ title: 'Herbs', leaves: [{ text: 'Basil' }] }] }] }
   await page.locator('.sky-layer input[type="file"]').setInputFiles({ name: 'garden.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(nodeFile)) })
   await page.getByText('Imported Garden with 2 branches').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Import did not say what it made'))
   await page.locator('[data-node-head]', { hasText: 'Garden' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the imported node was not in the Sky'))
+  await page.locator('.branch:has(> .lane[aria-label="Branch: Beds"]) .branch-tree .lane[aria-label="Branch: Herbs"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: an imported sub-branch was not drawn inside its branch'))
   await sleep(900)
   await page.screenshot({ path: `${OUT}/sky-import.png` })
   await page.getByRole('button', { name: 'Undo', exact: true }).click()

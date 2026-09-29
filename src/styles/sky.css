@@ -447,6 +447,10 @@ html[data-carry-edge="up"] body::after {
 .node-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .node-head strong { padding-right: 34px; font: 750 var(--t-xl)/1.15 var(--font-display); letter-spacing: var(--tr-display); overflow-wrap: anywhere; }
 .node-head small { font-size: var(--t-xs); color: var(--paper-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node-peek { display: grid; gap: 3px; margin: 0; padding: 0 30px 0 0; list-style: none; font-size: var(--t-xs); color: var(--paper-ink-2); }
+.node-peek li { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.node-peek li::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--paper-bg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper-ink) 30%, transparent); }
+.node-peek li.is-more::before { visibility: hidden; }
 .board-card.is-open > .node-head { box-shadow: var(--lift-hover), 0 0 0 2px color-mix(in srgb, var(--paper-ink) 14%, transparent); }
 .node-tools { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 2px; opacity: 0; transition: opacity 140ms; }
 .node-head:is(:hover, :focus-within) .node-tools { opacity: 1; }
@@ -460,36 +464,81 @@ html[data-carry-edge="up"] body::after {
 .node-head.is-naming { align-content: center; box-shadow: var(--lift-held); }
 .pile-label { margin: 0; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: var(--tr-wide); text-transform: uppercase; color: var(--muted); }
 
-/* ---- Inside an open node: branches as lanes, and what's still to sort ---------- */
+/* ---- Inside an open node: a tree. Only stickies are paper; names are labels ------ */
 
 .lanes { min-width: 0; }
 .lanes.is-across { display: grid; align-content: start; grid-template-columns: max-content; gap: 14px; }
 .lane { display: grid; gap: 10px; min-width: 0; }
-.lanes.is-across .lane { grid-template-columns: 172px minmax(0, 1fr); align-items: start; padding-left: calc(var(--depth, 0) * 28px); }
+.lanes.is-across .lane { grid-template-columns: 172px minmax(0, 1fr); align-items: start; }
+.lanes.is-across .lane.is-bare { grid-template-columns: minmax(0, 1fr); }
+/* A branch's name: a dot of its colour and the name, on the line that joins it. */
 .lane-head {
   position: relative;
-  min-height: 56px;
+  min-height: 44px;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 34px 10px 12px;
-  border-radius: 3px 3px 12px 3px;
-  background: var(--paper-bg, var(--paper-bone));
-  color: var(--paper-ink);
-  box-shadow: var(--lift-rest);
+  gap: 9px;
+  padding: 8px 32px 8px 10px;
+  border-radius: 10px;
+  color: var(--ink);
   cursor: grab;
 }
-.lane-head strong { font: 750 var(--t-md)/1.2 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; overflow-wrap: anywhere; }
-.lane.is-loose .lane-head { cursor: default; color: var(--ink); background: transparent; border: 1.5px dashed var(--line-strong); box-shadow: none; }
-.lane-more { position: absolute; top: 50%; right: 6px; translate: 0 -50%; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; color: var(--paper-ink-2); opacity: 0; }
+.lane-head::before { content: ""; flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--paper-bg, var(--paper-bone)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent); }
+.lane-head:hover { background: var(--surface-hover); }
+.lane-head strong { font: 700 var(--t-md)/1.25 var(--font-display); letter-spacing: var(--tr-display); overflow-wrap: anywhere; }
+.lane.is-loose .lane-head { cursor: default; color: var(--muted); }
+.lane.is-loose .lane-head::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.lane.is-loose .lane-head:hover { background: transparent; }
+.lane.is-loose .lane-head strong { font: 650 var(--t-sm)/1.25 var(--font); letter-spacing: 0; }
+.lane-more { position: absolute; top: 50%; right: 4px; translate: 0 -50%; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; color: var(--muted); opacity: 0; }
 .lane-head:hover .lane-more, .lane-more:focus-visible { opacity: 1; }
-.lane-more:hover { background: rgb(0 0 0 / 8%); }
+.lane-more:hover { color: var(--ink); background: var(--surface-sunken); }
 .lane-more svg { width: 14px; height: 14px; }
 .lane-add { justify-self: start; align-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 12px; border-radius: 12px; font-size: var(--t-sm); font-weight: 650; color: var(--muted); border: 1.5px dashed var(--line-strong); }
 .lane-add:hover { color: var(--ink); }
 .lane-add svg { width: 12px; height: 12px; }
 .lane.is-naming { max-width: 240px; }
+
+/* The lines that make it a tree: one down the side of a node's (or a branch's) branches,
+   and a turn into each name. */
+.branch-tree { position: relative; display: grid; gap: 12px; margin: 0; padding: 0 0 0 26px; list-style: none; }
+.branch-tree .branch-tree { margin-top: 12px; }
+.branch { position: relative; }
+.branch::before, .branch:not(:last-child)::after { content: ""; position: absolute; left: -18px; border-color: color-mix(in srgb, var(--ink) 24%, var(--surface-raised)); border-style: solid; pointer-events: none; }
+.branch::before { top: -12px; width: 14px; height: 34px; border-width: 0 0 2px 2px; border-bottom-left-radius: 10px; }
+/* Solid (mixed with the card), so where the pieces overlap the line keeps one shade. */
+.branch:not(:last-child)::after { top: 20px; bottom: -14px; border-width: 0 0 0 2px; }
+.branch.is-naming { max-width: 240px; }
+
+/* How the Sky works: a solid card over the board, bottom left. */
+.sky-guide {
+  position: absolute;
+  z-index: 5;
+  left: 22px;
+  bottom: 56px;
+  display: grid;
+  gap: 14px;
+  width: min(400px, calc(100% - 44px));
+  padding: 20px 20px 18px;
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-3);
+  animation: body-in 440ms var(--glide) both;
+}
+.sky-guide h2 { margin: 0; font: 750 var(--t-lg)/1.2 var(--font-display); letter-spacing: var(--tr-display); }
+.sky-guide ol { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.sky-guide li { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 14px; }
+.sky-guide li p, .sky-guide-foot { margin: 0; font-size: var(--t-sm); line-height: 1.4; color: var(--muted); }
+.sky-guide li strong, .sky-guide-foot strong { color: var(--ink); }
+.guide-pic { justify-self: center; display: grid; font: 650 var(--t-2xs)/1.2 var(--font); color: var(--paper-ink); }
+.guide-pic.is-sticky { width: 64px; height: 44px; padding: 6px; border-radius: 2px 2px 9px 2px; background: var(--paper-bg); box-shadow: var(--lift-rest); rotate: -3deg; }
+.guide-pic.is-node { width: 76px; height: 48px; padding: 7px; border-radius: 3px 3px 11px 3px; font: 750 var(--t-sm)/1 var(--font-display); background: var(--paper-bg); box-shadow: 3px 4px 0 -1px color-mix(in srgb, var(--paper-bg) 88%, #000), var(--lift-rest); }
+.guide-pic.is-branch { gap: 6px; padding-left: 12px; border-left: 2px solid var(--line-strong); color: var(--ink); }
+.guide-pic.is-branch i { display: flex; align-items: center; gap: 5px; font-style: normal; }
+.guide-pic.is-branch i::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--paper-bg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent); }
+.sky-guide button { justify-self: start; height: 32px; padding: 0 16px; border-radius: 999px; font-size: var(--t-sm); font-weight: 650; color: var(--accent-ink); background: var(--accent); }
+.sky-guide button:hover { background: var(--accent-hover); }
 
 /* Help me sort: a line per branch, with Move and Dismiss, under the node's Unsorted. */
 .sort-help { grid-column: 1 / -1; display: grid; gap: 8px; max-width: 560px; }
@@ -503,6 +552,9 @@ html[data-carry-edge="up"] body::after {
 .sort-help button.is-primary:hover { background: var(--accent-hover); }
 .sort-help svg { width: 12px; height: 12px; }
 .lanes .sticky-list.is-x { overflow: visible; padding: 2px 2px 4px; }
+/* An empty node says so on a line of its own, with "Write a sticky" under it. */
+.lanes .sticky-list.is-x:has(> .sticky-empty) { flex-wrap: wrap; max-width: 420px; min-height: 0; }
+.lanes .sticky-list.is-x > .sticky-empty { flex: 0 0 100%; margin: 0; }
 
 /* ---- Stickies on the desk ------------------------------------------------------ */
 
