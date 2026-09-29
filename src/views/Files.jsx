@@ -1,13 +1,15 @@
 import {
   ArrowSquareOut, CaretLeft, CaretRight, Eye, File, FolderOpen, FolderSimple, FolderSimplePlus, MagnifyingGlass, Sparkle, X,
 } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { describeFileQuery, parseFileQuery } from "../../shared/file-query.mjs";
 import { cleanError } from "../assistant/useAi.js";
 import { formatBytes } from "../lib/ui.js";
 
 /* Your Mac's files: Desktop, Documents and Downloads, and folders you add. A small
    Finder: go into folders, back and forward, Quick Look with Space, open with
-   Return. The desk shows the Desktop with the same pieces. */
+   Return, and Find: plain words ("pdf taxes last week") look in names and inside files,
+   and each result says where it lives. The desk shows the Desktop with the same pieces. */
 
 const PLACE_NAMES = { desktop: "Desktop", documents: "Documents", downloads: "Downloads" };
 // What Ask can read (see desktop/mac-files.cjs).
@@ -73,6 +75,32 @@ export function openEntry(rootId, entry) {
   return filesBridge()?.open(rootId, entry.relative);
 }
 
+const keyOf = (entry) => `${entry.rootId}\u0000${entry.relative}`;
+
+/* "Documents › Taxes": where a found file lives. */
+function whereOf(entry, roots) {
+  const root = roots.find((item) => item.id === entry.rootId)?.name || PLACE_NAMES[entry.rootId] || "Your folder";
+  return [root, ...entry.relative.split("/").slice(0, -1)].join(" › ");
+}
+
+/* Find as you type: { results: null until the first answer, looking }. */
+function useFind(text) {
+  const [state, setState] = useState({ results: null, looking: false });
+  useEffect(() => {
+    const api = filesBridge();
+    const words = text.trim();
+    if (!api?.search || words.length < 2) { setState({ results: null, looking: false }); return undefined; }
+    let live = true;
+    setState((value) => ({ ...value, looking: true }));
+    const timer = setTimeout(() => api.search(words).then(
+      (items) => { if (live) setState({ results: Array.isArray(items) ? items : [], looking: false }); },
+      () => { if (live) setState({ results: [], looking: false }); },
+    ), 200);
+    return () => { live = false; clearTimeout(timer); };
+  }, [text]);
+  return state;
+}
+
 function kindLabel(entry) {
   if (entry.kind === "folder") return "Folder";
   const ext = entry.name.includes(".") ? entry.name.split(".").pop().toUpperCase() : "";
@@ -87,11 +115,17 @@ export function FilesView({ navigate, target = null }) {
   const [selected, setSelected] = useState(null);
   const [reload, setReload] = useState(0);
   const [note, setNote] = useState("");
+  const [find, setFind] = useState("");
   const grid = useRef(null);
+  const findBox = useRef(null);
   const focusNext = useRef(null);
   const fresh = useFreshness();
-  const { entries, error } = useFolder(spot.rootId, spot.relative, fresh + reload);
-  const chosen = entries?.find((entry) => entry.relative === selected) || null;
+  const { entries: here, error } = useFolder(spot.rootId, spot.relative, fresh + reload);
+  const finding = find.trim().length >= 2;
+  const { results, looking } = useFind(finding ? find : "");
+  const understood = useMemo(() => (finding ? describeFileQuery(parseFileQuery(find)) : ""), [find, finding]);
+  const entries = finding ? results : here?.map((entry) => ({ ...entry, rootId: spot.rootId })) ?? null;
+  const chosen = entries?.find((entry) => keyOf(entry) === selected) || null;
   const root = roots.find((item) => item.id === spot.rootId);
   const rootName = root?.name || PLACE_NAMES[spot.rootId] || "Folder";
 
@@ -102,21 +136,23 @@ export function FilesView({ navigate, target = null }) {
   /* Asked for from elsewhere: the desk, ⌘K. */
   useEffect(() => {
     if (!target?.rootId) return;
+    setFind("");
     go({ rootId: target.rootId, relative: target.relative || "" }, target.select || null);
   }, [target?.at]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Focus follows a pick made with the keys or from ⌘K, once that folder has loaded. */
   useEffect(() => {
     const want = focusNext.current;
-    if (!want || !entries?.some((entry) => entry.relative === want)) return;
+    if (!want || !entries?.some((entry) => keyOf(entry) === want)) return;
     focusNext.current = null;
-    grid.current?.querySelector(`[data-relative="${CSS.escape(want)}"]`)?.focus();
+    grid.current?.querySelector(`[data-key="${CSS.escape(want)}"]`)?.focus();
   }, [entries, selected]);
 
   function go(next, select = null) {
+    const key = select ? keyOf({ rootId: next.rootId, relative: select }) : null;
     setNote("");
-    setSelected(select);
-    focusNext.current = select;
+    setSelected(key);
+    focusNext.current = key;
     if (next.rootId === spot.rootId && next.relative === spot.relative) return;
     setHistory((value) => ({ back: [...value.back, spot].slice(-50), forward: [] }));
     setSpot(next);
@@ -144,25 +180,52 @@ export function FilesView({ navigate, target = null }) {
   }
 
   function open(entry) {
-    if (entry.kind === "folder") go({ rootId: spot.rootId, relative: entry.relative });
-    else act(() => openEntry(spot.rootId, entry));
+    if (entry.kind === "folder") { setFind(""); go({ rootId: entry.rootId, relative: entry.relative }); }
+    else act(() => openEntry(entry.rootId, entry));
+  }
+
+  /* A found file, shown where it lives. */
+  function showHere(entry) {
+    setFind("");
+    go({ rootId: entry.rootId, relative: entry.relative.split("/").slice(0, -1).join("/") }, entry.relative);
+  }
+
+  function pick(entry) {
+    focusNext.current = keyOf(entry);
+    setSelected(keyOf(entry));
+  }
+
+  /* In the find box: ↓ or Return goes to the first result; Esc empties the box first. */
+  function onFindKey(event) {
+    if ((event.key === "ArrowDown" || event.key === "Enter") && entries?.length) {
+      event.preventDefault();
+      pick(entries[0]);
+      grid.current?.querySelector(`[data-key="${CSS.escape(keyOf(entries[0]))}"]`)?.focus();
+    } else if (event.key === "Escape" && find) {
+      event.preventDefault();
+      setFind("");
+    }
   }
 
   function onKey(event) {
     if (!entries?.length) return;
-    const index = entries.findIndex((entry) => entry.relative === selected);
-    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+    const index = entries.findIndex((entry) => keyOf(entry) === selected);
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft" || (finding && (event.key === "ArrowDown" || event.key === "ArrowUp") && !event.metaKey)) {
       event.preventDefault();
-      const next = entries[Math.min(Math.max(index + (event.key === "ArrowRight" ? 1 : -1), 0), entries.length - 1)];
-      focusNext.current = next.relative;
-      setSelected(next.relative);
+      if (finding && event.key === "ArrowUp" && index <= 0) { findBox.current?.focus(); return; }
+      const forward = event.key === "ArrowRight" || event.key === "ArrowDown";
+      pick(entries[Math.min(Math.max(index + (forward ? 1 : -1), 0), entries.length - 1)]);
     } else if (event.key === "Enter" && chosen) {
       event.preventDefault();
       open(chosen);
     } else if (event.key === " " && chosen) {
       event.preventDefault();
-      act(() => api.quickLook(spot.rootId, chosen.relative));
-    } else if ((event.key === "Backspace" || (event.metaKey && event.key === "ArrowUp")) && spot.relative) {
+      act(() => api.quickLook(chosen.rootId, chosen.relative));
+    } else if (event.key === "Escape" && finding) {
+      event.preventDefault();
+      setFind("");
+      findBox.current?.focus();
+    } else if (!finding && (event.key === "Backspace" || (event.metaKey && event.key === "ArrowUp")) && spot.relative) {
       event.preventDefault();
       go({ rootId: spot.rootId, relative: spot.relative.split("/").slice(0, -1).join("/") }, spot.relative);
     }
@@ -208,15 +271,15 @@ export function FilesView({ navigate, target = null }) {
       <aside className="finder-side">
         <p className="finder-kicker">On this Mac</p>
         {places.map((item) => (
-          <button key={item.id} type="button" aria-current={spot.rootId === item.id ? "true" : undefined} onClick={() => go({ rootId: item.id, relative: "" })}>
-            <FolderSimple weight={spot.rootId === item.id ? "fill" : "regular"} /> <span>{item.name}</span>
+          <button key={item.id} type="button" aria-current={!finding && spot.rootId === item.id ? "true" : undefined} onClick={() => { setFind(""); go({ rootId: item.id, relative: "" }); }}>
+            <FolderSimple weight={!finding && spot.rootId === item.id ? "fill" : "regular"} /> <span>{item.name}</span>
           </button>
         ))}
         <p className="finder-kicker">Your folders</p>
         {folders.map((item) => (
           <span key={item.id} className="finder-side-row">
-            <button type="button" aria-current={spot.rootId === item.id ? "true" : undefined} onClick={() => go({ rootId: item.id, relative: "" })}>
-              <FolderSimple weight={spot.rootId === item.id ? "fill" : "regular"} /> <span>{item.name}</span>
+            <button type="button" aria-current={!finding && spot.rootId === item.id ? "true" : undefined} onClick={() => { setFind(""); go({ rootId: item.id, relative: "" }); }}>
+              <FolderSimple weight={!finding && spot.rootId === item.id ? "fill" : "regular"} /> <span>{item.name}</span>
             </button>
             <button type="button" className="finder-forget" aria-label={`Take ${item.name} out of the list`} title="Take it out of the list (the folder stays)" onClick={() => forget(item)}><X /></button>
           </span>
@@ -226,37 +289,57 @@ export function FilesView({ navigate, target = null }) {
 
       <div className="finder-main">
         <header className="finder-bar">
-          <button type="button" aria-label="Back" disabled={!history.back.length} onClick={() => step("back")}><CaretLeft weight="bold" /></button>
-          <button type="button" aria-label="Forward" disabled={!history.forward.length} onClick={() => step("forward")}><CaretRight weight="bold" /></button>
-          <nav className="finder-path" aria-label="Where you are">
-            <button type="button" onClick={() => go({ rootId: spot.rootId, relative: "" })}>{rootName}</button>
-            {crumbs.map((crumb, index) => (
-              <span key={`${crumb}-${index}`}>
-                <CaretRight />
-                <button type="button" onClick={() => go({ rootId: spot.rootId, relative: crumbs.slice(0, index + 1).join("/") })}>{crumb}</button>
-              </span>
-            ))}
-          </nav>
-          <span className="finder-hint"><MagnifyingGlass /> ⌘K finds any file</span>
+          <button type="button" aria-label="Back" disabled={finding || !history.back.length} onClick={() => step("back")}><CaretLeft weight="bold" /></button>
+          <button type="button" aria-label="Forward" disabled={finding || !history.forward.length} onClick={() => step("forward")}><CaretRight weight="bold" /></button>
+          {finding ? (
+            <p className="finder-path finder-found" role="status" title={understood || undefined}>{looking && !results ? "Looking…" : understood || "Found in names and inside files"}</p>
+          ) : (
+            <nav className="finder-path" aria-label="Where you are">
+              <button type="button" onClick={() => go({ rootId: spot.rootId, relative: "" })}>{rootName}</button>
+              {crumbs.map((crumb, index) => (
+                <span key={`${crumb}-${index}`}>
+                  <CaretRight />
+                  <button type="button" onClick={() => go({ rootId: spot.rootId, relative: crumbs.slice(0, index + 1).join("/") })}>{crumb}</button>
+                </span>
+              ))}
+            </nav>
+          )}
+          <label className="finder-find">
+            <MagnifyingGlass aria-hidden="true" />
+            <input
+              ref={findBox}
+              type="search"
+              aria-label="Find a file"
+              placeholder="Find a file, like “pdf taxes last week”"
+              value={find}
+              onChange={(event) => { setFind(event.target.value); setSelected(null); }}
+              onKeyDown={onFindKey}
+            />
+          </label>
         </header>
-        <div ref={grid} className="finder-grid" role="listbox" aria-label={rootName} onKeyDown={onKey} onPointerDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
+        <div ref={grid} className={`finder-grid ${finding ? "is-found" : ""}`} role="listbox" aria-label={finding ? "Found" : rootName} onKeyDown={onKey} onPointerDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
           {entries?.map((entry) => (
             <button
-              key={entry.relative}
+              key={keyOf(entry)}
               type="button"
               role="option"
-              aria-selected={entry.relative === selected}
-              data-relative={entry.relative}
+              aria-selected={keyOf(entry) === selected}
+              data-key={keyOf(entry)}
               className="finder-item"
-              title={entry.name}
-              onClick={() => setSelected(entry.relative)}
+              title={finding ? `${entry.name} — ${whereOf(entry, roots)}` : entry.name}
+              onClick={() => setSelected(keyOf(entry))}
               onDoubleClick={() => open(entry)}
             >
-              <FileThumb rootId={spot.rootId} entry={entry} />
+              <FileThumb rootId={entry.rootId} entry={entry} />
               <span>{entry.name}</span>
+              {finding && <small className="finder-where">{whereOf(entry, roots)}</small>}
             </button>
           ))}
-          {entries && !entries.length && <p className="finder-empty">{error || "Nothing in this folder."}</p>}
+          {entries && !entries.length && (
+            <p className="finder-empty">
+              {finding ? "Nothing found. OSAT looks in Desktop, Documents, Downloads and your folders." : error || "Nothing in this folder."}
+            </p>
+          )}
         </div>
         {note && <p className="finder-note" role="status">{note}</p>}
       </div>
@@ -264,19 +347,21 @@ export function FilesView({ navigate, target = null }) {
       <aside className="finder-info" aria-label="About the selected item">
         {chosen ? (
           <>
-            <FileThumb rootId={spot.rootId} entry={chosen} size={512} className="is-large" />
+            <FileThumb rootId={chosen.rootId} entry={chosen} size={512} className="is-large" />
             <h3>{chosen.name}</h3>
             <p>{kindLabel(chosen)}{chosen.size !== undefined ? ` · ${formatBytes(chosen.size)}` : ""}</p>
             {chosen.modifiedAt && <p>Changed {WHEN.format(new Date(chosen.modifiedAt))}</p>}
+            {finding && <p>In {whereOf(chosen, roots)}{chosen.match === "inside" ? " · the words are inside it" : ""}</p>}
             <div className="finder-actions">
               <button type="button" className="primary-button" onClick={() => open(chosen)}>
                 {chosen.kind === "folder" ? <FolderOpen /> : <ArrowSquareOut />} Open
               </button>
-              {chosen.kind === "file" && <button type="button" onClick={() => act(() => api.quickLook(spot.rootId, chosen.relative))}><Eye /> Quick Look <kbd>space</kbd></button>}
+              {chosen.kind === "file" && <button type="button" onClick={() => act(() => api.quickLook(chosen.rootId, chosen.relative))}><Eye /> Quick Look <kbd>space</kbd></button>}
               {canAsk(chosen) && navigate && (
-                <button type="button" onClick={() => navigate("Assistant", { file: { rootId: spot.rootId, relative: chosen.relative, name: chosen.name } })}><Sparkle /> Ask about it</button>
+                <button type="button" onClick={() => navigate("Assistant", { file: { rootId: chosen.rootId, relative: chosen.relative, name: chosen.name } })}><Sparkle /> Ask about it</button>
               )}
-              <button type="button" onClick={() => act(() => api.reveal(spot.rootId, chosen.relative))}><FolderOpen /> Show in Finder</button>
+              {finding && <button type="button" onClick={() => showHere(chosen)}><FolderSimple /> Show in its folder</button>}
+              <button type="button" onClick={() => act(() => api.reveal(chosen.rootId, chosen.relative))}><FolderOpen /> Show in Finder</button>
             </div>
           </>
         ) : (

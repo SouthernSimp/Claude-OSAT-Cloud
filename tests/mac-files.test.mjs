@@ -11,7 +11,7 @@ const { chatBounds } = require('../desktop/quick-chat.cjs')
 const { isSafeOpenFilename } = require('../desktop/text-files.cjs')
 
 test('Spotlight looks only in the folders OSAT may show', () => {
-  assert.deepEqual(searchArgs('plan', ['/u/Desktop', '/u/Documents']), ['-onlyin', '/u/Desktop', '-onlyin', '/u/Documents', '-name', 'plan'])
+  assert.deepEqual(searchArgs('kMDItemFSName == "*plan*"cd', ['/u/Desktop', '/u/Documents']), ['-onlyin', '/u/Desktop', '-onlyin', '/u/Documents', 'kMDItemFSName == "*plan*"cd'])
 })
 
 test('search results stay inside the folders, skip hidden things and package insides, and rank by name', () => {

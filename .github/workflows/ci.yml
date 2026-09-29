@@ -80,6 +80,8 @@ jobs:
         run: node scripts/keychain-check.cjs
       - name: Check OSAT reads the words on a scan
         run: node scripts/scan-read-check.cjs
+      - name: Check Spotlight takes OSAT's find queries
+        run: node scripts/find-check.mjs
       - name: Build the DMG
         env:
           # electron-builder skips all signing on pull requests by default, which

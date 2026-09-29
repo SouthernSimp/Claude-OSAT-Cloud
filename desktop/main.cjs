@@ -42,7 +42,7 @@ const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
 const { DEFAULT_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = require('./desk.cjs')
 const { createQuickChat } = require('./quick-chat.cjs')
-const { PLACES, extractText, isPackage, locate, run, searchArgs } = require('./mac-files.cjs')
+const { PLACES, extractText, inside, isPackage, rankFound, run, searchArgs, walkFind } = require('./mac-files.cjs')
 const { createMedia } = require('./media.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
@@ -403,18 +403,30 @@ function registerFileHandlers() {
     return true
   }, { from: 'app' })
 
-  // Spotlight, by name, only in Desktop, Documents, Downloads and folders Nate added.
+  // Find a file in plain words ("pdf taxes last week"): the words in its name or inside it, a
+  // kind, a time. Spotlight, only in Desktop, Documents, Downloads and folders Nate added;
+  // where there is none (tests, Linux) OSAT walks those folders itself.
   handle('files:search', async (query) => {
     const words = typeof query === 'string' ? query.trim() : ''
-    if (process.platform !== 'darwin' || words.length < 2 || words.length > 100) return []
+    if (words.length < 2 || words.length > 100) return []
+    const { parseFileQuery, spotlightQuery, matchesFile, matchedBy } = await sharedModule('file-query.mjs')
+    const asked = parseFileQuery(words)
+    const spotlight = spotlightQuery(asked)
+    if (!spotlight) return []
     const roots = await Promise.all([...places(), ...grants.filter((grant) => grant.kind === 'folder')]
       .map(async (grant) => ({ id: grant.id, root: await fs.realpath(grant.root).catch(() => grant.root) })))
-    const out = await run('mdfind', searchArgs(words, roots.map((item) => item.root)), { timeout: 4000 }).catch(() => '')
-    const found = locate(out.split('\n').filter(Boolean).slice(0, 400), roots, words)
-    return (await Promise.all(found.map(async (item) => {
+    const paths = process.platform === 'darwin'
+      ? (await run('mdfind', searchArgs(spotlight, roots.map((item) => item.root)), { timeout: 4000 }).catch(() => '')).split('\n').filter(Boolean).slice(0, 400)
+      : await walkFind(roots, (item) => matchesFile(asked, item))
+    const filtered = asked.kinds.length > 0 || asked.since !== null
+    const candidates = rankFound(inside([...new Set(paths)], roots), asked.words).slice(0, filtered ? 200 : 40)
+    const found = (await Promise.all(candidates.map(async (item) => {
       const stat = await fs.stat(path.join(roots.find((root) => root.id === item.rootId).root, item.relative)).catch(() => null)
-      return stat && { ...item, kind: stat.isDirectory() && !isPackage(item.name) ? 'folder' : 'file' }
+      if (!stat) return null
+      const folder = stat.isDirectory() && !isPackage(item.name)
+      return { ...item, kind: folder ? 'folder' : 'file', size: stat.isFile() ? stat.size : undefined, modifiedAt: stat.mtime.toISOString(), match: matchedBy(asked, item.name) }
     }))).filter(Boolean)
+    return rankFound(found, asked.words, { newest: filtered }).slice(0, 12).map(({ depth, ...item }) => item)
   }, { from: 'app' })
 
   // The text Ask reads from a file in a folder OSAT can see…
