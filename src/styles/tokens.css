@@ -1,88 +1,84 @@
-@font-face { font-family: "Fraunces"; src: url("/fonts/fraunces-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
 
-/* OSAT — paper, ink, and one ember. Every value is defined here once. */
+/* OSAT — clean light and dark, neutral greys, and one colour: the Mac's own accent
+   (main.cjs paints --mac-accent from System Settings; the browser preview uses blue).
+   Stickies keep their paper colours. Every value is defined here once. */
 
 :root {
-  --n-0: oklch(99.5% 0.004 85);
-  --n-100: oklch(94.5% 0.010 85);
-  --n-300: oklch(78% 0.016 85);
-  --n-900: oklch(18% 0.014 85);
-
   /* Status */
-  --positive: oklch(52% 0.12 155);
-  --positive-soft: oklch(95% 0.035 155);
-  --caution: oklch(66% 0.14 70);
-  --caution-soft: oklch(95% 0.045 75);
-  --critical: oklch(54% 0.18 25);
-  --critical-soft: oklch(95% 0.035 25);
+  --positive: oklch(58% 0.14 150);
+  --positive-soft: oklch(95% 0.035 150);
+  --caution: oklch(70% 0.15 75);
+  --caution-soft: oklch(96% 0.04 80);
+  --critical: #e5484d;
+  --critical-soft: #fdecec;
 
   /* Ground and surfaces: the desk, the panels on it, the paper on top. */
-  --page: #f1ede6;
-  --surface: #f8f5f0;
-  --surface-raised: #fffdf9;
-  --surface-sunken: #e9e4db;
-  --surface-hover: #ece7df;
-  --scrim: rgb(38 28 18 / 34%);
+  --page: #f5f5f7;
+  --surface: #fafafb;
+  --surface-raised: #ffffff;
+  --surface-sunken: #ececef;
+  --surface-hover: #eeeef1;
+  --scrim: rgb(0 0 0 / 28%);
 
-  --ink: #1d1a16;
-  --ink-strong: #100e0c;
-  --muted: #665e54;
-  --faint: #958c7f;
+  --ink: #1d1d1f;
+  --ink-strong: #000000;
+  --muted: #6e6e73;
+  --faint: #98989d;
 
-  --line: rgb(58 44 30 / 12%);
-  --line-soft: rgb(58 44 30 / 7%);
-  --line-strong: rgb(58 44 30 / 20%);
+  --line: rgb(0 0 0 / 10%);
+  --line-soft: rgb(0 0 0 / 6%);
+  --line-strong: rgb(0 0 0 / 17%);
 
-  --accent: #a3411d;
-  --accent-hover: #87341a;
-  --accent-ink: #fffaf5;
-  --accent-soft: #f4e2d6;
-  --accent-line: #a3411d40;
-  --accent-glow: 0 8px 22px -12px #a3411d80;
+  --accent: var(--mac-accent, #007aff);
+  --accent-ink: var(--mac-accent-ink, #ffffff);
+  --accent-hover: color-mix(in srgb, var(--accent) 86%, #000);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--surface-raised));
+  --accent-line: color-mix(in srgb, var(--accent) 30%, transparent);
+  --accent-glow: 0 8px 22px -12px color-mix(in srgb, var(--accent) 55%, transparent);
 
-  /* Notes as paper: the desk on Today, the open sheet, the day page. */
-  --tabletop: #e8e2d8;
-  --sheet: #fffcf6;
-  --sheet-ink: #251d16;
-  --sheet-edge: #e6d8c5;
-  --sheet-shadow: 0 1px 0 rgb(255 255 255 / 70%) inset, 0 16px 32px -18px rgb(46 28 12 / 50%), 0 2px 5px rgb(46 28 12 / 8%);
-  --sheet-lift: 0 1px 0 rgb(255 255 255 / 70%) inset, 0 26px 44px -20px rgb(46 28 12 / 55%), 0 4px 10px rgb(46 28 12 / 10%);
+  /* Notes as paper: the open sheet, the day page. */
+  --tabletop: #ececef;
+  --sheet: #ffffff;
+  --sheet-ink: #1d1d1f;
+  --sheet-edge: #e2e2e7;
+  --sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 8%), 0 16px 32px -18px rgb(0 0 0 / 30%), 0 2px 5px rgb(0 0 0 / 5%);
+  --sheet-lift: 0 0 0 0.5px rgb(0 0 0 / 8%), 0 26px 44px -20px rgb(0 0 0 / 36%), 0 4px 10px rgb(0 0 0 / 7%);
 
   --sidebar: var(--surface);
 
-  /* Home: a warm-white mist over the wallpaper, and glass laid on top of it. */
-  --wall-filter: blur(48px) saturate(0.8) brightness(1.2);
+  /* Home: a light mist over the desktop, and glass laid on top of it. */
+  --wall-filter: blur(48px) saturate(0.9) brightness(1.15);
   --wall-veil: color-mix(in srgb, var(--page) 58%, transparent);
-  --wall-vignette: radial-gradient(120% 90% at 50% 38%, transparent 40%, rgb(58 44 30 / 10%));
+  --wall-vignette: radial-gradient(120% 90% at 50% 38%, transparent 40%, rgb(0 0 0 / 8%));
   --glass: color-mix(in srgb, var(--surface-raised) 58%, transparent);
   --glass-strong: color-mix(in srgb, var(--surface-raised) 74%, transparent);
   --glass-rim: inset 0 0 0 1px rgb(255 255 255 / 55%), 0 0 0 0.5px var(--line);
-  --glass-shadow: 0 12px 32px -18px rgb(40 26 14 / 30%);
+  --glass-shadow: 0 12px 32px -18px rgb(0 0 0 / 26%);
   --glass-blur: blur(24px) saturate(1.4);
-  --on-1: rgb(29 26 22 / 96%);
-  --on-2: rgb(29 26 22 / 74%);
-  --on-3: rgb(29 26 22 / 58%);
-  --on-4: rgb(29 26 22 / 46%);
+  --on-1: rgb(29 29 31 / 96%);
+  --on-2: rgb(29 29 31 / 74%);
+  --on-3: rgb(29 29 31 / 58%);
+  --on-4: rgb(29 29 31 / 46%);
   --on-solid: var(--ink);
   --on-solid-ink: var(--page);
   --home-folder: oklch(64% 0.12 250);
   --home-text-shadow: 0 0 10px rgb(255 255 255 / 60%);
 
-  --e-1: 0 1px 2px rgb(46 32 18 / 6%);
-  --e-2: 0 2px 8px -2px rgb(46 32 18 / 9%);
-  --e-3: 0 12px 30px -14px rgb(46 32 18 / 20%);
-  --e-4: 0 20px 48px -18px rgb(46 32 18 / 26%);
-  --e-5: 0 32px 70px -24px rgb(40 26 14 / 36%);
-  --ring: 0 0 0 3px #a3411d33;
+  --e-1: 0 1px 2px rgb(0 0 0 / 6%);
+  --e-2: 0 2px 8px -2px rgb(0 0 0 / 9%);
+  --e-3: 0 12px 30px -14px rgb(0 0 0 / 20%);
+  --e-4: 0 20px 48px -18px rgb(0 0 0 / 24%);
+  --e-5: 0 32px 70px -24px rgb(0 0 0 / 32%);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
 
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
-  --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-display: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   --t-2xs: 0.6875rem; --t-xs: 0.75rem; --t-sm: 0.8125rem; --t-md: 0.875rem;
   --t-lg: 1rem; --t-xl: 1.125rem; --t-2xl: 1.5rem; --t-3xl: 2rem;
   --lh-tight: 1.1; --lh-snug: 1.3; --lh-normal: 1.5; --lh-relaxed: 1.65;
-  --tr-tight: -0.01em; --tr-display: -0.035em; --tr-wide: 0.06em;
+  --tr-tight: -0.01em; --tr-display: -0.025em; --tr-wide: 0.06em;
 
   --s-1: 0.25rem; --s-2: 0.5rem; --s-3: 0.75rem; --s-4: 1rem; --s-5: 1.25rem;
   --s-6: 1.5rem; --s-8: 2rem; --s-10: 2.5rem; --s-12: 3rem;
@@ -103,135 +99,138 @@
 }
 
 :root[data-theme="dark"] {
-  --page: #121110;
-  --surface: #1a1816;
-  --surface-raised: #23201c;
-  --surface-sunken: #0d0c0b;
-  --surface-hover: #2a2622;
-  --scrim: rgb(4 3 2 / 62%);
+  --page: #161618;
+  --surface: #1c1c1e;
+  --surface-raised: #242427;
+  --surface-sunken: #111113;
+  --surface-hover: #2c2c2f;
+  --scrim: rgb(0 0 0 / 56%);
 
-  --ink: #eee8de;
-  --ink-strong: #faf6ef;
-  --muted: #aaa092;
-  --faint: #7f776b;
+  --ink: #f2f2f4;
+  --ink-strong: #ffffff;
+  --muted: #a1a1a6;
+  --faint: #6e6e73;
 
-  --line: rgb(255 244 228 / 8.5%);
-  --line-soft: rgb(255 244 228 / 5%);
-  --line-strong: rgb(255 244 228 / 15%);
+  --line: rgb(255 255 255 / 9%);
+  --line-soft: rgb(255 255 255 / 5%);
+  --line-strong: rgb(255 255 255 / 16%);
 
-  --accent: #ec9a61;
-  --accent-hover: #f4b283;
-  --accent-ink: #1e130b;
-  --accent-soft: #3a281c;
-  --accent-line: #ec9a6144;
-  --accent-glow: 0 8px 24px -12px #ec9a6166;
+  --accent: var(--mac-accent, #0a84ff);
+  --accent-hover: color-mix(in srgb, var(--accent) 84%, #fff);
+  --accent-soft: color-mix(in srgb, var(--accent) 20%, var(--surface-raised));
+  --accent-line: color-mix(in srgb, var(--accent) 38%, transparent);
+  --accent-glow: 0 8px 24px -12px color-mix(in srgb, var(--accent) 50%, transparent);
 
-  --wall-filter: blur(48px) saturate(1.15) brightness(0.86);
-  --wall-veil: rgb(12 11 10 / 20%);
+  --wall-filter: blur(48px) saturate(1.1) brightness(0.86);
+  --wall-veil: rgb(0 0 0 / 22%);
   --wall-vignette: radial-gradient(120% 90% at 50% 38%, transparent 40%, rgb(0 0 0 / 38%));
-  --glass: rgb(14 13 12 / 40%);
-  --glass-strong: rgb(14 13 12 / 52%);
-  --glass-rim: inset 0 0 0 1px rgb(255 244 228 / 8%);
+  --glass: rgb(22 22 24 / 40%);
+  --glass-strong: rgb(22 22 24 / 52%);
+  --glass-rim: inset 0 0 0 1px rgb(255 255 255 / 8%);
   --glass-shadow: 0 12px 32px -16px rgb(0 0 0 / 45%);
-  --on-1: rgb(250 246 239 / 96%);
-  --on-2: rgb(250 246 239 / 74%);
-  --on-3: rgb(250 246 239 / 58%);
-  --on-4: rgb(250 246 239 / 46%);
-  --on-solid: #faf6ef;
-  --on-solid-ink: #1d1a16;
+  --on-1: rgb(245 245 247 / 96%);
+  --on-2: rgb(245 245 247 / 74%);
+  --on-3: rgb(245 245 247 / 58%);
+  --on-4: rgb(245 245 247 / 46%);
+  --on-solid: #f5f5f7;
+  --on-solid-ink: #1d1d1f;
   --home-folder: oklch(72% 0.1 250);
   --home-text-shadow: 0 1px 12px rgb(0 0 0 / 30%);
 
-  --tabletop: #0f0e0c;
-  --sheet: #efe7da;
-  --sheet-ink: #241c15;
-  --sheet-edge: #cdbfa9;
-  --sheet-shadow: 0 1px 0 rgb(255 255 255 / 45%) inset, 0 18px 36px -16px rgb(0 0 0 / 80%), 0 2px 6px rgb(0 0 0 / 35%);
-  --sheet-lift: 0 1px 0 rgb(255 255 255 / 45%) inset, 0 30px 50px -18px rgb(0 0 0 / 85%), 0 4px 12px rgb(0 0 0 / 40%);
+  --tabletop: #111113;
+  --sheet: #1f1f22;
+  --sheet-ink: #f2f2f4;
+  --sheet-edge: #2e2e32;
+  --sheet-shadow: 0 0 0 0.5px rgb(255 255 255 / 8%), 0 18px 36px -16px rgb(0 0 0 / 80%), 0 2px 6px rgb(0 0 0 / 35%);
+  --sheet-lift: 0 0 0 0.5px rgb(255 255 255 / 10%), 0 30px 50px -18px rgb(0 0 0 / 85%), 0 4px 12px rgb(0 0 0 / 40%);
 
-  --positive: oklch(74% 0.12 155);
-  --positive-soft: oklch(28% 0.05 155);
-  --caution: oklch(80% 0.12 75);
-  --caution-soft: oklch(30% 0.05 75);
-  --critical: oklch(72% 0.14 25);
-  --critical-soft: oklch(28% 0.06 25);
+  --positive: oklch(76% 0.13 150);
+  --positive-soft: oklch(30% 0.05 150);
+  --caution: oklch(82% 0.12 80);
+  --caution-soft: oklch(32% 0.05 80);
+  --critical: #ff6369;
+  --critical-soft: #3b1f21;
 
   --e-1: 0 1px 2px rgb(0 0 0 / 30%);
   --e-2: 0 4px 14px -4px rgb(0 0 0 / 45%);
   --e-3: 0 14px 36px -12px rgb(0 0 0 / 55%);
   --e-4: 0 22px 50px -16px rgb(0 0 0 / 62%);
   --e-5: 0 34px 80px -22px rgb(0 0 0 / 72%);
-  --ring: 0 0 0 3px #ec9a6133;
   color-scheme: dark;
+}
+
+/* The Sky, the layer above the desk: a calm sky, dotted like a whiteboard, with a slow glow. */
+:root {
+  --sky-ground: radial-gradient(130% 90% at 50% -20%, #ffffff 0%, #f0f3f8 48%, #e8ecf3 100%);
+  --board-dot: rgb(60 70 90 / 16%);
+  --board-glow: rgb(255 255 255 / 85%);
+}
+:root[data-theme="dark"] {
+  --sky-ground: radial-gradient(130% 90% at 50% -20%, #1f2430 0%, #15181f 50%, #0f1115 100%);
+  --board-dot: rgb(200 210 230 / 13%);
+  --board-glow: rgb(150 170 210 / 10%);
 }
 
 /* Incognito (going under): a deep ink under the desk, night in either look, a little
    deeper in dark. A bright waterline, pale stars, and a warm glow for what was written here. */
 :root {
-  --under-ink: #1b2a3b;
-  --under-deep: #080d14;
-  --under-glow: rgb(150 190 230 / 17%);
-  --under-line: #dcefff;
-  --under-surface: #203042;
-  --under-rim: rgb(214 232 255 / 13%);
-  --under-text: #edf1f5;
-  --under-muted: #a3b0be;
-  --under-faint: #74818f;
-  --under-star: #f4ecdf;
-  --under-warm: #f1b56e;
-  --under-dust: rgb(220 232 255 / 34%);
+  --under-ink: #1a1d24;
+  --under-deep: #0a0b0e;
+  --under-glow: rgb(170 190 220 / 12%);
+  --under-line: #dfe8f5;
+  --under-surface: #23262e;
+  --under-rim: rgb(220 230 245 / 12%);
+  --under-text: #eef0f4;
+  --under-muted: #a5acb8;
+  --under-faint: #767d8a;
+  --under-dust: rgb(220 232 255 / 28%);
 }
 :root[data-theme="dark"] {
-  --under-ink: #111b27;
-  --under-deep: #04070b;
-  --under-glow: rgb(130 170 215 / 12%);
-  --under-surface: #182432;
+  --under-ink: #14161b;
+  --under-deep: #060709;
+  --under-glow: rgb(150 170 200 / 9%);
+  --under-surface: #1d2027;
 }
 
-/* Mindmap: coloured paper cards on a desk. */
+/* Stickies: coloured paper, bright in either look like real ones, with dark ink. */
 :root {
-  --paper-canary: #f4e7a9;
-  --paper-apricot: #efd2ae;
-  --paper-rose: #e9c2bf;
-  --paper-lilac: #d9cdeb;
-  --paper-sky: #c5dce8;
-  --paper-mint: #c8e0d3;
-  --paper-lime: #dce4b9;
-  --paper-bone: #edf0ef;
-  --paper-ink: #15232b;
-  --paper-ink-2: rgba(21, 35, 43, 0.58);
-  --paper-edge: rgba(24, 45, 58, 0.16);
-  --paper-rule: rgba(24, 45, 58, 0.13);
-  --paper-margin: rgba(176, 58, 49, 0.3);
-  --paper-gloss: rgba(255, 255, 255, 0.5);
-  --desk: #f3efe8;
-  --desk-line: #ddd5c8;
-  --lift-rest: 0 1px 1px rgba(24, 45, 58, 0.08), 0 4px 10px -4px rgba(24, 45, 58, 0.28);
-  --lift-hover: 0 2px 3px rgba(24, 45, 58, 0.1), 0 10px 22px -8px rgba(24, 45, 58, 0.34);
-  --lift-held: 0 6px 8px rgba(24, 45, 58, 0.12), 0 28px 44px -14px rgba(24, 45, 58, 0.42);
-  --wire: #6a5a48;
+  --paper-canary: #fbe98c;
+  --paper-apricot: #fdd4a8;
+  --paper-rose: #f9c6cc;
+  --paper-lilac: #dccdf5;
+  --paper-sky: #bfe0f7;
+  --paper-mint: #c3eed9;
+  --paper-lime: #e1f0a8;
+  --paper-bone: #f1f1f3;
+  --paper-ink: #1d1d1f;
+  --paper-ink-2: rgb(29 29 31 / 60%);
+  --paper-edge: rgb(0 0 0 / 12%);
+  --paper-rule: rgb(0 0 0 / 10%);
+  --paper-margin: rgb(229 72 77 / 30%);
+  --paper-gloss: rgb(255 255 255 / 50%);
+  --desk: #f2f2f4;
+  --desk-line: #dcdce0;
+  --lift-rest: 0 1px 1px rgb(0 0 0 / 8%), 0 4px 10px -4px rgb(0 0 0 / 22%);
+  --lift-hover: 0 2px 3px rgb(0 0 0 / 10%), 0 10px 22px -8px rgb(0 0 0 / 28%);
+  --lift-held: 0 6px 8px rgb(0 0 0 / 12%), 0 28px 44px -14px rgb(0 0 0 / 36%);
+  --wire: #8e8e93;
 }
 
 :root[data-theme="dark"] {
-  /* Coloured paper under a lamp: warm, low, and quiet enough for 200 cards. */
-  --paper-canary: #554a2b;
-  --paper-apricot: #5a412c;
-  --paper-rose: #553535;
-  --paper-lilac: #463b4f;
-  --paper-sky: #2f3f4b;
-  --paper-mint: #2e463d;
-  --paper-lime: #474c2d;
-  --paper-bone: #3b3732;
-  --paper-ink: #f1ebe2;
-  --paper-ink-2: rgba(241, 235, 226, 0.58);
-  --paper-edge: rgba(0, 0, 0, 0.42);
-  --paper-rule: rgba(241, 235, 226, 0.12);
-  --paper-margin: rgba(236, 154, 97, 0.32);
-  --paper-gloss: rgba(255, 255, 255, 0.07);
-  --desk: #151311;
-  --desk-line: #26221d;
-  --lift-rest: 0 1px 1px rgba(0, 0, 0, 0.3), 0 4px 10px -4px rgba(0, 0, 0, 0.6);
-  --lift-hover: 0 2px 3px rgba(0, 0, 0, 0.35), 0 10px 22px -8px rgba(0, 0, 0, 0.7);
-  --lift-held: 0 6px 8px rgba(0, 0, 0, 0.4), 0 28px 44px -14px rgba(0, 0, 0, 0.8);
-  --wire: #cdbfab;
+  /* The same paper under a lamp: a touch softer so it doesn't glare. */
+  --paper-canary: #eadb85;
+  --paper-apricot: #efc79c;
+  --paper-rose: #ecb9bf;
+  --paper-lilac: #cfc0ea;
+  --paper-sky: #b0d3ec;
+  --paper-mint: #b3e1ca;
+  --paper-lime: #d2e49a;
+  --paper-bone: #dedee2;
+  --paper-gloss: rgb(255 255 255 / 30%);
+  --desk: #141416;
+  --desk-line: #26262a;
+  --lift-rest: 0 1px 1px rgb(0 0 0 / 30%), 0 4px 10px -4px rgb(0 0 0 / 60%);
+  --lift-hover: 0 2px 3px rgb(0 0 0 / 35%), 0 10px 22px -8px rgb(0 0 0 / 70%);
+  --lift-held: 0 6px 8px rgb(0 0 0 / 40%), 0 28px 44px -14px rgb(0 0 0 / 80%);
+  --wire: #8e8e93;
 }

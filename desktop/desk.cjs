@@ -35,8 +35,9 @@ function addLauncher(list, appPath) {
   return [...list, { path: appPath, name }].slice(0, 12)
 }
 
-/* Where Nate set a widget or icon down on the desk, as fractions of the desk
-   (so it survives a different display). null puts it back in its usual place. */
+/* Where Nate set a widget, an icon or a sticky down on the desk, as fractions of the desk
+   (so it survives a different display); a sticky also keeps its size in points. null
+   puts it back in its usual place. */
 function placeItem(places, id, spot) {
   if (typeof id !== 'string' || !/^[\w:.-]{1,120}$/.test(id)) return places
   const next = { ...places }
@@ -45,9 +46,15 @@ function placeItem(places, id, spot) {
   const x = Number(spot?.x)
   const y = Number(spot?.y)
   if (!Number.isFinite(x) || !Number.isFinite(y)) return places
-  next[id] = { x: Math.min(Math.max(x, 0), 0.97), y: Math.min(Math.max(y, 0), 0.97) }
-  // ponytail: oldest spots drop off past 200; nobody sets down that many things
-  return Object.fromEntries(Object.entries(next).slice(-200))
+  const w = Number(spot?.w)
+  const h = Number(spot?.h)
+  next[id] = {
+    x: Math.min(Math.max(x, 0), 0.97),
+    y: Math.min(Math.max(y, 0), 0.97),
+    ...(Number.isFinite(w) && Number.isFinite(h) ? { w: Math.round(Math.min(Math.max(w, 120), 720)), h: Math.round(Math.min(Math.max(h, 90), 720)) } : {}),
+  }
+  // ponytail: oldest spots drop off past 600 (stickies included); a desk that full wants sorting
+  return Object.fromEntries(Object.entries(next).slice(-600))
 }
 
 /* Which widgets are out on the desk, in order. Only the shape is checked (the desk ignores
@@ -57,6 +64,17 @@ function pickWidgets(list) {
   return [...new Set(list.filter((id) => typeof id === 'string' && /^[a-z-]{1,24}$/.test(id)))].slice(0, 5)
 }
 
+/* The Mac's accent colour ("RRGGBBAA", from System Settings → Appearance) as the page's
+   accent, with dark text on light accents (yellow) and white on the rest. */
+function accentCss(value) {
+  const hex = String(value || '').slice(0, 6)
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return ''
+  const [r, g, b] = [0, 2, 4].map((at) => parseInt(hex.slice(at, at + 2), 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  const light = 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45
+  return `:root { --mac-accent: #${hex.toLowerCase()}; --mac-accent-ink: ${light ? '#1d1d1f' : '#ffffff'}; }`
+}
+
 /* What ⌥Space does: show a hidden desk, bring forward one behind other apps, put away
    the one you are looking at. */
 function deskAction({ visible, focused }) {
@@ -64,4 +82,4 @@ function deskAction({ visible, focused }) {
   return focused ? 'hide' : 'show'
 }
 
-module.exports = { DEFAULT_HOTKEY, addLauncher, placeItem, pickWidgets, deskAction, displayAt, hotkeyLabel, validHotkey }
+module.exports = { DEFAULT_HOTKEY, accentCss, addLauncher, placeItem, pickWidgets, deskAction, displayAt, hotkeyLabel, validHotkey }

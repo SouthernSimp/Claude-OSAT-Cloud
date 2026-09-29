@@ -1,0 +1,212 @@
+import { useEffect, useRef, useSyncExternalStore } from 'react'
+
+/* Picking something up and setting it down somewhere else, anywhere in OSAT: a sticky from
+   the desk into a node, a sticky from one pile to another, a node to a new place in the
+   row. A press that moves 5 px becomes a carry: a copy of what was picked up follows the
+   pointer, the original waits faded, and the place under the pointer that takes it lights
+   up (a line shows where in a list it will land). Letting go drops it there; Esc, or
+   letting go over nothing that takes it, puts it back.
+
+   Places register with useDrop(id, { accepts, axis, onDrop, spring }): `accepts` lists the
+   kinds it takes ('note', 'folder'…), `axis` ('x' or 'y') makes it a list whose children
+   with [data-slot] are its items, so a drop has an index; `spring` runs after the pointer
+   rests over it (a collapsed pile opens, the dock's Sky button goes up). Holding the
+   pointer at the top or bottom edge of the screen asks onEdge to change layers. */
+
+const targets = new Map()
+const subscribers = new Set()
+let carrying = null // { kind, id, data }, while something is carried
+let edgeHandler = null
+
+const notify = () => subscribers.forEach((listener) => listener())
+const subscribe = (listener) => { subscribers.add(listener); return () => subscribers.delete(listener) }
+const snapshot = () => carrying
+
+/* What is being carried right now ({ kind, id, data }), or null. */
+export function useCarrying() {
+  return useSyncExternalStore(subscribe, snapshot, snapshot)
+}
+
+/* The desk says what the top and bottom edges do ('up' / 'down'). */
+export function onCarryEdge(handler) {
+  edgeHandler = handler
+  return () => { if (edgeHandler === handler) edgeHandler = null }
+}
+
+/* A place things can be dropped. Returns the props for its element. */
+export function useDrop(id, spec) {
+  const latest = useRef(spec)
+  latest.current = spec
+  useEffect(() => {
+    targets.set(id, { get spec() { return latest.current } })
+    return () => targets.delete(id)
+  }, [id])
+  return { 'data-drop': id, ...(spec.axis ? { 'data-axis': spec.axis } : {}) }
+}
+
+/* Where in a list (the target's own [data-slot] children, not counting the carried one) a
+   point falls, and the line that shows it. */
+function slotAt(element, axis, x, y) {
+  const items = [...element.querySelectorAll('[data-slot]')]
+    .filter((item) => item.closest('[data-drop]') === element && !item.classList.contains('is-carried') && !item.querySelector('.is-carried'))
+  const along = axis === 'x' ? x : y
+  let index = items.length
+  for (let i = 0; i < items.length; i += 1) {
+    const box = items[i].getBoundingClientRect()
+    if (along < (axis === 'x' ? box.left + box.width / 2 : box.top + box.height / 2)) { index = i; break }
+  }
+  const beside = items[index] || items[index - 1]
+  const box = (beside || element).getBoundingClientRect()
+  const before = Boolean(items[index])
+  const line = !beside
+    ? (axis === 'x' ? { left: box.left + 8, top: box.top + 8, width: 3, height: Math.max(24, box.height - 16) } : { left: box.left + 8, top: box.top + 8, width: Math.max(24, box.width - 16), height: 3 })
+    : axis === 'x'
+      ? { left: before ? box.left - 6 : box.right + 3, top: box.top, width: 3, height: box.height }
+      : { left: box.left, top: before ? box.top - 6 : box.bottom + 3, width: box.width, height: 3 }
+  return { index, line }
+}
+
+/* The innermost place under the point that takes what is carried. `accepts` is a list of
+   kinds, or a test given the carried thing. */
+function targetAt(x, y, carried) {
+  let element = document.elementFromPoint(x, y)?.closest('[data-drop]')
+  while (element) {
+    const spec = targets.get(element.dataset.drop)?.spec
+    const takes = spec && !spec.disabled && (typeof spec.accepts === 'function' ? spec.accepts(carried) : spec.accepts.includes(carried.kind))
+    if (takes) return { element, spec }
+    element = element.parentElement?.closest('[data-drop]')
+  }
+  return null
+}
+
+let swallowClick = false
+globalThis.addEventListener?.('click', (event) => {
+  if (!swallowClick) return
+  swallowClick = false
+  event.preventDefault()
+  event.stopPropagation()
+}, true)
+
+/* Props for something that can be carried: { kind, id, data }. Plain clicks still reach
+   its own onClick; controls inside it (buttons, fields) never start a carry. */
+export function carryable(item, { disabled = false } = {}) {
+  if (disabled) return {}
+  return {
+    onPointerDown(event) {
+      if (event.button !== 0 || event.target.closest('button, input, textarea, select, a, [contenteditable="true"], .no-carry')) return
+      begin(event, item, event.currentTarget)
+    },
+  }
+}
+
+function begin(down, item, source) {
+  const start = { x: down.clientX, y: down.clientY }
+  const box = source.getBoundingClientRect()
+  const offset = { x: start.x - box.left, y: start.y - box.top }
+  // Picked up from a zoomed board: the copy keeps its size on screen.
+  const zoom = source.offsetWidth ? box.width / source.offsetWidth : 1
+  let ghost = null
+  let marker = null
+  let over = null
+  let spring = null
+  let edge = null
+  let last = start
+
+  const clear = () => {
+    if (over) over.element.removeAttribute('data-over')
+    over = null
+    if (marker) marker.hidden = true
+    clearTimeout(spring?.timer)
+    spring = null
+  }
+
+  const place = (x, y) => {
+    last = { x, y }
+    ghost.style.translate = `${x - offset.x}px ${y - offset.y}px`
+    const found = targetAt(x, y, carrying)
+    if (found?.element !== over?.element) {
+      clear()
+      over = found
+      if (over) {
+        over.element.setAttribute('data-over', '')
+        if (over.spec.spring) {
+          const target = over
+          spring = { timer: setTimeout(() => { if (over === target) target.spec.spring(carrying) }, 650) }
+        }
+      }
+    }
+    if (over?.spec.axis) {
+      const { line } = slotAt(over.element, over.spec.axis, x, y)
+      marker.hidden = !line
+      if (line) Object.assign(marker.style, { left: `${line.left}px`, top: `${line.top}px`, width: `${line.width}px`, height: `${line.height}px` })
+    } else if (marker) marker.hidden = true
+    // Held at the top or bottom of the screen: up to the Sky, or down again.
+    const side = y < 14 ? 'up' : y > innerHeight - 14 ? 'down' : null
+    if (side !== edge?.side) {
+      clearTimeout(edge?.timer)
+      document.documentElement.dataset.carryEdge = side || ''
+      edge = side ? { side, timer: setTimeout(() => { edgeHandler?.(side, carrying); document.documentElement.dataset.carryEdge = '' }, 600) } : null
+    }
+  }
+
+  const move = (event) => {
+    if (event.pointerId !== down.pointerId) return
+    if (!ghost) {
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) < 5) return
+      ghost = source.cloneNode(true)
+      ghost.classList.add('carry-ghost')
+      ghost.removeAttribute('id')
+      ghost.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'))
+      ghost.setAttribute('aria-hidden', 'true')
+      Object.assign(ghost.style, { position: 'fixed', left: '0px', top: '0px', width: `${box.width / zoom}px`, height: `${box.height / zoom}px`, margin: '0', zIndex: '2147483000', pointerEvents: 'none' })
+      if (Math.abs(zoom - 1) > 0.01) Object.assign(ghost.style, { transformOrigin: '0 0', scale: String(zoom * 1.03) })
+      document.body.append(ghost)
+      marker = document.createElement('i')
+      marker.className = 'carry-line'
+      marker.hidden = true
+      document.body.append(marker)
+      source.classList.add('is-carried')
+      getSelection()?.removeAllRanges()
+      carrying = { kind: item.kind, id: item.id, data: item.data }
+      document.documentElement.dataset.carrying = item.kind
+      notify()
+    }
+    event.preventDefault()
+    place(event.clientX, event.clientY)
+  }
+
+  const finish = (drop) => {
+    removeEventListener('pointermove', move, true)
+    removeEventListener('pointerup', up, true)
+    removeEventListener('pointercancel', cancel, true)
+    removeEventListener('keydown', key, true)
+    if (!ghost) return
+    const target = drop && over
+    const where = target?.spec.axis ? slotAt(target.element, target.spec.axis, last.x, last.y).index : undefined
+    clearTimeout(edge?.timer)
+    delete document.documentElement.dataset.carryEdge
+    delete document.documentElement.dataset.carrying
+    clear()
+    ghost.remove()
+    marker?.remove()
+    source.classList.remove('is-carried')
+    swallowClick = true
+    setTimeout(() => { swallowClick = false })
+    const carried = carrying
+    carrying = null
+    notify()
+    if (target) target.spec.onDrop({ ...carried, index: where, x: last.x, y: last.y, offset, size: { width: box.width, height: box.height } })
+  }
+  const up = (event) => { if (event.pointerId === down.pointerId) finish(true) }
+  const cancel = (event) => { if (event.pointerId === down.pointerId) finish(false) }
+  const key = (event) => {
+    if (event.key !== 'Escape' || !ghost) return
+    event.preventDefault()
+    event.stopPropagation()
+    finish(false)
+  }
+  addEventListener('pointermove', move, true)
+  addEventListener('pointerup', up, true)
+  addEventListener('pointercancel', cancel, true)
+  addEventListener('keydown', key, true)
+}

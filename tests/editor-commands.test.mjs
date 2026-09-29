@@ -49,7 +49,7 @@ test('tasks toggle by line and by caret', () => {
   assert.equal(toggleTaskAtCaret({ text: 'plain', start: 2, end: 2 }).text, '- [ ] plain')
 })
 
-test('autocomplete detects [[ and # tokens and applies a choice', () => {
+test('autocomplete detects [[, # and @ tokens and applies a choice', () => {
   assert.deepEqual(autocompleteContext('see [[Pla', 9), { kind: 'wikilink', query: 'Pla', from: 4 })
   assert.deepEqual(autocompleteContext('tag #wo', 7), { kind: 'tag', query: 'wo', from: 4 })
   assert.equal(autocompleteContext('a#b', 3), null)
@@ -57,5 +57,9 @@ test('autocomplete detects [[ and # tokens and applies a choice', () => {
   const state = { text: 'see [[Pla', start: 9, end: 9 }
   assert.deepEqual(applyAutocomplete(state, autocompleteContext(state.text, 9), 'Plan A'), { text: 'see [[Plan A]]', start: 14, end: 14 })
   assert.equal(applyAutocomplete({ text: 'tag #wo', end: 7 }, { kind: 'tag', from: 4 }, 'work').text, 'tag #work ')
+  assert.deepEqual(autocompleteContext('to @Project Di', 14), { kind: 'mention', query: 'Project Di', from: 3 })
+  assert.deepEqual(autocompleteContext('@', 1), { kind: 'mention', query: '', from: 0 })
+  assert.equal(autocompleteContext('mail me@home', 12), null, 'an email is not a mention')
+  assert.equal(applyAutocomplete({ text: 'to @gar', end: 7 }, { kind: 'mention', from: 3 }, 'Garden/Ideas').text, 'to @Garden/Ideas ')
   assert.deepEqual(insertAtCaret({ text: 'ab', start: 1, end: 1 }, '[x](url)', 1, 2), { text: 'a[x](url)b', start: 2, end: 3 })
 })

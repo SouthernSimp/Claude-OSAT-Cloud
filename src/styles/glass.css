@@ -17,18 +17,18 @@
   --glass-edge: rgb(255 255 255 / 75%);
   --glass-edge-dim: rgb(255 255 255 / 10%);
   --glass-spec: rgb(255 255 255 / 22%);
-  --glass-shadow: 0 18px 40px -22px rgb(40 26 14 / 38%), 0 2px 6px -2px rgb(40 26 14 / 10%);
-  --sheet-glass: rgb(251 248 243 / 70%);
+  --glass-shadow: 0 18px 40px -22px rgb(0 0 0 / 30%), 0 2px 6px -2px rgb(0 0 0 / 8%);
+  --sheet-glass: rgb(250 250 252 / 70%);
   --wall-filter: blur(var(--wall-blur, 48px)) saturate(0.85) brightness(1.18);
 }
 :root[data-theme="dark"] {
-  --glass: rgb(20 19 18 / 30%);
-  --glass-strong: rgb(20 19 18 / 46%);
+  --glass: rgb(22 22 24 / 30%);
+  --glass-strong: rgb(22 22 24 / 46%);
   --glass-edge: rgb(255 255 255 / 26%);
   --glass-edge-dim: rgb(255 255 255 / 4%);
   --glass-spec: rgb(255 255 255 / 11%);
   --glass-shadow: 0 20px 44px -20px rgb(0 0 0 / 60%), 0 2px 6px -2px rgb(0 0 0 / 30%);
-  --sheet-glass: rgb(24 23 22 / 58%);
+  --sheet-glass: rgb(24 24 26 / 58%);
   --wall-filter: blur(var(--wall-blur, 48px)) saturate(1.15) brightness(0.86);
 }
 
@@ -190,7 +190,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   border-radius: 16px;
   translate: var(--pill-x, 10px) 0;
   background: rgb(255 255 255 / 78%);
-  box-shadow: inset 0 1px 0 #fff, 0 8px 20px -10px rgb(40 26 14 / 40%);
+  box-shadow: inset 0 1px 0 #fff, 0 8px 20px -10px rgb(0 0 0 / 30%);
   transition: translate 560ms var(--spring), width 560ms var(--spring);
 }
 :root[data-theme="dark"] .dock-pill { background: rgb(255 255 255 / 13%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 22%), 0 8px 20px -10px rgb(0 0 0 / 60%); }
@@ -282,7 +282,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 
 /* ---- Dialogs and the welcome ----------------------------------------------- */
 
-.modal-backdrop { background: rgb(10 9 8 / 22%); -webkit-backdrop-filter: blur(6px) saturate(1.2); backdrop-filter: blur(6px) saturate(1.2); animation: fade-in 320ms var(--glide) both; }
+.modal-backdrop { background: rgb(0 0 0 / 22%); -webkit-backdrop-filter: blur(6px) saturate(1.2); backdrop-filter: blur(6px) saturate(1.2); animation: fade-in 320ms var(--glide) both; }
 @keyframes palette-in { from { opacity: 0; scale: 0.94; translate: 0 -10px; } }
 /* The first-launch welcome: one card, three quiet steps. */
 .welcome {
@@ -331,14 +331,14 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   --page: transparent;
   --surface: rgb(255 255 255 / 30%);
   --surface-raised: rgb(255 255 255 / 58%);
-  --surface-sunken: rgb(70 52 34 / 5%);
-  --surface-hover: rgb(70 52 34 / 6%);
+  --surface-sunken: rgb(0 0 0 / 4%);
+  --surface-hover: rgb(0 0 0 / 5%);
   --sidebar: rgb(255 255 255 / 16%);
-  --line: rgb(70 52 34 / 10%);
-  --line-soft: rgb(70 52 34 / 6%);
-  --line-strong: rgb(70 52 34 / 17%);
+  --line: rgb(0 0 0 / 9%);
+  --line-soft: rgb(0 0 0 / 5%);
+  --line-strong: rgb(0 0 0 / 15%);
   --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
-  --on-solid-ink: #f7f3ec;
+  --on-solid-ink: #f5f5f7;
   --tabletop: transparent;
   --day-page: rgb(255 255 255 / 40%);
 }
@@ -352,7 +352,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   --line-soft: rgb(255 255 255 / 5%);
   --line-strong: rgb(255 255 255 / 13%);
   --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
-  --on-solid-ink: #1d1a16;
+  --on-solid-ink: #1d1d1f;
   --day-page: rgb(255 255 255 / 4%);
 }
 
@@ -364,7 +364,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background: radial-gradient(340px circle at var(--mx, -400px) var(--my, -400px), rgb(255 236 210 / 24%), transparent 70%);
+  background: radial-gradient(340px circle at var(--mx, -400px) var(--my, -400px), rgb(255 255 255 / 18%), transparent 70%);
   mix-blend-mode: screen;
 }
 

@@ -3,7 +3,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
-const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell, utilityProcess } = require('electron')
+const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell, systemPreferences, utilityProcess } = require('electron')
 const { createUnder, guardFetch, isLocal, refusal } = require('./under.cjs')
 
 /* Incognito (see "Incognito" below). Two locks, set before any of OSAT's own modules load:
@@ -38,7 +38,7 @@ const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = require('./desk.cjs')
+const { DEFAULT_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = require('./desk.cjs')
 const { createQuickChat } = require('./quick-chat.cjs')
 const { PLACES, extractText, isPackage, locate, run, searchArgs } = require('./mac-files.cjs')
 const { createMedia } = require('./media.cjs')
@@ -521,8 +521,26 @@ function createWindow() {
   window.loadFile(APP_ENTRY)
 }
 
+/* OSAT's own pages wear the Mac's accent colour; it is looked at again each time the desk
+   comes up, in case it changed in System Settings. Web pages in the Browser are left alone. */
+const accents = new WeakMap()
+async function paintAccent(contents) {
+  if (process.platform !== 'darwin' || contents.isDestroyed() || !contents.getURL().startsWith('file:')) return
+  const css = accentCss(systemPreferences.getAccentColor())
+  const before = accents.get(contents)
+  if (before?.css === css) return
+  accents.set(contents, { css })
+  if (before?.key) await contents.removeInsertedCSS(before.key).catch(() => {})
+  if (css) accents.set(contents, { css, key: await contents.insertCSS(css).catch(() => null) })
+}
+app.on('web-contents-created', (_event, contents) => contents.on('did-finish-load', () => {
+  accents.delete(contents)
+  paintAccent(contents)
+}))
+
 function showDesk() {
   if (!mainWindow || mainWindow.isDestroyed()) return createWindow()
+  paintAccent(mainWindow.webContents)
   const window = mainWindow
   const mac = process.platform === 'darwin'
   if (window.isMinimized()) window.restore()
@@ -611,10 +629,9 @@ function buildMenu() {
         // The same spaces and tools as the dock (src/lib/spaces.js).
         room('Desk', 'Today', 'CmdOrCtrl+1'),
         room('Notes', 'Notes', 'CmdOrCtrl+2'),
-        room('Map', 'Mindmap', 'CmdOrCtrl+3'),
+        room('Sky', 'Mindmap', 'CmdOrCtrl+3'),
         room('Ask', 'Assistant', 'CmdOrCtrl+4'),
         room('Files', 'Files', 'CmdOrCtrl+5'),
-        room('Sky', 'Sky'),
         { type: 'separator' },
         room('Today’s Page', 'Journal'),
         room('Calendar', 'Calendar'),
@@ -897,8 +914,9 @@ function registerDesk() {
     await savePrefs()
     return prefs.places
   })
+  // Widgets and icons go back where they were; stickies stay where they lie.
   handle('desk:tidy', async () => {
-    prefs = { ...prefs, places: {} }
+    prefs = { ...prefs, places: Object.fromEntries(Object.entries(prefs.places).filter(([key]) => key.startsWith('note:') || key.startsWith('scratch:'))) }
     await savePrefs()
     return prefs.places
   })

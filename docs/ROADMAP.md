@@ -26,7 +26,11 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 7 | Visual polish | Merged (PR #9) |
 | 8 | Your Mac's files in OSAT, the quick chat, Ask reads files | Merged (PR #10) |
 | 9 | One desk: the window and the ⌥Space layer become one | Merged (PR #11) |
-| 10 | A living desk: one line for everything, widgets that open, Incognito (going under) | In progress |
+| 10 | A living desk: one line for everything, widgets that open, Incognito (going under) | Merged (PR #12) |
+| 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | In progress |
+| 12 | Mac powers: Hyper key, keywords, the ring, clipboard history, window snapping, the Tools wheel, a movable dock, resizing | Next |
+| 13 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
+| 14 | Paper in: a photo of stickies becomes stickies (the Mac reads handwriting) | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -378,9 +382,85 @@ blurred, sits behind it.
   - Every room lays itself out for its own pop-out (container queries), so shrinking one reflows
     it instead of cutting it off.
 
-### Phase 10: Floating windows (next)
-Small windows that float over every app, like the quick chat: a quick note, any room torn off the
-desk, now playing, and Today / Next.
+### Phase 10: A living desk (merged, PR #12)
+- **One line for everything:** type, and a drawer offers Save as a thought (Return), Ask the AI
+  (⌘Return), Add to Next (⌥Return), then matching notes, files, folders and rooms. ⌘K and ⇧⌘N land
+  in it; the old palette and capture dialog are gone.
+- **Widgets open up** into their room from where they sit; a tray adds Focus, Habits and "From
+  before"; Now playing opens a bigger player.
+- **Incognito** (going under): OSAT with the internet off, checked by a fence test and the Mac
+  end-to-end test. (Phase 11 turned it into the scratch page.)
+
+### Phase 11: Nodes (in progress)
+Nate, Sep 28, with photos of his five piles of paper stickies: nodes in a ranked row, "Expanded"
+ones with sorted stacks (#IDEAS) above and a pile to sort below; "the sky view on top, then the
+OSAT layer, then the temporary/incognito window"; stickies left on the desk; "make map a part of
+notes"; clean light/dark, no brown or orange; Esc must never hide the desk.
+- **Three layers.** The **Sky** above the desk (⌘3, the dock's Sky, ⌥⌘↑, or a sticky held at the
+  top of the screen), the **desk**, and **Incognito** under it (⌥⌘↓, ⇧⌘U): a blank scratch page,
+  offline. Esc comes back to the desk from either and never puts the desk away (only ⌥Space/⌘W).
+- **Nodes are folders; branches are folders inside them; stickies are notes.**
+- **The Sky is one whiteboard** (Nate, Sep 28 evening: "more animated and alive… a whiteboard like
+  canvas so infinite scrolling"; it replaced the row, the laid-out view and Stars). Every node is a
+  card you can put anywhere; drag the board or two-finger scroll to look around, pinch or ⌘-scroll
+  to zoom, double-click it (or New node) to start a node there. Numbers follow the cards left to
+  right. Click a card to open it in place: its branches as lanes (**Across**) or columns (**Down**,
+  in its menu) and its stickies to sort; a card that grows slides its neighbours aside.
+  Double-click flies to it. Far out, names are written large and insides fade. Linked nodes are
+  joined by a flowing line, and a node a note @mentions by a dotted one. Unsorted waits on the far
+  left; "Line them up again" (right-click the board) puts every node back in a row. Alive but
+  calm: a slow accent glow drifts across the sky, resting cards breathe, lines flow, new cards
+  spring in (none of it with Reduce motion). **Help me sort** suggests a branch for every sticky to
+  sort (a matching #tag, shared words, then the AI on this Mac, which may propose new branches);
+  nothing moves until ticked.
+- **@ files a note from where you write it.** `@Garden` in a note, a sticky or the desk's line puts
+  it in that node; the longest node name wins (`@Project Direction`), `@Garden/Ideas` is a branch,
+  and a new word makes the node. The first @ is where it lives; any other @ links it (the node
+  lists it under "Mentioned in"). In Notes, typing @ lists nodes and branches and offers a new
+  one; the note is filed when writing ends. The line says "Save to Garden · makes Mom" before
+  Return, then "Put in Garden · Undo" (Undo also takes away nodes it made). Renaming a node
+  rewrites its @mentions.
+- **Stickies on the desk.** A thought saved in the line lands on the open desk; a double-click
+  writes one there; a note on the right-hand shelf drags out onto the desk. Drag a sticky onto a
+  node on the shelf to file it, onto the dock's Sky (or the top of the screen) to take it up;
+  resize from the corner; everything snaps to a grid unless turned off. Right-click the desk:
+  New sticky, New node, Clean up, Snap to grid, Icon size, what the right side shows, Look,
+  Add a widget, up and down. The shelf shows nodes as little piles.
+- **Incognito is the scratch page:** blank until you start, your stickies wait there, and the
+  pill makes the page a node (or puts it into one, to sort or as a new branch).
+- **Project Direction:** OSAT's own plan, seeded once as the first node (Done / Now / Next /
+  Later / Questions).
+- **The look:** neutral light and dark greys, SF Pro Rounded headings, and the Mac's own accent
+  colour (System Settings → Appearance) instead of the browns and orange; stickies stay bright
+  paper in both looks. Pop-outs can fill the screen (double-click the bar).
+- **Removed:** the freeform Board (the desk and the Sky replace it; `sorter` data is untouched).
+- **Data:** schema 3 (folders: rank, colour, links, layout, `at` on the board; notes: rank, colour,
+  `kind: 'scratch'`).
+  Nothing is rewritten; an older OSAT refuses the data instead of dropping the new fields.
+  Where stickies lie on the desk and the scratch page is per Mac (`places`), like widgets.
+
+### Nate's list (Sep 28), and where each part lands
+| Wish | Phase |
+|---|---|
+| Nodes, branches, ranking, collapse/expand, horizontal/vertical, links, quick view, AI sorting, Project Direction | 11 |
+| The Sky as an infinite, living whiteboard; @Node in any note files it | 11 |
+| Stickies on the desk, drag out of the shelf, into nodes, up to the Sky; resize; grid snapping | 11 |
+| Sky ↑ / desk / Incognito ↓ as a blank scratch page that becomes a node | 11 |
+| Esc never hides the desk; right-click desk menu; folders (nodes) on the desk; icon size; full-screen tools | 11 |
+| Clean light/dark, the Mac's accent, no brown/orange/green | 11 |
+| Hyper key (Caps Lock + a letter: V clipboard, S find files, C Chrome…) | 12 |
+| Keywords in the line (type `ss` → Spotify), swappable apps (Apple Music instead) | 12 |
+| The ring: ⌘ + middle-click opens quick tools around the pointer, customisable | 12 |
+| Clipboard history (from Nate's Stash) | 12 |
+| Window snapping like Rectangle (from Nate's WindowFlow) | 12 |
+| Tools as a scrolling wheel with descriptions; a dock you can move anywhere; resizing widgets | 12 |
+| Settings: online / semi-offline / offline, as a "switchboard" of apps, plugins and cloud APIs that says plainly what leaves the Mac | 12 |
+| Email: Apple Mail first, then Gmail in the in-app browser, then Outlook; more connectors | 13 |
+| Messages inside OSAT (beside it: macOS doesn't let one app hold another's window) | 13 |
+| Photos of paper stickies read into stickies | 14 |
+| iPad: GoodNotes-style pages, hand-drawn mind maps, Apple Pencil Pro squeeze ring, synced | Later (parked) |
+| iPhone: a document scanner | Later (parked) |
+| OSAT's own agents/bots | Later |
 
 ### Later (after the MVP)
 - Projects become folder properties, and Files become "Linked folders" in Notes.

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FolderSimple, NotePencil, Plus, X } from "@phosphor-icons/react";
 import { localDateKey } from "../daily-practice.js";
-import { addCardsToBoard, newBoard, normalizeBoardDoc, stockFor, updateBoard } from "../board-model.js";
 import {
   canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, folderSubtree, emptyTrash, isActiveNote, moveNotes, notesInList,
   keepNotes, purgeNotes, relinkRenamedNote, resolveWikilink, restoreNotes, trashNotes, updateNote,
 } from "../notes-model.js";
+import { ensureFolderPath, fileByMentions, renameFolder } from "../nodes-model.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { Organizer } from "./Organizer.jsx";
 import { NoteList, useVisibleNotes } from "./NoteList.jsx";
@@ -125,7 +125,6 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       moveNotes: (ids, folderId) => commit((state) => moveNotes(state, ids, folderId)),
       setPinned: (ids, pinned) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, pinned, unsorted: pinned ? false : note.unsorted } : note) })),
       setArchived: (ids, archived) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, archived, pinned: archived ? false : note.pinned } : note) })),
-      showInSky(noteId) { navigate("Sky", { noteId }); },
       trashNotes(ids) {
         const chosen = new Set(ids);
         const pinned = new Set(workspace.notes.filter((note) => chosen.has(note.id) && note.pinned).map((note) => note.id));
@@ -171,16 +170,9 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         commit((state) => { const result = ensureDayNote(state, today); note = result.note; return result.state; });
         if (note) { setUi({ list: "daily", folderId: null, query: "", tags: [] }); open(note.id); }
       },
-      showOnBoard(noteId, boardId = null) {
-        const doc = normalizeBoardDoc(workspace.sorter);
-        const target = doc.boards.find((board) => board.id === boardId) || doc.boards.find((board) => board.notes.some((card) => card.id === noteId)) || doc.boards[0];
-        commit((state) => {
-          const note = state.notes.find((item) => item.id === noteId);
-          const { w, h } = stockFor(note?.markdown || note?.title || "");
-          const next = updateBoard(state, target.id, (board) => board.notes.some((card) => card.id === noteId) ? board : addCardsToBoard(board, [{ id: noteId, w, h }]));
-          return { ...next, sorter: { ...next.sorter, activeId: target.id } };
-        });
-        navigate("Mindmap", { boardId: target.id, focusNoteId: noteId });
+      /* The Sky opens on the note's node (or Unsorted). */
+      showInNode(noteId) {
+        navigate("Mindmap", { noteId });
       },
       createFolder(name, parentId) {
         const folder = createFolder(name, parentId);
@@ -188,7 +180,10 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         commit((state) => ({ ...state, folders: [...state.folders, folder] }));
         setUi({ list: "folder", folderId: folder.id, query: "", tags: [] });
       },
-      renameFolder: (id, name) => commit((state) => ({ ...state, folders: state.folders.map((folder) => folder.id === id ? { ...folder, name: name.trim().slice(0, 80) || folder.name } : folder) })),
+      renameFolder: (id, name) => commit((state) => renameFolder(state, id, name)),
+      /* "@Garden" in a note: made when picked from the list, filed when writing ends. */
+      createNode: (path) => commit((state) => ensureFolderPath(state, path).state),
+      fileMentions: (id, before) => commit((state) => fileByMentions(state, id, before)),
       toggleFolder: (id) => commit((state) => ({ ...state, folders: state.folders.map((folder) => folder.id === id ? { ...folder, collapsed: !folder.collapsed } : folder) })),
       moveFolder(id, parentId) {
         if (!canMoveFolder(workspace.folders, id, parentId)) return;
@@ -209,19 +204,9 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         if (ui.list === "folder" && ui.folderId === id) setUi({ list: "all", folderId: null });
       },
       startFolder() { setUi({ organizer: true }); setDrawer(true); setFolderDraftAt(Date.now()); },
+      /* A folder is a node in the Sky: this opens it there. */
       openFolderBoard(folderId) {
-        const folder = workspace.folders.find((item) => item.id === folderId);
-        if (!folder) return;
-        const doc = normalizeBoardDoc(workspace.sorter);
-        let board = doc.boards.find((item) => item.scope.kind === "folder" && item.scope.folderId === folderId);
-        commit((state) => {
-          const current = normalizeBoardDoc(state.sorter);
-          board = current.boards.find((item) => item.scope.kind === "folder" && item.scope.folderId === folderId);
-          if (board) return { ...state, sorter: { ...current, activeId: board.id } };
-          board = newBoard(folder.name, { kind: "folder", folderId });
-          return { ...state, sorter: { ...current, boards: [...current.boards, board], activeId: board.id } };
-        });
-        navigate("Mindmap", { boardId: board?.id });
+        navigate("Mindmap", { folderId });
       },
     };
   }, [commit, navigate, workspace, ui.list, ui.folderId, ui.mode, setUi, today]);
@@ -293,7 +278,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
           <div className="empty-panel">
             <NotePencil />
             <h2>{workspace.notes.filter(isActiveNote).length ? "Pick a note, or start a new one." : "Your first note is a blank page."}</h2>
-            <p>Folders keep things tidy, #tags cut across them, and [[links]] connect ideas. Everything stays on this Mac.</p>
+            <p>Write @ and a node’s name to put a note there. #tags cut across, [[links]] connect ideas. Everything stays on this Mac.</p>
             <button className="primary-button" type="button" onClick={() => actions.createNote(ui.list === "folder" ? ui.folderId : null)}><Plus /> New note</button>
           </div>
         </section>

@@ -5,13 +5,13 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 
 const THEME = {
-  background: '#15130f',
-  foreground: '#eee8de',
-  cursor: '#ec9a61',
-  cursorAccent: '#15130f',
-  selectionBackground: 'rgba(236, 154, 97, 0.32)',
-  black: '#1d1a16', red: '#e0715f', green: '#9fc28a', yellow: '#e5c07b', blue: '#7fa6d8', magenta: '#c49ad6', cyan: '#7cc4c0', white: '#d9d2c6',
-  brightBlack: '#6f675c', brightRed: '#f08a78', brightGreen: '#b5d69f', brightYellow: '#f0d08e', brightBlue: '#9bbde6', brightMagenta: '#d6b1e6', brightCyan: '#97d6d2', brightWhite: '#faf6ef',
+  background: '#111113',
+  foreground: '#ebebf0',
+  cursor: '#0a84ff',
+  cursorAccent: '#111113',
+  selectionBackground: 'rgba(10, 132, 255, 0.32)',
+  black: '#1d1d1f', red: '#ff6b6b', green: '#7ed69b', yellow: '#f5d76e', blue: '#6cb2ff', magenta: '#d19bf0', cyan: '#6fd6e0', white: '#d8d8dd',
+  brightBlack: '#6e6e73', brightRed: '#ff8a8a', brightGreen: '#9ae5b1', brightYellow: '#ffe38f', brightBlue: '#8fc4ff', brightMagenta: '#e0b6f5', brightCyan: '#94e3eb', brightWhite: '#f5f5f7',
 }
 
 /* Your shell, inside OSAT. Sessions live in the Mac app, so they keep running

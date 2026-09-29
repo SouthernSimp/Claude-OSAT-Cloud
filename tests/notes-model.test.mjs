@@ -25,7 +25,8 @@ test('folder tree, subtree, path and move guards', () => {
   const root = createFolder('Projects')
   const child = createFolder('OSAT', root.id)
   const grandchild = createFolder('V2', child.id)
-  const folders = normalizeFolders([root, child, grandchild, createFolder('Personal')])
+  // Siblings sit in their ranked order: oldest first until ranked by hand.
+  const folders = normalizeFolders([root, child, grandchild, { ...createFolder('Personal'), createdAt: '2020-01-01T00:00:00.000Z' }])
   assert.deepEqual(folderTree(folders).map(({ folder, depth }) => `${depth}:${folder.name}`), ['0:Personal', '0:Projects', '1:OSAT', '2:V2'])
   assert.deepEqual([...folderSubtree(folders, root.id)].sort(), [root.id, child.id, grandchild.id].sort())
   assert.deepEqual(folderPath(folders, grandchild.id), ['Projects', 'OSAT', 'V2'])

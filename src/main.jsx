@@ -9,11 +9,11 @@ import "./styles/views.css";
 import "./styles/today.css";
 import "./styles/calendar.css";
 import "./styles/notes.css";
-import "./styles/board.css";
 import "./styles/field.css";
 import "./styles/home.css";
 import "./styles/tools.css";
 import "./styles/overlay.css";
+import "./styles/sky.css";
 import "./styles/glass.css";
 import "./styles/under.css";
 

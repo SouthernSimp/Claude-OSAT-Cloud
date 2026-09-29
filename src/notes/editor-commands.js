@@ -148,11 +148,14 @@ export function autocompleteContext(text, caret) {
   if (wiki) return { kind: 'wikilink', query: wiki[1], from: caret - wiki[0].length }
   const tag = before.match(/(?:^|[^\p{L}\p{N}_/#-])#([\p{L}\p{N}_-]*)$/u)
   if (tag) return { kind: 'tag', query: tag[1], from: caret - tag[1].length - 1 }
+  // A node: names can have spaces ("@Project Direction") and a / for a branch.
+  const mention = before.match(/(?:^|[^\p{L}\p{N}_.@/:+-])@(\p{L}[\p{L}\p{N}_ /-]{0,40})?$/u)
+  if (mention) return { kind: 'mention', query: mention[1] || '', from: caret - (mention[1] || '').length - 1 }
   return null
 }
 
 export function applyAutocomplete({ text, end }, context, value) {
-  const replacement = context.kind === 'wikilink' ? `[[${value}]]` : `#${value} `
+  const replacement = context.kind === 'wikilink' ? `[[${value}]]` : context.kind === 'mention' ? `@${value} ` : `#${value} `
   const next = `${text.slice(0, context.from)}${replacement}${text.slice(end)}`
   const caret = context.from + replacement.length
   return { text: next, start: caret, end: caret }

@@ -2,9 +2,10 @@
    Pure functions over the workspace so the views stay thin and the logic is
    testable without a browser. */
 
-import { normalizeNote, parseTags } from './note-core.js'
+import { PAPERS, normalizeNote, parseTags, rankOf } from './note-core.js'
 
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+const clamp = (value) => Math.round(Math.max(-1e6, Math.min(1e6, value)))
 const clean = (value, fallback = '') => (typeof value === 'string' ? value : fallback)
 export const uid = (prefix) => `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`
 
@@ -21,11 +22,23 @@ export function normalizeFolders(value) {
       parentId: clean(folder.parentId) || null,
       createdAt: clean(folder.createdAt, new Date().toISOString()),
       collapsed: Boolean(folder.collapsed),
+      // A folder is a node in the Sky (a branch when it sits inside another). These are
+      // only kept once set: its place among its siblings, its paper, its links to other
+      // folders, whether it lays out across or down, and where it sits on the board.
+      ...(Number.isFinite(folder.rank) ? { rank: folder.rank } : {}),
+      ...(PAPERS.includes(folder.color) ? { color: folder.color } : {}),
+      ...(Array.isArray(folder.links) && folder.links.length ? { links: [...new Set(folder.links.filter((id) => typeof id === 'string' && id))].slice(0, 50) } : {}),
+      ...(folder.layout === 'down' ? { layout: 'down' } : {}),
+      ...(Number.isFinite(folder.at?.x) && Number.isFinite(folder.at?.y) ? { at: { x: clamp(folder.at.x), y: clamp(folder.at.y) } } : {}),
     }]
   })
   // A parent must exist and must not create a cycle; otherwise the folder moves to the root.
   const byId = new Map(folders.map((folder) => [folder.id, folder]))
   folders.forEach((folder) => {
+    if (folder.links) {
+      folder.links = folder.links.filter((id) => id !== folder.id && byId.has(id))
+      if (!folder.links.length) delete folder.links
+    }
     if (folder.parentId === folder.id || !byId.has(folder.parentId)) { folder.parentId = null; return }
     const visited = new Set([folder.id])
     let cursor = folder.parentId
@@ -44,9 +57,10 @@ export function createFolder(name, parentId = null) {
   return { id: uid('folder'), name: cleanName, parentId: parentId || null, createdAt: new Date().toISOString(), collapsed: false }
 }
 
+/* In their ranked order (the order they have in the Sky), oldest first until ranked. */
 export function folderChildren(folders, parentId = null) {
   return folders.filter((folder) => (folder.parentId || null) === (parentId || null))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+    .sort((a, b) => rankOf(a) - rankOf(b) || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
 }
 
 /* Every folder id inside `folderId`, itself included. */

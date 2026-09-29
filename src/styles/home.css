@@ -216,7 +216,7 @@
 .widget-next .widget-empty { margin-top: 8px; }
 /* In the evening the foot offers to close the day. */
 .widget-next-foot .evening { display: inline-flex; align-items: center; gap: 6px; color: var(--on-1); font-weight: 560; }
-.widget-next-foot .evening svg { width: 13px; height: 13px; color: #f3c98b; }
+.widget-next-foot .evening svg { width: 13px; height: 13px; color: var(--caution); }
 .widget-next-foot .evening span { color: var(--on-3); font-weight: 450; }
 
 /* Focus: a thin ring that fills while a session runs. */
@@ -498,7 +498,7 @@
 .art-note small { display: -webkit-box; overflow: hidden; font-size: 4.5px; line-height: 1.35; color: color-mix(in srgb, var(--sheet-ink) 60%, transparent); -webkit-line-clamp: 5; -webkit-box-orient: vertical; }
 .art-note em { height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--sheet-ink) 18%, transparent); }
 .art-note em:last-child { width: 60%; }
-.art-note svg { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; color: #a3411d; }
+.art-note svg { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; color: var(--accent); }
 .art-note.is-pinned { box-shadow: 0 1px 0 rgb(255 255 255 / 70%) inset, 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent), 0 4px 10px -3px rgb(0 0 0 / 35%); }
 .art-board {
   width: 50px;
@@ -603,7 +603,7 @@
 
 /* ---- The sheet over home --------------------------------------------- */
 
-.home .field-sheet { background: rgb(10 8 6 / 18%); backdrop-filter: blur(12px) saturate(1.1); }
+.home .field-sheet { background: rgb(0 0 0 / 18%); backdrop-filter: blur(12px) saturate(1.1); }
 
 /* ---- Arrival --------------------------------------------------------- */
 
@@ -630,7 +630,7 @@
 }
 @media (prefers-contrast: more) {
   :root { --wall-veil: color-mix(in srgb, var(--page) 76%, transparent); --on-3: var(--on-2); }
-  :root[data-theme="dark"] { --wall-veil: rgb(12 11 10 / 42%); }
+  :root[data-theme="dark"] { --wall-veil: rgb(0 0 0 / 42%); }
 }
 
 /* ---- Narrower windows ------------------------------------------------ */

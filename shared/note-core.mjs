@@ -21,6 +21,13 @@ export function parseTags(text) {
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/
 
+/* Sticky-note paper colours, for stickies and nodes. */
+export const PAPERS = ['canary', 'apricot', 'rose', 'lilac', 'sky', 'mint', 'lime', 'bone']
+
+/* Where a note or folder sits among its siblings. A missing rank is its creation time,
+   so things never ranked by hand keep the order they were made in. */
+export const rankOf = (item) => (Number.isFinite(item?.rank) ? item.rank : Date.parse(item?.createdAt) || 0)
+
 export function normalizeNote(value, index = 0) {
   if (!isObject(value)) return null
   const markdown = cleanString(value.markdown)
@@ -40,8 +47,12 @@ export function normalizeNote(value, index = 0) {
     // A thought that arrived without a home (overlay, quick capture, AI, a clip) until it is sorted.
     unsorted: value.unsorted === true,
     source: cleanString(value.source) || null,
-    // The one note per day: its journal page and that day's next steps.
-    kind: value.kind === 'day' && DATE_KEY.test(value.date) ? 'day' : null,
+    // The one note per day (its journal page and that day's next steps), or a sticky
+    // on the scratch page under the desk until it is made into a node.
+    kind: value.kind === 'day' && DATE_KEY.test(value.date) ? 'day' : value.kind === 'scratch' ? 'scratch' : null,
     date: value.kind === 'day' && DATE_KEY.test(value.date) ? value.date : null,
+    // Only kept once it was ranked by hand (see rankOf), so older notes don't all change.
+    ...(Number.isFinite(value.rank) ? { rank: value.rank } : {}),
+    ...(PAPERS.includes(value.color) ? { color: value.color } : {}),
   }
 }

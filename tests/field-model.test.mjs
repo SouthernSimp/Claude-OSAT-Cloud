@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { WARM, buildSkyGraph, constellationLabels, dayPhase, fitCamera, homeItems, paperFields, paperPose, paperWrite, pickSurfacing, restSurfacing, runSky, stepSky } from '../src/field/field-model.js'
+import { WARM, freeSpot, dayPhase, homeItems, paperFields, paperPose, paperWrite, pickSurfacing, restSurfacing } from '../src/field/field-model.js'
 
 test('day phase follows the clock', () => {
   assert.equal(dayPhase(new Date('2026-09-22T08:00:00')), 'morning')
@@ -16,53 +16,6 @@ test('paper poses stay on the desk and do not drift between calls', () => {
   assert.deepEqual(first, again)
   assert.ok(first.x >= 0 && first.x <= 0.82)
   assert.ok(first.y >= 0 && first.y <= 1)
-})
-
-test('the sky links real wikilinks and chains tags instead of clumping them', () => {
-  const notes = [
-    { id: 'a', title: 'A', markdown: 'See [[B]] #room', tags: ['room'], updatedAt: '2026-09-22T00:00:00.000Z', trashedAt: null, archived: false },
-    { id: 'b', title: 'B', markdown: 'Alone #room', tags: ['room'], updatedAt: '2026-09-21T00:00:00.000Z', trashedAt: null, archived: false },
-    { id: 'c', title: 'C', markdown: 'Third #room', tags: ['room'], updatedAt: '2026-09-20T00:00:00.000Z', trashedAt: null, archived: false },
-  ]
-  const graph = buildSkyGraph(notes)
-  const wiki = graph.links.filter((link) => link.kind === 'wiki')
-  const tags = graph.links.filter((link) => link.kind === 'tag')
-  assert.equal(wiki.length, 1)
-  assert.ok(tags.length >= 1)
-  assert.ok(tags.length < 3)
-  assert.ok(graph.nodes.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y)))
-})
-
-test('an old note asked for by "See in the Sky" still gets a star', () => {
-  const notes = Array.from({ length: 5 }, (_, i) => ({ id: `n${i}`, title: `N${i}`, markdown: '', tags: [], updatedAt: `2026-09-2${i}T00:00:00.000Z` }))
-  assert.deepEqual(buildSkyGraph(notes, undefined, 3).nodes.map((node) => node.id).sort(), ['n2', 'n3', 'n4'])
-  const kept = buildSkyGraph(notes, undefined, 3, 'n0').nodes.map((node) => node.id)
-  assert.equal(kept.length, 3)
-  assert.ok(kept.includes('n0'))
-})
-
-test('linked stars draw toward each other without leaving the numbers', () => {
-  const nodes = [
-    { id: 'a', x: 100, y: 500, vx: 0, vy: 0, pinned: false },
-    { id: 'b', x: 1400, y: 500, vx: 0, vy: 0, pinned: false },
-  ]
-  const end = runSky(nodes, [{ a: 'a', b: 'b', kind: 'wiki' }], 80)
-  const distance = Math.hypot(end[0].x - end[1].x, end[0].y - end[1].y)
-  assert.ok(distance < 1300)
-  assert.ok(end.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y)))
-  const pinned = stepSky([{ ...nodes[0], pinned: true }, nodes[1]], [{ a: 'a', b: 'b', kind: 'wiki' }])
-  assert.equal(pinned[0].x, 100)
-})
-
-test('a constellation name sits above its stars', () => {
-  const nodes = [
-    { id: 'a', tags: ['room'], x: 100, y: 400 },
-    { id: 'b', tags: ['room'], x: 180, y: 460 },
-    { id: 'c', tags: ['room'], x: 140, y: 520 },
-  ]
-  const [label] = constellationLabels(nodes)
-  assert.equal(label.tag, 'room')
-  assert.ok(label.y < 400)
 })
 
 test('a sheet lifts the title off the page and sets the same words back down', () => {
@@ -93,7 +46,7 @@ test('a page whose first line is not the title keeps its words', () => {
   assert.equal(written.markdown, note.markdown)
 })
 
-test('home icons put pinned notes, folders and the mindmap first, and count what does not fit', () => {
+test('home icons put pinned notes and nodes first, and count what does not fit', () => {
   const note = (id, updatedAt, extra = {}) => ({ id, title: id, markdown: id, updatedAt, trashedAt: null, archived: false, ...extra })
   const notes = [
     note('old', '2026-09-01T00:00:00Z'),
@@ -103,13 +56,15 @@ test('home icons put pinned notes, folders and the mindmap first, and count what
     note('gone', '2026-09-22T00:00:00Z', { trashedAt: '2026-09-22T01:00:00Z' }),
   ]
   const folders = [{ id: 'f-b', name: 'Work', parentId: null }, { id: 'f-a', name: 'Life', parentId: null }, { id: 'f-c', name: 'Inner', parentId: 'f-a' }]
-  const boards = [{ id: 'osat-board', scope: { kind: 'all' } }]
-  const all = homeItems({ notes, folders, boards })
-  assert.deepEqual(all.map((item) => item.id), ['pinned', 'f-a', 'f-b', 'osat-board', 'new', 'old'])
-  const cut = homeItems({ notes, folders, boards }, 4)
+  const all = homeItems({ notes, folders })
+  assert.deepEqual(all.map((item) => item.id), ['pinned', 'f-a', 'f-b', 'new', 'old'])
+  const cut = homeItems({ notes, folders }, 4)
   assert.deepEqual(cut.map((item) => item.id), ['pinned', 'f-a', 'f-b', 'more'])
-  assert.equal(cut[3].count, 3)
-  assert.deepEqual(homeItems({ notes: [], folders: [], boards: [] }, 6), [])
+  assert.equal(cut[3].count, 2)
+  assert.deepEqual(homeItems({ notes: [], folders: [] }, 6), [])
+  // A sticky already out on the desk, and one on the scratch page, aren't icons too.
+  const scratch = note('scratch', '2026-09-24T00:00:00Z', { kind: 'scratch' })
+  assert.deepEqual(homeItems({ notes: [...notes, scratch], folders: [] }, Infinity, new Set(['new'])).map((item) => item.id), ['pinned', 'old'])
 })
 
 test('loose thoughts gather into one pile and only a few recent notes stay out', () => {
@@ -117,25 +72,16 @@ test('loose thoughts gather into one pile and only a few recent notes stay out',
   const notes = [
     note('loose-1', 20, { unsorted: true }),
     note('loose-2', 19, { unsorted: true }),
-    ...Array.from({ length: 8 }, (_, index) => note(`filed-${index}`, 10 - index, { folderId: 'f' })),
+    ...Array.from({ length: 8 }, (_, index) => note(`kept-${index}`, 10 - index)),
+    note('filed', 21, { folderId: 'f' }),
   ]
-  const items = homeItems({ notes, folders: [], boards: [] })
+  const items = homeItems({ notes, folders: [] })
   assert.deepEqual(items.map((item) => item.kind), ['pile', ...Array(WARM).fill('note')])
   assert.deepEqual(items[0].notes.map((item) => item.id), ['loose-1', 'loose-2'])
-  assert.deepEqual(items.slice(1).map((item) => item.id), ['filed-0', 'filed-1', 'filed-2', 'filed-3'])
+  // Only notes in no node; one in a node is found in its node.
+  assert.deepEqual(items.slice(1).map((item) => item.id), ['kept-0', 'kept-1', 'kept-2', 'kept-3'])
   // One loose thought is just a note; no pile of one.
-  assert.equal(homeItems({ notes: [notes[0]], folders: [], boards: [] })[0].kind, 'note')
-})
-
-test('the sky fits its stars and their names into the window', () => {
-  const stars = [{ x: 0, y: 0 }, { x: 300, y: 200 }]
-  for (const [w, h] of [[1120, 700], [420, 300]]) {
-    const cam = fitCamera(stars, w, h)
-    for (const star of stars) {
-      assert.ok(star.x * cam.z + cam.x >= 0, 'a star is off the left')
-      assert.ok((star.x + 200) * cam.z + cam.x <= w, 'a name runs off the right')
-    }
-  }
+  assert.equal(homeItems({ notes: [notes[0]], folders: [] })[0].kind, 'note')
 })
 
 test('from before brings back an older note that fits this week\'s writing', () => {
@@ -165,4 +111,18 @@ test('from before brings back an older note that fits this week\'s writing', () 
 test('not now rests a note, and old rests are let go', () => {
   assert.deepEqual(restSurfacing({ a: '2026-08-01', b: '2026-09-20', c: 'soon' }, 'd', '2026-09-27'), { b: '2026-09-20', d: '2026-09-27' })
   assert.deepEqual(restSurfacing(undefined, 'a', '2026-09-27'), { a: '2026-09-27' })
+})
+
+test('a new sticky lands in the first clear spot near the line, inside the desk', () => {
+  const area = { left: 0, top: 0, right: 1000, bottom: 800 }
+  const size = { width: 200, height: 150 }
+  assert.deepEqual(freeSpot([], area, size, { x: 400, y: 300 }), { x: 400, y: 300 })
+  const taken = [{ left: 380, top: 280, right: 640, bottom: 470 }]
+  const spot = freeSpot(taken, area, size, { x: 400, y: 300 })
+  const clear = spot.x + 200 + 12 <= 380 || spot.x >= 640 + 12 || spot.y + 150 + 12 <= 280 || spot.y >= 470 + 12
+  assert.ok(clear, `clear of what is there: ${JSON.stringify(spot)}`)
+  assert.ok(spot.x >= 0 && spot.y >= 0 && spot.x + 200 <= 1000 && spot.y + 150 <= 800)
+  // Nowhere clear: it still lands on the desk.
+  const full = freeSpot([{ left: -10, top: -10, right: 2000, bottom: 2000 }], area, size, { x: 950, y: 790 })
+  assert.deepEqual(full, { x: 800, y: 650 })
 })
