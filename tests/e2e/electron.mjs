@@ -18,6 +18,8 @@
 //      saved becomes a New node in the Sky and moves to Added
 //  11. a cloud model (a stand-in OpenAI-style provider on this Mac): a bad key says so, a good
 //      one connects, the line's answer comes from it, the running total grows, no key on disk
+//  12. scans (a stand-in Google Drive folder): what's there when it's picked waits; a new scan
+//      becomes a packed New node named by the model, and the original is never touched
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -247,7 +249,8 @@ try {
     request.on('end', () => {
       const asked = JSON.parse(body)
       response.writeHead(200, { 'content-type': 'text/event-stream' })
-      for (const text of ['From the ', 'cloud model']) response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`)
+      const naming = /scanned page/.test(asked.messages.at(-1).content)
+      for (const text of naming ? ['Name: Car insurance renewal\n', 'Summary: Pay by October 12.'] : ['From the ', 'cloud model']) response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`)
       if (asked.stream_options) response.write(`data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 40, completion_tokens: 4 } })}\n\n`)
       response.end('data: [DONE]\n\n')
     })
@@ -268,6 +271,28 @@ try {
     const usage = (await main.evaluate(() => window.osatBots.status())).cloud.providers[0]?.usage
     check(usage?.requests === 1 && usage.input === 40 && usage.output === 4, `the running total did not count the question: ${JSON.stringify(usage)}`)
     check(!(await readFile(path.join(home, 'OSAT Test', 'bots.json'), 'utf8')).includes(KEY), 'the key was written to a file')
+
+    // 12. Scans. The folder picker is the Mac's; here it answers with a stand-in Drive folder.
+    const drive = path.join(home, 'Google Drive', 'Scans')
+    await mkdir(drive, { recursive: true })
+    const aged = new Date(Date.now() - 60_000)
+    await writeFile(path.join(drive, 'Old scan.pdf'), '%PDF-1.4 an old scan')
+    await utimes(path.join(drive, 'Old scan.pdf'), aged, aged)
+    await app.evaluate(({ dialog }, dir) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [dir] }) }, drive)
+    await main.evaluate(() => window.osatBots.chooseScanFolder())
+    const scanStatus = async () => (await main.evaluate(() => window.osatBots.status())).scans
+    check((await scanStatus()).waiting === 1, `the scan already in the folder was not noted as waiting: ${JSON.stringify(await scanStatus())}`)
+    const newScan = path.join(drive, 'Scan_0001.pdf')
+    await writeFile(newScan, '%PDF-1.4 a new scan')
+    await utimes(newScan, aged, aged)
+    const scanNode = async () => (await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).find((folder) => folder.from?.source === 'Scan')
+    check(await until(async () => (await scanNode())?.from?.proposal?.name === 'Car insurance renewal', 20000),
+      `a new scan did not become a node with a proposed name: ${JSON.stringify(await scanNode())} ${JSON.stringify(await scanStatus())}`)
+    const scanned = await scanNode()
+    check(scanned?.packed && scanned.fresh && scanned.name === 'Scan 0001', 'the scan did not arrive as a packed New node named after its file')
+    check((await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).filter((folder) => folder.from?.source === 'Scan').length === 1, 'the old scan came in without being asked')
+    check(await access(newScan).then(() => true, () => false), 'the original scan was moved or deleted')
+    check(await access(path.join(home, 'OSAT Test', 'scans', scanned?.from?.scan || 'missing')).then(() => true, () => false), 'OSAT did not keep its own copy of the scan')
     await main.evaluate(() => window.osatBots.chooseModel('local'))
     check((await main.evaluate(() => window.osatLocalAI.models())).models[0]?.id.startsWith('osat:'), 'choosing On this Mac did not put the AI on this Mac first again')
     await main.fill('#home-line', '')

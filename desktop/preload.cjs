@@ -121,8 +121,8 @@ contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
   onStatus: (listener) => listen('phone:status', listener),
 }))
 
-/* Bots (Settings → Bots): the drop folder where Muse and other bots save node files, and
-   cloud models (keys go straight to the Keychain in main; status never carries them). */
+/* Bots (Settings → Bots): the drop folder where Muse and other bots save node files, cloud
+   models (keys go straight to the Keychain in main; status never carries them) and scans. */
 contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   status: () => ipcRenderer.invoke('bots:status'),
   showNodes: () => ipcRenderer.invoke('bots:show-nodes'),
@@ -131,6 +131,11 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   removeProvider: (id) => ipcRenderer.invoke('bots:remove-provider', id),
   chooseModel: (model) => ipcRenderer.invoke('bots:choose-model', model),
   openPage: (url) => ipcRenderer.invoke('bots:open-page', url),
+  // Scans: the folder they arrive in (Google Drive's, on this Mac), and a scan's own copy.
+  chooseScanFolder: () => ipcRenderer.invoke('bots:choose-scan-folder'),
+  stopScans: () => ipcRenderer.invoke('bots:stop-scans'),
+  bringScans: () => ipcRenderer.invoke('bots:bring-scans'),
+  showScan: (scan) => ipcRenderer.invoke('bots:show-scan', scan),
   onStatus: (listener) => listen('bots:status', listener),
 }))
 

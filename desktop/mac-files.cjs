@@ -43,6 +43,45 @@ async function extractText(file, { exec = run, readText = readTextFile } = {}) {
   return { text: text.slice(0, MAX_CHARS), truncated: text.length > MAX_CHARS }
 }
 
+/* The words on a scan (Settings → Bots → Scans), read on this Mac: a PDF's own text when it
+   has some, else the Mac's own text recognition (Vision) on the image, or on the first
+   pages of a PDF that is only pictures. */
+const SCAN_TYPES = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.heic', '.tif', '.tiff'])
+const SCAN_TEXT = `ObjC.import("PDFKit"); ObjC.import("Vision"); ObjC.import("AppKit");
+function recognise(handler) {
+  const request = $.VNRecognizeTextRequest.alloc.init;
+  request.usesLanguageCorrection = true;
+  if (!handler.performRequestsError($.NSArray.arrayWithObject(request), null)) return "";
+  const results = request.results, lines = [];
+  for (let i = 0; i < results.count; i++) {
+    const best = results.objectAtIndex(i).topCandidates(1);
+    if (best.count) lines.push(best.objectAtIndex(0).string.js);
+  }
+  return lines.join("\\n");
+}
+function run(argv) {
+  const url = $.NSURL.fileURLWithPath(argv[0]);
+  if (!/\\.pdf$/i.test(argv[0])) return recognise($.VNImageRequestHandler.alloc.initWithURLOptions(url, $.NSDictionary.dictionary)).slice(0, 20000);
+  const doc = $.PDFDocument.alloc.initWithURL(url);
+  if (doc.isNil()) return "";
+  const own = doc.string;
+  if (!own.isNil() && own.js.trim().length > 40) return own.js.slice(0, 20000);
+  const pages = [];
+  for (let i = 0; i < Math.min(doc.pageCount, 5); i++) {
+    const page = doc.pageAtIndex(i), box = page.boundsForBox(0);
+    const image = page.thumbnailOfSizeForBox($.NSMakeSize(box.size.width * 2, box.size.height * 2), 0);
+    pages.push(recognise($.VNImageRequestHandler.alloc.initWithDataOptions(image.TIFFRepresentation, $.NSDictionary.dictionary)));
+  }
+  return pages.join("\\n\\n").slice(0, 20000);
+}`
+
+async function readScan(file, { exec = run } = {}) {
+  if (!SCAN_TYPES.has(path.extname(file).toLowerCase())) throw new Error('UNREADABLE')
+  const text = (await exec('osascript', ['-l', 'JavaScript', '-e', SCAN_TEXT, file], { timeout: 120000 }))
+    .replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+  return text.slice(0, MAX_CHARS)
+}
+
 /* Spotlight by file name, only inside the folders OSAT may show. */
 function searchArgs(query, roots) {
   return [...roots.flatMap((root) => ['-onlyin', root]), '-name', query]
@@ -69,4 +108,4 @@ function locate(paths, roots, query, limit = 12) {
     .map(({ depth, ...item }) => item)
 }
 
-module.exports = { MAX_CHARS, PLACES, extractText, isPackage, locate, run, searchArgs }
+module.exports = { MAX_CHARS, PLACES, SCAN_TEXT, SCAN_TYPES, extractText, isPackage, locate, readScan, run, searchArgs }

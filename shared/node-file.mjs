@@ -202,13 +202,14 @@ export function fromOf(value) {
 /* The node already made from the same file (same fingerprint), if it is still there. */
 export const sameFile = (folders, hash) => (hash ? folders.find((folder) => !folder.parentId && folder.from?.hash === hash) || null : null)
 
-/* The store operations that bring a node file into the workspace as a New node (packed
-   when it's only a summary), or { duplicate } when the same file already made one. */
-export function arrivalOps(doc, tree, { hash, file, source, now, makeId }) {
+/* The store operations that bring a node file (or a scan: `scan` is OSAT's copy of it) into
+   the workspace as a New node (packed when it's only a summary), or { duplicate } when the
+   same file already made one. */
+export function arrivalOps(doc, tree, { hash, file, source, scan, now, makeId }) {
   const folders = Array.isArray(doc.folders) ? doc.folders : []
   const duplicate = sameFile(folders, hash)
   if (duplicate) return { duplicate }
-  const from = fromOf({ source: tree.source || source, file, hash })
+  const from = fromOf({ source: tree.source || source, file, hash, scan })
   const made = nodeRecords(folders, tree, {
     now,
     makeId,

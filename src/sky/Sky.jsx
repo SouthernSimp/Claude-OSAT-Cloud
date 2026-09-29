@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsIn, CornersOut, DownloadSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, ShareNetwork, Sparkle, Trash,
+  ArrowDown, ArrowsIn, CornersOut, DownloadSimple, Eye, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, ShareNetwork, Sparkle, Trash,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
@@ -10,7 +10,7 @@ import { PAPERS } from '../note-core.js'
 import { folderChildren, folderPath, folderSubtree, isActiveNote, purgeNotes, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
 import {
   addFolder, addSticky, importNode, markOpened, markUnpacked, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder, splitMentions,
-  suggestionGroups, tidyBoard, unpackInto,
+  suggestionGroups, tidyBoard, unpackInto, acceptProposal, dismissProposal,
 } from '../nodes-model.js'
 import { isPacked, readNodeFile } from '../../shared/node-file.mjs'
 import { readSortAnswer, readUnpackAnswer, sortMessages, unpackMessages } from '../../shared/ai-tasks.mjs'
@@ -133,6 +133,16 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     unpacking,
     answering,
+    /* A scan's proposed name: use it (with its summary as the first sticky), or keep the name. */
+    acceptName(id) {
+      const before = latest.current.folders.find((folder) => folder.id === id)
+      commit((state) => acceptProposal(state, id))
+      if (before) showUndo(`Named it “${before.from?.proposal?.name}”`, null)
+    },
+    keepName(id) {
+      commit((state) => dismissProposal(state, id))
+    },
+    showScan: window.osatBots?.showScan ? (folder) => window.osatBots.showScan(folder.from.scan).catch((error) => showUndo(cleanError(error), null)) : null,
     /* Or with the AI: it suggests branches and stickies from the summary; they go in after
        what's there, with Undo. The summary (and the file in Added) always stay. */
     unpackWithAi: answering ? async (folder) => {
@@ -185,6 +195,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(folder.id) },
         { label: 'Help me sort', icon: Sparkle, onSelect: () => { toggle(folder.id, true); actions.sort(folder.id) } },
         { label: 'See it in Notes', icon: NotePencil, onSelect: () => navigate('Notes', { folderId: folder.id }) },
+        folder.from?.scan && actions.showScan ? { label: 'Show the scan', icon: Eye, onSelect: () => actions.showScan(folder) } : null,
         { divider: true },
         { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: folder.color || 'canary', onPick: (paper) => actions.paint(folder.id, paper) }] },
         // Into another node, as one of its branches.

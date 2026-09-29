@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ArrowRight, At, DotsThree, Minus, Plus, Sparkle } from '@phosphor-icons/react'
+import { ArrowRight, At, Check, DotsThree, Eye, Minus, Plus, Sparkle } from '@phosphor-icons/react'
 
 import { hashUnit } from '../field/field-model.js'
 import { carryable, useDrop } from '../lib/carry.js'
@@ -470,6 +470,14 @@ function NodeLanes({ folder, workspace, actions, sorting }) {
   })
   return (
     <div className="lanes is-across" {...lanes}>
+      {folder.from?.proposal && (
+        <div className="packed-bar is-proposal" role="note">
+          <p>OSAT suggests <strong>{folder.from.proposal.name}</strong>{folder.from.proposal.summary ? `: ${folder.from.proposal.summary}` : ''}</p>
+          <button type="button" className="is-primary" onClick={() => actions.acceptName(folder.id)}><Check weight="bold" /> Use this</button>
+          <button type="button" onClick={() => actions.keepName(folder.id)}>Keep “{folder.name}”</button>
+          {folder.from.scan && actions.showScan && <button type="button" onClick={() => actions.showScan(folder)}><Eye weight="bold" /> Show the scan</button>}
+        </div>
+      )}
       {folder.packed && (
         <div className="packed-bar" role="note">
           <p>{actions.unpacking?.id === folder.id ? actions.unpacking.line : 'Packed: only a summary so far. Unpack it into branches when you’re ready.'}</p>

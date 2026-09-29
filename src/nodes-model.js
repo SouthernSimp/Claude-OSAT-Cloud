@@ -300,6 +300,26 @@ const without = (state, id, key) => (state.folders.some((folder) => folder.id ==
 export const markOpened = (state, id) => without(state, id, 'fresh')
 export const markUnpacked = (state, id) => without(state, id, 'packed')
 
+/* A scan's proposed name and summary, confirmed with one click: the node takes the name (a
+   taken one gets "2") and the summary becomes its first sticky. It stays packed, to unpack
+   like any other. Keeping the name as it is only lets the proposal go. */
+export function acceptProposal(state, id) {
+  const folder = state.folders.find((item) => item.id === id)
+  const proposal = folder?.from?.proposal
+  if (!proposal) return state
+  const { proposal: _, ...from } = folder.from
+  const name = folder.parentId ? proposal.name : freeNodeName(state.folders.filter((item) => item.id !== id), proposal.name)
+  const next = { ...state, folders: state.folders.map((item) => (item.id === id ? { ...item, name, from } : item)) }
+  return proposal.summary ? addSticky(next, proposal.summary, id, { source: 'AI', index: 0 }).state : next
+}
+
+export function dismissProposal(state, id) {
+  const folder = state.folders.find((item) => item.id === id)
+  if (!folder?.from?.proposal) return state
+  const { proposal: _, ...from } = folder.from
+  return { ...state, folders: state.folders.map((item) => (item.id === id ? { ...item, from } : item)) }
+}
+
 /* A packed node unpacked with the AI: the branches and stickies it suggested go into the
    node after what's there (its summary stays first), and it is no longer packed. Returns
    { state, folders, notes } (the ids made, for Undo). */

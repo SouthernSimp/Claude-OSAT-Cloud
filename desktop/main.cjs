@@ -42,7 +42,7 @@ const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
 const { DEFAULT_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = require('./desk.cjs')
 const { createQuickChat } = require('./quick-chat.cjs')
-const { PLACES, extractText, isPackage, locate, run, searchArgs } = require('./mac-files.cjs')
+const { PLACES, extractText, isPackage, locate, readScan, run, searchArgs } = require('./mac-files.cjs')
 const { createMedia } = require('./media.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
@@ -1076,16 +1076,7 @@ function registerAi() {
   handle('app:welcome', () => !prefs.welcomed, { from: 'main' })
   handle('app:welcomed', async () => { prefs = { ...prefs, welcomed: true }; await savePrefs(); return true }, { from: 'main' })
 
-  // Ask lists the model chosen in Settings → Bots first (a cloud model, while online), then
-  // the built-in model, then whatever LM Studio has loaded. The line asks the first.
-  handle('local-ai:models', async () => {
-    const own = [...(bots?.models() || []), ...ai.models()]
-    try {
-      return { models: [...own, ...await localAiModels()] }
-    } catch {
-      return { models: own, ...(own.length ? {} : { error: 'Set up the AI in Settings → AI, or start LM Studio.' }) }
-    }
-  }, { from: 'any' })
+  handle('local-ai:models', () => answeringModels(), { from: 'any' })
   const streams = new Map()
   ipcMain.on('local-ai:cancel', (event, id) => {
     assertTrustedSender(event)
@@ -1099,10 +1090,7 @@ function registerAi() {
     streams.set(id, controller)
     const onDelta = (delta) => { if (!event.sender.isDestroyed()) event.sender.send(`local-ai:delta:${id}`, delta) }
     try {
-      if (valid.model.startsWith('cloud:')) return await bots.chatStream(valid, onDelta, controller.signal)
-      return valid.model.startsWith('osat:')
-        ? await ai.chatStream(valid, onDelta, controller.signal)
-        : await localAiChatStream(valid, onDelta, controller.signal)
+      return await chatWith(valid, onDelta, controller.signal)
     } catch (error) {
       if (error?.name === 'AbortError') return ''
       throw new FileAccessError(error.message || 'Local AI is unavailable.')
@@ -1110,6 +1098,29 @@ function registerAi() {
       streams.delete(id)
     }
   })
+}
+
+/* Ask lists the model chosen in Settings → Bots first (a cloud model, while online), then
+   the built-in model, then whatever LM Studio has loaded. The line asks the first. */
+async function answeringModels() {
+  const own = [...(bots?.models() || []), ...ai.models()]
+  try {
+    return { models: [...own, ...await localAiModels()] }
+  } catch {
+    return { models: own, ...(own.length ? {} : { error: 'Set up the AI in Settings → AI, or start LM Studio.' }) }
+  }
+}
+
+function chatWith(valid, onDelta, signal) {
+  if (valid.model.startsWith('cloud:')) return bots.chatStream(valid, onDelta, signal)
+  return valid.model.startsWith('osat:') ? ai.chatStream(valid, onDelta, signal) : localAiChatStream(valid, onDelta, signal)
+}
+
+/* One question from the bots' small jobs (naming a scan), to the model that answers. */
+async function askAnswering(messages) {
+  const [model] = (await answeringModels()).models
+  if (!model) throw new Error('no AI is set up yet (Settings → AI, or a cloud model in Settings → Bots).')
+  return chatWith(validateLocalChatPayload({ model: model.id, messages }), () => {}, AbortSignal.timeout(180000))
 }
 
 /* ---- Your iPhone, through an OSAT folder in iCloud Drive (off until turned on) ---- */
@@ -1255,9 +1266,24 @@ async function registerBots() {
   // ~/Documents/OSAT Nodes. From source it is "OSAT Nodes (Dev)", so development never takes
   // the real app's files; tests pass OSAT_NODES_DIR (from source only).
   const nodesDir = (!app.isPackaged && process.env.OSAT_NODES_DIR) || path.join(app.getPath('documents'), app.isPackaged ? 'OSAT Nodes' : 'OSAT Nodes (Dev)')
+  // Google Drive for Desktop keeps Drive in ~/Library/CloudStorage/GoogleDrive-<account>/My Drive:
+  // where the scan folder picker opens, and what Settings names.
+  const cloudStorage = path.join(os.homedir(), 'Library', 'CloudStorage')
+  const drive = (await fs.readdir(cloudStorage).catch(() => [])).find((name) => name.startsWith('GoogleDrive-'))
   bots = await createBots({
     dataDir: app.getPath('userData'),
     nodesDir,
+    driveDir: drive ? path.join(cloudStorage, drive, 'My Drive') : '',
+    ask: askAnswering,
+    // A scan's words, read on this Mac. From source with OSAT_AI=mock, a practice page (no Mac to read with).
+    read: !app.isPackaged && process.env.OSAT_AI === 'mock'
+      ? async (file) => `A practice scan (${path.basename(file)}): the car insurance renewal notice, due October 12.`
+      : readScan,
+    preview: (file) => {
+      const window = BrowserWindow.getFocusedWindow() || mainWindow
+      if (process.platform === 'darwin' && window) window.previewFile(file)
+    },
+    chooseFolder: (options) => dialog.showOpenDialog(mainWindow, options),
     // Where keys sit in the Keychain; from source its own, so development never reads the app's.
     service: app.isPackaged ? 'OSAT' : 'OSAT-Dev',
     store,
