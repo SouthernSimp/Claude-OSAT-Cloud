@@ -46,3 +46,11 @@
 }
 
 .settings .bots-waiting { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 12px; font-size: var(--t-sm); }
+
+/* The connector: what to paste in each app. */
+.bots-setups { display: grid; gap: 12px; margin-top: 14px; }
+.bots-setup { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.bots-setup strong { color: var(--ink); font-weight: 650; }
+.settings .bots-setup p { margin: 0; font-size: var(--t-sm); }
+.bots-setup pre { max-height: 190px; margin: 0; padding: 10px 12px; overflow: auto; border-radius: var(--r-md); background: var(--surface-sunken); color: var(--ink); font: 12px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bots-setup .outline-button { justify-self: start; }

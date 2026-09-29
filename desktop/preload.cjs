@@ -41,10 +41,17 @@ contextBridge.exposeInMainWorld('osatLocalAI', Object.freeze({
   chatStream: (payload, onDelta) => {
     const id = `stream-${++streamSeq}`
     const channel = `local-ai:delta:${id}`
-    const listener = (_event, text) => { if (typeof text === 'string') onDelta(text) }
+    let streamed = ''
+    const listener = (_event, text) => { if (typeof text === 'string') { streamed += text; onDelta(text) } }
     ipcRenderer.on(channel, listener)
     const done = ipcRenderer
       .invoke('local-ai:chat-stream', id, payload)
+      .then((full) => {
+        // The answer can come back before its last piece does (a fast cloud model sends them
+        // in one go): whatever hasn't streamed yet is handed over now, once.
+        if (typeof full === 'string' && full.length > streamed.length && full.startsWith(streamed)) onDelta(full.slice(streamed.length))
+        return full
+      })
       .finally(() => ipcRenderer.removeListener(channel, listener))
     return { done, cancel: () => ipcRenderer.send('local-ai:cancel', id) }
   },
@@ -122,7 +129,8 @@ contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
 }))
 
 /* Bots (Settings → Bots): the drop folder where Muse and other bots save node files, cloud
-   models (keys go straight to the Keychain in main; status never carries them) and scans. */
+   models (keys go straight to the Keychain in main; status never carries them), scans and
+   the connector. */
 contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   status: () => ipcRenderer.invoke('bots:status'),
   showNodes: () => ipcRenderer.invoke('bots:show-nodes'),
@@ -136,6 +144,12 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   stopScans: () => ipcRenderer.invoke('bots:stop-scans'),
   bringScans: () => ipcRenderer.invoke('bots:bring-scans'),
   showScan: (scan) => ipcRenderer.invoke('bots:show-scan', scan),
+  // The connector (MCP, on this Mac only): its key never comes here, only to the clipboard.
+  connectorOn: () => ipcRenderer.invoke('bots:connector-on'),
+  connectorOff: () => ipcRenderer.invoke('bots:connector-off'),
+  connectorReset: () => ipcRenderer.invoke('bots:connector-reset'),
+  copySetup: (which) => ipcRenderer.invoke('bots:copy-setup', which),
+  undoConnector: (at) => ipcRenderer.invoke('bots:undo-connector', at),
   onStatus: (listener) => listen('bots:status', listener),
 }))
 

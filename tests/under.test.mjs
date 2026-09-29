@@ -127,6 +127,11 @@ const ALLOWED = {
     // A cloud provider's own key or usage page (Settings → Bots). Refused offline on the same line.
     'if (!offline() && /^https:\\/\\//i.test(url)) await shell.openExternal(url)',
   ],
+  'desktop/bots/connector.cjs': [
+    // The OSAT connector: a server that only listens on 127.0.0.1 and never reaches out
+    // (tests/connector.test.mjs checks it refuses other hosts and web pages).
+    "const http = require('node:http')",
+  ],
 }
 
 async function sourceFiles(dir) {

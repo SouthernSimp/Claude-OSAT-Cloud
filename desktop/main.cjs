@@ -1284,6 +1284,7 @@ async function registerBots() {
       if (process.platform === 'darwin' && window) window.previewFile(file)
     },
     chooseFolder: (options) => dialog.showOpenDialog(mainWindow, options),
+    version: app.getVersion(),
     // Where keys sit in the Keychain; from source its own, so development never reads the app's.
     service: app.isPackaged ? 'OSAT' : 'OSAT-Dev',
     store,

@@ -20,6 +20,8 @@
 //      one connects, the line's answer comes from it, the running total grows, no key on disk
 //  12. scans (a stand-in Google Drive folder): what's there when it's picked waits; a new scan
 //      becomes a packed New node named by the model, and the original is never touched
+//  13. the connector (MCP on 127.0.0.1): off until turned on, the key from the copied setup,
+//      a node added over MCP arrives in the Sky, and Undo takes it away
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -265,9 +267,12 @@ try {
     check(made.model === 'test-chat' && made.models?.length === 1, `connecting a cloud model did not pick its chat model: ${JSON.stringify(made)}`)
     check((await main.evaluate(() => window.osatLocalAI.models())).models[0]?.id === 'cloud:custom-test-cloud:test-chat', 'the chosen cloud model was not first for the line')
     await main.fill('#home-line', 'Where does this answer come from?')
+    // The line reads the new first model a moment after the choice: its drawer names it.
+    await main.getByText('test-chat · Test Cloud').first().waitFor({ timeout: 5000 })
+      .catch(() => problems.push('the line did not pick up the chosen cloud model'))
     await main.press('#home-line', 'ControlOrMeta+Enter')
     await main.locator('.home-answer').getByText('From the cloud model').waitFor({ timeout: 10000 })
-      .catch(() => problems.push('the line’s answer did not come from the chosen cloud model'))
+      .catch(async () => problems.push(`the line’s answer did not come from the chosen cloud model: ${JSON.stringify(await main.locator('.home-answer').innerText().catch(() => 'no answer'))}`))
     const usage = (await main.evaluate(() => window.osatBots.status())).cloud.providers[0]?.usage
     check(usage?.requests === 1 && usage.input === 40 && usage.output === 4, `the running total did not count the question: ${JSON.stringify(usage)}`)
     check(!(await readFile(path.join(home, 'OSAT Test', 'bots.json'), 'utf8')).includes(KEY), 'the key was written to a file')
@@ -293,6 +298,28 @@ try {
     check((await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).filter((folder) => folder.from?.source === 'Scan').length === 1, 'the old scan came in without being asked')
     check(await access(newScan).then(() => true, () => false), 'the original scan was moved or deleted')
     check(await access(path.join(home, 'OSAT Test', 'scans', scanned?.from?.scan || 'missing')).then(() => true, () => false), 'OSAT did not keep its own copy of the scan')
+    // 13. The connector, as Claude Code would use it.
+    const connector = await main.evaluate(() => window.osatBots.connectorOn()).catch((error) => ({ error: error.message }))
+    check(connector.running && /^http:\/\/127\.0\.0\.1:\d+\/mcp$/.test(connector.url), `the connector did not start on this Mac: ${JSON.stringify(connector)}`)
+    await main.evaluate(() => window.osatBots.copySetup('other'))
+    const connectorKey = /Bearer (\S+)/.exec(await app.evaluate(({ clipboard }) => clipboard.readText()))?.[1]
+    check(Boolean(connectorKey), 'the copied setup did not carry the key')
+    const mcp = (body, key = connectorKey) => fetch(connector.url, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` }, body: JSON.stringify(body) })
+    check((await mcp({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'wrong')).status === 401, 'the connector answered without its key')
+    const init = await (await mcp({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } } })).json()
+    check(init.result?.serverInfo?.name === 'osat', 'the connector did not answer initialize')
+    const added = await (await mcp({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'add_node', arguments: { title: 'From Claude over MCP', summary: 'Sent through the connector.', source: 'Claude' } } })).json()
+    check(/Added the node “From Claude over MCP”/.test(added.result?.content?.[0]?.text), `add_node did not answer as expected: ${JSON.stringify(added)}`)
+    const viaMcp = async () => (await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).find((folder) => folder.name === 'From Claude over MCP')
+    check(await until(async () => (await viaMcp())?.from?.source === 'Claude', 5000), 'a node added over MCP did not reach the windows')
+    const listed = await (await mcp({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_nodes', arguments: {} } })).json()
+    check(/From Claude over MCP \(New, packed, from Claude\)/.test(listed.result?.content?.[0]?.text), 'list_nodes did not list the new node')
+    const lately = (await main.evaluate(() => window.osatBots.status())).connector.recent
+    await main.evaluate((at) => window.osatBots.undoConnector(at), lately[0]?.at)
+    check(await until(async () => !(await viaMcp()), 5000), 'Undo did not take away what came through the connector')
+    await main.evaluate(() => window.osatBots.connectorOff())
+    check(await mcp({ jsonrpc: '2.0', id: 4, method: 'ping' }).then(() => false, () => true), 'the connector still answered after turning it off')
+
     await main.evaluate(() => window.osatBots.chooseModel('local'))
     check((await main.evaluate(() => window.osatLocalAI.models())).models[0]?.id.startsWith('osat:'), 'choosing On this Mac did not put the AI on this Mac first again')
     await main.fill('#home-line', '')
