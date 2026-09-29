@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowUp, CalendarBlank, ChatCircle, CheckCircle, File, FolderSimple, HourglassMedium, NotePencil,
   PictureInPicture, Plus, ShareNetwork, Sparkle, SquaresFour, Stop, WifiSlash, X,
@@ -126,9 +126,11 @@ export function Line({
   live.current = { open, cursor: active, answer, paused }
 
   /* ⌘K, ⇧⌘N and the menu's Find land here: the words are picked, the drawer is open.
-     During Focus it waits until the Focus screen has stepped aside. */
+     During Focus it waits until the Focus screen has stepped aside. A layout effect, so
+     the drawer is open by the time the line has the keyboard: an Esc right after ⌘K
+     closes the drawer, never slips past it and closes the room behind. */
   const summoned = useRef(0)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!summon || paused || summoned.current === summon) return
     summoned.current = summon
     box.current?.focus()
