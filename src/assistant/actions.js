@@ -7,6 +7,7 @@ import { addNextStep } from '../next-steps.js'
 import { captureThought } from '../notes-model.js'
 import { normalizeNote } from '../osat-data.js'
 import { makeId } from '../lib/ui.js'
+import { OSAT_GUIDE } from './board-context.js'
 
 const BLOCK = /```(?:osat-actions|osat_actions)\s*\n([\s\S]*?)```/gi
 /* While a reply is still streaming the fence has no terminator yet; hide it anyway
@@ -16,11 +17,14 @@ const MAX_ACTIONS = 8
 const MAX_TEXT = 500
 
 /* The model has no clock. Without today's date it guesses the year, so every
-   scheduling request has to carry it. */
-export function systemPrompt(now = new Date(), aboutMe = '') {
+   scheduling request has to carry it. `context` is what it can see of OSAT right now
+   (boardMap, and the plan when the question is about it): board-context.js. */
+export function systemPrompt(now = new Date(), aboutMe = '', context = '') {
   const today = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now)
-  return `You are a private thinking partner running locally on this Mac. Be concise, concrete and warm. Use Markdown.
+  return `You are a private thinking partner inside OSAT. Be concise, concrete and warm. Use Markdown.
+
+${OSAT_GUIDE}
 
 Today is ${weekday}, ${today}. Resolve every relative date ("tomorrow", "next Friday", "the 14th") against that date, and never emit a year earlier than ${now.getFullYear()} unless the person is clearly recording something that already happened.
 
@@ -39,7 +43,9 @@ Allowed types:
 Never invent actions the person did not ask for. Never mention this block in your prose; they see it as buttons. If nothing is requested, omit the block entirely.${aboutMe.trim() ? `
 
 What the person wrote about themselves (use it quietly to fit your answers; never repeat it back):
-${aboutMe.trim().slice(0, 4000)}` : ''}`
+${aboutMe.trim().slice(0, 4000)}` : ''}${context ? `
+
+${context}` : ''}`
 }
 
 const text = (value, max = MAX_TEXT) =>
