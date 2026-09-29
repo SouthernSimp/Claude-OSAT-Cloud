@@ -609,7 +609,7 @@ function buildMenu() {
     {
       label: 'File',
       submenu: [
-        { label: 'New Thought', accelerator: 'CmdOrCtrl+Shift+N', click: () => command({ view: 'Capture' }) },
+        { label: 'New Sticky', accelerator: 'CmdOrCtrl+Shift+N', click: () => command({ view: 'Capture' }) },
         { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => command({ view: 'Notes', detail: { action: 'new' } }) },
         { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
         { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
@@ -633,16 +633,14 @@ function buildMenu() {
         room('Ask', 'Assistant', 'CmdOrCtrl+4'),
         room('Files', 'Files', 'CmdOrCtrl+5'),
         { type: 'separator' },
-        room('Today’s Page', 'Journal'),
+        room('Journal', 'Journal'),
         room('Calendar', 'Calendar'),
         room('Habits', 'Habits'),
-        room('Reflect', 'Reflection'),
         room('Money', 'Budget'),
-        room('Projects', 'Projects'),
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         { type: 'separator' },
-        { label: under.on ? 'Come Up' : 'Go Under', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
+        { label: under.on ? 'Leave Incognito' : 'Go Incognito', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
     },
     {
@@ -1012,13 +1010,13 @@ function updateTray() {
   tray.setImage(trayIcon(under.on ? 'trayUnderTemplate' : 'trayTemplate'))
   tray.setToolTip(under.on ? 'OSAT · Incognito' : 'OSAT')
   tray.setContextMenu(Menu.buildFromTemplate([
-    ...(under.on ? [{ label: 'Incognito · Come up', click: () => toggleUnder(false) }, { type: 'separator' }] : []),
+    ...(under.on ? [{ label: 'Leave Incognito', click: () => toggleUnder(false) }, { type: 'separator' }] : []),
     { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
     { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
-    ...(under.on ? [] : [{ label: 'Go Under', click: () => toggleUnder(true) }]),
+    ...(under.on ? [] : [{ label: 'Go Incognito', click: () => toggleUnder(true) }]),
     { type: 'separator' },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
-    { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'shortcut' } }) },
+    { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'general' } }) },
     ...(app.isPackaged ? [{
       label: 'Open at Login',
       type: 'checkbox',
@@ -1153,7 +1151,7 @@ async function bridgePhone() {
     // A thought from the iPhone is one Unsorted note, made the same way the windows make one.
     capture: (text) => {
       const now = new Date().toISOString()
-      const title = text.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A thought'
+      const title = text.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A sticky'
       const note = normalizeNote({ id: `note-${randomUUID()}`, title, markdown: text, createdAt: now, updatedAt: now, unsorted: true, source: 'iPhone' })
       store.commit(phoneClient, [{ t: 'add', c: 'notes', v: note, at: 0 }])
       mirrorSoon()
@@ -1409,7 +1407,7 @@ app.whenReady().then(async () => {
   // If the desk's shortcut is taken by another app, open Settings so a new one can be picked.
   // The quick chat's is quieter: Settings says so when you look.
   useHotkey('chat', prefs.chatHotkey)
-  if (!useHotkey('layer', prefs.hotkey)) command({ view: 'Settings', detail: { section: 'shortcut' } })
+  if (!useHotkey('layer', prefs.hotkey)) command({ view: 'Settings', detail: { section: 'general' } })
   // Clicking the Dock icon brings the desk up.
   app.on('activate', () => showDesk())
 })

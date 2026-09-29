@@ -5,7 +5,7 @@ import {
   canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, folderSubtree, emptyTrash, isActiveNote, moveNotes, notesInList,
   keepNotes, purgeNotes, relinkRenamedNote, resolveWikilink, restoreNotes, trashNotes, updateNote,
 } from "../notes-model.js";
-import { ensureFolderPath, fileByMentions, renameFolder } from "../nodes-model.js";
+import { linkMentions, renameFolder } from "../nodes-model.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { Organizer } from "./Organizer.jsx";
 import { NoteList, useVisibleNotes } from "./NoteList.jsx";
@@ -110,7 +110,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         let created;
         commit((state) => { const result = createNote(state, { folderId }); created = result.note; return result.state; });
         if (!created) return;
-        const visible = ["all", "recent"].includes(ui.list) || (ui.list === "unfiled" && !folderId) || (ui.list === "folder" && ui.folderId === folderId);
+        const visible = ["all", "recent"].includes(ui.list) || (ui.list === "unsorted" && !folderId) || (ui.list === "folder" && ui.folderId === folderId);
         setUi({
           query: "", tags: [],
           ...(visible ? {} : { list: folderId ? "folder" : "all", folderId: folderId || null }),
@@ -181,9 +181,8 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         setUi({ list: "folder", folderId: folder.id, query: "", tags: [] });
       },
       renameFolder: (id, name) => commit((state) => renameFolder(state, id, name)),
-      /* "@Garden" in a note: made when picked from the list, filed when writing ends. */
-      createNode: (path) => commit((state) => ensureFolderPath(state, path).state),
-      fileMentions: (id, before) => commit((state) => fileByMentions(state, id, before)),
+      /* When writing ends, the note remembers which node each of its @s means. */
+      linkMentions: (id) => commit((state) => linkMentions(state, id)),
       toggleFolder: (id) => commit((state) => ({ ...state, folders: state.folders.map((folder) => folder.id === id ? { ...folder, collapsed: !folder.collapsed } : folder) })),
       moveFolder(id, parentId) {
         if (!canMoveFolder(workspace.folders, id, parentId)) return;
@@ -196,7 +195,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         const folders = workspace.folders.filter((item) => removed.has(item.id));
         const homes = new Map(workspace.notes.filter((note) => removed.has(note.folderId)).map((note) => [note.id, note.folderId]));
         commit((state) => deleteFolder(state, id));
-        showUndo(`Folder “${folder.name}” removed. Its notes moved up one level.`, () => commit((state) => ({
+        showUndo(`Deleted ${folder.parentId ? "branch" : "node"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Unsorted."}`, () => commit((state) => ({
           ...state,
           folders: [...state.folders.filter((item) => !removed.has(item.id)), ...folders],
           notes: state.notes.map((note) => homes.has(note.id) ? { ...note, folderId: homes.get(note.id) } : note),
@@ -204,7 +203,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         if (ui.list === "folder" && ui.folderId === id) setUi({ list: "all", folderId: null });
       },
       startFolder() { setUi({ organizer: true }); setDrawer(true); setFolderDraftAt(Date.now()); },
-      /* A folder is a node in the Sky: this opens it there. */
+      /* A node in Notes is the same node in the Sky: this opens it there. */
       openFolderBoard(folderId) {
         navigate("Mindmap", { folderId });
       },
@@ -255,7 +254,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         />
       )}
       {narrow && organizerOpen && (
-        <button type="button" className="organizer-scrim" aria-label="Close folders" onClick={() => setDrawer(false)}><X /></button>
+        <button type="button" className="organizer-scrim" aria-label="Close the list of nodes" onClick={() => setDrawer(false)}><X /></button>
       )}
       <NoteList
         workspace={workspace}
@@ -269,7 +268,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         actions={actions}
       />
       {!organizerOpen && (
-        <button type="button" className="organizer-reveal" aria-label="Show folders" title="Show folders" onClick={() => (narrow ? setDrawer(true) : setUi({ organizer: true }))}><FolderSimple /></button>
+        <button type="button" className="organizer-reveal" aria-label="Show nodes" title="Show nodes" onClick={() => (narrow ? setDrawer(true) : setUi({ organizer: true }))}><FolderSimple /></button>
       )}
       {selected ? (
         <NoteEditor key={selected.id} workspace={workspace} note={selected} ui={ui} setUi={setUi} actions={actions} onBack={() => setPane("list")} />
@@ -278,7 +277,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
           <div className="empty-panel">
             <NotePencil />
             <h2>{workspace.notes.filter(isActiveNote).length ? "Pick a note, or start a new one." : "Your first note is a blank page."}</h2>
-            <p>Write @ and a node’s name to put a note there. #tags cut across, [[links]] connect ideas. Everything stays on this Mac.</p>
+            <p>Write @ and a node’s name to link to it. #tags cut across, [[links]] connect ideas. Everything stays on this Mac.</p>
             <button className="primary-button" type="button" onClick={() => actions.createNote(ui.list === "folder" ? ui.folderId : null)}><Plus /> New note</button>
           </div>
         </section>

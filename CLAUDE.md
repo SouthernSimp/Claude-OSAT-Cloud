@@ -147,30 +147,32 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     ⌘3 / ⌥⌘↑ / a sticky held at the top), the desk (`FieldDesk`: widgets, the line, the shelf of
     Desktop files or nodes and notes, stickies on the desk via `field/DeskStickies.jsx`, the
     right-click desk menu), and Incognito under it (`shell/Under.jsx`: the scratch page). The dock
-    (`shell/Shell.jsx`: `Dock` with app launchers, `Appearance`; its Sky button takes a dragged
-    sticky) and every room as a solid draggable pop-out (`ROOMS`, `PopRoom`; double-click the bar
+    (`shell/Shell.jsx`: `Dock` with app launchers; Tools holds Appearance, which opens Settings →
+    Appearance; its Sky button takes a dragged sticky) and every room as a solid draggable pop-out (`ROOMS`, `PopRoom`; double-click the bar
     to fill the screen). Rooms open beside the line (`shell/placement.js`); when one covers it,
     the line rises (`raised`). Esc leaves a field in a pop-out, then closes the top pop-out, then
     comes back to the desk from the Sky or Incognito; it never puts the desk away (⌥Space and ⌘W
     do). Also the welcome, capture (⇧⌘N) and the menu-bar commands. The browser preview shows a
     stand-in desktop and keeps `places` in localStorage.
-  - `sky/`: `Sky.jsx` (the layer: find a sticky, the actions and menus, Help me sort),
+  - `sky/`: `Sky.jsx` (the layer: find a sticky, Import a node file, the actions and menus,
+    Help me sort: `suggestionGroups`, one line per branch with Move and Dismiss, no AI),
     `Board.jsx` (the infinite whiteboard: the camera `{x, y, z}` in CSS vars `--cx/--cy/--z`,
     registered with `@property` so a flight glides; node cards at `boardSpots`, dragged directly,
-    opened in place as lanes; `makeRoom` slides neighbours aside; lines for links and @mentions;
+    opened in place as lanes (one layout); `makeRoom` slides neighbours aside; lines for @mentions;
     far out (`z < 0.5`) names grow and insides fade), `Piles.jsx` (`StickyList`, `AddSticky`,
     `NameField`), `Sticky.jsx` (one sticky: click to write, carry, right-click).
     Cards drift forever, so Playwright clicks on them need `{ force: true }`.
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
-    `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, links, @mentions, the
-    board's spots, sorting suggestions and the AI's prompt/answer), `project-direction.js` (the
-    seeded first node), `board-model.js` (the old boards' data only), `next-steps.js`,
+    `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, `moveToItems` (every
+    Move to menu), @mentions, `importNode`, the board's spots, sorting suggestions), `project-direction.js` (the
+    seeded first node), `board-model.js` (the old boards' data only; normalized on load, no longer kept in step), `next-steps.js`,
     `daily-practice.js`, `field/field-model.js` (desk items, `freeSpot` for new stickies).
   - `shell/Welcome.jsx`: the first launch — what stays private, the shortcut, the AI's size.
   - Rooms: `field/` (home desk, widgets), `notes/`, `assistant/` (Ask:
     `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`),
-    `views/` (Calendar, Journal, Projects, Habits, Reflection, Budget, NowPlaying, Obsidian,
-    Settings), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).
+    `views/` (Calendar, Journal (with Reflection as its tab, Reflection's one home), Habits,
+    Budget, NowPlaying, Obsidian, Settings (three tabs: General, AI, Data; `sectionFor` maps old tab
+    names); schema 4 folds each project into a node, `projectNodes` in store-core, and keeps `projects`), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).
   - `views/Files.jsx`: a small Finder (places and your folders, back/forward, Space for Quick
     Look, Ask about it) and the pieces the desk reuses: `FileThumb`, `useFolder`,
     `useFreshness` (folders refresh when the window comes back). The desk's right side shows
@@ -179,19 +181,26 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - Styles: `src/styles/`, tokens in `tokens.css`.
   - `lib/UndoToast.jsx`: `useUndoToast()`, the one Undo toast (Notes, Money, Calendar); remove at once, offer Undo. `glass.css` loads last: the glass kit, the dock,
     transitions, and the token overrides that make the quick chat see-through.
+- Words (Phase 12): one word per thing everywhere: sticky, note, node, branch, Unsorted,
+  Delete, Move to, New node / New branch, Write a sticky, Color. Never thought (for a card),
+  folder (for a node), Unfiled, To sort, Toss, Clear, Put inside, Make it a node. Nodes show
+  names only, never numbers. (Files keeps "folder": those are the Mac's real folders.)
 - Nodes (schema 3): every top-level folder is a node, a folder inside one is a branch, a note is a
   sticky. Order is `rank` (`rankOf`: a missing rank is the creation time, so only hand-ranked
-  things carry one); folders may have `color`, `links` (other folder ids), `layout: 'down'` and
-  `at` ({x, y} on the Sky's board; `placeNodes` freezes every node's spot and re-ranks left to
-  right); notes may have `color`.
-- @mentions (`nodes-model.js`): `parseMentions` (longest node name wins, `/` for a branch, a new
-  word is a node to make, never after a letter/dot, so emails don't count), `fileByMentions(state,
-  id, before)` (only mentions new since `before`; the first @ is the home, others link, see
-  `mentionedIn`), `renameFolder` rewrites them. `addSticky` files by mentions itself; the line,
-  `writeSticky` and the note editor (when writing ends) call `fileByMentions`. A note in no folder is Unsorted in the Sky; `kind: 'scratch'` is a
+  things carry one); folders may have `color` and `at` ({x, y} on the Sky's board; `placeNodes`
+  freezes every node's spot and re-ranks left to right); notes may have `color`. Old `links` and
+  `layout` are kept in the data but no longer shown or offered (Phase 12).
+- @mentions (`nodes-model.js`, schema 4): an @ only links, it never files or makes a node.
+  `findMentions` (longest node name wins, `/` for a branch, never after a letter/dot, so emails
+  don't count; a name that matches no node is just words), `linkMentions(state, id)` records
+  `note.refs` ({ written name: folder id }) so a renamed node keeps its links and no words are
+  ever rewritten (`renameFolder` only renames). `addSticky`, the line, `writeSticky`, the Journal
+  and the note editor (when writing ends) call `linkMentions`. `splitMentions` draws them as links
+  (`md-mention` in Markdown, `sticky-mention` on stickies). Unsorted everywhere is "in no node"
+  (`isUnsorted`: or captured and not sorted yet). A note in no folder is Unsorted in the Sky; `kind: 'scratch'` is a
   sticky on the Incognito page (in no pile until moved). Where stickies lie is per Mac:
   `places['note:<id>']` on the desk, `places['scratch:<id>']` under it ({x, y} fractions, w/h).
-- Data rules: a captured thought is one note with `unsorted: true` and a `source`; filing,
+- Data rules: a captured sticky is one note with `unsorted: true` and a `source`; filing,
   pinning or Keep clears it. Each day has one note, `day-YYYY-MM-DD` with `kind: 'day'`
   (`ensureDayNote`): it is the journal page and where new next steps land. Wikilinks follow
   a renamed note when the title edit ends (`relinkRenamedNote`), not on every keystroke.

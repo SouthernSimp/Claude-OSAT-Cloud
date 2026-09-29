@@ -6,7 +6,7 @@ import { Sticky } from './Sticky.jsx'
 
 /* A run of stickies you can drop into at any place: down a pile, or across a lane. It
    ends with a way to write the next one. `actions` are the Sky's (Sky.jsx). */
-export function StickyList({ id, folderId, notes, axis = 'y', actions, paper, adding = 'Add a sticky', suggestions, className = '', empty }) {
+export function StickyList({ id, folderId, notes, axis = 'y', actions, paper, adding = 'Write a sticky', className = '', empty }) {
   const drop = useDrop(id, {
     accepts: ['note'],
     axis,
@@ -14,31 +14,26 @@ export function StickyList({ id, folderId, notes, axis = 'y', actions, paper, ad
   })
   return (
     <div className={`sticky-list is-${axis} ${className}`} {...drop}>
-      {notes.map((note) => {
-        const suggestion = suggestions?.get(note.id)
-        return (
-          <Sticky
-            key={note.id}
-            note={note}
-            commit={actions.commit}
-            paper={note.color || paper}
-            onToss={() => actions.toss(note)}
-            onMenu={(event) => actions.stickyMenu(event, note)}
-            suggestion={suggestion}
-            onAccept={() => actions.acceptSuggestion(note.id)}
-            onDecline={() => actions.declineSuggestion(note.id)}
-          />
-        )
-      })}
+      {notes.map((note) => (
+        <Sticky
+          key={note.id}
+          note={note}
+          commit={actions.commit}
+          paper={note.color || paper}
+          onToss={() => actions.toss(note)}
+          onMenu={(event) => actions.stickyMenu(event, note)}
+          mentions={actions.mentions}
+        />
+      ))}
       {!notes.length && empty && <p className="sticky-empty">{empty}</p>}
       {adding && <AddSticky placeholder={adding} onAdd={(text) => actions.addSticky(text, folderId)} />}
     </div>
   )
 }
 
-/* "Add a sticky": a blank sticky to write on. Return keeps it and gives a fresh one right
+/* "Write a sticky": a blank sticky to write on. Return keeps it and gives a fresh one right
    away, so a whole pile can be typed in a row; Shift-Return is a new line; Esc stops. */
-export function AddSticky({ placeholder = 'Add a sticky', onAdd }) {
+export function AddSticky({ placeholder = 'Write a sticky', onAdd }) {
   const [open, setOpen] = useState(false)
   const field = useRef(null)
   useEffect(() => { if (open) field.current?.focus() }, [open])

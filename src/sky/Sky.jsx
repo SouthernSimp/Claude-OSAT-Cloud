@@ -1,18 +1,16 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsHorizontal, ArrowsIn, ArrowsVertical, CornersOut, LinkSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus,
-  ShareNetwork, Sparkle, Trash, TreeStructure,
+  ArrowDown, ArrowsIn, CornersOut, DownloadSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, ShareNetwork, Sparkle, Trash,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
-import { getLocalModels, streamLocalMessage } from '../local-ai.js'
 import { PAPERS } from '../note-core.js'
-import { folderChildren, folderPath, folderSubtree, isActiveNote, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
+import { folderChildren, folderPath, folderSubtree, isActiveNote, purgeNotes, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
 import {
-  addFolder, addSticky, applySuggestions, linkFolders, linkedWith, moveFolder, moveSticky, nodesOf, parseSortReply, pileOf, removeFolder,
-  renameFolder, sortPrompt, suggestBranches, tidyBoard, unlinkFolders,
+  addFolder, addSticky, importNode, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder, splitMentions, suggestionGroups,
+  tidyBoard,
 } from '../nodes-model.js'
 import { seedDirection } from '../project-direction.js'
 import { Board } from './Board.jsx'
@@ -37,6 +35,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   const latest = useRef(workspace)
   latest.current = workspace
   const findField = useRef(null)
+  const picker = useRef(null)
   const carrying = useCarrying()
 
   /* The plan Nate asked for, once. */
@@ -77,24 +76,18 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   }
 
   const nodesList = nodesOf(workspace.folders)
-  const menuPlaces = (onPick, skip) => [
-    { label: 'Unsorted', onSelect: () => onPick(null) },
-    ...nodesList.flatMap(({ folder, number }) => [
-      folder.id === skip ? null : { label: `${number}. ${folder.name}`, onSelect: () => onPick(folder.id) },
-      ...folderChildren(workspace.folders, folder.id).filter((branch) => branch.id !== skip).map((branch) => ({ label: `↳ ${branch.name}`, onSelect: () => onPick(branch.id) })),
-    ]),
-  ]
-
-  const suggestionMap = (list, state) => new Map(list.map((item) => [item.noteId, {
-    ...item,
-    label: item.folderId ? state.folders.find((folder) => folder.id === item.folderId)?.name || 'a branch' : `new: ${item.branch}`,
-  }]))
+  // A suggestion goes once its stickies have gone somewhere else; with none left, so does the help.
+  const unsuggest = (ids) => setSorting((value) => {
+    if (!value) return value
+    const groups = value.groups.map((group) => ({ ...group, noteIds: group.noteIds.filter((id) => !ids.includes(id)) })).filter((group) => group.noteIds.length)
+    return groups.length || value.line ? { ...value, groups } : null
+  })
 
   const actions = {
     commit,
     moveSticky(noteId, folderId, index) {
       commit((state) => moveSticky(state, noteId, folderId, index))
-      setSorting((value) => (value?.map.has(noteId) ? { ...value, map: new Map([...value.map].filter(([id]) => id !== noteId)) } : value))
+      unsuggest([noteId])
       if (folderId) onFiled?.(noteId)
     },
     moveFolder(id, parentId, index) {
@@ -115,22 +108,17 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     toss(note) {
       commit((state) => trashNotes(state, [note.id]))
-      showUndo(`Tossed “${note.title.slice(0, 40)}”`, () => commit((state) => restoreNotes(state, [note.id])))
+      showUndo(`Deleted “${note.title.slice(0, 40)}”`, () => commit((state) => restoreNotes(state, [note.id])))
     },
     rename(id, name) {
       commit((state) => renameFolder(state, id, name))
     },
-    setLayout(id, layout) {
-      commit((state) => ({
-        ...state,
-        folders: state.folders.map((folder) => {
-          if (folder.id !== id) return folder
-          const { layout: _, ...rest } = folder
-          return layout === 'down' ? { ...rest, layout: 'down' } : rest
-        }),
-      }))
-    },
     openNote(noteId) { navigate('Notes', { noteId }) },
+    /* A sticky's @s, as links that fly to their node. */
+    mentions: {
+      parts: (text, note) => (text.includes('@') ? splitMentions(text, latest.current.folders, note.refs) : [text]),
+      open: (folderId) => board.current?.goTo({ folderId }),
+    },
     renaming,
     startRename(id) { setRenaming(id) },
     endRename(id, name) {
@@ -141,35 +129,26 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       const before = latest.current
       const moved = new Set(before.notes.filter((note) => folderSubtree(before.folders, folder.id).has(note.folderId)).map((note) => note.id))
       commit((state) => removeFolder(state, folder.id))
-      showUndo(`${folder.parentId ? 'Branch' : 'Node'} “${folder.name}” removed; its stickies are kept`, () => commit((state) => {
+      showUndo(`Deleted ${folder.parentId ? 'branch' : 'node'} “${folder.name}”. ${folder.parentId ? 'Its stickies moved up a level.' : 'Its stickies are in Unsorted.'}`, () => commit((state) => {
         const old = new Map(before.notes.filter((note) => moved.has(note.id)).map((note) => [note.id, note]))
         return { ...state, folders: before.folders, notes: state.notes.map((note) => (old.has(note.id) ? { ...note, folderId: old.get(note.id).folderId, unsorted: old.get(note.id).unsorted, rank: old.get(note.id).rank } : note)) }
       }))
     },
     nodeMenu(event, folder) {
       const others = nodesList.filter((item) => item.folder.id !== folder.id)
-      const linked = linkedWith(workspace.folders, folder.id)
-      const down = folder.layout === 'down'
       openMenu(event, [
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(folder.id) },
         { label: 'Help me sort', icon: Sparkle, onSelect: () => { toggle(folder.id, true); actions.sort(folder.id) } },
-        { label: 'Lay it out', icon: down ? ArrowsVertical : ArrowsHorizontal, items: [
-          { label: 'Across (branches as rows)', checked: !down, onSelect: () => actions.setLayout(folder.id, 'across') },
-          { label: 'Down (branches as columns)', checked: down, onSelect: () => actions.setLayout(folder.id, 'down') },
-        ] },
         { label: 'See it in Notes', icon: NotePencil, onSelect: () => navigate('Notes', { folderId: folder.id }) },
         { divider: true },
-        { label: 'Colour', icon: PaintBucket, items: [{ swatches: PAPERS, picked: folder.color || 'canary', onPick: (paper) => actions.paint(folder.id, paper) }] },
+        { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: folder.color || 'canary', onPick: (paper) => actions.paint(folder.id, paper) }] },
+        // Into another node, as one of its branches.
         others.length ? {
-          label: 'Link to', icon: LinkSimple,
-          items: others.map(({ folder: other, number }) => ({ label: `${number}. ${other.name}`, checked: linked.includes(other.id), onSelect: () => actions.link(folder.id, other.id) })),
-        } : null,
-        others.length ? {
-          label: 'Put inside', icon: ShareNetwork,
-          items: others.map(({ folder: other, number }) => ({ label: `${number}. ${other.name}`, onSelect: () => actions.moveFolder(folder.id, other.id) })),
+          label: 'Move to', icon: ShareNetwork,
+          items: others.map(({ folder: other }) => ({ label: other.name, onSelect: () => actions.moveFolder(folder.id, other.id) })),
         } : null,
         { divider: true },
-        { label: 'Remove node', icon: Trash, danger: true, onSelect: () => actions.remove(folder) },
+        { label: 'Delete node', icon: Trash, danger: true, onSelect: () => actions.remove(folder) },
       ])
     },
     /* Right-click the open board. */
@@ -183,75 +162,69 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     branchMenu(event, branch) {
       openMenu(event, [
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(branch.id) },
-        { label: 'Colour', icon: PaintBucket, items: [{ swatches: PAPERS, picked: branch.color || 'bone', onPick: (paper) => actions.paint(branch.id, paper) }] },
-        { label: 'Make it a node', icon: TreeStructure, onSelect: () => actions.moveFolder(branch.id, null) },
-        { label: 'Move into', icon: ShareNetwork, items: nodesList.filter(({ folder }) => !folderSubtree(workspace.folders, branch.id).has(folder.id) && folder.id !== branch.parentId).map(({ folder, number }) => ({ label: `${number}. ${folder.name}`, onSelect: () => actions.moveFolder(branch.id, folder.id) })) },
+        { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: branch.color || 'bone', onPick: (paper) => actions.paint(branch.id, paper) }] },
+        {
+          label: 'Move to', icon: ShareNetwork, items: [
+            { label: 'Its own node', onSelect: () => actions.moveFolder(branch.id, null) },
+            ...nodesList.filter(({ folder }) => !folderSubtree(workspace.folders, branch.id).has(folder.id) && folder.id !== branch.parentId).map(({ folder }) => ({ label: folder.name, onSelect: () => actions.moveFolder(branch.id, folder.id) })),
+          ],
+        },
         { divider: true },
-        { label: 'Remove branch', icon: Trash, danger: true, onSelect: () => actions.remove(branch) },
+        { label: 'Delete branch', icon: Trash, danger: true, onSelect: () => actions.remove(branch) },
       ])
     },
     stickyMenu(event, note) {
       openMenu(event, [
         { label: 'Open as a page', icon: NotePencil, onSelect: () => navigate('Notes', { noteId: note.id }) },
-        { label: 'Colour', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
-        { label: 'Move to', icon: ShareNetwork, items: menuPlaces((folderId) => actions.moveSticky(note.id, folderId), note.folderId) },
+        { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
+        { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => actions.moveSticky(note.id, folderId), { skip: note.folderId || null }) },
         { divider: true },
-        { label: 'Toss', icon: Trash, danger: true, onSelect: () => actions.toss(note) },
+        { label: 'Delete', icon: Trash, danger: true, onSelect: () => actions.toss(note) },
       ])
-    },
-    linkMenu(event, folder) {
-      const linked = linkedWith(workspace.folders, folder.id)
-      const others = nodesList.filter((item) => item.folder.id !== folder.id)
-      openMenu(event, others.length
-        ? others.map(({ folder: other, number }) => ({ label: `${number}. ${other.name}`, checked: linked.includes(other.id), onSelect: () => actions.link(folder.id, other.id) }))
-        : [{ note: 'Make another node first.' }])
-    },
-    link(a, b) {
-      commit((state) => (linkedWith(state.folders, a).includes(b) ? unlinkFolders(state, a, b) : linkFolders(state, a, b)))
     },
     paint(id, paper) {
       commit((state) => ({ ...state, folders: state.folders.map((folder) => (folder.id === id ? { ...folder, color: paper } : folder)) }))
     },
-    suggestionsFor(nodeId) {
-      return sorting?.id === nodeId && sorting.map.size ? sorting.map : null
-    },
-    /* A branch for every sticky still to sort: matching #tags and shared words right away,
-       then the AI on this Mac, when there is one. Nothing moves until Nate ticks it. */
-    async sort(nodeId) {
+    /* Help me sort: which branch each sticky still to sort looks like it belongs in (a
+       matching #tag, or shared words), one line per branch. Nothing moves until Move. */
+    sort(nodeId) {
       const state = latest.current
-      const first = suggestBranches(state, nodeId)
-      const loose = pileOf(state.notes, nodeId).slice(0, 40)
-      if (!loose.length) { setSorting({ id: nodeId, busy: false, line: 'Nothing to sort', map: new Map() }); return }
-      setSorting({ id: nodeId, busy: true, line: 'Thinking on this Mac…', map: suggestionMap(first, state) })
-      const models = await getLocalModels().catch(() => [])
-      let map = suggestionMap(first, state)
-      if (models.length) {
-        let text = ''
-        try {
-          await streamLocalMessage({ model: models[0].id, messages: sortPrompt(folderChildren(state.folders, nodeId), loose), onDelta: (delta) => { text += delta } })
-          const ai = parseSortReply(text, folderChildren(latest.current.folders, nodeId), loose)
-          map = new Map([...map, ...suggestionMap(ai, latest.current)])
-        } catch {
-          // The words-and-tags suggestions stand on their own.
-        }
-      }
-      const branches = folderChildren(latest.current.folders, nodeId).length
-      setSorting({ id: nodeId, busy: false, line: map.size ? 'Tick what fits' : branches || models.length ? 'No good fits yet' : 'Add a branch first', map })
+      const branches = folderChildren(state.folders, nodeId).length
+      const groups = suggestionGroups(state, nodeId)
+      const line = !pileOf(state.notes, nodeId).length ? 'Nothing here needs sorting.' : !branches ? 'Add a branch first.' : groups.length ? '' : 'Nothing here looks like a clear match yet.'
+      setSorting({ id: nodeId, line, groups })
     },
-    acceptSuggestion(noteId) {
-      const item = sorting?.map.get(noteId)
-      if (!item) return
-      commit((state) => applySuggestions(state, sorting.id, [item]))
-      setSorting((value) => ({ ...value, map: new Map([...value.map].filter(([id]) => id !== noteId)) }))
+    acceptGroup(group) {
+      commit((state) => group.noteIds.reduce((next, id) => moveSticky(next, id, group.folderId), state))
+      unsuggest(group.noteIds)
     },
-    declineSuggestion(noteId) {
-      setSorting((value) => ({ ...value, map: new Map([...value.map].filter(([id]) => id !== noteId)) }))
+    dismissGroup(group) {
+      unsuggest(group.noteIds)
     },
-    acceptAll(nodeId) {
-      if (sorting?.id !== nodeId) return
-      commit((state) => applySuggestions(state, nodeId, [...sorting.map.values()]))
-      setSorting((value) => ({ ...value, map: new Map(), line: 'Sorted' }))
-    },
+    endSort() { setSorting(null) },
+  }
+
+  /* Import: one node file (JSON) becomes one new node, never mixed into one that's there. */
+  async function importFile(file) {
+    if (!file) return
+    let made = null
+    try {
+      const data = JSON.parse(await file.text())
+      commit((state) => { const result = importNode(state, data); made = result; return result.state })
+    } catch {
+      made = null
+    }
+    if (!made?.folder) {
+      showUndo(`“${file.name}” isn’t a node file. Nothing changed.`, null)
+      return
+    }
+    const { folder, branches } = made
+    toggle(folder.id, true)
+    board.current?.goTo({ folderId: folder.id })
+    showUndo(`Imported ${folder.name}${branches ? ` with ${branches} ${branches === 1 ? 'branch' : 'branches'}` : ''}`, () => commit((state) => {
+      const ids = folderSubtree(state.folders, folder.id)
+      return purgeNotes({ ...state, folders: state.folders.filter((item) => !ids.has(item.id)) }, state.notes.filter((note) => ids.has(note.folderId)).map((note) => note.id))
+    }))
   }
 
   /* Finding a sticky: its words, or #tags. Picking one lays out its node. */
@@ -271,6 +244,14 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       <header className="sky-bar">
         <button type="button" className="sky-down" onClick={onClose} title="Back to the desk  Esc · ⌥⌘↓"><ArrowDown weight="bold" /> Desk</button>
         <button type="button" className="sky-new" onClick={() => board.current?.newNode()}><Plus weight="bold" /> New node</button>
+        <button type="button" className="sky-import" title="Import a node file (.json) as a new node" onClick={() => picker.current?.click()}><DownloadSimple weight="bold" /> Import</button>
+        <input
+          ref={picker}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={(event) => { importFile(event.target.files?.[0]); event.target.value = '' }}
+        />
         <div className="sky-find">
           <MagnifyingGlass aria-hidden="true" />
           <input
@@ -302,7 +283,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       </div>
 
       {carrying?.kind === 'note' && (
-        <div className="sky-toss" {...toss}><Trash /> Toss</div>
+        <div className="sky-toss" {...toss}><Trash /> Delete</div>
       )}
       {toast}
       {menu}

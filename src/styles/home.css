@@ -601,9 +601,6 @@
 .dock-more .menu-popover button.checked { color: var(--accent); }
 .dock-more .menu-popover button::before { display: none; }
 
-/* ---- The sheet over home --------------------------------------------- */
-
-.home .field-sheet { background: rgb(0 0 0 / 18%); backdrop-filter: blur(12px) saturate(1.1); }
 
 /* ---- Arrival --------------------------------------------------------- */
 

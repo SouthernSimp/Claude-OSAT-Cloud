@@ -11,7 +11,7 @@ const PORT = Number(process.env.OSAT_PORT || 4317)
 // The spaces that open as pop-outs (⌃2, 4, 5; ⌃3 is the Sky, a layer of its own), then
 // every tool from the dock's Tools menu.
 const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
-const TOOLS = [['Journal', 'Today’s page'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Reflection', 'Reflect'], ['Budget', 'Money'], ['Projects', 'Projects'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
+const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
 
 let server
 async function start() {
@@ -50,10 +50,10 @@ async function main() {
   room = 'capture'
   await page.getByPlaceholder('Write it down, find it, or ask…').fill('Smoke test thought')
   await page.getByRole('listbox').waitFor({ timeout: 3000 }).catch(() => problems.push('capture: typing did not open the drawer'))
-  if (await picked() !== 'Save as a thought') problems.push(`capture: the first row was not Save (${await picked()})`)
+  if (await picked() !== 'Save as a sticky') problems.push(`capture: the first row was not Save (${await picked()})`)
   // Only the keys move the pick: a pointer resting on the drawer never changes what Return does.
   await page.locator('.home-row').nth(1).hover()
-  if (await picked() !== 'Save as a thought') problems.push('capture: the pointer moved the picked row')
+  if (await picked() !== 'Save as a sticky') problems.push('capture: the pointer moved the picked row')
   await page.keyboard.press('Enter')
   await sleep(800)
   await page.goto(url)
@@ -117,9 +117,15 @@ async function main() {
     await page.getByRole('button', { name: /Come up/ }).click()
     await page.locator('.under').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push(`under: Come up did not bring the desk back (${theme})`))
     if (theme === 'light') {
-      await page.locator('.app-dock .appearance > button').click()
+      // Appearance lives in the Tools menu (Settings → Appearance), not on the dock.
+      if (await page.locator('.app-dock').getByText('Look', { exact: true }).count()) problems.push('dock: Look is still on the dock')
+      await page.locator('.app-dock [data-space="tools"]').click()
+      for (const gone of ['Reflect', 'Projects']) if (await page.getByRole('menuitem', { name: gone, exact: true }).count()) problems.push(`tools: ${gone} is still in the Tools list`)
+      await page.getByRole('menuitem', { name: 'Appearance' }).click()
       await page.getByRole('radio', { name: 'Dark' }).click()
+      await page.locator('.popout.is-top .popout-bar strong').click()
       await page.keyboard.press('Escape')
+      await page.getByRole('dialog', { name: 'Settings' }).waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('appearance: Esc did not close Settings'))
       await sleep(300)
     }
   }
@@ -195,22 +201,66 @@ async function main() {
   }
   if (!await page.locator('.home').count()) problems.push('stickies: Esc put the desk away')
 
-  // On the desk: the pile of loose thoughts, a note found from the line, stacked pop-outs, Esc.
-  room = 'pop-outs'
-  // Put back on the shelf, the sticky joins the smoke test's thought in the pile of loose thoughts, which opens Unsorted.
-  await here.hover()
-  await page.getByRole('button', { name: 'Put back on the shelf Written right here' }).click()
-  const shelfSticky = page.locator('.home .desk-sticky', { hasText: 'Smoke test thought' })
-  if (await shelfSticky.count()) {
-    await shelfSticky.hover()
-    await page.getByRole('button', { name: 'Put back on the shelf Smoke test thought' }).click()
-  }
-  await page.getByRole('button', { name: /loose thoughts/ }).click()
-  await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
-    .catch(() => problems.push('pop-outs: the pile of loose thoughts did not open Unsorted'))
+  // An @ only links: the sticky stays on the desk, a typo makes no node, and the @ is a link
+  // that goes to its node in the Sky.
+  room = 'mentions'
+  await page.fill('#home-line', 'Call about @Project Direction and @Projct')
+  await page.press('#home-line', 'Enter')
+  const mentioned = page.locator('.home .desk-sticky', { hasText: 'Call about' })
+  await mentioned.waitFor({ timeout: 3000 }).catch(() => problems.push('mentions: a sticky with an @ did not land on the desk (it was filed)'))
+  const link = mentioned.locator('.sticky-mention', { hasText: '@Project Direction' })
+  if (!await link.count()) problems.push('mentions: the @ on the sticky was not a link')
+  if (await mentioned.locator('.sticky-mention', { hasText: '@Projct' }).count()) problems.push('mentions: a typo became a link')
+  await link.click().catch(() => {})
+  await page.locator('.sky-layer').waitFor({ timeout: 5000 }).catch(() => problems.push('mentions: the @ link did not open the Sky'))
+  await sleep(600)
+  if (await page.locator('[data-node-head]', { hasText: 'Projct' }).count()) problems.push('mentions: a typo made a node')
+  // The Sky: names only, no Link to or layouts, Help me sort in plain words, and Import.
+  room = 'sky menus'
+  if (await page.locator('.node-number').count()) problems.push('sky: node cards still show numbers')
+  await page.locator('[data-node-head]', { hasText: 'Project Direction' }).click({ button: 'right', force: true })
+  for (const gone of ['Link to', 'Lay it out', 'Put inside', 'Colour', 'Remove node']) if (await page.getByRole('menuitem', { name: gone }).count()) problems.push(`sky: the node menu still says "${gone}"`)
+  for (const kept of ['Color', 'Delete node', 'Help me sort']) if (!await page.getByRole('menuitem', { name: kept }).count()) problems.push(`sky: the node menu has no "${kept}"`)
+  await page.getByRole('menuitem', { name: 'Help me sort' }).click().catch(() => {})
+  await page.locator('.sort-help').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Help me sort said nothing'))
+  await sleep(300)
+  await page.screenshot({ path: `${OUT}/sky-sort.png` })
+  const nodeFile = { title: 'Garden', summary: 'What grows where.', branches: [{ title: 'Beds', leaves: [{ text: 'Tomatoes', done: false }, { text: 'Dig', done: true }], sub_branches: [{ title: 'Herbs', leaves: [{ text: 'Basil' }] }] }] }
+  await page.locator('.sky-layer input[type="file"]').setInputFiles({ name: 'garden.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(nodeFile)) })
+  await page.getByText('Imported Garden with 2 branches').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Import did not say what it made'))
+  await page.locator('[data-node-head]', { hasText: 'Garden' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the imported node was not in the Sky'))
+  await sleep(900)
+  await page.screenshot({ path: `${OUT}/sky-import.png` })
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await page.locator('[data-node-head]', { hasText: 'Garden' }).waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Undo did not take the import away'))
+  await page.keyboard.press('Escape')
+  await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Esc did not come back down'))
+  if (!await mentioned.count()) problems.push('mentions: the sticky with an @ left the desk')
+  // Reflection's one home: a tab of the Journal.
+  room = 'journal'
+  await page.locator('.app-dock [data-space="tools"]').click()
+  await page.getByRole('menuitem', { name: 'Journal' }).click()
+  await page.getByRole('button', { name: 'Evening', exact: true }).click().catch(() => problems.push('journal: no Evening tab'))
+  await page.locator('.popout-body[data-view="Journal"] .journal-form').waitFor({ timeout: 3000 }).catch(() => problems.push('journal: the Reflection tab showed nothing'))
   await page.locator('.popout.is-top .popout-bar strong').click()
   await page.keyboard.press('Escape')
-  // ⌘K lands in the line; ↓ walks past Save, Ask and Add to Next to the match, ↵ opens it.
+
+  // On the desk: the Unsorted pile, a note found from the line, stacked pop-outs, Esc.
+  room = 'pop-outs'
+  // Taken off the desk (its menu), the sticky joins the smoke test's sticky in the Unsorted pile, which opens Unsorted.
+  await here.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Take off the desk' }).click()
+  const shelfSticky = page.locator('.home .desk-sticky', { hasText: 'Smoke test thought' })
+  if (await shelfSticky.count()) {
+    await shelfSticky.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Take off the desk' }).click()
+  }
+  await page.getByRole('button', { name: /^Unsorted, / }).click()
+  await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
+    .catch(() => problems.push('pop-outs: the Unsorted pile did not open Unsorted'))
+  await page.locator('.popout.is-top .popout-bar strong').click()
+  await page.keyboard.press('Escape')
+  // ⌘K lands in the line; ↓ walks past Save, Ask and Add as a next step to the match, ↵ opens it.
   await page.keyboard.press('Control+k')
   await page.keyboard.type('Smoke test')
   for (let step = 0; step < 8 && await picked() !== 'Smoke test thought'; step += 1) await page.keyboard.press('ArrowDown')
@@ -240,7 +290,7 @@ async function main() {
   await page.keyboard.type('One step at a time')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Escape')
-  if (await picked() !== 'Save as a thought') problems.push('esc: the first Esc did not go back to Save')
+  if (await picked() !== 'Save as a sticky') problems.push('esc: the first Esc did not go back to Save')
   await page.keyboard.press('Escape')
   if (await page.getByRole('listbox').count()) problems.push('esc: the second Esc did not close the drawer')
   if (await page.inputValue('#home-line') !== 'One step at a time') problems.push('esc: closing the drawer lost the words')
@@ -282,9 +332,13 @@ async function main() {
   await sleep(300)
   if (await page.locator('.popout').count()) problems.push('under: Notes opened under (only a note or Ask should)')
   await page.screenshot({ path: `${OUT}/under-page.png` })
-  // Make it a node: the page is blank again, and the node waits in the Sky.
-  await page.getByRole('button', { name: /Make it a node/ }).click()
-  await page.getByRole('menuitem', { name: 'Make it a node' }).click()
+  // Move to… → New node: the page is blank again, and the node waits in the Sky. The pill's
+  // Move to… opens the list of places at once.
+  await page.getByRole('button', { name: /Move to/ }).click()
+  for (const gone of ['Make it a node', 'Into a node, to sort', 'Into a node, as a new branch', 'Clear the page']) {
+    if (await page.getByRole('menuitem', { name: gone }).count()) problems.push(`under: the page menu still says "${gone}"`)
+  }
+  await page.getByRole('menuitem', { name: 'New node' }).click()
   await page.locator('.under-page .desk-sticky').first().waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('under: making the page a node did not clear it'))
   // Esc: the drawer first, then back up.
   await page.locator('#under-line').focus()
@@ -344,10 +398,10 @@ async function main() {
   await phone.getByText('Written on the Mac').first().waitFor({ timeout: 8000 })
     .catch(() => problems.push('iphone: the note from the Mac did not arrive'))
   await phone.fill('#phone-line', 'Thought on the phone')
-  await phone.click('button[aria-label="Save the thought"]')
+  await phone.click('button[aria-label="Save the sticky"]')
   await sleep(2500)
   const sent = await phone.evaluate(() => Object.entries(window.__cloud).some(([key, text]) => /^Sync\/iphone-[a-z0-9]{8}\/00000001\.json$/.test(key) && text.includes('Thought on the phone')))
-  if (!sent) problems.push('iphone: the thought was not written to iCloud')
+  if (!sent) problems.push('iphone: the sticky was not written to iCloud')
   await phone.screenshot({ path: `${OUT}/iphone-today.png` })
   await phone.getByRole('button', { name: 'iCloud' }).click()
   await phone.getByText('In step with your Mac.').waitFor({ timeout: 5000 })

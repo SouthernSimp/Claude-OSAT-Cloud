@@ -1,7 +1,8 @@
-import { ArrowUpRight, BookOpenText, Check, ShareNetwork } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { ArrowUpRight, BookOpenText, Check, MoonStars } from '@phosphor-icons/react';
+import { useEffect, useState } from 'react';
 import { localDateKey } from '../daily-practice.js';
 import { dayNoteId, ensureDayNote, isActiveNote, isDayNote, updateNote, wordCount } from '../notes-model.js';
+import { linkMentions } from '../nodes-model.js';
 import { Markdown } from '../lib/markdown.jsx';
 import { ReflectionView } from './Reflection.jsx';
 
@@ -16,9 +17,11 @@ const MARGIN = [
   ['What are you', 'looking forward to?'],
 ];
 
-export function JournalView({ workspace, commit, navigate }) {
+/* Today, the evening questions (Reflection's one home) and earlier pages. `target.tab` opens on one. */
+export function JournalView({ workspace, commit, navigate, target }) {
   const today = localDateKey();
-  const [tab, setTab] = useState('write');
+  const [tab, setTab] = useState(target?.tab || 'write');
+  useEffect(() => { if (target?.tab) setTab(target.tab); }, [target?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   const [selected, setSelected] = useState(null);
   const id = dayNoteId(today);
   const entry = workspace.notes.find((note) => note.id === id);
@@ -27,12 +30,12 @@ export function JournalView({ workspace, commit, navigate }) {
   const dateLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(`${today}T12:00:00`));
   const [lead, turn] = MARGIN[Math.floor(Date.parse(`${today}T12:00:00Z`) / 86400000) % MARGIN.length];
   function write(markdown) {
-    commit((state) => updateNote(ensureDayNote(state, today).state, id, { markdown }));
+    commit((state) => linkMentions(updateNote(ensureDayNote(state, today).state, id, { markdown }), id));
   }
   return <section className="journal-studio">
     <header className="journal-top">
       <div><p className="eyebrow">{dateLabel}</p><h1>Journal</h1></div>
-      <nav className="journal-tabs" aria-label="Journal mode">{[['write', 'Today’s page'], ['reflect', 'Reflection'], ['past', 'Earlier pages']].map(([key, label]) => <button key={key} type="button" className={tab === key ? 'active' : ''} aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}</nav>
+      <nav className="journal-tabs" aria-label="Journal mode">{[['write', 'Today'], ['reflect', 'Evening'], ['past', 'Earlier']].map(([key, label]) => <button key={key} type="button" className={tab === key ? 'active' : ''} aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}</nav>
     </header>
     {tab === 'write' && <div className="journal-desk">
       <article className="journal-sheet">
@@ -44,7 +47,7 @@ export function JournalView({ workspace, commit, navigate }) {
         <footer>
           <span>{wordCount(entry?.markdown || '')} words · only for you</span>
           {entry && isActiveNote(entry) && <>
-            <button type="button" onClick={() => navigate('Mindmap', { focusNoteId: id })}><ShareNetwork /> On the mindmap</button>
+            <button type="button" onClick={() => navigate('Mindmap', { noteId: id })}><MoonStars /> See it in the Sky</button>
             <button type="button" onClick={() => navigate('Notes', { noteId: id })}>Open in Notes <ArrowUpRight /></button>
           </>}
         </footer>

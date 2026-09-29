@@ -74,22 +74,9 @@
 .sticky-toss svg { width: 12px; height: 12px; }
 .sticky:hover .sticky-toss, .sticky:focus-within .sticky-toss { opacity: 1; }
 .sticky-toss:hover { background: rgb(0 0 0 / 8%); color: var(--paper-ink); }
-.sticky-suggest {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 10px;
-  padding: 4px 4px 4px 8px;
-  border-radius: 8px;
-  font-size: var(--t-xs);
-  font-weight: 650;
-  color: var(--accent-ink);
-  background: var(--accent);
-}
-.sticky-suggest span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sticky-suggest button { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: inherit; }
-.sticky-suggest button:hover { background: rgb(255 255 255 / 22%); }
-.sticky-suggest svg { width: 12px; height: 12px; }
+/* An @node on a sticky: a link to that node, in the sticky's own ink. */
+.sticky-mention { font: inherit; color: inherit; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; border-radius: 3px; }
+.sticky-mention:hover { background: rgb(0 0 0 / 8%); }
 .sticky.is-found { animation: sticky-found 1.6s var(--ease-out); }
 @keyframes sticky-found { 0%, 60% { box-shadow: var(--lift-hover), 0 0 0 4px var(--accent); } }
 
@@ -256,6 +243,9 @@ html[data-carry-edge="up"] body::after {
 .sky-new { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px 0 12px; border-radius: 999px; font-size: var(--t-sm); font-weight: 650; color: var(--accent-ink); background: var(--accent); box-shadow: var(--e-1); }
 .sky-new:hover { background: var(--accent-hover); }
 .sky-new svg { width: 12px; height: 12px; }
+.sky-import { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 13px 0 11px; border-radius: 999px; font-size: var(--t-sm); font-weight: 650; color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-1); }
+.sky-import:hover { background: var(--surface-hover); }
+.sky-import svg { width: 13px; height: 13px; }
 .sky-find { position: relative; margin-left: auto; width: min(320px, 36vw); }
 .sky-find > svg { position: absolute; left: 11px; top: 50%; translate: 0 -50%; width: 14px; height: 14px; color: var(--muted); pointer-events: none; }
 .sky-find input {
@@ -458,7 +448,6 @@ html[data-carry-edge="up"] body::after {
 .node-head strong { padding-right: 34px; font: 750 var(--t-xl)/1.15 var(--font-display); letter-spacing: var(--tr-display); overflow-wrap: anywhere; }
 .node-head small { font-size: var(--t-xs); color: var(--paper-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .board-card.is-open > .node-head { box-shadow: var(--lift-hover), 0 0 0 2px color-mix(in srgb, var(--paper-ink) 14%, transparent); }
-.node-number { position: absolute; top: 12px; right: 14px; font: 800 26px/1 var(--font-display); color: color-mix(in srgb, var(--paper-ink) 50%, transparent); }
 .node-tools { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 2px; opacity: 0; transition: opacity 140ms; }
 .node-head:is(:hover, :focus-within) .node-tools { opacity: 1; }
 .node-tools button { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; color: var(--paper-ink-2); }
@@ -475,7 +464,6 @@ html[data-carry-edge="up"] body::after {
 
 .lanes { min-width: 0; }
 .lanes.is-across { display: grid; align-content: start; grid-template-columns: max-content; gap: 14px; }
-.lanes.is-down { display: grid; grid-auto-flow: column; grid-auto-columns: 236px; align-items: start; gap: 18px; }
 .lane { display: grid; gap: 10px; min-width: 0; }
 .lanes.is-across .lane { grid-template-columns: 172px minmax(0, 1fr); align-items: start; padding-left: calc(var(--depth, 0) * 28px); }
 .lane-head {
@@ -498,16 +486,22 @@ html[data-carry-edge="up"] body::after {
 .lane-head:hover .lane-more, .lane-more:focus-visible { opacity: 1; }
 .lane-more:hover { background: rgb(0 0 0 / 8%); }
 .lane-more svg { width: 14px; height: 14px; }
-.lane-accept { padding: 4px 9px; border-radius: 999px; font-size: var(--t-xs); font-weight: 700; color: var(--accent-ink); background: var(--accent); }
 .lane-add { justify-self: start; align-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 12px; border-radius: 12px; font-size: var(--t-sm); font-weight: 650; color: var(--muted); border: 1.5px dashed var(--line-strong); }
 .lane-add:hover { color: var(--ink); }
 .lane-add svg { width: 12px; height: 12px; }
 .lane.is-naming { max-width: 240px; }
-.lanes.is-down .lane-add { min-height: 56px; }
 
-.lane-status { font-style: normal; font-size: var(--t-xs); color: var(--muted); }
-.lane-status.is-busy { animation: status-breathe 1.2s ease-in-out infinite alternate; }
-@keyframes status-breathe { from { opacity: 0.4; } }
+/* Help me sort: a line per branch, with Move and Dismiss, under the node's Unsorted. */
+.sort-help { grid-column: 1 / -1; display: grid; gap: 8px; max-width: 560px; }
+.sort-help > p, .sort-suggestion { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 12px; font-size: var(--t-sm); color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-1); }
+.sort-help > p { flex: 1; }
+.sort-help > p + button { justify-self: start; }
+.sort-suggestion p { flex: 1 1 260px; margin: 0; }
+.sort-help button { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: var(--t-xs); font-weight: 650; color: var(--ink); background: var(--surface-sunken); }
+.sort-help button:hover { background: var(--surface-hover); }
+.sort-help button.is-primary { color: var(--accent-ink); background: var(--accent); }
+.sort-help button.is-primary:hover { background: var(--accent-hover); }
+.sort-help svg { width: 12px; height: 12px; }
 .lanes .sticky-list.is-x { overflow: visible; padding: 2px 2px 4px; }
 
 /* ---- Stickies on the desk (and on the scratch page) -------------------------- */
@@ -580,7 +574,7 @@ html[data-carry-edge="up"] body::after {
 
 @media (prefers-reduced-motion: reduce) {
   .sky-shell, .sky-shell.is-leaving, .context-menu, .sky-toss, .board::before, .board-card, .board-card > .node-head, .card-body,
-  .board-lines path, .board-naming, .lane-status { animation: none !important; }
+  .board-lines path, .board-naming { animation: none !important; }
   .board.is-flying, .board-card { transition: none; }
   .overlay-surface > .workspace-content { transition: none; }
 }

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, X } from '@phosphor-icons/react'
+import { X } from '@phosphor-icons/react'
 
 import { carryable } from '../lib/carry.js'
-import { fileByMentions, filedAs } from '../nodes-model.js'
+import { linkMentions } from '../nodes-model.js'
 import { relinkRenamedNote, updateNote } from '../notes-model.js'
 
 /* The title (the first line) and what's under it, as a sticky shows them: steps as boxes,
@@ -10,38 +10,44 @@ import { relinkRenamedNote, updateNote } from '../notes-model.js'
 export function stickyText(note) {
   const lines = String(note.markdown || note.title || '').split('\n')
   const first = lines.findIndex((line) => line.trim())
-  const title = first < 0 ? note.title || '' : lines[first].replace(/^#{1,6}\s+/, '').trim()
-  const body = lines.slice(first + 1).join('\n').trim()
+  const boxes = (text) => text
     .replace(/^\s*[-*+]\s+\[[xX]\]\s+/gm, '☑ ')
     .replace(/^\s*[-*+]\s+\[ \]\s+/gm, '☐ ')
     .replace(/^\s*[-*+]\s+/gm, '• ')
+  const title = first < 0 ? note.title || '' : boxes(lines[first].replace(/^#{1,6}\s+/, '').trim())
+  const body = boxes(lines.slice(first + 1).join('\n').trim())
   return { title, body }
 }
 
-/* Saves what was written on a sticky: its first line is its title, and a new @node files
-   it there. Returns what filing did ({ where, made }, see filedAs), or null. */
+/* Saves what was written on a sticky: its first line is its title, and its @s point at
+   their nodes (linkMentions). */
 export function writeSticky(commit, note, text) {
   const markdown = text.replace(/\s+$/, '')
   const title = markdown.split('\n').find((line) => line.trim())?.replace(/^#{1,6}\s+/, '').trim().slice(0, 120) || note.title
-  if (markdown === note.markdown) return null
-  let filing = null
+  if (markdown === note.markdown) return
   commit((state) => {
     const next = updateNote(state, note.id, { title, markdown })
-    const filed = fileByMentions(title !== note.title ? relinkRenamedNote(next, note.title, title) : next, note.id, note.markdown)
-    filing = filedAs(state, filed, note.id)
-    return filed
+    return linkMentions(title !== note.title ? relinkRenamedNote(next, note.title, title) : next, note.id)
   })
-  return filing
 }
 
-/* One sticky: a note on coloured paper. Click it to write on it; Esc, ⌘Return or clicking
-   away keeps what was written, and emptying it tosses it (onToss offers Undo). Its × tosses
-   it too, or, with `onAway`, only takes it off the desk. It can be carried anywhere that
-   takes stickies, and right-clicked (onMenu). A `suggestion` from sorting shows under it,
-   with a tick and a cross. `onFiled` hears where an @node sent it ({ where, made }). */
+/* Words with their @s as links, when `mentions` ({ parts(text, note), open(folderId) })
+   is given. */
+function Words({ text, note, mentions }) {
+  if (!mentions) return text
+  return mentions.parts(text, note).map((part, index) => (typeof part === 'string'
+    ? part
+    : <button key={index} type="button" className="sticky-mention" title="Go to this node" onClick={() => mentions.open(part.folderId)}>{part.text}</button>))
+}
+
+/* One sticky: a note on colored paper. Click it to write on it; Esc, ⌘Return or clicking
+   away keeps what was written, and emptying it deletes it (onToss offers Undo). Its ×
+   deletes it too, everywhere. It can be carried
+   anywhere that takes stickies, and right-clicked (onMenu). With `mentions`, its @s are
+   links to their nodes. */
 export function Sticky({
-  note, commit, paper = 'canary', onToss, onAway, awayLabel = 'Put away', onMenu, onFiled, carry = true, editing: startEditing = false, onEditingDone,
-  suggestion, onAccept, onDecline, className = '', style, slot = true, children,
+  note, commit, paper = 'canary', onToss, onMenu, mentions, carry = true, editing: startEditing = false, onEditingDone,
+  className = '', style, slot = true, children,
 }) {
   const [editing, setEditing] = useState(startEditing)
   const field = useRef(null)
@@ -59,10 +65,7 @@ export function Sticky({
     setEditing(false)
     if (save) {
       if (!text.trim()) onToss?.()
-      else {
-        const filing = writeSticky(commit, note, text)
-        if (filing?.where) onFiled?.(filing)
-      }
+      else writeSticky(commit, note, text)
     }
     onEditingDone?.()
   }
@@ -103,19 +106,12 @@ export function Sticky({
         />
       ) : (
         <>
-          <h4>{title || 'Untitled'}</h4>
-          {body && <p>{body}</p>}
+          <h4><Words text={title || 'Untitled'} note={note} mentions={mentions} /></h4>
+          {body && <p><Words text={body} note={note} mentions={mentions} /></p>}
         </>
       )}
-      {!editing && (onAway || onToss) && (
-        <button type="button" className="sticky-toss" aria-label={`${onAway ? awayLabel : 'Toss'} ${title}`} title={onAway ? awayLabel : 'Toss (you can Undo)'} onClick={onAway || onToss}><X weight="bold" /></button>
-      )}
-      {suggestion && !editing && (
-        <div className="sticky-suggest">
-          <span>→ {suggestion.label}</span>
-          <button type="button" aria-label={`Move to ${suggestion.label}`} title="Move it there" onClick={onAccept}><Check weight="bold" /></button>
-          <button type="button" aria-label="Leave it here" title="Leave it" onClick={onDecline}><X weight="bold" /></button>
-        </div>
+      {!editing && onToss && (
+        <button type="button" className="sticky-toss" aria-label={`Delete ${title}`} title="Delete (you can Undo)" onClick={onToss}><X weight="bold" /></button>
       )}
       {children}
     </article>

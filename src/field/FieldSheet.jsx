@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowRight } from '@phosphor-icons/react'
 
 import { wordCount } from '../notes-model.js'
-import { useFocusTrap } from '../lib/use-focus-trap.js'
 import { paperFields, paperWrite } from './field-model.js'
 
 function remember(snapshot, note, title, body) {
@@ -13,8 +12,8 @@ function remember(snapshot, note, title, body) {
   }
 }
 
-/* `inline` drops the backdrop and focus trap, for a note that opens as a pop-out on the desk. */
-export function FieldSheet({ note, onClose, onCommit, onOpenNotes, inline = false }) {
+/* A sticky opened as a pop-out on the desk: its title and words, saved as they're written. */
+export function FieldSheet({ note, onClose, onCommit, onOpenNotes }) {
   const origin = paperFields(note)
   const [title, setTitle] = useState(origin.title)
   const [body, setBody] = useState(origin.body)
@@ -22,11 +21,9 @@ export function FieldSheet({ note, onClose, onCommit, onOpenNotes, inline = fals
   const bodyRef = useRef(null)
   const snapshot = useRef(null)
   const commitRef = useRef(onCommit)
-  const closeRef = useRef(onClose)
   if (!snapshot.current) snapshot.current = { id: note.id, note, title: origin.title, body: origin.body }
   remember(snapshot, note, title, body)
   commitRef.current = onCommit
-  closeRef.current = onClose
 
   function flush(snap = snapshot.current) {
     if (!snap) return
@@ -58,17 +55,12 @@ export function FieldSheet({ note, onClose, onCommit, onOpenNotes, inline = fals
 
   useEffect(() => () => flush(), [])
 
-  // Escape sets the sheet down, Tab stays inside it, and focus returns where it came from.
-  const dialog = useRef(null)
-  const close = useCallback(() => { flush(); closeRef.current() }, [])
-  useFocusTrap(dialog, !inline, close)
-
   const words = wordCount(paperWrite(note, title, body).markdown)
   const tag = note.tags?.[0]
 
-  const paper = (
-    <article ref={dialog} className="field-sheet-paper" onPointerDown={(event) => event.stopPropagation()}>
-      <small>{tag ? `#${tag}` : 'A thought'}</small>
+  return (
+    <article className="field-sheet-paper" onPointerDown={(event) => event.stopPropagation()}>
+      <small>{tag ? `#${tag}` : 'A sticky'}</small>
       <textarea
         ref={titleRef}
         rows={1}
@@ -97,21 +89,5 @@ export function FieldSheet({ note, onClose, onCommit, onOpenNotes, inline = fals
         <button type="button" className="field-sheet-down" onClick={() => { flush(); onClose() }}>Set it down</button>
       </footer>
     </article>
-  )
-  if (inline) return paper
-
-  return (
-    <div
-      className="field-sheet"
-      role="dialog"
-      aria-label={title.trim() || 'Open note'}
-      onPointerDown={(event) => {
-        if (event.target !== event.currentTarget) return
-        flush()
-        onClose()
-      }}
-    >
-      {paper}
-    </div>
   )
 }

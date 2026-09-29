@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, Broom, Detective, NotePencil, PaintBucket, ShareNetwork, Trash, TreeStructure } from '@phosphor-icons/react'
+import { ArrowUp, Detective, NotePencil, PaintBucket, ShareNetwork, Trash } from '@phosphor-icons/react'
 
 import { STICKY, StickyLayer, spotOn, useStickySurface } from '../field/DeskStickies.jsx'
 import { useReducedMotion } from '../field/FieldChrome.jsx'
@@ -8,17 +8,16 @@ import { Line } from '../field/Line.jsx'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { PAPERS } from '../note-core.js'
-import { folderChildren, isActiveNote, restoreNotes, trashNotes } from '../notes-model.js'
-import { addFolder, addSticky, filedAs, forgetEmptyFolders, isScratch, moveSticky, nodeFrom, nodesOf } from '../nodes-model.js'
+import { folderPath, isActiveNote, restoreNotes, trashNotes } from '../notes-model.js'
+import { addSticky, isScratch, moveSticky, moveToItems, nodeFrom } from '../nodes-model.js'
 
 const day = () => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date())
 
 /* Incognito: the scratch page under the desk, with the internet off. It's blank until you
    start; then your stickies wait here for whenever you come back. Double-click the page to
    write a sticky, or write in the line at the bottom (it lands on the page). When the
-   thinking is done, the pill makes the page a node, or puts it in one (as its stickies to
-   sort, or as a new branch), and the page is blank again; link that node to others in the
-   Sky. Desk.jsx lifts the desk away and says when to arrive or leave; this plays the rest:
+   thinking is done, the pill's Move to takes the page into a new node, or into one that's
+   there (or a branch), and the page is blank again. Desk.jsx lifts the desk away and says when to arrive or leave; this plays the rest:
    the ink rises with its waterline, then the page, then the pill. Esc comes back up. In
    the browser preview there is no main process, so offline is the look only. */
 export function Under({ workspace, commit, navigate, storage, status, arriving, leaving, visit, summon, onOpenNote, onComeUp, places = {}, onPlace }) {
@@ -39,7 +38,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
   const scratch = workspace.notes.filter((note) => isActiveNote(note) && isScratch(note))
   // A sticky with no spot yet (written on another Mac) takes one from a quiet grid.
   const stickies = scratch.map((note, index) => ({ note, spot: places[`scratch:${note.id}`] || { x: 0.08 + (index % 5) * 0.17, y: 0.16 + (Math.floor(index / 5) % 4) * 0.19 } }))
-  const surface = useStickySurface({ id: 'scratch', surface: page, prefix: 'scratch', places, onPlace, snap: true })
+  const surface = useStickySurface({ id: 'scratch', surface: page, prefix: 'scratch', places, onPlace })
 
   function land(noteId) {
     const element = page.current
@@ -48,7 +47,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
     const taken = [...element.parentElement.querySelectorAll('.under-page .desk-sticky, .under-top, .home-composer-wrap')].map((item) => item.getBoundingClientRect())
     const near = { x: box.left + box.width / 2 - STICKY.w / 2, y: box.top + box.height * 0.3 }
     const at = freeSpot(taken, { left: box.left + 16, top: box.top + 90, right: box.right - 16, bottom: box.bottom - 150 }, { width: STICKY.w, height: STICKY.h }, near, 32)
-    onPlace(`scratch:${noteId}`, spotOn(box, at.x, at.y, null, true))
+    onPlace(`scratch:${noteId}`, spotOn(box, at.x, at.y, null))
   }
 
   function writeDraft(text) {
@@ -56,25 +55,13 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
     setDraft(null)
     if (!text.trim() || !at) return
     let made
-    let filing = null
     commit((state) => {
       const result = addSticky(state, text, null, { kind: 'scratch', source: 'Scratch' })
       made = result.note
-      if (made) filing = filedAs(state, result.state, made.id)
       return result.state
     })
     const box = page.current.getBoundingClientRect()
-    if (made) onPlace(`scratch:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null, true))
-    if (filing?.where) wentTo(made.id, filing)
-  }
-
-  /* A sticky with an @node in it went there: say where; Undo brings it back to the page
-     (and takes away any node it made). */
-  function wentTo(noteId, { where, made }) {
-    showUndo(`Put in ${where}`, () => commit((state) => forgetEmptyFolders({
-      ...state,
-      notes: state.notes.map((note) => (note.id === noteId ? { ...note, folderId: null, unsorted: false, kind: 'scratch' } : note)),
-    }, made)))
+    if (made) onPlace(`scratch:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null))
   }
 
   /* The page, as it is now, into a node (or into one that's there): its spots are let go. */
@@ -103,24 +90,10 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
 
   function makeNode() {
     const name = nameFor()
-    settle(ids, (state) => nodeFrom(state, ids, name), `The page is a node now: “${name}”`)
+    settle(ids, (state) => nodeFrom(state, ids, name), `Moved to a new node: “${name}”`)
   }
 
-  function putIn(folderId, asBranch) {
-    const target = workspace.folders.find((folder) => folder.id === folderId)
-    if (!target) return
-    if (asBranch) {
-      const name = nameFor()
-      settle(ids, (state) => {
-        const made = addFolder(state, name, folderId)
-        let next = made.state
-        ids.forEach((id) => { next = moveSticky(next, id, made.folder.id) })
-        return { state: next, folder: made.folder }
-      }, `A new branch of ${target.name}: “${name}”`)
-    } else {
-      settle(ids, (state) => { let next = state; ids.forEach((id) => { next = moveSticky(next, id, folderId) }); return { state: next } }, `Put in ${target.name}`)
-    }
-  }
+  const where = (folderId) => folderPath(workspace.folders, folderId).join(' › ') || 'Unsorted'
 
   function clear() {
     const spots = Object.fromEntries(ids.map((id) => [id, places[`scratch:${id}`]]))
@@ -132,36 +105,20 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
     })
   }
 
-  const nodeItems = (asBranch) => {
-    const nodes = nodesOf(workspace.folders)
-    return nodes.length ? nodes.map(({ folder, number }) => ({ label: `${number}. ${folder.name}`, onSelect: () => putIn(folder.id, asBranch) })) : [{ note: 'No nodes yet: make this page one.' }]
-  }
-
-  function putMenu(event) {
-    openMenu(event, [
-      { label: 'Make it a node', icon: TreeStructure, onSelect: makeNode },
-      { label: 'Into a node, to sort', icon: ShareNetwork, items: nodeItems(false) },
-      { label: 'Into a node, as a new branch', icon: ShareNetwork, items: nodeItems(true) },
-      { divider: true },
-      { label: 'Clear the page', icon: Broom, danger: true, onSelect: clear },
-    ])
-  }
+  /* The page's one filing action: Move to a new node, or a node or branch that's there. */
+  const moveItems = () => [
+    { label: 'New node', onSelect: makeNode },
+    ...moveToItems(workspace.folders, (folderId) => settle(ids, (state) => ({ state: ids.reduce((next, id) => moveSticky(next, id, folderId), state) }), `Moved to ${where(folderId)}`), { unsorted: false })
+      .filter((item) => !item.note),
+  ]
 
   function stickyMenu(event, note) {
-    const nodes = nodesOf(workspace.folders)
     openMenu(event, [
       { label: 'Open as a page', icon: NotePencil, onSelect: () => onOpenNote(note.id) },
-      { label: 'Colour', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
-      {
-        label: 'Put in a node', icon: ShareNetwork, items: nodes.length
-          ? nodes.flatMap(({ folder, number }) => [
-            { label: `${number}. ${folder.name}`, onSelect: () => settle([note.id], (state) => ({ state: moveSticky(state, note.id, folder.id) }), `Put in ${folder.name}`) },
-            ...folderChildren(workspace.folders, folder.id).map((branch) => ({ label: `↳ ${branch.name}`, onSelect: () => settle([note.id], (state) => ({ state: moveSticky(state, note.id, branch.id) }), `Put in ${branch.name}`) })),
-          ])
-          : [{ note: 'No nodes yet.' }],
-      },
+      { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
+      { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => settle([note.id], (state) => ({ state: moveSticky(state, note.id, folderId) }), `Moved to ${where(folderId)}`), { unsorted: false }) },
       { divider: true },
-      { label: 'Toss', icon: Trash, danger: true, onSelect: () => toss(note) },
+      { label: 'Delete', icon: Trash, danger: true, onSelect: () => toss(note) },
     ])
   }
 
@@ -169,7 +126,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
     const spot = places[`scratch:${note.id}`]
     commit((state) => trashNotes(state, [note.id]))
     onPlace(`scratch:${note.id}`, null)
-    showUndo(`Tossed “${note.title.slice(0, 40)}”`, () => { commit((state) => restoreNotes(state, [note.id])); if (spot) onPlace(`scratch:${note.id}`, spot) })
+    showUndo(`Deleted “${note.title.slice(0, 40)}”`, () => { commit((state) => restoreNotes(state, [note.id])); if (spot) onPlace(`scratch:${note.id}`, spot) })
   }
 
   const bare = (target) => !target.closest('button, textarea, input, .desk-sticky, .under-top, .under-line .home-center > *, .context-menu')
@@ -193,9 +150,11 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
             const at = { x: event.clientX - box.left - 24, y: event.clientY - box.top - 20 }
             openMenu(event, [
               { label: 'New sticky', icon: NotePencil, hint: 'Double-click', onSelect: () => setDraft(at) },
-              ...(ids.length ? [{ label: 'Make it a node', icon: TreeStructure, onSelect: makeNode }, { label: 'Clear the page', icon: Broom, danger: true, onSelect: clear }] : []),
-              { divider: true },
-              { label: 'Come up', icon: ArrowUp, hint: 'Esc', onSelect: onComeUp },
+              ...(ids.length ? [
+                { label: 'Move to', icon: ShareNetwork, items: moveItems() },
+                { divider: true },
+                { label: 'Delete all stickies', icon: Trash, danger: true, onSelect: clear },
+              ] : []),
             ])
           }}
         >
@@ -207,13 +166,10 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
             prefix="scratch"
             commit={commit}
             onPlace={onPlace}
-            onAway={toss}
             onToss={toss}
             onMenu={stickyMenu}
-            onFiled={(note, filing) => wentTo(note.id, filing)}
             draft={draft}
             onDraft={writeDraft}
-            snap
           />
         </div>
       )}
@@ -224,7 +180,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
               <Detective weight="fill" aria-hidden="true" />
               <p><strong>Incognito</strong> · {preview ? 'Preview' : 'offline · nothing leaves OSAT'}</p>
               {stickies.length > 0 && (
-                <button type="button" onClick={putMenu}><TreeStructure weight="bold" /> Make it a node…</button>
+                <button type="button" onClick={(event) => openMenu(event, moveItems())}><ShareNetwork weight="bold" /> Move to…</button>
               )}
               <button type="button" title={preview ? 'Esc' : 'Come up  Esc · ⇧⌘U'} onClick={onComeUp}>Come up <ArrowUp weight="bold" /></button>
             </div>
@@ -245,7 +201,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
               under
               onOpenNote={onOpenNote}
               write={(state, text) => addSticky(state, text, null, { kind: 'scratch', source: 'Scratch' })}
-              onSaved={(id, filing) => (filing ? wentTo(id, filing) : land(id))}
+              onSaved={(id) => land(id)}
             />
           </div>
         </>

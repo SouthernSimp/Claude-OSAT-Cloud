@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, CircleHalf, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Info, Keyboard, LockSimple, Sparkle, UploadSimple } from "@phosphor-icons/react";
+import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, Sparkle, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile, formatRelativeTime } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
@@ -7,9 +7,11 @@ import { workspaceClient } from "../store/useWorkspace.js";
 import { AppearanceControls } from "../shell/Shell.jsx";
 import { setupLine, useAi } from "../assistant/useAi.js";
 import { ObsidianView } from "./Obsidian.jsx";
+import { useUndoToast } from "../lib/UndoToast.jsx";
 
 export function SettingsView({ workspace, commit, storage, target }) {
   const restoreInputRef = useRef(null);
+  const [toast, showUndo] = useUndoToast();
   function backup() {
     const payload = makeBackup(workspace);
     downloadFile(
@@ -26,28 +28,27 @@ export function SettingsView({ workspace, commit, storage, target }) {
     try {
       payload = JSON.parse(await file.text());
     } catch {
-      window.alert("That file isn't valid JSON.");
+      showUndo("That file isn’t a backup OSAT can read.");
       return;
     }
     let restored;
     try {
       restored = readWorkspaceBackup(payload);
     } catch (error) {
-      window.alert(error.message);
+      showUndo(error.message);
       return;
     }
-    if (!window.confirm(`Replace your current workspace with this backup (${restored.notes.length} notes)? OSAT keeps a copy of your current workspace in its data folder first.`)) {
-      return;
-    }
+    const before = workspace;
     try {
       await workspaceClient().replace(restored);
+      showUndo(`Restored the backup (${restored.notes.length} notes)`, () => workspaceClient().replace(before).catch(() => {}));
     } catch (error) {
-      window.alert(`The backup couldn't be restored: ${error.message}`);
+      showUndo(`The backup couldn’t be restored: ${error.message}`);
     }
   }
   const about = useAbout();
-  const [section, setSection] = useState(target?.section && SECTIONS.some(([id]) => id === target.section) ? target.section : "general");
-  useEffect(() => { if (target?.section) setSection(target.section); }, [target]);
+  const [section, setSection] = useState(() => sectionFor(target?.section));
+  useEffect(() => { if (target?.section) setSection(sectionFor(target.section)); }, [target]);
 
   return (
     <div className="settings">
@@ -58,6 +59,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
           </button>
         ))}
       </nav>
+      {toast}
       <div className="settings-page" key={section}>
         {section === "general" && (
           <>
@@ -66,24 +68,21 @@ export function SettingsView({ workspace, commit, storage, target }) {
               <p className="eyebrow">KEYBOARD</p>
               <h2>Everything is a key away.</h2>
               <dl className="key-list">
-                {[["⌘1 – ⌘5", "Desk, Notes, Map, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new thought"], ["⌘,", "Settings"], ["esc", "Back out, one step at a time"]].map(([keys, what]) => (
+                {[["⌘1 – ⌘5", "Desk, Notes, Sky, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new sticky"], ["⌘,", "Settings"], ["esc", "Back out, one step at a time"]].map(([keys, what]) => (
                   <div key={keys}><dt><kbd>{keys}</kbd></dt><dd>{what}</dd></div>
                 ))}
               </dl>
             </section>
+            <section className="content-card">
+              <p className="eyebrow">APPEARANCE</p>
+              <h2>Make yourself at home.</h2>
+              <div className="appearance-card">
+                <AppearanceControls workspace={workspace} commit={commit} />
+              </div>
+            </section>
           </>
         )}
-        {section === "appearance" && (
-          <section className="content-card">
-            <p className="eyebrow">APPEARANCE</p>
-            <h2>Make yourself at home.</h2>
-            <div className="appearance-card">
-              <AppearanceControls workspace={workspace} commit={commit} />
-            </div>
-          </section>
-        )}
         {section === "ai" && <AiCard />}
-        {section === "iphone" && <PhoneCards />}
         {section === "data" && (
           <>
             <section className="content-card">
@@ -103,7 +102,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
             <section className="content-card">
               <p className="eyebrow">BACKUP</p>
               <h2>Take your work with you.</h2>
-              <p>One file with every note, folder and board. Restoring keeps a copy of what it replaces.</p>
+              <p>One file with every note and node. Restoring keeps a copy of what it replaces.</p>
               <div className="button-row">
                 <button className="primary-button" type="button" onClick={backup}>
                   <DownloadSimple /> Download a backup
@@ -119,15 +118,14 @@ export function SettingsView({ workspace, commit, storage, target }) {
               <h2>Send notes to a vault.</h2>
               <ObsidianView workspace={workspace} commit={commit} />
             </section>
+            <PhoneCards />
+            <section className="content-card">
+              <p className="eyebrow">ABOUT</p>
+              <h2>OSAT{about?.version ? ` ${about.version}` : ""}</h2>
+              <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac. Cloud accounts, provider calendars and automatic filing are off by design.</p>
+              {about?.dataFolder && <p className="settings-path">{about.dataFolder}</p>}
+            </section>
           </>
-        )}
-        {section === "about" && (
-          <section className="content-card">
-            <p className="eyebrow">ABOUT</p>
-            <h2>OSAT{about?.version ? ` ${about.version}` : ""}</h2>
-            <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac. Cloud accounts, provider calendars and automatic filing are off by design.</p>
-            {about?.dataFolder && <p className="settings-path">{about.dataFolder}</p>}
-          </section>
         )}
       </div>
     </div>
@@ -136,12 +134,12 @@ export function SettingsView({ workspace, commit, storage, target }) {
 
 const SECTIONS = [
   ["general", "General", GearSix],
-  ["appearance", "Appearance", CircleHalf],
   ["ai", "AI", Sparkle],
-  ["iphone", "iPhone", DeviceMobile],
   ["data", "Data", Database],
-  ["about", "About", Info],
 ];
+/* Older names (the tray's "shortcut", Tools → "appearance") land where those cards live now. */
+const MOVED = { appearance: "general", shortcut: "general", iphone: "data", about: "data" };
+const sectionFor = (id) => SECTIONS.some(([known]) => known === id) ? id : MOVED[id] || "general";
 
 function useAbout() {
   const [about, setAbout] = useState(null);
@@ -219,7 +217,7 @@ function AiCard() {
         <p className="ai-remove">
           {status.tiers.filter((tier) => tier.ready && tier.id !== status.chosen).map((tier) => (
             <button key={tier.id} type="button" className="text-button" onClick={() => act(() => bridge.remove(tier.id))}>
-              Remove {tier.label} from this Mac ({gb(tier.size)})
+              Delete {tier.label} from this Mac ({gb(tier.size)})
             </button>
           ))}
         </p>
@@ -267,7 +265,7 @@ function PhoneCards() {
       <section className="content-card phone-card">
         <p className="eyebrow">IPHONE</p>
         <h2>Reach OSAT from your iPhone.</h2>
-        <p>OSAT can keep a folder in your iCloud Drive. Thoughts you drop into it from your iPhone land in Unsorted, and a copy of your notes waits there to read.</p>
+        <p>OSAT can keep a folder in your iCloud Drive. Text you drop into it from your iPhone becomes a sticky in Unsorted, and a copy of your notes waits there to read.</p>
         <p className="phone-privacy"><LockSimple /> This is the one thing that leaves this Mac. It goes to your own iCloud Drive, which Apple keeps; turn on Advanced Data Protection in iCloud settings for end-to-end encryption.</p>
         <button className="primary-button" type="button" disabled={busy} onClick={() => act(bridge.enable)}>
           <DeviceMobile /> Use iCloud Drive
@@ -282,7 +280,7 @@ function PhoneCards() {
         <p className="eyebrow">IPHONE</p>
         <h2>Your iPhone can reach OSAT.</h2>
         <p>
-          {status.error || status.sync?.error || (status.lastCapture ? `The last thought from your iPhone arrived ${formatRelativeTime(status.lastCapture)}.` : "Nothing from your iPhone yet. Thoughts land in Unsorted a few seconds after iCloud brings them.")}
+          {status.error || status.sync?.error || (status.lastCapture ? `The last sticky from your iPhone arrived ${formatRelativeTime(status.lastCapture)}.` : "Nothing from your iPhone yet. Stickies land in Unsorted a few seconds after iCloud brings them.")}
         </p>
         {status.sync?.on && (
           <p className="phone-sync">
@@ -311,7 +309,7 @@ function PhoneCards() {
       <section className="content-card">
         <p className="eyebrow">READ YOUR NOTES</p>
         <h2>Files → iCloud Drive → OSAT → Notes.</h2>
-        <p>A copy that follows your notes as you write, in the same folders. Write in OSAT; changes made to the copy aren’t read back.</p>
+        <p>A copy that follows your notes as you write, in the same nodes. Write in OSAT; changes made to the copy aren’t read back.</p>
       </section>
     </>
   );

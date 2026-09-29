@@ -20,13 +20,15 @@ test('a captured thought is one unsorted note, on the Mindmap too, including aft
   assert.equal(noteCounts(reloaded).unsorted, 1);
 });
 
-test('keeping or filing a thought takes it out of Unsorted', () => {
+test('a sticky stays in Unsorted until it is in a node', () => {
   const folder = createFolder('Ideas');
   let state = { ...createDefaultWorkspace(), folders: [folder] };
   const first = captureThought(state, 'one');
   const second = captureThought(first.state, 'two');
   state = keepNotes(second.state, [first.note.id]);
-  assert.deepEqual(notesInList(state, 'unsorted').map((item) => item.id), [second.note.id]);
-  state = moveNotes(state, [second.note.id], folder.id);
+  assert.equal(state.notes.find((item) => item.id === first.note.id).unsorted, false);
+  assert.deepEqual(notesInList(state, 'unsorted').map((item) => item.id).sort(), [first.note.id, second.note.id].sort(), 'kept, but in no node yet');
+  state = moveNotes(state, [first.note.id, second.note.id], folder.id);
   assert.deepEqual(notesInList(state, 'unsorted'), []);
+  assert.deepEqual(notesInList(state, 'unfiled'), [], 'the old Unfiled list is Unsorted');
 });

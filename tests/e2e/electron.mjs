@@ -300,7 +300,7 @@ try {
     check(/iPhone link waits/.test(await refused(() => window.osatPhone.enable())), 'the iPhone link could be turned on while under')
     check((await main.evaluate(() => window.osatPhone.status())).sync?.on !== true, 'the iPhone link kept syncing while under')
     check(await access(icloudCopy).then(() => true, () => false), 'going under took the copy of the notes out of iCloud Drive')
-    check((await goMenu()).includes('Come Up'), 'the Go menu did not offer Come Up while under')
+    check((await goMenu()).includes('Leave Incognito'), 'the Go menu did not offer Leave Incognito while under')
     // The page shows it: the desk lifts away and the Sky, the line and the pill are there.
     await main.locator('.overlay-surface[data-under="under"] .under .under-page').waitFor({ timeout: 5000 })
       .catch(() => problems.push('the page did not show the scratch page under the desk'))
@@ -323,7 +323,7 @@ try {
     check(await refused(() => window.osatLocalAI.resume()) === 'answered', 'the AI download still waited after coming up')
     check(await refused(() => window.nateOSFiles.list('desktop')) === 'answered', 'files still waited after coming up')
     check(await until(async () => (await main.evaluate(() => window.osatPhone.status())).sync?.on === true, 10000), 'the iPhone link did not start again after coming up')
-    check((await goMenu()).includes('Go Under'), 'the Go menu did not offer Go Under again')
+    check((await goMenu()).includes('Go Incognito'), 'the Go menu did not offer Go Incognito again')
 
     // A relaunch stays under.
     await main.evaluate(() => window.osatUnder.set(true))
@@ -336,10 +336,10 @@ try {
     check(/web waits/.test(await refused(() => window.osatBrowser.open('https://example.com/'))), 'a relaunch under opened a web page')
     await main.locator('.overlay-surface[data-under="under"] .under-pill').waitFor({ timeout: 5000 })
       .catch(() => problems.push('a relaunch under did not open on the scratch page'))
-    // Come Up from the Go menu (what ⇧⌘U does): main decides, and the page follows.
-    await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.find((item) => item.label === 'Come Up').click())
-    await main.locator('.under').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('Come Up in the Go menu did not bring the desk back'))
-    check((await main.evaluate(() => window.osatUnder.status())).on === false, 'Come Up in the Go menu did not come up')
+    // Leave Incognito from the Go menu (what ⇧⌘U does): main decides, and the page follows.
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.find((item) => item.label === 'Leave Incognito').click())
+    await main.locator('.under').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('Leave Incognito in the Go menu did not bring the desk back'))
+    check((await main.evaluate(() => window.osatUnder.status())).on === false, 'Leave Incognito in the Go menu did not come up')
     await app.close()
   } finally {
     local.closeAllConnections()

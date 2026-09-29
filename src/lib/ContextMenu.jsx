@@ -4,7 +4,7 @@ import { CaretLeft, CaretRight, Check } from '@phosphor-icons/react'
 /* Right-click menus: solid, at the pointer, always on screen. Items are like Menu.jsx's
    ({ label, icon, hint, onSelect, danger, disabled, checked, divider }), plus `items` (a
    list to step into, with a way back) and `swatches` ({ swatches: ['canary', …], picked,
-   onPick }: paper colours in a row).
+   onPick }: paper colors in a row).
      const [menu, openMenu] = useContextMenu()
      <div onContextMenu={(event) => openMenu(event, items)}>…</div> {menu} */
 export function useContextMenu() {
@@ -78,7 +78,7 @@ function ContextMenu({ x, y, stack, onClose, onStep, onBack }) {
         if (item.divider) return <hr key={`d${index}`} />
         if (item.swatches) {
           return (
-            <div key={`s${index}`} className="context-swatches" role="group" aria-label={item.label || 'Colour'}>
+            <div key={`s${index}`} className="context-swatches" role="group" aria-label={item.label || 'Color'}>
               {item.swatches.map((paper) => (
                 <button
                   key={paper}

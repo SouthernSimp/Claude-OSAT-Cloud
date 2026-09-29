@@ -5,7 +5,7 @@ import {
 import { Markdown } from "../lib/markdown.jsx";
 import { Menu } from "../lib/Menu.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
-import { parseMentions } from "../nodes-model.js";
+import { nodesMentioned, splitMentions } from "../nodes-model.js";
 import { backlinks, folderPath, folderTree, isActiveNote, outgoingLinks, outline, resolveWikilink, wordCount } from "../notes-model.js";
 import { caretPosition } from "./caret.js";
 import {
@@ -18,24 +18,24 @@ const MODES = [["write", "Write"], ["split", "Split"], ["read", "Read"]];
 export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
   const textareaRef = useRef(null);
   const titleAtFocus = useRef(null);
-  const writingFrom = useRef(null); // { id, before }: what the note said when writing began, until it ends
-  const mentions = useMemo(() => (note.markdown.includes("@") ? parseMentions(note.markdown, workspace.folders).filter((item) => item.folderId && !item.missing.length) : []), [note.markdown, workspace.folders]);
+  const writingFrom = useRef(null); // the note being written, until writing ends
+  const mentions = useMemo(() => (note.markdown.includes("@") ? nodesMentioned(note, workspace.folders) : []), [note, workspace.folders]);
   const [complete, setComplete] = useState(null); // { context, items, cursor, top, left }
   const [pendingSelection, setPendingSelection] = useState(null);
   const trashed = Boolean(note.trashedAt);
   const mode = trashed ? "read" : ui.mode;
   const path = folderPath(workspace.folders, note.folderId);
-  const folderOptions = [{ id: null, label: "Unfiled" }, ...folderTree(workspace.folders).map(({ folder, depth }) => ({ id: folder.id, label: `${"  ".repeat(depth)}${folder.name}` }))];
+  const folderOptions = [{ id: null, label: "Unsorted" }, ...folderTree(workspace.folders).map(({ folder, depth }) => ({ id: folder.id, label: `${"  ".repeat(depth)}${folder.name}` }))];
   const tasks = useMemo(() => {
     const lines = note.markdown.split("\n").filter((line) => /^\s*[-*+]\s+\[[ xX]\]\s+\S/.test(line));
     return { total: lines.length, done: lines.filter((line) => /\[[xX]\]/.test(line)).length };
   }, [note.markdown]);
 
-  /* When writing ends (the field lets go, or the note closes), a new @node files it. */
+  /* When writing ends (the field lets go, or the note closes), its @s are linked by id. */
   const doneWriting = useCallback(() => {
     const pending = writingFrom.current;
     writingFrom.current = null;
-    if (pending) actions.fileMentions(pending.id, pending.before);
+    if (pending) actions.linkMentions(pending);
   }, [actions]);
   useEffect(() => doneWriting, [note.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -100,8 +100,6 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
       const at = (path) => path.join("/").toLowerCase().indexOf(query);
       items = paths.filter((path) => at(path) >= 0).sort((a, b) => a.length - b.length || at(a) - at(b)).slice(0, 8)
         .map((path) => ({ value: path.join("/"), label: path.join(" › "), hint: path.length > 1 ? "branch" : "node" }));
-      const name = context.query.trim();
-      if (name && !paths.some((path) => path.join("/").toLowerCase() === name.toLowerCase())) items.push({ value: name, label: `New node “${name}”`, hint: "files this note there", create: true });
     } else {
       const counts = new Map();
       workspace.notes.filter(isActiveNote).forEach((item) => item.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1)));
@@ -116,7 +114,6 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
   function choose(item) {
     const element = textareaRef.current;
     const state = { text: element.value, start: element.selectionStart, end: element.selectionEnd };
-    if (item.create && complete.context.kind === "mention") actions.createNode(item.value);
     apply(applyAutocomplete(state, complete.context, item.value));
     setComplete(null);
   }
@@ -155,6 +152,8 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
     onTag: (tag) => setUi({ tags: [tag], list: "all", folderId: null }),
     resolves: (target) => Boolean(resolveWikilink(workspace.notes, target)),
     headingIds: true,
+    mentions: (text) => splitMentions(text, workspace.folders, note.refs),
+    onMention: (folderId) => actions.openFolderBoard(folderId),
   };
 
   const writing = mode !== "read";
@@ -176,12 +175,12 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
           <span className="editor-crumb"><Trash /> In Trash</span>
         ) : (
           <Menu
-            ariaLabel="Move to folder"
+            ariaLabel="Move to"
             align="start"
             trigger={({ toggle }) => (
-              <button type="button" className="editor-crumb" onClick={toggle} title="Move to folder">
+              <button type="button" className="editor-crumb" onClick={toggle} title="Move to">
                 <FolderSimple />
-                <span>{path.length ? path.join(" / ") : "Unfiled"}</span>
+                <span>{path.length ? path.join(" / ") : "Unsorted"}</span>
               </button>
             )}
             items={folderOptions.map((option) => ({ label: option.label, checked: (note.folderId || null) === option.id, onSelect: () => actions.moveNotes([note.id], option.id) }))}
@@ -274,11 +273,11 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
                   aria-label="Note text"
                   spellCheck="true"
                   value={note.markdown}
-                  placeholder={"Start writing. @Node puts it in a node, #tags organize, [[Note title]] links, - [ ] is a next step."}
+                  placeholder={"Start writing. @Node links to a node, #tags organize, [[Note title]] links, - [ ] is a next step."}
                   onChange={(event) => { actions.updateNote(note.id, { markdown: event.target.value }); setTimeout(refreshAutocomplete, 0); }}
                   onKeyDown={onKeyDown}
                   onClick={() => setComplete(null)}
-                  onFocus={() => { writingFrom.current ??= { id: note.id, before: note.markdown }; }}
+                  onFocus={() => { writingFrom.current ??= note.id; }}
                   onBlur={() => { doneWriting(); setTimeout(() => setComplete(null), 120); }}
                 />
                 {complete && (
@@ -317,9 +316,9 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             <span>{wordCount(note.markdown)} words</span>
             {tasks.total > 0 && <span>{tasks.done}/{tasks.total} steps done</span>}
             <span>Edited {formatRelativeTime(note.updatedAt)}</span>
-            {mentions.map((mention) => (
-              <button key={mention.key} type="button" className="text-button mention-chip" title="See it in the Sky" onClick={() => actions.openFolderBoard(mention.folderId)}>
-                <At /> {folderPath(workspace.folders, mention.folderId).join(" › ")}
+            {mentions.map((folderId) => (
+              <button key={folderId} type="button" className="text-button mention-chip" title="See it in the Sky" onClick={() => actions.openFolderBoard(folderId)}>
+                <At /> {folderPath(workspace.folders, folderId).join(" › ")}
               </button>
             ))}
             {isActiveNote(note) && <button type="button" className="text-button" onClick={() => actions.showInNode(note.id)}><MoonStars /> See it in the Sky</button>}
@@ -403,7 +402,7 @@ function NoteInspector({ workspace, note, actions, tasks, textareaRef }) {
         <h4>Node</h4>
         {note.folderId
           ? <ul className="link-list"><li><button type="button" onClick={() => actions.showInNode(note.id)}><ShareNetwork /> <span>{folderPath(workspace.folders, note.folderId).join(" › ")}</span></button></li></ul>
-          : <p className="inspector-empty">Not in a node yet. Drag it into one in the Sky, or pick a folder above.</p>}
+          : <p className="inspector-empty">Unsorted. Use Move to above, or drag it into a node in the Sky.</p>}
       </section>
     </aside>
   );

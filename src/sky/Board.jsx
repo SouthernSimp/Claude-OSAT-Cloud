@@ -1,11 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { At, DotsThree, Minus, Plus } from '@phosphor-icons/react'
+import { ArrowRight, At, DotsThree, Minus, Plus } from '@phosphor-icons/react'
 
 import { hashUnit } from '../field/field-model.js'
 import { carryable, useDrop } from '../lib/carry.js'
 import { folderChildren, folderSubtree } from '../notes-model.js'
 import {
-  addFolder, boardSpots, CARD, folderLinks, makeRoom, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
+  addFolder, boardSpots, CARD, makeRoom, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
 } from '../nodes-model.js'
 import { NameField, StickyList } from './Piles.jsx'
 
@@ -43,10 +43,10 @@ function branchTree(folders, parentId, depth = 0) {
 /* The Sky's whiteboard: every node is a card you can put anywhere, on a board that goes
    on forever. Drag the board (or two-finger scroll) to look around, pinch or ⌘-scroll to
    zoom; double-click it to start a node there. A card's paper is its handle: drag it to
-   move the node (the numbers follow left to right), click it to open or close it,
-   double-click to fly to it. Open, a node shows its branches as lanes and its stickies still
-   to sort; a node that grows slides its neighbours aside. Linked nodes, and nodes a note
-   @mentions, are joined by lines. Unsorted waits on the far left. */
+   move the node, click it to open or close it, double-click to fly to it. Open, a node
+   shows its branches as lanes and its own stickies still to sort (its Unsorted); a node
+   that grows slides its neighbours aside. Nodes a note @mentions are joined by lines.
+   Unsorted waits on the far left. */
 export const Board = forwardRef(function Board({ workspace, actions, open, toggle, sorting }, ref) {
   const view = useRef(null)
   const stored = useRef(readCamera())
@@ -286,7 +286,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     },
   })
 
-  /* Lines between nodes: links, and a note in one node that @mentions another. */
+  /* Lines between nodes: a note in one node that @mentions another. */
   const lines = useMemo(() => {
     const pairs = []
     const keys = new Set()
@@ -298,7 +298,6 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       keys.add(key)
       pairs.push({ a, b, kind, key })
     }
-    folderLinks(workspace.folders).forEach(({ a, b }) => add(a, b, 'link'))
     mentions.forEach((notes, folderId) => notes.forEach((note) => { if (note.folderId) add(note.folderId, folderId, 'mention') }))
     return pairs
   }, [workspace.folders, mentions])
@@ -320,7 +319,6 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const far = camera.z < FAR
   // The dots thin out as the board zooms out, so they never turn to haze.
   const dot = 28 * camera.z * 2 ** Math.max(0, Math.ceil(Math.log2(16 / (28 * camera.z))))
-  const layout = (folder) => (folder.layout === 'down' ? 'down' : 'across')
 
   return (
     <div
@@ -341,20 +339,18 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
         <div ref={measure} className="board-card is-unsorted" data-card="unsorted" style={{ translate: `${spots.get(null).x}px ${spots.get(null).y}px`, '--i': 0 }}>
           <UnsortedHead actions={actions} count={unsorted.length} />
           <div className="card-body">
-            <StickyList id="sky:unsorted" folderId={null} notes={unsorted} actions={actions} adding="Write a thought" empty="Thoughts from the desk land here." />
+            <StickyList id="sky:unsorted" folderId={null} notes={unsorted} actions={actions} empty="Stickies from the desk land here." />
           </div>
           <b className="card-far" aria-hidden="true">Unsorted</b>
         </div>
 
-        {nodes.map(({ folder, number }, index) => (
+        {nodes.map(({ folder }, index) => (
           <NodeCard
             key={folder.id}
             folder={folder}
-            number={number}
             index={index + 1}
             spot={spots.get(folder.id)}
             isOpen={open.has(folder.id)}
-            layout={layout(folder)}
             workspace={workspace}
             actions={actions}
             toggle={toggle}
@@ -377,7 +373,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
         )}
       </div>
 
-      <p className="board-hint" aria-hidden="true">Double-click to add a node · drag the board to look around · pinch to zoom</p>
+      <p className="board-hint" aria-hidden="true">Double-click for a new node · drag the board to look around · pinch to zoom</p>
       <div className="board-zoom" role="group" aria-label="Zoom">
         <button type="button" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.25)}><Minus weight="bold" /></button>
         <button type="button" className="board-zoom-fit" title="See everything" onClick={fit}>{Math.round(camera.z * 100)}%</button>
@@ -392,12 +388,11 @@ function UnsortedHead({ actions, count }) {
   return (
     <div className="node-head is-unsorted" data-layers={layersFor(count)} {...drop}>
       <strong>Unsorted</strong>
-      <small>Not in a node yet</small>
     </div>
   )
 }
 
-function NodeCard({ folder, number, index, spot, isOpen, layout, workspace, actions, toggle, sorting, mentioned, drag, onGrab, onZoom, wasDragged, measure }) {
+function NodeCard({ folder, index, spot, isOpen, workspace, actions, toggle, sorting, mentioned, drag, onGrab, onZoom, wasDragged, measure }) {
   const count = stickiesIn(workspace, folder.id).length
   const branches = folderChildren(workspace.folders, folder.id)
   const head = useDrop(`sky:head:${folder.id}`, {
@@ -423,7 +418,7 @@ function NodeCard({ folder, number, index, spot, isOpen, layout, workspace, acti
         role="button"
         tabIndex={0}
         aria-expanded={isOpen}
-        aria-label={`Node ${number}: ${folder.name}`}
+        aria-label={`Node: ${folder.name}`}
         {...head}
         onPointerDown={(event) => onGrab(event, folder.id)}
         onClick={(event) => { if (!wasDragged() && event.detail < 2 && !event.target.closest('button, input')) toggle(folder.id) }}
@@ -434,7 +429,6 @@ function NodeCard({ folder, number, index, spot, isOpen, layout, workspace, acti
         }}
         onContextMenu={(event) => actions.nodeMenu(event, folder)}
       >
-        <span className="node-number" aria-hidden="true">{number}</span>
         {actions.renaming === folder.id
           ? <NameField initial={folder.name} placeholder="Name the node" onDone={(name) => actions.endRename(folder.id, name)} />
           : <strong>{folder.name}</strong>}
@@ -445,7 +439,7 @@ function NodeCard({ folder, number, index, spot, isOpen, layout, workspace, acti
       </div>
       {isOpen && (
         <div className="card-body">
-          <NodeLanes folder={folder} workspace={workspace} actions={actions} layout={layout} sorting={sorting} />
+          <NodeLanes folder={folder} workspace={workspace} actions={actions} sorting={sorting} />
           {mentioned?.length > 0 && (
             <div className="card-mentions">
               <span><At weight="bold" /> Mentioned in</span>
@@ -459,40 +453,36 @@ function NodeCard({ folder, number, index, spot, isOpen, layout, workspace, acti
   )
 }
 
-/* A node's branches as lanes (Across) or columns (Down), and its stickies still to sort. */
-function NodeLanes({ folder, workspace, actions, layout, sorting }) {
+/* A node's branches as lanes, and its own stickies still to sort (its Unsorted) last. */
+function NodeLanes({ folder, workspace, actions, sorting }) {
   const [naming, setNaming] = useState(false)
-  const across = layout === 'across'
   const branches = branchTree(workspace.folders, folder.id)
   const lanes = useDrop(`sky:lanes:${folder.id}`, {
     accepts: (carried) => carried.kind === 'folder' && !folderSubtree(workspace.folders, carried.id).has(folder.id),
-    axis: across ? 'y' : 'x',
+    axis: 'y',
     onDrop: ({ id, index }) => actions.moveFolder(id, folder.id, index),
   })
-  const toSort = <Lane key="loose" loose folder={folder} notes={pileOf(workspace.notes, folder.id)} actions={actions} across={across} sorting={sorting?.id === folder.id ? sorting : null} />
   return (
-    <div className={`lanes is-${layout}`} {...lanes}>
-      {!across && toSort}
+    <div className="lanes is-across" {...lanes}>
       {branches.map(({ folder: branch, depth }) => (
-        <Lane key={branch.id} folder={branch} depth={depth} notes={pileOf(workspace.notes, branch.id)} actions={actions} across={across} />
+        <Lane key={branch.id} folder={branch} depth={depth} notes={pileOf(workspace.notes, branch.id)} actions={actions} />
       ))}
       {naming
-        ? <div className="lane is-naming"><NameField placeholder="Name the branch, like #IDEAS" onDone={(name) => { setNaming(false); if (name) actions.addBranch(name, folder.id) }} /></div>
-        : <button type="button" className="lane-add" onClick={() => setNaming(true)}><Plus weight="bold" /> Branch</button>}
-      {across && toSort}
+        ? <div className="lane is-naming"><NameField placeholder="Name the branch" onDone={(name) => { setNaming(false); if (name) actions.addBranch(name, folder.id) }} /></div>
+        : <button type="button" className="lane-add" onClick={() => setNaming(true)}><Plus weight="bold" /> New branch</button>}
+      <Lane key="loose" loose folder={folder} notes={pileOf(workspace.notes, folder.id)} actions={actions} sorting={sorting?.id === folder.id ? sorting : null} workspace={workspace} />
     </div>
   )
 }
 
-function Lane({ folder, notes, actions, across, depth = 0, loose = false, sorting }) {
+function Lane({ folder, notes, actions, depth = 0, loose = false, sorting, workspace }) {
   const [renaming, setRenaming] = useState(false)
   const head = useDrop(`sky:lane-head:${loose ? 'loose:' : ''}${folder.id}`, {
     accepts: ['note'],
     onDrop: ({ id }) => actions.moveSticky(id, folder.id),
   })
-  const suggestions = loose && sorting?.map.size ? sorting.map : null
   return (
-    <section className={`lane ${loose ? 'is-loose' : ''}`} data-slot={loose || depth ? undefined : ''} style={{ '--depth': depth }} aria-label={loose ? 'To sort' : folder.name}>
+    <section className={`lane ${loose ? 'is-loose' : ''}`} data-slot={loose || depth ? undefined : ''} style={{ '--depth': depth }} aria-label={loose ? 'Stickies' : folder.name}>
       <div
         className="lane-head"
         data-paper={loose ? undefined : folder.color || 'bone'}
@@ -502,24 +492,49 @@ function Lane({ folder, notes, actions, across, depth = 0, loose = false, sortin
         onContextMenu={loose ? undefined : (event) => actions.branchMenu(event, folder)}
       >
         {loose
-          ? <strong>To sort</strong>
+          ? <strong>Stickies</strong>
           : renaming
             ? <NameField initial={folder.name} placeholder="Name" onDone={(name) => { setRenaming(false); if (name) actions.rename(folder.id, name) }} />
             : <strong>{depth > 0 ? '↳ ' : ''}{folder.name}</strong>}
-        {sorting && <em className={`lane-status ${sorting.busy ? 'is-busy' : ''}`}>{sorting.line}</em>}
-        {suggestions && <button type="button" className="lane-accept" onClick={() => actions.acceptAll(folder.id)}>Move all {suggestions.size === 1 ? 'one' : 'of them'}</button>}
         {!loose && <button type="button" className="lane-more" aria-label={`More for ${folder.name}`} onClick={(event) => actions.branchMenu(event, folder)}><DotsThree weight="bold" /></button>}
       </div>
       <StickyList
         id={`sky:${loose ? 'loose' : 'lane'}:${folder.id}`}
         folderId={folder.id}
         notes={notes}
-        axis={across ? 'x' : 'y'}
+        axis="x"
         actions={actions}
         paper={!loose && folder.color && folder.color !== 'bone' ? folder.color : 'canary'}
-        adding={loose ? 'Write a sticky' : 'Add'}
-        suggestions={suggestions}
       />
+      {sorting && <SortHelp sorting={sorting} workspace={workspace} actions={actions} />}
     </section>
+  )
+}
+
+/* Help me sort, in plain words: one line per branch, with Move and Dismiss. */
+function SortHelp({ sorting, workspace, actions }) {
+  const title = (id) => workspace.notes.find((note) => note.id === id)?.title || 'a sticky'
+  const name = (id) => workspace.folders.find((folder) => folder.id === id)?.name || 'a branch'
+  if (!sorting.groups.length) {
+    return (
+      <div className="sort-help" role="status">
+        <p>{sorting.line}</p>
+        <button type="button" onClick={actions.endSort}>OK</button>
+      </div>
+    )
+  }
+  return (
+    <div className="sort-help" role="status">
+      {sorting.groups.map((group) => (
+        <div key={group.folderId} className="sort-suggestion">
+          <p>
+            {group.noteIds.length === 1 ? 'This sticky looks like it belongs' : 'These stickies look like they belong'} in <strong>{name(group.folderId)}</strong>:
+            {' '}{group.noteIds.slice(0, 3).map((id) => `“${title(id).slice(0, 40)}”`).join(', ')}{group.noteIds.length > 3 ? ` and ${group.noteIds.length - 3} more` : ''}.
+          </p>
+          <button type="button" className="is-primary" onClick={() => actions.acceptGroup(group)}><ArrowRight weight="bold" /> Move</button>
+          <button type="button" onClick={() => actions.dismissGroup(group)}>Dismiss</button>
+        </div>
+      ))}
+    </div>
   )
 }

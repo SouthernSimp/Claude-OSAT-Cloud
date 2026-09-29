@@ -120,13 +120,16 @@ export function deleteFolder(state, folderId) {
 export const isActiveNote = (note) => Boolean(note) && !note.trashedAt && !note.archived
 export const isVisibleNote = (note) => Boolean(note) && !note.trashedAt
 
+/* Unsorted: captured and not sorted yet, or in no node at all (as in the Sky). Day pages
+   and the scratch page's stickies have their own homes. */
+export const isUnsorted = (note) => note.unsorted || (!note.folderId && !note.kind)
+
 export function noteCounts(state) {
   const active = state.notes.filter(isActiveNote)
   return {
     all: active.length,
-    unsorted: active.filter((note) => note.unsorted).length,
+    unsorted: active.filter(isUnsorted).length,
     pinned: active.filter((note) => note.pinned).length,
-    unfiled: active.filter((note) => !note.folderId).length,
     daily: active.filter(isDayNote).length,
     archived: state.notes.filter((note) => note.archived && !note.trashedAt).length,
     trashed: state.notes.filter((note) => note.trashedAt).length,
@@ -231,17 +234,6 @@ export function renameWikilinks(notes, oldTitle, newTitle) {
 
 /* ---------- lists, search, sort ---------- */
 
-export const SMART_LISTS = [
-  ['unsorted', 'Unsorted'],
-  ['all', 'All notes'],
-  ['pinned', 'Pinned'],
-  ['recent', 'Recent'],
-  ['daily', 'Daily notes'],
-  ['unfiled', 'Unfiled'],
-  ['archived', 'Archive'],
-  ['trash', 'Trash'],
-]
-
 export function notesInList(state, list, folderId = null, now = Date.now()) {
   const { notes, folders } = state
   if (list === 'trash') return notes.filter((note) => note.trashedAt)
@@ -253,9 +245,9 @@ export function notesInList(state, list, folderId = null, now = Date.now()) {
   }
   if (list === 'pinned') return active.filter((note) => note.pinned)
   if (list === 'recent') return active.filter((note) => now - Date.parse(note.updatedAt) < 7 * 86400000)
-  if (list === 'unsorted') return active.filter((note) => note.unsorted)
+  // 'unfiled' was its own list before Unsorted took it in.
+  if (list === 'unsorted' || list === 'unfiled') return active.filter(isUnsorted)
   if (list === 'daily') return active.filter(isDayNote)
-  if (list === 'unfiled') return active.filter((note) => !note.folderId)
   return active
 }
 
@@ -383,7 +375,7 @@ export function createNote(state, patch = {}) {
 export function captureThought(state, text, source = 'Quick capture') {
   const value = typeof text === 'string' ? text.trim() : ''
   if (!value) return { state, note: null }
-  const title = value.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A thought'
+  const title = value.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A sticky'
   return createNote(state, { title, markdown: value, unsorted: true, source })
 }
 

@@ -11,7 +11,6 @@ const SMART = [
   ["pinned", "Pinned", PushPin, "pinned"],
   ["recent", "Recent", Clock, null],
   ["daily", "Daily notes", CalendarBlank, "daily"],
-  ["unfiled", "Unfiled", Folder, "unfiled"],
   ["archived", "Archive", Archive, "archived"],
   ["trash", "Trash", Trash, "trashed"],
 ];
@@ -19,7 +18,7 @@ const SMART = [
 export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
   const counts = noteCounts(workspace);
   const tags = tagIndex(workspace.notes);
-  const [draft, setDraft] = useState(null); // { parentId, name } for a folder being created
+  const [draft, setDraft] = useState(null); // { parentId, name } for a node or branch being made
   const [renaming, setRenaming] = useState(null); // { id, name }
   const [dropTarget, setDropTarget] = useState(null);
   useEffect(() => { if (draftAt) setDraft({ parentId: null, name: "" }); }, [draftAt]);
@@ -56,7 +55,7 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
     <aside className="notes-organizer" aria-label="Notes organizer">
       <div className="organizer-head">
         <h2>Notes</h2>
-        <button className="icon-button" type="button" title="New folder" aria-label="New folder" onClick={() => setDraft({ parentId: null, name: "" })}>
+        <button className="icon-button" type="button" title="New node" aria-label="New node" onClick={() => setDraft({ parentId: null, name: "" })}>
           <FolderPlus />
         </button>
       </div>
@@ -68,8 +67,8 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
             type="button"
             className={`organizer-row ${ui.list === id ? "active" : ""} ${dropTarget === `smart:${id}` ? "is-drop" : ""}`}
             onClick={() => pick(id)}
-            {...(id === "unfiled" ? {
-              onDragOver: (event) => { if ([...event.dataTransfer.types].includes("text/osat-notes")) { event.preventDefault(); setDropTarget("smart:unfiled"); } },
+            {...(id === "unsorted" ? {
+              onDragOver: (event) => { if ([...event.dataTransfer.types].includes("text/osat-notes")) { event.preventDefault(); setDropTarget("smart:unsorted"); } },
               onDragLeave: () => setDropTarget(null),
               onDrop: (event) => onDrop(event, null),
             } : {})}
@@ -82,10 +81,10 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
       </nav>
 
       <div className="organizer-label">
-        <span>Folders</span>
+        <span>Nodes</span>
         <button type="button" className="text-button" onClick={() => setDraft({ parentId: null, name: "" })}>New</button>
       </div>
-      <nav className="organizer-section" aria-label="Folders">
+      <nav className="organizer-section" aria-label="Nodes">
         {draft && draft.parentId === null && (
           <FolderNameInput
             depth={0}
@@ -119,7 +118,7 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
                   <button
                     type="button"
                     className={`caret ${hasChildren ? "" : "is-leaf"}`}
-                    aria-label={folder.collapsed ? "Expand folder" : "Collapse folder"}
+                    aria-label={folder.collapsed ? "Show its branches" : "Hide its branches"}
                     onClick={(event) => { event.stopPropagation(); if (hasChildren) actions.toggleFolder(folder.id); }}
                   >
                     <CaretRight style={{ rotate: folder.collapsed || !hasChildren ? "0deg" : "90deg" }} />
@@ -136,11 +135,11 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
                     )}
                     items={[
                       { label: "New note here", icon: Notebook, onSelect: () => actions.createNote(folder.id) },
-                      { label: "New subfolder", icon: FolderPlus, onSelect: () => { if (folder.collapsed) actions.toggleFolder(folder.id); setDraft({ parentId: folder.id, name: "" }); } },
+                      { label: "New branch", icon: FolderPlus, onSelect: () => { if (folder.collapsed) actions.toggleFolder(folder.id); setDraft({ parentId: folder.id, name: "" }); } },
                       { label: "Rename", onSelect: () => setRenaming({ id: folder.id, name: folder.name }) },
                       { label: "Open it in the Sky", icon: ShareNetwork, onSelect: () => actions.openFolderBoard(folder.id) },
                       { divider: true },
-                      { label: "Delete folder", hint: "keeps notes", danger: true, onSelect: () => actions.deleteFolder(folder.id) },
+                      { label: depth ? "Delete branch" : "Delete node", hint: "keeps notes", danger: true, onSelect: () => actions.deleteFolder(folder.id) },
                     ]}
                   />
                 </div>
@@ -159,7 +158,7 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
         })}
         {!tree.length && !draft && (
           <button type="button" className="organizer-empty" onClick={() => setDraft({ parentId: null, name: "" })}>
-            <FolderPlus /> Make your first folder
+            <FolderPlus /> New node
           </button>
         )}
       </nav>
@@ -191,9 +190,9 @@ function FolderNameInput({ depth, value, onChange, onCommit, onCancel }) {
       <FolderSimple />
       <input
         ref={ref}
-        aria-label="Folder name"
+        aria-label="Name"
         value={value}
-        placeholder="Folder name"
+        placeholder={depth ? "Branch name" : "Node name"}
         maxLength={80}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onCommit(); } if (event.key === "Escape") { event.preventDefault(); onCancel(); } }}

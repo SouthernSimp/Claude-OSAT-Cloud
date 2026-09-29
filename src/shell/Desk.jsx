@@ -21,8 +21,6 @@ import { FilesView } from '../views/Files.jsx'
 import { HabitsView } from '../views/Habits.jsx'
 import { JournalView } from '../views/Journal.jsx'
 import { NowPlayingView } from '../views/NowPlaying.jsx'
-import { ProjectsView } from '../views/Projects.jsx'
-import { ReflectionView } from '../views/Reflection.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
 import { covers, grow, placeRoom } from './placement.js'
@@ -48,9 +46,7 @@ const ROOMS = {
   Journal: [980, 780],
   Calendar: [1040, 720],
   Habits: [900, 680],
-  Reflection: [820, 680],
   Budget: [980, 720],
-  Projects: [980, 720],
   Browser: [1120, 760],
   Terminal: [860, 540],
   Settings: [980, 760],
@@ -352,6 +348,8 @@ export function Desk() {
     else if (view === 'Widgets') setTrayAt(Date.now())
     // The Obsidian export lives in Settings → Data.
     else if (view === 'Obsidian') open('Settings', { section: 'data' })
+    // Reflection's one home is a tab of the Journal.
+    else if (view === 'Reflection') open('Journal', { tab: 'reflect' }, origin)
     else if ((view === 'Notes' || view === 'Today') && typeof detail === 'string') open('note', { noteId: detail }, origin)
     else if ((view === 'Notes' || view === 'Today') && typeof detail?.noteId === 'string') open('note', { noteId: detail.noteId }, origin)
     // The desk: from the Sky, that means coming back down.
@@ -449,8 +447,6 @@ export function Desk() {
               navigate={navigate}
               onSendUp={(noteId) => { if (prefs.places?.[`note:${noteId}`]) place(`note:${noteId}`, null); goUp() }}
               storage={storage}
-              workspace={workspace}
-              commit={commit}
             >
               {bridge && (
                 <>
@@ -538,7 +534,6 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
       if (!note) return <p className="pop-gone">This note is no longer here.</p>
       return (
         <FieldSheet
-          inline
           note={note}
           onClose={onClose}
           onCommit={(id, patch) => commit((state) => {
@@ -555,12 +550,10 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Files': return <FilesView {...room} target={typeof pop.detail?.rootId === 'string' ? target : null} />
     case 'Browser': return <BrowserView {...room} covered={covered} command={command} frame={`${pop.x},${pop.y},${pop.w},${pop.h}`} />
     case 'Terminal': return <TerminalView command={command} />
-    case 'Journal': return <JournalView {...room} />
+    case 'Journal': return <JournalView {...room} target={target} />
     case 'Calendar': return <CalendarView {...room} initialDate={pop.detail?.date || null} />
     case 'Habits': return <HabitsView {...room} today={today} />
-    case 'Reflection': return <ReflectionView {...room} today={today} />
     case 'Budget': return <BudgetView {...room} />
-    case 'Projects': return <ProjectsView {...room} />
     case 'Settings': return <SettingsView {...room} storage={storage} target={pop.detail?.section ? target : null} />
     case 'NowPlaying': return <NowPlayingView {...room} media={window.osatDesk?.nowPlaying ? window.osatDesk : null} />
     default: return null

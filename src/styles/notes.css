@@ -875,13 +875,15 @@ input.note-title:focus-visible {
 }
 
 .md-wikilink,
-.md-tag {
+.md-tag,
+.md-mention {
   font: inherit;
   color: var(--accent);
 }
 
 button.md-wikilink,
-button.md-tag {
+button.md-tag,
+button.md-mention {
   border-radius: 3px;
   text-decoration: underline;
   text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent);
@@ -889,7 +891,8 @@ button.md-tag {
 }
 
 button.md-wikilink:hover,
-button.md-tag:hover {
+button.md-tag:hover,
+button.md-mention:hover {
   background: var(--accent-soft);
 }
 

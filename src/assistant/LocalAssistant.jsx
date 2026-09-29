@@ -27,6 +27,7 @@ import { localDateKey } from "../daily-practice.js";
 import { Markdown } from "../lib/markdown.jsx";
 import { isActiveNote, relatedNotes } from "../notes-model.js";
 import { applyAction, describeAction, extractActions, systemPrompt, wantsActions } from "./actions.js";
+import { useUndoToast } from "../lib/UndoToast.jsx";
 import { deriveTitle, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
 import { cleanError, setupLine, useAi } from "./useAi.js";
 import "../styles/assistant.css";
@@ -104,6 +105,7 @@ export function UsedNotes({ ids, notes, onOpen }) {
    the quick chat's small window. */
 export function LocalAssistant({ workspace, commit, navigate, initialPrompt = null, compact = false }) {
   const { models, status: ai } = useAi();
+  const [toast, showUndo] = useUndoToast();
   const [model, setModel] = useState("");
   const [activeId, setActiveId] = useState(null);
   const [draft, setDraft] = useState("");
@@ -235,8 +237,10 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   }
 
   function deleteChat(id) {
+    const chat = (workspace.chats || []).find((item) => item.id === id);
     if (id === activeId) startChat();
     commit((state) => removeChat(state, id));
+    if (chat) showUndo(`Deleted “${deriveTitle(chat).slice(0, 40)}”`, () => commit((state) => ({ ...state, chats: [chat, ...(state.chats || [])] })));
   }
 
   function cancel() {
@@ -575,6 +579,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
 
       {railOpen && <div className="rail-scrim" onClick={() => setRailOpen(false)} />}
       {dropping && <div className="drop-veil" aria-hidden="true"><FileText /> Drop to ask about it</div>}
+      {toast}
     </section>
   );
 }
