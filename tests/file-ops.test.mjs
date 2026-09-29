@@ -6,7 +6,7 @@ import test from 'node:test'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
-const { TidyError, cleanName, makeFolder, moveInto, rename, toBin } = require('../desktop/file-ops.cjs')
+const { TidyError, cleanDropped, cleanName, makeFolder, moveInto, rename, toBin } = require('../desktop/file-ops.cjs')
 
 async function stage() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'osat-tidy-'))
@@ -136,4 +136,12 @@ test('a link is moved as a link, never followed', async () => {
     assert.equal(await readFile(t.at('real.txt'), 'utf8'), 'r')
     assert.deepEqual(await names(t.at('Docs')), ['link.txt'])
   } finally { await t.done() }
+})
+
+test('a drop from Finder is only real, absolute, ordinary paths', () => {
+  const opts = { home: '/Users/nate', keep: ['/Users/nate/Desktop'] }
+  assert.deepEqual(cleanDropped(['/Users/nate/Downloads/a.pdf', '/Users/nate/Downloads/../Downloads/a.pdf', '/tmp/b.txt'], opts), ['/Users/nate/Downloads/a.pdf', '/tmp/b.txt'])
+  for (const bad of [[], 'a.pdf', ['a.pdf'], [''], [7], ['/'], ['/Users/nate'], ['/Users/nate/Desktop'], ['/Users/nate/Desktop/.secret']]) {
+    assert.throws(() => cleanDropped(bad, opts), TidyError, JSON.stringify(bad))
+  }
 })

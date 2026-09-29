@@ -9,7 +9,8 @@
 //      the notes appears, then leaves when the link is turned off (a stand-in iCloud Drive)
 //   6. two OSATs (their own data, one iCloud Drive) keep each other in step
 //   7. the Mac's Desktop on the desk (a stand-in folder): a folder opens in Files, Find looks inside
-//      files, tidying (a new folder, drag to move or ⌥-drag to copy, the Bin, rename, each with Undo), and Ask reads a file
+//      files, tidying (a new folder, drag to move or ⌥-drag to copy, the Bin, rename, each with Undo; a drop
+//      from Finder is heard), and Ask reads a file
 //   8. the quick chat: its own window answers, and Esc puts it away
 //   9. Offline: going offline closes the browser's tabs and shuts every way out (the
 //      desk's and the browser's requests, main's fetch, downloads, opening files in other
@@ -192,6 +193,39 @@ try {
   await undo()
   check(await until(() => there('packing.txt'), 3000), 'Undo did not put the old name back')
   await packing.waitFor({ timeout: 3000 }).catch(() => problems.push('the old name did not show again'))
+  // A drop from Finder lights the folder under it; the page can't make up a real path, so a made-up file moves nothing.
+  const dropFromFinder = (target, type) => target.evaluate((node, kind) => {
+    const box = node.getBoundingClientRect()
+    const data = new DataTransfer()
+    data.items.add(new File(['x'], 'from-finder.txt'))
+    node.dispatchEvent(new DragEvent(kind, { bubbles: true, cancelable: true, dataTransfer: data, clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 }))
+  }, type)
+  await dropFromFinder(camping, 'dragover')
+  check(await until(() => camping.evaluate((node) => node.hasAttribute('data-over')), 2000), 'a file dragged in from Finder did not light the folder under it')
+  await dropFromFinder(camping, 'drop')
+  await files.locator('.finder-note', { hasText: 'Drop something from Finder' }).waitFor({ timeout: 3000 })
+    .catch(() => problems.push('a drop with no real file did not say so calmly'))
+  check(!(await camping.evaluate((node) => node.hasAttribute('data-over'))), 'the folder stayed lit after the drop')
+  check(!(await until(() => there('Camping', 'from-finder.txt'), 500)), 'a made-up dropped file was moved in')
+  // A file that really came from elsewhere (an <input> hands the page a real, path-backed file, as a Finder drop does)
+  // moves in, ⌥ copies it, and Undo puts each back.
+  const elsewhere = path.join(home, 'Elsewhere', 'from-finder.txt')
+  await mkdir(path.dirname(elsewhere), { recursive: true })
+  await writeFile(elsewhere, 'hello')
+  await main.evaluate(() => { const input = document.createElement('input'); input.type = 'file'; input.id = 'e2e-finder'; document.body.append(input) })
+  await main.locator('#e2e-finder').setInputFiles(elsewhere)
+  const bringIn = (copy) => main.evaluate((duplicate) => window.nateOSFiles.moveIn(Array.from(document.getElementById('e2e-finder').files), 'desktop', 'Plans/Camping', duplicate), copy)
+  const copied = await bringIn(true)
+  check(copied.moved.length === 1 && await there('Camping', 'from-finder.txt') && await access(elsewhere).then(() => true, () => false), 'a file dropped from Finder was not copied in with ⌥')
+  await main.evaluate((token) => window.nateOSFiles.undo(token), copied.undo)
+  check(!(await there('Camping', 'from-finder.txt')) && await access(elsewhere).then(() => true, () => false), 'Undo did not take the copy from Finder away')
+  const brought = await bringIn(false)
+  check(brought.moved.length === 1 && await there('Camping', 'from-finder.txt') && !(await access(elsewhere).then(() => true, () => false)), 'a file dropped from Finder was not moved in')
+  await main.evaluate((token) => window.nateOSFiles.undo(token), brought.undo)
+  check(!(await there('Camping', 'from-finder.txt')) && await access(elsewhere).then(() => true, () => false), 'Undo did not send the file back where it came from')
+  await main.evaluate(() => document.getElementById('e2e-finder').remove())
+  // Dragging out only takes what OSAT can see.
+  check(/no longer|Invalid|approved|isn’t/i.test(await main.evaluate(() => window.nateOSFiles.dragOut([{ rootId: 'desktop', relative: '../../etc/hosts' }]).then(() => 'went', (error) => String(error)))), 'a file outside the approved folders could be dragged out')
   await packing.click()
   await main.getByRole('button', { name: 'Ask about it' }).click()
   await main.locator('.ask-note-chip.is-file', { hasText: 'packing.txt' }).waitFor({ timeout: 5000 })

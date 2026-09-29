@@ -16,6 +16,19 @@ function cleanName(name) {
   return clean
 }
 
+/* Paths a drop from Finder handed over (the preload read them off real files): each absolute and
+   not a disk, your home folder, one of `keep` (the places and folders OSAT was given) or hidden. */
+function cleanDropped(paths, { home, keep = [] }) {
+  if (!Array.isArray(paths) || !paths.length || paths.length > 500) fail('Drop something from Finder to put it here.')
+  return [...new Set(paths.map((file) => {
+    const clean = typeof file === 'string' && path.isAbsolute(file) ? path.resolve(file) : ''
+    if (!clean) fail('Drop something from Finder to put it here.')
+    if (path.dirname(clean) === clean || clean === home || keep.includes(clean)) fail('That is one of your main folders. OSAT won’t move it.')
+    if (path.basename(clean).startsWith('.')) fail('OSAT never shows hidden files, so it won’t move one.')
+    return clean
+  }))]
+}
+
 const exists = (file) => fs.lstat(file).then(() => true, () => false)
 
 /* "Notes.txt" taken → "Notes 2.txt", the way Finder numbers. */
@@ -127,4 +140,4 @@ async function toBin(sources, trash, restore) {
   return { done, failed, undo: done.length ? putBack(done, restore) : undefined }
 }
 
-module.exports = { TidyError, cleanName, freeName, makeFolder, moveInto, put, rename, toBin }
+module.exports = { TidyError, cleanDropped, cleanName, freeName, makeFolder, moveInto, put, rename, toBin }

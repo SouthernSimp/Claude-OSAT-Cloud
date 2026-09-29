@@ -43,7 +43,7 @@ const { createStore } = require('./store/index.cjs')
 const { DEFAULT_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = require('./desk.cjs')
 const { createQuickChat } = require('./quick-chat.cjs')
 const { PLACES, extractText, inside, isPackage, rankFound, restoreItem, run, searchArgs, trashItem, walkFind } = require('./mac-files.cjs')
-const { TidyError, cleanName, freeName, makeFolder, moveInto, put, rename, toBin } = require('./file-ops.cjs')
+const { TidyError, cleanDropped, cleanName, freeName, makeFolder, moveInto, put, rename, toBin } = require('./file-ops.cjs')
 const { createMedia } = require('./media.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
@@ -506,10 +506,28 @@ function registerFileHandlers() {
   }, { from: 'app' })
 
   // Move (or copy) items into a folder; a taken name is numbered, never overwritten.
-  handle('files:move', async (items, rootId, relative = '', copy = false) => {
+  const moveAnswer = async (sources, rootId, relative, copy) => {
     const dir = await folderPath(getGrant(rootId), relative)
-    const { done, failed, undo } = await moveInto(await sourcePaths(items), dir, { copy: copy === true, trash: binTrash })
+    const { done, failed, undo } = await moveInto(sources, dir, { copy: copy === true, trash: binTrash })
     return { moved: done.map(({ to }) => ({ rootId, relative: relative ? `${relative}/${path.basename(to)}` : path.basename(to) })), failed, undo: keepUndo(undo) }
+  }
+  handle('files:move', async (items, rootId, relative = '', copy = false) => moveAnswer(await sourcePaths(items), rootId, relative, copy), { from: 'app' })
+
+  // Files dropped from Finder or another app come in the same way (the preload turns each dropped file
+  // into its path; a page can't make one up). They go only into a folder OSAT can see.
+  handle('files:move-in', async (paths, rootId, relative = '', copy = false) => {
+    const keep = await Promise.all([...places(), ...grants].map((grant) => fs.realpath(grant.root).catch(() => grant.root)))
+    return moveAnswer(cleanDropped(paths, { home: os.homedir(), keep }), rootId, relative, copy)
+  }, { from: 'app' })
+
+  // A file carried off the edge of the desk goes on as the Mac's own drag, to the Dock, another
+  // screen or whatever app is under it. Called while the mouse is still down.
+  handle('files:drag-out', async (items) => {
+    const files = await sourcePaths(items)
+    const picture = (await thumbnail(files[0], 128).catch(() => null)) || null
+    const icon = picture ? nativeImage.createFromDataURL(picture).resize({ width: 64 }) : nativeImage.createFromPath(path.join(__dirname, 'assets', 'trayTemplate@2x.png'))
+    mainWindow.webContents.startDrag({ files, icon })
+    return true
   }, { from: 'app' })
 
   // "Delete" is the Mac's Bin.

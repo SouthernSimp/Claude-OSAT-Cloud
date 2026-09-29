@@ -86,7 +86,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     (`files:new-folder`/`rename`/`move`/`trash`/`undo`). A taken name is numbered, nothing is overwritten,
     a batch stops at the first failure. The Bin is `trashItem` in mac-files (osascript JXA; it reads the
     landing place through `$()`, a `Ref()` crashes osascript); off the Mac it is `<data folder>/Bin`.
-    `scripts/bin-check.cjs` (CI's mac job) checks the real Bin.
+    `scripts/bin-check.cjs` (CI's mac job) checks the real Bin. Step 3: `files:move-in` takes files dropped
+    from Finder (the preload's `moveIn(Array.from(files), …)` turns each `File` into its path with
+    `webUtils.getPathForFile`; pass an array, not a `FileList`, which the bridge empties) and `cleanDropped`
+    refuses a disk, the home folder, a place or granted root, and hidden names; `files:drag-out` hands
+    files to `webContents.startDrag` (icon: the cached Quick Look thumbnail) while the mouse is still down.
   - `quick-chat.cjs`: the quick chat window, a floating panel on every Space that stays where
     it's left (`chatBounds` in `prefs.json`).
   - `scans.cjs`: Paper in (Phase 15). Watches the folder chosen in Settings → Data → Scans (the Brother's
@@ -202,6 +206,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     on places that take it, with `accepts`, an `axis` for lists of `[data-slot]` items, `spring`
     for hover-to-open; `onCarryEdge` makes the top/bottom of the screen change layers). A ghost
     follows the pointer, a line shows where in a list it lands, Esc puts it back.
+    `useOutsideFiles()` lets files dragged in from Finder fall on the same places (`data.files`, native
+    `dragover`/`drop` on the room, the target found with `targetAt`); `carryable(item, { out })` calls `out`
+    when the pointer leaves the window, and Files uses it to start the Mac's own drag.
     `lib/ContextMenu.jsx`: `useContextMenu()` right-click menus (step-in lists, paper swatches).
   - `shell/glass.jsx`: the liquid-glass SVG filter (`GlassDefs`), `useAlive()` (cursor light on
     `.glass`/`.lit`, `--px/--py` for parallax) and the dock's magnify.

@@ -4,7 +4,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { describeFileQuery, parseFileQuery } from "../../shared/file-query.mjs";
 import { cleanError } from "../assistant/useAi.js";
-import { carryable, useDrop } from "../lib/carry.js";
+import { carryable, useDrop, useOutsideFiles } from "../lib/carry.js";
 import { useContextMenu } from "../lib/ContextMenu.jsx";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { formatBytes } from "../lib/ui.js";
@@ -14,7 +14,8 @@ import { formatBytes } from "../lib/ui.js";
    Return, and Find: plain words ("pdf taxes last week") look in names and inside files,
    and each result says where it lives. Tidying: New folder, Rename, Move to, and Move to
    Bin, all with Undo; ⌘-click or ⇧-click picks several; drag them onto a folder (hold ⌥ to
-   copy). The desk shows the Desktop with the same pieces. */
+   copy). Files dragged in from Finder land the same way; drag one off the edge of the desk to take it
+   to the Dock, another screen or another app. The desk shows the Desktop with the same pieces. */
 
 const PLACE_NAMES = { desktop: "Desktop", documents: "Documents", downloads: "Downloads" };
 // What Ask can read (see desktop/mac-files.cjs).
@@ -143,15 +144,15 @@ function RenameField({ entry, onDone }) {
 
 /* One file or folder in the grid. It can be picked up (with whatever else is picked), and a
    folder takes what is set down on it (and opens if you hold it there). */
-function FinderItem({ entry, selected, finding, where, items, renaming, onClick, onOpen, onMenu, onMove, onRenamed }) {
+function FinderItem({ entry, selected, finding, where, items, renaming, onClick, onOpen, onMenu, onMove, onOut, onRenamed }) {
   const key = keyOf(entry);
   const drop = useDrop(`file:${key}`, {
     accepts: (carried) => carried.kind === "file" && !carried.data.items.some((item) => keyOf(item) === key),
     disabled: entry.kind !== "folder" || finding,
-    onDrop: ({ data, alt }) => onMove(data.items, entry.rootId, entry.relative, alt),
+    onDrop: ({ data, alt }) => onMove(data, entry.rootId, entry.relative, alt),
     spring: () => onOpen(entry),
   });
-  const lift = carryable({ kind: "file", id: key, data: { items } }, { disabled: renaming });
+  const lift = carryable({ kind: "file", id: key, data: { items } }, { disabled: renaming, out: onOut });
   const Tag = renaming ? "div" : "button";
   return (
     <Tag
@@ -207,7 +208,8 @@ export function FilesView({ navigate, target = null }) {
   const entries = finding ? results : here?.map((entry) => ({ ...entry, rootId: spot.rootId })) ?? null;
   const chosen = entries?.find((entry) => keyOf(entry) === selected) || null;
   const picks = (entries ? picked.map((key) => entries.find((entry) => keyOf(entry) === key)) : []).filter(Boolean);
-  const hereDrop = useDrop("files:here", { accepts: ["file"], disabled: finding, onDrop: ({ data, alt }) => moveTo(data.items, spot.rootId, spot.relative, alt) });
+  const hereDrop = useDrop("files:here", { accepts: ["file"], disabled: finding, onDrop: ({ data, alt }) => arrive(data, spot.rootId, spot.relative, alt) });
+  const outside = useOutsideFiles();
   const root = roots.find((item) => item.id === spot.rootId);
   const rootName = root?.name || PLACE_NAMES[spot.rootId] || "Folder";
 
@@ -323,6 +325,9 @@ export function FilesView({ navigate, target = null }) {
   const label = (items) => (items.length === 1 ? `“${items[0].name}”` : `${items.length} items`);
   const refs = (items) => items.map(({ rootId, relative }) => ({ rootId, relative }));
 
+  /* Carried off the edge of the desk: the Mac's own drag takes it to the Dock, another screen or another app. */
+  const leave = ({ data }) => { api.dragOut(refs(data.items)).catch((reason) => setNote(cleanError(reason))); };
+
   async function undoWith(token) {
     try {
       const result = await api.undo(token);
@@ -333,14 +338,17 @@ export function FilesView({ navigate, target = null }) {
     lookedAgain();
   }
 
-  async function moveTo(items, rootId, relative, copy = false) {
+  /* A drop: what is carried in OSAT (`items`), or files dragged in from Finder (`files`). */
+  const arrive = (data, rootId, relative, copy) => moveTo(data.files || data.items, rootId, relative, copy, Boolean(data.files));
+
+  async function moveTo(items, rootId, relative, copy = false, fromFinder = false) {
     setNote("");
     try {
-      const result = await api.move(refs(items), rootId, relative, copy);
+      const result = await (fromFinder ? api.moveIn(items, rootId, relative, copy) : api.move(refs(items), rootId, relative, copy));
       lookedAgain();
       if (result.failed) setNote(result.failed);
       if (!result.moved.length) return;
-      if (!copy) setPicked([]);
+      if (!copy && !fromFinder) setPicked([]);
       showUndo(`${copy ? "Copied" : "Moved"} ${label(items.slice(0, result.moved.length))} to ${nameOf(rootId, relative)}`, () => undoWith(result.undo));
     } catch (reason) {
       setNote(cleanError(reason));
@@ -477,18 +485,18 @@ export function FilesView({ navigate, target = null }) {
   const folders = roots.filter((item) => !item.place && item.kind === "folder");
 
   return (
-    <section className="finder" aria-label="Files">
+    <section className="finder" aria-label="Files" {...outside}>
       <aside className="finder-side">
         <p className="finder-kicker">On this Mac</p>
         {places.map((item) => (
-          <DropButton key={item.id} id={`files:root:${item.id}`} onDrop={({ data, alt }) => moveTo(data.items, item.id, "", alt)} aria-current={!finding && spot.rootId === item.id ? "true" : undefined} onClick={() => { setFind(""); go({ rootId: item.id, relative: "" }); }}>
+          <DropButton key={item.id} id={`files:root:${item.id}`} onDrop={({ data, alt }) => arrive(data, item.id, "", alt)} aria-current={!finding && spot.rootId === item.id ? "true" : undefined} onClick={() => { setFind(""); go({ rootId: item.id, relative: "" }); }}>
             <FolderSimple weight={!finding && spot.rootId === item.id ? "fill" : "regular"} /> <span>{item.name}</span>
           </DropButton>
         ))}
         <p className="finder-kicker">Your folders</p>
         {folders.map((item) => (
           <span key={item.id} className="finder-side-row">
-            <DropButton id={`files:root:${item.id}`} onDrop={({ data, alt }) => moveTo(data.items, item.id, "", alt)} aria-current={!finding && spot.rootId === item.id ? "true" : undefined} onClick={() => { setFind(""); go({ rootId: item.id, relative: "" }); }}>
+            <DropButton id={`files:root:${item.id}`} onDrop={({ data, alt }) => arrive(data, item.id, "", alt)} aria-current={!finding && spot.rootId === item.id ? "true" : undefined} onClick={() => { setFind(""); go({ rootId: item.id, relative: "" }); }}>
               <FolderSimple weight={!finding && spot.rootId === item.id ? "fill" : "regular"} /> <span>{item.name}</span>
             </DropButton>
             <button type="button" className="finder-forget" aria-label={`Take ${item.name} out of the list`} title="Take it out of the list (the folder stays)" onClick={() => forget(item)}><X /></button>
@@ -506,11 +514,11 @@ export function FilesView({ navigate, target = null }) {
             <p className="finder-path finder-found" role="status" title={understood || undefined}>{looking && !results ? "Looking…" : understood || "Found in names and inside files"}</p>
           ) : (
             <nav className="finder-path" aria-label="Where you are">
-              <DropButton id="files:crumb:" onDrop={({ data, alt }) => moveTo(data.items, spot.rootId, "", alt)} onClick={() => go({ rootId: spot.rootId, relative: "" })}>{rootName}</DropButton>
+              <DropButton id="files:crumb:" onDrop={({ data, alt }) => arrive(data, spot.rootId, "", alt)} onClick={() => go({ rootId: spot.rootId, relative: "" })}>{rootName}</DropButton>
               {crumbs.map((crumb, index) => (
                 <span key={`${crumb}-${index}`}>
                   <CaretRight />
-                  <DropButton id={`files:crumb:${index}`} onDrop={({ data, alt }) => moveTo(data.items, spot.rootId, crumbs.slice(0, index + 1).join("/"), alt)} onClick={() => go({ rootId: spot.rootId, relative: crumbs.slice(0, index + 1).join("/") })}>{crumb}</DropButton>
+                  <DropButton id={`files:crumb:${index}`} onDrop={({ data, alt }) => arrive(data, spot.rootId, crumbs.slice(0, index + 1).join("/"), alt)} onClick={() => go({ rootId: spot.rootId, relative: crumbs.slice(0, index + 1).join("/") })}>{crumb}</DropButton>
                 </span>
               ))}
             </nav>
@@ -541,7 +549,8 @@ export function FilesView({ navigate, target = null }) {
               onClick={click}
               onOpen={open}
               onMenu={menuFor}
-              onMove={moveTo}
+              onMove={arrive}
+              onOut={leave}
               onRenamed={renamed}
             />
           ))}
