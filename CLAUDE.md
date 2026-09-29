@@ -62,7 +62,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     thinking turned off), `index.cjs` (`createAi`: the chosen size in `prefs.json`, background
     download, engine starts on the first question and stops after 10 idle minutes; `mock`).
     Model files live in `<data folder>/models`. LM Studio still works through `local-ai.cjs`.
-  - `main.cjs`: windows, menu, IPC for the store / files / local AI / browser / terminal,
+  - `main.cjs`: windows, menu, IPC for the store / local AI / browser / terminal (`handle`, `fail`
+    and the trusted-sender checks live here and are passed to the modules that register handlers),
     the desk and the ⌥⇧Space quick chat (two shortcuts in `shortcuts`: `layer` is the desk's ⌥Space;
     menu-bar icon, app launchers, Esc routing: a panel swallows Esc, so OSAT takes it while the
     chat has focus), single-instance lock. The desk is the one main window: frameless,
@@ -70,6 +71,13 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     it shows (`showDesk`), comes to the current Space, and closing it only hides it (`hideDesk`
     gives focus back to the previous app); only ⌘Q quits. IPC answers the desk (`from: 'app'` is
     kept for windows that will show rooms later).
+  - `files.cjs`: all of main's file access, so main only calls `createFiles` (as it calls `createBots`):
+    the places and grants (`approved-files.json`), `approvedPath`/`approvedWritePath`/`sourcePath`/
+    `folderPath` (a path must stay inside one), the undo tokens (`undos`, `keepUndo`), `binTrash`,
+    `thumbnail` (cached; main's dock launchers use it too, as `files.thumbnail`), `readForAsk`, every
+    `files:*` IPC handler, and `stop()` (grant access ends at quit). It gets `handle`, `fail`, the window
+    (`mainWindow()`), `dataDir` and Electron's pieces from main; `NOT_ALLOWED` is exported because
+    main's `handle` words a denied folder with it.
   - Files: Desktop, Documents and Downloads are built-in places (ids `desktop`/`documents`/
     `downloads`, macOS asks once per folder; tests set `OSAT_PLACES_DIR`, from source only) beside
     the folders Nate adds (grants). Hidden files never show; apps, scripts and installers are shown
@@ -81,8 +89,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     tests and Linux) and the text Ask reads from a file (PDFKit through `osascript -l
     JavaScript`, Word/RTF through `textutil`, capped at 12,000 characters).
   - `file-ops.cjs`: tidying (Phase 21 step 2): New folder, rename, move / copy, the Bin, all on absolute
-    paths main has already checked (`sourcePath`/`folderPath` in main.cjs: never a root, never hidden, never
-    a link); each returns `undo`, a function kept in main's `undos` map so the window holds only a token
+    paths files.cjs has already checked (`sourcePath`/`folderPath`: never a root, never hidden, never
+    a link); each returns `undo`, a function kept in files.cjs's `undos` map so the window holds only a token
     (`files:new-folder`/`rename`/`move`/`trash`/`undo`). A taken name is numbered, nothing is overwritten,
     a batch stops at the first failure. The Bin is `trashItem` in mac-files (osascript JXA; it reads the
     landing place through `$()`, a `Ref()` crashes osascript); off the Mac it is `<data folder>/Bin`.
