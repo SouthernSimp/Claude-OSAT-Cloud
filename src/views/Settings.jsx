@@ -83,7 +83,12 @@ export function SettingsView({ workspace, commit, storage, target }) {
             </section>
           </>
         )}
-        {section === "ai" && <AiCard />}
+        {section === "ai" && (
+          <>
+            <AboutYouCard workspace={workspace} commit={commit} />
+            <AiCard />
+          </>
+        )}
         {section === "bots" && <BotsSettings />}
         {section === "data" && (
           <>
@@ -168,6 +173,21 @@ export function AiSizes({ status, value, onChoose }) {
         </button>
       ))}
     </div>
+  );
+}
+
+/* A page the AI reads before every answer, in plain words (like a note to a new helper). */
+function AboutYouCard({ workspace, commit }) {
+  const [text, setText] = useState(workspace.settings?.aboutMe || "");
+  const save = () => commit((state) => ({ ...state, settings: { ...(state.settings || {}), aboutMe: text } }));
+  return (
+    <section className="content-card about-you">
+      <p className="eyebrow">ABOUT YOU</p>
+      <h2>Tell the AI who it's helping.</h2>
+      <p>Write a few lines: your name, what you do, how you like answers. The AI reads this before every question. It never leaves this Mac.</p>
+      <textarea rows={6} value={text} onChange={(event) => setText(event.target.value)} onBlur={save}
+        placeholder={"I'm Nate. I run a small business.\nKeep answers short, with a clear next step.\nI think best in lists."} aria-label="About you" />
+    </section>
   );
 }
 

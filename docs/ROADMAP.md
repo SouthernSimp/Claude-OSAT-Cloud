@@ -25,6 +25,7 @@
 | 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
+| 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
 | 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | In review (PR #18) |
 | 19 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
 | 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
@@ -539,6 +540,14 @@ be usable and understandable to anyone of any age." What confused, and what chan
   a topic, branches group a node's stickies; new stickies wait in Unsorted), and again from the ? by the
   zoom or the board's menu. The hint at the bottom follows what you're doing, and an empty node says
   what to do first.
+
+### Phase 17: Make it yours (merged, PR #20)
+
+- Backdrops in Settings → Appearance: Your desktop (default), Sonoma (the promo's), Dusk, Sea, Meadow
+  (`settings.backdrop`, painted on `.overlay-surface`).
+- About you (Settings → AI): a few plain lines the AI reads before every answer (`settings.aboutMe`,
+  passed to `systemPrompt`). OSAT's "soul file", in plain words.
+- The Browser sits on the dock as "Web".
 
 ### Phase 18: Bots in (in review, PR #18)
 Nate's words: "I want Muse to be able to upload nodes to the application that I can open up inside

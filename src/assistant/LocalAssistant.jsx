@@ -274,7 +274,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     try {
       await streamLocalMessage({
         model,
-        messages: outbound(systemPrompt(), base.messages, content, workspace.notes, noteIds, files),
+        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || ''), base.messages, content, workspace.notes, noteIds, files),
         signal: controller.signal,
         onDelta: (delta) => {
           full += delta;
