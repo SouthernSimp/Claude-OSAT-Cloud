@@ -10,11 +10,10 @@
 //   6. two OSATs (their own data, one iCloud Drive) keep each other in step
 //   7. the Mac's Desktop on the desk (a stand-in folder): a folder opens in Files, and Ask reads a file
 //   8. the quick chat: its own window answers, and Esc puts it away
-//   9. Incognito: going under closes the browser's tabs and shuts every way out (the
-//      desk's and the browser's requests, main's fetch, downloads, files); coming up
-//      brings the tabs back; a relaunch stays under (driven through window.osatUnder and the
-//      Go menu); the page shows the blank scratch page under the desk, and the desk again
-//      when back up
+//   9. Offline: going offline closes the browser's tabs and shuts every way out (the
+//      desk's and the browser's requests, main's fetch, downloads, opening files in other
+//      apps); back online brings the tabs back; a relaunch stays offline (driven through
+//      window.osatUnder and the Go menu); the desk stays, and the line says it's offline
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -234,7 +233,7 @@ try {
   await other.app.close()
   await app.close()
 
-  // 9. Incognito, through window.osatUnder. A page on this Mac (loopback) stands in for
+  // 9. Offline, through window.osatUnder. A page on this Mac (loopback) stands in for
   //    the web, so no internet is needed; example.com is never actually reached.
   const local = http.createServer((request, response) => {
     if (request.url !== '/big') return response.end('<title>A page on this Mac</title>Hello')
@@ -296,34 +295,29 @@ try {
     check(await mainFetch() === 'OfflineError', 'the main process fetched from the internet while under')
     check(await app.evaluate((_electron, url) => fetch(url).then((response) => response.ok), page), 'loopback (LM Studio\'s road) was shut while under')
     check(/Downloads wait/.test(await refused(() => window.osatLocalAI.resume())), 'the AI download was not waiting while under')
-    check(/Files wait/.test(await refused(() => window.nateOSFiles.list('desktop'))), 'files were read while under')
+    check(/another app waits/.test(await refused(() => window.nateOSFiles.open('desktop', 'notes.txt'))), 'a file opened in another app while offline')
+    check(await refused(() => window.nateOSFiles.list('desktop')) === 'answered', 'the Desktop could not be listed while offline')
     check(/iPhone link waits/.test(await refused(() => window.osatPhone.enable())), 'the iPhone link could be turned on while under')
     check((await main.evaluate(() => window.osatPhone.status())).sync?.on !== true, 'the iPhone link kept syncing while under')
     check(await access(icloudCopy).then(() => true, () => false), 'going under took the copy of the notes out of iCloud Drive')
-    check((await goMenu()).includes('Leave Incognito'), 'the Go menu did not offer Leave Incognito while under')
-    // The page shows it: the desk lifts away and the Sky, the line and the pill are there.
-    await main.locator('.overlay-surface[data-under="under"] .under .under-page').waitFor({ timeout: 5000 })
-      .catch(() => problems.push('the page did not show the scratch page under the desk'))
-    await main.locator('.under-pill', { hasText: 'offline · nothing leaves OSAT' }).waitFor({ timeout: 5000 })
-      .catch(() => problems.push('the page did not say that nothing leaves OSAT'))
-    check(await main.locator('#under-line').isVisible(), 'the line was not there under the desk')
-    check(!(await main.locator('.home').isVisible()), 'the desk stayed in view under')
+    check((await goMenu()).includes('Go Online'), 'the Go menu did not offer Go Online while offline')
+    // The page shows it: the desk stays, and the line says it's offline, its switch pressed.
+    await main.locator('.home-offline-note', { hasText: 'Offline · nothing leaves OSAT' }).waitFor({ timeout: 5000 })
+      .catch(() => problems.push('the line did not say that nothing leaves OSAT'))
+    check(await main.locator('.home-offline[aria-pressed="true"]').isVisible(), 'the line\'s switch was not on while offline')
+    check(await main.locator('.home').isVisible(), 'the desk went away offline')
 
-    // Coming up.
-    const up = await main.evaluate(() => window.osatUnder.set(false))
-    check(up.on === false, 'coming up did not answer that OSAT is back up')
-    await main.locator('.under').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('the scratch page stayed after coming up'))
-    await main.getByText('Back up. Nothing left OSAT while you were under.').waitFor({ timeout: 3000 })
-      .catch(() => problems.push('coming up did not say that nothing left OSAT'))
-    check(await main.locator('.home').isVisible(), 'the desk did not come back after coming up')
+    // Back online, from the line's switch.
+    await main.locator('.home-offline').click()
+    await main.locator('.home-offline-note').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('the line still said offline after going back online'))
+    check((await main.evaluate(() => window.osatUnder.status())).on === false, 'the line\'s switch did not go back online')
     check(await until(async () => {
       const urls = await tabUrls()
       return urls.length === 2 && urls.includes(page)
     }, 5000), 'coming up did not bring both browser tabs back (the page and the blank one)')
     check(await refused(() => window.osatLocalAI.resume()) === 'answered', 'the AI download still waited after coming up')
-    check(await refused(() => window.nateOSFiles.list('desktop')) === 'answered', 'files still waited after coming up')
     check(await until(async () => (await main.evaluate(() => window.osatPhone.status())).sync?.on === true, 10000), 'the iPhone link did not start again after coming up')
-    check((await goMenu()).includes('Go Incognito'), 'the Go menu did not offer Go Incognito again')
+    check((await goMenu()).includes('Go Offline'), 'the Go menu did not offer Go Offline again')
 
     // A relaunch stays under.
     await main.evaluate(() => window.osatUnder.set(true))
@@ -334,12 +328,12 @@ try {
     check(await mainFetch() === 'OfflineError', 'a relaunch under let the main process fetch')
     check((await main.evaluate(() => window.osatPhone.status())).sync?.on !== true, 'a relaunch under started the iPhone link')
     check(/web waits/.test(await refused(() => window.osatBrowser.open('https://example.com/'))), 'a relaunch under opened a web page')
-    await main.locator('.overlay-surface[data-under="under"] .under-pill').waitFor({ timeout: 5000 })
-      .catch(() => problems.push('a relaunch under did not open on the scratch page'))
-    // Leave Incognito from the Go menu (what ⇧⌘U does): main decides, and the page follows.
-    await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.find((item) => item.label === 'Leave Incognito').click())
-    await main.locator('.under').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('Leave Incognito in the Go menu did not bring the desk back'))
-    check((await main.evaluate(() => window.osatUnder.status())).on === false, 'Leave Incognito in the Go menu did not come up')
+    await main.locator('.home-offline-note').waitFor({ timeout: 5000 })
+      .catch(() => problems.push('a relaunch offline did not say so on the line'))
+    // Go Online from the Go menu (what ⇧⌘U does): main decides, and the page follows.
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.find((item) => item.label === 'Go Online').click())
+    await main.locator('.home-offline-note').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('Go Online in the Go menu did not reach the line'))
+    check((await main.evaluate(() => window.osatUnder.status())).on === false, 'Go Online in the Go menu did not go back online')
     await app.close()
   } finally {
     local.closeAllConnections()

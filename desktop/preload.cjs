@@ -141,7 +141,7 @@ contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   onShown: (listener) => listen('desk:shown', listener),
 }))
 
-/* Incognito: OSAT with the internet off. status() → { on, terminal }; set(on) answers
+/* Offline: OSAT with the internet off. status() → { on, terminal }; set(on) answers
    once main has paused (or woken) everything, and only the desk may ask. onChange
    hears every change, including ⇧⌘U and the menu-bar icon; when one of those didn't
    work, the status also carries `error`, one plain line to show. */

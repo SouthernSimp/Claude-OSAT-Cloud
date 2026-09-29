@@ -5,7 +5,7 @@ import { createEmptyDoc, migrate, SCHEMA } from '../shared/store-core.mjs'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import {
   addFolder, addSticky, boardSpots, CARD, findMentions, freeNodeName, importNode, linkMentions, makeRoom, mentionedIn, moveFolder, moveSticky, moveToItems,
-  nodeFrom, nodesMentioned, nodesOf, pileOf, placeNodes, rankAt, removeFolder, renameFolder, splitMentions, suggestBranches, suggestionGroups, tidyBoard,
+  nodesMentioned, nodesOf, pileOf, placeNodes, rankAt, removeFolder, renameFolder, splitMentions, suggestBranches, suggestionGroups, tidyBoard,
 } from '../src/nodes-model.js'
 
 const at = (minute) => new Date(Date.UTC(2026, 8, 28, 9, minute)).toISOString()
@@ -14,7 +14,7 @@ const folder = (id, extra = {}) => ({ id, name: id, createdAt: at(1), ...extra }
 const space = (notes = [], folders = []) => normalizeWorkspace({ ...createDefaultWorkspace(), notes, folders })
 const titles = (list) => list.map((item) => item.title || item.name)
 
-test('schema 3: folders keep their rank, paper, links and layout; notes their rank, paper and scratch', () => {
+test('schema 3: folders keep their rank, paper, links and layout; notes their rank and paper', () => {
   const state = space(
     [note('a', { rank: 5, color: 'sky', kind: 'scratch' }), note('b', { rank: 'high', color: 'plaid' })],
     [folder('x', { rank: 2, color: 'mint', links: ['y', 'y', 'x', 'gone'], layout: 'down' }), folder('y', { layout: 'sideways' })],
@@ -23,11 +23,10 @@ test('schema 3: folders keep their rank, paper, links and layout; notes their ra
   assert.deepEqual([x.rank, x.color, x.links, x.layout], [2, 'mint', ['y'], 'down'])
   assert.deepEqual(['rank', 'color', 'links', 'layout'].map((key) => key in y), [false, false, false, false])
   const [a, b] = state.notes
-  assert.deepEqual([a.rank, a.color, a.kind], [5, 'sky', 'scratch'])
+  assert.deepEqual([a.rank, a.color, a.kind], [5, 'sky', null], 'the scratch page is gone (schema 5)')
   assert.deepEqual(['rank', 'color'].map((key) => key in b), [false, false], 'nothing is kept that was never set')
-  assert.equal(SCHEMA, 4)
   const old = { ...createEmptyDoc(), schema: 2, rev: 4, folders: [folder('x')] }
-  assert.deepEqual(migrate(old), { ...old, schema: 4 }, 'with no projects, nothing changes')
+  assert.deepEqual(migrate(old), { ...old, schema: SCHEMA }, 'with no projects, nothing changes')
 })
 
 test('ranks: first, last, between, and a fresh spacing when there is no room left', () => {
@@ -56,11 +55,9 @@ test('stickies move into a node at a place, and back to Unsorted', () => {
   assert.equal(moveSticky(state, 'one', 'missing').notes.find((item) => item.id === 'one').folderId, null, 'an unknown folder is Unsorted')
 })
 
-test('a scratch sticky joins a node and leaves the scratch page; day pages never move', () => {
-  let state = space([note('s', { kind: 'scratch' }), { id: 'day-2026-09-28', kind: 'day', date: '2026-09-28', title: 'Today', markdown: '' }], [folder('rnd')])
-  assert.deepEqual(pileOf(state.notes, null), [], 'scratch stickies and day pages are in no pile')
-  state = moveSticky(state, 's', 'rnd')
-  assert.equal(state.notes.find((item) => item.id === 's').kind, null)
+test('day pages are in no pile and never move', () => {
+  const state = space([{ id: 'day-2026-09-28', kind: 'day', date: '2026-09-28', title: 'Today', markdown: '' }], [folder('rnd')])
+  assert.deepEqual(pileOf(state.notes, null), [])
   assert.equal(moveSticky(state, 'day-2026-09-28', 'rnd'), state)
 })
 
@@ -91,7 +88,6 @@ test('new nodes, branches and stickies take their place', () => {
   assert.equal(first.note.unsorted, false)
   assert.deepEqual(titles(pileOf(second.state.notes, made.folder.id)), ['Budget tonight', 'Get a charger'])
   assert.equal(addSticky(state, 'loose').note.unsorted, true)
-  assert.equal(addSticky(state, 'down here', null, { kind: 'scratch' }).note.unsorted, false)
   assert.equal(addSticky(state, '   ').note, null)
 })
 
@@ -101,14 +97,6 @@ test('removing a node keeps its stickies in Unsorted and drops its links', () =>
   assert.deepEqual(state.folders.map((item) => item.id), ['other'])
   assert.equal(state.folders[0].links.length, 0)
   assert.deepEqual(state.notes.map((item) => [item.id, item.folderId, item.unsorted]), [['in-node', null, true], ['in-branch', null, true]])
-})
-
-test('the scratch page becomes a node, in order', () => {
-  let state = space([note('x', { kind: 'scratch' }), note('y', { kind: 'scratch' })])
-  const made = nodeFrom(state, ['y', 'x'], 'Evening plan')
-  state = made.state
-  assert.equal(made.folder.name, 'Evening plan')
-  assert.deepEqual(titles(pileOf(state.notes, made.folder.id)), ['y', 'x'])
 })
 
 test('Move to: Unsorted, then each node with its branches, leaving out where it is', () => {
@@ -160,8 +148,6 @@ test('@ only links: nothing is filed, nothing is made from a typo, and the note 
   assert.equal(linkMentions(state, made.id), state, 'nothing new, nothing changes')
   const filed = moveSticky(state, made.id, 'g')
   assert.equal(mentionedIn(filed).has('g'), false, 'its own node does not list it twice')
-  const scratch = addSticky(base, 'tomatoes @Garden', null, { kind: 'scratch' })
-  assert.deepEqual([scratch.note.folderId, scratch.note.kind], [null, 'scratch'])
   const day = space([note('day-2026-09-28', { kind: 'day', date: '2026-09-28', markdown: 'walked @Garden' })], [folder('g', { name: 'Garden' })])
   assert.deepEqual(mentionedIn(day).get('g')?.map((item) => item.id), ['day-2026-09-28'])
 })

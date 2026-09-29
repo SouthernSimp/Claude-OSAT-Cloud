@@ -121,7 +121,7 @@ export const isActiveNote = (note) => Boolean(note) && !note.trashedAt && !note.
 export const isVisibleNote = (note) => Boolean(note) && !note.trashedAt
 
 /* Unsorted: captured and not sorted yet, or in no node at all (as in the Sky). Day pages
-   and the scratch page's stickies have their own homes. */
+   have their own home. */
 export const isUnsorted = (note) => note.unsorted || (!note.folderId && !note.kind)
 
 export function noteCounts(state) {

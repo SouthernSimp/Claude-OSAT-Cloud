@@ -4,7 +4,7 @@ import { EVERYWHERE, SPACES } from './spaces.js'
 /* What the desk's line finds as you type: notes, files on this Mac (Spotlight's answers,
    passed in as `files`), nodes and branches, rooms and a few actions. Plain rows
    `{ key, label, hint, kind, go: [view, detail] }`; the line runs `navigate(...go)`.
-   An empty query is "Jump to": the latest notes and the spaces. Under, only notes. */
+   An empty query is "Jump to": the latest notes and the spaces. */
 
 const LIMIT = 5
 const PLACE = { desktop: 'Desktop', documents: 'Documents', downloads: 'Downloads' }
@@ -18,7 +18,7 @@ const ACTIONS = [
   { key: 'act:board', label: 'Open the Sky', also: 'map mindmap nodes board whiteboard canvas sort stars', go: ['Mindmap'] },
   { key: 'act:focus', label: 'Focus for 25 minutes', also: 'timer pomodoro quiet concentrate', go: ['Focus'] },
   { key: 'act:widget', label: 'Add a widget', hint: 'Calendar, Next, Focus, Habits…', also: 'widgets tray', go: ['Widgets'] },
-  { key: 'act:under', label: 'Incognito', hint: 'A blank page under the desk, offline', also: 'go under offline private scratch temporary blank page', go: ['Under'] },
+  { key: 'act:offline', label: 'Offline', hint: 'Turn OSAT’s internet off, or back on', also: 'go online private incognito wifi internet network airplane', go: ['Offline'] },
 ]
 
 const newest = (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))
@@ -46,12 +46,11 @@ function fileRow(item) {
   }
 }
 
-export function findAll(workspace, query, { files = [], under = false } = {}) {
+export function findAll(workspace, query, { files = [] } = {}) {
   const notes = workspace.notes.filter(isActiveNote)
   const q = String(query || '').trim().toLowerCase()
   if (!q) {
     const latest = [...notes].sort(newest).slice(0, 4).map((note) => noteRow(workspace, note))
-    if (under) return latest
     return [...latest, ...SPACES.filter((space) => space.id !== 'Today').map((space) => ({ key: `room:${space.id}`, label: space.label, hint: space.hint, kind: 'room', go: [space.id] }))]
   }
 
@@ -61,7 +60,6 @@ export function findAll(workspace, query, { files = [], under = false } = {}) {
     .filter((note) => words.every((word) => `${note.title}\n${note.markdown}`.toLowerCase().includes(word)))
     .sort((a, b) => Number(b.title.toLowerCase().includes(q)) - Number(a.title.toLowerCase().includes(q)) || newest(a, b))
     .map((note) => noteRow(workspace, note))
-  if (under) return found.slice(0, LIMIT)
   if (tags.length) return found.slice(0, LIMIT)
 
   const places = [

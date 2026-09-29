@@ -108,6 +108,14 @@ test('a workspace from before Ask moved in gains an empty list of chats', () => 
   assert.equal(upgraded.notes[0].id, 'a')
 })
 
+test('schema 5: stickies left on the scratch page land in Unsorted, nothing else changes', () => {
+  const scratch = { ...note('s'), kind: 'scratch', color: 'sky', unsorted: false }
+  const filed = { ...note('f'), kind: 'scratch', folderId: 'x' }
+  const day = { ...note('day-2026-09-28'), kind: 'day', date: '2026-09-28' }
+  const doc = migrate({ ...createEmptyDoc(), schema: 4, notes: [scratch, filed, day] })
+  assert.deepEqual(doc.notes, [{ ...scratch, kind: null, unsorted: true }, { ...filed, kind: null, unsorted: false }, day])
+})
+
 test('schema 4: every project becomes a node holding what it said, once, and the projects stay', async () => {
   const { projectNodes } = await import('../shared/store-core.mjs')
   const projects = [
@@ -116,7 +124,7 @@ test('schema 4: every project becomes a node holding what it said, once, and the
   ]
   const old = { ...createEmptyDoc(), schema: 3, projects, folders: [{ id: 'f', name: 'Garden', parentId: null, createdAt: '2026-01-01T00:00:00.000Z' }] }
   const doc = migrate(old)
-  assert.equal(doc.schema, 4)
+  assert.equal(doc.schema, SCHEMA)
   assert.deepEqual(doc.projects, projects, 'nothing is taken away')
   assert.deepEqual(doc.folders.map((folder) => [folder.id, folder.name]), [['f', 'Garden'], ['folder-project-1', 'Garden 2'], ['folder-project-2', 'Taxes']])
   assert.deepEqual(doc.notes.map((note) => [note.folderId, note.markdown]), [

@@ -51,8 +51,8 @@ test('rooms by the start of their words, ahead of notes', () => {
 })
 
 test('actions answer to their other words', () => {
-  for (const word of ['under', 'incognito', 'offline', 'private', 'go under']) {
-    assert.deepEqual(findAll(workspace, word)[0].go, ['Under'], word)
+  for (const word of ['offline', 'online', 'incognito', 'private', 'wifi']) {
+    assert.deepEqual(findAll(workspace, word)[0].go, ['Offline'], word)
   }
   for (const word of ['focus', 'pomodoro', 'timer']) {
     assert.deepEqual(findAll(workspace, word)[0].go, ['Focus'], word)
@@ -93,9 +93,3 @@ test('an empty line jumps: the four latest notes, then the spaces', () => {
   assert.deepEqual(rows.slice(4).map((row) => row.go[0]), ['Notes', 'Mindmap', 'Assistant', 'Files'])
 })
 
-test('under, only notes: no rooms, actions, folders or files', () => {
-  const files = [{ rootId: 'desktop', relative: 'trip.txt', name: 'trip.txt', kind: 'file' }]
-  assert.ok(findAll(workspace, 'trip', { files, under: true }).every((row) => row.kind === 'note'))
-  assert.deepEqual(findAll(workspace, 'under', { under: true }), [])
-  assert.ok(findAll(workspace, '', { under: true }).every((row) => row.kind === 'note'))
-})

@@ -50,8 +50,7 @@ export function paperPose(id, index, total, compact = false) {
 /* The desktop icons on home, in order: pinned notes, the nodes (top-level
    folders), stickies still in Unsorted gathered into one pile, then the few notes in no node
    touched most recently. Everything else is a click away in its node, so the desk
-   stays calm however much you write. Day pages and the scratch page have their
-   own places; stickies already out on the desk (`out`) aren't shown twice. */
+   stays calm however much you write. Day pages have their own place; stickies already out on the desk (`out`) aren't shown twice. */
 export const WARM = 4
 
 export function homeItems({ notes = [], folders = [] }, capacity = Infinity, out = new Set()) {

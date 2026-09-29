@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
-import { CircleHalf, Detective, Monitor, Moon, Sun, Toolbox } from '@phosphor-icons/react'
+import { CircleHalf, Monitor, Moon, Sun, Toolbox } from '@phosphor-icons/react'
 
 import { useDrop } from '../lib/carry.js'
 import { Menu } from '../lib/Menu.jsx'
@@ -51,11 +51,6 @@ export function Dock({ view, navigate, storage, aiReady, extra = [], onSendUp, c
         )}
       />
       {children}
-      <i className="dock-rule" />
-      <button type="button" data-mag data-space="Under" data-tip={'Incognito: a blank page under the desk, offline  ⌥⌘↓'} onClick={() => navigate('Under')}>
-        <Detective />
-        <span className="dock-label">Incognito</span>
-      </button>
       {/* Saving is invisible unless it fails; then a calm dot leads to what to do. */}
       {storage?.status === 'error' && (
         <button type="button" className="dock-status error" data-tip="Saving needs attention" aria-label={`Saving needs attention. ${storage.message || ''}`} onClick={() => navigate('Settings', { section: 'data' })}>

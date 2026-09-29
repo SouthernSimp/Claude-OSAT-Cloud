@@ -108,14 +108,13 @@ async function main() {
     await sleep(400)
     await page.screenshot({ path: `${OUT}/${theme}-Drawer.png` })
     await page.fill('#home-line', '')
-    // Incognito (the look only in the preview): the blank page under the desk, then back up.
-    room = 'under'
-    await page.locator('.app-dock [data-space="Under"]').click()
-    await page.locator('.under-pill').waitFor({ timeout: 5000 }).catch(() => problems.push(`under: the pill did not appear (${theme})`))
-    await sleep(1800)
-    await page.screenshot({ path: `${OUT}/${theme}-Under.png` })
-    await page.getByRole('button', { name: /Come up/ }).click()
-    await page.locator('.under').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push(`under: Come up did not bring the desk back (${theme})`))
+    // Offline (the look only in the preview): the switch at the end of the line, and back.
+    room = 'offline'
+    await page.locator('.home-offline').click()
+    await page.locator('.home-offline-note').waitFor({ timeout: 3000 }).catch(() => problems.push(`offline: the switch did not say so (${theme})`))
+    await page.screenshot({ path: `${OUT}/${theme}-Offline.png` })
+    await page.locator('.home-offline').click()
+    await page.locator('.home-offline-note').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push(`offline: the switch did not turn off (${theme})`))
     if (theme === 'light') {
       // Appearance lives in the Tools menu (Settings → Appearance), not on the dock.
       if (await page.locator('.app-dock').getByText('Look', { exact: true }).count()) problems.push('dock: Look is still on the dock')
@@ -282,7 +281,12 @@ async function main() {
   const latest = await picked()
   await page.keyboard.press('Enter')
   if (!latest) problems.push('pop-outs: ↓ on an empty line did not show Jump to')
-  else await page.getByRole('dialog', { name: latest }).waitFor({ timeout: 5000 }).catch(() => problems.push(`pop-outs: ↓↵ did not open ${latest}`))
+  else {
+    await page.getByRole('dialog', { name: latest }).waitFor({ timeout: 5000 }).catch(() => problems.push(`pop-outs: ↓↵ did not open ${latest}`))
+    // The sticky takes the keyboard a beat after it opens; let it, or it steals the next ⌘K's words.
+    await page.waitForFunction(() => document.activeElement?.closest('.popout'), null, { timeout: 5000 })
+      .catch(() => problems.push(`pop-outs: ${latest} opened without taking the keyboard`))
+  }
   // Esc, one step at a time: the picked row goes back to Save, the drawer closes and keeps
   // the words, then the top pop-out closes.
   room = 'esc'
@@ -290,10 +294,10 @@ async function main() {
   await page.keyboard.type('One step at a time')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Escape')
-  if (await picked() !== 'Save as a sticky') problems.push('esc: the first Esc did not go back to Save')
+  if (await picked() !== 'Save as a sticky') problems.push(`esc: the first Esc did not go back to Save (${await picked()}, after opening ${latest}, focus ${await page.evaluate(() => document.activeElement?.id || document.activeElement?.className)})`)
   await page.keyboard.press('Escape')
   if (await page.getByRole('listbox').count()) problems.push('esc: the second Esc did not close the drawer')
-  if (await page.inputValue('#home-line') !== 'One step at a time') problems.push('esc: closing the drawer lost the words')
+  if (await page.inputValue('#home-line') !== 'One step at a time') problems.push(`esc: closing the drawer lost the words (${JSON.stringify(await page.inputValue('#home-line'))})`)
   const before = await page.locator('.popout').count()
   await page.keyboard.press('Escape')
   // A room may shrink back into its widget first: give the close a moment to finish.
@@ -307,53 +311,28 @@ async function main() {
   await page.getByRole('dialog', { name: 'Settings' }).waitFor({ timeout: 5000 }).catch(() => problems.push('ask: ⌘↵ with no AI did not open Settings'))
   if (await page.inputValue('#home-line') !== 'A question for later') problems.push('ask: setting up the AI lost the question')
 
-  // Going under from the line: the rooms wait above, a blank page fills the screen, the line
-  // waits at the bottom and saves onto the page as a sticky, only a note or Ask opens, Esc
-  // closes the drawer and then comes back up; the page can become a node first.
-  room = 'under'
-  const roomsAbove = await page.locator('.popout').count()
+  // Offline from the line: the desk and its rooms stay, a thought is an ordinary sticky on
+  // the desk, rooms that need the internet say they wait, and the switch comes back online.
+  room = 'offline'
+  const roomsOpen = await page.locator('.popout').count()
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('go under')
-  for (let step = 0; step < 8 && await picked() !== 'Incognito'; step += 1) await page.keyboard.press('ArrowDown')
+  await page.keyboard.type('offline')
+  for (let step = 0; step < 8 && await picked() !== 'Offline'; step += 1) await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
-  await page.locator('.under-pill').waitFor({ timeout: 5000 }).catch(() => problems.push('under: "Incognito" in the line did not go under'))
-  await sleep(1400)
-  if (await page.locator('.popout').count()) problems.push('under: the rooms on the desk did not wait above')
-  const blank = await page.locator('.under-page').boundingBox()
-  if (!blank || blank.width < 1440 || blank.height < 900) problems.push(`under: the page did not fill the screen (${JSON.stringify(blank)})`)
-  const underLine = await page.locator('#under-line').boundingBox()
-  if (!underLine || underLine.y < 900 - 160) problems.push(`under: the line was not at the bottom (${JSON.stringify(underLine)})`)
-  if (!await page.evaluate(() => document.activeElement?.id === 'under-line')) problems.push('under: the line was not ready to type into')
-  await page.keyboard.type('Written under the desk')
+  await page.locator('.home-offline-note').waitFor({ timeout: 3000 }).catch(() => problems.push('offline: "Offline" in the line did not turn it on'))
+  if (await page.locator('.popout').count() !== roomsOpen) problems.push('offline: the rooms on the desk went away')
+  await page.fill('#home-line', 'Written offline')
   await page.keyboard.press('Enter')
-  await page.locator('.under-page .desk-sticky', { hasText: 'Written under the desk' }).waitFor({ timeout: 5000 })
-    .catch(() => problems.push('under: a thought saved under did not land on the page'))
-  await page.keyboard.press('Control+2')
-  await sleep(300)
-  if (await page.locator('.popout').count()) problems.push('under: Notes opened under (only a note or Ask should)')
-  await page.screenshot({ path: `${OUT}/under-page.png` })
-  // Move to… → New node: the page is blank again, and the node waits in the Sky. The pill's
-  // Move to… opens the list of places at once.
-  await page.getByRole('button', { name: /Move to/ }).click()
-  for (const gone of ['Make it a node', 'Into a node, to sort', 'Into a node, as a new branch', 'Clear the page']) {
-    if (await page.getByRole('menuitem', { name: gone }).count()) problems.push(`under: the page menu still says "${gone}"`)
-  }
-  await page.getByRole('menuitem', { name: 'New node' }).click()
-  await page.locator('.under-page .desk-sticky').first().waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('under: making the page a node did not clear it'))
-  // Esc: the drawer first, then back up.
-  await page.locator('#under-line').focus()
-  await page.keyboard.type('x')
-  await page.keyboard.press('Escape')
-  if (await page.getByRole('listbox').count()) problems.push('under: Esc did not close the drawer first')
-  if (!await page.locator('.under-pill').count()) problems.push('under: the first Esc came up before closing the drawer')
-  await page.fill('#under-line', '')
-  await page.keyboard.press('Escape')
-  await page.locator('.under').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('under: Esc did not bring the desk back up'))
-  if (await page.locator('.popout').count() !== roomsAbove) problems.push('under: the rooms did not come back from above')
-  await page.getByText('Back up.').waitFor({ timeout: 3000 }).catch(() => problems.push('under: coming up did not say so'))
-  await page.keyboard.press('Control+3')
-  await page.locator('[data-node-head]', { hasText: 'Written under the desk' }).waitFor({ timeout: 3000 }).catch(() => problems.push('under: the page did not become a node in the Sky'))
-  await page.keyboard.press('Escape')
+  await page.locator('.desk-sticky', { hasText: 'Written offline' }).waitFor({ timeout: 5000 }).catch(() => problems.push('offline: a thought saved offline did not land on the desk'))
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('browser')
+  for (let step = 0; step < 8 && await picked() !== 'Browser'; step += 1) await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await page.getByText(/waits until you’re back online/).waitFor({ timeout: 3000 }).catch(() => problems.push('offline: the browser did not say it waits'))
+  if (await page.getByRole('dialog', { name: 'Browser' }).count()) problems.push('offline: the browser opened')
+  await page.screenshot({ path: `${OUT}/offline.png` })
+  await page.locator('.home-offline').click()
+  await page.locator('.home-offline-note').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('offline: the switch did not come back online'))
 
   // The quick chat's window, as the browser preview can show it (no AI here).
   room = 'quick chat'

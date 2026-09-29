@@ -55,16 +55,17 @@ test('under, a loopback answer can’t send the main process fetch anywhere else
   }
 })
 
-test('what reaches out answers in plain words while under; the rest works', () => {
-  for (const channel of ['browser:open', 'browser:navigate', 'files:list', 'files:thumb', 'files:search', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'phone:enable', 'phone:disable']) {
-    assert.match(refusal(channel), /until you come up|when you come up/, channel)
+test('what reaches out answers in plain words while offline; the rest works', () => {
+  for (const channel of ['browser:open', 'browser:navigate', 'files:open', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'phone:enable', 'phone:disable']) {
+    assert.match(refusal(channel), /when you’re back online|until you’re back online/, channel)
   }
-  for (const channel of ['browser:state', 'browser:close', 'terminal:list', 'terminal:attach', 'ai:status', 'ai:cancel', 'ai:choose', 'phone:status', 'desk:prefs', 'store:load', 'under:set', 'local-ai:models']) {
+  // Files on this Mac still list, show and search; the desk shows the Desktop while offline.
+  for (const channel of ['files:list', 'files:thumb', 'files:search', 'files:quick-look', 'browser:state', 'browser:close', 'terminal:list', 'terminal:attach', 'ai:status', 'ai:cancel', 'ai:choose', 'phone:status', 'desk:prefs', 'store:load', 'under:set', 'local-ai:models']) {
     assert.equal(refusal(channel), null, channel)
   }
 })
 
-test('going under closes the locks first, then pauses, then saves; coming up saves first', async () => {
+test('going offline closes the locks first, then pauses, then saves; going online saves first', async () => {
   const steps = []
   let under
   under = createUnder({
@@ -88,14 +89,14 @@ test('a failed save leaves nothing half done', async () => {
     up: async () => steps.push('up'),
     changed: (on) => steps.push(`changed ${on}`),
   })
-  await assert.rejects(under.set(true), /couldn’t go under \(disk full\)/)
+  await assert.rejects(under.set(true), /couldn’t go offline \(disk full\)/)
   assert.equal(under.on, false)
   assert.deepEqual(steps, ['down', 'up'])
   fails = false
   await under.set(true)
   fails = true
   await assert.rejects(under.set(false), /still offline/)
-  assert.equal(under.on, true, 'a failed save on the way up stays safely under')
+  assert.equal(under.on, true, 'a failed save going back online stays safely offline')
   // At launch, from prefs, nothing has started, so nothing needs pausing.
   const launched = createUnder({ down: () => assert.fail('nothing to pause at launch') })
   launched.begin(true)
@@ -104,20 +105,20 @@ test('a failed save leaves nothing half done', async () => {
 
 /* Every way OSAT's main process could reach the internet on its own (desktop/, and the
    shared/ modules main imports). A new one must be added here on purpose, with the
-   reason Incognito still covers it. */
+   reason Offline still covers it. */
 const MODULE = '(node:)?(http|https|http2|net|tls|dgram|dns|undici)'
 const FENCE = [
   [new RegExp(`(require|import)\\(\\s*['"]${MODULE}['"]\\s*\\)|\\bfrom\\s+['"]${MODULE}['"]`), 'a raw network module'],
   [/\bnet\.(request|fetch)\b/, 'Electron’s net'],
   [/\bnew\s+WebSocket\b/, 'a WebSocket'],
   [/\bopenExternal\b/, 'opening a link outside OSAT'],
-  [/\bwebRequest\.on[A-Z]/, 'a webRequest listener (a second onBeforeRequest replaces the Incognito lock)'],
+  [/\bwebRequest\.on[A-Z]/, 'a webRequest listener (a second onBeforeRequest replaces the Offline lock)'],
   // The AI engine runs in its own process, where the main process's fetch lock doesn't reach.
   [/\bfetch\(/, 'a fetch outside the main process', (file) => file === 'desktop/ai/runtime.cjs'],
 ]
 const ALLOWED = {
   'desktop/main.cjs': [
-    // Refused under: the check sits on the same line.
+    // Refused offline: the check sits on the same line.
     'if (!under.on && /^https:\\/\\//i.test(url)) shell.openExternal(url)',
     // The lock itself. Anything else that wants to see requests belongs inside it.
     'ses.webRequest.onBeforeRequest((details, callback) => callback({ cancel: under.on && !isLocal(details.url) }))',
@@ -134,7 +135,7 @@ async function sourceFiles(dir) {
   return files
 }
 
-test('no new way out of the Mac slips past Incognito', async () => {
+test('no new way out of the Mac slips past Offline', async () => {
   const found = []
   const files = [...await sourceFiles(path.join(repo, 'desktop')), ...await sourceFiles(path.join(repo, 'shared'))]
   for (const file of files) {

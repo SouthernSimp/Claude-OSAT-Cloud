@@ -137,7 +137,7 @@ function createBrowser({ window, emit }) {
     destroy() {
       for (const id of [...order]) close(id)
     },
-    // Incognito: every tab closes, and its page (or blank tab) is remembered for the way back up.
+    // Offline: every tab closes, and its page (or blank tab) is remembered for back online.
     sleep() {
       const pages = order.map((id) => {
         const { view, wanted } = tabs.get(id)

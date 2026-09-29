@@ -504,7 +504,7 @@ html[data-carry-edge="up"] body::after {
 .sort-help svg { width: 12px; height: 12px; }
 .lanes .sticky-list.is-x { overflow: visible; padding: 2px 2px 4px; }
 
-/* ---- Stickies on the desk (and on the scratch page) -------------------------- */
+/* ---- Stickies on the desk ------------------------------------------------------ */
 
 /* Over the widgets and icons, under the line (which keeps its place above them). */
 .sticky-layer { position: absolute; z-index: 3; inset: 0; pointer-events: none; }
