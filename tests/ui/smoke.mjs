@@ -295,7 +295,12 @@ async function main() {
   const latest = await picked()
   await page.keyboard.press('Enter')
   if (!latest) problems.push('pop-outs: ↓ on an empty line did not show Jump to')
-  else await page.getByRole('dialog', { name: latest }).waitFor({ timeout: 5000 }).catch(() => problems.push(`pop-outs: ↓↵ did not open ${latest}`))
+  else {
+    await page.getByRole('dialog', { name: latest }).waitFor({ timeout: 5000 }).catch(() => problems.push(`pop-outs: ↓↵ did not open ${latest}`))
+    // The sticky takes the keyboard a beat after it opens; let it, or it steals the next ⌘K's words.
+    await page.waitForFunction(() => document.activeElement?.closest('.popout'), null, { timeout: 5000 })
+      .catch(() => problems.push(`pop-outs: ${latest} opened without taking the keyboard`))
+  }
   // Esc, one step at a time: the picked row goes back to Save, the drawer closes and keeps
   // the words, then the top pop-out closes.
   room = 'esc'
