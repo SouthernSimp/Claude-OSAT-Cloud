@@ -213,3 +213,11 @@
   --lift-held: 0 6px 8px rgb(0 0 0 / 40%), 0 28px 44px -14px rgb(0 0 0 / 80%);
   --wire: #8e8e93;
 }
+
+/* Backdrops (Settings → Appearance): painted behind the desk instead of the Mac's desktop. */
+:root {
+  --backdrop-sonoma: radial-gradient(120% 90% at 20% 110%, #8fae3a 0%, transparent 55%), radial-gradient(90% 70% at 90% 20%, #7a6fd6 0%, transparent 60%), linear-gradient(160deg, #3f8a5a 0%, #d0555a 42%, #b565a8 62%, #6d7fd8 100%);
+  --backdrop-dusk: radial-gradient(100% 80% at 80% 0%, #f4a3a8 0%, transparent 60%), linear-gradient(170deg, #2b2f6b 0%, #6a4c93 45%, #e07a8b 100%);
+  --backdrop-sea: radial-gradient(90% 70% at 10% 10%, #9be7f0 0%, transparent 55%), linear-gradient(200deg, #0f4c75 0%, #1b7fa6 45%, #54c1c9 100%);
+  --backdrop-meadow: radial-gradient(90% 70% at 85% 15%, #f7e59b 0%, transparent 55%), linear-gradient(180deg, #7cc4e8 0%, #9ed28a 55%, #4f9a58 100%);
+}
