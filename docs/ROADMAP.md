@@ -34,6 +34,11 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 13 | Mac powers: Hyper key, keywords, the ring, clipboard history, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | In review (done before 13 and 14) |
+| 17 | Make it yours: backdrops, About you, Web on the dock | Merged (PR #20) |
+| 18 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | Planned (next) |
+| 18b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | Planned |
+| 19 | Files in the Sky: toss a file up as a card, a node can link a real folder (schema 7) | Planned |
+| 20 | Nodes become projects: Track it (Done / Now / Next), a timeline, Rush it; OSAT's own roadmap as the first project | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -539,6 +544,94 @@ be usable and understandable to anyone of any age." What confused, and what chan
 - About you (Settings → AI): a few plain lines the AI reads before every answer (`settings.aboutMe`,
   passed to `systemPrompt`). OSAT's "soul file", in plain words.
 - The Browser sits on the dock as "Web".
+
+### Nate's thoughts (Sep 29): files, drag and drop, nodes that become projects
+Nate, in his words: "I want people to be able to find their files", "the finder or files section to
+allow the user to reorganize all the files on their computer", "the user themselves also need to have
+an organized desktop and folder system", "dragging and dropping files… feels clunky", "click the desktop
+button drag a file or right click a file and toss into the sky view", "inside a node it has its own
+project management tools", "an easy visual view of that, github like: where we're at, what we've gotten
+done, and what's to come", and on an editable timeline "move something more forward to see if that can
+happen so I can 'rush' a feature".
+
+What the code does today (checked Sep 29), which shapes the plan:
+- **Finding** is by file name only (`files:search` → `mdfind -name`), in Desktop, Documents, Downloads
+  and folders Nate added. Nothing looks inside files, and there's no "kind" or "when".
+- **Reorganizing** isn't possible: OSAT can list, open, show in Finder and Quick Look, but never move,
+  rename, make a folder or put something in the Bin. The safe-write guard it needs already exists
+  (`resolveApprovedWritePath`).
+- **Drag and drop is two different systems.** Stickies and nodes use OSAT's own (`lib/carry.js`); the
+  Notes room uses the browser's old one (`draggable`); files aren't carryable at all, can't be dragged
+  out to Finder or Mail, and only the Ask chat takes a file from Finder. That's the clunky feeling.
+- **Nodes** hold branches and stickies only: no files, no dates, no done/not done.
+
+It is too much for one pull request, so it becomes four phases, each useful on its own, in this order:
+
+#### Phase 18: Find and tidy your files
+One job: any file, found in seconds, and put where it belongs without leaving OSAT.
+- **Better finding.** ⌘K and Files search look inside files too (Spotlight's own index, so it's fast
+  and stays on the Mac), and understand plain words for kind and time: "pdf", "photos", "last week",
+  "yesterday". Results say where each one lives and open on Return. Still only in the places OSAT may see.
+- **Reorganize from Files:** New folder, Rename (in place, like Finder), Move to… (the same "Move to"
+  menu words as stickies), and Delete, which puts it in the Mac's Bin, never erases, with an Undo toast
+  that brings it back. Several at once (⌘-click, ⇧-click, drag a box). A list view beside the icons.
+- **One drag system everywhere.** Files join `carry.js`: drag a file onto a folder (in Files, the path
+  bar, the sidebar or the desk) to move it; hold ⌥ to copy. Drag a file out of OSAT to Finder, Mail or
+  any app (`webContents.startDrag`), and drop files from Finder onto a folder in OSAT to move them in.
+  The Notes room moves off the old system too, so every drag looks and feels the same: a ghost under
+  the pointer, the place that takes it lights up, Esc puts it back.
+- **Safety stays:** nothing outside the approved places, no apps or scripts run, Undo for every move,
+  rename and delete, and a calm line if a move fails ("That file is open in Pages. Close it and try
+  again.").
+
+#### Phase 18b: A tidy desk and folders (OSAT helps, Nate decides)
+- **Tidy my Desktop.** One button on the desk's Desktop shelf. The built-in AI looks at the names (and,
+  for a few, what's inside) and proposes a plan: "12 screenshots → Pictures/Screenshots, 4 invoices →
+  Documents/Money, 3 installers → Bin". The plan is a list Nate ticks through: Do it, Skip, or change
+  where each goes. Nothing moves until he says so, and the whole tidy has one Undo. The AI step runs in
+  the main process with a fixed answer shape, like scans do, in small batches.
+- **A folder layout to grow into (optional):** OSAT offers a simple home layout (for example Projects,
+  Money, Home, School, Archive) and can make it. Nodes and folders can then match: "Make a folder for
+  this node".
+- **Keeps itself tidy:** a quiet "Anything on the Desktop older than 30 days goes to Archive/2026-09?"
+  offer, off by default, never a nag or a count.
+- Same rule as Tidy Unsorted in "Later": AI proposes, Nate accepts or declines each.
+
+#### Phase 19: Files in the Sky
+- **Toss a file up.** Drag a file from the desk's Desktop shelf, from Files or from Finder up into the
+  Sky (the top edge, or the dock's Sky button, like a sticky today), or right-click → "Send to the Sky".
+  It lands in Unsorted as a **file card**: its thumbnail and name, not a copy. Drop it on a node like a
+  sticky. Double-click opens it; right-click shows it in Finder.
+- **A node can have its own folder.** "Link a folder" on a node: the open node then shows that folder's
+  files in their own row, and new files dropped on the node can be moved into that folder (asked the
+  first time). Rename or move the folder in Finder and the link follows it (a macOS bookmark, not a path).
+- The data: file cards and a node's folder are new fields, so this is **schema 7** (with a migration
+  and a test). A file that's gone shows calmly as "Moved or deleted: Find it" instead of breaking.
+
+#### Phase 20: Nodes become projects
+Turn on "Track it" for any node, and it gains the view Nate described: where we're at, what's done,
+what's to come.
+- **Three lanes:** Done, Now, Next (and Later, folded away). A sticky or branch can be moved between them
+  by dragging; a checkmark marks it done. Nothing changes for nodes that aren't tracked.
+- **The timeline.** A calm horizontal line of the node's steps (branches or stickies with a date or an
+  order), today marked, done steps filled in. Every step can be dragged along it.
+- **Rush it.** Drag a step earlier and OSAT shows plainly what that means before it lands: "Rushing
+  Files in the Sky to this week moves Tidy Desktop back a week" (steps can say what they wait on, and
+  how big they are: small / medium / large). Let go to keep it, Esc to put it back, Undo afterwards.
+  No scary warnings, just what would move.
+- **OSAT's own plan as the first project.** The roadmap's phases become a tracked node, so Nate can see
+  this very list (Phases 0–17 done, 18 now, 19–20 next) and rush one.
+- **GitHub (optional, later, online only):** a tracked node can be linked to a GitHub repository, and
+  its steps show their branch and pull request (open, being checked, merged). Off by default; Offline
+  pauses it like everything else online.
+
+Questions for Nate before building:
+1. **Rush:** is it enough to see what moves when something goes earlier, or should OSAT also say "that's
+   too much for one week" (it would need a rough size for each step)?
+2. **Files in the Sky:** a card that points to the real file (the plan), or should tossing a file up
+   also move it into the node's folder?
+3. **Tidy:** is the Mac's Bin fine for "Delete" (always recoverable), or would you rather OSAT never
+   deletes files at all?
 
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |
