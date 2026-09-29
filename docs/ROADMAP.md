@@ -30,6 +30,7 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | Merged (PR #13) |
 | 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | Merged (PR #14) |
 | 12b | Offline mode: Incognito becomes a switch on the line instead of a place | Merged (PR #15) |
+| 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | In review (stacked on 15) |
 | 13 | Mac powers: Hyper key, keywords, the ring, clipboard history, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | In review (done before 13 and 14) |
@@ -510,6 +511,26 @@ sorted, to look through and rearrange.
   folded into one, "by Friday" became Oct 2, "dentist oct 14 3pm" an event at 3 PM (~20 s).
 - **Not yet:** checking a scan against stickies already in other nodes; a Scan button inside the iPhone
   app (parked).
+
+### Phase 16: Clear nodes (in review, stacked on Phase 15)
+Nate (Sep 28): "I look at the nodes and the view but I'm confused on how it really works… it should
+be usable and understandable to anyone of any age." What confused, and what changed:
+- **Everything looked like a sticky.** Branch names sat on the same coloured paper, the same size, in
+  the same rows as the stickies. Now only stickies are paper; a branch is a label: a dot of its colour
+  and its name.
+- **"Branch" promised a tree and showed a table.** An open node is now drawn as a tree: a line down
+  the side with a turn into each branch, and a branch's own branches on a line under it (no more "↳").
+  A closed node lists its first three branches the same way.
+- **Two names for "not sorted yet".** Inside a node the loose row said "STICKIES" (everything is a
+  sticky). Now it's "Not in a branch yet", shown first and only while there are some; a node with no
+  branches just shows its stickies. Unsorted on the board says "Stickies in no node yet".
+- **Sub-branches couldn't be made in the Sky.** "New branch inside" (a branch's menu), and a branch
+  dropped on another branch's name goes inside it. "New branch" is in the node's menu too.
+- **Rename in a branch's menu did nothing** (only a double-click worked). Fixed.
+- **Nothing explained it.** "How the Sky works" shows once per Mac (a sticky is one thought, a node is
+  a topic, branches group a node's stickies; new stickies wait in Unsorted), and again from the ? by the
+  zoom or the board's menu. The hint at the bottom follows what you're doing, and an empty node says
+  what to do first.
 
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |
