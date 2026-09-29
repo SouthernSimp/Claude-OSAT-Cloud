@@ -165,14 +165,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
     `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, `moveToItems` (every
     Move to menu), @mentions, `importNode`, the board's spots, sorting suggestions), `project-direction.js` (the
-    seeded first node), `board-model.js` (the old boards' data only), `next-steps.js`,
+    seeded first node), `board-model.js` (the old boards' data only; normalized on load, no longer kept in step), `next-steps.js`,
     `daily-practice.js`, `field/field-model.js` (desk items, `freeSpot` for new stickies).
   - `shell/Welcome.jsx`: the first launch — what stays private, the shortcut, the AI's size.
   - Rooms: `field/` (home desk, widgets), `notes/`, `assistant/` (Ask:
     `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`),
     `views/` (Calendar, Journal (with Reflection as its tab, Reflection's one home), Habits,
-    Budget, NowPlaying, Obsidian, Settings; `Projects.jsx` is no longer shown: schema 4 folds each
-    project into a node, `projectNodes` in store-core, and keeps `projects` as it was), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).
+    Budget, NowPlaying, Obsidian, Settings (three tabs: General, AI, Data; `sectionFor` maps old tab
+    names); schema 4 folds each project into a node, `projectNodes` in store-core, and keeps `projects`), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).
   - `views/Files.jsx`: a small Finder (places and your folders, back/forward, Space for Quick
     Look, Ask about it) and the pieces the desk reuses: `FileThumb`, `useFolder`,
     `useFreshness` (folders refresh when the window comes back). The desk's right side shows

@@ -457,6 +457,13 @@ people": when two options fit, the one a person understands without an explanati
   with its summary, site, folder and status as stickies. The projects themselves are kept.
 - Reflection lives only in the Journal; Appearance moved from the dock into Tools (→ Settings).
 - Incognito's menus speak the same words (one Move to); its redesign as Offline mode is next.
+- **Fewer controls** (from a read-through of every menu): the desk's right-click holds New sticky,
+  New node, Clean up and Icon size (stickies always snap; the look lives in Settings). A sticky's ×
+  always means Delete, with Undo; "Take off the desk" is in its menu. Settings has three tabs:
+  General (shortcuts, keys, the look), AI, and Data (backup, Obsidian, iPhone, about). Deleting a
+  habit or a chat, and restoring a backup, offer Undo. The Mac menu says Go Incognito / Leave
+  Incognito; the Journal's tabs are Today, Evening and Earlier. Calendar no longer sends events to
+  Google or Outlook. The old boards stop updating in the background.
 
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |

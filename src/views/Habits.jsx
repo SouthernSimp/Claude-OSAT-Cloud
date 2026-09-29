@@ -1,10 +1,16 @@
 import { Plus, Trash } from "@phosphor-icons/react";
 import { useState } from "react";
 import { createHabit, isHabitDone, toggleHabit } from "../daily-practice.js";
+import { useUndoToast } from "../lib/UndoToast.jsx";
 
 export function HabitsView({ workspace, commit, today }) {
   const [name, setName] = useState("");
   const [type, setType] = useState("build");
+  const [toast, showUndo] = useUndoToast();
+  function remove(habit) {
+    commit((state) => ({ ...state, habits: state.habits.filter((item) => item.id !== habit.id) }));
+    showUndo(`Deleted “${habit.name}”`, () => commit((state) => ({ ...state, habits: [...state.habits, habit] })));
+  }
   function add(event) {
     event.preventDefault();
     const habit = createHabit(name, type);
@@ -14,6 +20,7 @@ export function HabitsView({ workspace, commit, today }) {
   }
   return (
     <section className="practice-layout">
+      {toast}
       <div className="content-card stack">
         <div className="section-intro">
           <div>
@@ -50,20 +57,12 @@ export function HabitsView({ workspace, commit, today }) {
                       />
                       <span>
                         <strong>{habit.name}</strong>
-                        <small>Only today changes</small>
                       </span>
                       <button
                         className="icon-button"
                         type="button"
                         aria-label={`Delete ${habit.name}`}
-                        onClick={() =>
-                          commit((state) => ({
-                            ...state,
-                            habits: state.habits.filter(
-                              (item) => item.id !== habit.id,
-                            ),
-                          }))
-                        }
+                        onClick={() => remove(habit)}
                       >
                         <Trash />
                       </button>

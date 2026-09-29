@@ -106,15 +106,10 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
   }
 
   /* The page's one filing action: Move to a new node, or a node or branch that's there. */
-  const pageItems = () => [
-    {
-      label: 'Move to', icon: ShareNetwork, items: [
-        { label: 'New node', onSelect: makeNode },
-        ...moveToItems(workspace.folders, (folderId) => settle(ids, (state) => ({ state: ids.reduce((next, id) => moveSticky(next, id, folderId), state) }), `Moved to ${where(folderId)}`), { unsorted: false })
-          .filter((item) => !item.note),
-      ],
-    },
-    { label: 'Delete all stickies', icon: Trash, danger: true, onSelect: clear },
+  const moveItems = () => [
+    { label: 'New node', onSelect: makeNode },
+    ...moveToItems(workspace.folders, (folderId) => settle(ids, (state) => ({ state: ids.reduce((next, id) => moveSticky(next, id, folderId), state) }), `Moved to ${where(folderId)}`), { unsorted: false })
+      .filter((item) => !item.note),
   ]
 
   function stickyMenu(event, note) {
@@ -155,9 +150,11 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
             const at = { x: event.clientX - box.left - 24, y: event.clientY - box.top - 20 }
             openMenu(event, [
               { label: 'New sticky', icon: NotePencil, hint: 'Double-click', onSelect: () => setDraft(at) },
-              ...(ids.length ? pageItems() : []),
-              { divider: true },
-              { label: 'Come up', icon: ArrowUp, hint: 'Esc', onSelect: onComeUp },
+              ...(ids.length ? [
+                { label: 'Move to', icon: ShareNetwork, items: moveItems() },
+                { divider: true },
+                { label: 'Delete all stickies', icon: Trash, danger: true, onSelect: clear },
+              ] : []),
             ])
           }}
         >
@@ -183,7 +180,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
               <Detective weight="fill" aria-hidden="true" />
               <p><strong>Incognito</strong> · {preview ? 'Preview' : 'offline · nothing leaves OSAT'}</p>
               {stickies.length > 0 && (
-                <button type="button" onClick={(event) => openMenu(event, pageItems())}><ShareNetwork weight="bold" /> Move to…</button>
+                <button type="button" onClick={(event) => openMenu(event, moveItems())}><ShareNetwork weight="bold" /> Move to…</button>
               )}
               <button type="button" title={preview ? 'Esc' : 'Come up  Esc · ⇧⌘U'} onClick={onComeUp}>Come up <ArrowUp weight="bold" /></button>
             </div>

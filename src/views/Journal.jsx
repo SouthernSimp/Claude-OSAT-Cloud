@@ -17,7 +17,7 @@ const MARGIN = [
   ['What are you', 'looking forward to?'],
 ];
 
-/* Today's page, Reflection (its one home) and earlier pages. `target.tab` opens on one. */
+/* Today, the evening questions (Reflection's one home) and earlier pages. `target.tab` opens on one. */
 export function JournalView({ workspace, commit, navigate, target }) {
   const today = localDateKey();
   const [tab, setTab] = useState(target?.tab || 'write');
@@ -35,7 +35,7 @@ export function JournalView({ workspace, commit, navigate, target }) {
   return <section className="journal-studio">
     <header className="journal-top">
       <div><p className="eyebrow">{dateLabel}</p><h1>Journal</h1></div>
-      <nav className="journal-tabs" aria-label="Journal mode">{[['write', 'Today’s page'], ['reflect', 'Reflection'], ['past', 'Earlier pages']].map(([key, label]) => <button key={key} type="button" className={tab === key ? 'active' : ''} aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}</nav>
+      <nav className="journal-tabs" aria-label="Journal mode">{[['write', 'Today'], ['reflect', 'Evening'], ['past', 'Earlier']].map(([key, label]) => <button key={key} type="button" className={tab === key ? 'active' : ''} aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}</nav>
     </header>
     {tab === 'write' && <div className="journal-desk">
       <article className="journal-sheet">

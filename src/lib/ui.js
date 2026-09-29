@@ -17,29 +17,6 @@ export function downloadFile(name, content, type = "text/plain;charset=utf-8") {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function calendarProviderUrl(provider, event) {
-  const end =
-    event.end ||
-    new Date(new Date(event.start).getTime() + 60 * 60 * 1000).toISOString();
-  if (provider === "google") {
-    const dates = [event.start, end]
-      .map((value) =>
-        new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z"),
-      )
-      .join("/");
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${dates}&details=${encodeURIComponent(event.notes || "")}`;
-  }
-  const query = new URLSearchParams({
-    subject: event.title,
-    startdt: event.start,
-    enddt: end,
-    body: event.notes || "",
-    path: "/calendar/action/compose",
-    rru: "addevent",
-  });
-  return `https://outlook.live.com/calendar/0/deeplink/compose?${query}`;
-}
-
 export function formatRelativeTime(value) {
   const time = Date.parse(value);
   if (Number.isNaN(time)) return "";

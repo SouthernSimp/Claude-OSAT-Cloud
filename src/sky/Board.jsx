@@ -468,7 +468,7 @@ function NodeLanes({ folder, workspace, actions, sorting }) {
         <Lane key={branch.id} folder={branch} depth={depth} notes={pileOf(workspace.notes, branch.id)} actions={actions} />
       ))}
       {naming
-        ? <div className="lane is-naming"><NameField placeholder="Name the branch, like #IDEAS" onDone={(name) => { setNaming(false); if (name) actions.addBranch(name, folder.id) }} /></div>
+        ? <div className="lane is-naming"><NameField placeholder="Name the branch" onDone={(name) => { setNaming(false); if (name) actions.addBranch(name, folder.id) }} /></div>
         : <button type="button" className="lane-add" onClick={() => setNaming(true)}><Plus weight="bold" /> New branch</button>}
       <Lane key="loose" loose folder={folder} notes={pileOf(workspace.notes, folder.id)} actions={actions} sorting={sorting?.id === folder.id ? sorting : null} workspace={workspace} />
     </div>
@@ -482,7 +482,7 @@ function Lane({ folder, notes, actions, depth = 0, loose = false, sorting, works
     onDrop: ({ id }) => actions.moveSticky(id, folder.id),
   })
   return (
-    <section className={`lane ${loose ? 'is-loose' : ''}`} data-slot={loose || depth ? undefined : ''} style={{ '--depth': depth }} aria-label={loose ? 'Unsorted' : folder.name}>
+    <section className={`lane ${loose ? 'is-loose' : ''}`} data-slot={loose || depth ? undefined : ''} style={{ '--depth': depth }} aria-label={loose ? 'Stickies' : folder.name}>
       <div
         className="lane-head"
         data-paper={loose ? undefined : folder.color || 'bone'}
@@ -492,7 +492,7 @@ function Lane({ folder, notes, actions, depth = 0, loose = false, sorting, works
         onContextMenu={loose ? undefined : (event) => actions.branchMenu(event, folder)}
       >
         {loose
-          ? <strong>Unsorted</strong>
+          ? <strong>Stickies</strong>
           : renaming
             ? <NameField initial={folder.name} placeholder="Name" onDone={(name) => { setRenaming(false); if (name) actions.rename(folder.id, name) }} />
             : <strong>{depth > 0 ? '↳ ' : ''}{folder.name}</strong>}

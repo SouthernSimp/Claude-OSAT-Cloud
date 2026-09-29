@@ -633,14 +633,14 @@ function buildMenu() {
         room('Ask', 'Assistant', 'CmdOrCtrl+4'),
         room('Files', 'Files', 'CmdOrCtrl+5'),
         { type: 'separator' },
-        room('Today’s Page', 'Journal'),
+        room('Journal', 'Journal'),
         room('Calendar', 'Calendar'),
         room('Habits', 'Habits'),
         room('Money', 'Budget'),
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         { type: 'separator' },
-        { label: under.on ? 'Come Up' : 'Go Under', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
+        { label: under.on ? 'Leave Incognito' : 'Go Incognito', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
     },
     {
@@ -1010,10 +1010,10 @@ function updateTray() {
   tray.setImage(trayIcon(under.on ? 'trayUnderTemplate' : 'trayTemplate'))
   tray.setToolTip(under.on ? 'OSAT · Incognito' : 'OSAT')
   tray.setContextMenu(Menu.buildFromTemplate([
-    ...(under.on ? [{ label: 'Incognito · Come up', click: () => toggleUnder(false) }, { type: 'separator' }] : []),
+    ...(under.on ? [{ label: 'Leave Incognito', click: () => toggleUnder(false) }, { type: 'separator' }] : []),
     { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
     { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
-    ...(under.on ? [] : [{ label: 'Go Under', click: () => toggleUnder(true) }]),
+    ...(under.on ? [] : [{ label: 'Go Incognito', click: () => toggleUnder(true) }]),
     { type: 'separator' },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
     { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'general' } }) },

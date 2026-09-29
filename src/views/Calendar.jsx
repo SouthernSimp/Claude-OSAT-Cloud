@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  ArrowSquareOut,
   CalendarBlank,
   Clock,
   DotsThree,
@@ -15,7 +14,6 @@ import { calendarMonthDays, localDateKey } from "../daily-practice.js";
 import { calendarToIcs } from "../osat-data.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import {
-  calendarProviderUrl,
   downloadFile,
   makeId,
   timeLabel,
@@ -342,22 +340,6 @@ export function CalendarView({ workspace, commit, initialDate }) {
                 </button>
                 {menuFor === event.id && (
                   <div className="agenda-popover" role="menu">
-                    <a
-                      href={calendarProviderUrl("google", event)}
-                      target="_blank"
-                      rel="noreferrer"
-                      role="menuitem"
-                    >
-                      <ArrowSquareOut /> Send to Google
-                    </a>
-                    <a
-                      href={calendarProviderUrl("outlook", event)}
-                      target="_blank"
-                      rel="noreferrer"
-                      role="menuitem"
-                    >
-                      <ArrowSquareOut /> Send to Outlook
-                    </a>
                     <button
                       type="button"
                       role="menuitem"

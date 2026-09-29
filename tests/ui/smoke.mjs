@@ -11,7 +11,7 @@ const PORT = Number(process.env.OSAT_PORT || 4317)
 // The spaces that open as pop-outs (⌃2, 4, 5; ⌃3 is the Sky, a layer of its own), then
 // every tool from the dock's Tools menu.
 const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
-const TOOLS = [['Journal', 'Today’s page'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
+const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
 
 let server
 async function start() {
@@ -239,28 +239,28 @@ async function main() {
   // Reflection's one home: a tab of the Journal.
   room = 'journal'
   await page.locator('.app-dock [data-space="tools"]').click()
-  await page.getByRole('menuitem', { name: 'Today’s page' }).click()
-  await page.getByRole('button', { name: 'Reflection', exact: true }).click().catch(() => problems.push('journal: no Reflection tab'))
+  await page.getByRole('menuitem', { name: 'Journal' }).click()
+  await page.getByRole('button', { name: 'Evening', exact: true }).click().catch(() => problems.push('journal: no Evening tab'))
   await page.locator('.popout-body[data-view="Journal"] .journal-form').waitFor({ timeout: 3000 }).catch(() => problems.push('journal: the Reflection tab showed nothing'))
   await page.locator('.popout.is-top .popout-bar strong').click()
   await page.keyboard.press('Escape')
 
   // On the desk: the Unsorted pile, a note found from the line, stacked pop-outs, Esc.
   room = 'pop-outs'
-  // Put back on the shelf, the sticky joins the smoke test's sticky in the Unsorted pile, which opens Unsorted.
-  await here.hover()
-  await page.getByRole('button', { name: 'Put back on the shelf Written right here' }).click()
+  // Taken off the desk (its menu), the sticky joins the smoke test's sticky in the Unsorted pile, which opens Unsorted.
+  await here.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Take off the desk' }).click()
   const shelfSticky = page.locator('.home .desk-sticky', { hasText: 'Smoke test thought' })
   if (await shelfSticky.count()) {
-    await shelfSticky.hover()
-    await page.getByRole('button', { name: 'Put back on the shelf Smoke test thought' }).click()
+    await shelfSticky.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Take off the desk' }).click()
   }
   await page.getByRole('button', { name: /^Unsorted, / }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
     .catch(() => problems.push('pop-outs: the Unsorted pile did not open Unsorted'))
   await page.locator('.popout.is-top .popout-bar strong').click()
   await page.keyboard.press('Escape')
-  // ⌘K lands in the line; ↓ walks past Save, Ask and Add to Next to the match, ↵ opens it.
+  // ⌘K lands in the line; ↓ walks past Save, Ask and Add as a next step to the match, ↵ opens it.
   await page.keyboard.press('Control+k')
   await page.keyboard.type('Smoke test')
   for (let step = 0; step < 8 && await picked() !== 'Smoke test thought'; step += 1) await page.keyboard.press('ArrowDown')
@@ -332,13 +332,12 @@ async function main() {
   await sleep(300)
   if (await page.locator('.popout').count()) problems.push('under: Notes opened under (only a note or Ask should)')
   await page.screenshot({ path: `${OUT}/under-page.png` })
-  // Move to → New node: the page is blank again, and the node waits in the Sky. The page's
-  // menu speaks like everywhere else: one Move to, and Delete.
+  // Move to… → New node: the page is blank again, and the node waits in the Sky. The pill's
+  // Move to… opens the list of places at once.
   await page.getByRole('button', { name: /Move to/ }).click()
   for (const gone of ['Make it a node', 'Into a node, to sort', 'Into a node, as a new branch', 'Clear the page']) {
     if (await page.getByRole('menuitem', { name: gone }).count()) problems.push(`under: the page menu still says "${gone}"`)
   }
-  await page.getByRole('menuitem', { name: 'Move to' }).click()
   await page.getByRole('menuitem', { name: 'New node' }).click()
   await page.locator('.under-page .desk-sticky').first().waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('under: making the page a node did not clear it'))
   // Esc: the drawer first, then back up.

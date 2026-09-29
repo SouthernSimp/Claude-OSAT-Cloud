@@ -18,7 +18,7 @@ export const SPACES = [
 ]
 
 export const TOOLS = [
-  { id: 'Journal', label: 'Today’s page', icon: BookOpenText, hint: 'A page for every day' },
+  { id: 'Journal', label: 'Journal', icon: BookOpenText, hint: 'A page for every day' },
   { id: 'Calendar', label: 'Calendar', icon: CalendarBlank, hint: 'The month, and the day in it' },
   { id: 'Habits', label: 'Habits', icon: ListChecks, hint: 'Small things, kept daily' },
   { id: 'Budget', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },

@@ -40,7 +40,7 @@ const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceF
 /* The one line in the middle of the desk (and at the foot of the scratch page, where
    `write` makes what's saved a sticky there). Type, and a drawer folds open under it:
    Save as a sticky (always first, so Return never guesses), Ask the AI on this Mac,
-   Add to Next, then up to five matches (notes, files on this Mac, folders, rooms,
+   Add as a next step, then up to five matches (notes, files on this Mac, folders, rooms,
    actions). ⌘K and ⇧⌘N land here (`summon`). An answer streams into a card under the
    line and is kept as a chat.
    The line reports where it rests (`onLine`), so rooms open beside it; when a room
@@ -75,7 +75,7 @@ export function Line({
       ai.state === 'none'
         ? { key: 'ask', label: 'Set up the AI', hint: setupLine(aiStatus) || 'It runs on this Mac, nothing leaves it', keys: '⌘↵', icon: Sparkle, run: () => { setOpen(false); navigate('Settings', { section: 'ai' }) } }
         : { key: 'ask', label: 'Ask the AI on this Mac', hint: ai.state === 'ready' ? ai.label : 'Looking for it…', keys: '⌘↵', icon: Sparkle, run: ask },
-      { key: 'next', label: 'Add to Next', keys: '⌥↵', icon: CheckCircle, run: addStep },
+      { key: 'next', label: 'Add as a next step', keys: '⌥↵', icon: CheckCircle, run: addStep },
     ] : []),
     ...matches.map((row) => ({ ...row, icon: iconFor(row), tag: KINDS[row.kind]?.[1], run: () => { reset(); navigate(...row.go) } })),
   ]

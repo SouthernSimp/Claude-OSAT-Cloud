@@ -46,7 +46,7 @@ export function Dock({ view, navigate, storage, aiReady, extra = [], onSendUp, c
         trigger={({ toggle, open }) => (
           <button type="button" data-mag data-space="tools" aria-haspopup="menu" aria-expanded={open} aria-current={inTools ? 'page' : undefined} onClick={toggle}>
             <Toolbox weight={inTools ? 'fill' : 'regular'} />
-            <span className="dock-label">{inTools ? spaceFor(view).label : 'Tools'}</span>
+            <span className="dock-label">Tools</span>
           </button>
         )}
       />
