@@ -11,7 +11,7 @@ const PORT = Number(process.env.OSAT_PORT || 4317)
 // The spaces that open as pop-outs (⌃2, 4, 5; ⌃3 is the Sky, a layer of its own), then
 // every tool from the dock's Tools menu.
 const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
-const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
+const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Browser', 'Browser'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Settings', 'Settings']]
 
 let server
 async function start() {

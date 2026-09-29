@@ -1,15 +1,5 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
-## Context
-OSAT Field is Nate's personal, local-first "second brain" Mac app: React 19, Vite 6 and Electron 43, about 10.5k lines of JS and 7.5k lines of CSS, with 82 unit tests covering only the pure data-model code. It was copied and redesigned five times (NateOS → OSAT → OSAT V2 → OSAT Field → "OSAT Field copy"). Each pass layered new rooms, docs and compatibility code on top of the last. It was just pushed to GitHub (`SouthernSimp/Claude-OSAT-Cloud`, `main` = one "Initial import" commit).
-
-Nate gets lost in it:
-- about 19 rooms
-- the list of rooms written out in about 15 places
-- settings and sub-menus with no clear home.
-
-He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique. It should center on a **summon-anywhere overlay** (inspired by lykn.io, but private and local), with **local AI models that download on first launch**. Mac comes first, phone capture later, the App Store eventually (he has an Apple Developer account). He is new to GitHub, so Claude runs the repo.
-
 ## Status
 
 | Phase | What | State |
@@ -30,15 +20,29 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | Merged (PR #13) |
 | 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | Merged (PR #14) |
 | 12b | Offline mode: Incognito becomes a switch on the line instead of a place | In review |
-| 13 | Mac powers: Hyper key, keywords, the ring, clipboard history, window snapping, the Tools wheel, a movable dock, resizing | Planned |
+| 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | In review |
+| 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
 | 15 | Paper in: a photo of stickies becomes stickies (the Mac reads handwriting) | Planned |
+| 16 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT: a drop folder first, then OSAT's connector with a key | Planned |
+| 17 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
+| 18 | OSAT's own bots: a Bots room, people cards, a morning page | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
 
 **The end goal (Nate, Sep 25):** an app that syncs with his iPhone. Phases 5 and 6 get there;
 visual polish moves after them.
+
+## Context
+OSAT Field is Nate's personal, local-first "second brain" Mac app: React 19, Vite 6 and Electron 43, about 10.5k lines of JS and 7.5k lines of CSS, with 82 unit tests covering only the pure data-model code. It was copied and redesigned five times (NateOS → OSAT → OSAT V2 → OSAT Field → "OSAT Field copy"). Each pass layered new rooms, docs and compatibility code on top of the last. It was just pushed to GitHub (`SouthernSimp/Claude-OSAT-Cloud`, `main` = one "Initial import" commit).
+
+Nate gets lost in it:
+- about 19 rooms
+- the list of rooms written out in about 15 places
+- settings and sub-menus with no clear home.
+
+He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique. It should center on a **summon-anywhere overlay** (inspired by lykn.io, but private and local), with **local AI models that download on first launch**. Mac comes first, phone capture later, the App Store eventually (he has an Apple Developer account). He is new to GitHub, so Claude runs the repo.
 
 ## Nate's answers (Sep 25)
 - **Overlay:** a **summon panel** on ⌥Space. He'd use all four jobs weekly: unload thoughts, see & sort, run the day, think with local AI.
@@ -483,6 +487,48 @@ Incognito stops being a place under the desk and becomes a switch: **Offline**.
 - **Open questions answered by default:** Offline remembers itself across restarts (as Incognito
   did: safer than silently going back online), and Ask's row stays (it only ever talks to this Mac).
 
+### Phase 12c: The roadmap inside OSAT (in review)
+Tools → Roadmap (and "Roadmap" in ⌘K and the Go menu) opens this page, read-only, in a pop-out.
+It is this file, built into the app, so it is always the plan the app was built with.
+
+### The wow (Sep 28): what makes OSAT stand out
+Raycast launches things, Notion and Mem keep notes, Rewind remembers. OSAT is all of it in one
+calm, private place on the Mac, with bots feeding it.
+- **The line is the launcher (13).** One key from anywhere (Caps Lock as Hyper), then type: `ss`
+  opens Spotify, a file, a note or an app; `@Jordan` shows everything about Jordan; `v` is the
+  clipboard; `2*49` answers in place; `>research best CRMs` hands a job to a bot. Tab for actions.
+- **Quick search that feels like Raycast (13, first).** Nate's words: "No thought needed, just
+  straight to work." One hotkey from anywhere (Settings can let it replace Spotlight's ⌘Space)
+  opens a small bar; typing opens the full view: results on the left, a big preview on the right
+  (the file, the image, the copied text), the details under it (where, kind, size; for a copy,
+  which app and when). Return does the obvious thing (Open; for a copy, Paste into the app you were
+  in); ⌘K lists every other action (Show in Finder, Copy path, Ask about it, Add to a node, Pin,
+  Delete). Files (Spotlight, recently used first, filter by kind) and Clipboard History (Today /
+  Yesterday; text, images, links; filter by kind) come first, then apps, notes and nodes, a
+  calculator, emoji, quicklinks (a web address with the search in it) and window layouts.
+  Settings → Launcher lists each one to turn on or off, with its own hotkey or keyword, and
+  compact or expanded. The clipboard stays on this Mac, skips what password managers mark as
+  concealed, and can be paused.
+- **A clipboard that files itself (13).** Every copy kept privately on this Mac, searchable, pins
+  for snippets. Copy something that looks like a customer's email or phone and OSAT offers
+  "Add to Jordan?".
+- **Bots in (16).** Nate's words: "I want Muse to be able to upload nodes to the application that
+  I can open up inside OSAT. That is the whole point." First a folder OSAT watches
+  (`~/Documents/OSAT Nodes`: a node file saved there appears in the Sky, reusing Import a node
+  file and the iPhone Inbox's watcher), then a connector on this Mac only (MCP, with a key Nate
+  turns on and can reset in Settings → Bots) to list, read and add nodes and stickies. If Muse
+  can only reach an internet address, ask Nate first: that breaks "everything stays on the Mac".
+- **Capture anywhere (17).** Select text in any app, one key, it's a sticky, and it remembers where
+  it came from (the page, the email, the file): "you saved this from Jordan's email on Tuesday".
+  The browser's clipper, grown to the whole Mac. Hold a key and talk; it's written on this Mac.
+- **OSAT's own bots (18).** A Bots room in the dock like Muse's list (faces, last message, groups):
+  a customer manager, a follow-up bot, an Inbox sorter, a research bot. They read and write notes,
+  run on a schedule, draft email and messages (always asking before sending), use the web and Mac
+  apps. **People cards:** type a name, see one card: notes, last contact, what's owed, the next
+  step, the follow-up already drafted. **A morning page:** opening the desk says, calmly, what's
+  due, what the bots did overnight and what waits in Unsorted. This is where business and
+  customer management starts, without building a whole CRM.
+
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |
 |---|---|
@@ -504,7 +550,11 @@ Incognito stops being a place under the desk and becomes a switch: **Offline**.
 | Photos of paper stickies read into stickies | 15 |
 | iPad: GoodNotes-style pages, hand-drawn mind maps, Apple Pencil Pro squeeze ring, synced | Later (parked) |
 | iPhone: a document scanner | Later (parked) |
-| OSAT's own agents/bots | Later |
+| OSAT's own agents/bots | 18 |
+| Muse's bots put nodes into OSAT ("the whole point") | 16 |
+| The roadmap, viewable inside OSAT | 12c |
+| Quick search like Raycast: files and the clipboard with a preview, one key, straight to work | 13 |
+| A Raycast feel; business and customer management over time | 13, 18 |
 
 ### Later (after the MVP)
 - Files become "Linked folders" in Notes. (Projects became nodes in Phase 12.)
