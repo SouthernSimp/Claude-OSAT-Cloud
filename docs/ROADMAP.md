@@ -34,6 +34,7 @@
 | 22 | Files in the Sky: toss a file up as a card, a node can link a real folder (schema 8) | Planned |
 | 23 | Nodes become projects: Track it (Done / Now / Next), Rush it, on top of the Roadmap's Timeline | Planned |
 | 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | In review (PR #21, done before 21–23) |
+| 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -733,6 +734,35 @@ Questions for Nate before building:
    also move it into the node's folder?
 3. **Tidy:** is the Mac's Bin fine for "Delete" (always recoverable), or would you rather OSAT never
    deletes files at all?
+
+### Phase 24: Sort a pile (in review, PR #21)
+Nate (Sep 29): "a temporary sky view window where you toss everything down and can make connections as
+you go or ask the ai for help… until everything has been sorted and is ready to join everything else in
+the sky." Tools → Sort a pile, or "Sort a pile" in the Sky's bar.
+- A quick input in the middle (his sketch); each Return tosses a sticky down around it. Pasting a list
+  makes a sticky per line; Photo (or dropping a photo, scan or PDF) reads it on this Mac into stickies.
+- Drop one sticky on another to start a branch (named in place); drop more on it to join. Drag a branch
+  by its name. Right-click for Edit, Split into stickies, Color, Delete (with Undo).
+- Help me sort: the AI groups the loose stickies; without one, shared words do. Nothing moves until
+  "Make the branch".
+- Send to the Sky: one node with its branches inside, or each branch its own node (marked New).
+- Piles wait in `settings.piles` (no schema change), apart from the Sky; several can wait at once.
+
+### Phase 25: The Stratosphere (planned)
+Nate (Sep 29), from Muse's Soul and Memory cards: "making the stratosphere where it sits above the sky
+and you manage your bots and scheduled tasks. We still however would need to find a place to put the
+soul.md and health.md files."
+- **One more layer up.** Desk → Sky → Stratosphere (⌥⌘↑ again, or the top edge from the Sky). Calm
+  and mostly empty, like the Sky: each bot as a card with its face, its last message and its next run.
+- **Scheduled tasks** listed plainly ("Every weekday at 8: sort Unsorted"), each with a switch and
+  "Run now". Nothing sends or deletes without asking.
+- **Soul and Memory cards.** Soul is who Nate is and how OSAT should talk to him (it grows out of
+  Phase 17's About you). Memory is what the AI has learned, which Nate can read, edit and delete, line
+  by line. Each is a plain Markdown file in the data folder (`soul.md`, `memory.md`) so every bot and
+  model reads the same thing; the card shows when it last changed. (Ask Nate whether "health.md" is a
+  third card or meant Memory.)
+- **Check with Phase 19 first:** the Stratosphere may be where Phase 19's Bots room lives, instead of
+  a room in the dock.
 
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |

@@ -1,6 +1,6 @@
 import {
   BookOpenText, CalendarBlank, CurrencyDollar, Files, GearSix, Globe, House, ListChecks,
-  MapTrifold, MusicNotes, NotePencil, Sparkle, TerminalWindow, TreeStructure, UploadSimple,
+  MapTrifold, MusicNotes, NotePencil, Sparkle, Stack, TerminalWindow, TreeStructure, UploadSimple,
 } from '@phosphor-icons/react'
 
 /* The one definition of where things live. The dock, the sheet titles, ⌘K and
@@ -18,6 +18,8 @@ export const SPACES = [
 ]
 
 export const TOOLS = [
+  // A table of its own for a pile of paper stickies, until it's sorted and goes to the Sky.
+  { id: 'Pile', label: 'Sort a pile', icon: Stack, hint: 'Toss a pile of stickies down, group them, send it to the Sky' },
   { id: 'Journal', label: 'Journal', icon: BookOpenText, hint: 'A page for every day' },
   { id: 'Calendar', label: 'Calendar', icon: CalendarBlank, hint: 'The month, and the day in it' },
   { id: 'Habits', label: 'Habits', icon: ListChecks, hint: 'Small things, kept daily' },
