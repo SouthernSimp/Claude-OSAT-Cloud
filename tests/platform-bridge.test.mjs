@@ -123,9 +123,10 @@ test('the data folder is claimed without touching an older app\'s data', async (
 test('platform metadata uses the OSAT identity and its own data folder in both modes', async () => {
   const read = (relative) => readFile(path.join(root, relative), 'utf8')
   const pkg = JSON.parse(await read('package.json'))
-  const [index, main, preload, entitlements] = await Promise.all([
+  const [index, main, files, preload, entitlements] = await Promise.all([
     read('index.html'),
     read('desktop/main.cjs'),
+    read('desktop/files.cjs'),
     read('desktop/preload.cjs'),
     read('build/entitlements.mas.plist'),
   ])
@@ -146,8 +147,8 @@ test('platform metadata uses the OSAT identity and its own data folder in both m
   assert.doesNotMatch(main, /MINDMAP_URL|mccreery\.ai\/mindmap|mindmap:open/)
   assert.match(preload, /files:write-text/)
   assert.doesNotMatch(preload, /osatSecrets|secrets:|app:open-assistant/)
-  // Folders, apps, scripts and installers are shown in Finder, never run from OSAT.
-  assert.match(main, /if \(!isSafeOpenFilename\(path\.basename\(target\)\)\) \{\s+shell\.showItemInFolder\(target\)/)
+  // Folders, apps, scripts and installers are shown in Finder, never run from OSAT (the files:open handler, in desktop/files.cjs).
+  assert.match(files, /if \(!isSafeOpenFilename\(path\.basename\(target\)\)\) \{\s+shell\.showItemInFolder\(target\)/)
   assert.match(entitlements, /com\.apple\.security\.app-sandbox/)
   assert.match(entitlements, /com\.apple\.security\.files\.user-selected\.read-write/)
   assert.match(main, /globalShortcut\.register\(value, run\)/)
