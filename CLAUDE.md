@@ -79,6 +79,13 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     JavaScript`, Word/RTF through `textutil`, capped at 12,000 characters).
   - `quick-chat.cjs`: the quick chat window, a floating panel on every Space that stays where
     it's left (`chatBounds` in `prefs.json`).
+  - `scans.cjs`: Paper in (Phase 15). Watches the folder chosen in Settings → Data → Scans (the Brother's
+    Google Drive `From_BrotherDevice`; the iPhone's Scan Documents saves there too). Each new scan is read
+    (`extractText`: Vision for scans and pictures), sorted by the built-in AI into a node file (`SCAN_SCHEMA`,
+    a JSON-schema grammar via `chatStream({ schema })`), cleaned in code (`toNode`), and handed to the desk
+    (`osatScans.take`/`done`), which imports it with `importScan` (one sticky → Unsorted, more → a node).
+    Scans present when the folder was chosen are left alone; the folder is never changed. `scans.json` in
+    the data folder remembers what came in.
   - `media.cjs`: Spotify on the desk through AppleScript (now playing, play/pause, skip).
   - `phone.cjs`: the iPhone link, off until turned on in Settings → iPhone. An `OSAT` folder in
     iCloud Drive: text dropped in `Inbox` becomes an Unsorted note (source `iPhone`) and moves to
@@ -100,7 +107,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     An older folder without our marker is renamed aside, never read or deleted.
   - `preload.cjs`: the bridges exposed to the renderer (`osat.store`, `nateOSFiles`,
     `osatLocalAI` (models, `chatStream` → `{ done, cancel }`, and the built-in AI's status /
-    choose / cancel / resume / remove), `osatBrowser`, `osatTerminal`, `osatApp` (incl. the
+    choose / cancel / resume / remove), `osatScans`, `osatBrowser`, `osatTerminal`, `osatApp` (incl. the
     first-launch welcome), `osatDesk`, `osatChat`). An AbortSignal can't cross the bridge; pass
     functions. A dropped file's path comes from `webUtils.getPathForFile` in the preload, never
     from the page.
@@ -208,6 +215,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `places['note:<id>']` on the desk ({x, y} fractions, w/h). Schema 5 turned the old scratch
   page's stickies (`kind: 'scratch'`) into ordinary ones in Unsorted; a sticky saved while
   offline is ordinary too, with `source: 'Offline'`.
+- A sticky from a scan may carry `ask: { event: { title, date, time } }` (schema 6): its node, when
+  opened, asks "Add it to your Calendar?" (`asksIn`, `addAskedEvent`, `skipAsk` in nodes-model).
 - Data rules: a captured sticky is one note with `unsorted: true` and a `source`; filing,
   pinning or Keep clears it. Each day has one note, `day-YYYY-MM-DD` with `kind: 'day'`
   (`ensureDayNote`): it is the journal page and where new next steps land. Wikilinks follow

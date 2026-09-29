@@ -58,7 +58,8 @@ test('Ask reads PDFs and Word files with the Mac\'s own tools, and text as it is
   assert.equal(long.text.length, MAX_CHARS)
   assert.equal(long.truncated, true)
 
-  await assert.rejects(extractText('/f/photo.jpg', { exec }), /UNREADABLE/)
+  assert.equal((await extractText('/f/photo.jpg', { exec })).text, 'From the PDF\n\nPage two', 'a picture is read by text recognition')
+  await assert.rejects(extractText('/f/archive.zip', { exec }), /UNREADABLE/)
   await assert.rejects(extractText('/f/.env', { exec }), /UNREADABLE/)
   await assert.rejects(extractText('/f/scan.pdf', { exec: async () => '  \n ' }), /EMPTY/)
 })

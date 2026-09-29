@@ -121,6 +121,19 @@ contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
   onStatus: (listener) => listen('phone:status', listener),
 }))
 
+/* Scans: the folder a scanner saves to. The desk takes each sorted scan, imports it and
+   says done. */
+contextBridge.exposeInMainWorld('osatScans', Object.freeze({
+  status: () => ipcRenderer.invoke('scans:status'),
+  choose: () => ipcRenderer.invoke('scans:choose'),
+  stop: () => ipcRenderer.invoke('scans:stop'),
+  show: () => ipcRenderer.invoke('scans:show'),
+  take: () => ipcRenderer.invoke('scans:take'),
+  done: (id) => ipcRenderer.invoke('scans:done', id),
+  onStatus: (listener) => listen('scans:status', listener),
+  onReady: (listener) => listen('scans:ready', listener),
+}))
+
 /* The desk (⌥Space): put it away, the shortcuts, the app launchers, where things sit
    on it, Spotify, and the frosting behind it. */
 contextBridge.exposeInMainWorld('osatDesk', Object.freeze({

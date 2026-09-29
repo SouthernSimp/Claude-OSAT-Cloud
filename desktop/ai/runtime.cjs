@@ -3,7 +3,8 @@
    and answers one chat at a time; the main process sends:
      { type: 'probe' }                      → { type: 'probe', gpu }  (the engine loads; no model needed)
      { type: 'load', modelPath }            → { type: 'loaded' } | { type: 'error', message }
-     { type: 'chat', id, messages, maxTokens } → { type: 'delta', id, text }… then { type: 'done', id } | { type: 'error', id, message }
+     { type: 'chat', id, messages, maxTokens, schema? } → { type: 'delta', id, text }… then { type: 'done', id } | { type: 'error', id, message }
+                                            (with a JSON schema, the answer can only be JSON of that shape)
      { type: 'cancel', id }                                                                      */
 const port = process.parentPort
 
@@ -32,9 +33,11 @@ const toHistory = (messages) => messages.map((message) => (
     : { type: message.role, text: message.content }
 ))
 
-async function chat({ id, messages, maxTokens }, controller) {
+async function chat({ id, messages, maxTokens, schema }, controller) {
   try {
+    const grammar = schema ? await (await llama()).createGrammarForJsonSchema(schema) : undefined
     if (!controller.signal.aborted) await engine.chat.generateResponse(toHistory(messages), {
+      grammar,
       signal: controller.signal,
       stopOnAbortSignal: true,
       maxTokens,

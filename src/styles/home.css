@@ -697,5 +697,9 @@
   pointer-events: none;
   animation: desk-note-in 520ms var(--spring) both;
 }
+/* A scan that came in waits here until Nate looks. */
+.desk-note.is-arrival { display: flex; align-items: center; gap: 10px; padding-right: 6px; pointer-events: auto; }
+.desk-note.is-arrival button { height: 26px; padding: 0 12px; border-radius: 999px; font-size: var(--t-xs); font-weight: 650; color: var(--accent-ink); background: var(--accent); }
+.desk-note.is-arrival button:hover { background: var(--accent-hover); }
 @keyframes desk-note-in { from { opacity: 0; translate: -50% 8px; } }
 @media (prefers-reduced-motion: reduce) { .desk-note { animation: none; } }
