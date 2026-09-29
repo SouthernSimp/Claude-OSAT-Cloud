@@ -20,21 +20,24 @@
 | 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | Merged (PR #13) |
 | 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | Merged (PR #14) |
 | 12b | Offline mode: Incognito becomes a switch on the line instead of a place | Merged (PR #15) |
-| 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | In review (with Phase 18, PR #18) |
+| 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | Merged (PR #18) |
 | 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | Merged (PR #19) |
 | 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
-| 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | In review (PR #18) |
+| 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | Merged (PR #18) |
 | 19 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
 | 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
 | 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidying and dragging next) |
 | 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | Planned |
 | 22 | Files in the Sky: toss a file up as a card, a node can link a real folder (schema 8) | Planned |
 | 23 | Nodes become projects: Track it (Done / Now / Next), Rush it, on top of the Roadmap's Timeline | Planned |
-| 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | In review (PR #21, done before 21–23) |
+| 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | Merged (PR #21, done before 21–23) |
 | 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
+| 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | In review |
+| 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Planned |
+| 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -495,11 +498,11 @@ Incognito stops being a place under the desk and becomes a switch: **Offline**.
 - **Open questions answered by default:** Offline remembers itself across restarts (as Incognito
   did: safer than silently going back online), and Ask's row stays (it only ever talks to this Mac).
 
-### Phase 12c: The roadmap inside OSAT (in review, with Phase 18 in PR #18)
+### Phase 12c: The roadmap inside OSAT (merged, PR #18)
 Tools → Roadmap (and "Roadmap" in ⌘K and the Go menu) opens this page, read-only, in a pop-out.
 It is this file, built into the app, so it is always the plan the app was built with.
 
-### Phase 15: Paper in (in review)
+### Phase 15: Paper in (merged, PR #17)
 Nate's goal: scan something at the printer, walk over to the Mac, and a new node is waiting, already
 sorted, to look through and rearrange.
 - **One folder for paper:** Settings → Data → Scans → "Choose the scans folder" (it offers Google
@@ -527,7 +530,7 @@ sorted, to look through and rearrange.
 - **Not yet:** checking a scan against stickies already in other nodes; a Scan button inside the iPhone
   app (parked).
 
-### Phase 16: Clear nodes (in review, stacked on Phase 15)
+### Phase 16: Clear nodes (merged, PR #19)
 Nate (Sep 28): "I look at the nodes and the view but I'm confused on how it really works… it should
 be usable and understandable to anyone of any age." What confused, and what changed:
 - **Everything looked like a sticky.** Branch names sat on the same coloured paper, the same size, in
@@ -555,7 +558,7 @@ be usable and understandable to anyone of any age." What confused, and what chan
   passed to `systemPrompt`). OSAT's "soul file", in plain words.
 - The Browser sits on the dock as "Web".
 
-### Phase 18: Bots in (in review, PR #18)
+### Phase 18: Bots in (merged, PR #18)
 Nate's words: "I want Muse to be able to upload nodes to the application that I can open up inside
 OSAT. That is the whole point." And bigger: OSAT as Muse, and a tool that makes AI easy for anyone.
 Everything for it lives in one Settings section, **Bots**: every model and privacy setting in one
@@ -743,7 +746,7 @@ Questions for Nate before building:
 3. **Tidy:** is the Mac's Bin fine for "Delete" (always recoverable), or would you rather OSAT never
    deletes files at all?
 
-### Phase 24: Sort a pile (in review, PR #21)
+### Phase 24: Sort a pile (merged, PR #21)
 Nate (Sep 29): "a temporary sky view window where you toss everything down and can make connections as
 you go or ask the ai for help… until everything has been sorted and is ready to join everything else in
 the sky." Tools → Sort a pile, or "Sort a pile" in the Sky's bar.
@@ -771,6 +774,137 @@ soul.md and health.md files."
   third card or meant Memory.)
 - **Check with Phase 19 first:** the Stratosphere may be where Phase 19's Bots room lives, instead of
   a room in the dock.
+
+### Nate's stickies (Sep 29): every issue, and where it lands
+Nate left about 80 stickies in the Sky and on the desk while using OSAT for real: roughly 45 about
+OSAT itself, the rest his life (groceries, calls, questions). Claude read every one, and the six that
+were on the desk. His summary, after a night of sorting: "I basically just needed the AI to be more
+connected to OSAT… It was so hard to organize my thoughts without having the AI to help me while I was
+in the sky." And of the Sky's board: "so hard to look at because I can't collapse anything or do
+anything… Idk I'm just not happy with where things are at." The idea under most of it, in his words:
+**"Organization is earned"**: you can't begin by making branches; you start putting things down and
+typing, and structure appears when a pile has grown.
+
+Claude's honest look at the board (Sep 29 screenshot): it did not look organized. Fourteen stickies stood
+in one tall column with no way to fold it, twelve nodes sat in a row too small to read at 52% zoom, most
+of the canvas was empty, and nothing on it could help sort anything. The AI was a room away.
+
+Nothing here is dropped. Each line says where it goes; "26" shipped with Phase 26.
+
+**The AI, and OSAT itself**
+| What he wrote | Lands in |
+|---|---|
+| "An actual AI buddy… as a button or pet or something inside the sky" | 26: a line in the Sky |
+| "The AI should be able to see everything going on inside OSAT" | 26: every question carries a map of OSAT |
+| "Allow the AI to sort stickies that have no branch" | 26: Sort Unsorted (Help me sort already does a node's own pile) |
+| Ask couldn't say where the Timeline or an email client is, and said "I see the roadmap" about a picture | 26: it knows OSAT's rooms and plan, and says it reads words, not pictures |
+| "Before importing [a scan] the AI should suggest some pre-links or branches… the AI being able to edit the nodes would be neat" | 27: show the plan before a scan lands, and let the AI change nodes with a click (scans are already sorted by the AI, Phase 15) |
+| "Turn a node into a project so you can rank items by number and mark things complete. Just having all the organizing for a project done by the AI is the goal" | 23: Track it, with a "Plan it for me" the AI drafts |
+| "First bot could just be a brainstorm manager that turns your chat sessions into nodes, branches or leaves" | 19 |
+| "Vault system for the soul.md kind of data… What is my birthday? It should know this" | 25: Soul and Memory (About you, Phase 17, is the start) |
+| "A general intake to ask what devices, services they have, as more technology the better for AI" | 25 |
+| "The preloaded AIs should let the user know what each model does, as some have vision, others don't" | Small things |
+| "Budget should use a questioning system: what do you currently have, what are your debts" | Small things (Money asks) |
+
+**How the Sky works**
+| What he wrote | Lands in |
+|---|---|
+| "Overhaul the sky view and nodes and how all of it works"; "a star system or a spiderweb… I like kanban boards for project management, I just think this little system needs improving" | 27; the kanban part is 23 |
+| "Node view focuses only on that node" (the others still there, blurred); "Focused node view, just in case you need less distractions" | 27 |
+| "'Sort a pile' is misleading and confusing, so it needs to be combined into the actual app or redone" | 27: folded into the Sky (the Tools entry stays until then) |
+| "Make combining nodes a thing" | 27 |
+| "Why can't I just place a singular sticky down freely on the canvas? I want to branch stickies together until I'm ready to make a branch. Organization is earned." | 27 |
+| "You can connect stickies on desk view" | 27 |
+| "Single click expand a collapsed pile of notes, allow scrolling too… stacking or grouping while still on the desk, then pushed to the sky if the user wants. Giving the user control and making things simple is the goal" | 27 |
+| "Once a branch has grown enough, let the user send it off to the sky or make a node of it" | 27 |
+| "Collapsible branches" | 26: a branch folds to one line |
+| "Move the unsorted list to the side bar or collapsible" | 26: Unsorted folds; a side shelf is 27 |
+| "Organize branches" | 27 |
+| "Merge stickies within a branch"; "Split a sticky with bullets or numbers into multiple stickies (right click)"; "Breakdown sticky note" | 27 (Sort a pile already splits a pasted list; this brings it to every sticky) |
+| "Add a favorite icon for certain nodes" | 27 |
+| "Can't search for branch names inside the actual search" | 26: a real bug. The line only reached node and branch names when fewer than five notes matched. Names come first now |
+| "Instead of 'take it off the desk' let's say 'send to the cloud' so the user doesn't think it will get lost" | 26: the menu says "Send up to the Sky". Not "cloud": OSAT never sends anything to a cloud without saying so |
+
+**Capture, tags and dates**
+| What he wrote | Lands in |
+|---|---|
+| "Hotkey to prompt a quick sticky that gets thrown down on the table (⌘9)… I have side thoughts in the middle of my thoughts all the time" | 28, then Phase 13's hotkeys |
+| "'This reminded me' feature when making a sticky… #BS = Brainstorm" | 28 |
+| "N2D or W2D, N2B or W2B: establishing this is important, especially for the hashtagging system"; "#A2C = Add 2 Calendar" | 28: tags that do things (A2C to the Calendar, N2B and W2B to a buying list, N2D and W2D to to-do lists) |
+| "I need Clients, Projects, Personal, Ask AI, what else"; "Establish needed categories… your base folders are where you start"; (to Ask) "categories like Ideas, Questions, Bugs" | 28: a starter set of nodes, offered once, never forced |
+| "Remote workers… remind people to drink water, stand, take medications, remember their calendar or urgent news"; "Medication/Nurse" | 19, with 28's "coming up" |
+| Dates already sitting in stickies (a move-out date, unemployment calls) that nothing surfaces | 28: dates in any sticky show as coming up; 19's morning page |
+| "If we're working inside the OSAT project we select a node to begin work on that day… a visual manager to keep me on task" | 23: "Today I'm working in…" |
+| "For the roadmap, I like the timeline view. A quick pop-up or a way to merge this into the main app instead of it being a tool" | 23 |
+
+**Bots, business and Mac powers**
+| What he wrote | Lands in |
+|---|---|
+| Manager/Bot ideas: a Pharmacist, an Accountant "job", a Disc Space manager "and a nice visual tool so freeing up space doesn't feel hard", a Medication/Nurse | 19 |
+| "Build our own Slack/Notion; OSAT handles agents or 'hire employees'; website + domain management; a daily note like Obsidian" | 19 and 25 (the daily note is Today's page already) |
+| "The ultimate keybind/macro's application"; "Combine Swish, Rectangle, Linear Mouse, Dropshelf" | 13 |
+| "An iPad app that I can write virtual stickies on and pick what gets sent to my PC"; "Ability to use an annotation tool" | iPad is parked; annotation is Later |
+| "Now Playing to show lyrics in the expanded view"; "Habits Tracker" (under Improve) | Small things |
+| Ideas for other apps: a Bible Buddy, a brain-parts memorization game | not OSAT; they stay in his nodes |
+| His life: move out by Oct 10, unemployment on the 4th and 5th, the cats' litter box | OSAT should surface these (28), not organize them |
+
+**Small things** (any phase): Now Playing lyrics; Habits easier to find and use; Settings → AI says what each model can do
+(reads pictures or not); Money asks what you have and owe. He also wrote, of all of it: "Small things here and there,
+really nothing too bad. Software is useable."
+
+### Phase 26: The AI in the Sky (in review)
+Nate (Sep 29): the AI has to be part of OSAT, and the Sky is where he sorts. What was wrong, and what
+changed:
+- **The AI knew nothing about OSAT.** Ask's whole instruction was "a private thinking partner": no words
+  for sticky, node or branch, nothing about the desk, the Sky or the roadmap, and only the few notes a
+  question's words happened to match. Now every question (the desk's line, the Ask room, the quick chat and
+  the Sky's) also carries a short map of OSAT: the nodes and branches with what is in them, what is in
+  Unsorted, Next, what is coming up on the Calendar, what is open in the Sky; a few lines on how OSAT works
+  and where its rooms are; and, only when the question is about the plan, the roadmap's Status table. It says
+  plainly that it reads words, not pictures, and that it can suggest but never moves anything itself.
+- **The Sky had no AI in it.** A pill at the bottom of the Sky, "Ask", opens a small card: ask about your
+  Sky ("which nodes belong together?", "what's in Features?") or say "sort these". Answers stream in, are
+  kept as a chat, and "Keep talking" opens them in Ask. It says where the answer comes from: this Mac, or
+  the cloud model chosen in Settings → Bots. Esc puts it away.
+- **Sort Unsorted.** One button in that card (or just say "sort these"): the AI reads every sticky in
+  Unsorted and the nodes and branches there are, and suggests a home for each: one line per place ("These 3
+  stickies look like they belong in Features: …" or "These 4 could be a new node, Cats"), each with Move
+  (Make it) and Dismiss, and "Move them all". Nothing moves until you click; one Undo takes a move back;
+  with no AI it works from matching words, like Help me sort. A single leftover never becomes a node of its
+  own.
+- **Unsorted and branches fold.** Click Unsorted's name and it folds into a pile that shows its first few
+  stickies; a branch has a small arrow that folds it to one line of what is inside. OSAT remembers which
+  are folded, per Mac.
+- **Small:** "Take off the desk" is now "Send up to the Sky"; the line finds nodes and branches by name
+  before it lists notes.
+- **Not in this phase (27):** focusing on one node, free stickies, combining nodes, and the rest of the
+  first table above.
+
+### Phase 27: One Sky, where organization is earned (planned)
+The rework Nate keeps describing, built on Phase 26's AI so it can help while he does it.
+- **Focus.** Click a node and it fills the Sky; the others stay, blurred, one click away. Sort a pile stops
+  being a place of its own: its table becomes the way a focused node takes stickies.
+- **Free stickies and stacks.** A sticky can sit anywhere on the canvas. Drop one on another and they stack
+  (a pile); a stack that has grown offers "Make it a branch" or "Make it a node". Nobody has to make a
+  branch first.
+- **Combine.** Two nodes become one (right-click, or drag one on the other); merge two stickies; split a
+  sticky with bullets or numbers into one each.
+- **A favorite star, an Unsorted shelf at the side, branches that can be re-ordered, the AI proposing
+  which nodes belong together** (a suggestion with Move and Dismiss, like Sort Unsorted).
+- The old star/spiderweb idea stays a question: the whiteboard gets a fair try first.
+
+### Phase 28: Tags that do things (planned)
+Nate already writes a language on paper: #N2D (need to do), #W2D, #N2B (need to buy), #W2B, #A2C (add to
+calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
+- **A tag can act.** #A2C offers the Calendar (the scan's "Add it to your Calendar?" for any sticky);
+  #N2B and #W2B collect into one buying list; #N2D and #W2D into to-do lists. Settings holds the list, so a
+  new tag and what it does can be added.
+- **A starter set of nodes**, offered once and never forced: Clients, Projects, Personal, Ideas, Questions,
+  Bugs (Nate's own words).
+- **Coming up.** A date written in any sticky shows on the desk when it is near, and in Phase 19's morning
+  page. Nothing nags; there is no count.
+- **⌘9 quick sticky** (a small window that throws a sticky on the table without leaving what you are doing)
+  and **"This reminded me"** when writing one (#BS).
 
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |
