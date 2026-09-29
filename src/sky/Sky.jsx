@@ -9,9 +9,10 @@ import { useUndoToast } from '../lib/UndoToast.jsx'
 import { PAPERS } from '../note-core.js'
 import { folderChildren, folderPath, folderSubtree, isActiveNote, purgeNotes, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
 import {
-  addFolder, addSticky, importNode, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder, splitMentions, suggestionGroups,
-  tidyBoard,
+  addFolder, addSticky, importNode, markOpened, markUnpacked, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder, splitMentions,
+  suggestionGroups, tidyBoard,
 } from '../nodes-model.js'
+import { isPacked, readNodeFile } from '../../shared/node-file.mjs'
 import { seedDirection } from '../project-direction.js'
 import { Board } from './Board.jsx'
 
@@ -66,6 +67,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   }))
 
   function toggle(id, force) {
+    // A node that arrived is New until it is first opened.
+    if ((force === true || (force === undefined && !open.has(id))) && latest.current.folders.some((folder) => folder.id === id && folder.fresh)) {
+      commit((state) => markOpened(state, id))
+    }
     setOpen((current) => {
       const next = new Set(current)
       if (force === true || (force === undefined && !next.has(id))) next.add(id)
@@ -100,7 +105,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     addBranch(name, parentId) {
       let made
-      commit((state) => { const result = addFolder(state, name, parentId); made = result.folder; return result.state })
+      commit((state) => { const result = addFolder(markUnpacked(state, parentId), name, parentId); made = result.folder; return result.state })
       if (made) { toggle(made.id, true); toggle(parentId, true) }
     },
     addSticky(text, folderId) {
@@ -112,6 +117,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     rename(id, name) {
       commit((state) => renameFolder(state, id, name))
+    },
+    /* A packed node (only a summary so far) opened up by hand: its summary stays. */
+    unpack(id) {
+      commit((state) => markUnpacked(state, id))
     },
     openNote(noteId) { navigate('Notes', { noteId }) },
     /* A sticky's @s, as links that fly to their node. */
@@ -204,18 +213,22 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     endSort() { setSorting(null) },
   }
 
-  /* Import: one node file (JSON) becomes one new node, never mixed into one that's there. */
+  /* Import: one node file (JSON or Markdown, as bots write them) becomes one new node,
+     never mixed into one that's there. */
   async function importFile(file) {
     if (!file) return
     let made = null
+    let why = ''
     try {
-      const data = JSON.parse(await file.text())
-      commit((state) => { const result = importNode(state, data); made = result; return result.state })
-    } catch {
+      const tree = readNodeFile(await file.text(), file.name)
+      // Only a summary: packed, ready to unpack (by hand or with the AI).
+      commit((state) => { const result = importNode(state, tree, { node: isPacked(tree) ? { packed: true } : undefined }); made = result; return result.state })
+    } catch (error) {
       made = null
+      why = error?.name === 'NodeFileError' && error.message !== 'That file isn’t a node file.' ? ` ${error.message}` : ''
     }
     if (!made?.folder) {
-      showUndo(`“${file.name}” isn’t a node file. Nothing changed.`, null)
+      showUndo(`“${file.name}” isn’t a node file.${why} Nothing changed.`, null)
       return
     }
     const { folder, branches } = made
@@ -244,11 +257,11 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       <header className="sky-bar">
         <button type="button" className="sky-down" onClick={onClose} title="Back to the desk  Esc · ⌥⌘↓"><ArrowDown weight="bold" /> Desk</button>
         <button type="button" className="sky-new" onClick={() => board.current?.newNode()}><Plus weight="bold" /> New node</button>
-        <button type="button" className="sky-import" title="Import a node file (.json) as a new node" onClick={() => picker.current?.click()}><DownloadSimple weight="bold" /> Import</button>
+        <button type="button" className="sky-import" title="Import a node file (.json or .md) as a new node" onClick={() => picker.current?.click()}><DownloadSimple weight="bold" /> Import</button>
         <input
           ref={picker}
           type="file"
-          accept=".json,application/json"
+          accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"
           hidden
           onChange={(event) => { importFile(event.target.files?.[0]); event.target.value = '' }}
         />

@@ -232,6 +232,20 @@ async function main() {
   await page.screenshot({ path: `${OUT}/sky-import.png` })
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
   await page.locator('[data-node-head]', { hasText: 'Garden' }).waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Undo did not take the import away'))
+  // A packed node (Markdown, only a summary, as a bot writes it): it says so, and Unpack opens it up.
+  room = 'sky packed'
+  await page.locator('.sky-layer input[type="file"]').setInputFiles({ name: 'spring.md', mimeType: 'text/markdown', buffer: Buffer.from('---\nsource: Muse\n---\n# Spring launch\nEverything worth keeping, in one paragraph.\n') })
+  const packedHead = page.locator('[data-node-head]', { hasText: 'Spring launch' })
+  await packedHead.locator('.node-origin', { hasText: 'packed' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: a packed node file did not arrive packed'))
+  await page.locator('.board-card.is-open .packed-bar').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: a packed node showed no Unpack'))
+  // Fly to it (the board moves, it never scrolls, so a click can't reach a card off-screen).
+  await packedHead.dispatchEvent('dblclick').catch(() => {})
+  await sleep(1100)
+  await page.screenshot({ path: `${OUT}/sky-packed.png` })
+  await page.locator('.packed-bar').getByRole('button', { name: 'Unpack', exact: true }).dispatchEvent('click').catch(() => problems.push('sky: Unpack could not be pressed'))
+  await page.locator('.board-card.is-open .packed-bar').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Unpack left the node packed'))
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Undo', exact: true }).click().catch(() => {})
   await page.keyboard.press('Escape')
   await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Esc did not come back down'))
   if (!await mentioned.count()) problems.push('mentions: the sticky with an @ left the desk')

@@ -578,3 +578,14 @@ html[data-carry-edge="up"] body::after {
   .board.is-flying, .board-card { transition: none; }
   .overlay-surface > .workspace-content { transition: none; }
 }
+
+/* A node that arrived (the drop folder, a scan, the connector): New until opened, who sent
+   it, and packed while it is only a summary. Quiet: the Mac's accent, never a count. */
+.node-origin { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--t-2xs); color: var(--paper-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.node-origin em { flex: none; padding: 2px 7px; border-radius: 999px; font: 700 var(--t-2xs)/1.2 var(--font); font-style: normal; color: var(--accent-ink); background: var(--accent); }
+.packed-bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 560px; padding: 10px 12px; border-radius: 12px; font-size: var(--t-sm); color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-1); }
+.packed-bar p { flex: 1 1 240px; margin: 0; }
+.packed-bar button { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: var(--t-xs); font-weight: 650; color: var(--ink); background: var(--surface-sunken); }
+.packed-bar button:hover { background: var(--surface-hover); }
+.packed-bar button.is-primary { color: var(--accent-ink); background: var(--accent); }
+.packed-bar svg { width: 12px; height: 12px; }

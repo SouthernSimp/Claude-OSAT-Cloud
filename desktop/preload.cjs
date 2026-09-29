@@ -121,6 +121,14 @@ contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
   onStatus: (listener) => listen('phone:status', listener),
 }))
 
+/* Bots (Settings → Bots): the drop folder where Muse and other bots save node files. */
+contextBridge.exposeInMainWorld('osatBots', Object.freeze({
+  status: () => ipcRenderer.invoke('bots:status'),
+  showNodes: () => ipcRenderer.invoke('bots:show-nodes'),
+  copyInstructions: () => ipcRenderer.invoke('bots:copy-instructions'),
+  onStatus: (listener) => listen('bots:status', listener),
+}))
+
 /* The desk (⌥Space): put it away, the shortcuts, the app launchers, where things sit
    on it, Spotify, and the frosting behind it. */
 contextBridge.exposeInMainWorld('osatDesk', Object.freeze({

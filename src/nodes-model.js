@@ -3,8 +3,9 @@
    in no folder at all are Unsorted. Nodes, branches and stickies keep the order Nate ranks
    them in (`rank`, see rankOf). Pure functions over the workspace, like notes-model.js. */
 
+import { freeNodeName, nodeRecords, nodeTree } from '../shared/node-file.mjs'
 import { rankOf } from './note-core.js'
-import { canMoveFolder, createFolder, createNote, deleteFolder, folderChildren, folderSubtree, isActiveNote, relatedNotes } from './notes-model.js'
+import { canMoveFolder, createFolder, createNote, deleteFolder, folderChildren, folderSubtree, isActiveNote, relatedNotes, uid } from './notes-model.js'
 
 export { rankOf }
 
@@ -274,50 +275,30 @@ export function renameFolder(state, id, name) {
 
 /* ---------- a node from a file ---------- */
 
-/* `name`, or "name 2", "name 3"… when a node is already called that. */
-export function freeNodeName(folders, name) {
-  const taken = new Set(folderChildren(folders, null).map((folder) => folder.name.toLowerCase()))
-  const base = String(name || '').trim().slice(0, 72) || 'Imported'
-  if (!taken.has(base.toLowerCase())) return base
-  let n = 2
-  while (taken.has(`${base} ${n}`.toLowerCase())) n += 1
-  return `${base} ${n}`
-}
-
-const textOf = (value) => (typeof value === 'string' ? value.trim() : '')
+export { freeNodeName }
 
 /* A node file (JSON: { title, summary, branches: [{ title, summary, leaves: [{ text,
-   done }], sub_branches: [...] }] }) becomes one new node at the end of the Sky, never
-   merged into one that's there: branches and sub-branches become branches, leaves become
-   stickies (a finished one as "- [x] …"), and a summary becomes the first sticky where it
-   is. Returns { state, folder, branches (how many were made) }, or throws when the file
-   isn't a node file. */
-export function importNode(state, data) {
-  const title = textOf(data?.title) || textOf(data?.name)
-  if (!title || (data.branches !== undefined && !Array.isArray(data.branches))) throw new Error('That file isn’t a node file.')
-  const made = addFolder(state, freeNodeName(state.folders, title))
-  let next = made.state
-  let branches = 0
-  const fill = (source, folderId) => {
-    const summary = textOf(source.summary)
-    if (summary) next = addSticky(next, summary, folderId, { source: 'Import', index: Infinity }).state
-    for (const leaf of Array.isArray(source.leaves) ? source.leaves : []) {
-      const text = textOf(typeof leaf === 'string' ? leaf : leaf?.text)
-      if (text) next = addSticky(next, leaf?.done === true ? `- [x] ${text}` : text, folderId, { source: 'Import', index: Infinity }).state
-    }
-    for (const branch of [...(Array.isArray(source.branches) ? source.branches : []), ...(Array.isArray(source.sub_branches) ? source.sub_branches : [])]) {
-      const name = textOf(branch?.title) || textOf(branch?.name)
-      if (!name) continue
-      const made = addFolder(next, name, folderId)
-      if (!made.folder) continue
-      next = made.state
-      branches += 1
-      fill(branch, made.folder.id)
-    }
-  }
-  fill(data, made.folder.id)
-  return { state: next, folder: made.folder, branches }
+   done }], sub_branches: [...] }] }, or the tree readNodeFile makes of Markdown) becomes
+   one new node at the end of the Sky, never merged into one that's there: branches and
+   sub-branches become branches, leaves become stickies (a finished one as "- [x] …"), and
+   a summary becomes the first sticky where it is (shared/node-file.mjs, which the drop
+   folder uses too). Returns { state, folder, branches (how many were made) }, or throws
+   when the file isn't a node file. */
+export function importNode(state, data, { source = 'Import', node } = {}) {
+  const made = nodeRecords(state.folders, nodeTree(data), { makeId: uid, source, node })
+  let next = { ...state, folders: [...state.folders, ...made.folders], notes: [...made.notes.slice().reverse(), ...state.notes] }
+  for (const note of made.notes) next = linkMentions(next, note.id)
+  return { state: next, folder: made.folder, branches: made.folders.length - 1 }
 }
+
+/* A node that arrived from outside (the drop folder, a scan, the connector) is New until
+   it is first opened, and packed (only a summary) until it is unpacked: by hand, when it
+   gets its first branch, or with the AI. Nothing else about it changes. */
+const without = (state, id, key) => (state.folders.some((folder) => folder.id === id && key in folder)
+  ? { ...state, folders: state.folders.map((folder) => { if (folder.id !== id) return folder; const { [key]: _, ...rest } = folder; return rest }) }
+  : state)
+export const markOpened = (state, id) => without(state, id, 'fresh')
+export const markUnpacked = (state, id) => without(state, id, 'packed')
 
 /* ---------- the whiteboard ---------- */
 

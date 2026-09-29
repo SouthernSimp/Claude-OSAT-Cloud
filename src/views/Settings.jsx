@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, Sparkle, UploadSimple } from "@phosphor-icons/react";
+import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, Robot, Sparkle, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile, formatRelativeTime } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
 import { workspaceClient } from "../store/useWorkspace.js";
 import { AppearanceControls } from "../shell/Shell.jsx";
 import { setupLine, useAi } from "../assistant/useAi.js";
+import { BotsSettings } from "./Bots.jsx";
 import { ObsidianView } from "./Obsidian.jsx";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 
@@ -83,6 +84,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
           </>
         )}
         {section === "ai" && <AiCard />}
+        {section === "bots" && <BotsSettings />}
         {section === "data" && (
           <>
             <section className="content-card">
@@ -135,6 +137,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
 const SECTIONS = [
   ["general", "General", GearSix],
   ["ai", "AI", Sparkle],
+  ["bots", "Bots", Robot],
   ["data", "Data", Database],
 ];
 /* Older names (the tray's "shortcut", Tools → "appearance") land where those cards live now. */

@@ -14,6 +14,8 @@
 //      desk's and the browser's requests, main's fetch, downloads, opening files in other
 //      apps); back online brings the tabs back; a relaunch stays offline (driven through
 //      window.osatUnder and the Go menu); the desk stays, and the line says it's offline
+//  10. the drop folder (a stand-in ~/Documents/OSAT Nodes), while offline: a node file a bot
+//      saved becomes a New node in the Sky and moves to Added
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -25,7 +27,7 @@ import { _electron as electron } from 'playwright'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 const home = await mkdtemp(path.join(os.tmpdir(), 'osat-e2e-'))
-const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac') }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac'), OSAT_NODES_DIR: path.join(home, 'OSAT Nodes') }
 const dataFile = path.join(home, 'OSAT Test', 'store', 'workspace.json')
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }
@@ -330,6 +332,20 @@ try {
     check(/web waits/.test(await refused(() => window.osatBrowser.open('https://example.com/'))), 'a relaunch under opened a web page')
     await main.locator('.home-offline-note').waitFor({ timeout: 5000 })
       .catch(() => problems.push('a relaunch offline did not say so on the line'))
+    // 10. The drop folder is on this Mac, so it works offline too.
+    const nodesDir = path.join(home, 'OSAT Nodes')
+    check((await main.evaluate(() => window.osatBots.status())).nodes?.dir === nodesDir, 'Settings → Bots did not show the drop folder')
+    const nodeFile = path.join(nodesDir, 'Garden.md')
+    await writeFile(nodeFile, '---\nsource: Muse\n---\n# Garden from Muse\nWhat grows where.\n')
+    const settled = new Date(Date.now() - 60_000)
+    await utimes(nodeFile, settled, settled)
+    const arrivedNode = async () => (await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).find((folder) => folder.name === 'Garden from Muse')
+    check(await until(async () => {
+      const node = await arrivedNode()
+      return Boolean(node?.fresh && node.packed && node.from?.source === 'Muse')
+    }, 40000), `a node file in the drop folder did not become a New, packed node: ${JSON.stringify(await arrivedNode())}`)
+    check(await until(() => access(path.join(nodesDir, 'Added', 'Garden.md')).then(() => true, () => false), 5000), 'the node file did not move to Added')
+
     // Go Online from the Go menu (what ⇧⌘U does): main decides, and the page follows.
     await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.find((item) => item.label === 'Go Online').click())
     await main.locator('.home-offline-note').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('Go Online in the Go menu did not reach the line'))

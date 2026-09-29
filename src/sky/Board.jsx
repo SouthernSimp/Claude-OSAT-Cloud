@@ -432,6 +432,12 @@ function NodeCard({ folder, index, spot, isOpen, workspace, actions, toggle, sor
         {actions.renaming === folder.id
           ? <NameField initial={folder.name} placeholder="Name the node" onDone={(name) => actions.endRename(folder.id, name)} />
           : <strong>{folder.name}</strong>}
+        {(folder.fresh || folder.packed || folder.from?.source) && (
+          <span className="node-origin">
+            {folder.fresh && <em>New</em>}
+            {[folder.from?.source && `from ${folder.from.source}`, folder.packed && 'packed'].filter(Boolean).join(' · ')}
+          </span>
+        )}
         {!isOpen && branches.length > 0 && <small>{branches.slice(0, 3).map((branch) => branch.name).join(', ')}</small>}
         <span className="node-tools">
           <button type="button" aria-label={`More for ${folder.name}`} title="More" onClick={(event) => actions.nodeMenu(event, folder)}><DotsThree weight="bold" /></button>
@@ -464,6 +470,12 @@ function NodeLanes({ folder, workspace, actions, sorting }) {
   })
   return (
     <div className="lanes is-across" {...lanes}>
+      {folder.packed && (
+        <div className="packed-bar" role="note">
+          <p>Packed: only a summary so far. Unpack it into branches when you’re ready.</p>
+          <button type="button" onClick={() => { actions.unpack(folder.id); setNaming(true) }}>Unpack</button>
+        </div>
+      )}
       {branches.map(({ folder: branch, depth }) => (
         <Lane key={branch.id} folder={branch} depth={depth} notes={pileOf(workspace.notes, branch.id)} actions={actions} />
       ))}

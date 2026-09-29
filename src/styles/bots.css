@@ -1,0 +1,14 @@
+/* ---- Settings → Bots (views/Bots.jsx) ----------------------------------------
+   The drop folder, the models, the scan folder and the connector: one section. */
+
+.bots-card .settings-path { margin-top: 10px; }
+.settings .bots-message,
+.settings .bots-warning { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: var(--t-sm); }
+.settings .bots-message svg { flex: none; width: 15px; height: 15px; margin-top: 3px; color: var(--accent); }
+.settings .bots-warning { padding: 10px 12px; border-radius: var(--r-md); color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
+
+.bots-arrivals { display: grid; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.bots-arrivals li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); color: var(--muted); }
+.bots-arrivals li svg { width: 15px; height: 15px; translate: 0 2px; color: var(--faint); }
+.bots-arrivals li b { color: var(--ink); font-weight: 600; }
+.bots-arrivals small { color: var(--faint); font-size: var(--t-xs); white-space: nowrap; }

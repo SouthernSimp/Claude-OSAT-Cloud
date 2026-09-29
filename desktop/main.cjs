@@ -33,6 +33,8 @@ const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile }
 const { localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
 const { createAi } = require('./ai/index.cjs')
 const { createPhoneBridge } = require('./phone.cjs')
+const { watchFolder } = require('./folder-watch.cjs')
+const { createBots } = require('./bots/index.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -1121,10 +1123,8 @@ let phoneRoot = path.join(ICLOUD_DRIVE, 'OSAT')
 let phone = null
 let macSync = null
 let phoneClient = null
-let phoneWatcher = null
-let phonePoll = null
+let phoneWatch = null
 let phoneMirrorTimer = null
-let phoneScanTimer = null
 
 // Never touches iCloud Drive: macOS asks before an app looks there, and that
 // should only happen when Nate turns the link on.
@@ -1138,10 +1138,6 @@ const phoneLive = () => prefs.phone && !under.on
 const mirrorSoon = () => {
   clearTimeout(phoneMirrorTimer)
   if (phoneLive()) phoneMirrorTimer = setTimeout(() => { if (phoneLive()) phone?.mirror() }, 2000)
-}
-const scanSoon = () => {
-  clearTimeout(phoneScanTimer)
-  if (phoneLive()) phoneScanTimer = setTimeout(() => { if (phoneLive()) phone?.scan() }, 800)
 }
 
 async function bridgePhone() {
@@ -1199,12 +1195,7 @@ async function startPhone() {
   await (await ensureSync()).start()
   if (waits()) return
   phoneClient ??= store.connect(mirrorSoon)
-  try {
-    phoneWatcher = require('node:fs').watch(path.join(phoneRoot, 'Inbox'), scanSoon)
-  } catch {
-    // The poll below still finds new thoughts.
-  }
-  phonePoll = setInterval(scanSoon, 30000)
+  phoneWatch = watchFolder({ dir: path.join(phoneRoot, 'Inbox'), look: () => phone?.scan(), live: phoneLive })
   await phone.scan()
   if (waits()) return
   await phone.mirror()
@@ -1212,12 +1203,9 @@ async function startPhone() {
 
 function stopPhone() {
   macSync?.pause()
-  phoneWatcher?.close()
-  clearInterval(phonePoll)
+  phoneWatch?.stop()
   clearTimeout(phoneMirrorTimer)
-  clearTimeout(phoneScanTimer)
-  phoneWatcher = null
-  phonePoll = null
+  phoneWatch = null
 }
 
 async function registerPhone() {
@@ -1255,6 +1243,18 @@ async function registerPhone() {
   // Before any window opens, so no change goes unnoted; iCloud itself can take its time.
   await ensureSync().catch((error) => console.error('Sync could not load:', error))
   if (phoneLive()) startPhone().catch((error) => console.error('The iPhone link could not start:', error))
+}
+
+/* ---- Bots: what Muse, Grok Bot and Claude send OSAT (desktop/bots, Settings → Bots) ---- */
+
+let bots = null
+
+async function registerBots() {
+  // ~/Documents/OSAT Nodes. From source it is "OSAT Nodes (Dev)", so development never takes
+  // the real app's files; tests pass OSAT_NODES_DIR (from source only).
+  const nodesDir = (!app.isPackaged && process.env.OSAT_NODES_DIR) || path.join(app.getPath('documents'), app.isPackaged ? 'OSAT Nodes' : 'OSAT Nodes (Dev)')
+  bots = await createBots({ nodesDir, store, sharedModule, handle, fail, send: sendToAllWindows, shell, clipboard: require('electron').clipboard })
+  bots.start().catch((error) => console.error('Bots could not start:', error))
 }
 
 /* ---- Offline: OSAT with the internet off (the switch on the line, ⇧⌘U) ---- */
@@ -1400,6 +1400,7 @@ app.whenReady().then(async () => {
   registerUnder()
   registerAi()
   await registerPhone()
+  await registerBots()
   registerDesk()
   registerQuickChat()
   createWindow()
@@ -1425,5 +1426,6 @@ app.on('will-quit', () => {
   terminals?.destroy()
   ai?.dispose()
   stopPhone()
+  bots?.stop()
   for (const id of grantAccessStops.keys()) stopGrantAccess(id)
 })
