@@ -19,6 +19,11 @@ contextBridge.exposeInMainWorld('nateOSFiles', Object.freeze({
   newFolder: (rootId, relative = '') => ipcRenderer.invoke('files:new-folder', rootId, relative),
   rename: (rootId, relative, name) => ipcRenderer.invoke('files:rename', rootId, relative, name),
   move: (items, rootId, relative = '', copy = false) => ipcRenderer.invoke('files:move', items, rootId, relative, copy),
+  // Files dropped from Finder ({ files: the page's File objects }); their paths are read here, not by the page.
+  moveIn: (files, rootId, relative = '', copy = false) => (
+    ipcRenderer.invoke('files:move-in', Array.from(files, (file) => webUtils.getPathForFile(file)).filter(Boolean), rootId, relative, copy)
+  ),
+  dragOut: (items) => ipcRenderer.invoke('files:drag-out', items),
   trash: (items) => ipcRenderer.invoke('files:trash', items),
   undo: (token) => ipcRenderer.invoke('files:undo', token),
   // The text Ask reads: from a file OSAT can see, a file dropped on a chat, or one chosen now.
