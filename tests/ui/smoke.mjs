@@ -305,13 +305,13 @@ async function main() {
 
   // On the desk: the Unsorted pile, a note found from the line, stacked pop-outs, Esc.
   room = 'pop-outs'
-  // Taken off the desk (its menu), the sticky joins the smoke test's sticky in the Unsorted pile, which opens Unsorted.
+  // Sent up to the Sky (its menu), the sticky joins the smoke test's sticky in the Unsorted pile, which opens Unsorted.
   await here.click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Take off the desk' }).click()
+  await page.getByRole('menuitem', { name: 'Send up to the Sky' }).click()
   const shelfSticky = page.locator('.home .desk-sticky', { hasText: 'Smoke test thought' })
   if (await shelfSticky.count()) {
     await shelfSticky.click({ button: 'right' })
-    await page.getByRole('menuitem', { name: 'Take off the desk' }).click()
+    await page.getByRole('menuitem', { name: 'Send up to the Sky' }).click()
   }
   await page.getByRole('button', { name: /^Unsorted, / }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })

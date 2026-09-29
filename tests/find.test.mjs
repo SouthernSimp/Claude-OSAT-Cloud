@@ -44,6 +44,20 @@ test('nodes by name open laid out in the Sky', () => {
   assert.ok(!rows.some((row) => row.kind === 'board'), 'the old boards are not offered')
 })
 
+test('a node or branch is found by its name even when many notes match, and ahead of them', () => {
+  const crowded = {
+    ...workspace,
+    folders: [...workspace.folders, { id: 'f-later', name: 'Later ideas', parentId: 'f-trips', createdAt: at(1) }],
+    notes: [...workspace.notes, ...[1, 2, 3, 4, 5, 6].map((n) => ({ id: `n-later-${n}`, title: `Do it later ${n}`, markdown: 'later', tags: [], updatedAt: at(10 + n) }))],
+  }
+  const rows = findAll(crowded, 'later')
+  assert.equal(rows.length, 5)
+  assert.equal(rows[0].key, 'folder:f-later', 'the branch comes before the notes, though six notes match')
+  assert.equal(rows[0].hint, 'Trips')
+  assert.deepEqual(findAll(crowded, 'ideas later')[0].go, ['Mindmap', { folderId: 'f-later' }], 'every word of the name, in any order')
+  assert.ok(findAll(crowded, 'later', { files: [{ rootId: 'desktop', relative: 'later.txt', name: 'later.txt', kind: 'file' }] }).some((row) => row.kind === 'file'), 'files still get a row')
+})
+
 test('rooms by the start of their words, ahead of notes', () => {
   assert.deepEqual(findAll(workspace, 'cal')[0], { key: 'room:Calendar', label: 'Calendar', hint: 'The month, and the day in it', kind: 'room', go: ['Calendar'] })
   assert.ok(!findAll(workspace, 'endar').some((row) => row.kind === 'room'))
