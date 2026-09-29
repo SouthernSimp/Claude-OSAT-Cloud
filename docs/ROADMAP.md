@@ -19,14 +19,14 @@
 | 10 | A living desk: one line for everything, widgets that open, Incognito (going under) | Merged (PR #12) |
 | 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | Merged (PR #13) |
 | 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | Merged (PR #14) |
-| 12b | Offline mode: Incognito becomes a switch on the line instead of a place | In review |
-| 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | In review |
+| 12b | Offline mode: Incognito becomes a switch on the line instead of a place | Merged (PR #15) |
+| 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | In review (with Phase 16, PR #18) |
 | 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
 | 15 | Paper in: a photo of stickies becomes stickies (the Mac reads handwriting) | Planned |
-| 16 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT: a drop folder first, then OSAT's connector with a key | Planned |
+| 16 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; cloud models (DeepSeek first, any provider); scans from the printer through Google Drive; a Timeline in the Roadmap; OSAT's connector with a key | In review (PR #18) |
 | 17 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
-| 18 | OSAT's own bots: a Bots room, people cards, a morning page | Planned |
+| 18 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -469,7 +469,7 @@ people": when two options fit, the one a person understands without an explanati
   Incognito; the Journal's tabs are Today, Evening and Earlier. Calendar no longer sends events to
   Google or Outlook. The old boards stop updating in the background.
 
-### Phase 12b: Offline mode (in review)
+### Phase 12b: Offline mode (merged, PR #15)
 Incognito stops being a place under the desk and becomes a switch: **Offline**.
 - **The same privacy:** the one `under` flag and `desktop/under.cjs` still do all the work: nothing
   but this Mac answers (LM Studio on loopback still does), browser tabs sleep, downloads (the AI's
@@ -487,9 +487,65 @@ Incognito stops being a place under the desk and becomes a switch: **Offline**.
 - **Open questions answered by default:** Offline remembers itself across restarts (as Incognito
   did: safer than silently going back online), and Ask's row stays (it only ever talks to this Mac).
 
-### Phase 12c: The roadmap inside OSAT (in review)
+### Phase 12c: The roadmap inside OSAT (in review, with Phase 16 in PR #18)
 Tools → Roadmap (and "Roadmap" in ⌘K and the Go menu) opens this page, read-only, in a pop-out.
 It is this file, built into the app, so it is always the plan the app was built with.
+
+### Phase 16: Bots in (in review, PR #18)
+Nate's words: "I want Muse to be able to upload nodes to the application that I can open up inside
+OSAT. That is the whole point." And bigger: OSAT as Muse, and a tool that makes AI easy for anyone.
+Everything for it lives in one Settings section, **Bots**: every model and privacy setting in one
+clearly labelled place, ready for Phase 13c's switchboard to show what leaves the Mac.
+- **The drop folder (the must-have).** A node file saved in `~/Documents/OSAT Nodes` becomes a node
+  in the Sky a few seconds later, marked **New** (a quiet badge until it is first opened), "from
+  Muse" when the file says so, and the file moves to `Added`. Nothing is deleted: a file OSAT can't
+  read moves to `Set aside` and Settings says why. It works offline. The format is the Sky's Import
+  (JSON) or Markdown (`# node`, `## branch`, list items are stickies, front matter names the
+  source); the Sky's Import takes Markdown too now. The same file saved twice makes one node.
+  Settings → Bots has the folder, Show in Finder and **Copy instructions for a bot**. Muse for Mac
+  can write files there (Full Disk Access, or Documents).
+- **Packed nodes.** A file with only a name and a summary arrives packed. **Unpack with AI** (the
+  chosen model suggests branches and stickies, with Undo) or **By hand**; the summary, and the file
+  in Added, always stay.
+- **Cloud models.** Next to the AI on this Mac (still the default): pick a provider (DeepSeek,
+  OpenAI, xAI, OpenRouter, Mistral, Groq, or any other that works like OpenAI), paste the key, and it
+  answers. OSAT checks the key by listing the provider's models; a bad key gets one plain line. Keys
+  live in the macOS Keychain, never in a file or a log. Beside each key: questions, tokens and a
+  rough cost, with a link to the exact bill. The chosen model answers the line, Ask, Help me sort
+  (it is asked about the stickies matching words couldn't place), Unpack with AI and scans; offline
+  it steps aside and the AI on this Mac answers. Ask says where an answer comes from. Each provider
+  has a `kind`, so Anthropic-style providers can follow.
+- **Scans: printer → Google Drive → OSAT.** Pick the folder the printer's scans land in (Google
+  Drive for Desktop keeps it on this Mac: no Google sign-in, no API). Each new PDF or picture
+  becomes a packed New node "from Scan": OSAT keeps its own copy and never moves, renames or deletes
+  the original, so the scan → Word flow keeps working until Nate says the node version can replace
+  it. The words are read on this Mac (the PDF's text, else the Mac's text recognition) and kept as a
+  sticky; the model proposes a name and a summary for one click. What was in the folder already
+  waits until asked. With a cloud model chosen, the Scans card says plainly that scan words go to it.
+- **A Timeline in the Roadmap room**, read from this page's Status table, so they never disagree.
+- **The OSAT connector (lean).** An MCP server on this Mac only (127.0.0.1), off until turned on,
+  with a key in the Keychain that can be reset: list nodes, read a node, add a node, add a sticky.
+  Every change goes through the store (the windows, sync, and Undo in Settings → Bots). Setup lines
+  for Claude Code, Claude Desktop (through mcp-remote) and other apps.
+- **Schema 6:** a node may be `packed`, `fresh` (New) and say where it came `from`.
+- **Questions for Nate:**
+  - Muse's custom connectors run on Meta's own computers, and they can't reach a connector on this
+    Mac. The drop folder does the job meanwhile. A public address (the DigitalOcean droplet, say)
+    would let Muse use the connector too, but then something would live on the internet, which
+    breaks "everything stays on the Mac". Nothing has been set up; it's Nate's call.
+  - When should the node version replace the scan → Word doc step? Nothing in that flow changed.
+  - The line's row still says "Ask the AI on this Mac" when a cloud model answers. The line belongs
+    to the Phase 13a work: its models carry `offline: false` and `where` for it to say so.
+
+### Phase 18: OSAT's own bots (planned)
+OSAT becomes Muse too, and leans toward business and customer management over time.
+- **A Bots room in the dock**, like Muse's list: each bot with a face, its last message, and groups.
+- **The first bots:** a customer manager, a follow-up bot, an Inbox sorter (files Unsorted, with
+  Nate's OK) and a research bot.
+- **What they can do:** read and write notes (through the same store and Undo as the connector), run
+  on a schedule, draft email and messages (always asking before anything is sent), and use the web
+  and Mac apps. They use the model chosen in Settings → Bots; what leaves the Mac says so there.
+- **People cards** and **a morning page** (from The wow below) grow out of the same bots.
 
 ### The wow (Sep 28): what makes OSAT stand out
 Raycast launches things, Notion and Mem keep notes, Rewind remembers. OSAT is all of it in one
@@ -550,8 +606,11 @@ calm, private place on the Mac, with bots feeding it.
 | Photos of paper stickies read into stickies | 15 |
 | iPad: GoodNotes-style pages, hand-drawn mind maps, Apple Pencil Pro squeeze ring, synced | Later (parked) |
 | iPhone: a document scanner | Later (parked) |
-| OSAT's own agents/bots | 18 |
+| OSAT's own agents/bots: a Bots room, customer manager, follow-up, Inbox sorter, research | 18 |
 | Muse's bots put nodes into OSAT ("the whole point") | 16 |
+| Cloud models: DeepSeek first, any provider, easy for anyone | 16 |
+| Scans: printer → Google Drive → OSAT, named for one click | 16 |
+| A project timeline inside OSAT | 16 |
 | The roadmap, viewable inside OSAT | 12c |
 | Quick search like Raycast: files and the clipboard with a preview, one key, straight to work | 13 |
 | A Raycast feel; business and customer management over time | 13, 18 |
