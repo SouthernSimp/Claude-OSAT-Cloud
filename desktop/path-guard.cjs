@@ -77,7 +77,7 @@ async function selfCheck() {
   }
 }
 
-module.exports = { relativeParts, resolveApprovedPath, resolveApprovedWritePath }
+module.exports = { contains, relativeParts, resolveApprovedPath, resolveApprovedWritePath }
 
 if (require.main === module) {
   selfCheck()

@@ -11,7 +11,8 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
    kinds it takes ('note', 'folder'…), `axis` ('x' or 'y') makes it a list whose children
    with [data-slot] are its items, so a drop has an index; `spring` runs after the pointer
    rests over it (a collapsed pile opens, the dock's Sky button goes up). Holding the
-   pointer at the top or bottom edge of the screen asks onEdge to change layers. */
+   pointer at the top or bottom edge of the screen asks onEdge to change layers. onDrop also
+   says whether ⌥ was held (`alt`: copy instead of move). */
 
 const targets = new Map()
 const subscribers = new Set()
@@ -177,7 +178,7 @@ function begin(down, item, source) {
     place(event.clientX, event.clientY)
   }
 
-  const finish = (drop) => {
+  const finish = (drop, alt = false) => {
     removeEventListener('pointermove', move, true)
     removeEventListener('pointerup', up, true)
     removeEventListener('pointercancel', cancel, true)
@@ -197,9 +198,9 @@ function begin(down, item, source) {
     const carried = carrying
     carrying = null
     notify()
-    if (target) target.spec.onDrop({ ...carried, index: where, x: last.x, y: last.y, offset, size: { width: box.width, height: box.height } })
+    if (target) target.spec.onDrop({ ...carried, index: where, alt, x: last.x, y: last.y, offset, size: { width: box.width, height: box.height } })
   }
-  const up = (event) => { if (event.pointerId === down.pointerId) finish(true) }
+  const up = (event) => { if (event.pointerId === down.pointerId) finish(true, event.altKey) }
   const cancel = (event) => { if (event.pointerId === down.pointerId) finish(false) }
   const key = (event) => {
     if (event.key !== 'Escape' || !ghost) return

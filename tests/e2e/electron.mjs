@@ -9,7 +9,7 @@
 //      the notes appears, then leaves when the link is turned off (a stand-in iCloud Drive)
 //   6. two OSATs (their own data, one iCloud Drive) keep each other in step
 //   7. the Mac's Desktop on the desk (a stand-in folder): a folder opens in Files, Find looks inside
-//      files, and Ask reads a file
+//      files, tidying (a new folder, drag to move or ⌥-drag to copy, the Bin, rename, each with Undo), and Ask reads a file
 //   8. the quick chat: its own window answers, and Esc puts it away
 //   9. Offline: going offline closes the browser's tabs and shuts every way out (the
 //      desk's and the browser's requests, main's fetch, downloads, opening files in other
@@ -148,6 +148,50 @@ try {
   await files.getByRole('navigation', { name: 'Where you are' }).getByRole('button', { name: 'Plans' }).waitFor({ timeout: 3000 })
     .catch(() => problems.push('Show in its folder did not open the file\'s folder'))
   check(!(await findBox.inputValue()), 'Show in its folder left the words in the find box')
+
+  // Tidy: a new folder named in place, a file dragged onto it (⌥ copies), the Bin, and Undo for each.
+  const there = (...parts) => access(path.join(home, 'Mac', 'Desktop', 'Plans', ...parts)).then(() => true, () => false)
+  await files.getByRole('button', { name: 'New folder' }).click()
+  const namer = files.locator('.finder-rename')
+  await namer.waitFor({ timeout: 5000 }).catch(() => problems.push('New folder did not open a name to type'))
+  await namer.fill('Camping')
+  await namer.press('Enter')
+  check(await until(() => there('Camping'), 3000), 'New folder did not make Camping')
+  const camping = files.locator('.finder-item', { hasText: 'Camping' })
+  await camping.waitFor({ timeout: 3000 }).catch(() => problems.push('the new folder did not show under its new name'))
+  const drag = async (from, to, alt = false) => {
+    const a = await from.boundingBox()
+    const b = await to.boundingBox()
+    await main.mouse.move(a.x + a.width / 2, a.y + a.height / 2)
+    await main.mouse.down()
+    await main.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 })
+    if (alt) await main.keyboard.down('Alt')
+    await main.mouse.up()
+    if (alt) await main.keyboard.up('Alt')
+  }
+  const undo = async () => { await main.locator('.undo-toasts .toast button', { hasText: 'Undo' }).click() }
+  await drag(packing, camping, true)
+  check(await until(() => there('Camping', 'packing.txt'), 3000) && await there('packing.txt'), '⌥-drag onto a folder did not copy the file')
+  await undo()
+  check(await until(async () => !(await there('Camping', 'packing.txt')), 3000) && await there('packing.txt'), 'Undo did not take the copy away')
+  await drag(packing, camping)
+  check(await until(async () => (await there('Camping', 'packing.txt')) && !(await there('packing.txt')), 3000), 'dragging a file onto a folder did not move it')
+  await undo()
+  check(await until(async () => (await there('packing.txt')) && !(await there('Camping', 'packing.txt')), 3000), 'Undo did not bring the moved file back')
+  await packing.click()
+  await packing.press('Meta+Backspace')
+  check(await until(async () => !(await there('packing.txt')), 3000), '⌘⌫ did not move the file to the Bin')
+  await undo()
+  check(await until(() => there('packing.txt'), 4000), 'Undo did not bring the file back from the Bin')
+  await packing.waitFor({ timeout: 3000 }).catch(() => problems.push('the file did not come back into the folder view'))
+  await packing.click()
+  await files.getByRole('button', { name: 'Rename' }).click()
+  await files.locator('.finder-rename').fill('packing list.txt')
+  await files.locator('.finder-rename').press('Enter')
+  check(await until(() => there('packing list.txt'), 3000), 'Rename did not rename the file')
+  await undo()
+  check(await until(() => there('packing.txt'), 3000), 'Undo did not put the old name back')
+  await packing.waitFor({ timeout: 3000 }).catch(() => problems.push('the old name did not show again'))
   await packing.click()
   await main.getByRole('button', { name: 'Ask about it' }).click()
   await main.locator('.ask-note-chip.is-file', { hasText: 'packing.txt' }).waitFor({ timeout: 5000 })

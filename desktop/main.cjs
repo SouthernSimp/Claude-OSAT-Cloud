@@ -42,7 +42,8 @@ const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
 const { DEFAULT_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = require('./desk.cjs')
 const { createQuickChat } = require('./quick-chat.cjs')
-const { PLACES, extractText, inside, isPackage, rankFound, run, searchArgs, walkFind } = require('./mac-files.cjs')
+const { PLACES, extractText, inside, isPackage, rankFound, restoreItem, run, searchArgs, trashItem, walkFind } = require('./mac-files.cjs')
+const { TidyError, cleanName, freeName, makeFolder, moveInto, put, rename, toBin } = require('./file-ops.cjs')
 const { createMedia } = require('./media.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
@@ -174,7 +175,7 @@ async function approvedWritePath(grant, relative) {
   if (grant.kind !== 'folder') fail('Writing requires an approved folder.')
   ensureGrantAccess(grant)
   try {
-    return await resolveApprovedWritePath(grant.root, relative)
+    return await resolveApprovedWritePath(grant.place ? await fs.realpath(grant.root) : grant.root, relative)
   } catch (error) {
     if (error.message === 'INVALID_RELATIVE_PATH' || error.message === 'PATH_OUTSIDE_ROOT') {
       fail('Invalid relative file path.')
@@ -182,6 +183,49 @@ async function approvedWritePath(grant, relative) {
     if (error.code === 'ENOENT') fail('The destination folder is no longer available.')
     fail('That approved location can no longer be accessed safely.')
   }
+}
+
+/* Tidying: a place to change (never a root itself, never hidden, never a link, which would
+   change what it points at) and a folder to put things in. */
+async function sourcePath(grant, relative) {
+  if (typeof relative !== 'string' || relative.split('/').some((part) => part.startsWith('.'))) fail('Invalid relative file path.')
+  const target = await approvedWritePath(grant, relative)
+  if (grants.some((item) => item.root === target)) fail('That folder is one you added to OSAT. Take it out of the list first.')
+  if (!(await fs.lstat(target).catch(() => null))) fail('That file or folder is no longer available.')
+  return target
+}
+
+async function sourcePaths(items) {
+  if (!Array.isArray(items) || !items.length || items.length > 500) fail('Choose something to change.')
+  const found = []
+  for (const item of items) found.push(await sourcePath(getGrant(item?.rootId), item?.relative))
+  return found
+}
+
+async function folderPath(grant, relative) {
+  const dir = await approvedPath(grant, relative)
+  if (!(await fs.stat(dir)).isDirectory() || isPackage(path.basename(dir))) fail('That is not a folder OSAT can put things in.')
+  return dir
+}
+
+/* What can be undone for a few minutes: functions kept here, so the window only holds a token. */
+const undos = new Map()
+function keepUndo(undo) {
+  if (!undo) return null
+  const token = randomUUID()
+  undos.set(token, undo)
+  if (undos.size > 20) undos.delete(undos.keys().next().value)
+  return token
+}
+
+/* The Bin. Off the Mac (tests, Linux) it is a folder in the data folder, so Undo still works. */
+async function binTrash(file) {
+  if (process.platform === 'darwin') return trashItem(file)
+  const bin = path.join(dataDir, 'Bin')
+  await fs.mkdir(bin, { recursive: true })
+  const to = path.join(bin, await freeName(bin, path.basename(file), (await fs.lstat(file)).isDirectory()))
+  await put(file, to)
+  return to
 }
 
 async function loadGrants() {
@@ -248,6 +292,7 @@ function handle(channel, operation, { from = 'main' } = {}) {
       return await operation(...args)
     } catch (error) {
       if (error instanceof FileAccessError) throw error
+      if (error instanceof TidyError) throw new FileAccessError(error.message)
       if (error.code === 'EPERM' || error.code === 'EACCES') throw new FileAccessError(NOT_ALLOWED)
       console.error(`Local file operation failed (${channel}):`, error)
       throw new FileAccessError('Local file access failed.')
@@ -447,6 +492,38 @@ function registerFileHandlers() {
     if (typeof target !== 'string' || !path.isAbsolute(target)) fail('Drop a file from Finder to read it.')
     return { name: path.basename(target), ...await readForAsk(target) }
   }, { from: 'any' })
+
+  // Tidying (Phase 21). Only inside the approved folders; a change hands back a token for Undo.
+  handle('files:new-folder', async (rootId, relative = '') => {
+    const name = await makeFolder(await folderPath(getGrant(rootId), relative))
+    return { name, relative: relative ? `${relative}/${name}` : name }
+  }, { from: 'app' })
+
+  handle('files:rename', async (rootId, relative, name) => {
+    const from = await sourcePath(getGrant(rootId), relative)
+    const { to, undo } = await rename(from, cleanName(name))
+    return { name: path.basename(to), relative: [...relative.split('/').slice(0, -1), path.basename(to)].join('/'), undo: keepUndo(undo) }
+  }, { from: 'app' })
+
+  // Move (or copy) items into a folder; a taken name is numbered, never overwritten.
+  handle('files:move', async (items, rootId, relative = '', copy = false) => {
+    const dir = await folderPath(getGrant(rootId), relative)
+    const { done, failed, undo } = await moveInto(await sourcePaths(items), dir, { copy: copy === true, trash: binTrash })
+    return { moved: done.map(({ to }) => ({ rootId, relative: relative ? `${relative}/${path.basename(to)}` : path.basename(to) })), failed, undo: keepUndo(undo) }
+  }, { from: 'app' })
+
+  // "Delete" is the Mac's Bin.
+  handle('files:trash', async (items) => {
+    const { done, failed, undo } = await toBin(await sourcePaths(items), binTrash, process.platform === 'darwin' ? restoreItem : undefined)
+    return { count: done.length, failed, undo: keepUndo(undo) }
+  }, { from: 'app' })
+
+  handle('files:undo', async (token) => {
+    const undo = undos.get(token)
+    if (!undo) fail('That can’t be undone any more.')
+    undos.delete(token)
+    return undo()
+  }, { from: 'app' })
 
   handle('files:forget', async (rootId) => {
     if (getGrant(rootId).place) fail('Desktop, Documents and Downloads are always here.')
