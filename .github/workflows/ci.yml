@@ -125,6 +125,10 @@ jobs:
 
   iphone:
     name: iPhone app (simulator)
+    # The iPhone app is parked, so this only runs after a merge to main or by hand
+    # (Actions → CI → Run workflow), not on every pull request. It builds the web app into the
+    # iOS shell, so it is not filtered by path: any src/ change can affect it.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: test
     runs-on: macos-latest
     env:

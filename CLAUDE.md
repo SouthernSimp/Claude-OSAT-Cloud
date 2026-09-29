@@ -50,7 +50,8 @@ npm run install:mac    # build the DMG and install /Applications/OSAT.app (macOS
 The cloud container is Linux: tests, the build, the web preview and Playwright
 screenshots work there; the Electron app, the global hotkey, vibrancy and the Mac menu
 bar can only be checked on a Mac (the CI `mac` job builds and launch-checks the DMG).
-The iPhone app is built and screenshotted in the simulator by the CI `iphone` job; on
+The iPhone app is built and screenshotted in the simulator by the CI `iphone` job (parked: it
+runs only on pushes to main and by hand, so it shows as skipped on pull requests); on
 Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locally.
 
 ## Architecture today
