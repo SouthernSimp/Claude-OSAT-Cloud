@@ -29,7 +29,7 @@
 | 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | Merged (PR #18) |
 | 19 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
 | 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
-| 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidying and dragging next) |
+| 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidy and drag-to-move merged in PR #24; dragging in from Finder and out to other apps merged in PR #25; the desk's shelf and the Notes room on the same drag can wait) |
 | 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | Planned |
 | 22 | Files in the Sky: toss a file up as a card, a node can link a real folder (schema 8) | Planned |
 | 23 | Nodes become projects: Track it (Done / Now / Next), Rush it, on top of the Roadmap's Timeline | Planned |
@@ -680,7 +680,38 @@ words look in names and inside files (Spotlight), and "pdf", "photos", "screensh
 "last month", "last 3 days", "recently" narrow it. The room says back what it understood ("PDFs changed
 since Mon, Sep 21 with “taxes”"), each result says where it lives and whether the words were inside,
 and "Show in its folder" goes there. Words in "quotes" are only words. Read-only: nothing is moved.
-Still to come in this phase: tidying (below) and one drag system.
+
+**Step 2, Tidy and drag to move (merged Sep 29, PR #24).** In Files, everything you'd do in Finder to put
+things where they belong, each with an Undo toast:
+- **New folder** (the button by Back/Forward) opens its name to type in place; **Rename** in place from the
+  info pane or right-click (Return or a click away keeps it, Esc leaves it); a name can't hold “/” or “:”
+  or start with a dot (OSAT never shows hidden files).
+- **Move to** (right-click, or the info pane): up a folder, the folders here, then every place. A taken name
+  is numbered ("bill 2.pdf"), never overwritten; a folder can't go inside itself.
+- **Move to Bin** (⌘⌫, right-click, info pane) is the Mac's own Bin, so nothing is ever erased. Undo brings
+  it back (if macOS won't let OSAT read the Bin, Finder is asked to put it back).
+- **Several at once:** ⌘-click or ⇧-click. **Drag** any of them onto a folder, a sidebar place, a crumb in
+  the path bar, or the empty grid (this folder); hold ⌥ to copy. Hold over a folder and it opens. It is the
+  one drag engine (`carry.js`), so it looks and feels like moving a sticky.
+- **Safety:** only inside the approved places; a link is moved as a link, never followed; a folder you
+  added to OSAT can't be moved from inside it; a batch stops at the first thing that can't go and says so
+  (the ones before it are done, and Undo covers them).
+- Not yet: drag a box to pick, a list view, the desk's Desktop shelf and the Notes room on the same
+  drag engine (next in this phase).
+
+**Step 3, Drag in from Finder and out to other apps (merged Sep 29, PR #25).**
+- **In:** drag files from Finder (or any app) onto a folder, a place in the sidebar, a crumb or the empty
+  grid in Files. It lights up like any drop; hover over a folder and it opens. Like Finder, it moves them
+  in (⌥ copies, and if the other app only offers a copy, it copies). A taken name is numbered, and the
+  toast has Undo, which sends it back where it came from. OSAT reads each dropped file's path in its
+  preload (a page can't make one up) and refuses a disk, your home folder, Desktop / Documents / Downloads
+  themselves, a folder you added, and anything hidden.
+- **Out:** carry a file (or several) past the edge of the desk and the Mac's own drag takes over, so it can
+  be dropped on a Dock app (Mail, Messages), the Dock's folders, or another screen. Only files OSAT can
+  see can be carried out. (The desk covers the whole screen, so the Dock and other screens are where a
+  carried file leaves from.)
+
+Still to come in this phase: the desk's Desktop shelf and the Notes room on the one drag system.
 - **Better finding.** ⌘K and Files search look inside files too (Spotlight's own index, so it's fast
   and stays on the Mac), and understand plain words for kind and time: "pdf", "photos", "last week",
   "yesterday". Results say where each one lives and open on Return. Still only in the places OSAT may see.

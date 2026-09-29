@@ -147,4 +147,30 @@ async function walkFind(roots, test, { fs = require('node:fs/promises'), depth =
   return found
 }
 
-module.exports = { MAX_CHARS, PICTURES, PLACES, extractText, inside, isPackage, locate, rankFound, run, searchArgs, walkFind }
+/* The Mac's Bin, through the Mac itself. It says where the file landed, so Undo can fetch it
+   (JXA reads that back only through `$()`; a `Ref()` crashes osascript). Reading the Bin can be
+   refused to an app without Full Disk Access, so putting a file back may ask Finder to do it. */
+const TRASH = `ObjC.import("Foundation")
+function run(argv) {
+  const landed = $()
+  if (!$.NSFileManager.defaultManager.trashItemAtURLResultingItemURLError($.NSURL.fileURLWithPath(argv[0]), landed, null)) throw new Error("NOT_TRASHED")
+  return ObjC.unwrap(landed.path)
+}`
+const RESTORE = `on run argv
+  tell application "Finder"
+    set moved to move (POSIX file (item 1 of argv) as alias) to (POSIX file (item 2 of argv) as alias)
+    set name of moved to (item 3 of argv)
+  end tell
+end run`
+
+async function trashItem(file, { exec = run } = {}) {
+  const landed = (await exec('osascript', ['-l', 'JavaScript', '-e', TRASH, file])).trim()
+  if (!path.isAbsolute(landed)) throw new Error('NOT_TRASHED')
+  return landed
+}
+
+async function restoreItem(inBin, to, { exec = run } = {}) {
+  await exec('osascript', ['-e', RESTORE, inBin, path.dirname(to), path.basename(to)])
+}
+
+module.exports = { MAX_CHARS, PICTURES, PLACES, extractText, inside, isPackage, locate, rankFound, restoreItem, run, searchArgs, trashItem, walkFind }

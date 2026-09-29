@@ -82,6 +82,8 @@ jobs:
         run: node scripts/scan-read-check.cjs
       - name: Check Spotlight takes OSAT's find queries
         run: node scripts/find-check.mjs
+      - name: Check the Bin takes a file and says where it landed
+        run: node scripts/bin-check.cjs
       - name: Build the DMG
         env:
           # electron-builder skips all signing on pull requests by default, which

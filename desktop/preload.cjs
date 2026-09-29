@@ -15,6 +15,17 @@ contextBridge.exposeInMainWorld('nateOSFiles', Object.freeze({
   quickLook: (rootId, relative = '') => ipcRenderer.invoke('files:quick-look', rootId, relative),
   search: (query) => ipcRenderer.invoke('files:search', query),
   forget: (rootId) => ipcRenderer.invoke('files:forget', rootId),
+  // Tidying: items are { rootId, relative }; each change answers with `undo`, a token for undo().
+  newFolder: (rootId, relative = '') => ipcRenderer.invoke('files:new-folder', rootId, relative),
+  rename: (rootId, relative, name) => ipcRenderer.invoke('files:rename', rootId, relative, name),
+  move: (items, rootId, relative = '', copy = false) => ipcRenderer.invoke('files:move', items, rootId, relative, copy),
+  // Files dropped from Finder ({ files: the page's File objects }); their paths are read here, not by the page.
+  moveIn: (files, rootId, relative = '', copy = false) => (
+    ipcRenderer.invoke('files:move-in', Array.from(files, (file) => webUtils.getPathForFile(file)).filter(Boolean), rootId, relative, copy)
+  ),
+  dragOut: (items) => ipcRenderer.invoke('files:drag-out', items),
+  trash: (items) => ipcRenderer.invoke('files:trash', items),
+  undo: (token) => ipcRenderer.invoke('files:undo', token),
   // The text Ask reads: from a file OSAT can see, a file dropped on a chat, or one chosen now.
   extract: (rootId, relative = '') => ipcRenderer.invoke('files:extract', rootId, relative),
   attachDropped: (file) => ipcRenderer.invoke('files:attach', webUtils.getPathForFile(file) || ''),

@@ -11,7 +11,12 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
    kinds it takes ('note', 'folder'…), `axis` ('x' or 'y') makes it a list whose children
    with [data-slot] are its items, so a drop has an index; `spring` runs after the pointer
    rests over it (a collapsed pile opens, the dock's Sky button goes up). Holding the
-   pointer at the top or bottom edge of the screen asks onEdge to change layers. */
+   pointer at the top or bottom edge of the screen asks onEdge to change layers. onDrop also
+   says whether ⌥ was held (`alt`: copy instead of move).
+
+   Two ways across the window's edge: files dragged in from Finder fall on the same places
+   (`useOutsideFiles`, as `data.files`), and a carried thing that names `out` in carryable is
+   handed on when the pointer leaves the window, for the Mac's own drag to take over. */
 
 const targets = new Map()
 const subscribers = new Set()
@@ -42,6 +47,47 @@ export function useDrop(id, spec) {
     return () => targets.delete(id)
   }, [id])
   return { 'data-drop': id, ...(spec.axis ? { 'data-axis': spec.axis } : {}) }
+}
+
+const OUTSIDE = { kind: 'file', id: 'outside', data: { items: [] } }
+
+/* Files dragged in from Finder or another app fall on the places that take 'file', as
+   { kind: 'file', data: { items: [], files: [File…] } }. Spread the result on the element that hears them. */
+export function useOutsideFiles() {
+  const held = useRef({ over: null, timer: 0 })
+  const clear = () => {
+    held.current.over?.element.removeAttribute('data-over')
+    clearTimeout(held.current.timer)
+    held.current = { over: null, timer: 0 }
+  }
+  useEffect(() => clear, [])
+  const hears = (event) => Boolean(event.dataTransfer?.types?.includes('Files'))
+  return {
+    onDragOver(event) {
+      if (!hears(event)) return
+      event.preventDefault()
+      const found = targetAt(event.clientX, event.clientY, OUTSIDE)
+      // A move if the other app allows one and ⌥ isn't held; otherwise a copy.
+      event.dataTransfer.dropEffect = !found ? 'none' : !event.altKey && /all|move|uninitialized/i.test(event.dataTransfer.effectAllowed) ? 'move' : 'copy'
+      if (found?.element === held.current.over?.element) return
+      clear()
+      if (!found) return
+      found.element.setAttribute('data-over', '')
+      held.current = { over: found, timer: found.spec.spring ? setTimeout(() => found.spec.spring(OUTSIDE), 650) : 0 }
+    },
+    onDragLeave(event) {
+      if (!event.currentTarget.contains(event.relatedTarget)) clear()
+    },
+    onDrop(event) {
+      if (!hears(event)) return
+      event.preventDefault()
+      const target = held.current.over
+      const files = Array.from(event.dataTransfer.files)
+      const copy = event.altKey || event.dataTransfer.dropEffect === 'copy'
+      clear()
+      if (target && files.length) target.spec.onDrop({ ...OUTSIDE, data: { items: [], files }, alt: copy })
+    },
+  }
 }
 
 /* Where in a list (the target's own [data-slot] children, not counting the carried one) a
@@ -90,18 +136,18 @@ globalThis.addEventListener?.('click', (event) => {
 /* Props for something that can be carried: { kind, id, data }. Plain clicks still reach
    its own onClick; controls inside it (buttons, fields) never start a carry, but the
    thing itself may be a button (a desk icon, a file). */
-export function carryable(item, { disabled = false } = {}) {
+export function carryable(item, { disabled = false, out = null } = {}) {
   if (disabled) return {}
   return {
     onPointerDown(event) {
       const control = event.target.closest('button, input, textarea, select, a, [contenteditable="true"], .no-carry')
       if (event.button !== 0 || (control && control !== event.currentTarget && event.currentTarget.contains(control))) return
-      begin(event, item, event.currentTarget)
+      begin(event, item, event.currentTarget, out)
     },
   }
 }
 
-function begin(down, item, source) {
+function begin(down, item, source, out) {
   const start = { x: down.clientX, y: down.clientY }
   const box = source.getBoundingClientRect()
   const offset = { x: start.x - box.left, y: start.y - box.top }
@@ -174,10 +220,16 @@ function begin(down, item, source) {
       notify()
     }
     event.preventDefault()
+    // Off the edge of the window: the Mac's own drag takes it from here (to the Dock, another screen…).
+    if (out && (event.clientX < 0 || event.clientY < 0 || event.clientX >= innerWidth || event.clientY >= innerHeight)) {
+      finish(false)
+      out(item)
+      return
+    }
     place(event.clientX, event.clientY)
   }
 
-  const finish = (drop) => {
+  const finish = (drop, alt = false) => {
     removeEventListener('pointermove', move, true)
     removeEventListener('pointerup', up, true)
     removeEventListener('pointercancel', cancel, true)
@@ -197,9 +249,9 @@ function begin(down, item, source) {
     const carried = carrying
     carrying = null
     notify()
-    if (target) target.spec.onDrop({ ...carried, index: where, x: last.x, y: last.y, offset, size: { width: box.width, height: box.height } })
+    if (target) target.spec.onDrop({ ...carried, index: where, alt, x: last.x, y: last.y, offset, size: { width: box.width, height: box.height } })
   }
-  const up = (event) => { if (event.pointerId === down.pointerId) finish(true) }
+  const up = (event) => { if (event.pointerId === down.pointerId) finish(true, event.altKey) }
   const cancel = (event) => { if (event.pointerId === down.pointerId) finish(false) }
   const key = (event) => {
     if (event.key !== 'Escape' || !ghost) return

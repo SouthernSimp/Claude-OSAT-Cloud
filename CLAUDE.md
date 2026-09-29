@@ -80,6 +80,17 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     (`mdfind -onlyin … <query>`; `inside`, `rankFound`, and `walkFind` where there is no Spotlight:
     tests and Linux) and the text Ask reads from a file (PDFKit through `osascript -l
     JavaScript`, Word/RTF through `textutil`, capped at 12,000 characters).
+  - `file-ops.cjs`: tidying (Phase 21 step 2): New folder, rename, move / copy, the Bin, all on absolute
+    paths main has already checked (`sourcePath`/`folderPath` in main.cjs: never a root, never hidden, never
+    a link); each returns `undo`, a function kept in main's `undos` map so the window holds only a token
+    (`files:new-folder`/`rename`/`move`/`trash`/`undo`). A taken name is numbered, nothing is overwritten,
+    a batch stops at the first failure. The Bin is `trashItem` in mac-files (osascript JXA; it reads the
+    landing place through `$()`, a `Ref()` crashes osascript); off the Mac it is `<data folder>/Bin`.
+    `scripts/bin-check.cjs` (CI's mac job) checks the real Bin. Step 3: `files:move-in` takes files dropped
+    from Finder (the preload's `moveIn(Array.from(files), …)` turns each `File` into its path with
+    `webUtils.getPathForFile`; pass an array, not a `FileList`, which the bridge empties) and `cleanDropped`
+    refuses a disk, the home folder, a place or granted root, and hidden names; `files:drag-out` hands
+    files to `webContents.startDrag` (icon: the cached Quick Look thumbnail) while the mouse is still down.
   - `quick-chat.cjs`: the quick chat window, a floating panel on every Space that stays where
     it's left (`chatBounds` in `prefs.json`).
   - `scans.cjs`: Paper in (Phase 15). Watches the folder chosen in Settings → Data → Scans (the Brother's
@@ -195,6 +206,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     on places that take it, with `accepts`, an `axis` for lists of `[data-slot]` items, `spring`
     for hover-to-open; `onCarryEdge` makes the top/bottom of the screen change layers). A ghost
     follows the pointer, a line shows where in a list it lands, Esc puts it back.
+    `useOutsideFiles()` lets files dragged in from Finder fall on the same places (`data.files`, native
+    `dragover`/`drop` on the room, the target found with `targetAt`); `carryable(item, { out })` calls `out`
+    when the pointer leaves the window, and Files uses it to start the Mac's own drag.
     `lib/ContextMenu.jsx`: `useContextMenu()` right-click menus (step-in lists, paper swatches).
   - `shell/glass.jsx`: the liquid-glass SVG filter (`GlassDefs`), `useAlive()` (cursor light on
     `.glass`/`.lit`, `--px/--py` for parallax) and the dock's magnify.
@@ -240,7 +254,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     Budget, NowPlaying, Obsidian, Settings (four tabs: General, AI, Bots, Data; `sectionFor` maps old tab
     names); schema 4 folds each project into a node, `projectNodes` in store-core, and keeps `projects`), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).
   - `views/Files.jsx`: a small Finder (places and your folders, back/forward, Space for Quick
-    Look, Ask about it, a find box: results from every place, keyed `rootId + relative`, each
+    Look, Ask about it, New folder / Rename / Move to / Move to Bin with Undo, ⌘/⇧-click to pick
+    several, drag onto a folder with `carry.js` (⌥ copies; a drop says `alt`), a find box: results from every place, keyed `rootId + relative`, each
     saying where it lives, with Show in its folder) and the pieces the desk reuses: `FileThumb`, `useFolder`,
     `useFreshness` (folders refresh when the window comes back). The desk's right side shows
     the Mac's Desktop (click picks, double-click or Return opens, a folder opens in Files) or,
