@@ -189,8 +189,7 @@ export function nodeRecords(folders, tree, { now = new Date().toISOString(), mak
 
 /* Where an arriving node says it came from, kept on the node: who sent it (`source`, shown
    quietly), the file's name and a fingerprint of what it said (`hash`, so the same file
-   saved twice makes one node), and for a scan its copy (`scan`) and the name and summary
-   the AI proposes until they're confirmed (`proposal`). */
+   saved twice makes one node). */
 export function fromOf(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const from = {}
@@ -199,23 +198,19 @@ export function fromOf(value) {
   if (source) from.source = source
   if (file) from.file = file
   if (typeof value.hash === 'string' && /^[a-f0-9]{16,128}$/.test(value.hash)) from.hash = value.hash
-  if (typeof value.scan === 'string' && /^scan-[A-Za-z0-9_-]{1,80}\.[a-z0-9]{2,5}$/.test(value.scan)) from.scan = value.scan
-  const name = oneLine(value.proposal?.name, LIMITS.name)
-  if (name) from.proposal = { name, summary: text(value.proposal.summary, 1600) }
   return Object.keys(from).length ? from : null
 }
 
 /* The node already made from the same file (same fingerprint), if it is still there. */
 export const sameFile = (folders, hash) => (hash ? folders.find((folder) => !folder.parentId && folder.from?.hash === hash) || null : null)
 
-/* The store operations that bring a node file (or a scan: `scan` is OSAT's copy of it) into
-   the workspace as a New node (packed when it's only a summary), or { duplicate } when the
-   same file already made one. */
-export function arrivalOps(doc, tree, { hash, file, source, scan, now, makeId }) {
+/* The store operations that bring a node file into the workspace as a New node (packed when
+   it's only a summary), or { duplicate } when the same file already made one. */
+export function arrivalOps(doc, tree, { hash, file, source, now, makeId }) {
   const folders = Array.isArray(doc.folders) ? doc.folders : []
   const duplicate = sameFile(folders, hash)
   if (duplicate) return { duplicate }
-  const from = fromOf({ source: tree.source || source, file, hash, scan })
+  const from = fromOf({ source: tree.source || source, file, hash })
   const made = nodeRecords(folders, tree, {
     now,
     makeId,

@@ -1,6 +1,5 @@
 /* Settings → Bots, kept in <data folder>/bots.json: which model answers, the providers
-   (never their keys: those are in the Keychain), what each has used, the scan folder and
-   the connector. Saves take turns, each writing the newest settings in one piece. `clean`
+   (never their keys: those are in the Keychain), what each has used, and the connector. Saves take turns, each writing the newest settings in one piece. `clean`
    is cleanBotSettings from shared/providers.mjs. */
 const path = require('node:path')
 const nodeFs = require('node:fs/promises')

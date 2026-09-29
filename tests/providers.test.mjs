@@ -4,7 +4,7 @@ import test from 'node:test'
 import {
   addUsage, chatModels, cleanBaseUrl, cleanBotSettings, cleanKey, cleanProviders, cloudModelId, costLine, explainFailure, parseCloudModelId, presetFor, providerFrom,
 } from '../shared/providers.mjs'
-import { readNameAnswer, readSortAnswer, readUnpackAnswer, sortMessages, unpackMessages } from '../shared/ai-tasks.mjs'
+import { readSortAnswer, readUnpackAnswer, sortMessages, unpackMessages } from '../shared/ai-tasks.mjs'
 
 const KEY = 'sk-0123456789abcdef0123456789abcdef'
 
@@ -55,18 +55,17 @@ test('model ids: "cloud:<provider>:<model>", even with slashes and colons in the
 })
 
 test('settings: the AI on this Mac unless a connected provider is picked; totals only for providers kept', () => {
-  assert.deepEqual(cleanBotSettings(null), { model: 'local', providers: [], usage: {}, scanDir: '', connector: { on: false, port: 0 } })
+  assert.deepEqual(cleanBotSettings(null), { model: 'local', providers: [], usage: {}, connector: { on: false, port: 0 } })
   const settings = cleanBotSettings({
     model: 'cloud:deepseek:deepseek-chat',
     providers: [{ id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' }],
     usage: { deepseek: { requests: 2, input: 10.4, output: -3, since: '2026-09-29' }, gone: { requests: 9 } },
-    scanDir: 'relative/path',
     connector: { on: true, port: 80 },
     key: KEY,
   })
   assert.equal(settings.model, 'cloud:deepseek:deepseek-chat')
   assert.deepEqual(settings.usage, { deepseek: { requests: 2, input: 10, output: 0, since: '2026-09-29' } })
-  assert.deepEqual([settings.scanDir, settings.connector], ['', { on: true, port: 0 }])
+  assert.deepEqual(settings.connector, { on: true, port: 0 })
   assert.ok(!JSON.stringify(settings).includes(KEY), 'a key never makes it into the settings')
   assert.equal(cleanBotSettings({ ...settings, providers: [] }).model, 'local', 'a removed provider falls back to this Mac')
 })
@@ -113,9 +112,4 @@ test('AI jobs: Help me sort reads "sticky: branch" lines, each sticky once, only
   assert.match(sortMessages({ node: 'Garden', branches: ['Beds', 'Tools'], stickies: ['Buy\nseeds'] }).at(-1).content, /1\. Beds\n2\. Tools[\s\S]*1\. Buy seeds/)
   const picks = readSortAnswer('1: 2\n2 - none\nSticky 3 → Branch 1\n1: 1\n4: 9\n7: 1\nnonsense', 2, 4)
   assert.deepEqual(picks, [{ sticky: 0, branch: 1 }, { sticky: 2, branch: 0 }])
-})
-
-test('AI jobs: a scan’s name and summary, forgiving bold and quotes', () => {
-  assert.deepEqual(readNameAnswer('**Name:** "Car insurance renewal"\n**Summary:** Renewal notice due Oct 12.\nPay online.'), { name: 'Car insurance renewal', summary: 'Renewal notice due Oct 12.\nPay online.' })
-  assert.throws(() => readNameAnswer('No idea.'), /didn’t suggest a name/)
 })

@@ -120,22 +120,22 @@ test('duplicates: the same file saved twice makes one node; the same name with o
   assert.ok(arrivalOps(without, tree, { hash: hash('same'), file: 'Garden.md', now: NOW, makeId }).folder)
 })
 
-test('schema 6: arrival fields are kept on folders, bad ones dropped; nothing else changes', () => {
+test('schema 7: arrival fields are kept on folders, bad ones dropped; nothing else changes', () => {
   const state = normalizeWorkspace({
     ...createDefaultWorkspace(),
     folders: [
-      { id: 'a', name: 'A', packed: true, fresh: true, from: { source: 'Muse', file: 'a.md', hash: 'ab'.repeat(16), scan: 'scan-1.pdf', proposal: { name: 'Receipt', summary: 'Paid.' }, extra: 1 } },
-      { id: 'b', name: 'B', packed: 'yes', fresh: 1, from: { hash: 'not hex', scan: '../x.pdf' } },
+      { id: 'a', name: 'A', packed: true, fresh: true, from: { source: 'Muse', file: 'a.md', hash: 'ab'.repeat(16), extra: 1 } },
+      { id: 'b', name: 'B', packed: 'yes', fresh: 1, from: { hash: 'not hex' } },
     ],
   })
   const [a, b] = state.folders
   assert.deepEqual([a.packed, a.fresh], [true, true])
-  assert.deepEqual(a.from, { source: 'Muse', file: 'a.md', hash: 'ab'.repeat(16), scan: 'scan-1.pdf', proposal: { name: 'Receipt', summary: 'Paid.' } })
+  assert.deepEqual(a.from, { source: 'Muse', file: 'a.md', hash: 'ab'.repeat(16) })
   assert.deepEqual(['packed', 'fresh', 'from'].map((key) => key in b), [false, false, false])
   assert.equal(fromOf({ source: '  ' }), null)
-  const old = { ...createEmptyDoc(), schema: 5, rev: 2, folders: [{ id: 'x', name: 'X' }] }
+  const old = { ...createEmptyDoc(), schema: 6, rev: 2, folders: [{ id: 'x', name: 'X' }] }
   assert.deepEqual(migrate(old), { ...old, schema: SCHEMA })
-  assert.equal(SCHEMA, 6)
+  assert.equal(SCHEMA, 7)
 })
 
 test('opening a New node clears New; a branch or Unpack clears packed; nothing else moves', () => {
@@ -145,6 +145,15 @@ test('opening a New node clears New; a branch or Unpack clears packed; nothing e
   assert.equal(markOpened(opened, 'a'), opened, 'the same state when nothing changes')
   assert.equal(markUnpacked(opened, 'a').folders[0].packed, undefined)
   assert.equal(markUnpacked(state, 'missing'), state)
+})
+
+test('a leaf’s day (a sorted scan’s event) is kept on its sticky, to offer to the Calendar', () => {
+  const tree = nodeTree({ title: 'Paper', leaves: [{ text: 'Dentist', event: { title: 'Dentist', date: '2026-10-05', time: '14:30' } }, 'Milk'] })
+  const made = nodeRecords([], tree, { now: NOW, makeId, source: 'Scan' })
+  assert.deepEqual(made.notes.map((note) => note.ask?.event || null), [{ title: 'Dentist', date: '2026-10-05', time: '14:30' }, null])
+  const { state } = importNode(createDefaultWorkspace(), { title: 'Paper', leaves: [{ text: 'Dentist', event: { title: 'Dentist', date: '2026-10-05', time: '' } }] }, 'Scan')
+  const dentist = state.notes.find((note) => note.markdown === 'Dentist')
+  assert.deepEqual([dentist.source, dentist.ask.event.date], ['Scan', '2026-10-05'], 'the source can be given as a word, as scans do')
 })
 
 test('the Sky’s Import takes the Markdown bots write, and still makes an ordinary node', () => {

@@ -155,8 +155,8 @@ const isObject = (value) => Boolean(value) && typeof value === 'object' && !Arra
 const whole = (value) => (Number.isFinite(value) && value > 0 ? Math.round(value) : 0)
 
 /* Settings → Bots as kept in bots.json (never a key): which model answers ('local' or a
-   connected provider's), the providers, what each has used, the scan folder and the
-   connector. Anything malformed falls back to the safe default: the AI on this Mac. */
+   connected provider's), the providers, what each has used, and the connector. Anything
+   malformed falls back to the safe default: the AI on this Mac. */
 export function cleanBotSettings(value) {
   const input = isObject(value) ? value : {}
   const providers = cleanProviders(input.providers)
@@ -169,7 +169,6 @@ export function cleanBotSettings(value) {
       since: typeof total.since === 'string' ? total.since.slice(0, 40) : '',
       ...(total.estimated === true ? { estimated: true } : {}),
     }]))
-  const scanDir = typeof input.scanDir === 'string' && input.scanDir.startsWith('/') && input.scanDir.length < 1024 ? input.scanDir : ''
   const port = Number.isInteger(input.connector?.port) && input.connector.port > 1024 && input.connector.port < 65536 ? input.connector.port : 0
-  return { model, providers, usage, scanDir, connector: { on: input.connector?.on === true, port } }
+  return { model, providers, usage, connector: { on: input.connector?.on === true, port } }
 }

@@ -296,7 +296,7 @@ export function importNode(state, data, options = {}) {
   return { state: next, folder: made.folder, branches: made.folders.length - 1 }
 }
 
-/* A node that arrived from outside (the drop folder, a scan, the connector) is New until
+/* A node that arrived from outside (the drop folder, the connector) is New until
    it is first opened, and packed (only a summary) until it is unpacked: by hand, when it
    gets its first branch, or with the AI. Nothing else about it changes. */
 const without = (state, id, key) => (state.folders.some((folder) => folder.id === id && key in folder)
@@ -304,26 +304,6 @@ const without = (state, id, key) => (state.folders.some((folder) => folder.id ==
   : state)
 export const markOpened = (state, id) => without(state, id, 'fresh')
 export const markUnpacked = (state, id) => without(state, id, 'packed')
-
-/* A scan's proposed name and summary, confirmed with one click: the node takes the name (a
-   taken one gets "2") and the summary becomes its first sticky. It stays packed, to unpack
-   like any other. Keeping the name as it is only lets the proposal go. */
-export function acceptProposal(state, id) {
-  const folder = state.folders.find((item) => item.id === id)
-  const proposal = folder?.from?.proposal
-  if (!proposal) return state
-  const { proposal: _, ...from } = folder.from
-  const name = folder.parentId ? proposal.name : freeNodeName(state.folders.filter((item) => item.id !== id), proposal.name)
-  const next = { ...state, folders: state.folders.map((item) => (item.id === id ? { ...item, name, from } : item)) }
-  return proposal.summary ? addSticky(next, proposal.summary, id, { source: 'AI', index: 0 }).state : next
-}
-
-export function dismissProposal(state, id) {
-  const folder = state.folders.find((item) => item.id === id)
-  if (!folder?.from?.proposal) return state
-  const { proposal: _, ...from } = folder.from
-  return { ...state, folders: state.folders.map((item) => (item.id === id ? { ...item, from } : item)) }
-}
 
 /* A packed node unpacked with the AI: the branches and stickies it suggested go into the
    node after what's there (its summary stays first), and it is no longer packed. Returns

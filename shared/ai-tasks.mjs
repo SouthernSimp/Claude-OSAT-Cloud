@@ -1,6 +1,6 @@
 /* The small jobs OSAT gives the model chosen in Settings → Bots (a cloud model, or the AI on
-   this Mac): unpack a packed node into branches, suggest where stickies still to sort
-   belong (Help me sort), and name a scan. Each is a question in plain words and a forgiving
+   this Mac): unpack a packed node into branches, and suggest where stickies still to sort
+   belong (Help me sort). Each is a question in plain words and a forgiving
    reader of the answer, since small models don't always keep to the format. Pure. */
 
 import { markdownTree, NodeFileError } from './node-file.mjs'
@@ -67,28 +67,4 @@ export function readSortAnswer(text, branchCount, stickyCount) {
     found.set(sticky, branch)
   }
   return [...found].filter(([, branch]) => branch >= 0 && branch < branchCount).map(([sticky, branch]) => ({ sticky, branch }))
-}
-
-/* ---------- a scan's name ---------- */
-
-export function nameMessages({ text, file = '' }) {
-  return [SYSTEM, {
-    role: 'user',
-    content: `This is the text of a scanned page${file ? ` (the file is called "${clip(file, 120)}")` : ''}:
-"""
-${clip(text, 6000)}
-"""
-Give it a short name, a few words a person would pick (like "Car insurance renewal"), and a one-paragraph summary of what it is and anything that needs doing. Answer exactly like this:
-Name: …
-Summary: …`,
-  }]
-}
-
-/* { name, summary } from the answer. Throws a plain sentence when there is no name. */
-export function readNameAnswer(text) {
-  const body = unwrap(text).replace(/\*\*/g, '')
-  const name = /^\s*name\s*:\s*(.+)$/im.exec(body)?.[1]?.replace(/^["“]|["”]$/g, '').trim().slice(0, 80) || ''
-  const summary = /^\s*summary\s*:\s*([\s\S]+)$/im.exec(body)?.[1]?.trim().slice(0, 1600) || ''
-  if (!name) throw new Error('The AI didn’t suggest a name. Name it yourself, or try again.')
-  return { name, summary }
 }

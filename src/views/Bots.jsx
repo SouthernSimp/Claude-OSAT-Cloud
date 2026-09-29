@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowCounterClockwise, Check, ClipboardText, Cloud, FolderOpen, Laptop, LockSimple, Plug, Plus, Printer, Robot } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, Check, ClipboardText, Cloud, FolderOpen, Laptop, LockSimple, Plug, Plus, Robot } from '@phosphor-icons/react'
 
 import { connectorSetup } from '../../shared/connector-tools.mjs'
 import { OTHER, PRESETS } from '../../shared/providers.mjs'
@@ -42,7 +42,6 @@ export function BotsSettings() {
       <DropFolderCard bridge={bridge} nodes={status?.nodes} />
       <ModelCard bridge={bridge} cloud={status?.cloud} offline={status?.offline} />
       <CloudCard bridge={bridge} cloud={status?.cloud} />
-      <ScansCard bridge={bridge} scans={status?.scans} cloud={status?.cloud} />
       <ConnectorCard bridge={bridge} connector={status?.connector} />
     </>
   )
@@ -106,7 +105,7 @@ function ModelCard({ bridge, cloud, offline }) {
     <section className="content-card bots-card">
       <p className="eyebrow">MODEL</p>
       <h2>{cloud?.leavesMac ? `${cloud.leavesMac} answers.` : 'The AI on this Mac answers.'}</h2>
-      <p>The model you pick answers the line, Ask, Help me sort, Unpack with AI and new scans.</p>
+      <p>The model you pick answers the line, Ask, Help me sort and Unpack with AI. Scans (Settings → Data) are always sorted by the AI on this Mac.</p>
       <div className="bots-models" role="radiogroup" aria-label="Which AI answers">
         <button type="button" role="radio" aria-checked={chosen === 'local'} className="bots-model" onClick={() => choose('local')}>
           <Laptop aria-hidden="true" />
@@ -133,7 +132,7 @@ function ModelCard({ bridge, cloud, offline }) {
         {cloud?.leavesMac
           ? offline
             ? `Offline: ${cloud.leavesMac} waits until you’re back online, and the AI on this Mac answers meanwhile.`
-            : `What you ask, the notes Ask reads, the stickies Help me sort looks at and the words in new scans go to ${cloud.leavesMac}. Choose On this Mac to keep everything here.`
+            : `What you ask, the notes Ask reads and the stickies Help me sort and Unpack look at go to ${cloud.leavesMac}. Choose On this Mac to keep everything here.`
           : 'Everything stays on this Mac. A cloud model is only used once you connect one and pick it.'}
       </p>
       {message && <p className="bots-warning" role="status">{message}</p>}
@@ -214,57 +213,6 @@ function CloudCard({ bridge, cloud }) {
         </ul>
       )}
       <p className="ai-note">{cloud?.lasting === false ? 'There’s no Keychain here, so keys are kept only until OSAT quits.' : 'Keys are kept in your Mac’s Keychain, never in a file. Remove takes the key out of the Keychain.'}</p>
-    </section>
-  )
-}
-
-/* Scans: printer → Google Drive → OSAT. A folder on this Mac (Drive's), watched; each new
-   scan a New node with a proposed name. The originals are only ever read. */
-function ScansCard({ bridge, scans, cloud }) {
-  const [message, setMessage] = useState('')
-  const act = (work) => work().then(() => setMessage(''), (error) => setMessage(cleanError(error)))
-  return (
-    <section className="content-card bots-card">
-      <p className="eyebrow">SCANS</p>
-      <h2>{scans?.dir ? 'New scans arrive on their own.' : 'Bring your scans in.'}</h2>
-      <p>Your printer saves scans to Google Drive. With Google Drive for Desktop, that folder is also on this Mac, and OSAT watches it: each new scan becomes a New node in your Sky, and the AI proposes a name and a summary for you to confirm. OSAT never signs in to Google. It copies each scan and never moves, renames or deletes one, so anything else that uses the folder keeps working.</p>
-      {scans?.dir
-        ? <p className="settings-path">{scans.dir}</p>
-        : <p className="ai-note">{scans?.drive ? `Your Google Drive is at ${scans.drive}. Pick the folder your printer saves to, like My Drive → Scans.` : 'Install Google Drive for Desktop first. Your Drive then shows in Finder under Locations → Google Drive, and you can pick the folder your printer saves to.'}</p>}
-      {scans?.error && <p className="bots-warning" role="status">{scans.error}</p>}
-      <div className="button-row">
-        <button className={scans?.dir ? 'outline-button' : 'primary-button'} type="button" onClick={() => act(bridge.chooseScanFolder)}>
-          <FolderOpen /> {scans?.dir ? 'Change the folder' : 'Choose the scan folder'}
-        </button>
-        {scans?.dir && <button className="text-button" type="button" onClick={() => act(bridge.stopScans)}>Stop watching</button>}
-      </div>
-      {scans?.dir && scans.waiting > 0 && (
-        <p className="bots-waiting">
-          {scans.waiting === 1 ? 'One scan was' : `${number(scans.waiting)} scans were`} already in the folder, so only new ones come in.
-          <button className="text-button" type="button" onClick={() => act(bridge.bringScans)}>Bring {scans.waiting === 1 ? 'it' : 'those'} in too</button>
-        </p>
-      )}
-      {scans?.naming && <p className="bots-message" role="status">{scans.naming}</p>}
-      {message && <p className="bots-warning" role="status">{message}</p>}
-      {scans?.arrived?.length > 0 && (
-        <ul className="bots-arrivals" aria-label="Recent scans">
-          {scans.arrived.map((item) => (
-            <li key={`${item.at}-${item.name}`}>
-              <Printer aria-hidden="true" />
-              <span><b>{item.node}</b> from {item.name}</span>
-              <small>{formatRelativeTime(item.at)}</small>
-            </li>
-          ))}
-        </ul>
-      )}
-      {scans?.dir && (
-        <p className="bots-privacy">
-          <LockSimple aria-hidden="true" />
-          {cloud?.leavesMac
-            ? `Scans are read on this Mac, then their words are sent to ${cloud.leavesMac} to be named. Choose On this Mac under Model to keep scans here.`
-            : 'Scans are read and named on this Mac. Nothing leaves it.'}
-        </p>
-      )}
     </section>
   )
 }
