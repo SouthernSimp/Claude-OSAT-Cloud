@@ -2,7 +2,7 @@
 // page error. Screenshots land in test-results/ui/ (light, then dark) so each
 // pull request shows what changed. Run `npm run build` first.
 import { spawn } from 'node:child_process'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
 
@@ -249,6 +249,25 @@ async function main() {
   await page.keyboard.press('Escape')
   await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Esc did not come back down'))
   if (!await mentioned.count()) problems.push('mentions: the sticky with an @ left the desk')
+  // The Roadmap room's Timeline: every phase of the Status table, in order, read from the same
+  // text the Roadmap shows; picking one opens its part of the Roadmap.
+  room = 'timeline'
+  const statusRows = (await readFile('docs/ROADMAP.md', 'utf8')).split('## Status')[1].split('\n## ')[0].split('\n').filter((line) => /^\|\s*[^|\s-][^|]*\|/.test(line) && !/^\|\s*Phase\s*\|/.test(line)).length
+  await page.locator('.app-dock [data-space="tools"]').click()
+  await page.getByRole('menuitem', { name: 'Roadmap' }).click()
+  const roadmapRoom = page.locator('.popout-body[data-view="Roadmap"]')
+  await roadmapRoom.getByRole('tab', { name: 'Timeline' }).click().catch(() => problems.push('timeline: the Roadmap room has no Timeline'))
+  await page.locator('.timeline-list li').first().waitFor({ timeout: 3000 }).catch(() => problems.push('timeline: nothing on the Timeline'))
+  if (await page.locator('.timeline-list li').count() !== statusRows) problems.push(`timeline: ${await page.locator('.timeline-list li').count()} phases shown, the Status table has ${statusRows}`)
+  if (!await page.locator('.timeline-list li[data-state="planned"]').count()) problems.push('timeline: no planned phases shown')
+  await sleep(400)
+  await page.screenshot({ path: `${OUT}/timeline.png` })
+  await page.locator('.timeline-list button', { hasText: 'Phase 12b' }).click()
+  await roadmapRoom.getByRole('heading', { name: /Phase 12b/ }).waitFor({ timeout: 3000 }).catch(() => problems.push('timeline: picking a phase did not open its part of the Roadmap'))
+  if (!await roadmapRoom.getByRole('heading', { name: /Phase 12b/ }).isVisible()) problems.push('timeline: the phase’s part of the Roadmap was not in view')
+  await page.locator('.popout.is-top .popout-bar strong').click()
+  await page.keyboard.press('Escape')
+  await roadmapRoom.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('timeline: Esc did not close the Roadmap'))
   // Reflection's one home: a tab of the Journal.
   room = 'journal'
   await page.locator('.app-dock [data-space="tools"]').click()
