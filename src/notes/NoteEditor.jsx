@@ -273,7 +273,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
                   aria-label="Note text"
                   spellCheck="true"
                   value={note.markdown}
-                  placeholder={"Start writing. @Node puts it in a node, #tags organize, [[Note title]] links, - [ ] is a next step."}
+                  placeholder={"Start writing. @Node links to a node, #tags organize, [[Note title]] links, - [ ] is a next step."}
                   onChange={(event) => { actions.updateNote(note.id, { markdown: event.target.value }); setTimeout(refreshAutocomplete, 0); }}
                   onKeyDown={onKeyDown}
                   onClick={() => setComplete(null)}

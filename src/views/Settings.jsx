@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, CircleHalf, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Info, Keyboard, LockSimple, Sparkle, UploadSimple } from "@phosphor-icons/react";
+import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, Sparkle, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile, formatRelativeTime } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
@@ -7,9 +7,11 @@ import { workspaceClient } from "../store/useWorkspace.js";
 import { AppearanceControls } from "../shell/Shell.jsx";
 import { setupLine, useAi } from "../assistant/useAi.js";
 import { ObsidianView } from "./Obsidian.jsx";
+import { useUndoToast } from "../lib/UndoToast.jsx";
 
 export function SettingsView({ workspace, commit, storage, target }) {
   const restoreInputRef = useRef(null);
+  const [toast, showUndo] = useUndoToast();
   function backup() {
     const payload = makeBackup(workspace);
     downloadFile(
@@ -26,28 +28,27 @@ export function SettingsView({ workspace, commit, storage, target }) {
     try {
       payload = JSON.parse(await file.text());
     } catch {
-      window.alert("That file isn't valid JSON.");
+      showUndo("That file isn’t a backup OSAT can read.");
       return;
     }
     let restored;
     try {
       restored = readWorkspaceBackup(payload);
     } catch (error) {
-      window.alert(error.message);
+      showUndo(error.message);
       return;
     }
-    if (!window.confirm(`Replace your current workspace with this backup (${restored.notes.length} notes)? OSAT keeps a copy of your current workspace in its data folder first.`)) {
-      return;
-    }
+    const before = workspace;
     try {
       await workspaceClient().replace(restored);
+      showUndo(`Restored the backup (${restored.notes.length} notes)`, () => workspaceClient().replace(before).catch(() => {}));
     } catch (error) {
-      window.alert(`The backup couldn't be restored: ${error.message}`);
+      showUndo(`The backup couldn’t be restored: ${error.message}`);
     }
   }
   const about = useAbout();
-  const [section, setSection] = useState(target?.section && SECTIONS.some(([id]) => id === target.section) ? target.section : "general");
-  useEffect(() => { if (target?.section) setSection(target.section); }, [target]);
+  const [section, setSection] = useState(() => sectionFor(target?.section));
+  useEffect(() => { if (target?.section) setSection(sectionFor(target.section)); }, [target]);
 
   return (
     <div className="settings">
@@ -58,6 +59,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
           </button>
         ))}
       </nav>
+      {toast}
       <div className="settings-page" key={section}>
         {section === "general" && (
           <>
@@ -71,19 +73,16 @@ export function SettingsView({ workspace, commit, storage, target }) {
                 ))}
               </dl>
             </section>
+            <section className="content-card">
+              <p className="eyebrow">APPEARANCE</p>
+              <h2>Make yourself at home.</h2>
+              <div className="appearance-card">
+                <AppearanceControls workspace={workspace} commit={commit} />
+              </div>
+            </section>
           </>
         )}
-        {section === "appearance" && (
-          <section className="content-card">
-            <p className="eyebrow">APPEARANCE</p>
-            <h2>Make yourself at home.</h2>
-            <div className="appearance-card">
-              <AppearanceControls workspace={workspace} commit={commit} />
-            </div>
-          </section>
-        )}
         {section === "ai" && <AiCard />}
-        {section === "iphone" && <PhoneCards />}
         {section === "data" && (
           <>
             <section className="content-card">
@@ -119,15 +118,14 @@ export function SettingsView({ workspace, commit, storage, target }) {
               <h2>Send notes to a vault.</h2>
               <ObsidianView workspace={workspace} commit={commit} />
             </section>
+            <PhoneCards />
+            <section className="content-card">
+              <p className="eyebrow">ABOUT</p>
+              <h2>OSAT{about?.version ? ` ${about.version}` : ""}</h2>
+              <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac. Cloud accounts, provider calendars and automatic filing are off by design.</p>
+              {about?.dataFolder && <p className="settings-path">{about.dataFolder}</p>}
+            </section>
           </>
-        )}
-        {section === "about" && (
-          <section className="content-card">
-            <p className="eyebrow">ABOUT</p>
-            <h2>OSAT{about?.version ? ` ${about.version}` : ""}</h2>
-            <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac. Cloud accounts, provider calendars and automatic filing are off by design.</p>
-            {about?.dataFolder && <p className="settings-path">{about.dataFolder}</p>}
-          </section>
         )}
       </div>
     </div>
@@ -136,12 +134,12 @@ export function SettingsView({ workspace, commit, storage, target }) {
 
 const SECTIONS = [
   ["general", "General", GearSix],
-  ["appearance", "Appearance", CircleHalf],
   ["ai", "AI", Sparkle],
-  ["iphone", "iPhone", DeviceMobile],
   ["data", "Data", Database],
-  ["about", "About", Info],
 ];
+/* Older names (the tray's "shortcut", Tools → "appearance") land where those cards live now. */
+const MOVED = { appearance: "general", shortcut: "general", iphone: "data", about: "data" };
+const sectionFor = (id) => SECTIONS.some(([known]) => known === id) ? id : MOVED[id] || "general";
 
 function useAbout() {
   const [about, setAbout] = useState(null);

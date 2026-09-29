@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ArrowDown, ArrowUp, Broom, CaretDown, CircleHalf, GridFour, Monitor, Moon, NotePencil, PaintBucket, PushPin, ShareNetwork,
-  SquaresFour, Sun, Trash, TreeStructure,
-} from '@phosphor-icons/react'
+import { Broom, CaretDown, NotePencil, PaintBucket, PushPin, ShareNetwork, SquaresFour, Trash, TreeStructure } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
 import { cleanError } from '../assistant/useAi.js'
@@ -26,7 +23,6 @@ import { openSteps } from './widgets/NextWidget.jsx'
 const ICONS_KEY = 'osat.home.icons.v1'
 const SHELF_KEY = 'osat.home.shelf'
 const SIZE_KEY = 'osat.home.icon-size'
-const SNAP_KEY = 'osat.home.snap'
 // How tall a row of icons is, for each icon size.
 const CELL = { s: 86, m: 103, l: 128 }
 
@@ -40,7 +36,7 @@ const keep = (key, value) => { try { localStorage.setItem(key, value) } catch { 
    the line lands there, a double-click writes a new one, and a note on the right can be
    dragged out. A sticky dropped on a node goes into it; held at the top of the screen, it
    goes up to the Sky. Right-click the desk for its menu. Widgets, icons and stickies can be
-   picked up and set down anywhere (`places`, per Mac), on a grid unless snapping is off. */
+   picked up and set down anywhere (`places`, per Mac), on a grid. */
 export function FieldDesk({
   workspace, commit, navigate,
   storage, focusAt, summon, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
@@ -57,7 +53,6 @@ export function FieldDesk({
   const [collapsed, setCollapsed] = useState(() => read(ICONS_KEY, 'open') === 'collapsed')
   const [shelf, setShelf] = useState(() => (read(SHELF_KEY, 'desktop') === 'osat' ? 'osat' : 'desktop'))
   const [iconSize, setIconSize] = useState(() => (['s', 'm', 'l'].includes(read(SIZE_KEY, 'm')) ? read(SIZE_KEY, 'm') : 'm'))
-  const [snap, setSnap] = useState(() => read(SNAP_KEY, 'on') !== 'off')
   const [picked, setPicked] = useState(null)
   const [fileNote, setFileNote] = useState('')
   const [draft, setDraft] = useState(null)
@@ -93,7 +88,7 @@ export function FieldDesk({
   const linked = new Set(hoverId ? pairs.flatMap((pair) => (pair.a === hoverId ? [pair.b] : pair.b === hoverId ? [pair.a] : [])) : [])
   const linkedFolders = new Set(notes.filter((note) => linked.has(note.id) && note.folderId).map((note) => note.folderId))
 
-  const surface = useStickySurface({ id: 'desk', surface: home, prefix: 'note', places, onPlace, snap })
+  const surface = useStickySurface({ id: 'desk', surface: home, prefix: 'note', places, onPlace })
   const shelfDrop = useDrop('desk:shelf', {
     accepts: ['note'],
     onDrop: ({ id }) => onPlace(`note:${id}`, null),
@@ -180,7 +175,7 @@ export function FieldDesk({
     const line = home.current.querySelector('.home-composer-wrap')?.getBoundingClientRect()
     const near = line ? { x: line.left + line.width / 2 - STICKY.w / 2, y: line.bottom + 28 } : { x: box.left + box.width / 2, y: box.top + box.height / 2 }
     const spot = freeSpot(taken, { left: box.left + 12, top: box.top + 12, right: box.right - 12, bottom: box.bottom - 96 }, { width: STICKY.w, height: STICKY.h }, near, GRID * 2)
-    onPlace(`note:${noteId}`, spotOn(box, spot.x, spot.y, null, snap))
+    onPlace(`note:${noteId}`, spotOn(box, spot.x, spot.y, null))
   }
 
   function writeSticky(text) {
@@ -194,7 +189,7 @@ export function FieldDesk({
       return result.state
     })
     const box = home.current.getBoundingClientRect()
-    if (made) onPlace(`note:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null, snap))
+    if (made) onPlace(`note:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null))
   }
 
   function makeNode(name) {
@@ -204,7 +199,7 @@ export function FieldDesk({
     let made
     commit((state) => { const result = addFolder(state, name); made = result.folder; return result.state })
     const box = home.current.getBoundingClientRect()
-    if (made) onPlace(`folder:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null, snap))
+    if (made) onPlace(`folder:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null))
   }
 
   function toss(note) {
@@ -241,7 +236,7 @@ export function FieldDesk({
       const size = { width: spot.w || STICKY.w, height: spot.h || STICKY.h }
       const at = freeSpot([...fixed, ...done], area, size, near, GRID * 2)
       done.push({ left: at.x, top: at.y, right: at.x + size.width, bottom: at.y + size.height })
-      onPlace(`note:${note.id}`, spotOn(box, at.x, at.y, spot.w ? { w: spot.w, h: spot.h } : null, true))
+      onPlace(`note:${note.id}`, spotOn(box, at.x, at.y, spot.w ? { w: spot.w, h: spot.h } : null))
     })
   }
 
@@ -253,23 +248,11 @@ export function FieldDesk({
       { label: 'New node', icon: TreeStructure, onSelect: () => setNodeDraft(at) },
       { divider: true },
       stickies.length ? { label: 'Clean up stickies', icon: Broom, onSelect: cleanUp } : null,
-      { label: 'Snap to grid', icon: GridFour, checked: snap, onSelect: () => { setSnap(!snap); keep(SNAP_KEY, snap ? 'off' : 'on') } },
       {
         label: 'Icon size', icon: SquaresFour, items: [['s', 'Small'], ['m', 'Medium'], ['l', 'Large']].map(([id, label]) => ({
           label, checked: iconSize === id, onSelect: () => { setIconSize(id); keep(SIZE_KEY, id) },
         })),
       },
-      filesBridge() ? { label: onDesktop ? 'Show OSAT on the right' : 'Show the Desktop on the right', icon: Monitor, onSelect: () => pickShelf(onDesktop ? 'osat' : 'desktop') } : null,
-      { divider: true },
-      {
-        label: 'Appearance', icon: CircleHalf, items: [['system', 'Auto', Monitor], ['light', 'Light', Sun], ['dark', 'Dark', Moon]].map(([id, label, icon]) => ({
-          label, icon, checked: workspace.theme === id, onSelect: () => commit((state) => ({ ...state, theme: id })),
-        })),
-      },
-      { label: 'Add a widget', icon: SquaresFour, onSelect: () => navigate('Widgets') },
-      { divider: true },
-      { label: 'Up to the Sky', icon: ArrowUp, hint: '⌥⌘↑', onSelect: () => navigate('Mindmap') },
-      { label: 'Down to Incognito', icon: ArrowDown, hint: '⌥⌘↓', onSelect: () => navigate('Under') },
     ])
   }
 
@@ -278,7 +261,7 @@ export function FieldDesk({
       { label: 'Open as a page', icon: NotePencil, onSelect: () => openNote(note.id) },
       { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
       { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => fileSticky(note.id, folderId), { skip: note.folderId || null }) },
-      { label: 'Put back on the shelf', icon: CaretDown, onSelect: () => onPlace(`note:${note.id}`, null) },
+      { label: 'Take off the desk', icon: CaretDown, onSelect: () => onPlace(`note:${note.id}`, null) },
       { divider: true },
       { label: 'Delete', icon: Trash, danger: true, onSelect: () => toss(note) },
     ])
@@ -329,7 +312,7 @@ export function FieldDesk({
   }
 
   /* Pick a widget or icon up and set it down anywhere, like a sticky. A press that barely
-     moves is still a click. On the grid unless snapping is off. */
+     moves is still a click. On the grid. */
   function movable(id, spot = places[id]) {
     if (!onPlace) return {}
     return {
@@ -364,7 +347,7 @@ export function FieldDesk({
           if (!shift || last.type === 'pointercancel') return
           justMoved.current = true
           window.setTimeout(() => { justMoved.current = false })
-          const { x, y } = spotOn(box, from.left + shift.x, from.top + shift.y, null, snap)
+          const { x, y } = spotOn(box, from.left + shift.x, from.top + shift.y, null)
           onPlace(id, { x, y })
         }
         window.addEventListener('pointermove', move)
@@ -458,13 +441,11 @@ export function FieldDesk({
         prefix="note"
         commit={commit}
         onPlace={onPlace}
-        onAway={(note) => onPlace(`note:${note.id}`, null)}
         onToss={toss}
         onMenu={stickyMenu}
         mentions={mentions}
         draft={draft}
         onDraft={writeSticky}
-        snap={snap}
         fresh={freshId}
       />
       {nodeDraft && (

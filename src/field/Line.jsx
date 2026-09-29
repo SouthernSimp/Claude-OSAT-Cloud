@@ -23,8 +23,6 @@ const KINDS = {
   file: [File, 'On this Mac'],
   'mac-folder': [FolderSimple, 'On this Mac'],
   folder: [FolderSimple, 'Node'],
-  board: [ShareNetwork, 'Board'],
-  project: [FolderSimple, 'Project'],
   room: [null, 'Room'],
   action: [null, 'Action'],
 }

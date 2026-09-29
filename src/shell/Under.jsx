@@ -38,7 +38,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
   const scratch = workspace.notes.filter((note) => isActiveNote(note) && isScratch(note))
   // A sticky with no spot yet (written on another Mac) takes one from a quiet grid.
   const stickies = scratch.map((note, index) => ({ note, spot: places[`scratch:${note.id}`] || { x: 0.08 + (index % 5) * 0.17, y: 0.16 + (Math.floor(index / 5) % 4) * 0.19 } }))
-  const surface = useStickySurface({ id: 'scratch', surface: page, prefix: 'scratch', places, onPlace, snap: true })
+  const surface = useStickySurface({ id: 'scratch', surface: page, prefix: 'scratch', places, onPlace })
 
   function land(noteId) {
     const element = page.current
@@ -47,7 +47,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
     const taken = [...element.parentElement.querySelectorAll('.under-page .desk-sticky, .under-top, .home-composer-wrap')].map((item) => item.getBoundingClientRect())
     const near = { x: box.left + box.width / 2 - STICKY.w / 2, y: box.top + box.height * 0.3 }
     const at = freeSpot(taken, { left: box.left + 16, top: box.top + 90, right: box.right - 16, bottom: box.bottom - 150 }, { width: STICKY.w, height: STICKY.h }, near, 32)
-    onPlace(`scratch:${noteId}`, spotOn(box, at.x, at.y, null, true))
+    onPlace(`scratch:${noteId}`, spotOn(box, at.x, at.y, null))
   }
 
   function writeDraft(text) {
@@ -61,7 +61,7 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
       return result.state
     })
     const box = page.current.getBoundingClientRect()
-    if (made) onPlace(`scratch:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null, true))
+    if (made) onPlace(`scratch:${made.id}`, spotOn(box, box.left + at.x, box.top + at.y, null))
   }
 
   /* The page, as it is now, into a node (or into one that's there): its spots are let go. */
@@ -169,12 +169,10 @@ export function Under({ workspace, commit, navigate, storage, status, arriving, 
             prefix="scratch"
             commit={commit}
             onPlace={onPlace}
-            onAway={toss}
             onToss={toss}
             onMenu={stickyMenu}
             draft={draft}
             onDraft={writeDraft}
-            snap
           />
         </div>
       )}

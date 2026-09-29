@@ -534,7 +534,6 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
       if (!note) return <p className="pop-gone">This note is no longer here.</p>
       return (
         <FieldSheet
-          inline
           note={note}
           onClose={onClose}
           onCommit={(id, patch) => commit((state) => {

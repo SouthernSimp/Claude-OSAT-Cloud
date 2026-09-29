@@ -2,8 +2,6 @@
 
 import { folderChildren, isActiveNote, relatedNotes } from '../notes-model.js'
 
-export const POSE_KEY = 'osat.field.papers.v1'
-
 const PHASES = {
   morning: ['Good morning.', 'The day has not asked for much yet.'],
   afternoon: ['Good afternoon.', 'Set down what you are carrying.'],
@@ -118,20 +116,6 @@ export function pickSurfacing(notes, today, rested = {}) {
 export function restSurfacing(rested, id, today) {
   const now = noonOf(today)
   return { ...Object.fromEntries(Object.entries(rested || {}).filter(([, day]) => (now - noonOf(day)) / DAY < 30)), [id]: today }
-}
-
-/* Where a moment sits on the day ribbon, 6am to midnight, as 0..1. */
-export function ribbonAt(date) {
-  const hours = date.getHours() + date.getMinutes() / 60
-  return Math.min(1, Math.max(0, (hours - 6) / 18))
-}
-
-export function clampPose(pose) {
-  return {
-    x: Math.min(0.82, Math.max(0, pose.x)),
-    y: Math.min(0.78, Math.max(0, pose.y)),
-    rot: pose.rot || 0,
-  }
 }
 
 /* The sheet shows a title and the words under it. A leading heading that

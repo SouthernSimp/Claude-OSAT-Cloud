@@ -195,7 +195,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         const folders = workspace.folders.filter((item) => removed.has(item.id));
         const homes = new Map(workspace.notes.filter((note) => removed.has(note.folderId)).map((note) => [note.id, note.folderId]));
         commit((state) => deleteFolder(state, id));
-        showUndo(`Deleted ${folder.parentId ? "branch" : "node"} “${folder.name}”. Its notes moved up one level.`, () => commit((state) => ({
+        showUndo(`Deleted ${folder.parentId ? "branch" : "node"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Unsorted."}`, () => commit((state) => ({
           ...state,
           folders: [...state.folders.filter((item) => !removed.has(item.id)), ...folders],
           notes: state.notes.map((note) => homes.has(note.id) ? { ...note, folderId: homes.get(note.id) } : note),
@@ -277,7 +277,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
           <div className="empty-panel">
             <NotePencil />
             <h2>{workspace.notes.filter(isActiveNote).length ? "Pick a note, or start a new one." : "Your first note is a blank page."}</h2>
-            <p>Write @ and a node’s name to put a note there. #tags cut across, [[links]] connect ideas. Everything stays on this Mac.</p>
+            <p>Write @ and a node’s name to link to it. #tags cut across, [[links]] connect ideas. Everything stays on this Mac.</p>
             <button className="primary-button" type="button" onClick={() => actions.createNote(ui.list === "folder" ? ui.folderId : null)}><Plus /> New note</button>
           </div>
         </section>

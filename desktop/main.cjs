@@ -1016,7 +1016,7 @@ function updateTray() {
     ...(under.on ? [] : [{ label: 'Go Under', click: () => toggleUnder(true) }]),
     { type: 'separator' },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
-    { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'shortcut' } }) },
+    { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'general' } }) },
     ...(app.isPackaged ? [{
       label: 'Open at Login',
       type: 'checkbox',
@@ -1407,7 +1407,7 @@ app.whenReady().then(async () => {
   // If the desk's shortcut is taken by another app, open Settings so a new one can be picked.
   // The quick chat's is quieter: Settings says so when you look.
   useHotkey('chat', prefs.chatHotkey)
-  if (!useHotkey('layer', prefs.hotkey)) command({ view: 'Settings', detail: { section: 'shortcut' } })
+  if (!useHotkey('layer', prefs.hotkey)) command({ view: 'Settings', detail: { section: 'general' } })
   // Clicking the Dock icon brings the desk up.
   app.on('activate', () => showDesk())
 })

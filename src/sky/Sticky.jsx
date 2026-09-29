@@ -42,11 +42,11 @@ function Words({ text, note, mentions }) {
 
 /* One sticky: a note on colored paper. Click it to write on it; Esc, ⌘Return or clicking
    away keeps what was written, and emptying it deletes it (onToss offers Undo). Its ×
-   deletes it too, or, with `onAway`, only takes it off the desk. It can be carried
+   deletes it too, everywhere. It can be carried
    anywhere that takes stickies, and right-clicked (onMenu). With `mentions`, its @s are
    links to their nodes. */
 export function Sticky({
-  note, commit, paper = 'canary', onToss, onAway, awayLabel = 'Put away', onMenu, mentions, carry = true, editing: startEditing = false, onEditingDone,
+  note, commit, paper = 'canary', onToss, onMenu, mentions, carry = true, editing: startEditing = false, onEditingDone,
   className = '', style, slot = true, children,
 }) {
   const [editing, setEditing] = useState(startEditing)
@@ -110,8 +110,8 @@ export function Sticky({
           {body && <p><Words text={body} note={note} mentions={mentions} /></p>}
         </>
       )}
-      {!editing && (onAway || onToss) && (
-        <button type="button" className="sticky-toss" aria-label={`${onAway ? awayLabel : 'Delete'} ${title}`} title={onAway ? awayLabel : 'Delete (you can Undo)'} onClick={onAway || onToss}><X weight="bold" /></button>
+      {!editing && onToss && (
+        <button type="button" className="sticky-toss" aria-label={`Delete ${title}`} title="Delete (you can Undo)" onClick={onToss}><X weight="bold" /></button>
       )}
       {children}
     </article>

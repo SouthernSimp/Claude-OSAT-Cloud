@@ -234,16 +234,6 @@ export function renameWikilinks(notes, oldTitle, newTitle) {
 
 /* ---------- lists, search, sort ---------- */
 
-export const SMART_LISTS = [
-  ['unsorted', 'Unsorted'],
-  ['all', 'All notes'],
-  ['pinned', 'Pinned'],
-  ['recent', 'Recent'],
-  ['daily', 'Daily notes'],
-  ['archived', 'Archive'],
-  ['trash', 'Trash'],
-]
-
 export function notesInList(state, list, folderId = null, now = Date.now()) {
   const { notes, folders } = state
   if (list === 'trash') return notes.filter((note) => note.trashedAt)
