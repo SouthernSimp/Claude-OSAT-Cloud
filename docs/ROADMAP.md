@@ -1,15 +1,5 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
-## Context
-OSAT Field is Nate's personal, local-first "second brain" Mac app: React 19, Vite 6 and Electron 43, about 10.5k lines of JS and 7.5k lines of CSS, with 82 unit tests covering only the pure data-model code. It was copied and redesigned five times (NateOS → OSAT → OSAT V2 → OSAT Field → "OSAT Field copy"). Each pass layered new rooms, docs and compatibility code on top of the last. It was just pushed to GitHub (`SouthernSimp/Claude-OSAT-Cloud`, `main` = one "Initial import" commit).
-
-Nate gets lost in it:
-- about 19 rooms
-- the list of rooms written out in about 15 places
-- settings and sub-menus with no clear home.
-
-He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique. It should center on a **summon-anywhere overlay** (inspired by lykn.io, but private and local), with **local AI models that download on first launch**. Mac comes first, phone capture later, the App Store eventually (he has an Apple Developer account). He is new to GitHub, so Claude runs the repo.
-
 ## Status
 
 | Phase | What | State |
@@ -30,16 +20,37 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | Merged (PR #13) |
 | 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | Merged (PR #14) |
 | 12b | Offline mode: Incognito becomes a switch on the line instead of a place | Merged (PR #15) |
-| 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | In review (stacked on 15) |
-| 13 | Mac powers: Hyper key, keywords, the ring, clipboard history, window snapping, the Tools wheel, a movable dock, resizing | Planned |
+| 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | In review (with Phase 18, PR #18) |
+| 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | Merged (PR #19) |
+| 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
-| 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | In review (done before 13 and 14) |
+| 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
+| 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
+| 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | In review (PR #18) |
+| 19 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
+| 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
+| 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | Planned |
+| 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | Planned |
+| 22 | Files in the Sky: toss a file up as a card, a node can link a real folder (schema 8) | Planned |
+| 23 | Nodes become projects: Track it (Done / Now / Next), Rush it, on top of the Roadmap's Timeline | Planned |
+| 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | In review (PR #21, done before 21–23) |
+| 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
 
 **The end goal (Nate, Sep 25):** an app that syncs with his iPhone. Phases 5 and 6 get there;
 visual polish moves after them.
+
+## Context
+OSAT Field is Nate's personal, local-first "second brain" Mac app: React 19, Vite 6 and Electron 43, about 10.5k lines of JS and 7.5k lines of CSS, with 82 unit tests covering only the pure data-model code. It was copied and redesigned five times (NateOS → OSAT → OSAT V2 → OSAT Field → "OSAT Field copy"). Each pass layered new rooms, docs and compatibility code on top of the last. It was just pushed to GitHub (`SouthernSimp/Claude-OSAT-Cloud`, `main` = one "Initial import" commit).
+
+Nate gets lost in it:
+- about 19 rooms
+- the list of rooms written out in about 15 places
+- settings and sub-menus with no clear home.
+
+He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique. It should center on a **summon-anywhere overlay** (inspired by lykn.io, but private and local), with **local AI models that download on first launch**. Mac comes first, phone capture later, the App Store eventually (he has an Apple Developer account). He is new to GitHub, so Claude runs the repo.
 
 ## Nate's answers (Sep 25)
 - **Overlay:** a **summon panel** on ⌥Space. He'd use all four jobs weekly: unload thoughts, see & sort, run the day, think with local AI.
@@ -484,6 +495,10 @@ Incognito stops being a place under the desk and becomes a switch: **Offline**.
 - **Open questions answered by default:** Offline remembers itself across restarts (as Incognito
   did: safer than silently going back online), and Ask's row stays (it only ever talks to this Mac).
 
+### Phase 12c: The roadmap inside OSAT (in review, with Phase 18 in PR #18)
+Tools → Roadmap (and "Roadmap" in ⌘K and the Go menu) opens this page, read-only, in a pop-out.
+It is this file, built into the app, so it is always the plan the app was built with.
+
 ### Phase 15: Paper in (in review)
 Nate's goal: scan something at the printer, walk over to the Mac, and a new node is waiting, already
 sorted, to look through and rearrange.
@@ -532,13 +547,222 @@ be usable and understandable to anyone of any age." What confused, and what chan
   zoom or the board's menu. The hint at the bottom follows what you're doing, and an empty node says
   what to do first.
 
-### Phase 17: Make it yours (in review)
+### Phase 17: Make it yours (merged, PR #20)
 
 - Backdrops in Settings → Appearance: Your desktop (default), Sonoma (the promo's), Dusk, Sea, Meadow
   (`settings.backdrop`, painted on `.overlay-surface`).
 - About you (Settings → AI): a few plain lines the AI reads before every answer (`settings.aboutMe`,
   passed to `systemPrompt`). OSAT's "soul file", in plain words.
 - The Browser sits on the dock as "Web".
+
+### Phase 18: Bots in (in review, PR #18)
+Nate's words: "I want Muse to be able to upload nodes to the application that I can open up inside
+OSAT. That is the whole point." And bigger: OSAT as Muse, and a tool that makes AI easy for anyone.
+Everything for it lives in one Settings section, **Bots**: every model and privacy setting in one
+clearly labelled place, ready for Phase 13c's switchboard to show what leaves the Mac.
+- **The drop folder (the must-have).** A node file saved in `~/Documents/OSAT Nodes` becomes a node
+  in the Sky a few seconds later, marked **New** (a quiet badge until it is first opened), "from
+  Muse" when the file says so, and the file moves to `Added`. Nothing is deleted: a file OSAT can't
+  read moves to `Set aside` and Settings says why. It works offline. The format is the Sky's Import
+  (JSON) or Markdown (`# node`, `## branch`, list items are stickies, front matter names the
+  source); the Sky's Import takes Markdown too now. The same file saved twice makes one node.
+  Settings → Bots has the folder, Show in Finder and **Copy instructions for a bot**. Muse for Mac
+  can write files there (Full Disk Access, or Documents).
+- **Packed nodes.** A file with only a name and a summary arrives packed. **Unpack with AI** (the
+  chosen model suggests branches and stickies, with Undo) or **By hand**; the summary, and the file
+  in Added, always stay.
+- **Cloud models.** Next to the AI on this Mac (still the default): pick a provider (DeepSeek,
+  OpenAI, xAI, OpenRouter, Mistral, Groq, or any other that works like OpenAI), paste the key, and it
+  answers. OSAT checks the key by listing the provider's models; a bad key gets one plain line. Keys
+  live in the macOS Keychain, never in a file or a log. Beside each key: questions, tokens and a
+  rough cost, with a link to the exact bill. The chosen model answers the line, Ask, Help me sort
+  (it is asked about the stickies matching words couldn't place) and Unpack with AI; offline
+  it steps aside and the AI on this Mac answers. Ask says where an answer comes from. Each provider
+  has a `kind`, so Anthropic-style providers can follow.
+- **Scans** come in through Phase 15 (Paper in), sorted by the AI on this Mac. This phase first
+  brought its own scan intake; it was dropped when Phase 15 merged, so one folder never has two
+  watchers. Using the chosen cloud model for scans is a later choice for Nate.
+- **A Timeline in the Roadmap room**, read from this page's Status table, so they never disagree.
+- **The OSAT connector (lean).** An MCP server on this Mac only (127.0.0.1), off until turned on,
+  with a key in the Keychain that can be reset: list nodes, read a node, add a node, add a sticky.
+  Every change goes through the store (the windows, sync, and Undo in Settings → Bots). Setup lines
+  for Claude Code, Claude Desktop (through mcp-remote) and other apps.
+- **Schema 7:** a node may be `packed`, `fresh` (New) and say where it came `from`.
+- **Questions for Nate:**
+  - Muse's custom connectors run on Meta's own computers, and they can't reach a connector on this
+    Mac. The drop folder does the job meanwhile. A public address (the DigitalOcean droplet, say)
+    would let Muse use the connector too, but then something would live on the internet, which
+    breaks "everything stays on the Mac". Nothing has been set up; it's Nate's call.
+  - Phase 15 now makes a node from each scan. When it looks right to Nate, the old scan → Word doc
+    step can go; nothing in that flow was changed.
+  - The line's row still says "Ask the AI on this Mac" when a cloud model answers. The line belongs
+    to the Phase 13 work: its models carry `offline: false` and `where` for it to say so.
+
+### Phase 19: OSAT's own bots (planned)
+OSAT becomes Muse too, and leans toward business and customer management over time.
+- **A Bots room in the dock**, like Muse's list: each bot with a face, its last message, and groups.
+- **The first bots:** a customer manager, a follow-up bot, an Inbox sorter (files Unsorted, with
+  Nate's OK) and a research bot.
+- **What they can do:** read and write notes (through the same store and Undo as the connector), run
+  on a schedule, draft email and messages (always asking before anything is sent), and use the web
+  and Mac apps. They use the model chosen in Settings → Bots; what leaves the Mac says so there.
+- **People cards** and **a morning page** (from The wow below) grow out of the same bots.
+
+### The wow (Sep 28): what makes OSAT stand out
+Raycast launches things, Notion and Mem keep notes, Rewind remembers. OSAT is all of it in one
+calm, private place on the Mac, with bots feeding it.
+- **The line is the launcher (13).** One key from anywhere (Caps Lock as Hyper), then type: `ss`
+  opens Spotify, a file, a note or an app; `@Jordan` shows everything about Jordan; `v` is the
+  clipboard; `2*49` answers in place; `>research best CRMs` hands a job to a bot. Tab for actions.
+- **Quick search that feels like Raycast (13, first).** Nate's words: "No thought needed, just
+  straight to work." One hotkey from anywhere (Settings can let it replace Spotlight's ⌘Space)
+  opens a small bar; typing opens the full view: results on the left, a big preview on the right
+  (the file, the image, the copied text), the details under it (where, kind, size; for a copy,
+  which app and when). Return does the obvious thing (Open; for a copy, Paste into the app you were
+  in); ⌘K lists every other action (Show in Finder, Copy path, Ask about it, Add to a node, Pin,
+  Delete). Files (Spotlight, recently used first, filter by kind) and Clipboard History (Today /
+  Yesterday; text, images, links; filter by kind) come first, then apps, notes and nodes, a
+  calculator, emoji, quicklinks (a web address with the search in it) and window layouts.
+  Settings → Launcher lists each one to turn on or off, with its own hotkey or keyword, and
+  compact or expanded. The clipboard stays on this Mac, skips what password managers mark as
+  concealed, and can be paused.
+- **A clipboard that files itself (13).** Every copy kept privately on this Mac, searchable, pins
+  for snippets. Copy something that looks like a customer's email or phone and OSAT offers
+  "Add to Jordan?".
+- **Bots in (18).** Nate's words: "I want Muse to be able to upload nodes to the application that
+  I can open up inside OSAT. That is the whole point." First a folder OSAT watches
+  (`~/Documents/OSAT Nodes`: a node file saved there appears in the Sky, reusing Import a node
+  file and the iPhone Inbox's watcher), then a connector on this Mac only (MCP, with a key Nate
+  turns on and can reset in Settings → Bots) to list, read and add nodes and stickies. If Muse
+  can only reach an internet address, ask Nate first: that breaks "everything stays on the Mac".
+- **Capture anywhere (20).** Select text in any app, one key, it's a sticky, and it remembers where
+  it came from (the page, the email, the file): "you saved this from Jordan's email on Tuesday".
+  The browser's clipper, grown to the whole Mac. Hold a key and talk; it's written on this Mac.
+- **OSAT's own bots (19).** A Bots room in the dock like Muse's list (faces, last message, groups):
+  a customer manager, a follow-up bot, an Inbox sorter, a research bot. They read and write notes,
+  run on a schedule, draft email and messages (always asking before sending), use the web and Mac
+  apps. **People cards:** type a name, see one card: notes, last contact, what's owed, the next
+  step, the follow-up already drafted. **A morning page:** opening the desk says, calmly, what's
+  due, what the bots did overnight and what waits in Unsorted. This is where business and
+  customer management starts, without building a whole CRM.
+
+### Nate's thoughts (Sep 29): files, drag and drop, nodes that become projects
+Nate, in his words: "I want people to be able to find their files", "the finder or files section to
+allow the user to reorganize all the files on their computer", "the user themselves also need to have
+an organized desktop and folder system", "dragging and dropping files… feels clunky", "click the desktop
+button drag a file or right click a file and toss into the sky view", "inside a node it has its own
+project management tools", "an easy visual view of that, github like: where we're at, what we've gotten
+done, and what's to come", and on an editable timeline "move something more forward to see if that can
+happen so I can 'rush' a feature".
+
+What the code does today (checked Sep 29), which shapes the plan:
+- **Finding** is by file name only (`files:search` → `mdfind -name`), in Desktop, Documents, Downloads
+  and folders Nate added. Nothing looks inside files, and there's no "kind" or "when".
+- **Reorganizing** isn't possible: OSAT can list, open, show in Finder and Quick Look, but never move,
+  rename, make a folder or put something in the Bin. The safe-write guard it needs already exists
+  (`resolveApprovedWritePath`).
+- **Drag and drop is two different systems.** Stickies and nodes use OSAT's own (`lib/carry.js`); the
+  Notes room uses the browser's old one (`draggable`); files aren't carryable at all, can't be dragged
+  out to Finder or Mail, and only the Ask chat takes a file from Finder. That's the clunky feeling.
+- **Nodes** hold branches and stickies only: no files, no dates, no done/not done.
+
+It is too much for one pull request, so it becomes four phases (numbered after Phases 18–20, which were already taken), each useful on its own, in this order:
+
+#### Phase 21: Find and tidy your files
+One job: any file, found in seconds, and put where it belongs without leaving OSAT.
+- **Better finding.** ⌘K and Files search look inside files too (Spotlight's own index, so it's fast
+  and stays on the Mac), and understand plain words for kind and time: "pdf", "photos", "last week",
+  "yesterday". Results say where each one lives and open on Return. Still only in the places OSAT may see.
+- **Reorganize from Files:** New folder, Rename (in place, like Finder), Move to… (the same "Move to"
+  menu words as stickies), and Delete, which puts it in the Mac's Bin, never erases, with an Undo toast
+  that brings it back. Several at once (⌘-click, ⇧-click, drag a box). A list view beside the icons.
+- **One drag system everywhere.** Files join `carry.js`: drag a file onto a folder (in Files, the path
+  bar, the sidebar or the desk) to move it; hold ⌥ to copy. Drag a file out of OSAT to Finder, Mail or
+  any app (`webContents.startDrag`), and drop files from Finder onto a folder in OSAT to move them in.
+  The Notes room moves off the old system too, so every drag looks and feels the same: a ghost under
+  the pointer, the place that takes it lights up, Esc puts it back.
+- **Safety stays:** nothing outside the approved places, no apps or scripts run, Undo for every move,
+  rename and delete, and a calm line if a move fails ("That file is open in Pages. Close it and try
+  again.").
+
+#### Phase 21b: A tidy desk and folders (OSAT helps, Nate decides)
+- **Tidy my Desktop.** One button on the desk's Desktop shelf. The built-in AI looks at the names (and,
+  for a few, what's inside) and proposes a plan: "12 screenshots → Pictures/Screenshots, 4 invoices →
+  Documents/Money, 3 installers → Bin". The plan is a list Nate ticks through: Do it, Skip, or change
+  where each goes. Nothing moves until he says so, and the whole tidy has one Undo. The AI step runs in
+  the main process with a fixed answer shape, like scans do, in small batches.
+- **A folder layout to grow into (optional):** OSAT offers a simple home layout (for example Projects,
+  Money, Home, School, Archive) and can make it. Nodes and folders can then match: "Make a folder for
+  this node".
+- **Keeps itself tidy:** a quiet "Anything on the Desktop older than 30 days goes to Archive/2026-09?"
+  offer, off by default, never a nag or a count.
+- Same rule as Tidy Unsorted in "Later": AI proposes, Nate accepts or declines each.
+
+#### Phase 22: Files in the Sky
+- **Toss a file up.** Drag a file from the desk's Desktop shelf, from Files or from Finder up into the
+  Sky (the top edge, or the dock's Sky button, like a sticky today), or right-click → "Send to the Sky".
+  It lands in Unsorted as a **file card**: its thumbnail and name, not a copy. Drop it on a node like a
+  sticky. Double-click opens it; right-click shows it in Finder.
+- **A node can have its own folder.** "Link a folder" on a node: the open node then shows that folder's
+  files in their own row, and new files dropped on the node can be moved into that folder (asked the
+  first time). Rename or move the folder in Finder and the link follows it (a macOS bookmark, not a path).
+- The data: file cards and a node's folder are new fields, so this is **schema 8** (with a migration
+  and a test). A file that's gone shows calmly as "Moved or deleted: Find it" instead of breaking.
+
+#### Phase 23: Nodes become projects
+Turn on "Track it" for any node, and it gains the view Nate described: where we're at, what's done,
+what's to come.
+- **Three lanes:** Done, Now, Next (and Later, folded away). A sticky or branch can be moved between them
+  by dragging; a checkmark marks it done. Nothing changes for nodes that aren't tracked.
+- **The timeline.** Built on the Roadmap room's Timeline (Phase 18), not a second one: the same calm
+  line, drawn from a tracked node's steps (branches or stickies with a date or an order), today marked,
+  done steps filled in. Every step can be dragged along it.
+- **Rush it.** Drag a step earlier and OSAT shows plainly what that means before it lands: "Rushing
+  Files in the Sky to this week moves Tidy Desktop back a week" (steps can say what they wait on, and
+  how big they are: small / medium / large). Let go to keep it, Esc to put it back, Undo afterwards.
+  No scary warnings, just what would move.
+- **OSAT's own plan as the first project.** The Roadmap's Timeline already shows this page's phases;
+  tracking lets Nate rush one there too.
+- **GitHub (optional, later, online only):** a tracked node can be linked to a GitHub repository, and
+  its steps show their branch and pull request (open, being checked, merged). Off by default; Offline
+  pauses it like everything else online.
+
+Questions for Nate before building:
+1. **Rush:** is it enough to see what moves when something goes earlier, or should OSAT also say "that's
+   too much for one week" (it would need a rough size for each step)?
+2. **Files in the Sky:** a card that points to the real file (the plan), or should tossing a file up
+   also move it into the node's folder?
+3. **Tidy:** is the Mac's Bin fine for "Delete" (always recoverable), or would you rather OSAT never
+   deletes files at all?
+
+### Phase 24: Sort a pile (in review, PR #21)
+Nate (Sep 29): "a temporary sky view window where you toss everything down and can make connections as
+you go or ask the ai for help… until everything has been sorted and is ready to join everything else in
+the sky." Tools → Sort a pile, or "Sort a pile" in the Sky's bar.
+- A quick input in the middle (his sketch); each Return tosses a sticky down around it. Pasting a list
+  makes a sticky per line; Photo (or dropping a photo, scan or PDF) reads it on this Mac into stickies.
+- Drop one sticky on another to start a branch (named in place); drop more on it to join. Drag a branch
+  by its name. Right-click for Edit, Split into stickies, Color, Delete (with Undo).
+- Help me sort: the AI groups the loose stickies; without one, shared words do. Nothing moves until
+  "Make the branch".
+- Send to the Sky: one node with its branches inside, or each branch its own node (marked New).
+- Piles wait in `settings.piles` (no schema change), apart from the Sky; several can wait at once.
+
+### Phase 25: The Stratosphere (planned)
+Nate (Sep 29), from Muse's Soul and Memory cards: "making the stratosphere where it sits above the sky
+and you manage your bots and scheduled tasks. We still however would need to find a place to put the
+soul.md and health.md files."
+- **One more layer up.** Desk → Sky → Stratosphere (⌥⌘↑ again, or the top edge from the Sky). Calm
+  and mostly empty, like the Sky: each bot as a card with its face, its last message and its next run.
+- **Scheduled tasks** listed plainly ("Every weekday at 8: sort Unsorted"), each with a switch and
+  "Run now". Nothing sends or deletes without asking.
+- **Soul and Memory cards.** Soul is who Nate is and how OSAT should talk to him (it grows out of
+  Phase 17's About you). Memory is what the AI has learned, which Nate can read, edit and delete, line
+  by line. Each is a plain Markdown file in the data folder (`soul.md`, `memory.md`) so every bot and
+  model reads the same thing; the card shows when it last changed. (Ask Nate whether "health.md" is a
+  third card or meant Memory.)
+- **Check with Phase 19 first:** the Stratosphere may be where Phase 19's Bots room lives, instead of
+  a room in the dock.
 
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |
@@ -561,7 +785,13 @@ be usable and understandable to anyone of any age." What confused, and what chan
 | Photos of paper stickies read into stickies; the Brother's scans become sorted nodes | 15 |
 | iPad: GoodNotes-style pages, hand-drawn mind maps, Apple Pencil Pro squeeze ring, synced | Later (parked) |
 | iPhone: a document scanner (for now: Files → Scan Documents into the scans folder, which Phase 15 reads) | Later (parked) |
-| OSAT's own agents/bots | Later |
+| OSAT's own agents/bots: a Bots room, customer manager, follow-up, Inbox sorter, research | 19 |
+| Muse's bots put nodes into OSAT ("the whole point") | 18 |
+| Cloud models: DeepSeek first, any provider, easy for anyone | 18 |
+| A project timeline inside OSAT | 18 |
+| The roadmap, viewable inside OSAT | 12c |
+| Quick search like Raycast: files and the clipboard with a preview, one key, straight to work | 13 |
+| A Raycast feel; business and customer management over time | 13, 19 |
 
 ### Later (after the MVP)
 - Files become "Linked folders" in Notes. (Projects became nodes in Phase 12.)

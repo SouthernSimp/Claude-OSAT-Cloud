@@ -1,0 +1,150 @@
+/* ---- Sort a pile (views/Pile.jsx) ---------------------------------------------------
+   A table of its own: the quick input in the middle, stickies around it, branches as soft
+   boxes. Solid like every pop-out; only the stickies are paper. */
+
+.pile-room {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: clip;
+  color: var(--ink);
+  background: var(--sky-ground, var(--page));
+}
+
+.pile-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); background: var(--page); }
+.pile-bar-gap { flex: 1; }
+.pile-which, .pile-tool, .pile-send {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 13px 0 11px; border-radius: 999px;
+  font-size: var(--t-sm); font-weight: 650; color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-1);
+  white-space: nowrap;
+}
+.pile-which:hover, .pile-tool:hover:not(:disabled) { background: var(--surface-hover); }
+.pile-which svg, .pile-tool svg { width: 13px; height: 13px; }
+.pile-send { padding: 0 16px; color: var(--accent-ink); background: var(--accent); box-shadow: var(--e-1); }
+.pile-send:hover:not(:disabled) { background: var(--accent-hover); }
+.pile-tool:disabled, .pile-send:disabled { opacity: 0.45; cursor: default; }
+.pile-bar .pile-name {
+  flex: 0 1 260px; min-width: 0; width: auto; min-height: 0; border: 0; height: 32px; padding: 0 10px; border: 0; border-radius: 8px;
+  font: 650 var(--t-md)/1 var(--font); color: var(--ink); background: transparent;
+}
+.pile-bar .pile-name:hover, .pile-bar .pile-name:focus, .pile-bar .pile-name:focus-visible { background: var(--surface-sunken); outline: none; box-shadow: none; }
+
+.pile-table { position: relative; min-height: 0; overflow: clip; cursor: grab; touch-action: none; user-select: none; }
+.pile-table.is-carrying { cursor: grabbing; }
+.pile-table.is-dropping { box-shadow: inset 0 0 0 3px var(--accent); }
+.pile-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
+
+/* The quick input: an oval in the middle, a line under it (the sketch). */
+.pile-middle {
+  position: absolute; left: -210px; top: -75px; height: 150px;
+  display: grid; align-content: center; justify-items: center; gap: 10px; cursor: default;
+}
+.pile-middle .pile-input {
+  width: 100%; min-height: 52px; max-height: 120px; padding: 15px 22px; border: 0; border-radius: 999px; resize: none;
+  font: 500 var(--t-md)/1.4 var(--font); text-align: center; color: var(--ink); background: var(--surface-raised);
+  box-shadow: 0 0 0 1.5px var(--line-strong), var(--e-2); field-sizing: content;
+}
+.pile-middle .pile-input:focus, .pile-middle .pile-input:focus-visible { outline: none; border: 0; box-shadow: 0 0 0 2px var(--accent), var(--e-2); }
+.pile-under { margin: 0; padding-top: 8px; width: 86%; border-top: 1.5px solid var(--line-strong); font-size: var(--t-xs); line-height: 1.4; text-align: center; color: var(--muted); }
+
+.pile-ghost { position: absolute; width: 164px; height: 112px; border: 1.5px dashed var(--line-strong); border-radius: 4px 4px 14px 4px; opacity: 0.7; pointer-events: none; }
+
+/* One sticky. */
+.pile-card {
+  position: absolute; left: 0; top: 0; width: 164px; height: 112px; padding: 11px 12px;
+  border-radius: 3px 3px 14px 3px; color: var(--paper-ink);
+  background: linear-gradient(180deg, var(--paper-gloss), transparent 26%), var(--paper-bg, var(--paper-canary));
+  box-shadow: var(--lift-rest); cursor: grab;
+  transition: translate 220ms var(--ease-out), box-shadow 160ms var(--ease-out);
+  animation: pile-in 260ms var(--ease-out) both;
+}
+.pile-card:hover { box-shadow: var(--lift-hover); z-index: 2; }
+.pile-card p { margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; font: 550 var(--t-sm)/1.4 var(--font); white-space: pre-line; overflow-wrap: anywhere; }
+.pile-card.is-carried { z-index: 20; transition: none; rotate: -2deg; box-shadow: var(--lift-hover), var(--e-3); cursor: grabbing; pointer-events: none; }
+.pile-card.is-target { box-shadow: var(--lift-hover), 0 0 0 3px var(--accent); }
+.pile-card-x {
+  position: absolute; top: 5px; right: 5px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  color: var(--paper-ink-2); opacity: 0; transition: opacity 120ms;
+}
+.pile-card:hover .pile-card-x { opacity: 1; }
+.pile-card-x:hover { color: var(--paper-ink); background: rgb(0 0 0 / 8%); }
+.pile-card-x svg { width: 11px; height: 11px; }
+.pile-card-hint { position: absolute; left: 50%; bottom: -30px; translate: -50% 0; padding: 4px 10px; border-radius: 999px; font: 650 var(--t-2xs)/1.4 var(--font); font-style: normal; white-space: nowrap; color: var(--accent-ink); background: var(--accent); }
+.pile-card .pile-card-field { width: 100%; height: 100%; padding: 0; border: 0; resize: none; font: 550 var(--t-sm)/1.4 var(--font); color: inherit; background: transparent; outline: none; box-shadow: none; min-height: 0; border-radius: 0; user-select: text; }
+@keyframes pile-in { from { opacity: 0; scale: 0.85; } }
+
+/* A branch: a soft box, its name on top (a dot of its colour), its stickies inside. */
+.pile-group {
+  position: absolute; left: 0; top: 0; border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-raised) 70%, transparent);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  transition: box-shadow 160ms var(--ease-out);
+}
+.pile-group.is-target { box-shadow: 0 0 0 3px var(--accent); }
+.pile-group-head { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 8px 0 16px; cursor: grab; }
+.pile-group-head::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--paper-bg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent); }
+.pile-group-head strong { min-width: 0; overflow: hidden; font: 700 var(--t-md)/1.2 var(--font-display); white-space: nowrap; text-overflow: ellipsis; }
+.pile-group-head small { color: var(--muted); font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
+.pile-group-head button { display: grid; place-items: center; width: 26px; height: 26px; margin-left: auto; border-radius: 50%; color: var(--muted); }
+.pile-group-head button:hover { background: var(--surface-hover); color: var(--ink); }
+.pile-group-head .name-field { flex: 1; min-width: 0; }
+
+.pile-zoom { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 6px; }
+.pile-zoom button { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border-radius: 999px; font-size: var(--t-xs); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-1); }
+.pile-zoom button:hover { background: var(--surface-hover); }
+.pile-zoom svg { width: 13px; height: 13px; }
+.pile-drop-line { position: absolute; left: 50%; top: 14px; translate: -50% 0; margin: 0; padding: 8px 14px; border-radius: 999px; font-size: var(--t-sm); font-weight: 650; color: var(--accent-ink); background: var(--accent); pointer-events: none; }
+
+/* Help me sort: suggestions down the right side, solid. */
+.pile-help {
+  position: absolute; top: 12px; right: 12px; bottom: 58px; z-index: 30; display: flex; flex-direction: column; gap: 10px;
+  width: min(340px, calc(100% - 24px)); padding: 14px; overflow: auto; border-radius: 16px; cursor: default; user-select: text;
+  background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-3);
+}
+.pile-help header { display: flex; align-items: center; justify-content: space-between; }
+.pile-help header button { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: var(--muted); }
+.pile-help header button:hover { background: var(--surface-hover); color: var(--ink); }
+.pile-help > p { margin: 0; font-size: var(--t-sm); color: var(--muted); }
+.pile-suggestion { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-sunken); }
+.pile-suggestion p { margin: 0; font-size: var(--t-sm); line-height: 1.4; }
+.pile-suggestion div { display: flex; gap: 6px; }
+.pile-suggestion button, .pile-take-all, .pile-sent button, .pile-send-actions button {
+  height: 28px; padding: 0 12px; border-radius: 999px; font-size: var(--t-xs); font-weight: 650; color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong);
+}
+.pile-suggestion button:hover, .pile-take-all:hover, .pile-sent button:hover, .pile-send-actions button:hover { background: var(--surface-hover); }
+.pile-suggestion button.is-primary, .pile-sent button.is-primary, .pile-send-actions button.is-primary { color: var(--accent-ink); background: var(--accent); box-shadow: none; }
+.pile-suggestion button.is-primary:hover, .pile-sent button.is-primary:hover, .pile-send-actions button.is-primary:hover { background: var(--accent-hover); }
+.pile-take-all { align-self: flex-start; }
+
+.pile-sent {
+  position: absolute; left: 50%; top: 18px; translate: -50% 0; z-index: 25; display: flex; align-items: center; gap: 8px;
+  padding: 8px 8px 8px 16px; border-radius: 999px; cursor: default; background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-2);
+}
+.pile-sent p { margin: 0 6px 0 0; font-size: var(--t-sm); font-weight: 650; }
+
+/* Send to the Sky. */
+.pile-send-scrim { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: color-mix(in srgb, var(--ink) 18%, transparent); }
+.pile-send-panel { display: grid; gap: 16px; width: min(460px, calc(100% - 32px)); padding: 22px; border-radius: 18px; background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-3); animation: pop-in 200ms var(--ease-out) both; }
+.pile-send-panel h2 { margin: 0; font: 750 var(--t-lg)/1.2 var(--font-display); letter-spacing: var(--tr-display); }
+.pile-field { display: grid; gap: 6px; font-size: var(--t-sm); color: var(--muted); }
+.pile-field input:not([type]) { height: 36px; padding: 0 12px; border: 0; border-radius: 10px; font-size: var(--t-md); color: var(--ink); background: var(--surface-sunken); box-shadow: 0 0 0 0.5px var(--line-strong); }
+.pile-field input:not([type]):focus, .pile-field input:not([type]):focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent); }
+.pile-field input:disabled { opacity: 0.5; }
+.pile-modes { display: grid; gap: 8px; }
+.pile-modes label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; border-radius: 12px; font-size: var(--t-sm); line-height: 1.4; color: var(--muted); background: var(--surface-sunken); cursor: pointer; }
+.pile-modes label strong { color: var(--ink); }
+.pile-modes label.is-off { opacity: 0.5; cursor: default; }
+.pile-modes input { margin-top: 3px; accent-color: var(--accent); }
+.pile-send-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.pile-send-actions button { height: 32px; padding: 0 16px; font-size: var(--t-sm); }
+
+@container room (max-width: 760px) {
+  .pile-bar .pile-name { display: none; }
+  .pile-tool { padding: 0 10px; }
+}
+@container room (max-width: 560px) {
+  .pile-tool { font-size: 0; gap: 0; }
+  .pile-tool svg { width: 15px; height: 15px; }
+}

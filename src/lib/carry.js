@@ -88,12 +88,14 @@ globalThis.addEventListener?.('click', (event) => {
 }, true)
 
 /* Props for something that can be carried: { kind, id, data }. Plain clicks still reach
-   its own onClick; controls inside it (buttons, fields) never start a carry. */
+   its own onClick; controls inside it (buttons, fields) never start a carry, but the
+   thing itself may be a button (a desk icon, a file). */
 export function carryable(item, { disabled = false } = {}) {
   if (disabled) return {}
   return {
     onPointerDown(event) {
-      if (event.button !== 0 || event.target.closest('button, input, textarea, select, a, [contenteditable="true"], .no-carry')) return
+      const control = event.target.closest('button, input, textarea, select, a, [contenteditable="true"], .no-carry')
+      if (event.button !== 0 || (control && control !== event.currentTarget && event.currentTarget.contains(control))) return
       begin(event, item, event.currentTarget)
     },
   }

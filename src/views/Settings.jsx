@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, Printer, Sparkle, UploadSimple } from "@phosphor-icons/react";
+import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, Printer, Robot, Sparkle, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile, formatRelativeTime } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
 import { workspaceClient } from "../store/useWorkspace.js";
 import { AppearanceControls } from "../shell/Shell.jsx";
 import { setupLine, useAi } from "../assistant/useAi.js";
+import { BotsSettings } from "./Bots.jsx";
 import { ObsidianView } from "./Obsidian.jsx";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 
@@ -88,6 +89,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
             <AiCard />
           </>
         )}
+        {section === "bots" && <BotsSettings />}
         {section === "data" && (
           <>
             <section className="content-card">
@@ -96,7 +98,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
               <p>{storage.message}</p>
               <div className="storage-facts">
                 <span><Check /> Saved a moment after every change, with 14 daily copies kept</span>
-                <span><Check /> No account, and nothing leaves this Mac unless you link your iPhone</span>
+                <span><Check /> No account, and nothing leaves this Mac unless you link your iPhone or pick a cloud model in Bots</span>
               </div>
               {window.osatApp?.showDataFolder && (
                 <button className="outline-button" type="button" onClick={() => window.osatApp.showDataFolder().catch(() => {})}>
@@ -128,7 +130,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
             <section className="content-card">
               <p className="eyebrow">ABOUT</p>
               <h2>OSAT{about?.version ? ` ${about.version}` : ""}</h2>
-              <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac. Cloud accounts, provider calendars and automatic filing are off by design.</p>
+              <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac unless you pick a cloud model in Settings → Bots. Cloud accounts, provider calendars and automatic filing are off by design.</p>
               {about?.dataFolder && <p className="settings-path">{about.dataFolder}</p>}
             </section>
           </>
@@ -141,6 +143,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
 const SECTIONS = [
   ["general", "General", GearSix],
   ["ai", "AI", Sparkle],
+  ["bots", "Bots", Robot],
   ["data", "Data", Database],
 ];
 /* Older names (the tray's "shortcut", Tools → "appearance") land where those cards live now. */

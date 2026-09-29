@@ -14,6 +14,12 @@
 //      desk's and the browser's requests, main's fetch, downloads, opening files in other
 //      apps); back online brings the tabs back; a relaunch stays offline (driven through
 //      window.osatUnder and the Go menu); the desk stays, and the line says it's offline
+//  10. the drop folder (a stand-in ~/Documents/OSAT Nodes), while offline: a node file a bot
+//      saved becomes a New node in the Sky and moves to Added
+//  11. a cloud model (a stand-in OpenAI-style provider on this Mac): a bad key says so, a good
+//      one connects, the line's answer comes from it, the running total grows, no key on disk
+//  12. the connector (MCP on 127.0.0.1): off until turned on, the key from the copied setup,
+//      a node added over MCP arrives in the Sky, and Undo takes it away
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -25,7 +31,7 @@ import { _electron as electron } from 'playwright'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 const home = await mkdtemp(path.join(os.tmpdir(), 'osat-e2e-'))
-const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac') }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac'), OSAT_NODES_DIR: path.join(home, 'OSAT Nodes') }
 const dataFile = path.join(home, 'OSAT Test', 'store', 'workspace.json')
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }
@@ -233,6 +239,72 @@ try {
   await other.app.close()
   await app.close()
 
+  // 11. A cloud model, through a stand-in provider that speaks the OpenAI way.
+  const KEY = 'sk-e2e-0123456789abcdef0123456789'
+  const cloud = http.createServer((request, response) => {
+    if (request.headers.authorization !== `Bearer ${KEY}`) return response.writeHead(401).end('{"error":{"message":"bad key"}}')
+    if (request.url === '/v1/models') return response.end(JSON.stringify({ data: [{ id: 'test-chat' }, { id: 'text-embedding-test' }] }))
+    let body = ''
+    request.on('data', (chunk) => { body += chunk })
+    request.on('end', () => {
+      const asked = JSON.parse(body)
+      response.writeHead(200, { 'content-type': 'text/event-stream' })
+      for (const text of ['From the ', 'cloud model']) response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`)
+      if (asked.stream_options) response.write(`data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 40, completion_tokens: 4 } })}\n\n`)
+      response.end('data: [DONE]\n\n')
+    })
+  })
+  await new Promise((resolve) => cloud.listen(0, '127.0.0.1', resolve))
+  try {
+    ;({ app, main } = await launch())
+    const provider = { preset: 'other', name: 'Test Cloud', baseUrl: `http://127.0.0.1:${cloud.address().port}/v1` }
+    check(/didn’t accept that key/.test(await main.evaluate((input) => window.osatBots.connect(input).then(() => 'connected', (error) => error.message), { ...provider, key: 'sk-wrong-0123456789abcdef' })),
+      'a bad key did not say plainly that it was not accepted')
+    const made = await main.evaluate((input) => window.osatBots.connect(input), { ...provider, key: KEY }).catch((error) => ({ error: error.message }))
+    check(made.model === 'test-chat' && made.models?.length === 1, `connecting a cloud model did not pick its chat model: ${JSON.stringify(made)}`)
+    check((await main.evaluate(() => window.osatLocalAI.models())).models[0]?.id === 'cloud:custom-test-cloud:test-chat', 'the chosen cloud model was not first for the line')
+    await main.fill('#home-line', 'Where does this answer come from?')
+    // The line reads the new first model a moment after the choice: its drawer names it.
+    await main.getByText('test-chat · Test Cloud').first().waitFor({ timeout: 5000 })
+      .catch(() => problems.push('the line did not pick up the chosen cloud model'))
+    await main.press('#home-line', 'ControlOrMeta+Enter')
+    await main.locator('.home-answer').getByText('From the cloud model').waitFor({ timeout: 10000 })
+      .catch(async () => problems.push(`the line’s answer did not come from the chosen cloud model: ${JSON.stringify(await main.locator('.home-answer').innerText().catch(() => 'no answer'))}`))
+    const usage = (await main.evaluate(() => window.osatBots.status())).cloud.providers[0]?.usage
+    check(usage?.requests === 1 && usage.input === 40 && usage.output === 4, `the running total did not count the question: ${JSON.stringify(usage)}`)
+    check(!(await readFile(path.join(home, 'OSAT Test', 'bots.json'), 'utf8')).includes(KEY), 'the key was written to a file')
+
+    // 12. The connector, as Claude Code would use it.
+    const connector = await main.evaluate(() => window.osatBots.connectorOn()).catch((error) => ({ error: error.message }))
+    check(connector.running && /^http:\/\/127\.0\.0\.1:\d+\/mcp$/.test(connector.url), `the connector did not start on this Mac: ${JSON.stringify(connector)}`)
+    await main.evaluate(() => window.osatBots.copySetup('other'))
+    const connectorKey = /Bearer (\S+)/.exec(await app.evaluate(({ clipboard }) => clipboard.readText()))?.[1]
+    check(Boolean(connectorKey), 'the copied setup did not carry the key')
+    const mcp = (body, key = connectorKey) => fetch(connector.url, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` }, body: JSON.stringify(body) })
+    check((await mcp({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'wrong')).status === 401, 'the connector answered without its key')
+    const init = await (await mcp({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } } })).json()
+    check(init.result?.serverInfo?.name === 'osat', 'the connector did not answer initialize')
+    const added = await (await mcp({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'add_node', arguments: { title: 'From Claude over MCP', summary: 'Sent through the connector.', source: 'Claude' } } })).json()
+    check(/Added the node “From Claude over MCP”/.test(added.result?.content?.[0]?.text), `add_node did not answer as expected: ${JSON.stringify(added)}`)
+    const viaMcp = async () => (await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).find((folder) => folder.name === 'From Claude over MCP')
+    check(await until(async () => (await viaMcp())?.from?.source === 'Claude', 5000), 'a node added over MCP did not reach the windows')
+    const listed = await (await mcp({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_nodes', arguments: {} } })).json()
+    check(/From Claude over MCP \(New, packed, from Claude\)/.test(listed.result?.content?.[0]?.text), 'list_nodes did not list the new node')
+    const lately = (await main.evaluate(() => window.osatBots.status())).connector.recent
+    await main.evaluate((at) => window.osatBots.undoConnector(at), lately[0]?.at)
+    check(await until(async () => !(await viaMcp()), 5000), 'Undo did not take away what came through the connector')
+    await main.evaluate(() => window.osatBots.connectorOff())
+    check(await mcp({ jsonrpc: '2.0', id: 4, method: 'ping' }).then(() => false, () => true), 'the connector still answered after turning it off')
+
+    await main.evaluate(() => window.osatBots.chooseModel('local'))
+    check((await main.evaluate(() => window.osatLocalAI.models())).models[0]?.id.startsWith('osat:'), 'choosing On this Mac did not put the AI on this Mac first again')
+    await main.fill('#home-line', '')
+    await app.close()
+  } finally {
+    cloud.closeAllConnections()
+    cloud.close()
+  }
+
   // 9. Offline, through window.osatUnder. A page on this Mac (loopback) stands in for
   //    the web, so no internet is needed; example.com is never actually reached.
   const local = http.createServer((request, response) => {
@@ -330,6 +402,20 @@ try {
     check(/web waits/.test(await refused(() => window.osatBrowser.open('https://example.com/'))), 'a relaunch under opened a web page')
     await main.locator('.home-offline-note').waitFor({ timeout: 5000 })
       .catch(() => problems.push('a relaunch offline did not say so on the line'))
+    // 10. The drop folder is on this Mac, so it works offline too.
+    const nodesDir = path.join(home, 'OSAT Nodes')
+    check((await main.evaluate(() => window.osatBots.status())).nodes?.dir === nodesDir, 'Settings → Bots did not show the drop folder')
+    const nodeFile = path.join(nodesDir, 'Garden.md')
+    await writeFile(nodeFile, '---\nsource: Muse\n---\n# Garden from Muse\nWhat grows where.\n')
+    const settled = new Date(Date.now() - 60_000)
+    await utimes(nodeFile, settled, settled)
+    const arrivedNode = async () => (await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).find((folder) => folder.name === 'Garden from Muse')
+    check(await until(async () => {
+      const node = await arrivedNode()
+      return Boolean(node?.fresh && node.packed && node.from?.source === 'Muse')
+    }, 40000), `a node file in the drop folder did not become a New, packed node: ${JSON.stringify(await arrivedNode())}`)
+    check(await until(() => access(path.join(nodesDir, 'Added', 'Garden.md')).then(() => true, () => false), 5000), 'the node file did not move to Added')
+
     // Go Online from the Go menu (what ⇧⌘U does): main decides, and the page follows.
     await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.find((item) => item.label === 'Go Online').click())
     await main.locator('.home-offline-note').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('Go Online in the Go menu did not reach the line'))

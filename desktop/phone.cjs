@@ -9,10 +9,10 @@
    notes and folders to copy. The file system and the clock are passed in. */
 const path = require('node:path')
 const nodeFs = require('node:fs/promises')
+const { SETTLE_MS, oneAtATime, settledFiles, uniqueTarget } = require('./folder-watch.cjs')
 
 const TEXT = new Set(['.txt', '.md', '.markdown', '.text', ''])
 const MAX_BYTES = 1024 * 1024
-const SETTLE_MS = 3000
 const MANIFEST = '.osat-mirror.json'
 
 const README = `This folder belongs to OSAT on your Mac.
@@ -62,7 +62,6 @@ function createPhoneBridge({ root, capture, snapshot, fs = nodeFs, now = () => D
   const notesDir = path.join(root, 'Notes')
   let status = { root, lastCapture: null, error: '' }
   let written = null // noteId → { relative, content } as last written
-  let scanning = null
   let mirroring = null
   let mirrorAgain = false
 
@@ -77,38 +76,25 @@ function createPhoneBridge({ root, capture, snapshot, fs = nodeFs, now = () => D
     await fs.writeFile(path.join(root, 'What lives here.txt'), README)
   }
 
-  async function uniqueTarget(dir, name) {
-    const ext = path.extname(name)
-    const stem = name.slice(0, name.length - ext.length)
-    for (let n = 1; ; n += 1) {
-      const candidate = path.join(dir, n === 1 ? name : `${stem} ${n}${ext}`)
-      try { await fs.access(candidate) } catch { return candidate }
-    }
-  }
-
   /* Each settled text file in the Inbox becomes one thought, then moves to Added. */
   async function scanInbox() {
-    let entries
+    let files
     try {
-      entries = await fs.readdir(inbox, { withFileTypes: true })
+      // Too big to be a thought: left where it is.
+      files = (await settledFiles(inbox, { fs, now, accept: (name) => TEXT.has(path.extname(name).toLowerCase()), settleMs: SETTLE_MS, maxBytes: MAX_BYTES })).filter((item) => !item.tooBig)
     } catch (error) {
       setStatus({ error: error.code === 'ENOENT' ? 'The OSAT folder in iCloud Drive is missing. Turn the iPhone link off and on again.' : `OSAT couldn't read the Inbox (${error.code || error.message}).` })
       return 0
     }
     let count = 0
-    for (const entry of entries) {
-      if (!entry.isFile() || entry.name.startsWith('.') || !TEXT.has(path.extname(entry.name).toLowerCase())) continue
-      const file = path.join(inbox, entry.name)
+    for (const { name, file } of files) {
       try {
-        const stat = await fs.stat(file)
-        // Still arriving from iCloud, or too big to be a thought: leave it for now.
-        if (now() - stat.mtimeMs < SETTLE_MS || stat.size > MAX_BYTES) continue
-        const text = (await fs.readFile(file, 'utf8')).replace(/^﻿/, '').trim()
+        const text = (await fs.readFile(file, 'utf8')).replace(/^\uFEFF/, '').trim()
         if (text) {
           capture(text)
           count += 1
         }
-        await fs.rename(file, await uniqueTarget(added, entry.name))
+        await fs.rename(file, await uniqueTarget(fs, added, name))
       } catch {
         // Not downloaded yet or busy: the next scan tries again.
       }
@@ -117,10 +103,7 @@ function createPhoneBridge({ root, capture, snapshot, fs = nodeFs, now = () => D
     return count
   }
 
-  function scan() {
-    scanning ??= scanInbox().finally(() => { scanning = null })
-    return scanning
-  }
+  const scan = oneAtATime(scanInbox)
 
   // The manifest sits in iCloud Drive, where other devices write too: only paths
   // that stay inside Notes are trusted.

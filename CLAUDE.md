@@ -38,6 +38,8 @@ npm run test:e2e       # launches the real Electron app (needs a display: xvfb-r
                        # Linux; run `node node_modules/electron/install.js` once first).
                        # OSAT_AI=mock inside it: a practice model answers, nothing downloads
 npx electron . --osat-self-test[=model.gguf]   # the AI engine (and a model) work? no notes opened
+node scripts/keychain-check.cjs    # Mac only (CI's mac job): a key in and out of the real Keychain
+node scripts/scan-read-check.cjs   # Mac only (CI's mac job): words read off a PDF, a picture, a picture PDF
 npm run ios            # opens the iPhone app in Xcode (needs Xcode's license accepted and
                        # `brew install xcodegen`); see docs/IPHONE.md
 npm run dev            # web preview at http://127.0.0.1:5173 (its own browser data)
@@ -93,6 +95,22 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `.osat-mirror.json` are ever changed). Turning it off removes the copy. macOS asks before an
     app looks in iCloud Drive, so nothing touches it until the link is on. Tests set
     `OSAT_ICLOUD_DIR` (from source only).
+  - `folder-watch.cjs`: the one way OSAT takes files in from a folder (`settledFiles`: settled a
+    few seconds, not hidden; `watchFolder`: fs.watch plus a 30 s poll; `oneAtATime`, `moveInto`),
+    shared by the iPhone Inbox and the drop folder (Phase 15's scans still watch on their own).
+  - `bots/` (Phase 18, Settings → Bots; `index.cjs` wires it, main only calls `registerBots`):
+    `drop-folder.cjs` (`~/Documents/OSAT Nodes`, from source `OSAT Nodes (Dev)`, tests set
+    `OSAT_NODES_DIR`: a node file becomes a New node, then moves to `Added`; unreadable ones to
+    `Set aside`; nothing deleted; works offline), `cloud.cjs` (cloud models: OpenAI-style providers,
+    keys checked by listing models, usage totals), `keychain.cjs` (keys through `security -i`'s
+    input, never argv; off the Mac held in memory), `settings.cjs` (`bots.json`: model, providers,
+    usage, connector, never a key), `connector.cjs` (MCP over HTTP on
+    127.0.0.1 only, Bearer key from the Keychain, refuses other Hosts and web Origins; tools in
+    shared/connector-tools.mjs; each change commits through the store with its inverse for Undo).
+    Main routes models in one place: `answeringModels()` (the model chosen in Bots first, a cloud
+    one only while online) and `chatWith()`; the line and Ask read `local-ai:models`, so the line's
+    own code never changes to switch models. A new way out of the Mac must be added on purpose to
+    the fence in tests/under.test.mjs.
   - `sync.cjs`: the same switch keeps devices in step through `OSAT/Sync` (see sync-core below).
     It hooks `store.onCommit` to note every change made here (except what sync applied), keeps
     its place in `store/sync.json`, and once set up it notes changes even while the link is
@@ -113,6 +131,17 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     from the page.
 - `shared/note-core.mjs` — the note record (`normalizeNote`, `parseTags`), shared so the main
   process makes notes exactly like the windows (`src/note-core.js` re-exports it).
+- `shared/node-file.mjs` — node files, read one way everywhere (drop folder, the Sky's Import, the
+  connector): JSON (the Import format plus `source`) or Markdown (`# node`, `## branch`, list items
+  are stickies, front matter `source:`); `isPacked` (title and summary only), `nodeRecords`,
+  `arrivalOps` (a New node, packed when it's only a summary, or `{ duplicate }` by fingerprint),
+  `fromOf`, `botInstructions` (what "Copy instructions for a bot" copies; its examples are tested).
+- `shared/providers.mjs` — cloud model presets, `cleanKey`/`cleanBaseUrl`/`providerFrom`, model ids
+  `cloud:<provider>:<model>`, `explainFailure` (one plain line), usage and `cleanBotSettings`.
+- `shared/ai-tasks.mjs` — the model's small jobs, each a question and a forgiving reader:
+  Unpack with AI (Markdown back) and Help me sort ("sticky: branch" lines).
+- `shared/connector-tools.mjs` — the connector's four tools as pure `runTool(name, args, { doc })`
+  → `{ text, ops }`, names or ids, and `connectorSetup` (the lines for Claude Code / Desktop).
 - `shared/sync-core.mjs` + `shared/sync-engine.mjs` — pure sync, for the Mac now and the iPhone
   app next. Every change gets a hybrid-clock stamp (`<ms>.<count>.<device>`, sorts as text);
   each device keeps per-field stamps (`meta`) and merges others' changes field by field, newest
@@ -147,6 +176,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     the quick chat (`surfaces/QuickChat.jsx`: the Ask room with `compact`).
   - `lib/spaces.js`: the one list of spaces (Desk, Notes, Sky (id `Mindmap`), Ask, Files), tools and
     Settings. The dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
+  - `views/Roadmap.jsx`: Tools → Roadmap (also ⌘K and the Go menu) shows docs/ROADMAP.md, built in
+    with `?raw` and drawn by `lib/markdown.jsx`. Nate reads it there: keep it in plain words, the
+    Status table first. Its Timeline view (`lib/roadmap.js`, `roadmapPhases`) is drawn from that
+    same Status table, so keep the table's three columns (Phase | What | State: "Merged (PR #n)",
+    "In review", "Planned"); a date in the State cell shows, none is needed.
+  - `views/Bots.jsx`: Settings → Bots, the one place for bots, models and what leaves the Mac:
+    the drop folder, which model answers, cloud models (keys never reach the page), the
+    connector (its key only ever goes to the clipboard). Scans stay in Settings → Data (Phase 15).
   - `lib/carry.js`: the one drag engine (`carryable(item)` on what's picked up, `useDrop(id, spec)`
     on places that take it, with `accepts`, an `axis` for lists of `[data-slot]` items, `spring`
     for hover-to-open; `onCarryEdge` makes the top/bottom of the screen change layers). A ghost
@@ -168,7 +205,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     do). Also the welcome, capture (⇧⌘N) and the menu-bar commands. The browser preview shows a
     stand-in desktop and keeps `places` in localStorage.
   - `sky/`: `Sky.jsx` (the layer: find a sticky, Import a node file, the actions and menus,
-    Help me sort: `suggestionGroups`, one line per branch with Move and Dismiss, no AI),
+    Help me sort: `suggestionGroups`, one line per branch with Move and Dismiss; with a model, it is
+    asked about the stickies matching words couldn't place; Unpack with AI / By hand on a packed
+    node; `useAi` reads the model list again when Bots changes),
     `Board.jsx` (the infinite whiteboard: the camera `{x, y, z}` in CSS vars `--cx/--cy/--z`,
     registered with `@property` so a flight glides; node cards at `boardSpots`, dragged directly,
     opened in place as a tree (Phase 16: `NodeLanes` → `Branches` → `Lane`: the node's own stickies
@@ -191,7 +230,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - Rooms: `field/` (home desk, widgets), `notes/`, `assistant/` (Ask:
     `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`),
     `views/` (Calendar, Journal (with Reflection as its tab, Reflection's one home), Habits,
-    Budget, NowPlaying, Obsidian, Settings (three tabs: General, AI, Data; `sectionFor` maps old tab
+    Budget, NowPlaying, Obsidian, Settings (four tabs: General, AI, Bots, Data; `sectionFor` maps old tab
     names); schema 4 folds each project into a node, `projectNodes` in store-core, and keeps `projects`), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).
   - `views/Files.jsx`: a small Finder (places and your folders, back/forward, Space for Quick
     Look, Ask about it) and the pieces the desk reuses: `FileThumb`, `useFolder`,
@@ -210,6 +249,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   "Stickies"); Unsorted says "Stickies in no node yet"; "New branch inside" makes a sub-branch.
   The one-line model everywhere: a sticky is one thought, a node is a topic, branches group the
   stickies in a node (and can hold smaller branches). "Leaves" is only the node file's word.
+  Phase 18: New (a node that just arrived), packed / Unpack (only a summary so far), "from Muse",
+  Bots, cloud model, key, the connector.
 - Nodes (schema 3): every top-level folder is a node, a folder inside one is a branch, a note is a
   sticky. Order is `rank` (`rankOf`: a missing rank is the creation time, so only hand-ranked
   things carry one); folders may have `color` and `at` ({x, y} on the Sky's board; `placeNodes`
@@ -228,6 +269,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   offline is ordinary too, with `source: 'Offline'`.
 - A sticky from a scan may carry `ask: { event: { title, date, time } }` (schema 6): its node, when
   opened, asks "Add it to your Calendar?" (`asksIn`, `addAskedEvent`, `skipAsk` in nodes-model).
+- Arrivals (schema 7): a node from the drop folder or the connector carries `fresh` (New until
+  first opened: `markOpened`), `packed` when it is only a summary (until a branch, By hand or Unpack
+  with AI: `markUnpacked`, `unpackInto`) and `from` ({ source, file, hash }, cleaned by `fromOf`).
 - Data rules: a captured sticky is one note with `unsorted: true` and a `source`; filing,
   pinning or Keep clears it. Each day has one note, `day-YYYY-MM-DD` with `kind: 'day'`
   (`ensureDayNote`): it is the journal page and where new next steps land. Wikilinks follow

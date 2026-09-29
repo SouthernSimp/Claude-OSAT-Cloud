@@ -2,7 +2,7 @@
 // page error. Screenshots land in test-results/ui/ (light, then dark) so each
 // pull request shows what changed. Run `npm run build` first.
 import { spawn } from 'node:child_process'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
 
@@ -11,7 +11,7 @@ const PORT = Number(process.env.OSAT_PORT || 4317)
 // The spaces that open as pop-outs (⌃2, 4, 5; ⌃3 is the Sky, a layer of its own), then
 // every tool from the dock's Tools menu.
 const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
-const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Terminal', 'Terminal'], ['Settings', 'Settings']]
+const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Pile', 'Sort a pile'], ['Settings', 'Settings']]
 
 let server
 async function start() {
@@ -258,9 +258,42 @@ async function main() {
   await page.screenshot({ path: `${OUT}/sky-import.png` })
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
   await page.locator('[data-node-head]', { hasText: 'Garden' }).waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Undo did not take the import away'))
+  // A packed node (Markdown, only a summary, as a bot writes it): it says so, and Unpack opens it up.
+  room = 'sky packed'
+  await page.locator('.sky-layer input[type="file"]').setInputFiles({ name: 'spring.md', mimeType: 'text/markdown', buffer: Buffer.from('---\nsource: Muse\n---\n# Spring launch\nEverything worth keeping, in one paragraph.\n') })
+  const packedHead = page.locator('[data-node-head]', { hasText: 'Spring launch' })
+  await packedHead.locator('.node-origin', { hasText: 'packed' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: a packed node file did not arrive packed'))
+  await page.locator('.board-card.is-open .packed-bar').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: a packed node showed no Unpack'))
+  // Fly to it (the board moves, it never scrolls, so a click can't reach a card off-screen).
+  await packedHead.dispatchEvent('dblclick').catch(() => {})
+  await sleep(1100)
+  await page.screenshot({ path: `${OUT}/sky-packed.png` })
+  await page.locator('.packed-bar').getByRole('button', { name: 'Unpack', exact: true }).dispatchEvent('click').catch(() => problems.push('sky: Unpack could not be pressed'))
+  await page.locator('.board-card.is-open .packed-bar').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Unpack left the node packed'))
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Undo', exact: true }).click().catch(() => {})
   await page.keyboard.press('Escape')
   await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Esc did not come back down'))
   if (!await mentioned.count()) problems.push('mentions: the sticky with an @ left the desk')
+  // The Roadmap room's Timeline: every phase of the Status table, in order, read from the same
+  // text the Roadmap shows; picking one opens its part of the Roadmap.
+  room = 'timeline'
+  const statusRows = (await readFile('docs/ROADMAP.md', 'utf8')).split('## Status')[1].split('\n## ')[0].split('\n').filter((line) => /^\|\s*[^|\s-][^|]*\|/.test(line) && !/^\|\s*Phase\s*\|/.test(line)).length
+  await page.locator('.app-dock [data-space="tools"]').click()
+  await page.getByRole('menuitem', { name: 'Roadmap' }).click()
+  const roadmapRoom = page.locator('.popout-body[data-view="Roadmap"]')
+  await roadmapRoom.getByRole('tab', { name: 'Timeline' }).click().catch(() => problems.push('timeline: the Roadmap room has no Timeline'))
+  await page.locator('.timeline-list li').first().waitFor({ timeout: 3000 }).catch(() => problems.push('timeline: nothing on the Timeline'))
+  if (await page.locator('.timeline-list li').count() !== statusRows) problems.push(`timeline: ${await page.locator('.timeline-list li').count()} phases shown, the Status table has ${statusRows}`)
+  if (!await page.locator('.timeline-list li[data-state="planned"]').count()) problems.push('timeline: no planned phases shown')
+  await sleep(400)
+  await page.screenshot({ path: `${OUT}/timeline.png` })
+  await page.locator('.timeline-list button', { hasText: 'Phase 12b' }).click()
+  await roadmapRoom.getByRole('heading', { name: /Phase 12b/ }).waitFor({ timeout: 3000 }).catch(() => problems.push('timeline: picking a phase did not open its part of the Roadmap'))
+  if (!await roadmapRoom.getByRole('heading', { name: /Phase 12b/ }).isVisible()) problems.push('timeline: the phase’s part of the Roadmap was not in view')
+  await page.locator('.popout.is-top .popout-bar strong').click()
+  await page.keyboard.press('Escape')
+  await roadmapRoom.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('timeline: Esc did not close the Roadmap'))
   // Reflection's one home: a tab of the Journal.
   room = 'journal'
   await page.locator('.app-dock [data-space="tools"]').click()
@@ -362,6 +395,44 @@ async function main() {
 
   // The quick chat's window, as the browser preview can show it (no AI here).
   room = 'quick chat'
+  // Sort a pile: stickies tossed down around the quick input (a pasted list makes many), one
+  // dropped on another starts a branch, Help me sort suggests more, and Send to the Sky
+  // makes one node with its branches inside.
+  room = 'pile'
+  await page.goto(url)
+  await page.waitForSelector('.workspace-content', { timeout: 15000 })
+  await page.locator('.app-dock [data-space="tools"]').click()
+  await page.getByRole('menuitem', { name: 'Sort a pile' }).click()
+  await page.locator('.pile-room').waitFor({ timeout: 5000 }).catch(() => problems.push('pile: Sort a pile did not open'))
+  const pileInput = page.getByLabel('Write a sticky', { exact: true })
+  for (const words of ['Florist for the wedding', 'Wedding cake tasting']) { await pileInput.fill(words); await pileInput.press('Enter') }
+  await page.evaluate(() => {
+    const data = new DataTransfer()
+    data.setData('text/plain', '- Oil change for the car\n- Car insurance renewal\n- Call mom')
+    document.querySelector('.pile-input').dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  })
+  await sleep(500)
+  if (await page.locator('.pile-card').count() !== 5) problems.push(`pile: 5 stickies were tossed down, ${await page.locator('.pile-card').count()} are on the table`)
+  const [one, two] = [await page.locator('.pile-card').nth(0).boundingBox(), await page.locator('.pile-card').nth(1).boundingBox()]
+  await page.mouse.move(one.x + 30, one.y + 30)
+  await page.mouse.down()
+  for (let step = 1; step <= 10; step += 1) await page.mouse.move(one.x + 30 + ((two.x - one.x) * step) / 10, one.y + 30 + ((two.y - one.y) * step) / 10)
+  await page.mouse.up()
+  await page.locator('.pile-group .name-field').waitFor({ timeout: 3000 }).catch(() => problems.push('pile: dropping a sticky on another did not start a branch'))
+  await page.keyboard.type('Wedding')
+  await page.keyboard.press('Enter')
+  await page.getByRole('button', { name: 'Help me sort' }).click()
+  await page.locator('.pile-suggestion', { hasText: 'Car' }).waitFor({ timeout: 8000 }).catch(() => problems.push('pile: Help me sort did not suggest a Car branch'))
+  await page.screenshot({ path: `${OUT}/pile.png` })
+  await page.locator('.pile-suggestion', { hasText: 'Car' }).getByRole('button', { name: 'Make the branch' }).click().catch(() => {})
+  if (await page.locator('.pile-group').count() !== 2) problems.push(`pile: expected 2 branches, found ${await page.locator('.pile-group').count()}`)
+  await page.getByRole('button', { name: 'Send to the Sky' }).click()
+  await page.getByLabel('Name of the node').fill('Kitchen table')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await page.getByRole('button', { name: 'See it in the Sky' }).click().catch(() => problems.push('pile: sending did not offer to show it in the Sky'))
+  await page.locator('[data-node-head]', { hasText: 'Kitchen table' }).waitFor({ timeout: 5000 }).catch(() => problems.push('pile: the node was not in the Sky'))
+  if (await page.locator('.pile-room').count()) problems.push('pile: the table stayed open over the Sky')
+
   const chat = await browser.newPage({ viewport: { width: 420, height: 600 } })
   chat.on('pageerror', (error) => problems.push(`quick chat: ${error.message}`))
   await chat.goto(`${url}?surface=chat`)

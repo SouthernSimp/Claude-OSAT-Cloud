@@ -2,6 +2,7 @@
    Pure functions over the workspace so the views stay thin and the logic is
    testable without a browser. */
 
+import { fromOf } from '../shared/node-file.mjs'
 import { PAPERS, normalizeNote, parseTags, rankOf } from './note-core.js'
 
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -30,6 +31,11 @@ export function normalizeFolders(value) {
       ...(Array.isArray(folder.links) && folder.links.length ? { links: [...new Set(folder.links.filter((id) => typeof id === 'string' && id))].slice(0, 50) } : {}),
       ...(folder.layout === 'down' ? { layout: 'down' } : {}),
       ...(Number.isFinite(folder.at?.x) && Number.isFinite(folder.at?.y) ? { at: { x: clamp(folder.at.x), y: clamp(folder.at.y) } } : {}),
+      // A node that arrived from outside (schema 6): only a summary so far (packed), New
+      // until it is first opened (fresh), and where it came from (a bot, a file, a scan).
+      ...(folder.packed === true ? { packed: true } : {}),
+      ...(folder.fresh === true ? { fresh: true } : {}),
+      ...(fromOf(folder.from) ? { from: fromOf(folder.from) } : {}),
     }]
   })
   // A parent must exist and must not create a cycle; otherwise the folder moves to the root.

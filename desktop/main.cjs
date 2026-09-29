@@ -33,6 +33,8 @@ const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile }
 const { localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
 const { createAi } = require('./ai/index.cjs')
 const { createPhoneBridge } = require('./phone.cjs')
+const { watchFolder } = require('./folder-watch.cjs')
+const { createBots } = require('./bots/index.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -639,6 +641,7 @@ function buildMenu() {
         room('Money', 'Budget'),
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
+        room('Roadmap', 'Roadmap'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
@@ -1073,15 +1076,7 @@ function registerAi() {
   handle('app:welcome', () => !prefs.welcomed, { from: 'main' })
   handle('app:welcomed', async () => { prefs = { ...prefs, welcomed: true }; await savePrefs(); return true }, { from: 'main' })
 
-  // Ask lists the built-in model first, then whatever LM Studio has loaded.
-  handle('local-ai:models', async () => {
-    const own = ai.models()
-    try {
-      return { models: [...own, ...await localAiModels()] }
-    } catch {
-      return { models: own, ...(own.length ? {} : { error: 'Set up the AI in Settings → AI, or start LM Studio.' }) }
-    }
-  }, { from: 'any' })
+  handle('local-ai:models', () => answeringModels(), { from: 'any' })
   const streams = new Map()
   ipcMain.on('local-ai:cancel', (event, id) => {
     assertTrustedSender(event)
@@ -1095,9 +1090,7 @@ function registerAi() {
     streams.set(id, controller)
     const onDelta = (delta) => { if (!event.sender.isDestroyed()) event.sender.send(`local-ai:delta:${id}`, delta) }
     try {
-      return valid.model.startsWith('osat:')
-        ? await ai.chatStream(valid, onDelta, controller.signal)
-        : await localAiChatStream(valid, onDelta, controller.signal)
+      return await chatWith(valid, onDelta, controller.signal)
     } catch (error) {
       if (error?.name === 'AbortError') return ''
       throw new FileAccessError(error.message || 'Local AI is unavailable.')
@@ -1105,6 +1098,22 @@ function registerAi() {
       streams.delete(id)
     }
   })
+}
+
+/* Ask lists the model chosen in Settings → Bots first (a cloud model, while online), then
+   the built-in model, then whatever LM Studio has loaded. The line asks the first. */
+async function answeringModels() {
+  const own = [...(bots?.models() || []), ...ai.models()]
+  try {
+    return { models: [...own, ...await localAiModels()] }
+  } catch {
+    return { models: own, ...(own.length ? {} : { error: 'Set up the AI in Settings → AI, or start LM Studio.' }) }
+  }
+}
+
+function chatWith(valid, onDelta, signal) {
+  if (valid.model.startsWith('cloud:')) return bots.chatStream(valid, onDelta, signal)
+  return valid.model.startsWith('osat:') ? ai.chatStream(valid, onDelta, signal) : localAiChatStream(valid, onDelta, signal)
 }
 
 /* ---- Your iPhone, through an OSAT folder in iCloud Drive (off until turned on) ---- */
@@ -1120,10 +1129,8 @@ let phoneRoot = path.join(ICLOUD_DRIVE, 'OSAT')
 let phone = null
 let macSync = null
 let phoneClient = null
-let phoneWatcher = null
-let phonePoll = null
+let phoneWatch = null
 let phoneMirrorTimer = null
-let phoneScanTimer = null
 
 // Never touches iCloud Drive: macOS asks before an app looks there, and that
 // should only happen when Nate turns the link on.
@@ -1137,10 +1144,6 @@ const phoneLive = () => prefs.phone && !under.on
 const mirrorSoon = () => {
   clearTimeout(phoneMirrorTimer)
   if (phoneLive()) phoneMirrorTimer = setTimeout(() => { if (phoneLive()) phone?.mirror() }, 2000)
-}
-const scanSoon = () => {
-  clearTimeout(phoneScanTimer)
-  if (phoneLive()) phoneScanTimer = setTimeout(() => { if (phoneLive()) phone?.scan() }, 800)
 }
 
 async function bridgePhone() {
@@ -1198,12 +1201,7 @@ async function startPhone() {
   await (await ensureSync()).start()
   if (waits()) return
   phoneClient ??= store.connect(mirrorSoon)
-  try {
-    phoneWatcher = require('node:fs').watch(path.join(phoneRoot, 'Inbox'), scanSoon)
-  } catch {
-    // The poll below still finds new thoughts.
-  }
-  phonePoll = setInterval(scanSoon, 30000)
+  phoneWatch = watchFolder({ dir: path.join(phoneRoot, 'Inbox'), look: () => phone?.scan(), live: phoneLive })
   await phone.scan()
   if (waits()) return
   await phone.mirror()
@@ -1211,12 +1209,9 @@ async function startPhone() {
 
 function stopPhone() {
   macSync?.pause()
-  phoneWatcher?.close()
-  clearInterval(phonePoll)
+  phoneWatch?.stop()
   clearTimeout(phoneMirrorTimer)
-  clearTimeout(phoneScanTimer)
-  phoneWatcher = null
-  phonePoll = null
+  phoneWatch = null
 }
 
 async function registerPhone() {
@@ -1254,6 +1249,32 @@ async function registerPhone() {
   // Before any window opens, so no change goes unnoted; iCloud itself can take its time.
   await ensureSync().catch((error) => console.error('Sync could not load:', error))
   if (phoneLive()) startPhone().catch((error) => console.error('The iPhone link could not start:', error))
+}
+
+/* ---- Bots: what Muse, Grok Bot and Claude send OSAT (desktop/bots, Settings → Bots) ---- */
+
+let bots = null
+
+async function registerBots() {
+  // ~/Documents/OSAT Nodes. From source it is "OSAT Nodes (Dev)", so development never takes
+  // the real app's files; tests pass OSAT_NODES_DIR (from source only).
+  const nodesDir = (!app.isPackaged && process.env.OSAT_NODES_DIR) || path.join(app.getPath('documents'), app.isPackaged ? 'OSAT Nodes' : 'OSAT Nodes (Dev)')
+  bots = await createBots({
+    dataDir: app.getPath('userData'),
+    nodesDir,
+    version: app.getVersion(),
+    // Where keys sit in the Keychain; from source its own, so development never reads the app's.
+    service: app.isPackaged ? 'OSAT' : 'OSAT-Dev',
+    store,
+    sharedModule,
+    handle,
+    fail,
+    send: sendToAllWindows,
+    shell,
+    clipboard: require('electron').clipboard,
+    offline: () => under.on,
+  })
+  bots.start().catch((error) => console.error('Bots could not start:', error))
 }
 
 /* ---- Scans: the folder a scanner saves to; each new scan becomes a node (scans.cjs) ---- */
@@ -1389,6 +1410,7 @@ async function comingUp() {
 
 function underChanged() {
   sendToAllWindows('under:changed', underStatus())
+  bots?.changed()
   buildMenu()
   updateTray()
 }
@@ -1481,6 +1503,7 @@ app.whenReady().then(async () => {
   registerAi()
   await registerPhone()
   await registerScans()
+  await registerBots()
   registerDesk()
   registerQuickChat()
   createWindow()
@@ -1506,5 +1529,6 @@ app.on('will-quit', () => {
   terminals?.destroy()
   ai?.dispose()
   stopPhone()
+  bots?.stop()
   for (const id of grantAccessStops.keys()) stopGrantAccess(id)
 })

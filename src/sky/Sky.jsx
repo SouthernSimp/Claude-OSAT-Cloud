@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsIn, CornersOut, DownloadSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, Sparkle, Trash,
+  ArrowDown, ArrowsIn, CornersOut, DownloadSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, Sparkle, Stack, Trash,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
@@ -9,9 +9,13 @@ import { useUndoToast } from '../lib/UndoToast.jsx'
 import { PAPERS } from '../note-core.js'
 import { folderChildren, folderPath, folderSubtree, isActiveNote, purgeNotes, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
 import {
-  addAskedEvent, addFolder, addSticky, importNode, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder, skipAsk, splitMentions,
-  suggestionGroups, tidyBoard,
+  addAskedEvent, addFolder, addSticky, importNode, markOpened, markUnpacked, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder,
+  skipAsk, splitMentions, suggestionGroups, tidyBoard, unpackInto,
 } from '../nodes-model.js'
+import { isPacked, readNodeFile } from '../../shared/node-file.mjs'
+import { readSortAnswer, readUnpackAnswer, sortMessages, unpackMessages } from '../../shared/ai-tasks.mjs'
+import { answeringLabel, askModel } from '../assistant/ask-model.js'
+import { cleanError, useAi } from '../assistant/useAi.js'
 import { seedDirection } from '../project-direction.js'
 import { Board } from './Board.jsx'
 
@@ -35,6 +39,12 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   const [query, setQuery] = useState('')
   const [sorting, setSorting] = useState(null)
   const [renaming, setRenaming] = useState(null)
+  const [unpacking, setUnpacking] = useState(null)
+  const sortAsk = useRef(null)
+  // The model chosen in Settings → Bots (or the AI on this Mac) does Unpack with AI and
+  // helps Help me sort; with none, both work by hand and by matching words.
+  const { models } = useAi()
+  const answering = answeringLabel(models)
   // Where a new branch is being named: a node's id, or a branch's for one inside it.
   const [branching, setBranching] = useState(null)
   const [guide, setGuide] = useState(() => !guideSeen())
@@ -81,6 +91,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   }
 
   function toggle(id, force) {
+    // A node that arrived is New until it is first opened.
+    if ((force === true || (force === undefined && !open.has(id))) && latest.current.folders.some((folder) => folder.id === id && folder.fresh)) {
+      commit((state) => markOpened(state, id))
+    }
     setOpen((current) => {
       const next = new Set(current)
       if (force === true || (force === undefined && !next.has(id))) next.add(id)
@@ -95,7 +109,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   const unsuggest = (ids) => setSorting((value) => {
     if (!value) return value
     const groups = value.groups.map((group) => ({ ...group, noteIds: group.noteIds.filter((id) => !ids.includes(id)) })).filter((group) => group.noteIds.length)
-    return groups.length || value.line ? { ...value, groups } : null
+    return groups.length || value.line || value.asking ? { ...value, groups } : null
   })
 
   const actions = {
@@ -115,7 +129,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     addBranch(name, parentId) {
       let made
-      commit((state) => { const result = addFolder(state, name, parentId); made = result.folder; return result.state })
+      commit((state) => { const result = addFolder(markUnpacked(state, parentId), name, parentId); made = result.folder; return result.state })
       if (made) { toggle(made.id, true); toggle(parentId, true) }
     },
     addSticky(text, folderId) {
@@ -128,6 +142,37 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     rename(id, name) {
       commit((state) => renameFolder(state, id, name))
     },
+    /* A packed node (only a summary so far) opened up by hand: its summary stays. */
+    unpack(id) {
+      commit((state) => markUnpacked(state, id))
+    },
+    unpacking,
+    answering,
+    /* Or with the AI: it suggests branches and stickies from the summary; they go in after
+       what's there, with Undo. The summary (and the file in Added) always stay. */
+    unpackWithAi: answering ? async (folder) => {
+      const state = latest.current
+      setUnpacking({ id: folder.id, busy: true, line: `Asking ${answering}…` })
+      try {
+        const answer = await askModel(unpackMessages({
+          title: folder.name,
+          summary: pileOf(state.notes, folder.id).map((note) => note.markdown).join('\n\n'),
+          branches: folderChildren(state.folders, folder.id).map((branch) => branch.name),
+        }))
+        const tree = readUnpackAnswer(answer, folder.name)
+        let made = null
+        commit((current) => { made = unpackInto(current, folder.id, tree); return made.state })
+        setUnpacking(null)
+        const count = made?.folders.length || 0
+        showUndo(`Unpacked ${folder.name}${count ? ` into ${count} ${count === 1 ? 'branch' : 'branches'}` : ''}`, () => commit((current) => {
+          const gone = new Set(made.folders)
+          const folders = current.folders.filter((item) => !gone.has(item.id)).map((item) => (item.id === folder.id ? { ...item, packed: true } : item))
+          return purgeNotes({ ...current, folders }, made.notes)
+        }))
+      } catch (error) {
+        setUnpacking({ id: folder.id, busy: false, line: cleanError(error) })
+      }
+    } : null,
     openNote(noteId) { navigate('Notes', { noteId }) },
     /* A sticky's @s, as links that fly to their node. */
     mentions: {
@@ -216,10 +261,34 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
        matching #tag, or shared words), one line per branch. Nothing moves until Move. */
     sort(nodeId) {
       const state = latest.current
-      const branches = folderChildren(state.folders, nodeId).length
+      const branches = folderChildren(state.folders, nodeId)
       const groups = suggestionGroups(state, nodeId)
-      const line = !pileOf(state.notes, nodeId).length ? 'Nothing here needs sorting.' : !branches ? 'Add a branch first.' : groups.length ? '' : 'Nothing here looks like a clear match yet.'
-      setSorting({ id: nodeId, line, groups })
+      const pile = pileOf(state.notes, nodeId)
+      const line = !pile.length ? 'Nothing here needs sorting.' : !branches.length ? 'Add a branch first.' : groups.length ? '' : 'Nothing here looks like a clear match yet.'
+      // What matching words couldn't place, the model is asked about (still nothing moves until Move).
+      const matched = new Set(groups.flatMap((group) => group.noteIds))
+      const rest = pile.filter((note) => !matched.has(note.id))
+      const ask = answering && branches.length > 0 && rest.length > 0
+      const token = {}
+      sortAsk.current = token
+      setSorting({ id: nodeId, line: ask ? '' : line, groups, asking: ask ? `Asking ${answering} about the rest…` : '' })
+      if (!ask) return
+      const name = state.folders.find((folder) => folder.id === nodeId)?.name || ''
+      askModel(sortMessages({ node: name, branches: branches.map((branch) => branch.name), stickies: rest.map((note) => `${note.title}\n${note.markdown}`) })).then((answer) => {
+        if (sortAsk.current !== token) return
+        const picks = readSortAnswer(answer, branches.length, rest.length)
+        setSorting((value) => {
+          if (value?.id !== nodeId) return value
+          const merged = branches.map((branch, index) => ({
+            folderId: branch.id,
+            noteIds: [...(value.groups.find((group) => group.folderId === branch.id)?.noteIds || []), ...picks.filter((pick) => pick.branch === index).map((pick) => rest[pick.sticky].id)],
+          })).filter((group) => group.noteIds.length)
+          return { ...value, groups: merged, asking: '', line: merged.length ? '' : 'Nothing here looks like a clear match yet.' }
+        })
+      }, (error) => {
+        if (sortAsk.current !== token) return
+        setSorting((value) => (value?.id === nodeId ? { ...value, asking: '', line: value.groups.length ? '' : cleanError(error) } : value))
+      })
     },
     acceptGroup(group) {
       commit((state) => group.noteIds.reduce((next, id) => moveSticky(next, id, group.folderId), state))
@@ -228,7 +297,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     dismissGroup(group) {
       unsuggest(group.noteIds)
     },
-    endSort() { setSorting(null) },
+    endSort() { sortAsk.current = null; setSorting(null) },
     /* A day a sticky names: into the Calendar (with Undo), or Not now. */
     addEvent(note) {
       let event = null
@@ -243,18 +312,22 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     skipAsk(note) { commit((state) => skipAsk(state, note.id)) },
   }
 
-  /* Import: one node file (JSON) becomes one new node, never mixed into one that's there. */
+  /* Import: one node file (JSON or Markdown, as bots write them) becomes one new node,
+     never mixed into one that's there. */
   async function importFile(file) {
     if (!file) return
     let made = null
+    let why = ''
     try {
-      const data = JSON.parse(await file.text())
-      commit((state) => { const result = importNode(state, data); made = result; return result.state })
-    } catch {
+      const tree = readNodeFile(await file.text(), file.name)
+      // Only a summary: packed, ready to unpack (by hand or with the AI).
+      commit((state) => { const result = importNode(state, tree, { node: isPacked(tree) ? { packed: true } : undefined }); made = result; return result.state })
+    } catch (error) {
       made = null
+      why = error?.name === 'NodeFileError' && error.message !== 'That file isn’t a node file.' ? ` ${error.message}` : ''
     }
     if (!made?.folder) {
-      showUndo(`“${file.name}” isn’t a node file. Nothing changed.`, null)
+      showUndo(`“${file.name}” isn’t a node file.${why} Nothing changed.`, null)
       return
     }
     const { folder, branches } = made
@@ -283,11 +356,12 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       <header className="sky-bar">
         <button type="button" className="sky-down" onClick={onClose} title="Back to the desk  Esc · ⌥⌘↓"><ArrowDown weight="bold" /> Desk</button>
         <button type="button" className="sky-new" onClick={() => board.current?.newNode()}><Plus weight="bold" /> New node</button>
-        <button type="button" className="sky-import" title="Import a node file (.json) as a new node" onClick={() => picker.current?.click()}><DownloadSimple weight="bold" /> Import</button>
+        <button type="button" className="sky-import" title="Import a node file (.json or .md) as a new node" onClick={() => picker.current?.click()}><DownloadSimple weight="bold" /> Import</button>
+        <button type="button" className="sky-import" title="A table of its own for a pile of stickies, until it's sorted" onClick={() => navigate('Pile')}><Stack weight="bold" /> Sort a pile</button>
         <input
           ref={picker}
           type="file"
-          accept=".json,application/json"
+          accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"
           hidden
           onChange={(event) => { importFile(event.target.files?.[0]); event.target.value = '' }}
         />
