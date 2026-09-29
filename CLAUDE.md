@@ -171,9 +171,16 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     Help me sort: `suggestionGroups`, one line per branch with Move and Dismiss, no AI),
     `Board.jsx` (the infinite whiteboard: the camera `{x, y, z}` in CSS vars `--cx/--cy/--z`,
     registered with `@property` so a flight glides; node cards at `boardSpots`, dragged directly,
-    opened in place as lanes (one layout); `makeRoom` slides neighbours aside; lines for @mentions;
+    opened in place as a tree (Phase 16: `NodeLanes` → `Branches` → `Lane`: the node's own stickies
+    first, under "Not in a branch yet" once it has branches; each branch a label (a dot of its colour
+    and its name) on a line, its stickies in a row, its own branches on a line under it; only stickies
+    are paper; a branch dropped on a branch's name goes inside it; a closed card lists its first three
+    branches); `makeRoom` slides neighbours aside; lines for @mentions;
     far out (`z < 0.5`) names grow and insides fade), `Piles.jsx` (`StickyList`, `AddSticky`,
-    `NameField`), `Sticky.jsx` (one sticky: click to write, carry, right-click).
+    `NameField`), `Sticky.jsx` (one sticky: click to write, carry, right-click). `SkyGuide` (in Sky.jsx):
+    "How the Sky works", shown once per Mac (`osat.sky.guide.v1`), again from ? or the board's menu.
+    New branch / New branch inside are named in place (`actions.branching`); Rename for a branch
+    goes through `actions.renaming` like a node's.
     Cards drift forever, so Playwright clicks on them need `{ force: true }`.
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
     `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, `moveToItems` (every
@@ -199,6 +206,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   folder (for a node), Unfiled, To sort, Toss, Clear, Put inside, Make it a node. Nodes show
   names only, never numbers. (Files keeps "folder": those are the Mac's real folders.)
   Offline (Go Offline / Go Online), never Incognito, Under, Come up or scratch page.
+  Phase 16: a node's own stickies, once it has branches, are "Not in a branch yet" (never
+  "Stickies"); Unsorted says "Stickies in no node yet"; "New branch inside" makes a sub-branch.
+  The one-line model everywhere: a sticky is one thought, a node is a topic, branches group the
+  stickies in a node (and can hold smaller branches). "Leaves" is only the node file's word.
 - Nodes (schema 3): every top-level folder is a node, a folder inside one is a branch, a note is a
   sticky. Order is `rank` (`rankOf`: a missing rank is the creation time, so only hand-ranked
   things carry one); folders may have `color` and `at` ({x, y} on the Sky's board; `placeNodes`

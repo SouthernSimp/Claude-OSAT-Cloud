@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsIn, CornersOut, DownloadSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, ShareNetwork, Sparkle, Trash,
+  ArrowDown, ArrowsIn, CornersOut, DownloadSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, Sparkle, Trash,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
@@ -19,6 +19,11 @@ const OPEN_KEY = 'osat.sky.open.v1'
 function readOpen() {
   try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY)) || []) } catch { return new Set() }
 }
+// The guide shows itself once on this Mac; ? and the board's menu bring it back.
+const GUIDE_KEY = 'osat.sky.guide.v1'
+function guideSeen() {
+  try { return localStorage.getItem(GUIDE_KEY) === 'seen' } catch { return true }
+}
 
 /* The Sky: the layer above the desk (⌘3, the dock's Sky, ⌥⌘↑, or a sticky held at the top
    of the screen). Your nodes on one whiteboard (Board). `target` says where to fly on
@@ -30,6 +35,9 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   const [query, setQuery] = useState('')
   const [sorting, setSorting] = useState(null)
   const [renaming, setRenaming] = useState(null)
+  // Where a new branch is being named: a node's id, or a branch's for one inside it.
+  const [branching, setBranching] = useState(null)
+  const [guide, setGuide] = useState(() => !guideSeen())
   const [menu, openMenu] = useContextMenu()
   const [toast, showUndo] = useUndoToast()
   const latest = useRef(workspace)
@@ -61,10 +69,16 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     /* Esc: true when it did something here, false when it's time to go back down. */
     back() {
+      if (guide) { endGuide(); return true }
       if (query) { setQuery(''); return true }
       return Boolean(board.current?.back())
     },
   }))
+
+  function endGuide() {
+    setGuide(false)
+    try { localStorage.setItem(GUIDE_KEY, 'seen') } catch { /* a convenience only */ }
+  }
 
   function toggle(id, force) {
     setOpen((current) => {
@@ -122,6 +136,14 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     renaming,
     startRename(id) { setRenaming(id) },
+    /* New branch: named in place, at the end of the node's (or a branch's) branches. */
+    branching,
+    startBranch(parentId) { setBranching(parentId) },
+    endBranch(parentId, name) {
+      setBranching(null)
+      if (name) actions.addBranch(name, parentId)
+    },
+    showGuide() { setGuide(true) },
     endRename(id, name) {
       setRenaming(null)
       if (name) actions.rename(id, name)
@@ -139,6 +161,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       const others = nodesList.filter((item) => item.folder.id !== folder.id)
       openMenu(event, [
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(folder.id) },
+        { label: 'New branch', icon: Plus, onSelect: () => { toggle(folder.id, true); actions.startBranch(folder.id) } },
         { label: 'Help me sort', icon: Sparkle, onSelect: () => { toggle(folder.id, true); actions.sort(folder.id) } },
         { label: 'See it in Notes', icon: NotePencil, onSelect: () => navigate('Notes', { folderId: folder.id }) },
         { divider: true },
@@ -158,11 +181,14 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
         { label: 'New node here', icon: Plus, onSelect: newNode },
         { label: 'See everything', icon: CornersOut, onSelect: fit },
         { label: 'Line them up again', icon: ArrowsIn, onSelect: () => commit(tidyBoard) },
+        { divider: true },
+        { label: 'How the Sky works', icon: Question, onSelect: () => setGuide(true) },
       ])
     },
     branchMenu(event, branch) {
       openMenu(event, [
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(branch.id) },
+        { label: 'New branch inside', icon: Plus, onSelect: () => actions.startBranch(branch.id) },
         { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: branch.color || 'bone', onPick: (paper) => actions.paint(branch.id, paper) }] },
         {
           label: 'Move to', icon: ShareNetwork, items: [
@@ -298,6 +324,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       {carrying?.kind === 'note' && (
         <div className="sky-toss" {...toss}><Trash /> Delete</div>
       )}
+      {guide && <SkyGuide onDone={endGuide} />}
       {toast}
       {menu}
     </div>
@@ -309,3 +336,29 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     board.current?.goTo({ folderId: note.folderId || null, noteId: note.id })
   }
 })
+
+/* How the Sky works: three things, each with a little picture, in plain words. Shown the
+   first time the Sky opens on this Mac, and again from ? or the board's menu. */
+function SkyGuide({ onDone }) {
+  return (
+    <section className="sky-guide" role="dialog" aria-label="How the Sky works">
+      <h2>How the Sky works</h2>
+      <ol>
+        <li>
+          <span className="guide-pic is-sticky" data-paper="canary" aria-hidden="true">Call mom</span>
+          <p><strong>A sticky is one thought.</strong> Write one on the desk or here, or scan paper.</p>
+        </li>
+        <li>
+          <span className="guide-pic is-node" data-paper="sky" aria-hidden="true">Trip</span>
+          <p><strong>A node is a topic,</strong> like a trip, a project or a person. Drag stickies onto it to keep them there.</p>
+        </li>
+        <li>
+          <span className="guide-pic is-branch" aria-hidden="true"><i data-paper="mint">Packing</i><i data-paper="rose">Hotels</i></span>
+          <p><strong>Branches group the stickies in a node.</strong> A branch can have smaller branches inside it.</p>
+        </li>
+      </ol>
+      <p className="sky-guide-foot">New stickies wait in <strong>Unsorted</strong> until you give them a node.</p>
+      <button type="button" className="is-primary" onClick={onDone}>Got it</button>
+    </section>
+  )
+}
