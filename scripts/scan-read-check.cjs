@@ -8,9 +8,11 @@ const os = require('node:os')
 const path = require('node:path')
 const { extractText } = require('../desktop/mac-files.cjs')
 
-/* A one-page PDF with real text on it (PDFKit repairs nothing: the offsets are exact). */
+/* A one-page PDF with real text on it (PDFKit repairs nothing: the offsets are exact). The
+   page is painted white first, like paper: a picture made from a page with no background is
+   see-through, which Vision reads as nothing and no scanner ever makes. */
 function textPdf(lines) {
-  const stream = `BT /F1 28 Tf 72 700 Td 36 TL ${lines.map((line) => `(${line}) Tj T*`).join(' ')} ET`
+  const stream = `1 1 1 rg 0 0 612 792 re f 0 0 0 rg BT /F1 28 Tf 72 700 Td 36 TL ${lines.map((line) => `(${line}) Tj T*`).join(' ')} ET`
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
