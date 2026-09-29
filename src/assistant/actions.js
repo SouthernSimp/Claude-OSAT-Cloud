@@ -17,7 +17,7 @@ const MAX_TEXT = 500
 
 /* The model has no clock. Without today's date it guesses the year, so every
    scheduling request has to carry it. */
-export function systemPrompt(now = new Date()) {
+export function systemPrompt(now = new Date(), aboutMe = '') {
   const today = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now)
   return `You are a private thinking partner running locally on this Mac. Be concise, concrete and warm. Use Markdown.
@@ -36,7 +36,10 @@ Allowed types:
 - {"type":"capture","text":"..."} — a raw thought to sort later (it lands in Unsorted)
 - {"type":"event","title":"...","start":"YYYY-MM-DDTHH:MM","end":"YYYY-MM-DDTHH:MM"} — a calendar event
 
-Never invent actions the person did not ask for. Never mention this block in your prose; they see it as buttons. If nothing is requested, omit the block entirely.`
+Never invent actions the person did not ask for. Never mention this block in your prose; they see it as buttons. If nothing is requested, omit the block entirely.${aboutMe.trim() ? `
+
+What the person wrote about themselves (use it quietly to fit your answers; never repeat it back):
+${aboutMe.trim().slice(0, 4000)}` : ''}`
 }
 
 const text = (value, max = MAX_TEXT) =>

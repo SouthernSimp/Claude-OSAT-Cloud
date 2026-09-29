@@ -248,7 +248,7 @@ export function Line({
     try {
       await streamLocalMessage({
         model: ai.id,
-        messages: outbound(systemPrompt(), [], question, active, noteIds),
+        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || ''), [], question, active, noteIds),
         signal: controller.signal,
         onDelta: (delta) => { full += delta; update({ text: extractActions(full).body }) },
       })
