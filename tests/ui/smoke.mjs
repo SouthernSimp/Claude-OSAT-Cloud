@@ -289,10 +289,10 @@ async function main() {
   await page.keyboard.type('One step at a time')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Escape')
-  if (await picked() !== 'Save as a sticky') problems.push('esc: the first Esc did not go back to Save')
+  if (await picked() !== 'Save as a sticky') problems.push(`esc: the first Esc did not go back to Save (${await picked()}, after opening ${latest}, focus ${await page.evaluate(() => document.activeElement?.id || document.activeElement?.className)})`)
   await page.keyboard.press('Escape')
   if (await page.getByRole('listbox').count()) problems.push('esc: the second Esc did not close the drawer')
-  if (await page.inputValue('#home-line') !== 'One step at a time') problems.push('esc: closing the drawer lost the words')
+  if (await page.inputValue('#home-line') !== 'One step at a time') problems.push(`esc: closing the drawer lost the words (${JSON.stringify(await page.inputValue('#home-line'))})`)
   const before = await page.locator('.popout').count()
   await page.keyboard.press('Escape')
   // A room may shrink back into its widget first: give the close a moment to finish.
