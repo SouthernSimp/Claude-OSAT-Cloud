@@ -11,7 +11,7 @@ const PORT = Number(process.env.OSAT_PORT || 4317)
 // The spaces that open as pop-outs (⌃2, 4, 5; ⌃3 is the Sky, a layer of its own), then
 // every tool from the dock's Tools menu.
 const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
-const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Settings', 'Settings']]
+const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Pile', 'Sort a pile'], ['Settings', 'Settings']]
 
 let server
 async function start() {
@@ -395,6 +395,44 @@ async function main() {
 
   // The quick chat's window, as the browser preview can show it (no AI here).
   room = 'quick chat'
+  // Sort a pile: stickies tossed down around the quick input (a pasted list makes many), one
+  // dropped on another starts a branch, Help me sort suggests more, and Send to the Sky
+  // makes one node with its branches inside.
+  room = 'pile'
+  await page.goto(url)
+  await page.waitForSelector('.workspace-content', { timeout: 15000 })
+  await page.locator('.app-dock [data-space="tools"]').click()
+  await page.getByRole('menuitem', { name: 'Sort a pile' }).click()
+  await page.locator('.pile-room').waitFor({ timeout: 5000 }).catch(() => problems.push('pile: Sort a pile did not open'))
+  const pileInput = page.getByLabel('Write a sticky', { exact: true })
+  for (const words of ['Florist for the wedding', 'Wedding cake tasting']) { await pileInput.fill(words); await pileInput.press('Enter') }
+  await page.evaluate(() => {
+    const data = new DataTransfer()
+    data.setData('text/plain', '- Oil change for the car\n- Car insurance renewal\n- Call mom')
+    document.querySelector('.pile-input').dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  })
+  await sleep(500)
+  if (await page.locator('.pile-card').count() !== 5) problems.push(`pile: 5 stickies were tossed down, ${await page.locator('.pile-card').count()} are on the table`)
+  const [one, two] = [await page.locator('.pile-card').nth(0).boundingBox(), await page.locator('.pile-card').nth(1).boundingBox()]
+  await page.mouse.move(one.x + 30, one.y + 30)
+  await page.mouse.down()
+  for (let step = 1; step <= 10; step += 1) await page.mouse.move(one.x + 30 + ((two.x - one.x) * step) / 10, one.y + 30 + ((two.y - one.y) * step) / 10)
+  await page.mouse.up()
+  await page.locator('.pile-group .name-field').waitFor({ timeout: 3000 }).catch(() => problems.push('pile: dropping a sticky on another did not start a branch'))
+  await page.keyboard.type('Wedding')
+  await page.keyboard.press('Enter')
+  await page.getByRole('button', { name: 'Help me sort' }).click()
+  await page.locator('.pile-suggestion', { hasText: 'Car' }).waitFor({ timeout: 8000 }).catch(() => problems.push('pile: Help me sort did not suggest a Car branch'))
+  await page.screenshot({ path: `${OUT}/pile.png` })
+  await page.locator('.pile-suggestion', { hasText: 'Car' }).getByRole('button', { name: 'Make the branch' }).click().catch(() => {})
+  if (await page.locator('.pile-group').count() !== 2) problems.push(`pile: expected 2 branches, found ${await page.locator('.pile-group').count()}`)
+  await page.getByRole('button', { name: 'Send to the Sky' }).click()
+  await page.getByLabel('Name of the node').fill('Kitchen table')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await page.getByRole('button', { name: 'See it in the Sky' }).click().catch(() => problems.push('pile: sending did not offer to show it in the Sky'))
+  await page.locator('[data-node-head]', { hasText: 'Kitchen table' }).waitFor({ timeout: 5000 }).catch(() => problems.push('pile: the node was not in the Sky'))
+  if (await page.locator('.pile-room').count()) problems.push('pile: the table stayed open over the Sky')
+
   const chat = await browser.newPage({ viewport: { width: 420, height: 600 } })
   chat.on('pageerror', (error) => problems.push(`quick chat: ${error.message}`))
   await chat.goto(`${url}?surface=chat`)
