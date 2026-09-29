@@ -20,20 +20,20 @@
 | 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | Merged (PR #13) |
 | 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | Merged (PR #14) |
 | 12b | Offline mode: Incognito becomes a switch on the line instead of a place | Merged (PR #15) |
-| 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | In review (with Phase 18, PR #18) |
+| 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | Merged (with Phase 18, PR #18) |
 | 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | Merged (PR #19) |
 | 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
-| 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | In review (PR #18) |
+| 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | Merged (PR #18) |
 | 19 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
 | 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
-| 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidying and dragging next) |
+| 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidy and drag-to-move in review, PR #24; dragging in and out of Finder next) |
 | 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | Planned |
 | 22 | Files in the Sky: toss a file up as a card, a node can link a real folder (schema 8) | Planned |
 | 23 | Nodes become projects: Track it (Done / Now / Next), Rush it, on top of the Roadmap's Timeline | Planned |
-| 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | In review (PR #21, done before 21–23) |
+| 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | Merged (PR #21, done before 21–23) |
 | 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
@@ -495,11 +495,11 @@ Incognito stops being a place under the desk and becomes a switch: **Offline**.
 - **Open questions answered by default:** Offline remembers itself across restarts (as Incognito
   did: safer than silently going back online), and Ask's row stays (it only ever talks to this Mac).
 
-### Phase 12c: The roadmap inside OSAT (in review, with Phase 18 in PR #18)
+### Phase 12c: The roadmap inside OSAT (merged, with Phase 18 in PR #18)
 Tools → Roadmap (and "Roadmap" in ⌘K and the Go menu) opens this page, read-only, in a pop-out.
 It is this file, built into the app, so it is always the plan the app was built with.
 
-### Phase 15: Paper in (in review)
+### Phase 15: Paper in (merged, PR #17)
 Nate's goal: scan something at the printer, walk over to the Mac, and a new node is waiting, already
 sorted, to look through and rearrange.
 - **One folder for paper:** Settings → Data → Scans → "Choose the scans folder" (it offers Google
@@ -527,7 +527,7 @@ sorted, to look through and rearrange.
 - **Not yet:** checking a scan against stickies already in other nodes; a Scan button inside the iPhone
   app (parked).
 
-### Phase 16: Clear nodes (in review, stacked on Phase 15)
+### Phase 16: Clear nodes (merged, PR #19)
 Nate (Sep 28): "I look at the nodes and the view but I'm confused on how it really works… it should
 be usable and understandable to anyone of any age." What confused, and what changed:
 - **Everything looked like a sticky.** Branch names sat on the same coloured paper, the same size, in
@@ -555,7 +555,7 @@ be usable and understandable to anyone of any age." What confused, and what chan
   passed to `systemPrompt`). OSAT's "soul file", in plain words.
 - The Browser sits on the dock as "Web".
 
-### Phase 18: Bots in (in review, PR #18)
+### Phase 18: Bots in (merged, PR #18)
 Nate's words: "I want Muse to be able to upload nodes to the application that I can open up inside
 OSAT. That is the whole point." And bigger: OSAT as Muse, and a tool that makes AI easy for anyone.
 Everything for it lives in one Settings section, **Bots**: every model and privacy setting in one
@@ -677,7 +677,26 @@ words look in names and inside files (Spotlight), and "pdf", "photos", "screensh
 "last month", "last 3 days", "recently" narrow it. The room says back what it understood ("PDFs changed
 since Mon, Sep 21 with “taxes”"), each result says where it lives and whether the words were inside,
 and "Show in its folder" goes there. Words in "quotes" are only words. Read-only: nothing is moved.
-Still to come in this phase: tidying (below) and one drag system.
+
+**Step 2, Tidy and drag to move (in review, PR #24).** In Files, everything you'd do in Finder to put
+things where they belong, each with an Undo toast:
+- **New folder** (the button by Back/Forward) opens its name to type in place; **Rename** in place from the
+  info pane or right-click (Return or a click away keeps it, Esc leaves it); a name can't hold “/” or “:”
+  or start with a dot (OSAT never shows hidden files).
+- **Move to** (right-click, or the info pane): up a folder, the folders here, then every place. A taken name
+  is numbered ("bill 2.pdf"), never overwritten; a folder can't go inside itself.
+- **Move to Bin** (⌘⌫, right-click, info pane) is the Mac's own Bin, so nothing is ever erased. Undo brings
+  it back (if macOS won't let OSAT read the Bin, Finder is asked to put it back).
+- **Several at once:** ⌘-click or ⇧-click. **Drag** any of them onto a folder, a sidebar place, a crumb in
+  the path bar, or the empty grid (this folder); hold ⌥ to copy. Hold over a folder and it opens. It is the
+  one drag engine (`carry.js`), so it looks and feels like moving a sticky.
+- **Safety:** only inside the approved places; a link is moved as a link, never followed; a folder you
+  added to OSAT can't be moved from inside it; a batch stops at the first thing that can't go and says so
+  (the ones before it are done, and Undo covers them).
+- Not yet: drag a box to pick, a list view, dragging files out to Finder or Mail and in from Finder, the
+  desk's Desktop shelf and the Notes room on the same drag engine (all next in this phase).
+
+Still to come in this phase: dragging in and out of OSAT, and the Notes room on the one drag system.
 - **Better finding.** ⌘K and Files search look inside files too (Spotlight's own index, so it's fast
   and stays on the Mac), and understand plain words for kind and time: "pdf", "photos", "last week",
   "yesterday". Results say where each one lives and open on Return. Still only in the places OSAT may see.
@@ -743,7 +762,7 @@ Questions for Nate before building:
 3. **Tidy:** is the Mac's Bin fine for "Delete" (always recoverable), or would you rather OSAT never
    deletes files at all?
 
-### Phase 24: Sort a pile (in review, PR #21)
+### Phase 24: Sort a pile (merged, PR #21)
 Nate (Sep 29): "a temporary sky view window where you toss everything down and can make connections as
 you go or ask the ai for help… until everything has been sorted and is ready to join everything else in
 the sky." Tools → Sort a pile, or "Sort a pile" in the Sky's bar.

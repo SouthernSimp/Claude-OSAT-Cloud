@@ -187,6 +187,9 @@
 .finder-item[aria-selected="true"] { background: var(--accent-soft); }
 .finder-item .file-thumb { width: 64px; height: 64px; }
 .finder-item > span:not(.file-thumb) { max-width: 100%; display: -webkit-box; overflow: hidden; font-size: var(--t-xs); line-height: 1.25; color: var(--ink); text-align: center; overflow-wrap: anywhere; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.finder-rename { width: 100%; min-width: 0; padding: 2px 4px; border: 1px solid var(--accent); border-radius: var(--r-xs); font: inherit; font-size: var(--t-xs); line-height: 1.25; color: var(--ink); text-align: center; background: var(--page); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.finder :is(.finder-item, .finder-side button, .finder-path button)[data-over] { background: var(--accent-soft); outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: -2px; }
+.finder-grid[data-over] { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .finder-where { max-width: 100%; overflow: hidden; font-size: var(--t-2xs); line-height: 1.2; color: var(--faint); white-space: nowrap; text-overflow: ellipsis; }
 .finder-empty { grid-column: 1 / -1; margin: 0; padding: var(--s-6) var(--s-2); font-size: var(--t-sm); color: var(--muted); text-align: center; }
 .finder-note { margin: 0; padding: var(--s-2) var(--s-4); border-top: 1px solid var(--line); font-size: var(--t-xs); color: var(--muted); }
