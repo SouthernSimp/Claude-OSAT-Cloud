@@ -93,7 +93,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
               <p>{storage.message}</p>
               <div className="storage-facts">
                 <span><Check /> Saved a moment after every change, with 14 daily copies kept</span>
-                <span><Check /> No account, and nothing leaves this Mac unless you link your iPhone</span>
+                <span><Check /> No account, and nothing leaves this Mac unless you link your iPhone or pick a cloud model in Bots</span>
               </div>
               {window.osatApp?.showDataFolder && (
                 <button className="outline-button" type="button" onClick={() => window.osatApp.showDataFolder().catch(() => {})}>
@@ -124,7 +124,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
             <section className="content-card">
               <p className="eyebrow">ABOUT</p>
               <h2>OSAT{about?.version ? ` ${about.version}` : ""}</h2>
-              <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac. Cloud accounts, provider calendars and automatic filing are off by design.</p>
+              <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac unless you pick a cloud model in Settings → Bots. Cloud accounts, provider calendars and automatic filing are off by design.</p>
               {about?.dataFolder && <p className="settings-path">{about.dataFolder}</p>}
             </section>
           </>

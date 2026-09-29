@@ -1076,9 +1076,10 @@ function registerAi() {
   handle('app:welcome', () => !prefs.welcomed, { from: 'main' })
   handle('app:welcomed', async () => { prefs = { ...prefs, welcomed: true }; await savePrefs(); return true }, { from: 'main' })
 
-  // Ask lists the built-in model first, then whatever LM Studio has loaded.
+  // Ask lists the model chosen in Settings → Bots first (a cloud model, while online), then
+  // the built-in model, then whatever LM Studio has loaded. The line asks the first.
   handle('local-ai:models', async () => {
-    const own = ai.models()
+    const own = [...(bots?.models() || []), ...ai.models()]
     try {
       return { models: [...own, ...await localAiModels()] }
     } catch {
@@ -1098,6 +1099,7 @@ function registerAi() {
     streams.set(id, controller)
     const onDelta = (delta) => { if (!event.sender.isDestroyed()) event.sender.send(`local-ai:delta:${id}`, delta) }
     try {
+      if (valid.model.startsWith('cloud:')) return await bots.chatStream(valid, onDelta, controller.signal)
       return valid.model.startsWith('osat:')
         ? await ai.chatStream(valid, onDelta, controller.signal)
         : await localAiChatStream(valid, onDelta, controller.signal)
@@ -1253,7 +1255,20 @@ async function registerBots() {
   // ~/Documents/OSAT Nodes. From source it is "OSAT Nodes (Dev)", so development never takes
   // the real app's files; tests pass OSAT_NODES_DIR (from source only).
   const nodesDir = (!app.isPackaged && process.env.OSAT_NODES_DIR) || path.join(app.getPath('documents'), app.isPackaged ? 'OSAT Nodes' : 'OSAT Nodes (Dev)')
-  bots = await createBots({ nodesDir, store, sharedModule, handle, fail, send: sendToAllWindows, shell, clipboard: require('electron').clipboard })
+  bots = await createBots({
+    dataDir: app.getPath('userData'),
+    nodesDir,
+    // Where keys sit in the Keychain; from source its own, so development never reads the app's.
+    service: app.isPackaged ? 'OSAT' : 'OSAT-Dev',
+    store,
+    sharedModule,
+    handle,
+    fail,
+    send: sendToAllWindows,
+    shell,
+    clipboard: require('electron').clipboard,
+    offline: () => under.on,
+  })
   bots.start().catch((error) => console.error('Bots could not start:', error))
 }
 
@@ -1309,6 +1324,7 @@ async function comingUp() {
 
 function underChanged() {
   sendToAllWindows('under:changed', underStatus())
+  bots?.changed()
   buildMenu()
   updateTray()
 }

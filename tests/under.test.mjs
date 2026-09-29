@@ -123,6 +123,10 @@ const ALLOWED = {
     // The lock itself. Anything else that wants to see requests belongs inside it.
     'ses.webRequest.onBeforeRequest((details, callback) => callback({ cancel: under.on && !isLocal(details.url) }))',
   ],
+  'desktop/bots/index.cjs': [
+    // A cloud provider's own key or usage page (Settings → Bots). Refused offline on the same line.
+    'if (!offline() && /^https:\\/\\//i.test(url)) await shell.openExternal(url)',
+  ],
 }
 
 async function sourceFiles(dir) {

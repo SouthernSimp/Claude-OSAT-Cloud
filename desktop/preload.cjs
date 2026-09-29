@@ -121,11 +121,16 @@ contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
   onStatus: (listener) => listen('phone:status', listener),
 }))
 
-/* Bots (Settings → Bots): the drop folder where Muse and other bots save node files. */
+/* Bots (Settings → Bots): the drop folder where Muse and other bots save node files, and
+   cloud models (keys go straight to the Keychain in main; status never carries them). */
 contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   status: () => ipcRenderer.invoke('bots:status'),
   showNodes: () => ipcRenderer.invoke('bots:show-nodes'),
   copyInstructions: () => ipcRenderer.invoke('bots:copy-instructions'),
+  connect: (provider) => ipcRenderer.invoke('bots:connect', provider),
+  removeProvider: (id) => ipcRenderer.invoke('bots:remove-provider', id),
+  chooseModel: (model) => ipcRenderer.invoke('bots:choose-model', model),
+  openPage: (url) => ipcRenderer.invoke('bots:open-page', url),
   onStatus: (listener) => listen('bots:status', listener),
 }))
 

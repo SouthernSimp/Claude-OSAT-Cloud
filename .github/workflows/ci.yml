@@ -76,6 +76,8 @@ jobs:
           key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - run: npm run build
+      - name: Check keys go in and out of the Keychain
+        run: node scripts/keychain-check.cjs
       - name: Build the DMG
         env:
           # electron-builder skips all signing on pull requests by default, which

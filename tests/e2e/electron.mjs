@@ -16,6 +16,8 @@
 //      window.osatUnder and the Go menu); the desk stays, and the line says it's offline
 //  10. the drop folder (a stand-in ~/Documents/OSAT Nodes), while offline: a node file a bot
 //      saved becomes a New node in the Sky and moves to Added
+//  11. a cloud model (a stand-in OpenAI-style provider on this Mac): a bad key says so, a good
+//      one connects, the line's answer comes from it, the running total grows, no key on disk
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -234,6 +236,46 @@ try {
     'the second OSAT did not hear the first one\'s rename')
   await other.app.close()
   await app.close()
+
+  // 11. A cloud model, through a stand-in provider that speaks the OpenAI way.
+  const KEY = 'sk-e2e-0123456789abcdef0123456789'
+  const cloud = http.createServer((request, response) => {
+    if (request.headers.authorization !== `Bearer ${KEY}`) return response.writeHead(401).end('{"error":{"message":"bad key"}}')
+    if (request.url === '/v1/models') return response.end(JSON.stringify({ data: [{ id: 'test-chat' }, { id: 'text-embedding-test' }] }))
+    let body = ''
+    request.on('data', (chunk) => { body += chunk })
+    request.on('end', () => {
+      const asked = JSON.parse(body)
+      response.writeHead(200, { 'content-type': 'text/event-stream' })
+      for (const text of ['From the ', 'cloud model']) response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`)
+      if (asked.stream_options) response.write(`data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 40, completion_tokens: 4 } })}\n\n`)
+      response.end('data: [DONE]\n\n')
+    })
+  })
+  await new Promise((resolve) => cloud.listen(0, '127.0.0.1', resolve))
+  try {
+    ;({ app, main } = await launch())
+    const provider = { preset: 'other', name: 'Test Cloud', baseUrl: `http://127.0.0.1:${cloud.address().port}/v1` }
+    check(/didn’t accept that key/.test(await main.evaluate((input) => window.osatBots.connect(input).then(() => 'connected', (error) => error.message), { ...provider, key: 'sk-wrong-0123456789abcdef' })),
+      'a bad key did not say plainly that it was not accepted')
+    const made = await main.evaluate((input) => window.osatBots.connect(input), { ...provider, key: KEY }).catch((error) => ({ error: error.message }))
+    check(made.model === 'test-chat' && made.models?.length === 1, `connecting a cloud model did not pick its chat model: ${JSON.stringify(made)}`)
+    check((await main.evaluate(() => window.osatLocalAI.models())).models[0]?.id === 'cloud:custom-test-cloud:test-chat', 'the chosen cloud model was not first for the line')
+    await main.fill('#home-line', 'Where does this answer come from?')
+    await main.press('#home-line', 'ControlOrMeta+Enter')
+    await main.locator('.home-answer').getByText('From the cloud model').waitFor({ timeout: 10000 })
+      .catch(() => problems.push('the line’s answer did not come from the chosen cloud model'))
+    const usage = (await main.evaluate(() => window.osatBots.status())).cloud.providers[0]?.usage
+    check(usage?.requests === 1 && usage.input === 40 && usage.output === 4, `the running total did not count the question: ${JSON.stringify(usage)}`)
+    check(!(await readFile(path.join(home, 'OSAT Test', 'bots.json'), 'utf8')).includes(KEY), 'the key was written to a file')
+    await main.evaluate(() => window.osatBots.chooseModel('local'))
+    check((await main.evaluate(() => window.osatLocalAI.models())).models[0]?.id.startsWith('osat:'), 'choosing On this Mac did not put the AI on this Mac first again')
+    await main.fill('#home-line', '')
+    await app.close()
+  } finally {
+    cloud.closeAllConnections()
+    cloud.close()
+  }
 
   // 9. Offline, through window.osatUnder. A page on this Mac (loopback) stands in for
   //    the web, so no internet is needed; example.com is never actually reached.

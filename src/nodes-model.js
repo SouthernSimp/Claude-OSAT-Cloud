@@ -300,6 +300,34 @@ const without = (state, id, key) => (state.folders.some((folder) => folder.id ==
 export const markOpened = (state, id) => without(state, id, 'fresh')
 export const markUnpacked = (state, id) => without(state, id, 'packed')
 
+/* A packed node unpacked with the AI: the branches and stickies it suggested go into the
+   node after what's there (its summary stays first), and it is no longer packed. Returns
+   { state, folders, notes } (the ids made, for Undo). */
+export function unpackInto(state, nodeId, tree, { source = 'AI' } = {}) {
+  if (!folderExists(state, nodeId)) return { state, folders: [], notes: [] }
+  let next = markUnpacked(state, nodeId)
+  const folders = []
+  const notes = []
+  const sticky = (text, folderId) => {
+    const made = addSticky(next, text, folderId, { source, index: Infinity })
+    next = made.state
+    if (made.note) notes.push(made.note.id)
+  }
+  const fill = (part, folderId) => {
+    if (part.summary) sticky(part.summary, folderId)
+    for (const leaf of part.leaves) sticky(leaf.done ? `- [x] ${leaf.text}` : leaf.text, folderId)
+    for (const branch of part.branches) {
+      const made = addFolder(next, branch.title, folderId)
+      if (!made.folder) continue
+      next = made.state
+      folders.push(made.folder.id)
+      fill(branch, made.folder.id)
+    }
+  }
+  fill({ leaves: tree.leaves || [], branches: tree.branches || [] }, nodeId)
+  return { state: next, folders, notes }
+}
+
 /* ---------- the whiteboard ---------- */
 
 export const CARD = { w: 240, h: 150, gap: 64 }

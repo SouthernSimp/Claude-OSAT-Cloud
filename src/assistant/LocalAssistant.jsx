@@ -42,6 +42,9 @@ const STARTERS = [
 export const modelLabel = (model) =>
   typeof model === "string" ? model : model?.name || model?.id || "Local model";
 
+/* Where the answer comes from, said plainly: this Mac, or the cloud provider it goes to. */
+const whereLine = (model) => (model?.offline === false ? `Sent to ${model.where} · ${modelLabel(model).replace(` · ${model.where}`, "")}` : `${modelLabel(model)} · on this Mac`);
+
 const dayLabel = (iso) => {
   const date = new Date(iso);
   const key = localDateKey(date);
@@ -391,7 +394,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
             <h2>{active ? deriveTitle(active) : "New chat"}</h2>
             <span className={`chat-status ${status}`}>
               {status === "checking" ? <CircleNotch className="spin" /> : status === "ready" ? <Check /> : <WarningCircle />}
-              {status === "checking" ? "Checking this Mac" : status === "ready" ? `${modelLabel(models.find((item) => item.id === model))} · on this Mac` : setup || "No AI set up yet"}
+              {status === "checking" ? "Checking this Mac" : status === "ready" ? whereLine(models.find((item) => item.id === model)) : setup || "No AI set up yet"}
             </span>
           </div>
           <div className="chat-head-actions">

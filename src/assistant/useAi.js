@@ -18,6 +18,10 @@ export function useAi() {
     return bridge.onStatus(setStatus)
   }, [bridge, refresh])
 
+  // Picking a model in Settings → Bots (or going offline, which sets a cloud model aside)
+  // changes which one answers: the list is read again, so the line asks the new first one.
+  useEffect(() => (typeof window === 'undefined' ? undefined : window.osatBots?.onStatus?.(refresh)), [refresh])
+
   // A finished download (or a new size) changes what Ask can use.
   const chosen = status?.tiers.find((tier) => tier.id === status.chosen)
   const readyKey = `${status?.chosen}:${Boolean(chosen?.ready)}`

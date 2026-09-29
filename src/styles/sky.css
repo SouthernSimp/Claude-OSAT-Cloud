@@ -589,3 +589,5 @@ html[data-carry-edge="up"] body::after {
 .packed-bar button:hover { background: var(--surface-hover); }
 .packed-bar button.is-primary { color: var(--accent-ink); background: var(--accent); }
 .packed-bar svg { width: 12px; height: 12px; }
+.packed-bar button:disabled { opacity: 0.6; }
+.sort-help > .sort-asking { color: var(--muted); background: transparent; box-shadow: none; padding: 2px 12px; }

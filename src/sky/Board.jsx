@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ArrowRight, At, DotsThree, Minus, Plus } from '@phosphor-icons/react'
+import { ArrowRight, At, DotsThree, Minus, Plus, Sparkle } from '@phosphor-icons/react'
 
 import { hashUnit } from '../field/field-model.js'
 import { carryable, useDrop } from '../lib/carry.js'
@@ -472,8 +472,13 @@ function NodeLanes({ folder, workspace, actions, sorting }) {
     <div className="lanes is-across" {...lanes}>
       {folder.packed && (
         <div className="packed-bar" role="note">
-          <p>Packed: only a summary so far. Unpack it into branches when you’re ready.</p>
-          <button type="button" onClick={() => { actions.unpack(folder.id); setNaming(true) }}>Unpack</button>
+          <p>{actions.unpacking?.id === folder.id ? actions.unpacking.line : 'Packed: only a summary so far. Unpack it into branches when you’re ready.'}</p>
+          {actions.unpackWithAi && (
+            <button type="button" className="is-primary" disabled={actions.unpacking?.busy} title={`Asks ${actions.answering}`} onClick={() => actions.unpackWithAi(folder)}>
+              <Sparkle weight="bold" /> Unpack with AI
+            </button>
+          )}
+          <button type="button" onClick={() => { actions.unpack(folder.id); setNaming(true) }}>{actions.unpackWithAi ? 'By hand' : 'Unpack'}</button>
         </div>
       )}
       {branches.map(({ folder: branch, depth }) => (
@@ -530,8 +535,8 @@ function SortHelp({ sorting, workspace, actions }) {
   if (!sorting.groups.length) {
     return (
       <div className="sort-help" role="status">
-        <p>{sorting.line}</p>
-        <button type="button" onClick={actions.endSort}>OK</button>
+        <p>{sorting.asking || sorting.line}</p>
+        <button type="button" onClick={actions.endSort}>{sorting.asking ? 'Stop' : 'OK'}</button>
       </div>
     )
   }
@@ -547,6 +552,7 @@ function SortHelp({ sorting, workspace, actions }) {
           <button type="button" onClick={() => actions.dismissGroup(group)}>Dismiss</button>
         </div>
       ))}
+      {sorting.asking && <p className="sort-asking">{sorting.asking}</p>}
     </div>
   )
 }
