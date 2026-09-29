@@ -35,8 +35,8 @@
 | 23 | Nodes become projects: Track it (Done / Now / Next), Rush it, on top of the Roadmap's Timeline | Planned |
 | 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | Merged (PR #21, done before 21–23) |
 | 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
-| 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | In review |
-| 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Planned |
+| 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | Merged (PR #27) |
+| 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Planned (next up: how nodes and branches work) |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
@@ -883,7 +883,7 @@ Nothing here is dropped. Each line says where it goes; "26" shipped with Phase 2
 (reads pictures or not); Money asks what you have and owe. He also wrote, of all of it: "Small things here and there,
 really nothing too bad. Software is useable."
 
-### Phase 26: The AI in the Sky (in review)
+### Phase 26: The AI in the Sky (merged Sep 29, PR #27)
 Nate (Sep 29): the AI has to be part of OSAT, and the Sky is where he sorts. What was wrong, and what
 changed:
 - **The AI knew nothing about OSAT.** Ask's whole instruction was "a private thinking partner": no words
@@ -911,8 +911,12 @@ changed:
 - **Not in this phase (27):** focusing on one node, free stickies, combining nodes, and the rest of the
   first table above.
 
-### Phase 27: One Sky, where organization is earned (planned)
+### Phase 27: One Sky, where organization is earned (planned, next up)
 The rework Nate keeps describing, built on Phase 26's AI so it can help while he does it.
+**Nate, Sep 29 evening:** the next session is about how nodes and branches work: "I think it's a mess."
+Start there. Before building, look at the real board with him and agree what a node and a branch *are*
+and what feels wrong (too dense, too many places, hard to fold, hard to find things). Phase 26's Ask card,
+Sort Unsorted and folding are the first pieces; what follows is below.
 - **Focus.** Click a node and it fills the Sky; the others stay, blurred, one click away. Sort a pile stops
   being a place of its own: its table becomes the way a focused node takes stickies.
 - **Free stickies and stacks.** A sticky can sit anywhere on the canvas. Drop one on another and they stack
