@@ -1,6 +1,6 @@
 import {
   BookOpenText, CalendarBlank, CurrencyDollar, Files, GearSix, Globe, House, ListChecks,
-  MusicNotes, NotePencil, Sparkle, TerminalWindow, TreeStructure, UploadSimple,
+  MapTrifold, MusicNotes, NotePencil, Sparkle, TerminalWindow, TreeStructure, UploadSimple,
 } from '@phosphor-icons/react'
 
 /* The one definition of where things live. The dock, the sheet titles, ⌘K and
@@ -24,6 +24,7 @@ export const TOOLS = [
   { id: 'Budget', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },
   { id: 'Browser', label: 'Browser', icon: Globe, hint: 'The web, with a clipper into Notes' },
   { id: 'Terminal', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
+  { id: 'Roadmap', label: 'Roadmap', icon: MapTrifold, hint: 'Where OSAT is going' },
 ]
 
 export const SETTINGS = { id: 'Settings', label: 'Settings', icon: GearSix, hint: 'Appearance, data, the shortcut' }

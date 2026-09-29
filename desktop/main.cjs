@@ -639,6 +639,7 @@ function buildMenu() {
         room('Money', 'Budget'),
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
+        room('Roadmap', 'Roadmap'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],

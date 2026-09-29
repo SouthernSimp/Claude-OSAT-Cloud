@@ -140,6 +140,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     the quick chat (`surfaces/QuickChat.jsx`: the Ask room with `compact`).
   - `lib/spaces.js`: the one list of spaces (Desk, Notes, Sky (id `Mindmap`), Ask, Files), tools and
     Settings. The dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
+  - `views/Roadmap.jsx`: Tools → Roadmap (also ⌘K and the Go menu) shows docs/ROADMAP.md, built in
+    with `?raw` and drawn by `lib/markdown.jsx`. Nate reads it there: keep it in plain words, the
+    Status table first.
   - `lib/carry.js`: the one drag engine (`carryable(item)` on what's picked up, `useDrop(id, spec)`
     on places that take it, with `accepts`, an `axis` for lists of `[data-slot]` items, `spring`
     for hover-to-open; `onCarryEdge` makes the top/bottom of the screen change layers). A ghost
