@@ -1,11 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ArrowRight, At, DotsThree, Minus, Plus } from '@phosphor-icons/react'
+import { ArrowRight, At, CalendarPlus, DotsThree, Minus, Plus } from '@phosphor-icons/react'
 
 import { hashUnit } from '../field/field-model.js'
 import { carryable, useDrop } from '../lib/carry.js'
 import { folderChildren, folderSubtree } from '../notes-model.js'
 import {
-  addFolder, boardSpots, CARD, makeRoom, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
+  addFolder, asksIn, askStart, boardSpots, CARD, makeRoom, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
 } from '../nodes-model.js'
 import { NameField, StickyList } from './Piles.jsx'
 
@@ -464,6 +464,7 @@ function NodeLanes({ folder, workspace, actions, sorting }) {
   })
   return (
     <div className="lanes is-across" {...lanes}>
+      <AskHelp notes={asksIn(workspace, folder.id)} actions={actions} />
       {branches.map(({ folder: branch, depth }) => (
         <Lane key={branch.id} folder={branch} depth={depth} notes={pileOf(workspace.notes, branch.id)} actions={actions} />
       ))}
@@ -508,6 +509,26 @@ function Lane({ folder, notes, actions, depth = 0, loose = false, sorting, works
       />
       {sorting && <SortHelp sorting={sorting} workspace={workspace} actions={actions} />}
     </section>
+  )
+}
+
+/* A day a sticky names (from a scan), offered to the Calendar a few at a time. */
+function AskHelp({ notes, actions }) {
+  if (!notes.length) return null
+  const when = (event) => new Intl.DateTimeFormat('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    ...(event.date.startsWith(String(new Date().getFullYear())) ? {} : { year: 'numeric' }),
+  }).format(askStart(event))
+  return (
+    <div className="sort-help" role="status">
+      {notes.slice(0, 3).map((note) => (
+        <div key={note.id} className="sort-suggestion">
+          <p><CalendarPlus weight="bold" /> “{note.ask.event.title}” is on <strong>{when(note.ask.event)}</strong>. Add it to your Calendar?</p>
+          <button type="button" className="is-primary" onClick={() => actions.addEvent(note)}>Add to Calendar</button>
+          <button type="button" onClick={() => actions.skipAsk(note)}>Not now</button>
+        </div>
+      ))}
+    </div>
   )
 }
 

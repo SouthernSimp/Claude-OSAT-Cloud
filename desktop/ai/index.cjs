@@ -226,7 +226,9 @@ function createAi({
     return text
   }
 
-  async function chatStream({ messages }, onDelta, signal) {
+  /* With `schema` (a JSON schema) the answer is JSON of that shape. The practice model
+     never is, so whoever asks falls back to what it does without the AI. */
+  async function chatStream({ messages, schema }, onDelta, signal) {
     if (mock) return practiceAnswer(messages, onDelta, signal)
     await ensureEngine()
     clearTimeout(idleTimer)
@@ -235,7 +237,7 @@ function createAi({
       return await new Promise((resolve, reject) => {
         pending.set(id, { text: '', onDelta, resolve, reject })
         signal?.addEventListener('abort', () => child?.postMessage({ type: 'cancel', id }), { once: true })
-        child.postMessage({ type: 'chat', id, messages, maxTokens: MAX_TOKENS })
+        child.postMessage({ type: 'chat', id, messages, maxTokens: MAX_TOKENS, schema })
       })
     } finally {
       restartIdleTimer()

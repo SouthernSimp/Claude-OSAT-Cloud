@@ -9,8 +9,8 @@ import { useUndoToast } from '../lib/UndoToast.jsx'
 import { PAPERS } from '../note-core.js'
 import { folderChildren, folderPath, folderSubtree, isActiveNote, purgeNotes, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
 import {
-  addFolder, addSticky, importNode, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder, splitMentions, suggestionGroups,
-  tidyBoard,
+  addAskedEvent, addFolder, addSticky, importNode, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder, skipAsk, splitMentions,
+  suggestionGroups, tidyBoard,
 } from '../nodes-model.js'
 import { seedDirection } from '../project-direction.js'
 import { Board } from './Board.jsx'
@@ -49,6 +49,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     if (target.action === 'new-node') { board.current?.newNode(); return }
     const noteId = target.noteId || target.focusNoteId
     const folderId = target.folderId || (noteId && workspace.notes.find((note) => note.id === noteId)?.folderId)
+    if (target.open && folderId) toggle(folderId, true)
     if (folderId || noteId) board.current?.goTo({ folderId: workspace.folders.some((folder) => folder.id === folderId) ? folderId : null, noteId })
   }, [target?.at]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -202,6 +203,18 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       unsuggest(group.noteIds)
     },
     endSort() { setSorting(null) },
+    /* A day a sticky names: into the Calendar (with Undo), or Not now. */
+    addEvent(note) {
+      let event = null
+      commit((state) => { const result = addAskedEvent(state, note.id); event = result.event; return result.state })
+      if (!event) return
+      showUndo(`Added “${event.title}” to your Calendar`, () => commit((state) => ({
+        ...state,
+        calendar: { ...state.calendar, events: state.calendar.events.filter((item) => item.id !== event.id) },
+        notes: state.notes.map((item) => (item.id === note.id ? { ...item, ask: note.ask } : item)),
+      })))
+    },
+    skipAsk(note) { commit((state) => skipAsk(state, note.id)) },
   }
 
   /* Import: one node file (JSON) becomes one new node, never mixed into one that's there. */

@@ -29,10 +29,10 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 10 | A living desk: one line for everything, widgets that open, Incognito (going under) | Merged (PR #12) |
 | 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | Merged (PR #13) |
 | 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | Merged (PR #14) |
-| 12b | Offline mode: Incognito becomes a switch on the line instead of a place | In review |
+| 12b | Offline mode: Incognito becomes a switch on the line instead of a place | Merged (PR #15) |
 | 13 | Mac powers: Hyper key, keywords, the ring, clipboard history, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
-| 15 | Paper in: a photo of stickies becomes stickies (the Mac reads handwriting) | Planned |
+| 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | In review (done before 13 and 14) |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -465,7 +465,7 @@ people": when two options fit, the one a person understands without an explanati
   Incognito; the Journal's tabs are Today, Evening and Earlier. Calendar no longer sends events to
   Google or Outlook. The old boards stop updating in the background.
 
-### Phase 12b: Offline mode (in review)
+### Phase 12b: Offline mode (merged, PR #15)
 Incognito stops being a place under the desk and becomes a switch: **Offline**.
 - **The same privacy:** the one `under` flag and `desktop/under.cjs` still do all the work: nothing
   but this Mac answers (LM Studio on loopback still does), browser tabs sleep, downloads (the AI's
@@ -482,6 +482,34 @@ Incognito stops being a place under the desk and becomes a switch: **Offline**.
   ordinary sticky in Unsorted, words, colour and dates kept.
 - **Open questions answered by default:** Offline remembers itself across restarts (as Incognito
   did: safer than silently going back online), and Ask's row stays (it only ever talks to this Mac).
+
+### Phase 15: Paper in (in review)
+Nate's goal: scan something at the printer, walk over to the Mac, and a new node is waiting, already
+sorted, to look through and rearrange.
+- **One folder for paper:** Settings → Data → Scans → "Choose the scans folder" (it offers Google
+  Drive's `From_BrotherDevice` when Google Drive for desktop is on the Mac). The iPhone uses the same
+  folder: Files → ⋯ → Scan Documents → Google Drive → From_BrotherDevice. Scans already there are
+  left alone; nothing in the folder is moved or changed. `desktop/scans.cjs` watches it (fs.watch plus
+  a look every 30 s, since a streamed Drive folder may not say), knowing each scan by size and date.
+- **Reading, on this Mac:** `extractText` (mac-files) now reads a PDF with no words in it, and
+  pictures, through Vision (Live Text's engine; it reads handwriting), up to 10 pages. Ask gains it too.
+- **Sorting, on this Mac:** the built-in AI answers in a fixed JSON shape (a grammar from a JSON schema,
+  `schema` in `chatStream`): a name, branches, sub-branches, stickies, and an event on any sticky that
+  names a day. It knows the nodes there are, so it can @ them. Plain code then folds a sticky whose words
+  an earlier one holds, drops impossible dates, moves a year long gone (a misread) to the next time that
+  day comes, and distrusts an answer that left out half the scan. Without the AI (or distrusted), it is
+  one sticky per paragraph. A `.json` node file (what the old agent made) goes straight in.
+- **Note or node:** a scan with one sticky is one sticky in Unsorted; more is a new node in the Sky
+  (`importScan`). Main counts a scan done only once the desk has imported it.
+- **Arrival:** "New from a scan: “…” · Show me" stays on the desk until the Sky is opened; Show me
+  flies to the node and opens it.
+- **Dates:** schema 6 lets a sticky carry `ask: { event: { title, date, time } }`. Opening its node
+  shows "“Wedding” is on Mon, Oct 5, 9:00 AM. Add it to your Calendar?" with Add to Calendar (Undo) and
+  Not now. No time written means 9 in the morning.
+- **Tried for real:** a nine-sticky test page through the Deep model: three branches, the florist twice
+  folded into one, "by Friday" became Oct 2, "dentist oct 14 3pm" an event at 3 PM (~20 s).
+- **Not yet:** checking a scan against stickies already in other nodes; a Scan button inside the iPhone
+  app (parked).
 
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |
@@ -501,9 +529,9 @@ Incognito stops being a place under the desk and becomes a switch: **Offline**.
 | Settings: online / semi-offline / offline, as a "switchboard" of apps, plugins and cloud APIs that says plainly what leaves the Mac | 13 |
 | Email: Apple Mail first, then Gmail in the in-app browser, then Outlook; more connectors | 14 |
 | Messages inside OSAT (beside it: macOS doesn't let one app hold another's window) | 14 |
-| Photos of paper stickies read into stickies | 15 |
+| Photos of paper stickies read into stickies; the Brother's scans become sorted nodes | 15 |
 | iPad: GoodNotes-style pages, hand-drawn mind maps, Apple Pencil Pro squeeze ring, synced | Later (parked) |
-| iPhone: a document scanner | Later (parked) |
+| iPhone: a document scanner (for now: Files → Scan Documents into the scans folder, which Phase 15 reads) | Later (parked) |
 | OSAT's own agents/bots | Later |
 
 ### Later (after the MVP)
