@@ -77,7 +77,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     (`nativeImage.createThumbnailFromPath`); `app.getFileIcon(…, { size: 'large' })` crashes
     Electron 43 on the Mac, so don't use it.
   - `mac-files.cjs`: the places, what Finder counts as one file (packages), Spotlight search
-    (`mdfind -onlyin … -name`) and the text Ask reads from a file (PDFKit through `osascript -l
+    (`mdfind -onlyin … <query>`; `inside`, `rankFound`, and `walkFind` where there is no Spotlight:
+    tests and Linux) and the text Ask reads from a file (PDFKit through `osascript -l
     JavaScript`, Word/RTF through `textutil`, capped at 12,000 characters).
   - `quick-chat.cjs`: the quick chat window, a floating panel on every Space that stays where
     it's left (`chatBounds` in `prefs.json`).
@@ -129,6 +130,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     first-launch welcome), `osatDesk`, `osatChat`). An AbortSignal can't cross the bridge; pass
     functions. A dropped file's path comes from `webUtils.getPathForFile` in the preload, never
     from the page.
+- `shared/file-query.mjs` — finding a file in plain words (Phase 21, step 1): `parseFileQuery`
+  ("pdf taxes last week" → words, kinds, since; "quoted" words stay words; glue words drop only when
+  a kind or time was named), `spotlightQuery` (each word in the name or inside, any kind, the day),
+  `matchesFile` (the same test for `walkFind`) and `describeFileQuery` (what the Files room says back).
+  `files:search` answers `{ rootId, relative, name, kind, size, modifiedAt, match: 'name' | 'inside' }`.
+  The Mac CI job runs `scripts/find-check.mjs` against the real Spotlight.
 - `shared/note-core.mjs` — the note record (`normalizeNote`, `parseTags`), shared so the main
   process makes notes exactly like the windows (`src/note-core.js` re-exports it).
 - `shared/node-file.mjs` — node files, read one way everywhere (drop folder, the Sky's Import, the
@@ -233,7 +240,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     Budget, NowPlaying, Obsidian, Settings (four tabs: General, AI, Bots, Data; `sectionFor` maps old tab
     names); schema 4 folds each project into a node, `projectNodes` in store-core, and keeps `projects`), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).
   - `views/Files.jsx`: a small Finder (places and your folders, back/forward, Space for Quick
-    Look, Ask about it) and the pieces the desk reuses: `FileThumb`, `useFolder`,
+    Look, Ask about it, a find box: results from every place, keyed `rootId + relative`, each
+    saying where it lives, with Show in its folder) and the pieces the desk reuses: `FileThumb`, `useFolder`,
     `useFreshness` (folders refresh when the window comes back). The desk's right side shows
     the Mac's Desktop (click picks, double-click or Return opens, a folder opens in Files) or,
     switched to OSAT, the notes and folders.

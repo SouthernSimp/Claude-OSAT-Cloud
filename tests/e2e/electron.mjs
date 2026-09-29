@@ -8,7 +8,8 @@
 //   5. the iPhone link: a file in the iCloud Inbox becomes a thought, and the copy of
 //      the notes appears, then leaves when the link is turned off (a stand-in iCloud Drive)
 //   6. two OSATs (their own data, one iCloud Drive) keep each other in step
-//   7. the Mac's Desktop on the desk (a stand-in folder): a folder opens in Files, and Ask reads a file
+//   7. the Mac's Desktop on the desk (a stand-in folder): a folder opens in Files, Find looks inside
+//      files, and Ask reads a file
 //   8. the quick chat: its own window answers, and Esc puts it away
 //   9. Offline: going offline closes the browser's tabs and shuts every way out (the
 //      desk's and the browser's requests, main's fetch, downloads, opening files in other
@@ -129,6 +130,24 @@ try {
   await icons.getByRole('button', { name: 'Plans, folder' }).dblclick()
   const packing = main.locator('.popout-body[data-view="Files"] .finder-item', { hasText: 'packing.txt' })
   await packing.waitFor({ timeout: 5000 }).catch(() => problems.push('a Desktop folder did not open in Files'))
+  // Find: a word inside a file finds it, each result says where it lives, a kind narrows it,
+  // and Show in its folder goes there.
+  const files = main.locator('.popout-body[data-view="Files"]')
+  const findBox = files.getByLabel('Find a file')
+  await findBox.fill('stove')
+  const found = files.locator('.finder-item', { hasText: 'packing.txt' })
+  await found.locator('.finder-where', { hasText: 'Desktop › Plans' }).waitFor({ timeout: 5000 })
+    .catch(() => problems.push('Find did not find a word inside a file, or say where it lives'))
+  await findBox.fill('pdf stove')
+  await files.locator('.finder-empty', { hasText: 'Nothing found' }).waitFor({ timeout: 5000 })
+    .catch(() => problems.push('Find did not keep to the kind asked for'))
+  check(/PDFs with “stove”/.test(await files.locator('.finder-found').textContent().catch(() => '')), 'Find did not say what it understood')
+  await findBox.fill('stove')
+  await found.click()
+  await files.getByRole('button', { name: 'Show in its folder' }).click()
+  await files.getByRole('navigation', { name: 'Where you are' }).getByRole('button', { name: 'Plans' }).waitFor({ timeout: 3000 })
+    .catch(() => problems.push('Show in its folder did not open the file\'s folder'))
+  check(!(await findBox.inputValue()), 'Show in its folder left the words in the find box')
   await packing.click()
   await main.getByRole('button', { name: 'Ask about it' }).click()
   await main.locator('.ask-note-chip.is-file', { hasText: 'packing.txt' }).waitFor({ timeout: 5000 })

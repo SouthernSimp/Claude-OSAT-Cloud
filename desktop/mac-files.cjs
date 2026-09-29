@@ -78,16 +78,15 @@ async function extractText(file, { exec = run, readText = readTextFile } = {}) {
   return { text: text.slice(0, MAX_CHARS), truncated: text.length > MAX_CHARS }
 }
 
-/* Spotlight by file name, only inside the folders OSAT may show. */
+/* Spotlight, only inside the folders OSAT may show. `query` is a Spotlight query
+   (shared/file-query.mjs: the words in the name or inside, a kind, a time). */
 function searchArgs(query, roots) {
-  return [...roots.flatMap((root) => ['-onlyin', root]), '-name', query]
+  return [...roots.flatMap((root) => ['-onlyin', root]), query]
 }
 
-/* Spotlight's matches as { rootId, relative, name }: inside one of the roots, never
-   hidden, never inside a package. Names that start with the words come first,
-   then the shallowest. */
-function locate(paths, roots, query, limit = 12) {
-  const needle = query.trim().toLowerCase()
+/* The paths that lie in one of the roots, as { rootId, relative, name, depth }: never hidden,
+   never inside a package. A path under two roots belongs to the deeper one. */
+function inside(paths, roots) {
   const byDepth = [...roots].sort((a, b) => b.root.length - a.root.length)
   const found = []
   for (const file of paths) {
@@ -97,11 +96,55 @@ function locate(paths, roots, query, limit = 12) {
     if (parts.some((part) => !part || part.startsWith('.')) || parts.slice(0, -1).some(isPackage)) continue
     found.push({ rootId: root.id, relative: parts.join('/'), name: parts.at(-1), depth: parts.length })
   }
-  const starts = (item) => Number(item.name.toLowerCase().startsWith(needle))
   return found
-    .sort((a, b) => starts(b) - starts(a) || a.depth - b.depth || a.name.localeCompare(b.name))
+}
+
+/* Best first: names that start with the words, then names holding every word (the rest had
+   them inside), then the newest when asked (a search for a kind or a time), then the
+   shallowest. */
+function rankFound(items, words, { newest = false } = {}) {
+  const lower = words.map((word) => word.toLowerCase()).filter(Boolean)
+  const tier = (item) => {
+    const name = item.name.toLowerCase()
+    if (lower.length && name.startsWith(lower.join(' '))) return 2
+    return lower.every((word) => name.includes(word)) ? 1 : 0
+  }
+  const age = (a, b) => (newest ? String(b.modifiedAt || '').localeCompare(String(a.modifiedAt || '')) : 0)
+  return [...items].sort((a, b) => tier(b) - tier(a) || age(a, b) || a.depth - b.depth || a.name.localeCompare(b.name))
+}
+
+/* Spotlight's matches as { rootId, relative, name }, best first. */
+function locate(paths, roots, query, limit = 12) {
+  return rankFound(inside(paths, roots), query.trim().split(/\s+/))
     .slice(0, limit)
     .map(({ depth, ...item }) => item)
 }
 
-module.exports = { MAX_CHARS, PICTURES, PLACES, extractText, isPackage, locate, run, searchArgs }
+/* Where there is no Spotlight (the tests, and OSAT from source on Linux): walk the folders a
+   few levels deep, skipping hidden things, links and package insides. `test({ name, folder,
+   modifiedAt, inside })` decides; small text files are read for `inside`. */
+async function walkFind(roots, test, { fs = require('node:fs/promises'), depth = 6, max = 5000 } = {}) {
+  const found = []
+  let seen = 0
+  for (const root of roots) {
+    const queue = [[root.root, 0]]
+    while (queue.length && seen < max) {
+      const [dir, level] = queue.shift()
+      for (const entry of await fs.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+        if (entry.name.startsWith('.') || entry.isSymbolicLink() || seen++ >= max) continue
+        const file = path.join(dir, entry.name)
+        const stat = await fs.lstat(file).catch(() => null)
+        if (!stat) continue
+        const folder = stat.isDirectory() && !isPackage(entry.name)
+        const text = stat.isFile() && stat.size <= 256 * 1024 && isSafeTextPreviewName(entry.name)
+          ? await fs.readFile(file, 'utf8').catch(() => '')
+          : ''
+        if (test({ name: entry.name, folder, modifiedAt: stat.mtime.toISOString(), inside: text })) found.push(file)
+        if (folder && level + 1 < depth) queue.push([file, level + 1])
+      }
+    }
+  }
+  return found
+}
+
+module.exports = { MAX_CHARS, PICTURES, PLACES, extractText, inside, isPackage, locate, rankFound, run, searchArgs, walkFind }

@@ -29,7 +29,7 @@
 | 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | In review (PR #18) |
 | 19 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
 | 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
-| 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | Planned |
+| 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidying and dragging next) |
 | 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | Planned |
 | 22 | Files in the Sky: toss a file up as a card, a node can link a real folder (schema 8) | Planned |
 | 23 | Nodes become projects: Track it (Done / Now / Next), Rush it, on top of the Roadmap's Timeline | Planned |
@@ -670,6 +670,14 @@ It is too much for one pull request, so it becomes four phases (numbered after P
 
 #### Phase 21: Find and tidy your files
 One job: any file, found in seconds, and put where it belongs without leaving OSAT.
+
+**Step 1, Find (merged Sep 29, PR #22).** Files has a find box and ⌘K's line uses the same search: plain
+words look in names and inside files (Spotlight), and "pdf", "photos", "screenshots", "videos", "word",
+"spreadsheets", "slides", "zip", "folders" and "today", "yesterday", "this week", "last week",
+"last month", "last 3 days", "recently" narrow it. The room says back what it understood ("PDFs changed
+since Mon, Sep 21 with “taxes”"), each result says where it lives and whether the words were inside,
+and "Show in its folder" goes there. Words in "quotes" are only words. Read-only: nothing is moved.
+Still to come in this phase: tidying (below) and one drag system.
 - **Better finding.** ⌘K and Files search look inside files too (Spotlight's own index, so it's fast
   and stays on the Mac), and understand plain words for kind and time: "pdf", "photos", "last week",
   "yesterday". Results say where each one lives and open on Return. Still only in the places OSAT may see.

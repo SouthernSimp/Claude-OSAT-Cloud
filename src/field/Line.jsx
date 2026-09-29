@@ -151,7 +151,8 @@ export function Line({
     if (open && ai.state !== 'ready') checkAi()
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Files on this Mac, by name, from Spotlight (the Mac app only). */
+  /* Files on this Mac from Spotlight (the Mac app only): plain words find names and what is
+     inside files, and "pdf last week" means just that (shared/file-query.mjs). */
   useEffect(() => {
     setFound([]) // what Spotlight found for the last words never answers these
     const api = window.nateOSFiles
