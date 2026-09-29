@@ -410,7 +410,7 @@ html[data-carry-edge="up"] body::after {
 .board[data-far] .card-body { opacity: 0.4; }
 
 .board-naming { position: absolute; top: 0; left: 0; z-index: 6; width: 240px; animation: card-in 420ms var(--spring) both; }
-.board-hint { position: absolute; left: 22px; bottom: 24px; margin: 0; font-size: var(--t-xs); color: var(--muted); pointer-events: none; }
+.board-hint { position: absolute; left: 22px; bottom: 24px; max-width: calc(50% - 100px); margin: 0; font-size: var(--t-xs); color: var(--muted); pointer-events: none; }
 .board-zoom {
   position: absolute;
   right: 18px;
@@ -643,3 +643,57 @@ html[data-carry-edge="up"] body::after {
 .packed-bar svg { width: 12px; height: 12px; }
 .packed-bar button:disabled { opacity: 0.6; }
 .sort-help > .sort-asking { color: var(--muted); background: transparent; box-shadow: none; padding: 2px 12px; }
+
+/* ---- The AI in the Sky: a pill at the bottom, a small card, and what folds ------------------ */
+
+.sky-ask-pill {
+  position: absolute; z-index: 4; right: 0; bottom: 22px; left: 0; width: max-content; margin-inline: auto;
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 16px 0 13px; border-radius: 999px;
+  font-size: var(--t-sm); font-weight: 650; color: var(--ink); background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-3);
+}
+.sky-ask-pill svg { width: 14px; height: 14px; color: var(--accent); }
+.sky-ask-pill:hover { background: var(--surface-hover); }
+.sky-ask {
+  position: absolute; z-index: 5; right: 0; bottom: 22px; left: 0; width: min(560px, calc(100% - 44px)); max-height: min(72%, 600px); margin-inline: auto;
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto auto; gap: 8px; padding: 12px 14px 10px; border-radius: 20px;
+  color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-4);
+  animation: context-in 160ms var(--ease-out) both;
+}
+.sky-ask header { display: flex; align-items: center; gap: 8px; font-size: var(--t-sm); }
+.sky-ask header svg { flex: none; width: 14px; height: 14px; color: var(--accent); }
+.sky-ask header strong { flex: 1; min-width: 0; font-weight: 650; }
+.sky-ask header button { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: var(--muted); }
+.sky-ask header button:hover { color: var(--ink); background: var(--surface-hover); }
+.sky-ask-lead, .sky-ask-wait, .sky-ask-error, .sort-more { margin: 0; font-size: var(--t-sm); color: var(--muted); }
+.sky-ask-error { color: var(--critical); }
+.sky-ask-body { min-height: 0; display: grid; gap: 8px; align-content: start; overflow-y: auto; overscroll-behavior: contain; font-size: 14px; line-height: 1.5; }
+.sky-ask-body:empty { display: none; }
+.sky-ask-question { margin: 0; font-weight: 650; }
+.sky-ask .sort-help { max-width: none; }
+.sky-ask .sort-help > p, .sky-ask .sort-suggestion { background: var(--surface-sunken); box-shadow: none; }
+.sky-ask .sort-all { justify-self: start; }
+.sky-ask-form { display: flex; gap: 8px; }
+.sky-ask-form input { flex: 1; min-width: 0; height: 36px; padding: 0 14px; border: 0; border-radius: 999px; font-size: var(--t-sm); color: var(--ink); background: var(--surface-sunken); box-shadow: 0 0 0 0.5px var(--line-strong); }
+.sky-ask-form input:focus { outline: none; box-shadow: 0 0 0 2px var(--accent); }
+.sky-ask-form button { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: var(--accent-ink); background: var(--accent); }
+.sky-ask-form button:disabled { opacity: 0.4; }
+.sky-ask footer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sky-ask footer > button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; font-size: var(--t-xs); font-weight: 650; color: var(--ink); background: var(--surface-sunken); }
+.sky-ask footer > button:hover:not(:disabled) { background: var(--surface-hover); }
+.sky-ask footer > button:disabled { opacity: 0.5; }
+.sky-ask footer small { flex: 1 1 100%; font-size: var(--t-xs); color: var(--muted); }
+.sky-ask footer small button { color: inherit; text-decoration: underline; }
+
+/* Folding: Unsorted's name and each branch's arrow. */
+.fold-name { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-align: left; }
+.fold-caret { flex: none; width: 12px; height: 12px; transition: rotate 160ms var(--ease-out); }
+.fold-name[aria-expanded="false"] .fold-caret { rotate: -90deg; }
+.fold-pile { display: grid; gap: 4px; width: 100%; padding: 0; text-align: left; }
+.fold-strip { display: block; padding: 7px 10px; border-radius: 4px; font-size: var(--t-xs); color: var(--paper-ink); background: var(--paper-bg, var(--paper-canary)); box-shadow: var(--e-1); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fold-more { padding: 2px 4px; font-size: var(--t-xs); color: var(--muted); }
+.lane-fold { order: -1; flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin: 0 -2px 0 -6px; border-radius: 6px; color: var(--muted); }
+.lane-fold:hover { color: var(--ink); background: var(--surface-sunken); }
+.lane-fold svg { width: 12px; height: 12px; transition: rotate 160ms var(--ease-out); }
+.lane-fold[aria-expanded="false"] svg { rotate: -90deg; }
+.lane-folded { min-width: 0; margin: 0; padding: 12px 4px; overflow: hidden; font-size: var(--t-sm); color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }

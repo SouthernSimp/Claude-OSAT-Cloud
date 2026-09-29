@@ -18,6 +18,13 @@ const MOST_PLACES = 40
 const plainKey = (name) => String(name || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
 const wordsOfSticky = (note) => `${note.title}\n${note.markdown}`.slice(0, 600)
 
+/* "Sort these", "can you sort my unsorted stickies?": a request to sort Unsorted, not a question for
+   the AI. It has to start with the ask, so "sort of a hard question" and "how do I sort my closet"
+   are still questions. */
+export const asksToSort = (text) => /^(?:(?:please|can you|could you|would you|help me|go ahead and|now)\s+)*sort\s+(?:out\s+)?(?:these|them|it|this|my|the|all|everything|unsorted)\b.{0,40}$/.test(
+  String(text || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim(),
+)
+
 /* The stickies waiting in Unsorted, oldest rank first, as many as one sort reads. */
 export const unsortedStickies = (state) => pileOf(state.notes, null).slice(0, MOST)
 

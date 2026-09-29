@@ -229,6 +229,44 @@ async function main() {
   // The Sky: names only, no Link to or layouts, Help me sort in plain words, and Import.
   room = 'sky menus'
   if (await page.locator('.node-number').count()) problems.push('sky: node cards still show numbers')
+  // The AI in the Sky: a pill opens a small card; "sort these" suggests homes from matching words (no AI in this test),
+  // Make it and Undo work, and Unsorted and a branch fold.
+  room = 'sky ask'
+  const unsortedCard = page.locator('.board-card.is-unsorted')
+  await unsortedCard.getByRole('button', { name: 'Write a sticky' }).dispatchEvent('click').catch(() => problems.push('sky: Unsorted had no Write a sticky'))
+  for (const text of ['Buy cat litter', 'Cat food is running low', 'Vet visit for the cat']) {
+    await page.keyboard.type(text)
+    await page.keyboard.press('Enter')
+  }
+  await page.locator('.sky-bar').click({ position: { x: 4, y: 4 } })
+  await page.locator('.sky-layer').getByRole('button', { name: 'Ask', exact: true }).click().catch(() => problems.push('sky: there was no Ask pill'))
+  const skyCard = page.getByRole('dialog', { name: 'Ask about your Sky' })
+  await skyCard.waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the Ask pill did not open its card'))
+  await skyCard.getByRole('textbox').fill('sort these')
+  await skyCard.getByRole('textbox').press('Enter')
+  const catLine = skyCard.locator('.sort-suggestion', { hasText: 'new node, Cat' })
+  await catLine.waitFor({ timeout: 3000 }).catch(() => problems.push('sky: "sort these" did not suggest a node for the three cat stickies'))
+  await sleep(300)
+  await page.screenshot({ path: `${OUT}/sky-ask.png` })
+  await catLine.getByRole('button', { name: 'Make it' }).click().catch(() => {})
+  await page.locator('[data-node-head]', { hasText: 'Cat' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Make it did not make the node'))
+  if (await unsortedCard.locator('.sticky', { hasText: 'Buy cat litter' }).count()) problems.push('sky: the cat stickies were still in Unsorted after Make it')
+  await page.getByRole('button', { name: 'Undo', exact: true }).click().catch(() => problems.push('sky: Make it offered no Undo'))
+  await page.locator('[data-node-head]', { hasText: 'Cat' }).waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Undo did not take the new node away'))
+  await unsortedCard.locator('.sticky', { hasText: 'Buy cat litter' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Undo did not bring the cat stickies back to Unsorted'))
+  await skyCard.getByRole('button', { name: 'Put it away' }).click()
+  await skyCard.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the Ask card did not go away'))
+  await unsortedCard.getByRole('button', { name: /^Unsorted/ }).dispatchEvent('click')
+  await unsortedCard.locator('.fold-pile').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: clicking Unsorted did not fold it into a pile'))
+  if (await unsortedCard.locator('.sticky').count()) problems.push('sky: a folded Unsorted still showed every sticky')
+  await page.screenshot({ path: `${OUT}/sky-folded.png` })
+  await unsortedCard.locator('.fold-pile').dispatchEvent('click')
+  await unsortedCard.locator('.sticky', { hasText: 'Buy cat litter' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: clicking the pile did not open Unsorted again'))
+  await page.getByRole('button', { name: 'Fold Later', exact: true }).click({ force: true }).catch(() => problems.push('sky: a branch had no fold arrow'))
+  await page.locator('.lane[aria-label="Branch: Later"] .lane-folded').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the fold arrow did not fold the branch to a line'))
+  await page.getByRole('button', { name: 'Open Later', exact: true }).click({ force: true }).catch(() => {})
+  await page.locator('.lane[aria-label="Branch: Later"] .lane-folded').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the branch did not open again'))
+  room = 'sky menus'
   await page.locator('[data-node-head]', { hasText: 'Project Direction' }).click({ button: 'right', force: true })
   for (const gone of ['Link to', 'Lay it out', 'Put inside', 'Colour', 'Remove node']) if (await page.getByRole('menuitem', { name: gone }).count()) problems.push(`sky: the node menu still says "${gone}"`)
   for (const kept of ['Color', 'Delete node', 'Help me sort']) if (!await page.getByRole('menuitem', { name: kept }).count()) problems.push(`sky: the node menu has no "${kept}"`)

@@ -157,7 +157,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - `shared/providers.mjs` — cloud model presets, `cleanKey`/`cleanBaseUrl`/`providerFrom`, model ids
   `cloud:<provider>:<model>`, `explainFailure` (one plain line), usage and `cleanBotSettings`.
 - `shared/ai-tasks.mjs` — the model's small jobs, each a question and a forgiving reader:
-  Unpack with AI (Markdown back) and Help me sort ("sticky: branch" lines).
+  Unpack with AI (Markdown back), Help me sort ("sticky: branch" lines) and Sort Unsorted (Phase 26:
+  "n: place number", "n: new: Name" or "none" per sticky; `readSortUnsortedAnswer`).
 - `shared/connector-tools.mjs` — the connector's four tools as pure `runTool(name, args, { doc })`
   → `{ text, ops }`, names or ids, and `connectorSetup` (the lines for Claude Code / Desktop).
 - `shared/sync-core.mjs` + `shared/sync-engine.mjs` — pure sync, for the Mac now and the iPhone
@@ -228,7 +229,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - `sky/`: `Sky.jsx` (the layer: find a sticky, Import a node file, the actions and menus,
     Help me sort: `suggestionGroups`, one line per branch with Move and Dismiss; with a model, it is
     asked about the stickies matching words couldn't place; Unpack with AI / By hand on a packed
-    node; `useAi` reads the model list again when Bots changes),
+    node; `useAi` reads the model list again when Bots changes; Phase 26: `SkyAsk.jsx`, the pill at the bottom
+    and its card: ask about the Sky (`useAskHere` with `context: { open, where: 'sky' }`), or say "sort these"
+    (`asksToSort`) / press Sort Unsorted: `sort-unsorted.js` (pure: `sortRequests` in batches of 20, at most 60
+    stickies, `modelSuggestions` / `wordSuggestions` → groups `move` / `make`, `stillToSort`, `applyGroup`,
+    `undoGroups`), one line per group with Move / Make it and Dismiss, "Move them all", one Undo. Unsorted and each
+    branch fold (`osat.sky.folds.v1`: `'unsorted'` or a branch id; `actions.folds` / `actions.fold`)),
     `Board.jsx` (the infinite whiteboard: the camera `{x, y, z}` in CSS vars `--cx/--cy/--z`,
     registered with `@property` so a flight glides; node cards at `boardSpots`, dragged directly,
     opened in place as a tree (Phase 16: `NodeLanes` → `Branches` → `Lane`: the node's own stickies
@@ -249,7 +255,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `daily-practice.js`, `field/field-model.js` (desk items, `freeSpot` for new stickies).
   - `shell/Welcome.jsx`: the first launch — what stays private, the shortcut, the AI's size.
   - Rooms: `field/` (home desk, widgets), `notes/`, `assistant/` (Ask:
-    `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`),
+    `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`; Phase 26:
+    `board-context.js` (`boardMap`: the words-only map of nodes, Unsorted, open nodes, Next and the Calendar
+    every question carries, `OSAT_GUIDE`, `planLines` for a question about the roadmap), `ask-context.js`
+    (the windows' side: adds the bundled roadmap) and `useAskHere.js` (the streaming answer the desk's line and
+    the Sky's card share)),
     `views/` (Calendar, Journal (with Reflection as its tab, Reflection's one home), Habits,
     Budget, NowPlaying, Obsidian, Settings (four tabs: General, AI, Bots, Data; `sectionFor` maps old tab
     names); schema 4 folds each project into a node, `projectNodes` in store-core, and keeps `projects`), `lib/find.js` (what the line finds), `tools/` (Browser, Terminal).

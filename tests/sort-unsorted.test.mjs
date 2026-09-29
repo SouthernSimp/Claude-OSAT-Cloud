@@ -5,7 +5,7 @@ import { readSortUnsortedAnswer, sortUnsortedMessages } from '../shared/ai-tasks
 import { pileOf } from '../src/nodes-model.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import {
-  applyGroup, BATCH, modelSuggestions, sortGroups, sortPlaces, sortRequests, stillToSort, undoGroups, unsortedStickies, wordNodes, wordSuggestions,
+  applyGroup, asksToSort, BATCH, modelSuggestions, sortGroups, sortPlaces, sortRequests, stillToSort, undoGroups, unsortedStickies, wordNodes, wordSuggestions,
 } from '../src/sky/sort-unsorted.js'
 
 const at = (minute) => new Date(Date.UTC(2026, 8, 29, 9, minute)).toISOString()
@@ -121,4 +121,9 @@ test('what is still to sort: only stickies still in Unsorted, and a new node nee
   const moved = applyGroup(state, { kind: 'move', folderId: 'ideas', noteIds: ['c'] }).state
   assert.deepEqual(stillToSort(groups, moved).map((group) => [group.key, group.noteIds]), [['move:ideas', ['a']]])
   assert.deepEqual(stillToSort(groups, state).map((group) => group.key), ['move:ideas', 'make:cats'])
+})
+
+test('"sort these" is a request to sort, and a question about sorting is still a question', () => {
+  for (const yes of ['sort these', 'Sort my unsorted stickies', 'can you sort them?', 'Please sort out the mess', 'help me sort everything!']) assert.equal(asksToSort(yes), true, yes)
+  for (const no of ['sort of a hard question', 'how do I sort my closet', 'what should I sort first', 'Sorting hat', '', undefined]) assert.equal(asksToSort(no), false, String(no))
 })
