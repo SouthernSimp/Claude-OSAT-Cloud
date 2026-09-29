@@ -32,23 +32,23 @@ const ACTION_ICONS = {
   'act:new-folder': FolderSimple,
   'act:board': ShareNetwork,
   'act:focus': HourglassMedium,
-  'act:under': WifiSlash,
+  'act:offline': WifiSlash,
   'act:widget': SquaresFour,
 }
 const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceFor(row.go[0])?.icon || Sparkle
 
-/* The one line in the middle of the desk (and at the foot of the scratch page, where
-   `write` makes what's saved a sticky there). Type, and a drawer folds open under it:
+/* The one line in the middle of the desk. Type, and a drawer folds open under it:
    Save as a sticky (always first, so Return never guesses), Ask the AI on this Mac,
    Add as a next step, then up to five matches (notes, files on this Mac, folders, rooms,
    actions). ⌘K and ⇧⌘N land here (`summon`). An answer streams into a card under the
    line and is kept as a chat.
    The line reports where it rests (`onLine`), so rooms open beside it; when a room
    covers it anyway, it rises to the top of the desk and stays above the rooms
-   (`raised`), drawer and all. */
+   (`raised`), drawer and all. Its end holds the Offline switch (`offline`: main's
+   { on, terminal }; `onOffline` flips it): while on, a calm line under it says so. */
 export function Line({
-  workspace, commit, navigate, greeting, storage, visit = 0, summon = 0, paused = false, under = false,
-  raised = false, onLine, onOpenNote, onSaved, foot, write,
+  workspace, commit, navigate, greeting, storage, visit = 0, summon = 0, paused = false, offline = null, onOffline,
+  raised = false, onLine, onOpenNote, onSaved,
 }) {
   const center = useRef(null)
   const greetingRef = useRef(null)
@@ -64,11 +64,12 @@ export function Line({
   const { models, status: aiStatus, refresh: checkAi } = useAi()
   const notes = workspace.notes.filter(isActiveNote)
   const text = draft.trim()
+  const isOffline = offline?.on === true
 
   /* Ask only ever talks to the model on this Mac. */
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
 
-  const matches = useMemo(() => (open ? findAll(workspace, text, { files: text ? found : [], under }) : []), [open, workspace, text, found, under])
+  const matches = useMemo(() => (open ? findAll(workspace, text, { files: text ? found : [] }) : []), [open, workspace, text, found])
   const rows = [
     ...(text ? [
       { key: 'save', label: 'Save as a sticky', keys: '↵', icon: NotePencil, run: save },
@@ -81,8 +82,6 @@ export function Line({
   ]
   const active = Math.min(cursor, rows.length - 1)
   const showing = open && rows.length > 0
-  // Under, the desk's line is still there (inert, lifted away), so this one has its own ids.
-  const ids = under ? 'under' : 'home'
 
   /* Where the line rests (offsets ignore the rise, which is only a translate), and how far
      it has to travel to reach the top of the desk. */
@@ -140,7 +139,7 @@ export function Line({
 
   // The picked row stays in sight when the drawer has to scroll.
   useEffect(() => {
-    const row = showing && document.getElementById(`${ids}-row-${active}`)
+    const row = showing && document.getElementById(`home-row-${active}`)
     if (!row) return
     const drawer = row.parentElement
     if (row.offsetTop < drawer.scrollTop) drawer.scrollTop = active ? row.offsetTop : 0
@@ -152,16 +151,16 @@ export function Line({
     if (open && ai.state !== 'ready') checkAi()
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Files on this Mac, by name, from Spotlight (the Mac app only; never under). */
+  /* Files on this Mac, by name, from Spotlight (the Mac app only). */
   useEffect(() => {
     setFound([]) // what Spotlight found for the last words never answers these
     const api = window.nateOSFiles
     const q = text.toLowerCase()
-    if (!open || under || !api?.search || q.length < 2 || /(^|\s)#\S/.test(q)) return undefined
+    if (!open || !api?.search || q.length < 2 || /(^|\s)#\S/.test(q)) return undefined
     let current = true
     const timer = window.setTimeout(() => api.search(q).then((items) => { if (current) setFound(Array.isArray(items) ? items.slice(0, 8) : []) }, () => {}), 180)
     return () => { current = false; window.clearTimeout(timer) }
-  }, [text, open, under])
+  }, [text, open])
 
   /* Esc, one step at a time: a picked row goes back to the first, the drawer closes (the
      words stay), the answer is put away. Then the desk takes over (the top pop-out, then
@@ -210,8 +209,8 @@ export function Line({
     if (!text) return
     let note
     commit((state) => {
-      // `write` makes something else of it (a sticky on the scratch page); else one in Unsorted.
-      const result = write ? write(state, text.slice(0, 8000)) : captureThought(state, text.slice(0, 8000), under ? 'Under' : 'Home')
+      // A sticky in Unsorted; one written offline says so.
+      const result = captureThought(state, text.slice(0, 8000), isOffline ? 'Offline' : 'Home')
       note = result.note
       return note ? linkMentions(result.state, note.id) : result.state
     })
@@ -316,9 +315,9 @@ export function Line({
       >
         <div className="home-line">
           <div className={`glass home-composer ${text ? 'has-text' : ''}`}>
-            <label className="visually-hidden" htmlFor={`${ids}-line`}>Write it down, find it, or ask</label>
+            <label className="visually-hidden" htmlFor="home-line">Write it down, find it, or ask</label>
             <textarea
-              id={`${ids}-line`}
+              id="home-line"
               ref={box}
               rows={2}
               value={draft}
@@ -326,9 +325,9 @@ export function Line({
               placeholder="Write it down, find it, or ask…"
               role="combobox"
               aria-expanded={showing}
-              aria-controls={showing ? `${ids}-drawer` : undefined}
+              aria-controls={showing ? 'home-drawer' : undefined}
               aria-autocomplete="list"
-              aria-activedescendant={showing ? `${ids}-row-${active}` : undefined}
+              aria-activedescendant={showing ? `home-row-${active}` : undefined}
               onChange={(event) => {
                 setDraft(event.target.value)
                 setCursor(0)
@@ -339,6 +338,11 @@ export function Line({
               }}
               onKeyDown={onKeyDown}
             />
+            {onOffline && (
+              <button type="button" className="home-offline" aria-pressed={isOffline} aria-label="Offline" title={isOffline ? 'Go back online  ⇧⌘U' : 'Go offline: nothing leaves OSAT  ⇧⌘U'} onClick={onOffline}>
+                <WifiSlash weight={isOffline ? 'bold' : 'regular'} />
+              </button>
+            )}
             <button type="submit" className="home-send" aria-label="Save as a sticky" title="Save as a sticky ↵ · Shift-Return for a new line" disabled={!text}>
               <ArrowUp weight="bold" />
             </button>
@@ -352,12 +356,12 @@ export function Line({
           </div>
 
           {showing && (
-            <div id={`${ids}-drawer`} className="home-drawer" role="listbox" aria-label={text ? 'What to do with it' : 'Jump to'}>
+            <div id="home-drawer" className="home-drawer" role="listbox" aria-label={text ? 'What to do with it' : 'Jump to'}>
               {!text && <p className="home-drawer-head" aria-hidden="true">Jump to</p>}
               {rows.map((row, index) => (
                 <div
                   key={row.key}
-                  id={`${ids}-row-${index}`}
+                  id={`home-row-${index}`}
                   role="option"
                   aria-selected={index === active}
                   className={`home-row ${text && index === 3 ? 'is-first-match' : ''}`}
@@ -372,7 +376,12 @@ export function Line({
             </div>
           )}
         </div>
-        {foot}
+        {isOffline && (
+          <p className="home-offline-note" role="status">
+            <WifiSlash weight="bold" aria-hidden="true" /> {window.osatUnder ? 'Offline · nothing leaves OSAT' : 'Offline · the look only, in this preview'}
+            {offline.terminal && '. A terminal you started keeps running.'}
+          </p>
+        )}
       </form>
 
       {answer && (

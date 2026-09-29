@@ -40,7 +40,7 @@ const keep = (key, value) => { try { localStorage.setItem(key, value) } catch { 
 export function FieldDesk({
   workspace, commit, navigate,
   storage, focusAt, summon, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
-  raised = false, onLine, widgets,
+  raised = false, onLine, widgets, offline, onOffline,
 }) {
   const home = useRef(null)
   const justMoved = useRef(false)
@@ -402,6 +402,8 @@ export function FieldDesk({
         visit={visit}
         summon={summon}
         paused={focusOpen}
+        offline={offline}
+        onOffline={onOffline}
         raised={raised}
         onLine={onLine}
         onOpenNote={openNote}

@@ -171,27 +171,6 @@
   --board-glow: rgb(150 170 210 / 10%);
 }
 
-/* Incognito (going under): a deep ink under the desk, night in either look, a little
-   deeper in dark. A bright waterline, pale stars, and a warm glow for what was written here. */
-:root {
-  --under-ink: #1a1d24;
-  --under-deep: #0a0b0e;
-  --under-glow: rgb(170 190 220 / 12%);
-  --under-line: #dfe8f5;
-  --under-surface: #23262e;
-  --under-rim: rgb(220 230 245 / 12%);
-  --under-text: #eef0f4;
-  --under-muted: #a5acb8;
-  --under-faint: #767d8a;
-  --under-dust: rgb(220 232 255 / 28%);
-}
-:root[data-theme="dark"] {
-  --under-ink: #14161b;
-  --under-deep: #060709;
-  --under-glow: rgb(150 170 200 / 9%);
-  --under-surface: #1d2027;
-}
-
 /* Stickies: coloured paper, bright in either look like real ones, with dark ink. */
 :root {
   --paper-canary: #fbe98c;

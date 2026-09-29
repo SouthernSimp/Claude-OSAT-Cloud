@@ -80,7 +80,7 @@ function createMacSync({ root, store, createSyncEngine, statePath, onStatus = ()
     return chain
   }
 
-  // Checked when the task runs, not when it's queued: a pause meanwhile (Incognito) wins.
+  // Checked when the task runs, not when it's queued: a pause meanwhile (Offline) wins.
   const flushSoon = () => {
     clearTimeout(flushTimer)
     flushTimer = setTimeout(() => run((current) => status.on && current.flush()), 1500)

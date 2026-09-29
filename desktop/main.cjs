@@ -6,10 +6,10 @@ const { pathToFileURL } = require('node:url')
 const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell, systemPreferences, utilityProcess } = require('electron')
 const { createUnder, guardFetch, isLocal, refusal } = require('./under.cjs')
 
-/* Incognito (see "Incognito" below). Two locks, set before any of OSAT's own modules load:
+/* Offline (see "Offline" below). Two locks, set before any of OSAT's own modules load:
    the main process's own fetch (the model download, Spotify's covers, LM Studio),
    and every session's requests (the desk's, the quick chat's and the browser's).
-   While under, only this Mac answers. */
+   While offline, only this Mac answers. */
 const under = createUnder({ save: saveUnder, down: goingUnder, up: comingUp, changed: underChanged })
 globalThis.fetch = guardFetch(globalThis.fetch, () => under.on)
 const guardedSessions = new WeakSet()
@@ -228,7 +228,7 @@ function mutateGrants(change) {
 
 const NOT_ALLOWED = 'OSAT isn’t allowed into that folder yet. Allow it in System Settings → Privacy & Security → Files and Folders.'
 
-/* In Incognito, what would reach out (the web, files, Spotify, downloads, iCloud)
+/* Offline, what would reach out (the web, other apps, Spotify, downloads, iCloud)
    answers in plain words instead. */
 function refuseUnder(channel) {
   const waits = under.on && refusal(channel)
@@ -640,7 +640,7 @@ function buildMenu() {
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         { type: 'separator' },
-        { label: under.on ? 'Leave Incognito' : 'Go Incognito', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
+        { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
     },
     {
@@ -914,7 +914,7 @@ function registerDesk() {
   })
   // Widgets and icons go back where they were; stickies stay where they lie.
   handle('desk:tidy', async () => {
-    prefs = { ...prefs, places: Object.fromEntries(Object.entries(prefs.places).filter(([key]) => key.startsWith('note:') || key.startsWith('scratch:'))) }
+    prefs = { ...prefs, places: Object.fromEntries(Object.entries(prefs.places).filter(([key]) => key.startsWith('note:'))) }
     await savePrefs()
     return prefs.places
   })
@@ -1003,17 +1003,16 @@ function trayIcon(name) {
   return trayIcons[name]
 }
 
-/* The menu-bar icon is a moon while under, so the state shows with the desk away. */
+/* The menu-bar icon is a moon while offline, so the state shows with the desk away. */
 function updateTray() {
   if (!tray || tray.isDestroyed()) return
   trayAiLine = aiLine()
   tray.setImage(trayIcon(under.on ? 'trayUnderTemplate' : 'trayTemplate'))
-  tray.setToolTip(under.on ? 'OSAT · Incognito' : 'OSAT')
+  tray.setToolTip(under.on ? 'OSAT · Offline' : 'OSAT')
   tray.setContextMenu(Menu.buildFromTemplate([
-    ...(under.on ? [{ label: 'Leave Incognito', click: () => toggleUnder(false) }, { type: 'separator' }] : []),
     { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
     { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
-    ...(under.on ? [] : [{ label: 'Go Incognito', click: () => toggleUnder(true) }]),
+    { label: 'Offline', type: 'checkbox', checked: under.on, accelerator: 'CmdOrCtrl+Shift+U', registerAccelerator: false, click: () => toggleUnder() },
     { type: 'separator' },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
     { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'general' } }) },
@@ -1055,7 +1054,7 @@ function registerAi() {
     // Tests and CI answer with a practice model instead of downloading one.
     mock: !app.isPackaged && process.env.OSAT_AI === 'mock',
   })
-  // A download under way carries on at launch, unless OSAT opens under.
+  // A download under way carries on at launch, unless OSAT opens offline.
   if (under.on) aiWaiting = 'start'
   else ai.start()
   // AI messages are written for Nate, so they pass through as they are.
@@ -1064,8 +1063,8 @@ function registerAi() {
   }
   handle('ai:status', () => ai.status(), { from: 'any' })
   handle('ai:choose', plain((tier) => {
-    // Under, only a size already on this Mac can be chosen.
-    if (under.on && !ai.status().tiers.some((item) => item.id === tier && item.ready)) throw new Error('Downloads wait until you come up.')
+    // Offline, only a size already on this Mac can be chosen.
+    if (under.on && !ai.status().tiers.some((item) => item.id === tier && item.ready)) throw new Error('Downloads wait until you’re back online.')
     return ai.choose(tier)
   }), { from: 'app' })
   handle('ai:cancel', () => { ai.cancel(); return ai.status() }, { from: 'app' })
@@ -1133,7 +1132,7 @@ function phoneStatus() {
   return phone ? { ...base, ...phone.status(), enabled: prefs.phone } : base
 }
 
-// Both do nothing while the link is off, or paused in Incognito.
+// Both do nothing while the link is off, or paused while offline.
 const phoneLive = () => prefs.phone && !under.on
 const mirrorSoon = () => {
   clearTimeout(phoneMirrorTimer)
@@ -1181,7 +1180,7 @@ async function ensureSync() {
 }
 
 async function startPhone() {
-  // Asked after every wait: gone under (or off) meanwhile, it stops before touching iCloud again.
+  // Asked after every wait: gone offline (or off) meanwhile, it stops before touching iCloud again.
   const waits = () => {
     if (phoneLive()) return false
     stopPhone()
@@ -1257,11 +1256,11 @@ async function registerPhone() {
   if (phoneLive()) startPhone().catch((error) => console.error('The iPhone link could not start:', error))
 }
 
-/* ---- Incognito: OSAT with the internet off (Go under / Come up, ⇧⌘U) ---- */
+/* ---- Offline: OSAT with the internet off (the switch on the line, ⇧⌘U) ---- */
 
-// Each window's browser tabs, closed on the way down and opened again on the way up.
+// Each window's browser tabs, closed going offline and opened again back online.
 const sleepingTabs = new Map()
-// 'resume' (a download was running) or 'start' (OSAT opened under): what the AI does on the way up.
+// 'resume' (a download was running) or 'start' (OSAT opened offline): what the AI does back online.
 let aiWaiting = null
 // A cancelled download takes a moment to stop; resuming before then would do nothing.
 let aiStopped = Promise.resolve()
@@ -1299,7 +1298,7 @@ async function comingUp() {
   const wake = aiWaiting
   aiWaiting = null
   if (wake) aiStopped.then(() => {
-    // Gone back under before it stopped: it waits for the next time up.
+    // Offline again before it stopped: it waits for the next time online.
     if (under.on) aiWaiting ??= wake
     else if (wake === 'resume') ai.resume()
     else ai.start()

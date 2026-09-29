@@ -12,11 +12,8 @@ const GAP = 1024
 
 export const byRank = (a, b) => rankOf(a) - rankOf(b) || String(a.id).localeCompare(String(b.id))
 
-/* A sticky left on the scratch page under the desk, until it is made into a node. */
-export const isScratch = (note) => note?.kind === 'scratch'
-
 /* The stickies whose home is exactly this folder (null: Unsorted), in their ranked order.
-   Day pages live in Today; scratch stickies wait under the desk. */
+   Day pages live in Today. */
 export function pileOf(notes, folderId = null) {
   return notes
     .filter((note) => isActiveNote(note) && !note.kind && (note.folderId || null) === (folderId || null))
@@ -61,14 +58,14 @@ const withRanks = (list, renumber) => {
 const folderExists = (state, id) => Boolean(id) && state.folders.some((folder) => folder.id === id)
 
 /* Puts a sticky in a folder's pile (null: back to Unsorted) at `index` (the end when left
-   out). Filing it clears Unsorted and takes it off the scratch page. */
+   out). Filing it clears Unsorted. */
 export function moveSticky(state, noteId, folderId = null, index = Infinity) {
   const note = state.notes.find((item) => item.id === noteId)
   if (!note || note.kind === 'day') return state
   const target = folderExists(state, folderId) ? folderId : null
   const { rank, renumber } = rankAt(pileOf(state.notes, target).filter((item) => item.id !== noteId), index)
   const notes = withRanks(state.notes, renumber).map((item) => (item.id === noteId
-    ? { ...item, folderId: target, unsorted: !target, kind: null, rank }
+    ? { ...item, folderId: target, unsorted: !target, rank }
     : item))
   return { ...state, notes }
 }
@@ -96,7 +93,7 @@ export function addFolder(state, name, parentId = null, index = Infinity) {
 
 /* A new sticky in a folder's pile (null: Unsorted), at the end or at `index`. Its @s point
    at their nodes (linkMentions). */
-export function addSticky(state, text, folderId = null, { source = 'Sky', index, color, kind = null } = {}) {
+export function addSticky(state, text, folderId = null, { source = 'Sky', index, color } = {}) {
   const value = typeof text === 'string' ? text.trim().slice(0, 8000) : ''
   if (!value) return { state, note: null }
   const target = folderExists(state, folderId) ? folderId : null
@@ -108,7 +105,7 @@ export function addSticky(state, text, folderId = null, { source = 'Sky', index,
     base = { ...state, notes: withRanks(state.notes, placed.renumber) }
     rank = placed.rank
   }
-  const made = createNote(base, { title, markdown: value, folderId: target, unsorted: !target && kind !== 'scratch', source, color, kind, rank })
+  const made = createNote(base, { title, markdown: value, folderId: target, unsorted: !target, source, color, rank })
   const linked = linkMentions(made.state, made.note.id)
   return { state: linked, note: linked.notes.find((note) => note.id === made.note.id) }
 }
@@ -125,15 +122,6 @@ export function removeFolder(state, folderId) {
     folders: next.folders.map((item) => (item.links?.some((id) => removed.has(id)) ? { ...item, links: item.links.filter((id) => !removed.has(id)) } : item)),
     notes: next.notes.map((note) => (homeless.has(note.id) && !note.folderId ? { ...note, unsorted: true } : note)),
   }
-}
-
-/* The stickies on the scratch page become one node, in the order given. */
-export function nodeFrom(state, noteIds, name) {
-  const made = addFolder(state, name || 'From the scratch page')
-  if (!made.folder) return made
-  let next = made.state
-  noteIds.forEach((id) => { next = moveSticky(next, id, made.folder.id) })
-  return { state: next, folder: made.folder }
 }
 
 /* The places a sticky can be moved to, as menu items: Unsorted, then each node with its
@@ -267,7 +255,7 @@ export function linkMentions(state, noteId) {
 export function mentionedIn(state) {
   const map = new Map()
   state.notes.forEach((note) => {
-    if (!isActiveNote(note) || note.kind === 'scratch' || !note.markdown?.includes('@')) return
+    if (!isActiveNote(note) || !note.markdown?.includes('@')) return
     nodesMentioned(note, state.folders).forEach((folderId) => {
       if (folderSubtree(state.folders, folderId).has(note.folderId)) return
       map.set(folderId, [...(map.get(folderId) || []), note])

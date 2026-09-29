@@ -293,9 +293,9 @@
 .home-line { position: relative; }
 .home-composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: end;
-  gap: 6px 10px;
+  gap: 6px 8px;
   padding: 16px 12px 12px 20px;
   border-radius: 20px;
   transition: box-shadow var(--d-base);
@@ -337,6 +337,23 @@
 .home-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-chip i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--critical); }
 .home-chip button { flex: none; margin-left: auto; color: var(--on-1); text-decoration: underline; text-underline-offset: 2px; }
+
+/* The Offline switch at the end of the line, and the calm line under it while it's on. */
+.home-offline {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--on-3);
+  transition: background var(--d-fast), color var(--d-fast);
+}
+.home-offline:hover { color: var(--on-1); background: color-mix(in srgb, var(--on-1) 10%, transparent); }
+.home-offline[aria-pressed="true"] { color: var(--on-solid-ink); background: var(--on-solid); }
+.home-offline svg { width: 15px; height: 15px; }
+.home-offline-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: var(--t-xs); font-weight: 520; color: var(--on-2); }
+.home-offline-note svg { flex: none; width: 13px; height: 13px; }
 
 /* The drawer that folds open under the line as you type. Solid, like a Mac menu, and over
    any room below the line (under the dock). Save is always first and picked, so Return never
@@ -660,3 +677,25 @@
   .icon-grid { flex: none; height: 206px; grid-template-columns: repeat(4, minmax(0, 1fr)); justify-content: stretch; }
   .dock { display: none; }
 }
+
+/* One calm line from the desk: why going offline didn't work, or that a room waits. */
+.desk-note {
+  position: absolute;
+  z-index: 45;
+  left: 50%;
+  bottom: 100px;
+  translate: -50% 0;
+  max-width: min(560px, calc(100% - 32px));
+  margin: 0;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: var(--t-xs);
+  font-weight: 520;
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), 0 18px 40px -16px rgb(0 0 0 / 45%);
+  pointer-events: none;
+  animation: desk-note-in 520ms var(--spring) both;
+}
+@keyframes desk-note-in { from { opacity: 0; translate: -50% 8px; } }
+@media (prefers-reduced-motion: reduce) { .desk-note { animation: none; } }

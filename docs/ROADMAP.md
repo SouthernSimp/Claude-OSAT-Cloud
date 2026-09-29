@@ -27,9 +27,9 @@ He wants an MVP **for himself**: calm, anxiety-reducing, good-looking and unique
 | 8 | Your Mac's files in OSAT, the quick chat, Ask reads files | Merged (PR #10) |
 | 9 | One desk: the window and the ⌥Space layer become one | Merged (PR #11) |
 | 10 | A living desk: one line for everything, widgets that open, Incognito (going under) | Merged (PR #12) |
-| 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | In review (PR #13) |
-| 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | In progress |
-| 12b | Offline mode: Incognito becomes a toggle on the line instead of a place (spec in the Phase 12 PR) | Next |
+| 11 | Nodes: the Sky above the desk, stickies on the desk, the scratch page under it, a neutral look | Merged (PR #13) |
+| 12 | Make it simple: one word per thing, names without numbers, @ only links, plain Help me sort, Import a node file, Projects fold into nodes, Reflection lives in the Journal, Appearance under Tools | Merged (PR #14) |
+| 12b | Offline mode: Incognito becomes a switch on the line instead of a place | In review |
 | 13 | Mac powers: Hyper key, keywords, the ring, clipboard history, window snapping, the Tools wheel, a movable dock, resizing | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
 | 15 | Paper in: a photo of stickies becomes stickies (the Mac reads handwriting) | Planned |
@@ -393,7 +393,7 @@ blurred, sits behind it.
 - **Incognito** (going under): OSAT with the internet off, checked by a fence test and the Mac
   end-to-end test. (Phase 11 turned it into the scratch page.)
 
-### Phase 11: Nodes (in progress)
+### Phase 11: Nodes (merged, PR #13)
 Nate, Sep 28, with photos of his five piles of paper stickies: nodes in a ranked row, "Expanded"
 ones with sorted stacks (#IDEAS) above and a pile to sort below; "the sky view on top, then the
 OSAT layer, then the temporary/incognito window"; stickies left on the desk; "make map a part of
@@ -441,7 +441,7 @@ notes"; clean light/dark, no brown or orange; Esc must never hide the desk.
   Nothing is rewritten; an older OSAT refuses the data instead of dropping the new fields.
   Where stickies lie on the desk and the scratch page is per Mac (`places`), like widgets.
 
-### Phase 12: Make it simple (in progress)
+### Phase 12: Make it simple (merged, PR #14)
 Nothing new to learn; fewer words and fewer ways to do the same thing. "Simple and for the
 people": when two options fit, the one a person understands without an explanation.
 - **One word per thing**, everywhere: sticky, note, node, branch, Unsorted, Delete, Move to,
@@ -464,6 +464,24 @@ people": when two options fit, the one a person understands without an explanati
   habit or a chat, and restoring a backup, offer Undo. The Mac menu says Go Incognito / Leave
   Incognito; the Journal's tabs are Today, Evening and Earlier. Calendar no longer sends events to
   Google or Outlook. The old boards stop updating in the background.
+
+### Phase 12b: Offline mode (in review)
+Incognito stops being a place under the desk and becomes a switch: **Offline**.
+- **The same privacy:** the one `under` flag and `desktop/under.cjs` still do all the work: nothing
+  but this Mac answers (LM Studio on loopback still does), browser tabs sleep, downloads (the AI's
+  too) pause and resume, the iPhone link pauses, the menu-bar icon is a moon.
+- **The switch:** at the end of the line (a crossed-out wifi), the menu-bar menu's "Offline"
+  checkbox, Go Offline / Go Online in the Go menu (⇧⌘U), and "Offline" in ⌘K. While it's on, a calm
+  "Offline · nothing leaves OSAT" sits under the line. The desk and its rooms stay where they are.
+- **What waits:** Browser, Terminal and Now Playing say "Offline: … waits until you're back online";
+  so do downloading an AI size, opening a file in another app, app launchers and the iPhone link.
+  Files on this Mac still list, show, Quick Look and search, so the desk's Desktop stays.
+- **Captures:** what the line saves offline is an ordinary sticky on the desk, `source: 'Offline'`.
+- **Gone:** the page under the desk (`Under.jsx`, `under.css`, its ink, pill and menus), the dock's
+  Incognito button, ⌥⌘↓ to go under, and "Come up". Schema 5 makes every scratch sticky an
+  ordinary sticky in Unsorted, words, colour and dates kept.
+- **Open questions answered by default:** Offline remembers itself across restarts (as Incognito
+  did: safer than silently going back online), and Ask's row stays (it only ever talks to this Mac).
 
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |

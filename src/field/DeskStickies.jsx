@@ -17,7 +17,7 @@ export function spotOn(box, left, top, size) {
   return { x: x / box.width, y: y / box.height, ...(size ? { w: size.w, h: size.h } : {}) }
 }
 
-/* Stickies set down on a surface: the desk, or the scratch page under it. Each is a note
+/* Stickies set down on a surface (the desk). Each is a note
    with a place (`<prefix>:<id>` in the Mac's places, fractions of the surface) and maybe a
    size. Dragging one around sets it down again (on the grid); its corner resizes
    it; its × deletes it (onToss, with Undo). A new one is written where the surface was

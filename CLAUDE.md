@@ -121,6 +121,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `createEmptyDoc`, `diffDocs`, `applyOps` (returns the inverse, for undo), `validateOps`,
   `compactOps`, `migrations[]` and the hub. It is unpacked from the app archive
   (`asarUnpack`) so the main process can `import()` it.
+  - `under.cjs`: Offline's engine. One flag (`prefs.under`, read before anything starts): main's
+    fetch and every session's requests refuse all but this Mac (loopback, so LM Studio works),
+    `refusal(channel)` answers what waits in plain words, browser tabs sleep, downloads (the
+    AI's too) pause and resume, the iPhone link pauses. The renderer talks to it as `osatUnder`.
   - `browser.cjs`, `terminal.cjs`, `local-ai.cjs` (LM Studio on 127.0.0.1:1234),
     `path-guard.cjs`, `text-files.cjs`.
 - `ios/` — the iPhone app: a SwiftUI shell (XcodeGen `project.yml`) showing the web app with
@@ -143,15 +147,17 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `lib/ContextMenu.jsx`: `useContextMenu()` right-click menus (step-in lists, paper swatches).
   - `shell/glass.jsx`: the liquid-glass SVG filter (`GlassDefs`), `useAlive()` (cursor light on
     `.glass`/`.lit`, `--px/--py` for parallax) and the dock's magnify.
-  - `shell/Desk.jsx`: the desk and its three layers — the Sky above (`sky/Sky.jsx`, state `sky`,
-    ⌘3 / ⌥⌘↑ / a sticky held at the top), the desk (`FieldDesk`: widgets, the line, the shelf of
+  - `shell/Desk.jsx`: the desk and its two layers — the Sky above (`sky/Sky.jsx`, state `sky`,
+    ⌘3 / ⌥⌘↑ / a sticky held at the top) and the desk (`FieldDesk`: widgets, the line, the shelf of
     Desktop files or nodes and notes, stickies on the desk via `field/DeskStickies.jsx`, the
-    right-click desk menu), and Incognito under it (`shell/Under.jsx`: the scratch page). The dock
+    right-click desk menu). Offline is a switch at the end of the line (`Line.jsx`, `offline` /
+    `onOffline`; also ⇧⌘U, the menu-bar icon and "Offline" in ⌘K): the desk stays, a calm line
+    under it says so, and Browser, Terminal and Now Playing say they wait (`ONLINE_ONLY`). The dock
     (`shell/Shell.jsx`: `Dock` with app launchers; Tools holds Appearance, which opens Settings →
     Appearance; its Sky button takes a dragged sticky) and every room as a solid draggable pop-out (`ROOMS`, `PopRoom`; double-click the bar
     to fill the screen). Rooms open beside the line (`shell/placement.js`); when one covers it,
     the line rises (`raised`). Esc leaves a field in a pop-out, then closes the top pop-out, then
-    comes back to the desk from the Sky or Incognito; it never puts the desk away (⌥Space and ⌘W
+    comes back to the desk from the Sky; it never puts the desk away (⌥Space and ⌘W
     do). Also the welcome, capture (⇧⌘N) and the menu-bar commands. The browser preview shows a
     stand-in desktop and keeps `places` in localStorage.
   - `sky/`: `Sky.jsx` (the layer: find a sticky, Import a node file, the actions and menus,
@@ -185,6 +191,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   Delete, Move to, New node / New branch, Write a sticky, Color. Never thought (for a card),
   folder (for a node), Unfiled, To sort, Toss, Clear, Put inside, Make it a node. Nodes show
   names only, never numbers. (Files keeps "folder": those are the Mac's real folders.)
+  Offline (Go Offline / Go Online), never Incognito, Under, Come up or scratch page.
 - Nodes (schema 3): every top-level folder is a node, a folder inside one is a branch, a note is a
   sticky. Order is `rank` (`rankOf`: a missing rank is the creation time, so only hand-ranked
   things carry one); folders may have `color` and `at` ({x, y} on the Sky's board; `placeNodes`
@@ -197,9 +204,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   ever rewritten (`renameFolder` only renames). `addSticky`, the line, `writeSticky`, the Journal
   and the note editor (when writing ends) call `linkMentions`. `splitMentions` draws them as links
   (`md-mention` in Markdown, `sticky-mention` on stickies). Unsorted everywhere is "in no node"
-  (`isUnsorted`: or captured and not sorted yet). A note in no folder is Unsorted in the Sky; `kind: 'scratch'` is a
-  sticky on the Incognito page (in no pile until moved). Where stickies lie is per Mac:
-  `places['note:<id>']` on the desk, `places['scratch:<id>']` under it ({x, y} fractions, w/h).
+  (`isUnsorted`: or captured and not sorted yet). A note in no folder is Unsorted in the Sky. Where stickies lie is per Mac:
+  `places['note:<id>']` on the desk ({x, y} fractions, w/h). Schema 5 turned the old scratch
+  page's stickies (`kind: 'scratch'`) into ordinary ones in Unsorted; a sticky saved while
+  offline is ordinary too, with `source: 'Offline'`.
 - Data rules: a captured sticky is one note with `unsorted: true` and a `source`; filing,
   pinning or Keep clears it. Each day has one note, `day-YYYY-MM-DD` with `kind: 'day'`
   (`ensureDayNote`): it is the journal page and where new next steps land. Wikilinks follow

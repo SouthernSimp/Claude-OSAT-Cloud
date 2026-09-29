@@ -47,9 +47,8 @@ export function normalizeNote(value, index = 0) {
     // A thought that arrived without a home (overlay, quick capture, AI, a clip) until it is sorted.
     unsorted: value.unsorted === true,
     source: cleanString(value.source) || null,
-    // The one note per day (its journal page and that day's next steps), or a sticky
-    // on the scratch page under the desk until it is made into a node.
-    kind: value.kind === 'day' && DATE_KEY.test(value.date) ? 'day' : value.kind === 'scratch' ? 'scratch' : null,
+    // The one note per day: its journal page and that day's next steps.
+    kind: value.kind === 'day' && DATE_KEY.test(value.date) ? 'day' : null,
     date: value.kind === 'day' && DATE_KEY.test(value.date) ? value.date : null,
     // Only kept once it was ranked by hand (see rankOf), so older notes don't all change.
     ...(Number.isFinite(value.rank) ? { rank: value.rank } : {}),

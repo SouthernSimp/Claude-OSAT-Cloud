@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 4
+export const SCHEMA = 5
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -31,6 +31,15 @@ export const migrations = [
   // 4: Projects fold into nodes (projectNodes), and a note can remember which node each
   // of its @s means (`refs`), which an older OSAT would drop.
   { from: 3, run: (doc) => projectNodes(doc) },
+  // 5: Incognito's scratch page became Offline mode: each sticky left there is an ordinary
+  // sticky in Unsorted, its words, colour and dates kept. An older OSAT would hide them.
+  {
+    from: 4,
+    run: (doc) => ({
+      ...doc,
+      notes: (Array.isArray(doc.notes) ? doc.notes : []).map((note) => (note?.kind === 'scratch' ? { ...note, kind: null, unsorted: !note.folderId } : note)),
+    }),
+  },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding

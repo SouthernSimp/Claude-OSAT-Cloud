@@ -62,9 +62,9 @@ test('home icons put pinned notes and nodes first, and count what does not fit',
   assert.deepEqual(cut.map((item) => item.id), ['pinned', 'f-a', 'f-b', 'more'])
   assert.equal(cut[3].count, 2)
   assert.deepEqual(homeItems({ notes: [], folders: [] }, 6), [])
-  // A sticky already out on the desk, and one on the scratch page, aren't icons too.
-  const scratch = note('scratch', '2026-09-24T00:00:00Z', { kind: 'scratch' })
-  assert.deepEqual(homeItems({ notes: [...notes, scratch], folders: [] }, Infinity, new Set(['new'])).map((item) => item.id), ['pinned', 'old'])
+  // A sticky already out on the desk, and a day page, aren't icons too.
+  const day = note('day', '2026-09-24T00:00:00Z', { kind: 'day' })
+  assert.deepEqual(homeItems({ notes: [...notes, day], folders: [] }, Infinity, new Set(['new'])).map((item) => item.id), ['pinned', 'old'])
 })
 
 test('loose thoughts gather into one pile and only a few recent notes stay out', () => {
