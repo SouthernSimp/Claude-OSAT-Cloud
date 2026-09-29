@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ArrowRight, At, CalendarPlus, DotsThree, Minus, Plus, Question } from '@phosphor-icons/react'
+import { ArrowRight, At, CalendarPlus, DotsThree, Minus, Plus, Question, Sparkle } from '@phosphor-icons/react'
 
 import { hashUnit } from '../field/field-model.js'
 import { carryable, useDrop } from '../lib/carry.js'
@@ -433,6 +433,12 @@ function NodeCard({ folder, index, spot, isOpen, workspace, actions, toggle, sor
         {actions.renaming === folder.id
           ? <NameField initial={folder.name} placeholder="Name the node" onDone={(name) => actions.endRename(folder.id, name)} />
           : <strong>{folder.name}</strong>}
+        {(folder.fresh || folder.packed || folder.from?.source) && (
+          <span className="node-origin">
+            {folder.fresh && <em>New</em>}
+            {[folder.from?.source && `from ${folder.from.source}`, folder.packed && 'packed'].filter(Boolean).join(' · ')}
+          </span>
+        )}
         {!isOpen && branches.length > 0 && (
           <ul className="node-peek" aria-label={`Branches: ${branches.map((branch) => branch.name).join(', ')}`}>
             {branches.slice(0, 3).map((branch) => <li key={branch.id} data-paper={branch.color || 'bone'}>{branch.name}</li>)}
@@ -476,6 +482,17 @@ function NodeLanes({ folder, workspace, actions, sorting }) {
   const naming = actions.branching === folder.id
   return (
     <div className="lanes is-across" {...lanes}>
+      {folder.packed && (
+        <div className="packed-bar" role="note">
+          <p>{actions.unpacking?.id === folder.id ? actions.unpacking.line : 'Packed: only a summary so far. Unpack it into branches when you’re ready.'}</p>
+          {actions.unpackWithAi && (
+            <button type="button" className="is-primary" disabled={actions.unpacking?.busy} title={`Asks ${actions.answering}`} onClick={() => actions.unpackWithAi(folder)}>
+              <Sparkle weight="bold" /> Unpack with AI
+            </button>
+          )}
+          <button type="button" onClick={() => { actions.unpack(folder.id); actions.startBranch(folder.id) }}>{actions.unpackWithAi ? 'By hand' : 'Unpack'}</button>
+        </div>
+      )}
       <AskHelp notes={asksIn(workspace, folder.id)} actions={actions} />
       {(!branches.length || loose.length > 0 || sortingHere) && (
         <Lane loose labelled={branches.length > 0} folder={folder} notes={loose} actions={actions} sorting={sortingHere} workspace={workspace} />
@@ -575,8 +592,8 @@ function SortHelp({ sorting, workspace, actions }) {
   if (!sorting.groups.length) {
     return (
       <div className="sort-help" role="status">
-        <p>{sorting.line}</p>
-        <button type="button" onClick={actions.endSort}>OK</button>
+        <p>{sorting.asking || sorting.line}</p>
+        <button type="button" onClick={actions.endSort}>{sorting.asking ? 'Stop' : 'OK'}</button>
       </div>
     )
   }
@@ -592,6 +609,7 @@ function SortHelp({ sorting, workspace, actions }) {
           <button type="button" onClick={() => actions.dismissGroup(group)}>Dismiss</button>
         </div>
       ))}
+      {sorting.asking && <p className="sort-asking">{sorting.asking}</p>}
     </div>
   )
 }

@@ -22,6 +22,7 @@ import { FilesView } from '../views/Files.jsx'
 import { HabitsView } from '../views/Habits.jsx'
 import { JournalView } from '../views/Journal.jsx'
 import { NowPlayingView } from '../views/NowPlaying.jsx'
+import { RoadmapView } from '../views/Roadmap.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
 import { covers, grow, placeRoom } from './placement.js'
@@ -54,6 +55,7 @@ const ROOMS = {
   Terminal: [860, 540],
   Settings: [980, 760],
   NowPlaying: [520, 660],
+  Roadmap: [900, 760],
   note: [600, 640],
 }
 
@@ -534,6 +536,7 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Habits': return <HabitsView {...room} today={today} />
     case 'Budget': return <BudgetView {...room} />
     case 'Settings': return <SettingsView {...room} storage={storage} target={pop.detail?.section ? target : null} />
+    case 'Roadmap': return <RoadmapView />
     case 'NowPlaying': return <NowPlayingView {...room} media={window.osatDesk?.nowPlaying ? window.osatDesk : null} />
     default: return null
   }

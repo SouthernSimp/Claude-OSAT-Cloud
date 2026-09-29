@@ -1,0 +1,54 @@
+/* ---- Settings → Bots (views/Bots.jsx) ----------------------------------------
+   The drop folder, the models, the scan folder and the connector: one section. */
+
+.bots-card .settings-path { margin-top: 10px; }
+.settings .bots-message,
+.settings .bots-warning { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: var(--t-sm); }
+.settings .bots-message svg { flex: none; width: 15px; height: 15px; margin-top: 3px; color: var(--accent); }
+.settings .bots-warning { padding: 10px 12px; border-radius: var(--r-md); color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
+
+.bots-arrivals { display: grid; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.bots-arrivals li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); color: var(--muted); }
+.bots-arrivals li svg { width: 15px; height: 15px; translate: 0 2px; color: var(--faint); }
+.bots-arrivals li b { color: var(--ink); font-weight: 600; }
+.bots-arrivals small { color: var(--faint); font-size: var(--t-xs); white-space: nowrap; }
+
+/* Which AI answers: this Mac, or a connected cloud model. */
+.bots-models { display: grid; gap: 8px; margin-top: 14px; }
+.bots-model { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 2px 10px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); text-align: left; color: var(--ink); background: var(--surface); cursor: pointer; }
+.bots-model:hover { background: var(--surface-hover); }
+.bots-model[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.bots-model > svg { grid-row: span 2; width: 18px; height: 18px; color: var(--muted); }
+.bots-model[aria-checked="true"] > svg { color: var(--accent); }
+.bots-model strong { font-weight: 650; }
+.bots-model span { grid-column: 2; color: var(--muted); font-size: var(--t-sm); }
+.bots-model select { grid-column: 2; justify-self: start; width: auto; max-width: 100%; font-size: var(--t-sm); }
+.settings .bots-privacy { display: flex; gap: 8px; margin: 12px 0 0; padding: 10px 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--ink) 4%, transparent); font-size: var(--t-sm); }
+.bots-privacy svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--accent); }
+
+/* Connect a provider: pick it, paste the key. */
+.bots-connect { display: grid; gap: 10px; margin-top: 14px; }
+.bots-connect label { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 10px; align-items: center; font-size: var(--t-sm); color: var(--muted); }
+.bots-connect input, .bots-connect select { min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-md); color: var(--ink); background: var(--surface); font: inherit; font-size: var(--t-sm); }
+.bots-connect .bots-key input { font-family: var(--font-mono); }
+.bots-connect .button-row { margin-top: 4px; }
+.bots-providers { display: grid; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.bots-providers li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
+.bots-providers li > svg { width: 15px; height: 15px; color: var(--faint); }
+.bots-providers span { display: grid; gap: 2px; min-width: 0; }
+.bots-providers b { color: var(--ink); font-weight: 600; }
+.bots-providers small { color: var(--muted); font-size: var(--t-xs); }
+
+@container room (max-width: 560px) {
+  .bots-connect label { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .bots-providers li { grid-template-columns: 16px minmax(0, 1fr); }
+  .bots-providers li > button { grid-column: 2; justify-self: start; }
+}
+
+/* The connector: what to paste in each app. */
+.bots-setups { display: grid; gap: 12px; margin-top: 14px; }
+.bots-setup { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.bots-setup strong { color: var(--ink); font-weight: 650; }
+.settings .bots-setup p { margin: 0; font-size: var(--t-sm); }
+.bots-setup pre { max-height: 190px; margin: 0; padding: 10px 12px; overflow: auto; border-radius: var(--r-md); background: var(--surface-sunken); color: var(--ink); font: 12px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bots-setup .outline-button { justify-self: start; }
