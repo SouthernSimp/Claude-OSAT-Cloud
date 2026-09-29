@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
-import { CircleHalf, Monitor, Moon, Sun, Toolbox } from '@phosphor-icons/react'
+import { CircleHalf, Globe, Monitor, Moon, Sun, Toolbox } from '@phosphor-icons/react'
 
 import { useDrop } from '../lib/carry.js'
 import { Menu } from '../lib/Menu.jsx'
@@ -13,7 +13,7 @@ export const DEFAULT_BLUR = 60
 export function Dock({ view, navigate, storage, aiReady, extra = [], onSendUp, children }) {
   const dock = useRef(null)
   const current = spaceFor(view)?.id || 'Today'
-  const inTools = TOOLS.some((tool) => tool.id === current) || current === SETTINGS.id || spaceFor(view)?.dock === false
+  const inTools = TOOLS.some((tool) => tool.id === current && tool.id !== 'Browser') || current === SETTINGS.id || spaceFor(view)?.dock === false
 
   /* The soft pill behind the current space glides to the next one. */
   useLayoutEffect(() => {
@@ -32,12 +32,16 @@ export function Dock({ view, navigate, storage, aiReady, extra = [], onSendUp, c
       {SPACES.map((space, index) => space.dock !== false && (
         <DockSpace key={space.id} space={space} index={index} current={current} aiReady={aiReady} navigate={navigate} onSendUp={space.id === 'Mindmap' ? onSendUp : null} />
       ))}
+      <button type="button" data-mag data-space="Browser" data-tip="The web, right here" aria-current={current === 'Browser' ? 'page' : undefined} onClick={(event) => navigate('Browser', null, { from: event.currentTarget.getBoundingClientRect() })}>
+        <Globe weight={current === 'Browser' ? 'fill' : 'regular'} />
+        <span className="dock-label">Web</span>
+      </button>
       <Menu
         align="start"
         className="dock-more"
         ariaLabel="Tools"
         items={[
-          ...[...SPACES.filter((space) => space.dock === false), ...TOOLS].map((tool) => ({ label: tool.label, icon: tool.icon, checked: current === tool.id, onSelect: () => navigate(tool.id) })),
+          ...[...SPACES.filter((space) => space.dock === false), ...TOOLS.filter((tool) => tool.id !== 'Browser')].map((tool) => ({ label: tool.label, icon: tool.icon, checked: current === tool.id, onSelect: () => navigate(tool.id) })),
           ...extra,
           { divider: true },
           { label: 'Appearance', icon: CircleHalf, onSelect: () => navigate(SETTINGS.id, { section: 'appearance' }) },
@@ -86,6 +90,8 @@ function DockSpace({ space, index, current, aiReady, navigate, onSendUp }) {
   )
 }
 
+export const BACKDROPS = [['', 'Your desktop'], ['sonoma', 'Sonoma'], ['dusk', 'Dusk'], ['sea', 'Sea'], ['meadow', 'Meadow']]
+
 /* Light or dark, and how much the desktop behind OSAT blurs (Settings → Appearance). */
 export function AppearanceControls({ workspace, commit }) {
   const settings = workspace.settings || {}
@@ -97,6 +103,14 @@ export function AppearanceControls({ workspace, commit }) {
         {[['system', 'Auto', Monitor], ['light', 'Light', Sun], ['dark', 'Dark', Moon]].map(([id, label, Icon]) => (
           <button key={id} type="button" role="radio" aria-checked={workspace.theme === id} onClick={() => commit((state) => ({ ...state, theme: id }))}>
             <Icon weight={workspace.theme === id ? 'fill' : 'regular'} />{label}
+          </button>
+        ))}
+      </div>
+      <p className="pop-kicker">Backdrop</p>
+      <div className="backdrop-picks" role="radiogroup" aria-label="Backdrop">
+        {BACKDROPS.map(([id, label]) => (
+          <button key={id || 'mac'} type="button" role="radio" data-swatch={id || 'mac'} aria-checked={(settings.backdrop || '') === id} onClick={() => set({ backdrop: id })}>
+            <i aria-hidden="true" />{label}
           </button>
         ))}
       </div>

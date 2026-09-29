@@ -44,6 +44,12 @@ export function useWorkspace() {
     document.documentElement.style.setProperty('--blur-n', String(amount / 100))
     document.documentElement.style.setProperty('--wall-blur', `${Math.round(amount * 0.8)}px`)
   }, [blur])
+  // …and the backdrop painted behind the desk ('' = the Mac's own desktop).
+  const backdrop = workspace?.settings?.backdrop || ''
+  useEffect(() => {
+    if (backdrop) document.documentElement.dataset.backdrop = backdrop
+    else delete document.documentElement.dataset.backdrop
+  }, [backdrop])
   return { workspace, status, commit: store.commit, replace: store.replace, ready: status.ready }
 }
 

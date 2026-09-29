@@ -532,6 +532,14 @@ be usable and understandable to anyone of any age." What confused, and what chan
   zoom or the board's menu. The hint at the bottom follows what you're doing, and an empty node says
   what to do first.
 
+### Phase 17: Make it yours (in review)
+
+- Backdrops in Settings → Appearance: Your desktop (default), Sonoma (the promo's), Dusk, Sea, Meadow
+  (`settings.backdrop`, painted on `.overlay-surface`).
+- About you (Settings → AI): a few plain lines the AI reads before every answer (`settings.aboutMe`,
+  passed to `systemPrompt`). OSAT's "soul file", in plain words.
+- The Browser sits on the dock as "Web".
+
 ### Nate's list (Sep 28), and where each part lands
 | Wish | Phase |
 |---|---|

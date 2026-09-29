@@ -359,3 +359,18 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   .app-dock { translate: -50% 0; }
   button:active:not(:disabled) { scale: none; }
 }
+
+/* A chosen backdrop paints the desk (and, in the preview, replaces the lake). */
+:root[data-backdrop="sonoma"] .overlay-surface { background: var(--backdrop-sonoma); }
+:root[data-backdrop="dusk"] .overlay-surface { background: var(--backdrop-dusk); }
+:root[data-backdrop="sea"] .overlay-surface { background: var(--backdrop-sea); }
+:root[data-backdrop="meadow"] .overlay-surface { background: var(--backdrop-meadow); }
+.backdrop-picks { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 10px; }
+.backdrop-picks button { display: grid; justify-items: center; gap: 6px; font-size: var(--t-sm); color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.backdrop-picks i { width: 64px; height: 42px; border-radius: 10px; border: 2px solid transparent; background: var(--backdrop-mac, linear-gradient(135deg, #cfd4da, #8a939c)); }
+.backdrop-picks [aria-checked="true"] i { border-color: var(--accent); }
+.backdrop-picks [data-swatch="sonoma"] i { background: var(--backdrop-sonoma); }
+.backdrop-picks [data-swatch="dusk"] i { background: var(--backdrop-dusk); }
+.backdrop-picks [data-swatch="sea"] i { background: var(--backdrop-sea); }
+.backdrop-picks [data-swatch="meadow"] i { background: var(--backdrop-meadow); }
+.about-you textarea { width: 100%; resize: vertical; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line, rgba(127,127,127,.3)); background: var(--surface-raised); color: inherit; }
