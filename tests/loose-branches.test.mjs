@@ -72,6 +72,11 @@ test('where a branch could go: every node and branch except itself, what is in i
 test('the model’s answer: a number and a reason, a name, none, or nothing usable', () => {
   const names = ['Clients', 'Clients / Tommy', 'Projects']
   assert.deepEqual(readWhereAnswer('2: both are about Tommy', names), { place: 1, why: 'both are about Tommy' })
+  // The name is what the prompt asks for: the longest name wins, and a name with a colon in it still counts.
+  assert.deepEqual(readWhereAnswer('Clients / Tommy: both are about Tommy', names), { place: 1, why: 'both are about Tommy' })
+  assert.deepEqual(readWhereAnswer('**Clients**: it mentions clients', names), { place: 0, why: 'it mentions clients' })
+  assert.deepEqual(readWhereAnswer('Trip: Ohio - hotels and packing', ['Clients', 'Trip: Ohio']), { place: 1, why: 'hotels and packing' })
+  assert.deepEqual(readWhereAnswer('2 Clients / Tommy: the number came first', names), { place: 1, why: 'the number came first' })
   assert.deepEqual(readWhereAnswer('Here is my answer\n**Clients** - it mentions clients', names), { place: 0, why: 'it mentions clients' })
   assert.deepEqual(readWhereAnswer('3', names), { place: 2, why: '' })
   assert.equal(readWhereAnswer('none', names), null)

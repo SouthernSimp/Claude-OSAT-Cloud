@@ -34,6 +34,22 @@ test('in the Sky it says so, and lists what is open there, branch by branch', ()
   assert.doesNotMatch(map, /Open in the Sky: Cake/, 'a branch is not a node: only nodes open')
 })
 
+test('connections and the desk\'s stacks are named; a line to a sticky in the Bin is not', () => {
+  const state = space(
+    [note('Call Tommy', { folderId: 'cl', links: ['note:Bag'] }), note('Bag', { folderId: 'cl' }), note('Old one', { unsorted: true, trashedAt: at, links: ['note:Bag'] }), note('Eggs', { unsorted: true }), note('Milk', { unsorted: true })],
+    [folder('cl', { name: 'Clients', links: ['note:Eggs'] })],
+  )
+  const map = boardMap(state, { now: NOW, stacks: [{ name: 'Groceries', titles: ['Eggs', 'Milk'] }, { name: '', titles: ['Bag'] }] })
+  assert.match(map, /Connected \(a line between two things; nothing was filed by it\):\n- Call Tommy — Bag\n- Clients — Eggs/)
+  assert.doesNotMatch(map, /Old one —|— Old one/)
+  assert.match(map, /Stacks on the desk[^\n]*:\n- Groceries: Eggs · Milk\n- A stack: Bag/)
+  assert.doesNotMatch(boardMap(space([note('a')]), { now: NOW }), /Connected|Stacks on the desk/, 'nothing to say, nothing said')
+})
+
+test('the guide teaches the mind map, connections, stacks and the Mac tools', () => {
+  for (const words of [/mind map/, /connection/, /never files or moves/, /stack/, /quick search/, /the ring/]) assert.match(OSAT_GUIDE, words)
+})
+
 test('an empty workspace says so plainly', () => {
   const map = boardMap(space(), { now: NOW })
   assert.match(map, /Unsorted is empty\./)

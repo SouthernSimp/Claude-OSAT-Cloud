@@ -515,6 +515,7 @@ export function FieldDesk({
         onNote={onNote}
         onOpenNote={openNote}
         onSaved={(id) => { setFreshId(id); landOnDesk(id) }}
+        stacks={stacks.map((stack) => ({ name: stack.name, titles: stack.notes.map((note) => note.title) }))}
       />
 
       <nav className="home-icons" aria-label={onDesktop ? 'Your Desktop' : 'OSAT items'} data-size={iconSize}>

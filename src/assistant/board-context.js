@@ -8,12 +8,13 @@ import { localDateKey } from '../daily-practice.js'
 import { nextSteps } from '../next-steps.js'
 import { folderChildren, isBranch } from '../notes-model.js'
 import { nodesOf, pileOf, stickiesIn } from '../nodes-model.js'
+import { linksOf, recordOf } from '../links-model.js'
 import { roadmapPhases } from '../lib/roadmap.js'
 
 /* How OSAT works, as the AI should say it. */
 export const OSAT_GUIDE = `You live inside OSAT, the person's private notes app on their Mac.
 
-How OSAT works, in its own words: a sticky is one thought (a note). A node is a topic, like a trip, a project or a person. Branches group stickies and can hold smaller branches. A branch can also sit on the Sky on its own, in no node yet, until it is given a home. Stickies can be placed freely on the Sky by double-clicking it or pressing New sticky; other captures wait in Unsorted. A sticky on the canvas is still in no node and is available to Sort Unsorted. Nodes are optional: putting a sticky on the canvas never creates one. The desk is where they write, with one line at the bottom to write, find or ask. The Sky is the whiteboard above the desk where the nodes live (⌘3). Other rooms: Notes (⌘2), Ask (⌘4), Files (⌘5), and under Tools: Journal, Calendar, Habits, Money, Sort a pile, Browser, Terminal and the Roadmap (the plan for OSAT, with a Timeline).
+How OSAT works, in its own words: a sticky is one thought (a note). A node is a topic, like a trip, a project or a person. Branches group stickies and can hold smaller branches. A branch can also sit on the Sky on its own, in no node yet, until it is given a home. Stickies can be placed freely on the Sky by double-clicking it or pressing New sticky; other captures wait in Unsorted. A sticky on the canvas is still in no node and is available to Sort Unsorted. Nodes are optional: putting a sticky on the canvas never creates one. The desk is where they write, with one line at the bottom to write, find or ask. The Sky is a mind map above the desk (⌘3): click a node and its branches and stickies spread out around it, joined by lines; double-click a node to focus on just it. A line drawn between two things (they drag the dot on a card) is a connection: it only says they relate, and never files or moves either one. On the desk, dropping a sticky on another makes a stack, a column that only arranges the desk; the stickies keep their homes. Also on this Mac: quick search (⌘⇧Space) finds files, what they copied, apps and notes, and the ring puts quick tools around the pointer; Settings holds their shortcuts. Other rooms: Notes (⌘2), Ask (⌘4), Files (⌘5), and under Tools: Journal, Calendar, Habits, Money, Sort a pile, Browser, Terminal and the Roadmap (the plan for OSAT, with a Timeline).
 Use those words (sticky, node, branch, Unsorted), never "folder", "inbox" or "record" for their notes.
 You read text only. For a picture or a scan you get the words in it, not how it looks; if asked about something you cannot see, say so.
 You can suggest, but you never move or change anything yourself: say where something could go and the person does it. In the Sky, "Sort Unsorted" suggests a home for every sticky in Unsorted, with one click to accept.`
@@ -72,7 +73,7 @@ const WHEN = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short'
 
 /* The map: everything the AI may look at, most useful first, in at most `maxChars`.
    `open` is the ids of the nodes open in the Sky; `where: 'sky'` says they are up there. */
-export function boardMap(state, { open = [], where = 'desk', maxChars = 3200, now = new Date() } = {}) {
+export function boardMap(state, { open = [], where = 'desk', maxChars = 3200, now = new Date(), stacks = [] } = {}) {
   const parts = [where === 'sky' ? 'THEIR OSAT (they are looking at the Sky right now)' : 'THEIR OSAT']
   const room = () => maxChars - parts.join('\n\n').length - 2
   const add = (title, lines, noun = 'lines') => {
@@ -88,6 +89,11 @@ export function boardMap(state, { open = [], where = 'desk', maxChars = 3200, no
   add(`Nodes (${nodes.length}):`, nodeLines(state, nodes), 'nodes')
   if (!nodes.length) parts.push('They have no nodes yet.')
   add(`Branches on the Sky on their own (${alone.length}), in no node yet:`, nodeLines(state, alone), 'branches')
+  // Lines between things: only that they relate, by name.
+  const name = (key) => one(recordOf(state, key)?.title || recordOf(state, key)?.name, 40)
+  add('Connected (a line between two things; nothing was filed by it):', linksOf(state).slice(0, 12).map((link) => `- ${name(link.a)} — ${name(link.b)}`), 'connections')
+  // Stacks on the desk (kept on this Mac, so the desk hands them in).
+  add('Stacks on the desk (stickies standing in a column; they only arrange the desk):', stacks.slice(0, 6).map((stack) => `- ${one(stack.name, 40) || 'A stack'}: ${(stack.titles || []).slice(0, 6).map((title) => one(title, 40)).join(' · ')}`), 'stacks')
   if (open.length) {
     const lines = openLines(state, open, Math.min(1800, room() - 40))
     if (lines.length) parts.push(lines.join('\n'))

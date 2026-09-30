@@ -143,8 +143,8 @@ The branch "${clip(branch, 80)}" is a group of stickies${peek.length ? ` about: 
 Places it could go:
 ${places.map(({ name, peek: inside = [] }, index) => `${index + 1}. ${clip(name, 80)}${inside.length ? ` (has: ${inside.slice(0, 2).map((words) => clip(words, 30).replace(/\s+/g, ' ')).join('; ')})` : ''}`).join('\n') || '(none yet)'}
 
-Write one line: the number of the place it belongs in, a colon, and a few words saying why. If no place fits, write "none". For example:
-2: both are about clients`,
+Write one line: the exact name of the place it belongs in (copy it from the list), a colon, and a few words saying why. If no place fits, write "none". For example:
+Clients / Ana: both are about clients`,
   }]
 }
 
@@ -153,18 +153,26 @@ Write one line: the number of the place it belongs in, a colon, and a few words 
 export function readWhereAnswer(text, placeNames) {
   const line = unwrap(text).split('\n').map((value) => value.replace(/[*_`]/g, '').trim()).find(Boolean) || ''
   if (!line || /^(none|n\/a|unsure|unknown|skip|no place|no\b)/i.test(line)) return null
-  const number = /^(?:place\s*)?#?(\d+)\b\s*(?:[:.)=→]|-+>?)*\s*(.*)$/i.exec(line)
-  let place = -1
-  let why = ''
-  if (number) {
-    place = Number(number[1]) - 1
-    why = number[2]
-  } else {
-    const [head, ...rest] = line.split(/\s*(?::|—|–|\s-\s)\s*/)
-    const key = plain(head)
-    place = placeNames.findIndex((name) => plain(name) === key || plain(String(name).split('/').pop()) === key)
-    why = rest.join(': ')
+  const reason = (rest) => clip(rest.replace(/^[\s\-–—:.]+/, ''), 140)
+  const names = placeNames.map((name, index) => ({ index, name: String(name), key: plain(name) })).filter(({ key }) => key)
+  // Its name starts the line: the longest one that does ("Clients / Ana" is not "Clients"), colon or not.
+  const key = plain(line)
+  const named = [...names].sort((a, b) => b.key.length - a.key.length).find((place) => key.startsWith(place.key))
+  if (named) {
+    const same = line.toLowerCase().startsWith(named.name.toLowerCase())
+    return { place: named.index, why: reason(same ? line.slice(named.name.length) : line.split(/\s*(?::|—|–|\s-\s)\s*/).slice(1).join(': ')) }
   }
-  if (place < 0 || place >= placeNames.length) return null
-  return { place, why: clip(why.replace(/^[\s\-–—:.]+/, ''), 140) }
+  // Or its number (some models answer with the number they were shown).
+  const number = /^(?:place\s*)?#?(\d+)\b\s*(?:[:.)=→]|-+>?)*\s*(.*)$/i.exec(line)
+  if (number) {
+    const place = Number(number[1]) - 1
+    if (place < 0 || place >= placeNames.length) return null
+    const own = plain(placeNames[place])
+    const rest = number[2]
+    return { place, why: reason(own && plain(rest).startsWith(own) ? rest.split(/\s*(?::|—|–|\s-\s)\s*/).slice(1).join(': ') : rest) }
+  }
+  // Or the last part of a name ("Ana" for "Clients / Ana").
+  const [head, ...rest] = line.split(/\s*(?::|—|–|\s-\s)\s*/)
+  const place = placeNames.findIndex((name) => plain(String(name).split('/').pop()) === plain(head))
+  return place < 0 ? null : { place, why: reason(rest.join(': ')) }
 }
