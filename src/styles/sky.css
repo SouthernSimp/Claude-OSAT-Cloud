@@ -357,12 +357,14 @@ html[data-carry-edge="up"] body::after {
   gap: 12px;
   width: max-content;
   cursor: default;
-  transition: translate 560ms var(--glide);
+  transition: translate 560ms var(--glide), opacity 240ms;
   animation: card-in 640ms var(--spring) both;
   animation-delay: calc(min(var(--i, 0), 12) * 45ms);
 }
 @keyframes card-in { from { opacity: 0; scale: 0.86; } }
 .board-card:is(:hover, :focus-within, .is-open) { z-index: 2; }
+/* While a node is open the others step back, still there and one look away. */
+.board:has(.board-card.is-open) .board-card:not(.is-open, :hover, :focus-within, .is-dragging) { opacity: 0.4; }
 .board-card > .node-head { width: 240px; cursor: grab; }
 .board-card > .node-head.is-unsorted { cursor: default; }
 /* Resting nodes breathe a little, each in its own time. */
@@ -467,7 +469,7 @@ html[data-carry-edge="up"] body::after {
 /* ---- Inside an open node: a tree. Only stickies are paper; names are labels ------ */
 
 .lanes { min-width: 0; }
-.lanes.is-across { display: grid; align-content: start; grid-template-columns: max-content; gap: 14px; }
+.lanes.is-across { display: grid; align-content: start; grid-template-columns: fit-content(960px); gap: 14px; }
 .lane { display: grid; gap: 10px; min-width: 0; }
 .lanes.is-across .lane { grid-template-columns: 172px minmax(0, 1fr); align-items: start; }
 .lanes.is-across .lane.is-bare { grid-template-columns: minmax(0, 1fr); }
@@ -551,7 +553,7 @@ html[data-carry-edge="up"] body::after {
 .sort-help button.is-primary { color: var(--accent-ink); background: var(--accent); }
 .sort-help button.is-primary:hover { background: var(--accent-hover); }
 .sort-help svg { width: 12px; height: 12px; }
-.lanes .sticky-list.is-x { overflow: visible; padding: 2px 2px 4px; }
+.lanes .sticky-list.is-x { flex-wrap: wrap; overflow: visible; padding: 2px 2px 4px; }
 /* An empty node says so on a line of its own, with "Write a sticky" under it. */
 .lanes .sticky-list.is-x:has(> .sticky-empty) { flex-wrap: wrap; max-width: 420px; min-height: 0; }
 .lanes .sticky-list.is-x > .sticky-empty { flex: 0 0 100%; margin: 0; }

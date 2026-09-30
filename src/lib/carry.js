@@ -90,17 +90,26 @@ export function useOutsideFiles() {
   }
 }
 
+/* Which slot a point falls before, given the slots' boxes in reading order (a row that wraps
+   counts: the row under the pointer decides, then left to right within it). */
+export function slotIndex(boxes, axis, x, y) {
+  const wrapped = axis === 'x' && boxes.some((box) => box.top > boxes[0].bottom - 1)
+  const row = wrapped ? boxes.reduce((top, box) => (box.top <= y ? box.top : top), boxes[0]?.top) : 0
+  for (let i = 0; i < boxes.length; i += 1) {
+    const box = boxes[i]
+    if (wrapped && box.top < row - 1) continue
+    if (wrapped && box.top > row + 1) return i
+    if ((axis === 'x' ? x : y) < (axis === 'x' ? box.left + box.width / 2 : box.top + box.height / 2)) return i
+  }
+  return boxes.length
+}
+
 /* Where in a list (the target's own [data-slot] children, not counting the carried one) a
    point falls, and the line that shows it. */
 function slotAt(element, axis, x, y) {
   const items = [...element.querySelectorAll('[data-slot]')]
     .filter((item) => item.closest('[data-drop]') === element && !item.classList.contains('is-carried') && !item.querySelector('.is-carried'))
-  const along = axis === 'x' ? x : y
-  let index = items.length
-  for (let i = 0; i < items.length; i += 1) {
-    const box = items[i].getBoundingClientRect()
-    if (along < (axis === 'x' ? box.left + box.width / 2 : box.top + box.height / 2)) { index = i; break }
-  }
+  const index = slotIndex(items.map((item) => item.getBoundingClientRect()), axis, x, y)
   const beside = items[index] || items[index - 1]
   const box = (beside || element).getBoundingClientRect()
   const before = Boolean(items[index])

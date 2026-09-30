@@ -95,8 +95,12 @@ async function main() {
     if (await guide.count()) problems.push(`sky: the guide showed again after Got it (${theme})`)
     await sleep(700)
     await page.screenshot({ path: `${OUT}/${theme}-Sky.png` })
+    // Opening a node never moves the other cards (it used to push them away for good).
+    const cardSpots = () => page.evaluate(() => JSON.stringify([...document.querySelectorAll('.board-card[data-card]')].map((card) => [card.dataset.card, card.style.translate])))
+    const spotsBefore = await cardSpots()
     await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true }).catch(() => problems.push(`sky: Project Direction was not there to open (${theme})`))
     await page.locator('.board-card.is-open .lane').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`sky: opening a node showed no lanes (${theme})`))
+    if (await cardSpots() !== spotsBefore) problems.push(`sky: opening a node moved the other cards (${theme})`)
     await sleep(900)
     await page.screenshot({ path: `${OUT}/${theme}-Sky-node.png` })
     await page.keyboard.press('Escape')
@@ -262,11 +266,23 @@ async function main() {
   await page.screenshot({ path: `${OUT}/sky-folded.png` })
   await unsortedCard.locator('.fold-pile').dispatchEvent('click')
   await unsortedCard.locator('.sticky', { hasText: 'Buy cat litter' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: clicking the pile did not open Unsorted again'))
+  // Opening a node shows its top at a size you can read, so scroll the board (as a person does) to reach a branch further down.
+  const reveal = async (locator) => {
+    const top = await locator.evaluate((element) => element.getBoundingClientRect().top).catch(() => null)
+    if (top === null) return
+    await page.mouse.move(700, 450)
+    await page.mouse.wheel(0, top - 350)
+    await sleep(500)
+  }
+  await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true })
+  await sleep(900)
+  await reveal(page.locator('.lane-head', { hasText: 'Later' }).first())
   await page.getByRole('button', { name: 'Fold Later', exact: true }).click({ force: true }).catch(() => problems.push('sky: a branch had no fold arrow'))
   await page.locator('.lane[aria-label="Branch: Later"] .lane-folded').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the fold arrow did not fold the branch to a line'))
   await page.getByRole('button', { name: 'Open Later', exact: true }).click({ force: true }).catch(() => {})
   await page.locator('.lane[aria-label="Branch: Later"] .lane-folded').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the branch did not open again'))
   room = 'sky menus'
+  await reveal(page.locator('[data-node-head]', { hasText: 'Project Direction' }))
   await page.locator('[data-node-head]', { hasText: 'Project Direction' }).click({ button: 'right', force: true })
   for (const gone of ['Link to', 'Lay it out', 'Put inside', 'Colour', 'Remove node']) if (await page.getByRole('menuitem', { name: gone }).count()) problems.push(`sky: the node menu still says "${gone}"`)
   for (const kept of ['Color', 'Delete node', 'Help me sort']) if (!await page.getByRole('menuitem', { name: kept }).count()) problems.push(`sky: the node menu has no "${kept}"`)
@@ -275,6 +291,7 @@ async function main() {
   await sleep(300)
   await page.screenshot({ path: `${OUT}/sky-sort.png` })
   // A branch's menu: New branch inside puts one inside it, on its own line, and Rename works.
+  await reveal(page.locator('.lane-head', { hasText: 'Later' }).first())
   await page.locator('.lane-head', { hasText: 'Later' }).first().click({ button: 'right', force: true })
   await page.getByRole('menuitem', { name: 'New branch inside' }).click().catch(() => problems.push('sky: a branch menu has no "New branch inside"'))
   await page.keyboard.type('Mac apps')

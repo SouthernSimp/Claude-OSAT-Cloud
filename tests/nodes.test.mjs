@@ -4,7 +4,7 @@ import test from 'node:test'
 import { createEmptyDoc, migrate, SCHEMA } from '../shared/store-core.mjs'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import {
-  addFolder, addSticky, boardSpots, CARD, findMentions, freeNodeName, importNode, linkMentions, makeRoom, mentionedIn, moveFolder, moveSticky, moveToItems,
+  addFolder, addSticky, boardSpots, CARD, findMentions, freeNodeName, importNode, linkMentions, mentionedIn, moveFolder, moveSticky, moveToItems,
   nodesMentioned, nodesOf, pileOf, placeNodes, rankAt, removeFolder, renameFolder, splitMentions, suggestBranches, suggestionGroups, tidyBoard,
 } from '../src/nodes-model.js'
 
@@ -215,16 +215,17 @@ test('the board: moving a node keeps every other one where it shows, and the ord
   assert.deepEqual(normalized.map((item) => item.at), [undefined, { x: 1e6, y: -3 }])
 })
 
-test('the board: a node that opens pushes the cards it covers to the right, and those they cover', () => {
-  const boxes = new Map([
-    ['a', { x: 0, y: 0, w: 600, h: 400 }],
-    ['b', { x: 300, y: 0, w: 240, h: 150 }],
-    ['c', { x: 620, y: 20, w: 240, h: 150 }],
-    ['d', { x: 0, y: 900, w: 240, h: 150 }],
-    ['e', { x: -500, y: 0, w: 240, h: 150 }],
-  ])
-  const moved = makeRoom(boxes, 'a', 40)
-  assert.deepEqual(moved.get('b'), { x: 640, y: 0 })
-  assert.deepEqual(moved.get('c'), { x: 920, y: 20 })
-  assert.equal(moved.has('d') || moved.has('e'), false, 'far below and to the left stay put')
+
+test('dropping in a row of stickies that wraps: the row under the pointer decides, then left to right', async () => {
+  const { slotIndex } = await import('../src/lib/carry.js')
+  const at = (left, top) => ({ left, top, width: 100, height: 80, bottom: top + 80 })
+  const row = [at(0, 0), at(110, 0), at(220, 0)]
+  assert.equal(slotIndex(row, 'x', 40, 40), 0)
+  assert.equal(slotIndex(row, 'x', 170, 200), 2, 'one row: only the left-to-right place counts, even below it')
+  assert.equal(slotIndex(row, 'x', 999, 40), 3)
+  const wrapped = [...row, at(0, 90), at(110, 90)]
+  assert.equal(slotIndex(wrapped, 'x', 999, 40), 3, 'the end of the first row is before the second row')
+  assert.equal(slotIndex(wrapped, 'x', 140, 130), 4)
+  assert.equal(slotIndex(wrapped, 'x', 999, 130), 5, 'the end of the last row')
+  assert.equal(slotIndex(wrapped, 'y', 0, 125), 3, 'a column keeps going by height alone')
 })

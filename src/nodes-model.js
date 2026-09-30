@@ -419,26 +419,3 @@ export function tidyBoard(state) {
   if (!state.folders.some((folder) => folder.at)) return state
   return { ...state, folders: state.folders.map(({ at, ...folder }) => folder) }
 }
-
-const overlaps = (a, b, gap) => a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap
-
-/* A card grew (a node opened): the cards it now covers slide right, and so do the ones
-   they then cover. `boxes` are { x, y, w, h } by id; returns the new spots by id. */
-export function makeRoom(boxes, id, gap = 40) {
-  const moved = new Map()
-  const box = (key) => ({ ...boxes.get(key), ...moved.get(key) })
-  const queue = [id]
-  // ponytail: n² per push, fine for dozens of nodes; a sweep line if it ever reaches thousands
-  for (let guard = 0; queue.length && guard < 2000; guard += 1) {
-    const key = queue.shift()
-    const pusher = box(key)
-    for (const other of boxes.keys()) {
-      if (other === key || other === id) continue
-      const next = box(other)
-      if (next.x < pusher.x || !overlaps(pusher, next, gap)) continue
-      moved.set(other, { x: pusher.x + pusher.w + gap, y: next.y })
-      queue.push(other)
-    }
-  }
-  return moved
-}
