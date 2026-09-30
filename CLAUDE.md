@@ -8,6 +8,21 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
+## Resume checkpoint — September 30, 2026
+
+Continue from `codex/phase-27-free-stickies` in
+`SouthernSimp/Claude-OSAT-Cloud` ([draft PR #32](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/32)).
+The local source is `/Users/nate/Desktop/OSAT Field copy`. Fetch and check out that branch
+before continuing; older Phase 27 branches do not include this work. PR #32 is stacked on
+#30, which depends on #29; all remain in review, awaiting Nate's merge instruction.
+
+Completed: free Sky stickies, saved positions (schema 9), Find/Fit, keyboard movement,
+Desk-to-Sky placement and Undo. Implementation commit `025cd5a` passed 308 unit checks,
+the build, browser and isolated native tests, and GitHub's Mac build/launch/AI checks.
+The isolated browser preview is `http://127.0.0.1:5240/`; the installed app was not updated.
+Next: connectors, selection/bundling, focused node editing, then contextual AI and
+navigation polish. Phase 27 is unfinished; use the roadmap and the implementation notes below.
+
 ## Working with Nate
 
 - Nate is new to git and GitHub. Claude runs the repo: one branch and one draft pull
@@ -15,6 +30,9 @@ Read it before any substantial change and keep it current when a phase lands.
   Mac checklist. Nate tries the DMG that CI builds and says "merge"; then Claude merges.
 - Explain in plain words. Nate would rather see the result than the internals.
 - Display the name `OSAT` only and never spell out the letters.
+- Before finishing a working session, commit and push completed changes to GitHub.
+  Keep this resume checkpoint and the roadmap current so Nate can switch between
+  Claude and Codex without losing progress. Leave merging for Nate's instruction.
 
 ## Calm rules (apply to every screen)
 
