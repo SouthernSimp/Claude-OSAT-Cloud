@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { FolderSimple, NotePencil, Plus, X } from "@phosphor-icons/react";
 import { localDateKey } from "../daily-practice.js";
 import {
-  canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, folderSubtree, emptyTrash, isActiveNote, moveNotes, notesInList,
+  canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, folderSubtree, emptyTrash, isActiveNote, isBranch, moveNotes, notesInList,
   keepNotes, purgeNotes, relinkRenamedNote, resolveWikilink, restoreNotes, trashNotes, updateNote,
 } from "../notes-model.js";
 import { linkMentions, renameFolder } from "../nodes-model.js";
@@ -186,7 +186,11 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       toggleFolder: (id) => commit((state) => ({ ...state, folders: state.folders.map((folder) => folder.id === id ? { ...folder, collapsed: !folder.collapsed } : folder) })),
       moveFolder(id, parentId) {
         if (!canMoveFolder(workspace.folders, id, parentId)) return;
-        commit((state) => ({ ...state, folders: state.folders.map((folder) => folder.id === id ? { ...folder, parentId: parentId || null } : folder) }));
+        commit((state) => ({ ...state, folders: state.folders.map((folder) => {
+          if (folder.id !== id) return folder;
+          const { kind, ...rest } = folder;
+          return { ...rest, parentId: parentId || null, ...(!parentId && kind ? { kind } : {}) };
+        }) }));
       },
       deleteFolder(id) {
         const folder = workspace.folders.find((item) => item.id === id);
@@ -195,7 +199,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         const folders = workspace.folders.filter((item) => removed.has(item.id));
         const homes = new Map(workspace.notes.filter((note) => removed.has(note.folderId)).map((note) => [note.id, note.folderId]));
         commit((state) => deleteFolder(state, id));
-        showUndo(`Deleted ${folder.parentId ? "branch" : "node"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Unsorted."}`, () => commit((state) => ({
+        showUndo(`Deleted ${isBranch(folder) ? "branch" : "node"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Unsorted."}`, () => commit((state) => ({
           ...state,
           folders: [...state.folders.filter((item) => !removed.has(item.id)), ...folders],
           notes: state.notes.map((note) => homes.has(note.id) ? { ...note, folderId: homes.get(note.id) } : note),

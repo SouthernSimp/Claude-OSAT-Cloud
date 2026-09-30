@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 7
+export const SCHEMA = 9
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -47,6 +47,13 @@ export const migrations = [
   // (only a summary so far), `fresh` (New until opened) and say where it came `from`. All
   // start unset, so nothing changes; an older OSAT would drop them, so it refuses this data.
   { from: 6, run: (doc) => doc },
+  // 8: a branch can be set down on the Sky on its own (`kind: 'branch'` on a top-level
+  // folder). Nothing starts marked, so nothing changes; an older OSAT would turn such a
+  // branch into a node, so it refuses this data.
+  { from: 7, run: (doc) => doc },
+  // 9: notes may keep a free Sky position (`at`). Existing notes stay where they were;
+  // an older app must refuse this data rather than discard the saved positions.
+  { from: 8, run: (doc) => doc },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding

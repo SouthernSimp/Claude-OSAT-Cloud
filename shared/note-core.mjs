@@ -53,6 +53,8 @@ export function normalizeNote(value, index = 0) {
     // Only kept once it was ranked by hand (see rankOf), so older notes don't all change.
     ...(Number.isFinite(value.rank) ? { rank: value.rank } : {}),
     ...(PAPERS.includes(value.color) ? { color: value.color } : {}),
+    // A sticky set down freely on the Sky, in board points (not screen pixels).
+    ...(Number.isFinite(value.at?.x) && Number.isFinite(value.at?.y) ? { at: { x: value.at.x, y: value.at.y } } : {}),
     // Which node each @ in it means, by id, so a renamed node never changes its words.
     ...refsOf(value.refs),
     // A day it names (from a scan), until Nate adds it to the Calendar or says Not now.

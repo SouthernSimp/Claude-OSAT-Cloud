@@ -29,17 +29,17 @@ export const asksToSort = (text) => /^(?:(?:please|can you|could you|would you|h
 export const unsortedStickies = (state) => pileOf(state.notes, null).slice(0, MOST)
 
 /* Every place a sticky can go: each node, then the branches in it, depth first. */
-function allPlaces(state) {
+function allPlaces(state, skip = () => false) {
   const out = []
-  const walk = (parentId) => folderChildren(state.folders, parentId).forEach((folder) => { out.push(folder); walk(folder.id) })
-  nodesOf(state.folders).forEach(({ folder }) => { out.push(folder); walk(folder.id) })
+  const walk = (parentId) => folderChildren(state.folders, parentId).forEach((folder) => { if (!skip(folder)) out.push(folder); walk(folder.id) })
+  nodesOf(state.folders).forEach(({ folder }) => { if (!skip(folder)) out.push(folder); walk(folder.id) })
   return out
 }
 
 /* The places the model may pick, with a couple of the stickies in each as examples: [{ id, name
    ("Trip / Packing"), peek }]. */
-export function sortPlaces(state) {
-  return allPlaces(state).slice(0, MOST_PLACES).map((folder) => ({
+export function sortPlaces(state, skip) {
+  return allPlaces(state, skip).slice(0, MOST_PLACES).map((folder) => ({
     id: folder.id,
     name: folderPath(state.folders, folder.id).join(' / '),
     peek: pileOf(state.notes, folder.id).slice(0, 2).map((note) => note.title),

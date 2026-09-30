@@ -72,13 +72,18 @@ export function moveSticky(state, noteId, folderId = null, index = Infinity) {
 }
 
 /* Moves a folder among its siblings, or under another folder (a node dropped on another
-   node becomes one of its branches; a branch dropped between nodes becomes a node). */
-export function moveFolder(state, folderId, parentId = null, index = Infinity) {
+   node becomes one of its branches; a branch taken out to the top becomes a node, or, when
+   `loose`, stays a branch set down on the Sky on its own). */
+export function moveFolder(state, folderId, parentId = null, index = Infinity, { loose = false } = {}) {
   if (!folderExists(state, folderId)) return state
   const parent = folderExists(state, parentId) ? parentId : null
   if (!canMoveFolder(state.folders, folderId, parent)) return state
   const { rank, renumber } = rankAt(folderChildren(state.folders, parent).filter((item) => item.id !== folderId), index)
-  const folders = withRanks(state.folders, renumber).map((item) => (item.id === folderId ? { ...item, parentId: parent, rank } : item))
+  const folders = withRanks(state.folders, renumber).map((item) => {
+    if (item.id !== folderId) return item
+    const { kind, ...rest } = item
+    return { ...rest, parentId: parent, rank, ...(loose && !parent ? { kind: 'branch' } : {}) }
+  })
   return { ...state, folders }
 }
 
@@ -94,7 +99,7 @@ export function addFolder(state, name, parentId = null, index = Infinity) {
 
 /* A new sticky in a folder's pile (null: Unsorted), at the end or at `index`. Its @s point
    at their nodes (linkMentions). */
-export function addSticky(state, text, folderId = null, { source = 'Sky', index, color, ask } = {}) {
+export function addSticky(state, text, folderId = null, { source = 'Sky', index, color, ask, at } = {}) {
   const value = typeof text === 'string' ? text.trim().slice(0, 8000) : ''
   if (!value) return { state, note: null }
   const target = folderExists(state, folderId) ? folderId : null
@@ -106,9 +111,22 @@ export function addSticky(state, text, folderId = null, { source = 'Sky', index,
     base = { ...state, notes: withRanks(state.notes, placed.renumber) }
     rank = placed.rank
   }
-  const made = createNote(base, { title, markdown: value, folderId: target, unsorted: !target, source, color, rank, ask })
+  const made = createNote(base, { title, markdown: value, folderId: target, unsorted: !target, source, color, rank, ask, at })
   const linked = linkMentions(made.state, made.note.id)
   return { state: linked, note: linked.notes.find((note) => note.id === made.note.id) }
+}
+
+/* A sticky set down on the Sky keeps its identity; null returns it to the Unsorted pile.
+   Filing it later keeps its spot for when it is brought out again. */
+export function placeSticky(state, noteId, at) {
+  const note = state.notes.find((item) => item.id === noteId)
+  if (!isActiveNote(note) || note.kind || (at !== null && (!Number.isFinite(at?.x) || !Number.isFinite(at?.y)))) return state
+  const next = moveSticky(state, noteId)
+  return { ...next, notes: next.notes.map((item) => {
+    if (item.id !== noteId) return item
+    const { at: previous, ...rest } = item
+    return at ? { ...rest, at: { x: at.x, y: at.y } } : rest
+  }) }
 }
 
 /* Removing a node keeps its stickies: its branches go with it and everything in them lands
@@ -418,27 +436,4 @@ export function placeNodes(state, spots, changes) {
 export function tidyBoard(state) {
   if (!state.folders.some((folder) => folder.at)) return state
   return { ...state, folders: state.folders.map(({ at, ...folder }) => folder) }
-}
-
-const overlaps = (a, b, gap) => a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap
-
-/* A card grew (a node opened): the cards it now covers slide right, and so do the ones
-   they then cover. `boxes` are { x, y, w, h } by id; returns the new spots by id. */
-export function makeRoom(boxes, id, gap = 40) {
-  const moved = new Map()
-  const box = (key) => ({ ...boxes.get(key), ...moved.get(key) })
-  const queue = [id]
-  // ponytail: n² per push, fine for dozens of nodes; a sweep line if it ever reaches thousands
-  for (let guard = 0; queue.length && guard < 2000; guard += 1) {
-    const key = queue.shift()
-    const pusher = box(key)
-    for (const other of boxes.keys()) {
-      if (other === key || other === id) continue
-      const next = box(other)
-      if (next.x < pusher.x || !overlaps(pusher, next, gap)) continue
-      moved.set(other, { x: pusher.x + pusher.w + gap, y: next.y })
-      queue.push(other)
-    }
-  }
-  return moved
 }

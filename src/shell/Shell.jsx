@@ -120,7 +120,7 @@ export function Dock({ view, navigate, storage, aiReady, extra = [], onSendUp, s
 }
 
 /* One space on the dock. The Sky's takes a sticky: rest on it and the Sky comes down to
-   meet you, or drop it there to send it up to Unsorted. */
+   meet you, or drop it there to set it down freely on the Sky. */
 function DockSpace({ space, index, current, aiReady, navigate, onSendUp }) {
   const drop = useDrop(`dock:${space.id}`, {
     accepts: onSendUp ? ['note'] : [],

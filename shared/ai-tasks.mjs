@@ -128,3 +128,43 @@ export function readSortUnsortedAnswer(text, placeNames, stickyCount) {
   }
   return { homes, made: [...fresh.values()].filter((group) => group.stickies.length > 1) }
 }
+
+/* ---------- Where does this branch belong? ---------- */
+
+/* One branch against every place it could go (as in Sort Unsorted: `places` are { name, peek }).
+   `peek` is a few words from inside the branch. */
+export function whereMessages({ branch, peek = [], places }) {
+  return [SYSTEM, {
+    role: 'user',
+    content: `These are someone's notes. A sticky is one thought. A node is a topic, and a branch is a group inside a node.
+
+The branch "${clip(branch, 80)}" is a group of stickies${peek.length ? ` about: ${peek.slice(0, 5).map((words) => clip(words, 40).replace(/\s+/g, ' ')).join('; ')}` : ''}.
+
+Places it could go:
+${places.map(({ name, peek: inside = [] }, index) => `${index + 1}. ${clip(name, 80)}${inside.length ? ` (has: ${inside.slice(0, 2).map((words) => clip(words, 30).replace(/\s+/g, ' ')).join('; ')})` : ''}`).join('\n') || '(none yet)'}
+
+Write one line: the number of the place it belongs in, a colon, and a few words saying why. If no place fits, write "none". For example:
+2: both are about clients`,
+  }]
+}
+
+/* { place (0-based), why } for the place the model picked, or null for "none" or an answer that
+   names no place there is. A place written as its name counts as that place. */
+export function readWhereAnswer(text, placeNames) {
+  const line = unwrap(text).split('\n').map((value) => value.replace(/[*_`]/g, '').trim()).find(Boolean) || ''
+  if (!line || /^(none|n\/a|unsure|unknown|skip|no place|no\b)/i.test(line)) return null
+  const number = /^(?:place\s*)?#?(\d+)\b\s*(?:[:.)=→]|-+>?)*\s*(.*)$/i.exec(line)
+  let place = -1
+  let why = ''
+  if (number) {
+    place = Number(number[1]) - 1
+    why = number[2]
+  } else {
+    const [head, ...rest] = line.split(/\s*(?::|—|–|\s-\s)\s*/)
+    const key = plain(head)
+    place = placeNames.findIndex((name) => plain(name) === key || plain(String(name).split('/').pop()) === key)
+    why = rest.join(': ')
+  }
+  if (place < 0 || place >= placeNames.length) return null
+  return { place, why: clip(why.replace(/^[\s\-–—:.]+/, ''), 140) }
+}
