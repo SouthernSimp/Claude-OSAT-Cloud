@@ -426,6 +426,7 @@ export function Desk() {
           onOffline={() => askOffline(!on)}
           raised={shown.some((pop) => covers(pop, line))}
           onLine={setLine}
+          onNote={setNotice}
           widgets={{
             list: prefs.widgets,
             onList: setWidgets,

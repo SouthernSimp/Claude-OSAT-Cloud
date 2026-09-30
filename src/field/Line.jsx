@@ -1,14 +1,18 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowUp, CalendarBlank, ChatCircle, CheckCircle, File, FolderSimple, HourglassMedium, NotePencil,
-  PictureInPicture, Plus, ShareNetwork, Sparkle, SquaresFour, Stop, WifiSlash, X,
+  AppWindow, ArrowUp, CalendarBlank, Calculator, ChatCircle, CheckCircle, Clipboard, File, FolderSimple, Globe, HourglassMedium, NotePencil,
+  PictureInPicture, Plus, Robot, ShareNetwork, Sparkle, SquaresFour, Stop, WifiSlash, X,
 } from '@phosphor-icons/react'
 
+import { searchItems, titleOf, whenCopied } from '../../shared/clipboard-model.mjs'
+import { DEFAULT_SETTINGS, handOff, keywordAddress, readLine } from '../../shared/launcher-model.mjs'
+import { rankApps } from '../../shared/quick-search-model.mjs'
 import { applyAction } from '../assistant/actions.js'
 import { ActionCards, UsedNotes, modelLabel } from '../assistant/LocalAssistant.jsx'
-import { setupLine, useAi } from '../assistant/useAi.js'
+import { cleanError, setupLine, useAi } from '../assistant/useAi.js'
 import { useAskHere } from '../assistant/useAskHere.js'
 import { localDateKey } from '../daily-practice.js'
+import { botTakers } from '../lib/bot-jobs.js'
 import { findAll } from '../lib/find.js'
 import { Markdown } from '../lib/markdown.jsx'
 import { spaceFor } from '../lib/spaces.js'
@@ -44,10 +48,14 @@ const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceF
    The line reports where it rests (`onLine`), so rooms open beside it; when a room
    covers it anyway, it rises to the top of the desk and stays above the rooms
    (`raised`), drawer and all. Its end holds the Offline switch (`offline`: main's
-   { on, terminal }; `onOffline` flips it): while on, a calm line under it says so. */
+   { on, terminal }; `onOffline` flips it): while on, a calm line under it says so.
+   It is also a launcher (Phase 13, Settings → Launcher): a sum answers in place (`2*49` shows = 98 in the line, ↓ then
+   Return copies it), Nate's keywords open an app or a web search (`ss`, `g cats`), `v` lists what was copied, an app
+   named as you type is one row, and `>` is for a bot (none can take a job yet, and it says so). "Save as a sticky"
+   stays first: only the arrows ever move to a launcher row, so Return never guesses. `onNote` says one calm line. */
 export function Line({
   workspace, commit, navigate, greeting, storage, visit = 0, summon = 0, paused = false, offline = null, onOffline,
-  raised = false, onLine, onOpenNote, onSaved,
+  raised = false, onLine, onOpenNote, onSaved, onNote,
 }) {
   const center = useRef(null)
   const greetingRef = useRef(null)
@@ -67,17 +75,64 @@ export function Line({
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
   const { answer, setAnswer, ask: askHere, stop, close } = useAskHere({ workspace, commit, modelId: ai.id })
 
-  const matches = useMemo(() => (open ? findAll(workspace, text, { files: text ? found : [] }) : []), [open, workspace, text, found])
+  /* The launcher (Settings → Launcher): a sum, Nate's keywords, what he copied, an app by name, a job for a bot. In the
+     line only `v` and his own keywords are special: a sentence that starts with "a" or "f" is only a sentence. */
+  const bridge = window.osatSearch
+  const [launch, setLaunch] = useState(DEFAULT_SETTINGS)
+  const [copies, setCopies] = useState([])
+  const [apps, setApps] = useState([])
+  const line = useMemo(() => readLine(draft, launch), [draft, launch])
+  const clipboardScope = line.scope === 'clipboard'
+  const words = clipboardScope ? line.words : text
+  useEffect(() => {
+    const take = (value) => { if (value?.sources) setLaunch(value) }
+    bridge?.settings().then(take, () => {})
+    return bridge?.onSettings(take)
+  }, [bridge])
+  useEffect(() => {
+    if (!open || !clipboardScope || !bridge) { setCopies([]); return undefined }
+    let current = true
+    bridge.clipboard().then((list) => { if (current) setCopies(Array.isArray(list?.items) ? list.items : []) }, () => {})
+    return () => { current = false }
+  }, [open, clipboardScope, bridge])
+  useEffect(() => {
+    if (!open || !bridge || apps.length || text.length < 2 || !launch.sources.apps.on) return
+    bridge.apps().then((list) => setApps(Array.isArray(list) ? list : []), () => {})
+  }, [open, bridge, apps.length, text.length, launch.sources.apps.on])
+
+  const matches = useMemo(() => (open && !clipboardScope ? findAll(workspace, words, { files: text ? found : [] }) : []), [open, workspace, words, text, found, clipboardScope])
+  const say = (message) => onNote?.(message)
+  const attempt = (work) => Promise.resolve().then(work).catch((error) => say(cleanError(error)))
+  const copyText = (value) => (bridge?.copyText ? bridge.copyText(value) : navigator.clipboard?.writeText(value))
+  // Right under Save, so only the arrows reach them: the answer to a sum, the app or search a keyword names, a bot job.
+  const launcherRows = [
+    ...(line.sum ? [{ key: 'sum', label: `= ${line.sum.text}`, hint: 'Copy the answer', icon: Calculator, run: () => { reset(); attempt(async () => { await copyText(line.sum.plain); say(`Copied ${line.sum.text}`) }) } }] : []),
+    ...(line.keyword && bridge ? [line.keyword.keyword.app
+      ? { key: `kw:${line.keyword.keyword.id}`, label: `Open ${line.keyword.keyword.label}`, hint: line.keyword.keyword.keyword, icon: AppWindow, run: () => { reset(); attempt(() => bridge.openAppNamed(line.keyword.keyword.app)) } }
+      : { key: `kw:${line.keyword.keyword.id}`, label: `Search ${line.keyword.keyword.label} for “${line.keyword.query}”`, tag: 'Web', icon: Globe, run: () => { reset(); attempt(() => bridge.openLink(keywordAddress(line.keyword.keyword, line.keyword.query))) } }] : []),
+    ...(line.bot ? [{ key: 'bot', label: 'Hand this to a bot', hint: botTakers().length ? line.bot.job : 'No bot takes jobs yet', tag: 'Bots', icon: Robot, run: () => { const sent = handOff(line.bot.job, botTakers()); if (sent.ok) { sent.run(); reset() } else say(sent.message) } }] : []),
+  ]
+  const named = open && bridge && !clipboardScope && text.length >= 2
+    ? rankApps(apps, text).filter((app) => app.name.toLowerCase().startsWith(text.toLowerCase())).slice(0, 2)
+    : []
+  const launchedRows = [
+    ...(clipboardScope ? searchItems(copies, line.words).slice(0, 5).map((item) => ({ key: `clip:${item.id}`, label: titleOf(item), hint: [item.app, whenCopied(item.at)].filter(Boolean).join(' · '), tag: 'Clipboard', icon: Clipboard, run: () => { reset(); attempt(async () => { await bridge.copyClip(item.id); say('Copied. Press ⌘V in the app you want it in.') }) } })) : []),
+    ...named.map((app) => ({ key: `app:${app.path}`, label: `Open ${app.name}`, tag: 'App', icon: AppWindow, run: () => { reset(); attempt(() => bridge.openApp(app.path)) } })),
+  ]
   const rows = [
     ...(text ? [
       { key: 'save', label: 'Save as a sticky', keys: '↵', icon: NotePencil, run: save },
+      ...launcherRows,
       ai.state === 'none'
         ? { key: 'ask', label: 'Set up the AI', hint: setupLine(aiStatus) || 'It runs on this Mac, nothing leaves it', keys: '⌘↵', icon: Sparkle, run: () => { setOpen(false); navigate('Settings', { section: 'ai' }) } }
         : { key: 'ask', label: 'Ask the AI on this Mac', hint: ai.state === 'ready' ? ai.label : 'Looking for it…', keys: '⌘↵', icon: Sparkle, run: ask },
       { key: 'next', label: 'Add as a next step', keys: '⌥↵', icon: CheckCircle, run: addStep },
     ] : []),
+    ...launchedRows,
     ...matches.map((row) => ({ ...row, icon: iconFor(row), tag: KINDS[row.kind]?.[1], run: () => { reset(); navigate(...row.go) } })),
   ]
+  // The hairline sits between what Return, ⌘↵ and ⌥↵ do (with the launcher's rows after Save) and what was found.
+  const firstMatch = text ? 3 + launcherRows.length : -1
   const active = Math.min(cursor, rows.length - 1)
   const showing = open && rows.length > 0
 
@@ -156,12 +211,12 @@ export function Line({
   useEffect(() => {
     setFound([]) // what Spotlight found for the last words never answers these
     const api = window.nateOSFiles
-    const q = text.toLowerCase()
-    if (!open || !api?.search || q.length < 2 || /(^|\s)#\S/.test(q)) return undefined
+    const q = words.toLowerCase()
+    if (!open || !api?.search || q.length < 2 || /(^|\s)#\S/.test(q) || clipboardScope) return undefined
     let current = true
     const timer = window.setTimeout(() => api.search(q).then((items) => { if (current) setFound(Array.isArray(items) ? items.slice(0, 8) : []) }, () => {}), 180)
     return () => { current = false; window.clearTimeout(timer) }
-  }, [text, open])
+  }, [words, open, clipboardScope])
 
   /* Esc, one step at a time: a picked row goes back to the first, the drawer closes (the
      words stay), the answer is put away. Then the desk takes over (the top pop-out, then
@@ -306,6 +361,7 @@ export function Line({
               }}
               onKeyDown={onKeyDown}
             />
+            {line.sum && <span className="home-sum" aria-live="polite">= {line.sum.text}</span>}
             {onOffline && (
               <button type="button" className="home-offline" aria-pressed={isOffline} aria-label="Offline" title={isOffline ? 'Go back online  ⇧⌘U' : 'Go offline: nothing leaves OSAT  ⇧⌘U'} onClick={onOffline}>
                 <WifiSlash weight={isOffline ? 'bold' : 'regular'} />
@@ -332,7 +388,7 @@ export function Line({
                   id={`home-row-${index}`}
                   role="option"
                   aria-selected={index === active}
-                  className={`home-row ${text && index === 3 ? 'is-first-match' : ''}`}
+                  className={`home-row ${text && index === firstMatch ? 'is-first-match' : ''}`}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={row.run}
                 >

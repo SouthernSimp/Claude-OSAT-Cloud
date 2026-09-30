@@ -4,6 +4,8 @@
    Settings → Launcher edits this; `launcher.json` in the data folder keeps it. The same rules run in
    main and in the windows. Pure. */
 
+import { calculate } from './calc.mjs'
+
 export const SEARCH_HOTKEY = 'Command+Shift+Space'
 export const HYPER = ['Control', 'Alt', 'Shift', 'Command']
 
@@ -123,6 +125,24 @@ export function matchKeyword(settings, text) {
 }
 
 export const keywordAddress = (keyword, query) => keyword.url.replace('{query}', encodeURIComponent(query))
+
+/* A line of typing on the desk, read for the launcher: the words left once a source's keyword is taken off
+   (`scope` is that source: "v invoice" → clipboard, "invoice"), one of Nate's keywords (`ss`, `g cats`), a sum
+   (`2*49`) or a job for a bot (`> research …`). A sentence is never hijacked: a keyword is a whole word at the
+   start, and the line always keeps "Save as a sticky" first. */
+export function readLine(text, settings) {
+  const typed = String(text || '').trim()
+  const bot = botJob(typed)
+  const hit = bot ? null : matchKeyword(settings, typed)
+  return {
+    typed,
+    scope: hit?.source || null,
+    keyword: hit?.keyword ? hit : null,
+    words: hit?.source ? hit.query : typed,
+    sum: bot || !settings.sources.calc?.on ? null : calculate(typed),
+    bot,
+  }
+}
 
 /* "> research best CRMs" hands a job to a bot: → { job } or null. */
 export function botJob(text) {

@@ -91,6 +91,9 @@ html:has(.quick-search) body { background: transparent; }
 .qs-toast button { margin-left: 10px; padding: 3px 10px; border-radius: var(--r-full); font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
 .qs-wait { color: var(--faint); }
 
+/* The answer to a sum, in the line itself (`2*49` shows = 98 beside what was typed). */
+.home-sum { position: absolute; right: 100px; bottom: 18px; z-index: 1; padding: 5px 11px; border-radius: var(--r-full); font: 650 var(--t-sm)/1 var(--font); font-variant-numeric: tabular-nums; color: var(--on-1); background: color-mix(in srgb, var(--on-1) 12%, transparent); pointer-events: none; }
+
 /* "Add to Jordan?" on the desk: one calm line above the dock, above a note or a toast that may share the spot. */
 .desk-note.is-offer { display: flex; align-items: center; gap: 10px; bottom: 148px; padding-right: 6px; pointer-events: auto; }
 .desk-note.is-offer button { height: 26px; padding: 0 12px; border-radius: var(--r-full); font-size: var(--t-xs); font-weight: 650; color: var(--accent-ink); background: var(--accent); }

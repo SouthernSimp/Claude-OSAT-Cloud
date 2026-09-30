@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import test from 'node:test'
 
 import {
-  DEFAULT_SETTINGS, SEARCH_HOTKEY, activeSources, botJob, cleanSettings, handOff, hyper, hyperLabel, keywordAddress, matchKeyword, validAddress, validKeyword,
+  DEFAULT_SETTINGS, SEARCH_HOTKEY, activeSources, botJob, cleanSettings, handOff, hyper, hyperLabel, keywordAddress, matchKeyword, readLine, validAddress, validKeyword,
 } from '../shared/launcher-model.mjs'
 
 const { DEFAULT_SEARCH_HOTKEY, hotkeyLabel, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
@@ -91,4 +91,18 @@ test('> hands a job to a bot; today none can take one, and the words say so', ()
   assert.equal(some.taker.name, 'Muse')
   assert.equal(some.run(), 'sent')
   assert.deepEqual(sent, ['research best CRMs'])
+})
+
+test('the line reads a launcher word, a sum or a bot job, and leaves a sentence alone', () => {
+  const settings = clean(undefined)
+  assert.deepEqual(readLine('a good idea for the shop', settings), { typed: 'a good idea for the shop', scope: 'apps', keyword: null, words: 'good idea for the shop', sum: null, bot: null }, 'the line only offers rows for it; Save stays first')
+  assert.deepEqual(readLine('  v  invoice ', settings), { typed: 'v  invoice', scope: 'clipboard', keyword: null, words: 'invoice', sum: null, bot: null })
+  assert.equal(readLine('ss', settings).keyword.keyword.app, 'Spotify')
+  assert.equal(readLine('g best crms', settings).keyword.query, 'best crms')
+  assert.deepEqual(readLine('2*49', settings).sum.plain, '98')
+  assert.equal(readLine('2*49', clean({ sources: { calc: { on: false } } })).sum, null)
+  assert.equal(readLine('meeting at 3', settings).sum, null)
+  const bot = readLine('> research best CRMs', settings)
+  assert.deepEqual([bot.bot.job, bot.scope, bot.sum, bot.words], ['research best CRMs', null, null, '> research best CRMs'])
+  assert.equal(readLine('', settings).words, '')
 })
