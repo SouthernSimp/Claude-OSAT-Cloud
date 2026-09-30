@@ -10,6 +10,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { PLACES, extractText, inside, isPackage, rankFound, restoreItem, run, searchArgs, trashItem, walkFind } = require('./mac-files.cjs')
 const { cleanDropped, cleanName, freeName, makeFolder, moveInto, put, rename, toBin } = require('./file-ops.cjs')
+const { registerTidy } = require('./tidy.cjs')
 const { recentPaths } = require('./launcher/recent-files.cjs')
 const { resolveApprovedPath, resolveApprovedWritePath } = require('./path-guard.cjs')
 const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile } = require('./text-files.cjs')
@@ -28,7 +29,7 @@ function publicGrant(grant) {
   }
 }
 
-async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mainWindow, dataDir, handle, fail, sharedModule }) {
+async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mainWindow, dataDir, handle, fail, sharedModule, ai }) {
   const grantsFile = path.join(app.getPath('userData'), 'approved-files.json')
   let grants = []
   let mutation = Promise.resolve()
@@ -504,6 +505,9 @@ async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mai
     await mutateGrants(async (current) => current.filter((grant) => grant.id !== rootId))
     return grants.map(publicGrant)
   })
+
+  // Tidy my Desktop (Phase 21b): the plan, the ticked groups as one undo, a folder layout (desktop/tidy.cjs).
+  await registerTidy({ handle, fail, getGrant, approvedPath, approvedWritePath, folderPath, sourcePath, binTrash, keepUndo, dataDir, ai, extractText, sharedModule })
 
   // What the quick search (desktop/launcher) asks of the same places, with the same checks.
   return {

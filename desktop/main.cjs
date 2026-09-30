@@ -138,7 +138,7 @@ function handle(channel, operation, { from = 'main' } = {}) {
 
 /* The Files room and Ask's files (desktop/files.cjs): places, folders Nate added, tidying. */
 async function registerFiles() {
-  files = await createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mainWindow: () => mainWindow, dataDir, handle, fail, sharedModule })
+  files = await createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mainWindow: () => mainWindow, dataDir, handle, fail, sharedModule, ai: () => ai })
 }
 
 function send(channel, ...args) {

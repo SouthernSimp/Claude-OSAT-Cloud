@@ -23,6 +23,8 @@ The isolated browser preview is `http://127.0.0.1:5240/`; the installed app was 
 Next: connectors, selection/bundling, focused node editing, then contextual AI and
 navigation polish. Phase 27 is unfinished; use the roadmap and the implementation notes below.
 
+Phase 21b (Tidy my Desktop, in the Files room) is on `claude/phase-21b-tidy-desktop`, draft PR in `SouthernSimp/Claude-OSAT-Cloud`: awaiting Nate’s merge instruction.
+
 ## Working with Nate
 
 - Nate is new to git and GitHub. Claude runs the repo: one branch and one draft pull
@@ -180,6 +182,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     first-launch welcome), `osatDesk`, `osatChat`). An AbortSignal can't cross the bridge; pass
     functions. A dropped file's path comes from `webUtils.getPathForFile` in the preload, never
     from the page.
+- `shared/tidy-model.mjs` + `desktop/tidy.cjs` + `src/views/TidyDesktop.jsx` — Tidy my Desktop (Phase 21b).
+  The model is pure: `kindOf`, `ruleDest` (by-kind fallback), `tidyMessages` / `tidySchema` /
+  `readTidyAnswer` (the AI's answer, cleaned: only menu folders, the Bin only for installers, apps never
+  move), `groupPlan` / `describeGroup` ("12 screenshots → Documents/Screenshots"), the archive offer's
+  `oldFiles` / `archiveFolder`. `tidy.cjs` is registered from files.cjs (`registerTidy`, given its checks,
+  `keepUndo` and `ai: () => ai`): `files:tidy-plan` (moves nothing; the built-in AI in batches of 25, else the
+  rules), `files:tidy-do` (the ticked groups as ONE undo token; folders are made inside Documents),
+  `files:tidy-layout`, and `files:tidy-offer` / `-set` / `-later` (`tidy.json` in the data folder; off by default).
 - `shared/file-query.mjs` — finding a file in plain words (Phase 21, step 1): `parseFileQuery`
   ("pdf taxes last week" → words, kinds, since; "quoted" words stay words; glue words drop only when
   a kind or time was named), `spotlightQuery` (each word in the name or inside, any kind, the day),

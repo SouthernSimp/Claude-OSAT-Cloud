@@ -25,6 +25,13 @@ contextBridge.exposeInMainWorld('nateOSFiles', Object.freeze({
   ),
   dragOut: (items) => ipcRenderer.invoke('files:drag-out', items),
   trash: (items) => ipcRenderer.invoke('files:trash', items),
+  // Tidy my Desktop: a plan (moves nothing), then the ticked groups ({ to, folder, names }) as one undo.
+  tidyPlan: () => ipcRenderer.invoke('files:tidy-plan'),
+  tidyDo: (groups) => ipcRenderer.invoke('files:tidy-do', groups),
+  tidyLayout: () => ipcRenderer.invoke('files:tidy-layout'),
+  tidyOffer: () => ipcRenderer.invoke('files:tidy-offer'),
+  tidySet: (on) => ipcRenderer.invoke('files:tidy-set', on === true),
+  tidyLater: () => ipcRenderer.invoke('files:tidy-later'),
   undo: (token) => ipcRenderer.invoke('files:undo', token),
   // The text Ask reads: from a file OSAT can see, a file dropped on a chat, or one chosen now.
   extract: (rootId, relative = '') => ipcRenderer.invoke('files:extract', rootId, relative),

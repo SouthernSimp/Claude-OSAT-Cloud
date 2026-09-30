@@ -1,5 +1,5 @@
 import {
-  ArrowBendUpRight, ArrowSquareOut, CaretLeft, CaretRight, Eye, File, FolderOpen, FolderPlus, FolderSimple, FolderSimplePlus, MagnifyingGlass, PencilSimple, Sparkle, Trash, X,
+  ArrowBendUpRight, ArrowSquareOut, Broom, CaretLeft, CaretRight, Eye, File, FolderOpen, FolderPlus, FolderSimple, FolderSimplePlus, MagnifyingGlass, PencilSimple, Sparkle, Trash, X,
 } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { describeFileQuery, parseFileQuery } from "../../shared/file-query.mjs";
@@ -8,6 +8,7 @@ import { carryable, useDrop, useOutsideFiles } from "../lib/carry.js";
 import { useContextMenu } from "../lib/ContextMenu.jsx";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { formatBytes } from "../lib/ui.js";
+import { ArchiveOffer, TidyDesktop } from "./TidyDesktop.jsx";
 
 /* Your Mac's files: Desktop, Documents and Downloads, and folders you add. A small
    Finder: go into folders, back and forward, Quick Look with Space, open with
@@ -197,6 +198,7 @@ export function FilesView({ navigate, target = null }) {
   const [reload, setReload] = useState(0);
   const [note, setNote] = useState("");
   const [find, setFind] = useState("");
+  const [tidying, setTidying] = useState(false);
   const grid = useRef(null);
   const findBox = useRef(null);
   const focusNext = useRef(null);
@@ -370,6 +372,14 @@ export function FilesView({ navigate, target = null }) {
     }
   }
 
+  /* Tidy my Desktop finished (or the archive offer was taken): one Undo for the whole tidy. */
+  function tidied(message, token) {
+    setTidying(false);
+    lookedAgain();
+    if (token) showUndo(message, () => undoWith(token));
+    else setNote(message);
+  }
+
   async function newFolder() {
     setNote("");
     try {
@@ -510,6 +520,7 @@ export function FilesView({ navigate, target = null }) {
           <button type="button" aria-label="Back" disabled={finding || !history.back.length} onClick={() => step("back")}><CaretLeft weight="bold" /></button>
           <button type="button" aria-label="Forward" disabled={finding || !history.forward.length} onClick={() => step("forward")}><CaretRight weight="bold" /></button>
           <button type="button" aria-label="New folder" title="New folder" disabled={finding} onClick={newFolder}><FolderPlus /></button>
+          {spot.rootId === "desktop" && !spot.relative && !finding && <button type="button" className="tidy-open" aria-pressed={tidying} onClick={() => setTidying((value) => !value)}><Broom /> Tidy my Desktop</button>}
           {finding ? (
             <p className="finder-path finder-found" role="status" title={understood || undefined}>{looking && !results ? "Looking…" : understood || "Found in names and inside files"}</p>
           ) : (
@@ -536,6 +547,9 @@ export function FilesView({ navigate, target = null }) {
             />
           </label>
         </header>
+        {tidying && spot.rootId === "desktop" && !finding ? (
+          <TidyDesktop api={api} onClose={() => setTidying(false)} onDone={tidied} />
+        ) : (
         <div ref={grid} className={`finder-grid ${finding ? "is-found" : ""}`} role="listbox" aria-multiselectable="true" aria-label={finding ? "Found" : rootName} onKeyDown={onKey} onPointerDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }} {...hereDrop}>
           {entries?.map((entry) => (
             <FinderItem
@@ -560,6 +574,8 @@ export function FilesView({ navigate, target = null }) {
             </p>
           )}
         </div>
+        )}
+        {spot.rootId === "desktop" && !spot.relative && !finding && !tidying && <ArchiveOffer api={api} fresh={fresh + reload} onDone={tidied} />}
         {note && <p className="finder-note" role="status">{note}</p>}
       </div>
 
