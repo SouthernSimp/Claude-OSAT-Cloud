@@ -1,13 +1,15 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { ArrowRight, At, CalendarPlus, CaretDown, DotsThree, Minus, Plus, Question, Sparkle } from '@phosphor-icons/react'
 
-import { hashUnit } from '../field/field-model.js'
+import { freeSpot, hashUnit } from '../field/field-model.js'
+import { DraftSticky, STICKY } from '../field/DeskStickies.jsx'
 import { carryable, useDrop } from '../lib/carry.js'
 import { folderChildren, folderSubtree, isBranch } from '../notes-model.js'
 import {
-  addFolder, asksIn, askStart, boardSpots, CARD, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
+  addFolder, addSticky, asksIn, askStart, boardSpots, CARD, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
 } from '../nodes-model.js'
 import { NameField, StickyList } from './Piles.jsx'
+import { Sticky } from './Sticky.jsx'
 
 const CAMERA_KEY = 'osat.sky.camera.v1'
 const ZOOM = { min: 0.2, max: 1.6 }
@@ -38,7 +40,7 @@ function rootOf(folders, id) {
 
 /* The Sky's whiteboard: every node is a card you can put anywhere, on a board that goes
    on forever. Drag the board (or two-finger scroll) to look around, pinch or ⌘-scroll to
-   zoom; double-click it to start a node there. A card's paper is its handle: drag it to
+   zoom; double-click it to write a sticky there. A card's paper is its handle: drag it to
    move the node, click it to open or close it, double-click to fly to it. Open, a node
    shows its branches as lanes and its own stickies still to sort (its Unsorted); a node
    that opens never moves its neighbours: they dim, and the view goes to it. Nodes a note @mentions are joined by lines.
@@ -50,6 +52,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const [sizes, setSizes] = useState(() => new Map())
   const [drag, setDrag] = useState(null)
   const [naming, setNaming] = useState(null)
+  const [draft, setDraft] = useState(null)
   const [flying, setFlying] = useState(false)
   const [panning, setPanning] = useState(false)
   const flyTimer = useRef(0)
@@ -60,11 +63,12 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const nodes = nodesOf(workspace.folders)
   const spots = useMemo(() => boardSpots(workspace.folders, sizes), [workspace.folders, sizes])
   const mentions = useMemo(() => mentionedIn(workspace), [workspace])
-  const unsorted = pileOf(workspace.notes, null)
+  const loose = pileOf(workspace.notes, null).filter((note) => note.at)
+  const unsorted = pileOf(workspace.notes, null).filter((note) => !note.at)
   // Folded, Unsorted is a pile that shows its first few stickies.
   const folded = actions.folds.has('unsorted') && unsorted.length > 0
   const latest = useRef(null)
-  latest.current = { camera, spots, sizes, folders: workspace.folders }
+  latest.current = { camera, spots, sizes, folders: workspace.folders, notes: workspace.notes }
 
   /* Each card's size, as laid out (the zoom doesn't change it). */
   const observer = useRef(null)
@@ -86,11 +90,29 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const measure = (element) => { if (element) observer.current?.observe(element) }
 
   const boxOf = (id, from = latest.current) => ({ ...(from.spots.get(id) || { x: 0, y: 0 }), ...(from.sizes.get(id) || CARD) })
+  function boxes() {
+    return [
+      ...[...latest.current.spots.keys()].map((id) => boxOf(id)),
+      ...pileOf(latest.current.notes).filter((note) => note.at).map((note) => ({ ...note.at, ...(latest.current.sizes.get(`note:${note.id}`) || STICKY) })),
+    ]
+  }
   function bounds() {
-    const boxes = [...latest.current.spots.keys()].map((id) => boxOf(id))
-    const left = Math.min(...boxes.map((box) => box.x))
-    const top = Math.min(...boxes.map((box) => box.y))
-    return { x: left, y: top, w: Math.max(...boxes.map((box) => box.x + box.w)) - left, h: Math.max(...boxes.map((box) => box.y + box.h)) - top }
+    const all = boxes()
+    const left = Math.min(...all.map((box) => box.x))
+    const top = Math.min(...all.map((box) => box.y))
+    return { x: left, y: top, w: Math.max(...all.map((box) => box.x + box.w)) - left, h: Math.max(...all.map((box) => box.y + box.h)) - top }
+  }
+  function newSpot() {
+    const viewBox = view.current.getBoundingClientRect()
+    const top = toWorld(24, 24)
+    const bottom = toWorld(viewBox.width - 24, viewBox.height - 80)
+    const middle = toWorld(viewBox.width / 2, viewBox.height / 2)
+    return freeSpot(
+      boxes().map((box) => ({ left: box.x, top: box.y, right: box.x + box.w, bottom: box.y + box.h })),
+      { left: top.x, top: top.y, right: bottom.x, bottom: bottom.y },
+      { width: STICKY.w, height: STICKY.h },
+      { x: middle.x - STICKY.w / 2, y: middle.y - 40 },
+    )
   }
 
   /* The camera that shows `rect` (in board points) in the middle of the view. */
@@ -147,11 +169,13 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
 
   /* Fly to a node (or a branch's node, or Unsorted), opening it; a sticky in it glows. */
   function goTo({ folderId = null, noteId = null } = {}) {
+    const note = noteId && latest.current.notes.find((item) => item.id === noteId)
+    const free = note?.at && !note.folderId
     const root = folderId ? rootOf(latest.current.folders, folderId) : null
     if (root) toggle(root, true)
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      const card = view.current?.querySelector(`[data-card="${root || 'unsorted'}"]`)
-      const spot = latest.current.spots.get(root)
+      const card = view.current?.querySelector(`[data-card="${free ? `note:${noteId}` : root || 'unsorted'}"]`)
+      const spot = free ? note.at : latest.current.spots.get(root)
       const sticky = noteId && view.current?.querySelector(`[data-note="${noteId}"]`)
       if (card && spot) fly(sticky ? frame(inside(card, sticky, spot), 1) : frameTop({ x: spot.x, y: spot.y, w: card.offsetWidth, h: card.offsetHeight }))
       if (!sticky) return
@@ -200,13 +224,33 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       const middle = toWorld(box.width / 2, box.height / 2)
       setNaming({ x: middle.x - CARD.w / 2, y: middle.y - 70 })
     },
+    newSticky() {
+      startSticky(newSpot())
+    },
+    placeSticky(noteId) {
+      const at = newSpot()
+      actions.placeSticky(noteId, at)
+      fly(frame({ ...at, ...STICKY }))
+    },
     back() {
+      if (draft) { setDraft(null); return true }
       if (!naming) return false
       setNaming(null)
       return true
     },
     fit,
   }))
+
+  function startSticky(at) {
+    setDraft(at)
+    if (latest.current.camera.z < READABLE) fly(frame({ ...at, ...STICKY }))
+  }
+
+  function makeSticky(text) {
+    const at = draft
+    setDraft(null)
+    if (at) actions.commit((state) => addSticky(state, text, null, { at, source: 'Sky', index: Infinity }).state)
+  }
 
   function makeNode(name) {
     const at = naming
@@ -220,7 +264,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
 
   /* Dragging the board itself looks around. */
   function onPointerDown(event) {
-    if (event.button !== 0 || event.target.closest('.board-card, .board-naming, .board-zoom')) return
+    if (event.button !== 0 || event.target.closest('.board-card, .board-sticky, .board-sticky-draft, .board-naming, .board-zoom')) return
     const start = { x: event.clientX, y: event.clientY, camera: latest.current.camera }
     let moved = false
     const move = (next) => {
@@ -238,19 +282,20 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     addEventListener('pointerup', up)
   }
 
-  /* Where a new node goes when the board is double-clicked (or right-clicked) there. */
-  function spotAt(event) {
+  /* A new sticky (or, from the menu, a node) at the point picked on the board. */
+  function spotAt(event, width = CARD.w) {
     const box = view.current.getBoundingClientRect()
     const at = toWorld(event.clientX - box.left, event.clientY - box.top)
-    return { x: at.x - CARD.w / 2, y: at.y - 40 }
+    return { x: at.x - width / 2, y: at.y - 40 }
   }
   function onDoubleClick(event) {
-    if (!event.target.closest('.board-card, .board-naming, .board-zoom')) setNaming(spotAt(event))
+    if (!event.target.closest('.board-card, .board-sticky, .board-sticky-draft, .board-naming, .board-zoom')) startSticky(spotAt(event, STICKY.w))
   }
   function onContextMenu(event) {
-    if (event.target.closest('.board-card, .board-naming, .board-zoom')) return
+    if (event.target.closest('.board-card, .board-sticky, .board-sticky-draft, .board-naming, .board-zoom')) return
     const at = spotAt(event)
-    actions.boardMenu(event, { fit, newNode: () => setNaming(at) })
+    const stickyAt = spotAt(event, STICKY.w)
+    actions.boardMenu(event, { fit, newNode: () => setNaming(at), newSticky: () => startSticky(stickyAt) })
   }
 
   /* Picking a node up by its paper: it follows the pointer, leaning the way it's pulled. */
@@ -285,18 +330,29 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     addEventListener('pointerup', up, true)
   }
 
-  /* A branch let go on the open board stays a branch, set down right there. */
+  /* Stickies and branches can both be set down on the empty Sky without making a node. */
   const drop = useDrop('sky:board', {
-    accepts: (carried) => carried.kind === 'folder' && Boolean(carried.data?.parentId),
-    onDrop: ({ id, x, y, offset }) => {
+    accepts: (carried) => carried.kind === 'note' || (carried.kind === 'folder' && Boolean(carried.data?.parentId)),
+    onDrop: ({ kind, id, x, y, offset }) => {
       const box = view.current.getBoundingClientRect()
       const at = toWorld(x - offset.x - box.left, y - offset.y - box.top)
+      if (kind === 'note') { actions.placeSticky(id, at); return }
       actions.commit((state) => {
         const moved = moveFolder(state, id, null, Infinity, { loose: true })
         return placeNodes(moved, boardSpots(moved.folders, latest.current.sizes), new Map([[id, at]]))
       })
     },
   })
+
+  function nudgeSticky(event, note) {
+    if (event.target !== event.currentTarget.querySelector('.sticky')) return
+    const by = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key]
+    if (!by || event.metaKey || event.ctrlKey || event.altKey) return
+    event.preventDefault()
+    event.stopPropagation()
+    const step = event.shiftKey ? 40 : 10
+    actions.placeSticky(note.id, { x: note.at.x + by[0] * step, y: note.at.y + by[1] * step })
+  }
 
   /* Lines between nodes: a note in one node that @mentions another. */
   const lines = useMemo(() => {
@@ -378,6 +434,21 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
           />
         ))}
 
+        {loose.map((note) => (
+          <div key={note.id} ref={measure} className="board-sticky" data-card={`note:${note.id}`} style={{ translate: `${note.at.x}px ${note.at.y}px` }} onKeyDown={(event) => nudgeSticky(event, note)}>
+            <Sticky
+              note={note}
+              commit={actions.commit}
+              paper={note.color || 'canary'}
+              slot={false}
+              onToss={() => actions.toss(note)}
+              onMenu={(event) => actions.stickyMenu(event, note)}
+              mentions={actions.mentions}
+            />
+          </div>
+        ))}
+        {draft && <div className="board-sticky-draft"><DraftSticky draft={draft} onDone={makeSticky} /></div>}
+
         {naming && (
           <div className="board-naming" style={{ translate: `${naming.x}px ${naming.y}px` }}>
             <div className="node-head is-naming" data-paper="canary">
@@ -390,7 +461,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       <p className="board-hint" aria-hidden="true">
         {nodes.some(({ folder }) => open.has(folder.id))
           ? 'Drag a sticky onto a branch to move it · drop a branch on another to put it inside · right-click anything for more'
-          : 'Click a node to open it · double-click the board for a new node · drag the board to look around'}
+          : 'Double-click the board for a sticky · click a node to open it · drag the board to look around'}
       </p>
       <div className="board-zoom" role="group" aria-label="Zoom">
         <button type="button" aria-label="How the Sky works" title="How the Sky works" onClick={actions.showGuide}><Question weight="bold" /></button>

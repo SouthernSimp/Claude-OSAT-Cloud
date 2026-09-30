@@ -55,7 +55,7 @@ test('a branch cannot be put inside itself or what is inside it', () => {
 test('schema 8 changes nothing in the data; a newer OSAT is refused', () => {
   const old = { ...createEmptyDoc(), schema: 7, rev: 3, folders: [folder('Clients'), folder('Tommy', { parentId: 'Clients' })] }
   assert.deepEqual(migrate(old), { ...old, schema: SCHEMA })
-  assert.equal(SCHEMA, 8)
+  assert.ok(SCHEMA >= 8)
   assert.throws(() => migrate({ schema: SCHEMA + 1 }), /newer OSAT/)
 })
 

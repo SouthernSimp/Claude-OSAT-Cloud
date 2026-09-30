@@ -36,7 +36,7 @@
 | 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | Merged (PR #21, done before 21–23) |
 | 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
 | 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | Merged (PR #27) |
-| 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Planned (in review, step by step: opening a node no longer pushes the others away (PR #29); a branch can sit on the Sky on its own and ask where it belongs; next: free stickies, connectors, focus) |
+| 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Planned (in review, step by step: opening a node keeps other cards in place (PR #29); detached branches stay branches (PR #30); free stickies with saved positions and Undo; next: connectors, selection and focus) |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
@@ -913,6 +913,14 @@ changed:
 
 ### Phase 27: One Sky, where organization is earned (planned, next up)
 The rework Nate keeps describing, built on Phase 26's AI so it can help while he does it.
+**Step 3, Sep 30 (in review):** write a sticky anywhere on the Sky with New sticky, a double-click,
+or its menu. Drag existing stickies out onto the canvas; they remain the same notes in Notes and search,
+and stay where they were after quitting. Arrow keys move a focused sticky; Back to Unsorted and Undo
+recover its previous place. Send up to the Sky now sets a desk sticky down near the current view, with
+Undo that brings it back to its desk position. Existing nodes and branches keep their places. Nodes
+remain available from the empty-canvas menu, as a deliberate choice. Connections, making branches from
+a selection, and focused node editing follow in separate steps; this does not finish Phase 27.
+
 **Nate, Sep 29 evening:** the next session is about how nodes and branches work: "I think it's a mess."
 Start there. Before building, look at the real board with him and agree what a node and a branch *are*
 and what feels wrong (too dense, too many places, hard to fold, hard to find things). Phase 26's Ask card,

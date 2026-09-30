@@ -83,6 +83,11 @@
 .sticky-list { display: grid; align-content: start; gap: 10px; min-height: 40px; border-radius: 12px; }
 .sticky-list.is-x { display: flex; align-items: flex-start; gap: 12px; overflow-x: auto; padding: 4px 4px 14px; min-height: 96px; }
 .sticky-list.is-x > .sticky, .sticky-list.is-x > .add-sticky { flex: none; width: 196px; }
+
+/* Freely placed stickies use the same paper and editor as the desk and branches. */
+.board-sticky { position: absolute; width: 208px; }
+.board-sticky > .sticky { min-height: 150px; }
+.board-sticky:is(:hover, :focus-within), .board-sticky-draft > .desk-sticky { z-index: 3; }
 .sticky-empty { margin: 0; padding: 10px 4px; font-size: var(--t-sm); color: var(--muted); }
 .add-sticky {
   display: inline-flex;

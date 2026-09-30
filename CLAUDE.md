@@ -8,6 +8,21 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
+## Resume checkpoint — September 30, 2026
+
+Continue from `codex/phase-27-free-stickies` in
+`SouthernSimp/Claude-OSAT-Cloud` ([draft PR #32](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/32)).
+The local source is `/Users/nate/Desktop/OSAT Field copy`. Fetch and check out that branch
+before continuing; older Phase 27 branches do not include this work. PR #32 is stacked on
+#30, which depends on #29; all remain in review, awaiting Nate's merge instruction.
+
+Completed: free Sky stickies, saved positions (schema 9), Find/Fit, keyboard movement,
+Desk-to-Sky placement and Undo. Implementation commit `025cd5a` passed 308 unit checks,
+the build, browser and isolated native tests, and GitHub's Mac build/launch/AI checks.
+The isolated browser preview is `http://127.0.0.1:5240/`; the installed app was not updated.
+Next: connectors, selection/bundling, focused node editing, then contextual AI and
+navigation polish. Phase 27 is unfinished; use the roadmap and the implementation notes below.
+
 ## Working with Nate
 
 - Nate is new to git and GitHub. Claude runs the repo: one branch and one draft pull
@@ -15,6 +30,9 @@ Read it before any substantial change and keep it current when a phase lands.
   Mac checklist. Nate tries the DMG that CI builds and says "merge"; then Claude merges.
 - Explain in plain words. Nate would rather see the result than the internals.
 - Display the name `OSAT` only and never spell out the letters.
+- Before finishing a working session, commit and push completed changes to GitHub.
+  Keep this resume checkpoint and the roadmap current so Nate can switch between
+  Claude and Codex without losing progress. Leave merging for Nate's instruction.
 
 ## Calm rules (apply to every screen)
 
@@ -308,6 +326,15 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   this belong?" (`sky/where.js`, `whereMessages`/`readWhereAnswer` in ai-tasks): the model picks one node or
   branch with a reason (`placing` in Sky.jsx, `PlaceHelp` in Board.jsx); nothing moves until Move (it checks the
   branch and the place still exist and are not inside each other), and Undo restores the branch's old record.
+- Free stickies (Phase 27 step 3, schema 9): a note may carry `at: { x, y }` in Sky board points.
+  `New sticky`, double-click and the empty-board menu write one at that position; no node is created.
+  `placeSticky` in nodes-model moves the same note out onto the board; `null` returns it to the Unsorted
+  pile. Board draws active, unfiled notes with `at` as free paper, and only unplaced ones in that pile.
+  Arrow keys move a focused free sticky (Shift moves further); Find and See everything include them.
+  A filed sticky keeps its former position for when it becomes loose again. Sending up from the desk
+  places it near the Sky viewport, clears its desk place after the workspace change, and offers Undo
+  of both. Dragging it back to the desk clears its Sky presentation. Notes, backups and sync use the
+  same note and saved position. Connectors, selection/bundling and focused node editing are still next.
 - @mentions (`nodes-model.js`, schema 4): an @ only links, it never files or makes a node.
   `findMentions` (longest node name wins, `/` for a branch, never after a letter/dot, so emails
   don't count; a name that matches no node is just words), `linkMentions(state, id)` records

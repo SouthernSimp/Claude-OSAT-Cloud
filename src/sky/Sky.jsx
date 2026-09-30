@@ -9,9 +9,10 @@ import { useUndoToast } from '../lib/UndoToast.jsx'
 import { PAPERS } from '../note-core.js'
 import { folderChildren, folderPath, folderSubtree, isActiveNote, isBranch, purgeNotes, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
 import {
-  addAskedEvent, addFolder, addSticky, importNode, markOpened, markUnpacked, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder,
+  addAskedEvent, addFolder, addSticky, importNode, markOpened, markUnpacked, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, placeSticky, removeFolder, renameFolder,
   skipAsk, splitMentions, suggestionGroups, tidyBoard, unpackInto,
 } from '../nodes-model.js'
+import { applyOps, diffDocs } from '../../shared/store-core.mjs'
 import { isPacked, readNodeFile } from '../../shared/node-file.mjs'
 import { readSortAnswer, readUnpackAnswer, readWhereAnswer, sortMessages, unpackMessages, whereMessages } from '../../shared/ai-tasks.mjs'
 import { answeringLabel, askModel } from '../assistant/ask-model.js'
@@ -77,6 +78,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   useEffect(() => {
     if (!target) return
     if (target.action === 'new-node') { board.current?.newNode(); return }
+    if (target.action === 'new-sticky') { board.current?.newSticky(); return }
+    if (target.action === 'place-sticky') { board.current?.placeSticky(target.noteId); return }
     const noteId = target.noteId || target.focusNoteId
     const folderId = target.folderId || (noteId && workspace.notes.find((note) => note.id === noteId)?.folderId)
     if (target.open && folderId) toggle(folderId, true)
@@ -143,6 +146,21 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       commit((state) => moveSticky(state, noteId, folderId, index))
       unsuggest([noteId])
       if (folderId) onFiled?.(noteId)
+    },
+    placeSticky(noteId, at) {
+      let inverse = null
+      commit((state) => {
+        const next = placeSticky(state, noteId, at)
+        if (next !== state) inverse = applyOps(state, diffDocs(state, next)).inverse
+        return next
+      })
+      if (!inverse?.length) return
+      unsuggest([noteId])
+      const restoreDesk = onFiled?.(noteId)
+      showUndo(at ? 'Set the sticky on the Sky' : 'Returned the sticky to Unsorted', () => {
+        commit((state) => applyOps(state, inverse).doc)
+        restoreDesk?.()
+      })
     },
     moveFolder(id, parentId, index, options) {
       commit((state) => moveFolder(state, id, parentId, index, options))
@@ -286,8 +304,9 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       ])
     },
     /* Right-click the open board. */
-    boardMenu(event, { fit, newNode }) {
+    boardMenu(event, { fit, newNode, newSticky }) {
       openMenu(event, [
+        { label: 'New sticky here', icon: Plus, onSelect: newSticky },
         { label: 'New node here', icon: Plus, onSelect: newNode },
         { label: 'See everything', icon: CornersOut, onSelect: fit },
         { label: 'Line them up again', icon: ArrowsIn, onSelect: () => commit(tidyBoard) },
@@ -315,6 +334,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     stickyMenu(event, note) {
       openMenu(event, [
         { label: 'Open as a page', icon: NotePencil, onSelect: () => navigate('Notes', { noteId: note.id }) },
+        note.at && !note.folderId ? { label: 'Back to Unsorted', icon: Stack, onSelect: () => actions.placeSticky(note.id, null) } : null,
         { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
         { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => actions.moveSticky(note.id, folderId), { skip: note.folderId || null }) },
         { divider: true },
@@ -422,7 +442,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     <div className="sky-layer" role="region" aria-label="Sky">
       <header className="sky-bar">
         <button type="button" className="sky-down" onClick={onClose} title="Back to the desk  Esc · ⌥⌘↓"><ArrowDown weight="bold" /> Desk</button>
-        <button type="button" className="sky-new" onClick={() => board.current?.newNode()}><Plus weight="bold" /> New node</button>
+        <button type="button" className="sky-new" onClick={() => board.current?.newSticky()}><Plus weight="bold" /> New sticky</button>
         <button type="button" className="sky-import" title="Import a node file (.json or .md) as a new node" onClick={() => picker.current?.click()}><DownloadSimple weight="bold" /> Import</button>
         <button type="button" className="sky-import" title="A table of its own for a pile of stickies, until it's sorted" onClick={() => navigate('Pile')}><Stack weight="bold" /> Sort a pile</button>
         <input
@@ -450,7 +470,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
               {found.map((note) => (
                 <button key={note.id} type="button" role="option" aria-selected="false" onMouseDown={(event) => event.preventDefault()} onClick={() => pick(note)}>
                   <strong>{note.title}</strong>
-                  <small>{note.folderId ? folderPath(workspace.folders, note.folderId).join(' › ') : 'Unsorted'}</small>
+                  <small>{note.folderId ? folderPath(workspace.folders, note.folderId).join(' › ') : note.at ? 'On the Sky' : 'Unsorted'}</small>
                 </button>
               ))}
             </div>
@@ -496,10 +516,10 @@ function SkyGuide({ onDone }) {
         </li>
         <li>
           <span className="guide-pic is-branch" aria-hidden="true"><i data-paper="mint">Packing</i><i data-paper="rose">Hotels</i></span>
-          <p><strong>Branches group the stickies in a node.</strong> A branch can have smaller branches inside it.</p>
+          <p><strong>Branches group stickies.</strong> They can sit on their own or inside a node, and hold smaller branches.</p>
         </li>
       </ol>
-      <p className="sky-guide-foot">New stickies wait in <strong>Unsorted</strong> until you give them a node.</p>
+      <p className="sky-guide-foot">Double-click the Sky to write a sticky anywhere. Drag one onto a node or branch when you want to give it a home. Other captures wait in <strong>Unsorted</strong>.</p>
       <button type="button" className="is-primary" onClick={onDone}>Got it</button>
     </section>
   )
