@@ -43,11 +43,11 @@ function Words({ text, note, mentions }) {
 /* One sticky: a note on colored paper. Click it to write on it; Esc, ⌘Return or clicking
    away keeps what was written, and emptying it deletes it (onToss offers Undo). Its ×
    deletes it too, everywhere. It can be carried
-   anywhere that takes stickies, and right-clicked (onMenu). With `mentions`, its @s are
-   links to their nodes. */
+   anywhere that takes stickies (itself, with `live`: see carryable), and right-clicked
+   (onMenu). With `mentions`, its @s are links to their nodes. */
 export function Sticky({
   note, commit, paper = 'canary', onToss, onMenu, mentions, carry = true, editing: startEditing = false, onEditingDone,
-  className = '', style, slot = true, children,
+  className = '', style, slot = true, children, live = null,
 }) {
   const [editing, setEditing] = useState(startEditing)
   const field = useRef(null)
@@ -79,7 +79,7 @@ export function Sticky({
       style={style}
       tabIndex={editing ? -1 : 0}
       aria-label={title || 'Sticky'}
-      {...(carry && !editing ? carryable({ kind: 'note', id: note.id, data: { folderId: note.folderId || null } }) : {})}
+      {...(carry && !editing ? carryable({ kind: 'note', id: note.id, data: { folderId: note.folderId || null } }, { live }) : {})}
       onClick={(event) => { if (!editing && !event.target.closest('button')) setEditing(true) }}
       onContextMenu={onMenu}
       onKeyDown={(event) => {

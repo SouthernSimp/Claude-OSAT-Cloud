@@ -123,6 +123,11 @@
 .is-carried { opacity: 0.28; }
 .carry-ghost { opacity: 0.96; rotate: 2deg; scale: 1.03; box-shadow: var(--lift-held) !important; transition: none !important; animation: none !important; cursor: grabbing; }
 .carry-line { position: fixed; z-index: 2147483001; border-radius: 3px; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); pointer-events: none; }
+/* Carried itself (carryable's `live`): it follows the pointer and lets it through to what's under it. */
+.is-lifted, .is-lifted * { pointer-events: none !important; }
+.is-lifted { cursor: grabbing; transition: none !important; animation: none !important; }
+:is(.desk-sticky, .desk-stack):is(.is-moving, :has(> .is-lifted)) { z-index: 6; pointer-events: none; transition: none; rotate: 0deg; }
+:is(.desk-sticky, .desk-stack).is-moving > :is(.sticky, .stack-head) { box-shadow: var(--lift-held); }
 html[data-carrying] { cursor: grabbing; user-select: none; }
 :is(.sticky:not(.is-editing), .node-head, .branch-head, .lane-head, .node-list-item) { user-select: none; -webkit-user-select: none; }
 html[data-carrying] * { cursor: grabbing !important; }
@@ -590,6 +595,69 @@ html[data-carry-edge="up"] body::after {
   transition: opacity 140ms;
 }
 .desk-sticky:hover .desk-sticky-size { opacity: 1; }
+/* Dropped on another sticky, they stack: it lights up to say so. */
+.desk-sticky[data-over] > .sticky { box-shadow: var(--lift-held), 0 0 0 2px var(--accent); }
+
+/* A stack: stickies in a column like a list on a kanban board, on a solid tray. */
+.desk-stack {
+  position: absolute;
+  width: 232px;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--surface-raised);
+  box-shadow: var(--e-3);
+  pointer-events: auto;
+}
+.stack-head { display: flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 2px; cursor: grab; user-select: none; -webkit-user-select: none; }
+.stack-head strong { flex: 1; min-width: 0; font: 650 var(--t-sm)/1.2 var(--font); color: var(--ink); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.stack-head strong.is-unnamed { color: var(--muted); font-weight: 550; }
+.stack-head .name-field { flex: 1; min-width: 0; }
+:is(.stack-fold, .stack-more) { display: grid; place-items: center; width: 26px; height: 26px; flex: none; border-radius: 8px; color: var(--muted); }
+:is(.stack-fold, .stack-more):hover { background: var(--surface-hover); color: var(--ink); }
+:is(.stack-fold, .stack-more) svg { width: 14px; height: 14px; }
+.stack-fold svg { transition: rotate 180ms var(--ease-out); }
+.desk-stack.is-folded .stack-fold svg { rotate: -90deg; }
+.stack-list { display: grid; gap: 8px; max-height: 62dvh; overflow-y: auto; overscroll-behavior: contain; padding: 2px; border-radius: 10px; }
+.stack-list[data-over], .stack-pile[data-over] { outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
+.stack-item { position: relative; }
+.stack-item > .sticky { min-height: 64px; box-shadow: var(--lift-rest); }
+.stack-pile { display: grid; gap: 4px; width: 100%; padding: 2px; text-align: left; border-radius: 10px; }
+.stack-strip { display: block; padding: 7px 10px; border-radius: 4px; font-size: var(--t-xs); color: var(--paper-ink); background: var(--paper-bg, var(--paper-canary)); box-shadow: var(--e-1); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.stack-more-line { padding: 2px 4px; font-size: var(--t-xs); color: var(--muted); }
+
+/* Connections: a dot on a sticky's edge draws one; the lines lie under the stickies. */
+.link-dot {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: -7px;
+  width: 14px;
+  height: 14px;
+  translate: 0 -50%;
+  border: 2px solid var(--surface-solid);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--e-2);
+  cursor: crosshair;
+  opacity: 0;
+  scale: 0.6;
+  transition: opacity 140ms, scale 160ms var(--ease-out);
+}
+.stack-item > .link-dot { right: 4px; }
+:is(.desk-sticky, .stack-item, .map-card, .board-sticky):is(:hover, :focus-within) > .link-dot,
+.link-dot:focus-visible { opacity: 1; scale: 1; }
+.link-dot:hover { scale: 1.2; }
+.link-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-link-over] > :is(.sticky, .node-head) { box-shadow: var(--lift-held), 0 0 0 2px var(--accent); }
+.link-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.link-line { fill: none; stroke: color-mix(in srgb, var(--accent) 78%, var(--ink)); stroke-width: 2.5px; stroke-linecap: round; opacity: 0.85; }
+.link-line.is-drawing { stroke-dasharray: 6 6; opacity: 1; }
+.link-hit { fill: none; stroke: transparent; stroke-width: 16px; pointer-events: stroke; cursor: pointer; }
+g:hover > .link-line { stroke-width: 3.5px; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .link-dot, .stack-fold svg { transition: none; } }
+
 .node-draft { position: absolute; z-index: 5; width: 200px; padding: 16px 14px; border-radius: 4px 4px 16px 4px; color: var(--paper-ink); background: var(--paper-canary); box-shadow: var(--lift-held); }
 
 /* A node on the desk's right side: a small pile of stickies with its name on top. */

@@ -58,15 +58,20 @@ const withRanks = (list, renumber) => {
 
 const folderExists = (state, id) => Boolean(id) && state.folders.some((folder) => folder.id === id)
 
+/* Leaves out a record's place (`at`): something given a new home is laid out afresh there. */
+const unplaced = ({ at, ...rest }) => rest
+
 /* Puts a sticky in a folder's pile (null: back to Unsorted) at `index` (the end when left
-   out). Filing it clears Unsorted. */
+   out). Filing it clears Unsorted. Its place on the Sky (`at`, kept from where it hangs off
+   its folder) only survives a move inside the same folder. */
 export function moveSticky(state, noteId, folderId = null, index = Infinity) {
   const note = state.notes.find((item) => item.id === noteId)
   if (!note || note.kind === 'day') return state
   const target = folderExists(state, folderId) ? folderId : null
   const { rank, renumber } = rankAt(pileOf(state.notes, target).filter((item) => item.id !== noteId), index)
+  const stays = Boolean(target) && target === (note.folderId || null)
   const notes = withRanks(state.notes, renumber).map((item) => (item.id === noteId
-    ? { ...item, folderId: target, unsorted: !target, rank }
+    ? { ...(stays ? item : unplaced(item)), folderId: target, unsorted: !target, rank }
     : item))
   return { ...state, notes }
 }
@@ -82,7 +87,9 @@ export function moveFolder(state, folderId, parentId = null, index = Infinity, {
   const folders = withRanks(state.folders, renumber).map((item) => {
     if (item.id !== folderId) return item
     const { kind, ...rest } = item
-    return { ...rest, parentId: parent, rank, ...(loose && !parent ? { kind: 'branch' } : {}) }
+    // Under a new parent it is laid out afresh (its `at` hung off the old one).
+    const kept = parent === (item.parentId || null) ? rest : unplaced(rest)
+    return { ...kept, parentId: parent, rank, ...(loose && !parent ? { kind: 'branch' } : {}) }
   })
   return { ...state, folders }
 }
@@ -129,6 +136,15 @@ export function placeSticky(state, noteId, at) {
   }) }
 }
 
+/* A record without its connections to the folders in `removed`. */
+function withoutLinksTo(item, removed) {
+  const gone = (key) => key.startsWith('folder:') && removed.has(key.slice(7))
+  if (!item.links?.some(gone)) return item
+  const { links, ...rest } = item
+  const kept = links.filter((key) => !gone(key))
+  return kept.length ? { ...rest, links: kept } : rest
+}
+
 /* Removing a node keeps its stickies: its branches go with it and everything in them lands
    in Unsorted (a branch's stickies go up to its node). */
 export function removeFolder(state, folderId) {
@@ -138,8 +154,8 @@ export function removeFolder(state, folderId) {
   const next = deleteFolder(state, folderId)
   return {
     ...next,
-    folders: next.folders.map((item) => (item.links?.some((id) => removed.has(id)) ? { ...item, links: item.links.filter((id) => !removed.has(id)) } : item)),
-    notes: next.notes.map((note) => (homeless.has(note.id) && !note.folderId ? { ...note, unsorted: true } : note)),
+    folders: next.folders.map((item) => withoutLinksTo(item, removed)),
+    notes: next.notes.map((note) => withoutLinksTo(homeless.has(note.id) && !note.folderId ? { ...note, unsorted: true } : note, removed)),
   }
 }
 

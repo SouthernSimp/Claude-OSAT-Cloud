@@ -108,7 +108,7 @@ export function slotIndex(boxes, axis, x, y) {
    point falls, and the line that shows it. */
 function slotAt(element, axis, x, y) {
   const items = [...element.querySelectorAll('[data-slot]')]
-    .filter((item) => item.closest('[data-drop]') === element && !item.classList.contains('is-carried') && !item.querySelector('.is-carried'))
+    .filter((item) => item.closest('[data-drop]') === element && !item.matches('.is-carried, .is-lifted') && !item.querySelector('.is-carried, .is-lifted'))
   const index = slotIndex(items.map((item) => item.getBoundingClientRect()), axis, x, y)
   const beside = items[index] || items[index - 1]
   const box = (beside || element).getBoundingClientRect()
@@ -144,19 +144,22 @@ globalThis.addEventListener?.('click', (event) => {
 
 /* Props for something that can be carried: { kind, id, data }. Plain clicks still reach
    its own onClick; controls inside it (buttons, fields) never start a carry, but the
-   thing itself may be a button (a desk icon, a file). */
-export function carryable(item, { disabled = false, out = null } = {}) {
+   thing itself may be a button (a desk icon, a file). With `live` ({ move(dx, dy), end() }),
+   nothing is copied: the thing itself is lifted (it lets the pointer through, `is-lifted`)
+   and `move` hears how far it has been carried, in screen pixels, so it and whatever hangs
+   off it (its lines, its branch) can follow; `end` runs before the drop. */
+export function carryable(item, { disabled = false, out = null, live = null } = {}) {
   if (disabled) return {}
   return {
     onPointerDown(event) {
       const control = event.target.closest('button, input, textarea, select, a, [contenteditable="true"], .no-carry')
       if (event.button !== 0 || (control && control !== event.currentTarget && event.currentTarget.contains(control))) return
-      begin(event, item, event.currentTarget, out)
+      begin(event, item, event.currentTarget, out, live)
     },
   }
 }
 
-function begin(down, item, source, out) {
+function begin(down, item, source, out, live) {
   const start = { x: down.clientX, y: down.clientY }
   const box = source.getBoundingClientRect()
   const offset = { x: start.x - box.left, y: start.y - box.top }
@@ -179,7 +182,8 @@ function begin(down, item, source, out) {
 
   const place = (x, y) => {
     last = { x, y }
-    ghost.style.translate = `${x - offset.x}px ${y - offset.y}px`
+    if (live) live.move(x - start.x, y - start.y)
+    else ghost.style.translate = `${x - offset.x}px ${y - offset.y}px`
     const found = targetAt(x, y, carrying)
     if (found?.element !== over?.element) {
       clear()
@@ -210,19 +214,25 @@ function begin(down, item, source, out) {
     if (event.pointerId !== down.pointerId) return
     if (!ghost) {
       if (Math.hypot(event.clientX - start.x, event.clientY - start.y) < 5) return
-      ghost = source.cloneNode(true)
-      ghost.classList.add('carry-ghost')
-      ghost.removeAttribute('id')
-      ghost.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'))
-      ghost.setAttribute('aria-hidden', 'true')
-      Object.assign(ghost.style, { position: 'fixed', left: '0px', top: '0px', width: `${box.width / zoom}px`, height: `${box.height / zoom}px`, margin: '0', zIndex: '2147483000', pointerEvents: 'none' })
-      if (Math.abs(zoom - 1) > 0.01) Object.assign(ghost.style, { transformOrigin: '0 0', scale: String(zoom * 1.03) })
-      document.body.append(ghost)
+      if (live) {
+        // Lifted, not copied: it follows by itself (live.move) and lets the pointer through.
+        ghost = source
+        source.classList.add('is-lifted')
+      } else {
+        ghost = source.cloneNode(true)
+        ghost.classList.add('carry-ghost')
+        ghost.removeAttribute('id')
+        ghost.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'))
+        ghost.setAttribute('aria-hidden', 'true')
+        Object.assign(ghost.style, { position: 'fixed', left: '0px', top: '0px', width: `${box.width / zoom}px`, height: `${box.height / zoom}px`, margin: '0', zIndex: '2147483000', pointerEvents: 'none' })
+        if (Math.abs(zoom - 1) > 0.01) Object.assign(ghost.style, { transformOrigin: '0 0', scale: String(zoom * 1.03) })
+        document.body.append(ghost)
+        source.classList.add('is-carried')
+      }
       marker = document.createElement('i')
       marker.className = 'carry-line'
       marker.hidden = true
       document.body.append(marker)
-      source.classList.add('is-carried')
       getSelection()?.removeAllRanges()
       carrying = { kind: item.kind, id: item.id, data: item.data }
       document.documentElement.dataset.carrying = item.kind
@@ -250,7 +260,10 @@ function begin(down, item, source, out) {
     delete document.documentElement.dataset.carryEdge
     delete document.documentElement.dataset.carrying
     clear()
-    ghost.remove()
+    if (live) {
+      source.classList.remove('is-lifted')
+      live.end?.()
+    } else ghost.remove()
     marker?.remove()
     source.classList.remove('is-carried')
     swallowClick = true

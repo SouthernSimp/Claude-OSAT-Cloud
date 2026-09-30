@@ -232,6 +232,12 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       actions.placeSticky(noteId, at)
       fly(frame({ ...at, ...STICKY }))
     },
+    /* A stack from the desk, as a branch set down near the middle of the view. */
+    placeStack(detail) {
+      const at = newSpot()
+      const made = actions.sendStack(detail, (state, id) => placeNodes(state, boardSpots(state.folders, latest.current.sizes), new Map([[id, at]])))
+      if (made) fly(frame({ ...at, ...CARD }))
+    },
     back() {
       if (draft) { setDraft(null); return true }
       if (!naming) return false

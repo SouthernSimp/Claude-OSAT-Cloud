@@ -44,6 +44,13 @@ test('a spot on the desk is kept inside it, and null puts the item back', () => 
   // A sticky keeps its size, within reason; half a size is no size.
   assert.deepEqual(placeItem({}, 'note:s', { x: 0.2, y: 0.2, w: 9000, h: 10 })['note:s'], { x: 0.2, y: 0.2, w: 720, h: 90 })
   assert.deepEqual(placeItem({}, 'note:s', { x: 0.2, y: 0.2, w: 300 })['note:s'], { x: 0.2, y: 0.2 })
+  // A stack keeps its stickies in order, once each, with its name and fold; an empty one goes.
+  assert.deepEqual(
+    placeItem({}, 'stack:s1', { x: 0.5, y: 0.2, ids: ['note-a', 'note-b', 'note-a', 'bad id', 4], name: '  Ideas ', folded: true, extra: 1 })['stack:s1'],
+    { x: 0.5, y: 0.2, ids: ['note-a', 'note-b'], name: 'Ideas', folded: true },
+  )
+  assert.deepEqual(placeItem({ 'stack:s1': { x: 0, y: 0, ids: ['a'] } }, 'stack:s1', { x: 0.5, y: 0.2, ids: [] }), {})
+  assert.equal('ids' in placeItem({}, 'note:s', { x: 0.2, y: 0.2, ids: ['a'] })['note:s'], false, 'only a stack has stickies in it')
 })
 
 test('the widgets out on the desk: up to five short ids, once each, in order', () => {

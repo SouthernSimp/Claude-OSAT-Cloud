@@ -10,6 +10,7 @@ import { ClipboardOffer } from '../field/ClipboardOffer.jsx'
 import { FieldDesk } from '../field/FieldDesk.jsx'
 import { FieldSheet } from '../field/FieldSheet.jsx'
 import { onCarryEdge } from '../lib/carry.js'
+import { changes, setDown } from '../field/stacks.js'
 import { clamp, inputActive } from '../lib/ui.js'
 import { SETTINGS, spaceForKey, titleFor } from '../lib/spaces.js'
 import { NotesView } from '../notes/NotesView.jsx'
@@ -473,6 +474,7 @@ export function Desk() {
           onOpenNote={(noteId) => open('note', { noteId })}
           places={prefs.places || {}}
           onPlace={place}
+          onSendStack={(stack) => goUp({ action: 'place-stack', stackKey: stack.key, noteIds: stack.notes.map((note) => note.id), name: stack.name || '' })}
           media={bridge?.nowPlaying && !on ? bridge : null}
           offline={offline}
           onOffline={() => askOffline(!on)}
@@ -526,10 +528,19 @@ export function Desk() {
             target={skyTarget}
             onClose={goDown}
             onFiled={(noteId) => {
-              const spot = prefs.places?.[`note:${noteId}`]
+              // Off the desk (out of its stack too); Undo puts it back where it lay.
+              const before = prefs.places || {}
+              const after = setDown(before, noteId, null)
+              const moved = changes(before, after)
+              if (!moved.length) return
+              moved.forEach(([key, spot]) => place(key, spot))
+              return () => changes(after, before).forEach(([key, spot]) => place(key, spot))
+            }}
+            onStackSent={(key) => {
+              const spot = prefs.places?.[key]
               if (!spot) return
-              place(`note:${noteId}`, null)
-              return () => place(`note:${noteId}`, spot)
+              place(key, null)
+              return () => place(key, spot)
             }}
           />
         </div>

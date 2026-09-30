@@ -3,7 +3,7 @@
    testable without a browser. */
 
 import { fromOf } from '../shared/node-file.mjs'
-import { PAPERS, normalizeNote, parseTags, rankOf } from './note-core.js'
+import { PAPERS, linksOf, normalizeNote, parseTags, rankOf } from './note-core.js'
 
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 const clamp = (value) => Math.round(Math.max(-1e6, Math.min(1e6, value)))
@@ -28,7 +28,8 @@ export function normalizeFolders(value) {
       // folders, whether it lays out across or down, and where it sits on the board.
       ...(Number.isFinite(folder.rank) ? { rank: folder.rank } : {}),
       ...(PAPERS.includes(folder.color) ? { color: folder.color } : {}),
-      ...(Array.isArray(folder.links) && folder.links.length ? { links: [...new Set(folder.links.filter((id) => typeof id === 'string' && id))].slice(0, 50) } : {}),
+      // Connections (schema 10) are 'note:<id>' / 'folder:<id>'; an old link (schema 3) was a folder's bare id.
+      ...(Array.isArray(folder.links) ? linksOf(folder.links.map((key) => (typeof key === 'string' && !key.includes(':') ? `folder:${key}` : key))) : {}),
       ...(folder.layout === 'down' ? { layout: 'down' } : {}),
       // A branch set down on the Sky on its own keeps being a branch (schema 8). Inside a
       // node it is a branch anyway, so the mark only stays on a top-level one (below).
@@ -45,7 +46,7 @@ export function normalizeFolders(value) {
   const byId = new Map(folders.map((folder) => [folder.id, folder]))
   folders.forEach((folder) => {
     if (folder.links) {
-      folder.links = folder.links.filter((id) => id !== folder.id && byId.has(id))
+      folder.links = folder.links.filter((key) => key !== `folder:${folder.id}` && (!key.startsWith('folder:') || byId.has(key.slice(7))))
       if (!folder.links.length) delete folder.links
     }
     if (folder.parentId === folder.id || !byId.has(folder.parentId)) { folder.parentId = null; return }

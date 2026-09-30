@@ -20,7 +20,7 @@ test('schema 3: folders keep their rank, paper, links and layout; notes their ra
     [folder('x', { rank: 2, color: 'mint', links: ['y', 'y', 'x', 'gone'], layout: 'down' }), folder('y', { layout: 'sideways' })],
   )
   const [x, y] = state.folders
-  assert.deepEqual([x.rank, x.color, x.links, x.layout], [2, 'mint', ['y'], 'down'])
+  assert.deepEqual([x.rank, x.color, x.links, x.layout], [2, 'mint', ['folder:y'], 'down'], 'an old link is a connection now (schema 10)')
   assert.deepEqual(['rank', 'color', 'links', 'layout'].map((key) => key in y), [false, false, false, false])
   const [a, b] = state.notes
   assert.deepEqual([a.rank, a.color, a.kind], [5, 'sky', null], 'the scratch page is gone (schema 5)')
@@ -95,7 +95,7 @@ test('removing a node keeps its stickies in Unsorted and drops its links', () =>
   let state = space([note('in-node', { folderId: 'rnd' }), note('in-branch', { folderId: 'ideas' })], [folder('rnd'), folder('ideas', { parentId: 'rnd' }), folder('other', { links: ['rnd'] })])
   state = removeFolder(state, 'rnd')
   assert.deepEqual(state.folders.map((item) => item.id), ['other'])
-  assert.equal(state.folders[0].links.length, 0)
+  assert.equal('links' in state.folders[0], false)
   assert.deepEqual(state.notes.map((item) => [item.id, item.folderId, item.unsorted]), [['in-node', null, true], ['in-branch', null, true]])
 })
 

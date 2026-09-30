@@ -41,7 +41,7 @@ function guideSeen() {
    of the screen). Your nodes on one whiteboard (Board). `target` says where to fly on
    arriving ({ folderId } or { noteId }). Esc: a node being named, the search, then back
    down (Desk.jsx asks `back()`). `onFiled` hears when a sticky from the desk went into a node. */
-export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target, onClose, onFiled }, ref) {
+export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target, onClose, onFiled, onStackSent }, ref) {
   const board = useRef(null)
   const [open, setOpen] = useState(readOpen)
   const [folds, setFolds] = useState(readFolds)
@@ -74,12 +74,16 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     if (!workspace.settings?.seeded?.direction) commit(seedDirection)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Arriving with somewhere to go: a node, or the node a note is in. */
+  /* Arriving with somewhere to go: a node, or the node a note is in. Each arrival is
+     handled once (something it makes, like a stack's branch, is never made twice). */
+  const arrived = useRef(null)
   useEffect(() => {
-    if (!target) return
+    if (!target || arrived.current === target.at) return
+    arrived.current = target.at
     if (target.action === 'new-node') { board.current?.newNode(); return }
     if (target.action === 'new-sticky') { board.current?.newSticky(); return }
     if (target.action === 'place-sticky') { board.current?.placeSticky(target.noteId); return }
+    if (target.action === 'place-stack') { board.current?.placeStack(target); return }
     const noteId = target.noteId || target.focusNoteId
     const folderId = target.folderId || (noteId && workspace.notes.find((note) => note.id === noteId)?.folderId)
     if (target.open && folderId) toggle(folderId, true)
@@ -164,6 +168,30 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     moveFolder(id, parentId, index, options) {
       commit((state) => moveFolder(state, id, parentId, index, options))
+    },
+    /* A stack sent up from the desk: its stickies become a branch on the Sky, on its own,
+       where `place` sets it down. It leaves the desk; Undo brings both back. */
+    sendStack({ noteIds, name, stackKey }, place) {
+      let inverse = null
+      let made = null
+      commit((state) => {
+        const created = addFolder(state, name || 'Untitled branch')
+        if (!created.folder) return state
+        made = created.folder
+        let next = moveFolder(created.state, made.id, null, Infinity, { loose: true })
+        noteIds.forEach((id) => { next = moveSticky(next, id, made.id) })
+        next = place(next, made.id)
+        inverse = applyOps(state, diffDocs(state, next)).inverse
+        return next
+      })
+      if (!made) return null
+      toggle(made.id, true)
+      const restoreDesk = onStackSent?.(stackKey)
+      showUndo(`Sent “${made.name}” up as a branch`, () => {
+        commit((state) => applyOps(state, inverse).doc)
+        restoreDesk?.()
+      })
+      return made
     },
     /* Where does this belong?: the model reads the branch and picks one place with a reason.
        Nothing moves until Move; Undo puts the branch back where it was. */

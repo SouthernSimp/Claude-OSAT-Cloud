@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 9
+export const SCHEMA = 10
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -54,6 +54,23 @@ export const migrations = [
   // 9: notes may keep a free Sky position (`at`). Existing notes stay where they were;
   // an older app must refuse this data rather than discard the saved positions.
   { from: 8, run: (doc) => doc },
+  // 10: the Sky is a mind map. A sticky in a folder, or a folder inside another, may keep
+  // where it hangs off its parent (`at`, from the parent's place); only nodes, loose
+  // branches and free stickies keep a place on the board itself. An `at` on something with
+  // a parent was never shown, so it goes and those are laid out afresh. Notes and folders
+  // may also be connected to other notes and folders (`links`); an older OSAT would drop
+  // those, so it refuses this data.
+  {
+    from: 9,
+    run: (doc) => {
+      const unplace = (list, parent) => (Array.isArray(list) ? list.map((item) => {
+        if (!item || typeof item !== 'object' || !item[parent] || !('at' in item)) return item
+        const { at, ...rest } = item
+        return rest
+      }) : list)
+      return { ...doc, notes: unplace(doc.notes, 'folderId'), folders: unplace(doc.folders, 'parentId') }
+    },
+  },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding
