@@ -298,6 +298,16 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   things carry one); folders may have `color` and `at` ({x, y} on the Sky's board; `placeNodes`
   freezes every node's spot and re-ranks left to right); notes may have `color`. Old `links` and
   `layout` are kept in the data but no longer shown or offered (Phase 12).
+- Loose branches (Phase 27, schema 8): a branch can sit on the Sky on its own. It is a top-level folder
+  marked `kind: 'branch'` (`isBranch(folder)` in notes-model: a `parentId` or that mark; normalization drops the
+  mark inside a node, and a branch whose node went missing stays a loose branch). It is drawn as a card on the
+  board like a node but on a branch's paper, with a branch's menu; a branch carried out onto the board stays a
+  branch (`moveFolder(state, id, null, Infinity, { loose: true })`); "Its own node" in Move to makes it a node.
+  Everything that lists top-level folders (`nodesOf`, Notes, the connector, import) still sees it as a
+  top-level entry; only the Sky, Find's hint and the AI's map (`board-context.js`) tell them apart. "Where does
+  this belong?" (`sky/where.js`, `whereMessages`/`readWhereAnswer` in ai-tasks): the model picks one node or
+  branch with a reason (`placing` in Sky.jsx, `PlaceHelp` in Board.jsx); nothing moves until Move (it checks the
+  branch and the place still exist and are not inside each other), and Undo restores the branch's old record.
 - @mentions (`nodes-model.js`, schema 4): an @ only links, it never files or makes a node.
   `findMentions` (longest node name wins, `/` for a branch, never after a letter/dot, so emails
   don't count; a name that matches no node is just words), `linkMentions(state, id)` records

@@ -6,14 +6,14 @@
 
 import { localDateKey } from '../daily-practice.js'
 import { nextSteps } from '../next-steps.js'
-import { folderChildren } from '../notes-model.js'
+import { folderChildren, isBranch } from '../notes-model.js'
 import { nodesOf, pileOf, stickiesIn } from '../nodes-model.js'
 import { roadmapPhases } from '../lib/roadmap.js'
 
 /* How OSAT works, as the AI should say it. */
 export const OSAT_GUIDE = `You live inside OSAT, the person's private notes app on their Mac.
 
-How OSAT works, in its own words: a sticky is one thought (a note). A node is a topic, like a trip, a project or a person. Branches group the stickies in a node, and a branch can hold smaller branches. New stickies wait in Unsorted (in no node yet) until they are given a node. The desk is where they write, with one line at the bottom to write, find or ask. The Sky is the whiteboard above the desk where the nodes live (⌘3). Other rooms: Notes (⌘2), Ask (⌘4), Files (⌘5), and under Tools: Journal, Calendar, Habits, Money, Sort a pile, Browser, Terminal and the Roadmap (the plan for OSAT, with a Timeline).
+How OSAT works, in its own words: a sticky is one thought (a note). A node is a topic, like a trip, a project or a person. Branches group the stickies in a node, and a branch can hold smaller branches. A branch can also sit on the Sky on its own, in no node yet, until it is given a home. New stickies wait in Unsorted (in no node yet) until they are given a node. The desk is where they write, with one line at the bottom to write, find or ask. The Sky is the whiteboard above the desk where the nodes live (⌘3). Other rooms: Notes (⌘2), Ask (⌘4), Files (⌘5), and under Tools: Journal, Calendar, Habits, Money, Sort a pile, Browser, Terminal and the Roadmap (the plan for OSAT, with a Timeline).
 Use those words (sticky, node, branch, Unsorted), never "folder", "inbox" or "record" for their notes.
 You read text only. For a picture or a scan you get the words in it, not how it looks; if asked about something you cannot see, say so.
 You can suggest, but you never move or change anything yourself: say where something could go and the person does it. In the Sky, "Sort Unsorted" suggests a home for every sticky in Unsorted, with one click to accept.`
@@ -42,8 +42,8 @@ function fit(lines, room, noun) {
 }
 
 /* One line a node: how much is in it, then its branches with theirs. */
-function nodeLines(state) {
-  return nodesOf(state.folders).map(({ folder }) => {
+function nodeLines(state, list) {
+  return list.map(({ folder }) => {
     const branches = folderChildren(state.folders, folder.id)
     const loose = pileOf(state.notes, folder.id).length
     const head = `- ${folder.name} (${stickies(stickiesIn(state, folder.id).length)})`
@@ -82,9 +82,12 @@ export function boardMap(state, { open = [], where = 'desk', maxChars = 3200, no
   const unsorted = pileOf(state.notes, null)
   add(`Unsorted (${stickies(unsorted.length)}, in no node yet):`, unsorted.map(stickyLine), 'stickies')
   if (!unsorted.length) parts.push('Unsorted is empty.')
-  const nodes = nodesOf(state.folders)
-  add(`Nodes (${nodes.length}):`, nodeLines(state), 'nodes')
+  const top = nodesOf(state.folders)
+  const nodes = top.filter(({ folder }) => !isBranch(folder))
+  const alone = top.filter(({ folder }) => isBranch(folder))
+  add(`Nodes (${nodes.length}):`, nodeLines(state, nodes), 'nodes')
   if (!nodes.length) parts.push('They have no nodes yet.')
+  add(`Branches on the Sky on their own (${alone.length}), in no node yet:`, nodeLines(state, alone), 'branches')
   if (open.length) {
     const lines = openLines(state, open, Math.min(1800, room() - 40))
     if (lines.length) parts.push(lines.join('\n'))

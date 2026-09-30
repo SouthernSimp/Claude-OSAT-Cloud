@@ -3,7 +3,7 @@ import { ArrowRight, At, CalendarPlus, CaretDown, DotsThree, Minus, Plus, Questi
 
 import { hashUnit } from '../field/field-model.js'
 import { carryable, useDrop } from '../lib/carry.js'
-import { folderChildren, folderSubtree } from '../notes-model.js'
+import { folderChildren, folderSubtree, isBranch } from '../notes-model.js'
 import {
   addFolder, asksIn, askStart, boardSpots, CARD, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
 } from '../nodes-model.js'
@@ -285,14 +285,14 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     addEventListener('pointerup', up, true)
   }
 
-  /* A branch let go on the open board becomes a node right there. */
+  /* A branch let go on the open board stays a branch, set down right there. */
   const drop = useDrop('sky:board', {
     accepts: (carried) => carried.kind === 'folder' && Boolean(carried.data?.parentId),
     onDrop: ({ id, x, y, offset }) => {
       const box = view.current.getBoundingClientRect()
       const at = toWorld(x - offset.x - box.left, y - offset.y - box.top)
       actions.commit((state) => {
-        const moved = moveFolder(state, id, null)
+        const moved = moveFolder(state, id, null, Infinity, { loose: true })
         return placeNodes(moved, boardSpots(moved.folders, latest.current.sizes), new Map([[id, at]]))
       })
     },
@@ -430,6 +430,8 @@ function FoldedPile({ notes, actions }) {
 }
 
 function NodeCard({ folder, index, spot, isOpen, workspace, actions, toggle, sorting, mentioned, drag, onGrab, onZoom, wasDragged, measure }) {
+  // A branch set down on the Sky on its own is drawn like a node, on the paper of a branch.
+  const loose = isBranch(folder)
   const count = stickiesIn(workspace, folder.id).length
   const branches = folderChildren(workspace.folders, folder.id)
   const head = useDrop(`sky:head:${folder.id}`, {
@@ -450,12 +452,12 @@ function NodeCard({ folder, index, spot, isOpen, workspace, actions, toggle, sor
       <div
         className="node-head"
         data-node-head={folder.id}
-        data-paper={folder.color || 'canary'}
+        data-paper={folder.color || (loose ? 'bone' : 'canary')}
         data-layers={isOpen ? 0 : layersFor(count)}
         role="button"
         tabIndex={0}
         aria-expanded={isOpen}
-        aria-label={`Node: ${folder.name}`}
+        aria-label={`${loose ? 'Branch' : 'Node'}: ${folder.name}`}
         {...head}
         onPointerDown={(event) => onGrab(event, folder.id)}
         onClick={(event) => { if (!wasDragged() && event.detail < 2 && !event.target.closest('button, input')) toggle(folder.id) }}
@@ -467,7 +469,7 @@ function NodeCard({ folder, index, spot, isOpen, workspace, actions, toggle, sor
         onContextMenu={(event) => actions.nodeMenu(event, folder)}
       >
         {actions.renaming === folder.id
-          ? <NameField initial={folder.name} placeholder="Name the node" onDone={(name) => actions.endRename(folder.id, name)} />
+          ? <NameField initial={folder.name} placeholder={loose ? 'Name the branch' : 'Name the node'} onDone={(name) => actions.endRename(folder.id, name)} />
           : <strong>{folder.name}</strong>}
         {(folder.fresh || folder.packed || folder.from?.source) && (
           <span className="node-origin">
@@ -487,6 +489,7 @@ function NodeCard({ folder, index, spot, isOpen, workspace, actions, toggle, sor
       </div>
       {isOpen && (
         <div className="card-body">
+          {actions.placing?.id === folder.id && <PlaceHelp placing={actions.placing} actions={actions} />}
           <NodeLanes folder={folder} workspace={workspace} actions={actions} sorting={sorting} />
           {mentioned?.length > 0 && (
             <div className="card-mentions">
@@ -613,6 +616,7 @@ function Lane({ folder, notes, actions, depth = 0, loose = false, labelled = tru
           />
         )}
       {sorting && !folded && <SortHelp sorting={sorting} workspace={workspace} actions={actions} />}
+      {!loose && actions.placing?.id === folder.id && <PlaceHelp placing={actions.placing} actions={actions} />}
     </section>
   )
 }
@@ -633,6 +637,27 @@ function AskHelp({ notes, actions }) {
           <button type="button" onClick={() => actions.skipAsk(note)}>Not now</button>
         </div>
       ))}
+    </div>
+  )
+}
+
+/* Where does this belong?, in plain words: the place the model picked and why, with Move and Dismiss. */
+function PlaceHelp({ placing, actions }) {
+  if (!placing.place) {
+    return (
+      <div className="sort-help" role="status">
+        <p>{placing.asking || placing.line}</p>
+        <button type="button" onClick={actions.dismissPlace}>{placing.asking ? 'Stop' : 'OK'}</button>
+      </div>
+    )
+  }
+  return (
+    <div className="sort-help" role="status">
+      <div className="sort-suggestion">
+        <p>This looks like it belongs in <strong>{placing.place.name}</strong>{placing.place.why ? `: ${placing.place.why}` : '.'}</p>
+        <button type="button" className="is-primary" onClick={actions.acceptPlace}><ArrowRight weight="bold" /> Move</button>
+        <button type="button" onClick={actions.dismissPlace}>Dismiss</button>
+      </div>
     </div>
   )
 }
