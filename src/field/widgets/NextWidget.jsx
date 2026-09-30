@@ -26,7 +26,7 @@ export function openSteps(notes, today) {
 
 /* Next: up to five steps with rings. A ticked step stays a moment, then leaves. In the
    evening the foot offers to close the day. Opens today's page. */
-export function NextWidget({ notes, now, today, commit, navigate, onOpenNote, open }) {
+export function NextWidget({ notes, now, today, commit, navigate, onOpenNote, open, room = 0 }) {
   const [ghosts, setGhosts] = useState(() => new Set())
   const [eveningSeenOn, setEveningSeenOn] = useState(readEvening)
   const earlier = earlierSteps(notes, today)
@@ -52,7 +52,7 @@ export function NextWidget({ notes, now, today, commit, navigate, onOpenNote, op
       <button type="button" id="widget-next" className="widget-kicker widget-title" aria-label="Next. Open today’s page" onClick={() => open('Journal')}>Next</button>
       {steps.length ? (
         <ul>
-          {steps.slice(0, 5).map((step) => (
+          {steps.slice(0, 5 + room).map((step) => (
             <li key={step.id} className={step.done ? 'is-done' : ''}>
               <button type="button" className="ring" aria-label={`Complete ${step.text}`} aria-pressed={step.done} onClick={() => toggleStep(step)} />
               <button type="button" className="step-text" onClick={() => onOpenNote(step.noteId)}>{step.text}</button>
@@ -60,9 +60,9 @@ export function NextWidget({ notes, now, today, commit, navigate, onOpenNote, op
           ))}
         </ul>
       ) : <p className="widget-empty">Nothing waiting. Write one in the line and press ⌥↵.</p>}
-      {(steps.length > 5 || earlier.length > 0 || evening) && (
+      {(steps.length > 5 + room || earlier.length > 0 || evening) && (
         <div className="widget-next-foot">
-          {steps.length > 5 && <button type="button" onClick={() => open('Journal')}>{steps.length - 5} more on today’s page</button>}
+          {steps.length > 5 + room && <button type="button" onClick={() => open('Journal')}>{steps.length - 5 - room} more on today’s page</button>}
           {earlier.length > 0 && (
             <button type="button" className="bring" onClick={() => commit((state) => bringForward(state, localDateKey()))}>
               Bring {earlier.length} from earlier days

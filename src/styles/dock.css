@@ -1,0 +1,176 @@
+/* ---- The dock on a side edge, its grip, and the Tools wheel (shell/Shell.jsx, shell/ToolsWheel.jsx) ------
+   The dock sits at the bottom of the desk, or on the left or right edge; the desk (.home[data-dock]) leaves that strip
+   clear. Rooms, stickies and the line's drawer read the same side (shell/dock-model.js). */
+
+/* The grip: quiet until the dock is under the pointer. */
+.app-dock .dock-grip {
+  flex: none;
+  width: 18px;
+  height: 40px;
+  min-width: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  margin-left: -4px;
+  border-radius: 8px;
+  color: var(--on-4);
+  cursor: grab;
+  opacity: 0.5;
+  touch-action: none;
+  transition: opacity var(--d-fast), color var(--d-fast);
+}
+.app-dock .dock-grip svg { width: 14px; height: 14px; scale: none; }
+.app-dock:hover .dock-grip,
+.app-dock .dock-grip:focus-visible { opacity: 1; color: var(--on-2); }
+.app-dock.is-carried .dock-grip { cursor: grabbing; }
+
+/* Carried: it follows the pointer, and the three edges show where it will land. */
+.app-dock.is-carried { animation: none; transition: none; pointer-events: none; }
+.dock-targets { position: fixed; inset: 0; z-index: var(--z-modal); pointer-events: none; }
+.dock-targets i { position: absolute; border-radius: 26px; background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 30%, transparent); transition: background var(--d-fast), box-shadow var(--d-fast); }
+.dock-targets i[data-on] { background: color-mix(in srgb, var(--accent) 26%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
+.dock-targets i[data-edge="bottom"] { left: 50%; bottom: 10px; width: min(560px, 60vw); height: 74px; translate: -50% 0; }
+.dock-targets i[data-edge="left"] { left: 10px; top: 50%; width: 74px; height: min(560px, 60vh); translate: 0 -50%; }
+.dock-targets i[data-edge="right"] { right: 10px; top: 50%; width: 74px; height: min(560px, 60vh); translate: 0 -50%; }
+
+/* On the left or right edge the dock stands up. */
+.app-dock[data-side="left"],
+.app-dock[data-side="right"] {
+  /* Both placements auto: the desk's whole box is its containing block, not the grid row the bottom dock sits in. */
+  grid-column: auto;
+  grid-row: auto;
+  top: 50%;
+  bottom: auto;
+  width: 68px;
+  height: auto;
+  max-height: calc(100% - 24px);
+  flex-direction: column;
+  padding: 10px 0;
+  translate: 0 -50%;
+  animation-name: dock-in-side;
+}
+.app-dock[data-side="left"] { left: 12px; right: auto; }
+.app-dock[data-side="right"] { right: 12px; left: auto; }
+@keyframes dock-in-side { from { opacity: 0; scale: 0.94; } }
+.app-dock[data-side="left"] > button,
+.app-dock[data-side="right"] > button,
+.app-dock[data-side="left"] .menu-root > button,
+.app-dock[data-side="right"] .menu-root > button { translate: calc((var(--mag, 1) - 1) * 16px) 0; }
+.app-dock[data-side="right"] > button,
+.app-dock[data-side="right"] .menu-root > button { translate: calc((var(--mag, 1) - 1) * -16px) 0; }
+.app-dock[data-side="left"] button svg,
+.app-dock[data-side="right"] button svg { transform-origin: 50% 50%; }
+.app-dock[data-side="left"] .menu-root > button,
+.app-dock[data-side="right"] .menu-root > button { width: 58px; min-width: 0; padding: 0; }
+.app-dock[data-side="left"] .dock-grip,
+.app-dock[data-side="right"] .dock-grip { width: 40px; height: 18px; margin: -4px 0 0; }
+.app-dock[data-side="left"] .dock-grip svg,
+.app-dock[data-side="right"] .dock-grip svg { rotate: 90deg; }
+.app-dock[data-side="left"] .dock-pill,
+.app-dock[data-side="right"] .dock-pill { top: 0; left: 5px; width: 58px; height: var(--pill-h, 56px); translate: 0 var(--pill-y, 10px); transition: translate 560ms var(--spring), height 560ms var(--spring); }
+.app-dock[data-side="left"] .dock-rule,
+.app-dock[data-side="right"] .dock-rule { width: 34px; height: 1px; margin: 6px 0; }
+.app-dock[data-side="left"] .dock-group,
+.app-dock[data-side="right"] .dock-group { flex-direction: column; }
+.app-dock[data-side="left"] .dock-apps,
+.app-dock[data-side="right"] .dock-apps { max-width: none; max-height: 34vh; overflow-x: hidden; overflow-y: auto; }
+/* Tips and popovers open toward the middle of the desk. */
+.app-dock[data-side="left"] [data-tip]:hover::before,
+.app-dock[data-side="right"] [data-tip]:hover::before { bottom: auto; top: 50%; translate: 0 -50%; animation-name: tip-in-side; }
+.app-dock[data-side="left"] [data-tip]:hover::before { left: calc(100% + 12px); }
+.app-dock[data-side="right"] [data-tip]:hover::before { left: auto; right: calc(100% + 12px); }
+@keyframes tip-in-side { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .app-dock[data-side="left"], .app-dock[data-side="right"] { translate: 0 -50%; }
+}
+
+/* The desk leaves the dock's strip clear. */
+.workspace-content > .home[data-dock="left"] { padding-left: 104px; }
+.workspace-content > .home[data-dock="right"] { padding-right: 104px; }
+.home[data-dock="left"] .home-widgets,
+.home[data-dock="right"] .home-icons { z-index: 1; }
+
+/* ---- The Tools wheel ------------------------------------------------------------------------------ */
+.tools-root { position: relative; }
+.tools-wheel {
+  position: absolute;
+  z-index: 6;
+  bottom: calc(100% + 14px);
+  left: 50%;
+  translate: -50% 0;
+  width: 316px;
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), 0 28px 60px -20px rgb(0 0 0 / 50%);
+  overflow: hidden;
+  transform-origin: bottom center;
+  animation: pop-open 320ms var(--spring) both;
+}
+/* From a side dock it opens toward the desk, its foot level with the Tools button. */
+.tools-wheel[data-side="left"] { bottom: 0; left: calc(100% + 14px); translate: none; transform-origin: left bottom; }
+.tools-wheel[data-side="right"] { bottom: 0; left: auto; right: calc(100% + 14px); translate: none; transform-origin: right bottom; }
+.tools-list { position: relative; height: 196px; overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: none; outline: none; }
+.tools-list::-webkit-scrollbar { display: none; }
+/* The middle line: what Return opens. */
+.tools-wheel::before { content: ""; position: absolute; z-index: 0; left: 8px; right: 8px; top: calc(98px - 28px); height: 56px; border-radius: 14px; pointer-events: none; background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent); }
+.tools-pad { display: block; height: 70px; scroll-snap-align: none; }
+.app-dock .tools-row {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 56px;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  grid-template-rows: none;
+  align-items: center;
+  place-items: center start;
+  gap: 12px;
+  padding: 0 18px;
+  border-radius: 0;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  translate: none;
+  scroll-snap-align: center;
+  scale: calc(1 - var(--d, 1) * 0.1);
+  opacity: calc(1 - var(--d, 1) * 0.62);
+  transition: opacity 120ms, scale 120ms;
+}
+.app-dock .tools-row:hover { background: none; opacity: 1; translate: none; }
+.app-dock .tools-row svg { width: 22px; height: 22px; scale: none; color: var(--muted); }
+.app-dock .tools-row.is-middle svg { color: var(--accent); }
+.tools-row span { display: grid; gap: 2px; min-width: 0; }
+.tools-row b { font: 620 var(--t-md)/1.2 var(--font); color: var(--ink); }
+.tools-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-xs)/1.3 var(--font); color: var(--muted); }
+.tools-row.is-here b::after { content: " ·  here"; font-weight: 500; color: var(--faint); }
+.tools-row kbd { font: 560 var(--t-2xs)/1 var(--font); color: var(--faint); }
+.tools-foot { display: flex; align-items: center; gap: 4px; padding: 6px 10px 6px 18px; border-top: 1px solid var(--line); font: 600 var(--t-xs)/1 var(--font); color: var(--muted); }
+.tools-foot span { flex: 1; }
+.app-dock .tools-foot button { width: 32px; height: 30px; min-width: 0; padding: 0; display: grid; place-items: center; border-radius: 9px; color: var(--muted); translate: none; grid-template-rows: none; }
+.app-dock .tools-foot button:hover { color: var(--ink); background: var(--surface-hover); }
+.app-dock .tools-foot button[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.app-dock .tools-foot button svg { width: 16px; height: 16px; scale: none; }
+@media (prefers-reduced-motion: reduce) { .app-dock .tools-row { transition: none; } }
+
+/* ---- Resizing widgets (field/Widgets.jsx, field/widget-size.js) --------------------------------
+   A grip at the bottom right corner, shown like the –: while the widget is under the pointer. */
+.widget[data-sized] { height: auto; min-height: var(--widget-h); }
+.widget-calendar[data-sized] { min-height: max(148px, var(--widget-h)); }
+.widget-grip {
+  position: absolute;
+  z-index: 2;
+  right: 3px;
+  bottom: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  cursor: nwse-resize;
+  opacity: 0;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 0 46%, var(--on-3) 46% 53%, transparent 53% 66%, var(--on-3) 66% 73%, transparent 73%);
+  transition: opacity var(--d-fast);
+}
+.widget:is(:hover, :focus-within):not(.is-moving) > .widget-grip { opacity: 0.7; }
+.widget-grip:hover,
+.widget-grip:focus-visible { opacity: 1 !important; }

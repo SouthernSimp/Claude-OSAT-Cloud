@@ -301,8 +301,9 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .toast button { padding: 4px 10px; border-radius: 999px; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
 @keyframes toast-in { from { opacity: 0; translate: 0 8px; } }
 
-/* The quick chat is its own window over the Mac's frosting: the same tokens, made see-through. */
-.quick-chat {
+/* The quick chat and the quick search are their own windows over the Mac's frosting: the same tokens, made see-through. */
+.quick-chat,
+.quick-search {
   --page: transparent;
   --surface: rgb(255 255 255 / 30%);
   --surface-raised: rgb(255 255 255 / 58%);
@@ -317,7 +318,8 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   --tabletop: transparent;
   --day-page: rgb(255 255 255 / 40%);
 }
-:root[data-theme="dark"] .quick-chat {
+:root[data-theme="dark"] .quick-chat,
+:root[data-theme="dark"] .quick-search {
   --surface: rgb(255 255 255 / 3%);
   --surface-raised: rgb(255 255 255 / 7%);
   --surface-sunken: rgb(0 0 0 / 16%);

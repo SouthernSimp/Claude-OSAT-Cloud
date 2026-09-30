@@ -18,6 +18,8 @@
   --surface-raised: #ffffff;
   --surface-sunken: #ececef;
   --surface-hover: #eeeef1;
+  /* Solid even where the others are see-through (menus that sit over a panel's content). */
+  --surface-solid: #ffffff;
   --scrim: rgb(0 0 0 / 28%);
 
   --ink: #1d1d1f;
@@ -104,6 +106,7 @@
   --surface-raised: #242427;
   --surface-sunken: #111113;
   --surface-hover: #2c2c2f;
+  --surface-solid: #2a2a2e;
   --scrim: rgb(0 0 0 / 56%);
 
   --ink: #f2f2f4;

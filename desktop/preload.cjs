@@ -192,6 +192,65 @@ contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   onShown: (listener) => listen('desk:shown', listener),
 }))
 
+/* The quick search (⌘⇧Space, desktop/launcher): what its panel and the desk ask of it. Files, the
+   clipboard history and apps come from main; Return and ⌘K do their work through the calls below
+   (each checks what it is given). Only the panel and the desk may ask. */
+const search = (channel) => (...args) => ipcRenderer.invoke(`search:${channel}`, ...args)
+contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
+  ready: search('ready'),
+  settings: search('settings'),
+  saveSettings: search('save-settings'),
+  status: search('status'),
+  askAccess: search('ask-access'),
+  files: search('files'),
+  preview: search('preview'),
+  apps: search('apps'),
+  appIcon: search('app-icon'),
+  clipboard: search('clipboard'),
+  clipboardImage: search('clipboard-image'),
+  clipboardText: search('clipboard-text'),
+  pauseClipboard: search('clipboard-pause'),
+  clearClipboard: search('clipboard-clear'),
+  openFile: search('open-file'),
+  revealFile: search('reveal-file'),
+  copyPath: search('copy-path'),
+  trashFile: search('trash-file'),
+  undoFile: search('undo-file'),
+  pinFile: search('pin-file'),
+  pasteClip: search('paste-clip'),
+  copyClip: search('copy-clip'),
+  pinClip: search('pin-clip'),
+  forgetClip: search('forget-clip'),
+  undoClip: search('undo-clip'),
+  copyText: search('copy-text'),
+  pasteText: search('paste-text'),
+  openApp: search('open-app'),
+  openAppNamed: search('open-app-named'),
+  revealApp: search('reveal-app'),
+  openLink: search('open-link'),
+  snap: search('snap'),
+  // The desk's own ring (⌘ + middle-click) opens the quick search over it, on a tab.
+  show: search('show'),
+  hide: search('hide'),
+  mode: search('mode'),
+  openInOSAT: search('open-in-osat'),
+  onShown: (listener) => listen('search:shown', listener),
+  onEscape: (listener) => listen('search:escape', listener),
+  onSettings: (listener) => listen('launcher:changed', listener),
+  // A new copy arrived on the clipboard ({ id, kind, at, text?, app? }); only the desk hears it.
+  onCopied: (listener) => listen('clipboard:copied', listener),
+}))
+
+/* The ring's small window over other apps (Hyper R): it draws the tools (settings come from osatSearch), and says
+   which was picked or that it should go. */
+contextBridge.exposeInMainWorld('osatRing', Object.freeze({
+  ready: () => ipcRenderer.invoke('ring:ready'),
+  pick: (id) => ipcRenderer.invoke('ring:pick', id),
+  hide: () => ipcRenderer.invoke('ring:hide'),
+  onShown: (listener) => listen('ring:shown', listener),
+  onEscape: (listener) => listen('ring:escape', listener),
+}))
+
 /* Offline: OSAT with the internet off. status() → { on, terminal }; set(on) answers
    once main has paused (or woken) everything, and only the desk may ask. onChange
    hears every change, including ⇧⌘U and the menu-bar icon; when one of those didn't

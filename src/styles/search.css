@@ -1,0 +1,156 @@
+/* The quick search (⌘⇧Space): a bar over every app that opens into results and a big preview. It is a
+   panel over the Mac's frosting, so it wears the quick chat's see-through tokens (glass.css); anything
+   that sits over other content (the actions) is solid. */
+
+html:has(.quick-search),
+html:has(.quick-search) body { background: transparent; }
+
+.quick-search {
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto;
+  overflow: hidden;
+  position: relative;
+  color: var(--ink);
+  background: var(--sheet-glass);
+}
+.quick-search[data-mode="full"] { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+
+.qs-bar { display: flex; align-items: center; gap: 12px; height: 76px; padding: 0 22px; -webkit-app-region: drag; }
+.qs-bar svg { width: 22px; height: 22px; color: var(--muted); }
+.quick-search .qs-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  font: 500 22px/1 var(--font);
+  letter-spacing: var(--tr-tight);
+  color: var(--ink-strong);
+  background: transparent;
+  -webkit-app-region: no-drag;
+}
+.quick-search .qs-input,
+.quick-search .qs-input:focus-visible { padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+.qs-input::placeholder { color: var(--faint); }
+.qs-chip { flex: none; padding: 4px 10px; border-radius: var(--r-full); font: 600 var(--t-xs)/1 var(--font); color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+
+.qs-tabs { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px 8px; border-top: 1px solid var(--line); }
+.qs-tabs [role="tablist"],
+.qs-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.qs-tabs button { padding: 5px 11px; border-radius: var(--r-full); font: 560 var(--t-xs)/1 var(--font); color: var(--muted); }
+.qs-tabs button:hover { color: var(--ink); background: var(--surface-hover); }
+.qs-tabs [role="tab"][aria-selected="true"],
+.qs-filters [aria-pressed="true"] { color: var(--ink-strong); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.qs-filters button { font-weight: 500; }
+
+.qs-body { position: relative; display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); min-height: 0; border-top: 1px solid var(--line); }
+.qs-list,
+.qs-picker ul { list-style: none; margin: 0; padding: 6px 8px 10px; overflow-y: auto; overscroll-behavior: contain; }
+.qs-list,
+.qs-picker { border-right: 1px solid var(--line); min-height: 0; }
+.qs-head { margin: 10px 10px 4px; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: var(--tr-wide); text-transform: uppercase; color: var(--faint); }
+.qs-empty { margin: 18px 12px; font-size: var(--t-sm); line-height: 1.5; color: var(--muted); }
+
+.qs-row { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 10px; border-radius: var(--r-md); user-select: none; }
+.qs-row > svg,
+.qs-row-icon { flex: none; width: 26px; height: 26px; color: var(--muted); object-fit: contain; }
+.qs-row-text { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.qs-row-text b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 560 var(--t-md)/1.2 var(--font); color: var(--ink); }
+.qs-row-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-xs)/1.2 var(--font); color: var(--faint); }
+.qs-row:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.qs-row[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.qs-row[aria-selected="true"] > svg { color: var(--accent); }
+.qs-row kbd { flex: none; padding: 2px 6px; border-radius: 6px; font: 560 var(--t-2xs)/1.3 var(--font); color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.qs-row > .qs-pin { width: 13px; height: 13px; color: var(--faint); }
+
+.qs-preview { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px; min-height: 0; padding: 16px 20px 14px; }
+.qs-preview.is-empty { place-items: center; font-size: var(--t-sm); color: var(--faint); }
+.qs-stage { min-height: 0; display: grid; place-items: center; overflow: hidden; border-radius: var(--r-lg); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.qs-picture { max-width: 100%; max-height: 100%; object-fit: contain; }
+.qs-app-icon { width: 120px; height: 120px; object-fit: contain; }
+.qs-glyph svg { width: 72px; height: 72px; color: var(--faint); }
+.qs-text { box-sizing: border-box; width: 100%; height: 100%; margin: 0; padding: 14px 16px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--t-sm)/1.55 var(--font); color: var(--ink); align-self: start; }
+.qs-text.is-link { color: var(--accent); }
+.qs-big { margin: 0; padding: 0 16px; overflow-wrap: anywhere; text-align: center; font: 600 clamp(28px, 5vw, 46px)/1.1 var(--font-display); letter-spacing: var(--tr-display); color: var(--ink-strong); }
+.qs-stickies { list-style: none; width: 100%; margin: 0; padding: 12px 16px; display: grid; gap: 6px; align-self: start; font-size: var(--t-sm); color: var(--ink); }
+.qs-stickies li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qs-screen { position: relative; width: min(78%, 320px); aspect-ratio: 16 / 10; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.qs-screen i { position: absolute; border-radius: 6px; background: color-mix(in srgb, var(--accent) 38%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.qs-screen i.is-back { inset: 24% 30% 26% 22%; border-style: dashed; background: transparent; box-shadow: inset 0 0 0 1.5px var(--faint); }
+.qs-facts h2 { margin: 0 0 8px; font: 650 var(--t-lg)/1.25 var(--font); overflow-wrap: anywhere; color: var(--ink-strong); }
+.qs-offer { margin: 10px 0 0; font-size: var(--t-xs); line-height: 1.5; color: var(--muted); }
+.qs-offer kbd { padding: 1px 5px; border-radius: 5px; color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.qs-details { display: grid; gap: 4px; margin: 0; font-size: var(--t-xs); }
+.qs-details div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; }
+.qs-details dt { color: var(--faint); }
+.qs-details dd { margin: 0; overflow-wrap: anywhere; color: var(--ink); }
+
+.qs-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 0 18px; border-top: 1px solid var(--line); font: var(--t-xs)/1.3 var(--font); color: var(--muted); }
+.qs-foot p { margin: 0; }
+.qs-keys { display: flex; gap: 16px; }
+.qs-keys kbd { padding: 2px 6px; border-radius: 6px; color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.qs-toast button { margin-left: 10px; padding: 3px 10px; border-radius: var(--r-full); font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.qs-wait { color: var(--faint); }
+
+/* The answer to a sum, in the line itself (`2*49` shows = 98 beside what was typed). */
+.home-sum { position: absolute; right: 100px; bottom: 18px; z-index: 1; padding: 5px 11px; border-radius: var(--r-full); font: 650 var(--t-sm)/1 var(--font); font-variant-numeric: tabular-nums; color: var(--on-1); background: color-mix(in srgb, var(--on-1) 12%, transparent); pointer-events: none; }
+
+/* "Add to Jordan?" on the desk: one calm line above the dock, above a note or a toast that may share the spot. */
+.desk-note.is-offer { display: flex; align-items: center; gap: 10px; bottom: 148px; padding-right: 6px; pointer-events: auto; }
+.desk-note.is-offer button { height: 26px; padding: 0 12px; border-radius: var(--r-full); font-size: var(--t-xs); font-weight: 650; color: var(--accent-ink); background: var(--accent); }
+.desk-note.is-offer button:hover { background: var(--accent-hover); }
+.desk-note.is-offer .is-quiet { color: var(--muted); background: transparent; font-weight: 560; }
+.desk-note.is-offer .is-quiet:hover { color: var(--ink); background: var(--surface-hover); }
+
+/* ⌘K: every other action for the picked row. Solid, because it sits over the preview. */
+.qs-actions { position: absolute; z-index: 5; right: 14px; bottom: 10px; width: 280px; padding: 6px; border-radius: 14px; color: var(--ink); background: var(--surface-solid); box-shadow: 0 0 0 0.5px var(--line-strong), 0 22px 50px -20px rgb(0 0 0 / 55%); }
+.qs-actions button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 34px; padding: 0 10px; border-radius: 9px; text-align: left; font-size: var(--t-sm); color: var(--ink); }
+.qs-actions button span { min-width: 0; }
+.qs-actions em { display: block; font-size: var(--t-2xs); font-style: normal; color: var(--faint); }
+.qs-actions kbd { flex: none; font: 560 var(--t-2xs)/1.3 var(--font); color: var(--faint); }
+.qs-actions .is-on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.qs-actions .is-danger { color: var(--critical); }
+
+/* Add to a node: type to narrow, Return picks. */
+.qs-picker { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.quick-search .qs-picker input,
+.quick-search .qs-picker input:focus-visible { margin: 10px 12px 4px; padding: 9px 12px; border: 0; outline: 0; border-radius: var(--r-md); box-shadow: none; font: var(--t-md) var(--font); color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.qs-picker .qs-row { min-height: 38px; }
+.qs-picker .qs-row-text b { font-weight: 520; }
+
+@media (max-width: 720px) {
+  .qs-body { grid-template-columns: minmax(0, 1fr); }
+  .qs-preview { display: none; }
+}
+
+/* ---- The ring: quick tools around the pointer (search/Ring.jsx) ---------------------------------
+   Solid discs, because the ring sits over other content: over other apps in its own window, or over the desk. */
+html:has(.ring-surface),
+html:has(.ring-surface) body { background: transparent; }
+.ring-surface { height: 100dvh; display: grid; place-items: center; overflow: hidden; }
+.ring { position: relative; width: 340px; height: 340px; }
+.ring-middle {
+  position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; display: grid; place-items: center;
+  border-radius: 50%; color: var(--muted); background: var(--surface-solid); box-shadow: 0 0 0 0.5px var(--line-strong), 0 8px 22px -10px rgb(0 0 0 / 45%);
+}
+.ring-middle svg { width: 14px; height: 14px; }
+.ring-middle:hover { color: var(--ink); }
+.ring-item {
+  position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; margin: -40px 0 0 -40px; translate: var(--x) var(--y);
+  display: grid; place-items: center; align-content: center; gap: 3px; border-radius: 50%;
+  color: var(--ink); background: var(--surface-solid); box-shadow: 0 0 0 0.5px var(--line-strong), 0 12px 28px -12px rgb(0 0 0 / 55%);
+  transition: scale var(--d-fast) var(--ease-out), background var(--d-fast), color var(--d-fast);
+  animation: ring-in 280ms var(--spring) both; animation-delay: calc(var(--i) * 20ms);
+}
+.ring-item svg { width: 24px; height: 24px; }
+.ring-item.is-right svg { transform: scaleX(-1); }
+.ring-item span { padding: 0 8px; font: 620 10.5px/1.1 var(--font); text-align: center; }
+.ring-item kbd { position: absolute; top: 9px; right: 11px; font: 600 9px/1 var(--font); color: var(--faint); }
+.ring-item:hover, .ring-item:focus-visible { scale: 1.08; color: var(--accent-ink); background: var(--accent); outline: none; }
+.ring-item:hover kbd, .ring-item:focus-visible kbd { color: inherit; opacity: 0.7; }
+@keyframes ring-in { from { opacity: 0; scale: 0.4; } }
+/* Over the desk: a click anywhere else lets it go. */
+.ring-layer { position: fixed; inset: 0; z-index: var(--z-modal); }
+.ring-place { position: absolute; translate: -50% -50%; }

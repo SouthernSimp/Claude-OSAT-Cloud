@@ -46,7 +46,8 @@ function fileRow(item) {
   }
 }
 
-export function findAll(workspace, query, { files = [] } = {}) {
+/* `limit` is how many rows (the desk's line shows five; the quick search asks for more). */
+export function findAll(workspace, query, { files = [], limit = LIMIT } = {}) {
   const notes = workspace.notes.filter(isActiveNote)
   const q = String(query || '').trim().toLowerCase()
   if (!q) {
@@ -60,7 +61,7 @@ export function findAll(workspace, query, { files = [] } = {}) {
     .filter((note) => words.every((word) => `${note.title}\n${note.markdown}`.toLowerCase().includes(word)))
     .sort((a, b) => Number(b.title.toLowerCase().includes(q)) - Number(a.title.toLowerCase().includes(q)) || newest(a, b))
     .map((note) => noteRow(workspace, note))
-  if (tags.length) return found.slice(0, LIMIT)
+  if (tags.length) return found.slice(0, limit)
 
   const places = [
     ...EVERYWHERE.filter((route) => route.id !== 'Today' && startsWords(route.label, words))
@@ -74,7 +75,7 @@ export function findAll(workspace, query, { files = [] } = {}) {
   const folders = workspace.folders.filter((folder) => words.every((word) => folder.name.toLowerCase().includes(word)))
     .map((folder) => ({ key: `folder:${folder.id}`, label: folder.name, hint: folder.parentId ? folderPath(workspace.folders, folder.parentId).join(' › ') : folder.kind === 'branch' ? 'Branch' : 'Node', kind: 'folder', go: ['Mindmap', { folderId: folder.id }] }))
   // Notes leave room for files on this Mac once Spotlight answers.
-  const nodeRows = folders.slice(0, 3)
+  const nodeRows = folders.slice(0, limit === LIMIT ? 3 : 6)
   const fileRows = macFiles.slice(0, 2)
-  return [...places, ...nodeRows, ...found.slice(0, Math.max(0, LIMIT - places.length - nodeRows.length - fileRows.length)), ...fileRows].slice(0, LIMIT)
+  return [...places, ...nodeRows, ...found.slice(0, Math.max(0, limit - places.length - nodeRows.length - fileRows.length)), ...fileRows].slice(0, limit)
 }

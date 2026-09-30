@@ -4,6 +4,9 @@ import { AppWindow, ArrowsIn, ArrowsOut, Database, Plus, X } from '@phosphor-ico
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
 import { cleanError } from '../assistant/useAi.js'
 import { localDateKey } from '../daily-practice.js'
+import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
+import { ringItems } from '../../shared/ring-model.mjs'
+import { ClipboardOffer } from '../field/ClipboardOffer.jsx'
 import { FieldDesk } from '../field/FieldDesk.jsx'
 import { FieldSheet } from '../field/FieldSheet.jsx'
 import { onCarryEdge } from '../lib/carry.js'
@@ -21,11 +24,13 @@ import { CalendarView } from '../views/Calendar.jsx'
 import { FilesView } from '../views/Files.jsx'
 import { HabitsView } from '../views/Habits.jsx'
 import { JournalView } from '../views/Journal.jsx'
+import { Ring } from '../search/Ring.jsx'
 import { NowPlayingView } from '../views/NowPlaying.jsx'
 import { PileView } from '../views/Pile.jsx'
 import { RoadmapView } from '../views/Roadmap.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
+import { DOCK_KEY, cleanSide, fullBox } from './dock-model.js'
 import { covers, grow, placeRoom } from './placement.js'
 import { Dock } from './Shell.jsx'
 import { Welcome } from './Welcome.jsx'
@@ -99,6 +104,11 @@ export function Desk() {
   // Offline, as main says it is ({ on, terminal }). The preview has no main: the look only.
   const [offline, setOffline] = useState({ on: false })
   const [notice, setNotice] = useState('')
+  // The dock: at the bottom, or on the left or right edge; kept on this Mac (a convenience, like the icon size).
+  const [dockSide, setDockSideState] = useState(() => { try { return cleanSide(localStorage.getItem(DOCK_KEY)) } catch { return 'bottom' } })
+  // The ring (⌘ + middle-click): where it is open, if it is, and which tools (Settings → Launcher).
+  const [ring, setRing] = useState(null)
+  const [ringTools, setRingTools] = useState(DEFAULT_SETTINGS.ring)
   // Scans that came in since the Sky was last open: [{ name, folderId, noteId }]. Their line
   // stays until Nate looks, so a scan made at the printer is waiting when he walks over.
   const [arrived, setArrived] = useState([])
@@ -260,6 +270,35 @@ export function Desk() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  /* ⌘ + middle-click anywhere on the desk opens the ring: quick tools around the pointer. Over other apps the same ring
+     opens with its key (Hyper R, its own small window); Settings → Launcher says which tools it holds. */
+  useEffect(() => {
+    const api = window.osatSearch
+    const take = (value) => { if (value?.ring) setRingTools(value.ring) }
+    api?.settings().then(take, () => {})
+    const stop = api?.onSettings(take)
+    const onDown = (event) => {
+      if (event.button !== 1 || !event.metaKey) return
+      event.preventDefault()
+      if (latest.current?.ringOn) setRing({ x: event.clientX, y: event.clientY })
+    }
+    window.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('mousedown', (event) => { if (event.button === 1 && event.metaKey) event.preventDefault() }, true)
+    return () => { stop?.(); window.removeEventListener('pointerdown', onDown, true) }
+  }, [])
+
+  /* What a tool on the desk's ring does; the layouts are for windows of other apps, so they are not on this ring. */
+  function pickRing(item) {
+    setRing(null)
+    const api = window.osatSearch
+    if (item.id === 'search') { if (api) api.show('all'); else navigate('Capture') }
+    else if (item.id === 'clipboard') api?.show('clipboard')
+    else if (item.id === 'sticky') navigate('Capture')
+    else if (item.id === 'chat') window.osatChat?.show()
+    else if (item.id === 'sky') navigate('Mindmap')
+    else if (item.id === 'files') navigate('Files')
+  }
+
   /* Up to the Sky, or back down to the desk. */
   function step(way) {
     if (way === 'up') goUp()
@@ -293,7 +332,7 @@ export function Desk() {
       if (existing) return [...list.filter((pop) => pop !== existing), { ...existing, detail, at: Date.now(), closing: false }]
       const { line } = latest.current
       const prefer = widget && line && from ? (from.left + from.width / 2 < (line.left + line.right) / 2 ? 'left' : 'right') : undefined
-      const spot = placeRoom({ width: innerWidth, height: innerHeight }, ROOMS[view], line, list.filter((pop) => !pop.closing), { prefer })
+      const spot = placeRoom({ width: innerWidth, height: innerHeight }, ROOMS[view], line, list.filter((pop) => !pop.closing), { prefer, dock: latest.current.dockSide })
       return [...list, { key, view, detail, at: Date.now(), ...spot, from, widget }]
     })
   }
@@ -346,7 +385,7 @@ export function Desk() {
     else if (view === 'Today') { if (latest.current.sky === 'sky') goDown(); else setVisit((value) => value + 1) }
     else if (ROOMS[view]) open(view, detail, origin)
   }
-  latest.current = { navigate, pops, welcome, line, offline: on, sky, step }
+  latest.current = { navigate, pops, welcome, line, offline: on, sky, step, ringOn: ringTools.on !== false, dockSide }
 
   async function launcher(action, ...args) {
     try {
@@ -355,6 +394,11 @@ export function Desk() {
     } catch {
       // The app may have moved; the dock simply stays as it was.
     }
+  }
+
+  function setDockSide(side) {
+    setDockSideState(side)
+    try { localStorage.setItem(DOCK_KEY, side) } catch { /* a convenience only */ }
   }
 
   /* Set down right away (null picks it up); the Mac app keeps the spot for next time. */
@@ -434,6 +478,8 @@ export function Desk() {
           onOffline={() => askOffline(!on)}
           raised={shown.some((pop) => covers(pop, line))}
           onLine={setLine}
+          onNote={setNotice}
+          dockSide={dockSide}
           widgets={{
             list: prefs.widgets,
             onList: setWidgets,
@@ -448,6 +494,8 @@ export function Desk() {
               navigate={navigate}
               onSendUp={(noteId) => goUp({ action: 'place-sticky', noteId })}
               storage={storage}
+              side={dockSide}
+              onSide={setDockSide}
             >
               {bridge && (
                 <>
@@ -494,6 +542,7 @@ export function Desk() {
             pop={pop}
             z={index + 1}
             top={pop.key === top?.key}
+            dock={dockSide}
             title={pop.view === 'note' ? workspace.notes.find((note) => note.id === pop.detail.noteId)?.title || 'Note' : titleFor(pop.view)}
             onRaise={() => raise(pop.key)}
             onClose={() => close(pop.key)}
@@ -513,6 +562,14 @@ export function Desk() {
             <button type="button" onClick={() => { const last = arrived.at(-1); goUp(last.folderId ? { folderId: last.folderId, open: true } : { noteId: last.noteId }) }}>Show me</button>
           </p>
         )}
+      {ring && (
+        <div className="ring-layer" onPointerDown={(event) => { if (event.target === event.currentTarget) setRing(null) }}>
+          <div className="ring-place" style={{ left: clamp(ring.x, 190, innerWidth - 190), top: clamp(ring.y, 190, innerHeight - 190) }}>
+            <Ring items={ringItems(ringTools.items, { desk: true })} onPick={pickRing} onClose={() => setRing(null)} />
+          </div>
+        </div>
+      )}
+      <ClipboardOffer workspace={workspace} commit={commit} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
     </main>
   )
@@ -561,7 +618,7 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
 
 /* A floating window on the desk: drag it by its bar, resize it from the corner. It grows
    out of where it was opened from (`pop.from`) and, closing, shrinks into its widget. */
-function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, children }) {
+function PopOut({ pop, z, top, dock, title, onRaise, onClose, onGone, onChange, children }) {
   const node = useRef(null)
   const drag = useRef(null)
   const changeRef = useRef(onChange)
@@ -596,7 +653,7 @@ function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, childr
     <section
       ref={node}
       className={`popout ${top ? 'is-top' : ''} ${pop.from ? 'is-grown' : ''} ${pop.closing ? 'is-closing' : ''} ${pop.full ? 'is-full' : ''}`}
-      style={pop.full ? { left: 12, top: 12, width: innerWidth - 24, height: innerHeight - 108, zIndex: z } : { left: pop.x, top: pop.y, width: pop.w, height: pop.h, zIndex: z }}
+      style={pop.full ? { ...fullBox({ width: innerWidth, height: innerHeight }, dock), zIndex: z } : { left: pop.x, top: pop.y, width: pop.w, height: pop.h, zIndex: z }}
       role="dialog"
       aria-label={title}
       onPointerDownCapture={onRaise}

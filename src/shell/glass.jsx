@@ -83,12 +83,12 @@ export function useAlive() {
   }, [])
 }
 
-/* The dock swells a little under the cursor, like the Mac's. */
-export function magnify(event) {
+/* The dock swells a little under the cursor, like the Mac's (`vertical`: a dock on the left or right edge). */
+export function magnify(event, vertical = false) {
   const dock = event.currentTarget
   for (const button of dock.querySelectorAll('[data-mag]')) {
     const box = button.getBoundingClientRect()
-    const distance = Math.abs(event.clientX - (box.left + box.width / 2))
+    const distance = vertical ? Math.abs(event.clientY - (box.top + box.height / 2)) : Math.abs(event.clientX - (box.left + box.width / 2))
     button.style.setProperty('--mag', (1 + 0.22 * Math.max(0, 1 - distance / 110)).toFixed(3))
   }
 }

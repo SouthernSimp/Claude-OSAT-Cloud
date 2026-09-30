@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, Printer, Robot, Sparkle, UploadSimple } from "@phosphor-icons/react";
+import { Check, Database, DeviceMobile, DownloadSimple, FolderOpen, GearSix, Keyboard, LockSimple, MagnifyingGlass, Printer, Robot, Sparkle, UploadSimple } from "@phosphor-icons/react";
 import { downloadFile, formatRelativeTime } from "../lib/ui.js";
 import { localDateKey } from "../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../osat-data.js";
@@ -7,6 +7,8 @@ import { workspaceClient } from "../store/useWorkspace.js";
 import { AppearanceControls } from "../shell/Shell.jsx";
 import { setupLine, useAi } from "../assistant/useAi.js";
 import { BotsSettings } from "./Bots.jsx";
+import { LauncherSettings } from "./Launcher.jsx";
+import { comboFrom } from "../lib/hotkey.js";
 import { ObsidianView } from "./Obsidian.jsx";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 
@@ -90,6 +92,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
           </>
         )}
         {section === "bots" && <BotsSettings />}
+        {section === "launcher" && <LauncherSettings />}
         {section === "data" && (
           <>
             <section className="content-card">
@@ -143,6 +146,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
 const SECTIONS = [
   ["general", "General", GearSix],
   ["ai", "AI", Sparkle],
+  ["launcher", "Launcher", MagnifyingGlass],
   ["bots", "Bots", Robot],
   ["data", "Data", Database],
 ];
@@ -390,15 +394,7 @@ function PhoneCards() {
   );
 }
 
-/* The key that shows the OSAT desk from anywhere. Recorded from event.code,
-   because ⌥ changes event.key on a Mac. */
-const KEY_NAMES = { Space: "Space", Tab: "Tab", Enter: "Return", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right" };
-function keyName(code) {
-  if (KEY_NAMES[code]) return KEY_NAMES[code];
-  const match = /^(?:Key([A-Z])|Digit([0-9])|(F[0-9]{1,2}))$/.exec(code);
-  return match ? match[1] || match[2] || match[3] : null;
-}
-
+/* The keys that show the OSAT desk, the quick chat and the quick search from anywhere (recorded by lib/hotkey.js). */
 function ShortcutCard() {
   const bridge = window.osatDesk;
   const [info, setInfo] = useState(null);
@@ -411,14 +407,13 @@ function ShortcutCard() {
     if (recording !== which) return;
     event.preventDefault();
     if (event.key === "Escape") { setRecording(null); return; }
-    const key = keyName(event.code);
-    if (!key) return; // only a modifier so far
-    const modifiers = [event.metaKey && "Command", event.ctrlKey && "Control", event.altKey && "Alt", event.shiftKey && "Shift"].filter(Boolean);
-    if (!modifiers.length) { setMessage("Hold ⌘, ⌃, ⌥ or ⇧ together with a key."); return; }
+    const heard = comboFrom(event);
+    if (!heard) return; // only a modifier so far
+    if (heard.error) { setMessage(heard.error); return; }
     setRecording(null);
     try {
-      const saved = await bridge.setHotkey([...modifiers, key].join("+"), which);
-      setInfo((value) => (which === "chat" ? { ...value, chat: saved } : { ...value, ...saved }));
+      const saved = await bridge.setHotkey(heard.combo, which);
+      setInfo((value) => (which === "layer" ? { ...value, ...saved } : { ...value, [which]: saved }));
       setMessage("Saved. Try it from any app.");
     } catch (error) {
       setMessage(String(error?.message || "That shortcut didn’t work.").replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
@@ -458,6 +453,15 @@ function ShortcutCard() {
             : "Ask in a small window that floats over your other apps."}
         </p>
         {button("chat", info?.chat, "⌥⇧Space")}
+      </div>
+      <div className="shortcut-row">
+        <p>
+          <strong>Quick search</strong>
+          {info?.search?.failed
+            ? `${info.search.label} is already used by another app. Choose a different shortcut.`
+            : "A small bar over your other apps: find a file, something you copied, an app or a note, and go straight to it."}
+        </p>
+        {button("search", info?.search, "⌘⇧Space")}
       </div>
       {message && <p role="status">{message}</p>}
     </section>

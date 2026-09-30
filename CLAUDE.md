@@ -150,6 +150,18 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     one only while online) and `chatWith()`; the line and Ask read `local-ai:models`, so the line's
     own code never changes to switch models. A new way out of the Mac must be added on purpose to
     the fence in tests/under.test.mjs.
+  - `launcher/` (Phase 13; `index.cjs` wires it, main only calls `createLauncher` and gives it `handle`, `fail`, the
+    desk window and Electron's pieces; every `search:*` / `ring:*` channel is checked against the window that may ask,
+    `handle`'s `from` can be a function). `search-window.cjs` (the quick search panel, ⌘⇧Space: a floating panel on
+    every Space, a bar that grows to the full view; the app you were in keeps focus), `clipboard-history.cjs` (copies
+    kept in `<data folder>/clipboard/`, skipping concealed types; pins, limits, Undo; OSAT's own writes go through
+    `quiet()`), `apps.cjs`, `recent-files.cjs` (Spotlight's last-used dates), `front.cjs` (`lsappinfo` for which app
+    a copy came from; `pasteInto` sends ⌘V through System Events, only with Accessibility), `hotkeys.cjs` (the
+    launcher's own global keys: a Hyper key per source, window layouts, the ring), `snap.cjs` (window snapping
+    through System Events, never OSAT's own windows), `ring-window.cjs` (the ring's panel, made on first use).
+    Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
+    one way out of the Mac it adds is opening a web address in Nate's own browser (fenced in tests/under.test.mjs,
+    refused offline). ⌘⇧Space is the third shortcut in main's `shortcuts` (`search`).
   - `sync.cjs`: the same switch keeps devices in step through `OSAT/Sync` (see sync-core below).
     It hooks `store.onCommit` to note every change made here (except what sync applied), keeps
     its place in `store/sync.json`, and once set up it notes changes even while the link is
@@ -174,6 +186,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `matchesFile` (the same test for `walkFind`) and `describeFileQuery` (what the Files room says back).
   `files:search` answers `{ rootId, relative, name, kind, size, modifiedAt, match: 'name' | 'inside' }`.
   The Mac CI job runs `scripts/find-check.mjs` against the real Spotlight.
+- `shared/quick-search-model.mjs`, `launcher-model.mjs`, `clipboard-model.mjs`, `clipboard-offer.mjs`, `calc.mjs`,
+  `window-layouts.mjs`, `ring-model.mjs` — Phase 13's pure rules, shared by main, the panel and the desk: how typed
+  words are read (`readTyped`, `readLine`, keywords), how sources become one list of rows (`buildRows`), what Return
+  and ⌘K do (`actionsFor`), the clipboard's kinds, limits and groups, "Add to Jordan?" (`offerFor`), the safe
+  calculator (never eval), where each layout puts a window, and the ring's tools.
 - `shared/note-core.mjs` — the note record (`normalizeNote`, `parseTags`), shared so the main
   process makes notes exactly like the windows (`src/note-core.js` re-exports it).
 - `shared/node-file.mjs` — node files, read one way everywhere (drop folder, the Sky's Import, the
@@ -230,6 +247,13 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - `views/Bots.jsx`: Settings → Bots, the one place for bots, models and what leaves the Mac:
     the drop folder, which model answers, cloud models (keys never reach the page), the
     connector (its key only ever goes to the clipboard). Scans stay in Settings → Data (Phase 15).
+  - `surfaces/QuickSearch.jsx` (+ `search/`: `useSources`, `Preview`, `Ring`, icons): the quick search panel and the
+    ring; `?surface=search` and `?surface=ring`. In the browser preview they run on a stand-in bridge
+    (`tests/ui/search-bridge.mjs`). `views/Launcher.jsx` is Settings → Launcher; `field/ClipboardOffer.jsx` is the
+    desk's "Add to Jordan?"; the line (`field/Line.jsx`) reads `readLine` and adds launcher rows under "Save as a
+    sticky"; `lib/bot-jobs.js` is where bots that can take a `>` job will register. `shell/dock-model.js` and
+    `shell/placement.js` know which edge the dock is on (bottom, left or right; kept in localStorage), `shell/ToolsWheel.jsx`
+    is Tools, `field/widget-size.js` keeps a widget's size in `places['size:widget:<id>']`.
   - `lib/carry.js`: the one drag engine (`carryable(item)` on what's picked up, `useDrop(id, spec)`
     on places that take it, with `accepts`, an `axis` for lists of `[data-slot]` items, `spring`
     for hover-to-open; `onCarryEdge` makes the top/bottom of the screen change layers). A ghost
@@ -395,5 +419,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `--z-*`, type sizes `--t-*`, and the only desk breakpoints are 1100, 900 and 720px.
 - Ad-hoc signing a build inside `~/Desktop` (iCloud-synced) fails with "detritus not allowed";
   build elsewhere: `-c.directories.output=<folder outside Desktop>`.
+- The dock is a grid child whose row is the desk's foot: on a side edge it needs `grid-column/row: auto` so the
+  desk's whole box is its containing block. `input:not([type])` beats a bare class, so panel fields use
+  `.quick-search .qs-input`-style selectors.
 - Never launch a packaged build against Nate's real `~/Library/Application Support/OSAT` to
   test: it would upgrade the schema under his installed app. Use `--osat-self-test`.

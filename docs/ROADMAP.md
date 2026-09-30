@@ -22,7 +22,7 @@
 | 12b | Offline mode: Incognito becomes a switch on the line instead of a place | Merged (PR #15) |
 | 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | Merged (PR #18) |
 | 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | Merged (PR #19) |
-| 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | Planned |
+| 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | In review |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
@@ -501,6 +501,39 @@ Incognito stops being a place under the desk and becomes a switch: **Offline**.
 ### Phase 12c: The roadmap inside OSAT (merged, PR #18)
 Tools → Roadmap (and "Roadmap" in ⌘K and the Go menu) opens this page, read-only, in a pop-out.
 It is this file, built into the app, so it is always the plan the app was built with.
+
+### Phase 13: Mac powers (in review)
+Everything below stays on this Mac, and nothing here touches the workspace, its schema or sync: the clipboard,
+the launcher's settings and the ring live in files of their own in the data folder. Where macOS wants a setting
+changed (Caps Lock as a Hyper key, freeing ⌘Space), OSAT shows the plain steps in Settings → Launcher and never
+changes the Mac itself.
+- **Quick search (⌘⇧Space, changeable in Settings → General).** A small bar over every app; typing opens the
+  full view: results on the left, a big preview on the right, the details under it (where, kind, size; for a copy,
+  which app and when). Return does the obvious thing (Open; for a copy, Paste into the app you were in); ⌘K lists
+  the other actions (Show in Finder, Copy path, Ask about it, Add to a node, Pin, Delete); Esc backs out one step.
+  Files (Spotlight, the ones used lately first, a filter by kind), the Clipboard, Apps, Notes and nodes, a sum,
+  Nate's own words, and window layouts. A word typed first picks a tab (`v` is the clipboard), and each tab has a
+  Hyper key.
+- **A clipboard that files itself.** Every copy is kept only on this Mac, searchable (Today / Yesterday, text,
+  links, pictures), with pins for snippets, limits by count and age, Pause, and Clear with Undo. It never keeps what
+  a password manager marks concealed, and never what OSAT copies for itself. Copy an email or phone number that
+  belongs to a node that already exists and the desk offers "Add to Jordan?" once, calmly.
+- **The line is a launcher.** `2*49` answers in place, `ss` opens Spotify, `g cats` searches the web, `v` lists what
+  was copied, an app named as you type is one row. `>` is for a bot: nothing can take a job yet (Settings → Bots
+  holds what brings things in), so it says so and keeps the words. "Save as a sticky" stays first.
+- **Settings → Launcher.** Each place to turn on or off with its word and Hyper key, how the search opens, the
+  clipboard's limits and Pause, Nate's own words, window keys, the ring, and the two things only Nate can change on
+  the Mac.
+- **Window snapping.** Halves, thirds, two thirds, corners, maximize, centre and Put it back, through the quick
+  search and (when turned on) keys that work from any app. It needs Accessibility, asked for once, from a button.
+- **The ring.** Quick tools around the pointer: ⌘ + middle-click inside OSAT, or Hyper R over any app. Not done:
+  ⌘ + middle-click over OTHER apps, because Electron cannot see clicks outside its own windows and a global mouse
+  hook is a native module (a prebuilt binary for Electron, signing and notarizing a third-party file, and a second
+  scary permission). Nate's call whether that is worth it.
+- **A movable dock, the Tools wheel, resizing widgets.** The dock stands on the left or right edge as well as the
+  bottom; Tools is a wheel with a line for each tool; widgets grow by their corner.
+- Not done: emoji, quicklinks beyond Nate's own words, Settings for the ring's order (it is the order ticked), the
+  dock at the top.
 
 ### Phase 15: Paper in (merged, PR #17)
 Nate's goal: scan something at the printer, walk over to the Mac, and a new node is waiting, already
