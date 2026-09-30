@@ -229,6 +229,8 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   revealApp: search('reveal-app'),
   openLink: search('open-link'),
   snap: search('snap'),
+  // The desk's own ring (⌘ + middle-click) opens the quick search over it, on a tab.
+  show: search('show'),
   hide: search('hide'),
   mode: search('mode'),
   openInOSAT: search('open-in-osat'),
@@ -237,6 +239,16 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   onSettings: (listener) => listen('launcher:changed', listener),
   // A new copy arrived on the clipboard ({ id, kind, at, text?, app? }); only the desk hears it.
   onCopied: (listener) => listen('clipboard:copied', listener),
+}))
+
+/* The ring's small window over other apps (Hyper R): it draws the tools (settings come from osatSearch), and says
+   which was picked or that it should go. */
+contextBridge.exposeInMainWorld('osatRing', Object.freeze({
+  ready: () => ipcRenderer.invoke('ring:ready'),
+  pick: (id) => ipcRenderer.invoke('ring:pick', id),
+  hide: () => ipcRenderer.invoke('ring:hide'),
+  onShown: (listener) => listen('ring:shown', listener),
+  onEscape: (listener) => listen('ring:escape', listener),
 }))
 
 /* Offline: OSAT with the internet off. status() → { on, terminal }; set(on) answers

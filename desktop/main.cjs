@@ -521,13 +521,13 @@ const shortcutInfo = (which) => {
    focus, OSAT takes Esc itself and hands it to the chat. */
 function routeEscape() {
   if (quickChat?.window.isFocused()) quickChat.window.webContents.send('chat:escape')
-  else if (launcher?.search.window.isFocused()) launcher.search.send('search:escape')
+  else launcher?.escape()
 }
 function claimEscape() {
   if (process.platform === 'darwin' && !globalShortcut.isRegistered('Escape')) globalShortcut.register('Escape', routeEscape)
 }
 function releaseEscape() {
-  if (!quickChat?.window.isFocused() && !launcher?.search.window.isFocused()) globalShortcut.unregister('Escape')
+  if (!quickChat?.window.isFocused() && !launcher?.focused()) globalShortcut.unregister('Escape')
 }
 
 const launcherIcons = new Map()
@@ -624,12 +624,20 @@ async function registerLauncher() {
     globalShortcut,
     dataDir: app.getPath('userData'),
     preload: path.join(__dirname, 'preload.cjs'),
-    load: (window) => {
+    load: (window, surface = 'search') => {
       window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
       window.webContents.on('will-navigate', (event, url) => {
         if (url !== window.webContents.getURL()) event.preventDefault()
       })
-      window.loadFile(APP_ENTRY, { query: { surface: 'search' } })
+      window.loadFile(APP_ENTRY, { query: { surface } })
+    },
+    // What the ring does that only main can.
+    ringActions: {
+      desk: () => showDesk(),
+      chat: () => quickChat?.show(),
+      sticky: () => command({ view: 'Capture' }),
+      sky: () => command({ view: 'Mindmap' }),
+      files: () => command({ view: 'Files' }),
     },
     files,
     handle,
@@ -645,8 +653,7 @@ async function registerLauncher() {
     notify: (options) => { if (Notification.isSupported()) new Notification(options).show() },
     onHide: releaseEscape,
   })
-  launcher.search.window.on('focus', claimEscape)
-  launcher.search.window.on('blur', releaseEscape)
+  launcher.onFocus(claimEscape, releaseEscape)
 }
 
 /* ---- The quick chat (⌥⇧Space): Ask in a small window over every app ---- */

@@ -234,6 +234,34 @@ async function main() {
   await page.fill('#home-line', '')
   await page.evaluate(() => window.osatSearch.saveSettings({ sources: { clipboard: { keyword: 'v' } } }))
 
+  // The ring on the desk: ⌘ + middle-click opens quick tools around the pointer (the layouts are for other apps, so not
+  // here); a number picks; Esc leaves; a tool does its one thing.
+  room = 'ring'
+  const ring = page.locator('.ring')
+  await page.keyboard.down('Meta')
+  await page.mouse.click(720, 640, { button: 'middle' })
+  await page.keyboard.up('Meta')
+  await ring.waitFor({ timeout: 3000 }).catch(() => problems.push('ring: ⌘ + middle-click did not open the ring'))
+  const tools = (await ring.locator('.ring-item span').allInnerTexts().catch(() => [])).join(', ')
+  if (tools !== 'Quick search, Clipboard, New sticky, Quick chat, The desk') problems.push(`ring: the desk's ring held ${tools}`)
+  await sleep(500)
+  await page.screenshot({ path: `${OUT}/desk-ring.png` })
+  await page.keyboard.press('Escape')
+  await ring.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('ring: Esc did not put the ring away'))
+  await page.mouse.click(720, 640, { button: 'middle' })
+  if (await ring.count()) problems.push('ring: a middle-click without ⌘ opened the ring')
+  await page.keyboard.down('Meta')
+  await page.mouse.click(720, 640, { button: 'middle' })
+  await page.keyboard.up('Meta')
+  await page.keyboard.press('2')
+  await ring.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('ring: picking a tool did not put the ring away'))
+  if (!(await calls()).some(([name, scope]) => name === 'show' && scope === 'clipboard')) problems.push('ring: the Clipboard tool did not open the quick search on the clipboard')
+  await page.keyboard.down('Meta')
+  await page.mouse.click(720, 640, { button: 'middle' })
+  await page.keyboard.up('Meta')
+  await page.keyboard.press('3')
+  await page.waitForFunction(() => document.activeElement?.id === 'home-line', null, { timeout: 3000 }).catch(() => problems.push('ring: New sticky did not take you to the line'))
+
   // A copy that looks like a customer's email, for a node that exists (the seeded "Project Direction"), is offered
   // once, calmly; Add puts it in that node with Undo; Not now lets it go; an address for no node is not offered.
   room = 'clipboard offer'
@@ -684,6 +712,22 @@ async function main() {
     await sleep(150)
     if (!(await search.evaluate(() => window.__calls)).some(([name]) => name === 'hide')) problems.push(`${room}: the last Esc did not put the bar away`)
     await search.close()
+  }
+
+  // The ring over other apps (Hyper R), in its own small window: eight tools, a number picks one, Esc goes.
+  for (const scheme of ['light', 'dark']) {
+    room = `ring window (${scheme})`
+    const small = await browser.newPage({ viewport: { width: 340, height: 340 }, colorScheme: scheme })
+    small.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
+    await small.addInitScript(installSearchBridge, DEFAULT_SETTINGS)
+    await small.goto(`${url}?surface=ring&fresh=1`)
+    await small.locator('.ring-item').first().waitFor({ timeout: 8000 }).catch(() => problems.push(`${room}: the ring did not draw`))
+    if ((await small.locator('.ring-item').count()) !== 8) problems.push(`${room}: the ring did not hold eight tools`)
+    await sleep(600)
+    await small.screenshot({ path: `${OUT}/${scheme}-Ring.png`, omitBackground: true })
+    await small.keyboard.press('3')
+    if (!(await small.evaluate(() => window.__calls)).some(([name, id]) => name === 'ringPick' && id === 'sticky')) problems.push(`${room}: a number did not pick its tool`)
+    await small.close()
   }
 
   // The iPhone app, with a stand-in for its Swift side (files, and an iCloud that

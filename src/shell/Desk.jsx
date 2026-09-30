@@ -4,6 +4,8 @@ import { AppWindow, ArrowsIn, ArrowsOut, Database, Plus, X } from '@phosphor-ico
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
 import { cleanError } from '../assistant/useAi.js'
 import { localDateKey } from '../daily-practice.js'
+import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
+import { ringItems } from '../../shared/ring-model.mjs'
 import { ClipboardOffer } from '../field/ClipboardOffer.jsx'
 import { FieldDesk } from '../field/FieldDesk.jsx'
 import { FieldSheet } from '../field/FieldSheet.jsx'
@@ -22,6 +24,7 @@ import { CalendarView } from '../views/Calendar.jsx'
 import { FilesView } from '../views/Files.jsx'
 import { HabitsView } from '../views/Habits.jsx'
 import { JournalView } from '../views/Journal.jsx'
+import { Ring } from '../search/Ring.jsx'
 import { NowPlayingView } from '../views/NowPlaying.jsx'
 import { PileView } from '../views/Pile.jsx'
 import { RoadmapView } from '../views/Roadmap.jsx'
@@ -100,6 +103,9 @@ export function Desk() {
   // Offline, as main says it is ({ on, terminal }). The preview has no main: the look only.
   const [offline, setOffline] = useState({ on: false })
   const [notice, setNotice] = useState('')
+  // The ring (⌘ + middle-click): where it is open, if it is, and which tools (Settings → Launcher).
+  const [ring, setRing] = useState(null)
+  const [ringTools, setRingTools] = useState(DEFAULT_SETTINGS.ring)
   // Scans that came in since the Sky was last open: [{ name, folderId, noteId }]. Their line
   // stays until Nate looks, so a scan made at the printer is waiting when he walks over.
   const [arrived, setArrived] = useState([])
@@ -261,6 +267,35 @@ export function Desk() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  /* ⌘ + middle-click anywhere on the desk opens the ring: quick tools around the pointer. Over other apps the same ring
+     opens with its key (Hyper R, its own small window); Settings → Launcher says which tools it holds. */
+  useEffect(() => {
+    const api = window.osatSearch
+    const take = (value) => { if (value?.ring) setRingTools(value.ring) }
+    api?.settings().then(take, () => {})
+    const stop = api?.onSettings(take)
+    const onDown = (event) => {
+      if (event.button !== 1 || !event.metaKey) return
+      event.preventDefault()
+      if (latest.current?.ringOn) setRing({ x: event.clientX, y: event.clientY })
+    }
+    window.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('mousedown', (event) => { if (event.button === 1 && event.metaKey) event.preventDefault() }, true)
+    return () => { stop?.(); window.removeEventListener('pointerdown', onDown, true) }
+  }, [])
+
+  /* What a tool on the desk's ring does; the layouts are for windows of other apps, so they are not on this ring. */
+  function pickRing(item) {
+    setRing(null)
+    const api = window.osatSearch
+    if (item.id === 'search') { if (api) api.show('all'); else navigate('Capture') }
+    else if (item.id === 'clipboard') api?.show('clipboard')
+    else if (item.id === 'sticky') navigate('Capture')
+    else if (item.id === 'chat') window.osatChat?.show()
+    else if (item.id === 'sky') navigate('Mindmap')
+    else if (item.id === 'files') navigate('Files')
+  }
+
   /* Up to the Sky, or back down to the desk. */
   function step(way) {
     if (way === 'up') goUp()
@@ -347,7 +382,7 @@ export function Desk() {
     else if (view === 'Today') { if (latest.current.sky === 'sky') goDown(); else setVisit((value) => value + 1) }
     else if (ROOMS[view]) open(view, detail, origin)
   }
-  latest.current = { navigate, pops, welcome, line, offline: on, sky, step }
+  latest.current = { navigate, pops, welcome, line, offline: on, sky, step, ringOn: ringTools.on !== false }
 
   async function launcher(action, ...args) {
     try {
@@ -501,6 +536,13 @@ export function Desk() {
             <button type="button" onClick={() => { const last = arrived.at(-1); goUp(last.folderId ? { folderId: last.folderId, open: true } : { noteId: last.noteId }) }}>Show me</button>
           </p>
         )}
+      {ring && (
+        <div className="ring-layer" onPointerDown={(event) => { if (event.target === event.currentTarget) setRing(null) }}>
+          <div className="ring-place" style={{ left: clamp(ring.x, 190, innerWidth - 190), top: clamp(ring.y, 190, innerHeight - 190) }}>
+            <Ring items={ringItems(ringTools.items, { desk: true })} onPick={pickRing} onClose={() => setRing(null)} />
+          </div>
+        </div>
+      )}
       <ClipboardOffer workspace={workspace} commit={commit} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
     </main>

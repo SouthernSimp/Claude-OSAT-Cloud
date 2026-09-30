@@ -124,3 +124,33 @@ html:has(.quick-search) body { background: transparent; }
   .qs-body { grid-template-columns: minmax(0, 1fr); }
   .qs-preview { display: none; }
 }
+
+/* ---- The ring: quick tools around the pointer (search/Ring.jsx) ---------------------------------
+   Solid discs, because the ring sits over other content: over other apps in its own window, or over the desk. */
+html:has(.ring-surface),
+html:has(.ring-surface) body { background: transparent; }
+.ring-surface { height: 100dvh; display: grid; place-items: center; overflow: hidden; }
+.ring { position: relative; width: 340px; height: 340px; }
+.ring-middle {
+  position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; display: grid; place-items: center;
+  border-radius: 50%; color: var(--muted); background: var(--surface-solid); box-shadow: 0 0 0 0.5px var(--line-strong), 0 8px 22px -10px rgb(0 0 0 / 45%);
+}
+.ring-middle svg { width: 14px; height: 14px; }
+.ring-middle:hover { color: var(--ink); }
+.ring-item {
+  position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; margin: -40px 0 0 -40px; translate: var(--x) var(--y);
+  display: grid; place-items: center; align-content: center; gap: 3px; border-radius: 50%;
+  color: var(--ink); background: var(--surface-solid); box-shadow: 0 0 0 0.5px var(--line-strong), 0 12px 28px -12px rgb(0 0 0 / 55%);
+  transition: scale var(--d-fast) var(--ease-out), background var(--d-fast), color var(--d-fast);
+  animation: ring-in 280ms var(--spring) both; animation-delay: calc(var(--i) * 20ms);
+}
+.ring-item svg { width: 24px; height: 24px; }
+.ring-item.is-right svg { transform: scaleX(-1); }
+.ring-item span { padding: 0 8px; font: 620 10.5px/1.1 var(--font); text-align: center; }
+.ring-item kbd { position: absolute; top: 9px; right: 11px; font: 600 9px/1 var(--font); color: var(--faint); }
+.ring-item:hover, .ring-item:focus-visible { scale: 1.08; color: var(--accent-ink); background: var(--accent); outline: none; }
+.ring-item:hover kbd, .ring-item:focus-visible kbd { color: inherit; opacity: 0.7; }
+@keyframes ring-in { from { opacity: 0; scale: 0.4; } }
+/* Over the desk: a click anywhere else lets it go. */
+.ring-layer { position: fixed; inset: 0; z-index: var(--z-modal); }
+.ring-place { position: absolute; translate: -50% -50%; }

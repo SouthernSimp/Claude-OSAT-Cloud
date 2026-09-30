@@ -49,6 +49,14 @@ export function installSearchBridge(defaults) {
     // Without Accessibility the Mac app answers that it can't move a window (and touches nothing).
     snap: async (layout) => { window.__calls.push(['snap', layout]); return { ok: false, reason: 'access' } },
   }
+  // The ring's own small window (Hyper R) says what was picked.
+  window.osatRing = {
+    ready: async () => true,
+    pick: async (id) => { window.__calls.push(['ringPick', id]); return true },
+    hide: async () => { window.__calls.push(['ringHide']); return true },
+    onShown: (listener) => { window.__ringShown = listener; return () => {} },
+    onEscape: () => () => {},
+  }
   window.osatSearch = new Proxy(known, {
     get: (target, name) => (name in target ? target[name] : async (...args) => { window.__calls.push([name, ...args]); return { pasted: false, reason: 'access', undo: 'u1' } }),
   })

@@ -13,7 +13,7 @@ const repo = fileURLToPath(new URL('..', import.meta.url))
 /* Electron's pieces, as stand-ins: enough to run the launcher's wiring end to end. */
 async function setup({ trusted = false, offline = false, taken = () => false, refuse = [], script = null } = {}) {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'osat-launcher-'))
-  const calls = { open: [], external: [], showItem: [], sent: [], command: [], exec: [], written: [], notified: [] }
+  const calls = { open: [], external: [], showItem: [], sent: [], command: [], exec: [], written: [], notified: [], ring: [] }
   const handlers = new Map()
   const board = { text: '' }
   const clipboard = {
@@ -74,6 +74,7 @@ async function setup({ trusted = false, offline = false, taken = () => false, re
     offline: () => offline,
     isTaken: (key) => taken(key),
     notify: (options) => calls.notified.push(options),
+    ringActions: { sticky: () => calls.ring.push('sticky'), chat: () => calls.ring.push('chat'), desk: () => calls.ring.push('desk'), sky: () => calls.ring.push('sky'), files: () => calls.ring.push('files') },
     exec: async (command, args) => { calls.exec.push([command, ...args]); if (script) return script(command, args); return command === 'lsappinfo' ? 'nothing' : '' },
   })
   const ask = (channel, ...args) => handlers.get(channel).operation(...args)
@@ -84,7 +85,7 @@ test('starting registers a Hyper key for each source and reads what is saved', a
   const t = await setup()
   try {
     await t.launcher.start()
-    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+V', 'Control+Alt+Shift+Command+W'])
+    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+R', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+V', 'Control+Alt+Shift+Command+W'])
     assert.equal(t.launcher.taken('Control+Alt+Shift+Command+V'), true, 'the desk’s shortcut picker can’t take it')
     assert.equal(t.launcher.hotkeyLabel('Control+Alt+Shift+Command+V'), 'Hyper V')
     assert.equal((await t.ask('search:settings')).sources.clipboard.keyword, 'v')
@@ -285,7 +286,7 @@ test('window keys are off until turned on; then each layout has its key, and a p
     const saved = await t.ask('search:save-settings', { windows: { on: true } })
     assert.equal(saved.windows.on, true)
     assert.equal(t.registered.has('Control+Alt+Left'), true)
-    assert.equal(t.registered.size, 5 + 16, 'a key for each layout, beside the Hyper keys')
+    assert.equal(t.registered.size, 6 + 16, 'a key for each layout, beside the Hyper keys and the ring’s')
     t.registered.get('Control+Alt+Left')()
     await wait(120)
     assert.deepEqual(moves, [[0, 0, 720, 900]])
@@ -335,5 +336,42 @@ test('a layout key pressed without Accessibility says so once, calmly, and never
     assert.equal(t.calls.notified.length, 1, 'once, not on every press')
     assert.match(t.calls.notified[0].body, /allowed in Accessibility/)
     assert.ok(!t.calls.exec.some((call) => Array.isArray(call) && call[0] === 'osascript'))
+  } finally { await t.done() }
+})
+
+test('the ring: its key is on by default, its window is made the first time, and a tool does its one thing', async () => {
+  const moves = []
+  const t = await setup({ trusted: true, script: macScript(moves) })
+  try {
+    await t.launcher.start()
+    assert.equal(t.registered.has('Control+Alt+Shift+Command+R'), true, 'Hyper R')
+    await assert.rejects(t.ask('ring:pick', 'sticky'), /reading 'hide'|undefined/, 'no ring window yet, nothing to pick from')
+    t.registered.get('Control+Alt+Shift+Command+R')()
+    await wait(120)
+    await t.ask('ring:pick', 'sticky')
+    await t.ask('ring:pick', 'chat')
+    await t.ask('ring:pick', 'sky')
+    await t.ask('ring:pick', 'search')
+    assert.deepEqual(t.calls.ring, ['sticky', 'chat', 'sky'])
+    assert.equal(t.launcher.search.window.isVisible(), true, 'the quick search tool opens the panel')
+    await t.ask('ring:pick', 'left')
+    assert.deepEqual(moves, [[0, 0, 720, 900]], 'a layout tool moves the window you were in')
+    await assert.rejects(t.ask('ring:pick', 'launch-missiles'), /isn’t a tool the ring holds/)
+    // The desk's ring opens the panel on a tab; only the desk may ask, and only for tabs that exist.
+    assert.equal(t.handlers.get('search:show').from(t.desk.webContents), true)
+    assert.equal(t.handlers.get('search:show').from(t.launcher.search.window.webContents), false)
+    await t.ask('search:show', 'clipboard')
+    assert.ok(t.sent.some(([channel, payload]) => channel === 'search:shown' && payload?.scope === 'clipboard'))
+    await t.ask('search:show', 'nonsense')
+    assert.equal(t.sent.filter(([channel]) => channel === 'search:shown').at(-1)[1].scope, 'all')
+    // Turned off, the key goes; a key someone else has is refused and the old one stays.
+    await t.ask('search:save-settings', { ring: { on: false } })
+    assert.equal(t.registered.has('Control+Alt+Shift+Command+R'), false)
+    await t.ask('search:save-settings', { ring: { on: true } })
+    t.registered.set('Control+Alt+Shift+Command+Y', () => {})
+    await assert.rejects(t.ask('search:save-settings', { ring: { hotkey: 'Control+Alt+Shift+Command+Y' } }), /The ring keeps its old one/)
+    assert.equal((await t.ask('search:settings')).ring.hotkey, 'Control+Alt+Shift+Command+R')
+    const saved = await t.ask('search:save-settings', { ring: { items: ['files', 'desk', 'files', 'bogus'] } })
+    assert.deepEqual(saved.ring.items, ['files', 'desk'], 'unknown tools and repeats go')
   } finally { await t.done() }
 })

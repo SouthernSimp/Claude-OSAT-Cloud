@@ -18,6 +18,7 @@ const { createClipboardHistory } = require('./clipboard-history.cjs')
 const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
+const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -26,8 +27,10 @@ async function createLauncher({
   BrowserWindow, screen, clipboard, nativeImage, shell, systemPreferences, globalShortcut, platform = process.platform,
   dataDir, preload, load, files, handle, fail, sharedModule, mainWindow, command, sendToAllWindows,
   offline = () => false, hideOnBlur = false, isTaken = () => false, onHide = () => {}, exec, notify = () => {},
+  // What the ring does that only main can: the desk, the quick chat, a new sticky, the Sky, Files.
+  ringActions = {},
 }) {
-  const [clipModel, launcherModel, layoutModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs')])
+  const [clipModel, launcherModel, layoutModel, ringModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs')])
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -60,7 +63,7 @@ async function createLauncher({
 
   let search = null
   const startSearch = () => {
-    search = createQuickSearch({ BrowserWindow, screen, platform, preload, load, hideOnBlur, onHide, view: () => settings.view })
+    search = createQuickSearch({ BrowserWindow, screen, platform, preload, load: (window) => load(window, 'search'), hideOnBlur, onHide, view: () => settings.view })
     // The page says when it is listening, so a key pressed while it loads still opens it on the right tab.
     let ready = false
     let waiting = null
@@ -70,7 +73,18 @@ async function createLauncher({
     search.window.webContents.on('did-start-loading', () => { ready = false })
   }
 
+  // The ring's window is made the first time it is wanted.
+  let ring = null
+  let hooks = null
+  const ensureRing = () => {
+    if (!ring) {
+      ring = createRing({ BrowserWindow, screen, platform, preload, load: (window) => load(window, 'ring'), hideOnBlur, onHide })
+      if (hooks) { ring.window.on('focus', hooks.focus); ring.window.on('blur', hooks.blur) }
+    }
+    return ring
+  }
   const ofSearchOrDesk = (sender) => Boolean(search?.owns(sender)) || sender === desk()
+  const ofRing = (sender) => Boolean(ring?.owns(sender))
   const ofDesk = (sender) => sender === desk()
   const on = (channel, operation, from = ofSearchOrDesk) => handle(channel, operation, { from })
 
@@ -101,6 +115,7 @@ async function createLauncher({
       const own = next.sources[source.id]
       if (own.on && own.hotkey) wanted[`source:${source.id}`] = { key: own.hotkey, run: () => search?.toggle({ scope: source.id }) }
     }
+    if (next.ring.on && next.ring.hotkey) wanted.ring = { key: next.ring.hotkey, run: () => ensureRing().toggle() }
     if (next.windows.on) {
       for (const layout of layoutModel.LAYOUTS) {
         const key = next.windows.hotkeys[layout.id]
@@ -124,10 +139,11 @@ async function createLauncher({
     }
     const next = clean(merged)
     // A key that changed in this patch and can't be had goes back to what it was; one that was already refused stays as it is.
-    const changed = (id) => (id.startsWith('source:') ? next.sources[id.slice(7)]?.hotkey !== settings.sources[id.slice(7)]?.hotkey : id.startsWith('snap:') && next.windows.hotkeys[id.slice(5)] !== settings.windows.hotkeys[id.slice(5)])
+    const changed = (id) => (id === 'ring' ? next.ring.hotkey !== settings.ring.hotkey : id.startsWith('source:') ? next.sources[id.slice(7)]?.hotkey !== settings.sources[id.slice(7)]?.hotkey : id.startsWith('snap:') && next.windows.hotkeys[id.slice(5)] !== settings.windows.hotkeys[id.slice(5)])
     const failed = applyHotkeys(next).filter(changed)
     for (const id of failed) {
-      if (id.startsWith('source:')) next.sources[id.slice(7)].hotkey = settings.sources[id.slice(7)].hotkey
+      if (id === 'ring') next.ring.hotkey = settings.ring.hotkey
+      else if (id.startsWith('source:')) next.sources[id.slice(7)].hotkey = settings.sources[id.slice(7)].hotkey
       else next.windows.hotkeys[id.slice(5)] = settings.windows.hotkeys[id.slice(5)]
     }
     settings = next
@@ -137,7 +153,7 @@ async function createLauncher({
     history.watch(settings.sources.clipboard.on)
     sendToAllWindows('launcher:changed', settings)
     if (failed.length) {
-      const label = launcherModel.SOURCES.find((source) => `source:${source.id}` === failed[0])?.label || layoutModel.layoutById(failed[0].slice(5))?.label
+      const label = failed[0] === 'ring' ? 'The ring' : launcherModel.SOURCES.find((source) => `source:${source.id}` === failed[0])?.label || layoutModel.layoutById(failed[0].slice(5))?.label
       fail(`That key is taken by another app or another OSAT shortcut, so ${label} keeps its old one. Try a different key.`)
     }
     return settings
@@ -146,7 +162,7 @@ async function createLauncher({
   /* ---- What the quick search's page asks for ---- */
 
   on('search:ready', () => { search.ready(); return true })
-  on('search:settings', () => settings)
+  on('search:settings', () => settings, (sender) => ofSearchOrDesk(sender) || ofRing(sender))
   on('search:save-settings', save, ofDesk)
   on('search:status', () => ({
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
@@ -246,6 +262,31 @@ async function createLauncher({
     return snap.snap(id)
   })
 
+  /* The ring: quick tools around the pointer. Its page asks for what to draw (search:settings) and says what was picked. */
+  const ringDoes = {
+    search: () => search.show(),
+    clipboard: () => search.show({ scope: 'clipboard' }),
+    sticky: () => ringActions.sticky?.(),
+    chat: () => ringActions.chat?.(),
+    desk: () => ringActions.desk?.(),
+    sky: () => ringActions.sky?.(),
+    files: () => ringActions.files?.(),
+  }
+  const showRing = () => { if (settings.ring.on) ensureRing().show() }
+  handle('ring:ready', () => { ring?.ready(); return true }, { from: ofRing })
+  handle('ring:hide', () => { ring?.hide(); return true }, { from: ofRing })
+  handle('ring:pick', async (id) => {
+    const item = ringModel.RING_ITEMS.find((entry) => entry.id === id)
+    if (!item) fail('That isn’t a tool the ring holds.')
+    ring.hide()
+    await wait(80)
+    if (item.layout) await snapFromKey(item.layout)
+    else ringDoes[item.id]?.()
+    return true
+  }, { from: ofRing })
+  // From the desk's own ring (⌘ + middle-click on the desk): the quick search over it, on a tab.
+  on('search:show', (scope) => { search.show({ scope: ['files', 'clipboard', 'apps', 'notes', 'windows'].includes(scope) ? scope : 'all' }); return true }, ofDesk)
+
   on('search:hide', () => { search.hide(); return true })
   on('search:mode', (mode) => { search.setMode(mode); return true })
   // "Open in OSAT": a note, a node, a room or Ask about a file goes to the desk.
@@ -259,6 +300,18 @@ async function createLauncher({
   startSearch()
 
   return {
+    // The panels, for main's Esc and focus routing (a panel keeps Esc from the page).
+    escape() {
+      if (search.window.isFocused()) search.send('search:escape')
+      else if (ring?.window.isFocused()) ring.send('ring:escape')
+    },
+    focused: () => Boolean(search.window.isFocused() || ring?.window.isFocused()),
+    onFocus(focus, blur) {
+      hooks = { focus, blur }
+      search.window.on('focus', focus)
+      search.window.on('blur', blur)
+    },
+    ring: { show: showRing, hide: () => ring?.hide(), toggle: () => (settings.ring.on ? ensureRing().toggle() : undefined) },
     search: { show: (options) => search.show(options), hide: () => search.hide(), toggle: (options) => search.toggle(options), get window() { return search.window }, send: (...args) => search.send(...args) },
     history,
     // A key that is one of the launcher's (so the desk's shortcut picker never takes it).

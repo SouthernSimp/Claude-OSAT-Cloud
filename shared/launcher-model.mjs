@@ -5,6 +5,7 @@
    main and in the windows. Pure. */
 
 import { calculate } from './calc.mjs'
+import { RING_ITEMS } from './ring-model.mjs'
 import { cleanWindowKeys } from './window-layouts.mjs'
 
 export const SEARCH_HOTKEY = 'Command+Shift+Space'
@@ -55,7 +56,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   pins: [],
   // Window keys (Control+Option+Arrow…) are off until turned on: they are global, and moving windows needs Accessibility.
   windows: { on: false, hotkeys: cleanWindowKeys(undefined) },
-  ring: { on: true, items: null },
+  // The ring opens from Hyper R over any app (and with ⌘ + middle-click inside OSAT); null items means the usual eight.
+  ring: { on: true, hotkey: hyper('R'), items: null },
 })
 
 /* What a saved file may hold: only the fields OSAT writes; anything broken falls back to the default.
@@ -98,7 +100,11 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     clipboard: { items: [50, 100, 200, 500].includes(clip.items) ? clip.items : 200, days: [0, 7, 30, 90].includes(clip.days) ? clip.days : 30, offers: clip.offers !== false },
     pins,
     windows: { on: from.windows?.on === true, hotkeys: cleanWindowKeys(from.windows?.hotkeys, validHotkey) },
-    ring: { on: from.ring?.on !== false, items: Array.isArray(from.ring?.items) ? from.ring.items.filter((id) => typeof id === 'string' && /^[a-z-]{2,24}$/.test(id)).slice(0, 12) : null },
+    ring: {
+      on: from.ring?.on !== false,
+      hotkey: from.ring?.hotkey === null ? null : validHotkey(from.ring?.hotkey) ? from.ring.hotkey : hyper('R'),
+      items: Array.isArray(from.ring?.items) ? [...new Set(from.ring.items.filter((id) => RING_ITEMS.some((item) => item.id === id)))].slice(0, 8) : null,
+    },
   }
 }
 

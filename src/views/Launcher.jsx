@@ -3,6 +3,7 @@ import { Keyboard, LockSimple, Plus, X } from '@phosphor-icons/react'
 
 import { DAY_CHOICES, ITEM_CHOICES } from '../../shared/clipboard-model.mjs'
 import { SOURCES, validAddress, validKeyword } from '../../shared/launcher-model.mjs'
+import { MAX_RING, RING_ITEMS, ringItems } from '../../shared/ring-model.mjs'
 import { LAYOUTS } from '../../shared/window-layouts.mjs'
 import { comboFrom, labelOf } from '../lib/hotkey.js'
 import { useUndoToast } from '../lib/UndoToast.jsx'
@@ -144,6 +145,8 @@ export function LauncherSettings() {
         )}
       </section>
 
+      <RingCard settings={settings} save={save} status={status} />
+
       <KeywordsCard settings={settings} save={save} showUndo={showUndo} />
 
       <section className="content-card launcher-card">
@@ -230,6 +233,43 @@ function KeyButton({ value, name, failed, onSet }) {
       {value && !recording && <button type="button" className="text-button" aria-label={`Take the key off ${name}`} onClick={() => onSet(null)}>None</button>}
       {(note || failed) && <small role="status">{note || 'Another app has this key.'}</small>}
     </span>
+  )
+}
+
+/* The ring: which tools, and its key. */
+function RingCard({ settings, save, status }) {
+  const chosen = ringItems(settings.ring.items).map((item) => item.id)
+  const toggle = (id, on) => save({ ring: { items: on ? [...chosen, id] : chosen.filter((other) => other !== id) } })
+  return (
+    <section className="content-card launcher-card">
+      <p className="eyebrow">THE RING</p>
+      <h2>Quick tools in a circle around your pointer.</h2>
+      <p>Press its key from any app, or hold ⌘ and middle-click anywhere in OSAT. Over other apps, ⌘ and middle-click would need a helper that watches every click, which OSAT doesn’t install, so the key does that job.</p>
+      <label className="launcher-check">
+        <input type="checkbox" checked={settings.ring.on} onChange={(event) => save({ ring: { on: event.target.checked } })} />
+        <span>Use the ring.</span>
+      </label>
+      {settings.ring.on && (
+        <>
+          <div className="launcher-row">
+            <p><strong>Its key</strong>Works from any app.</p>
+            <KeyButton value={settings.ring.hotkey} name="the ring" failed={status?.keysFailed?.includes('ring')} onSet={(hotkey) => save({ ring: { hotkey } })} />
+          </div>
+          <p className="launcher-subhead">What it holds: up to {MAX_RING}, in this order. The layouts move the window you were in, so they only show over other apps.</p>
+          <ul className="launcher-ringitems">
+            {RING_ITEMS.map((item) => (
+              <li key={item.id}>
+                <label>
+                  <input type="checkbox" checked={chosen.includes(item.id)} disabled={!chosen.includes(item.id) && chosen.length >= MAX_RING} onChange={(event) => toggle(item.id, event.target.checked)} />
+                  <span>{item.label}{chosen.includes(item.id) && <small>{chosen.indexOf(item.id) + 1}</small>}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <button className="text-button" type="button" onClick={() => save({ ring: { items: null } })}>Back to the usual tools</button>
+        </>
+      )}
+    </section>
   )
 }
 
