@@ -15,6 +15,14 @@ const { createDropFolder } = require('./drop-folder.cjs')
 const { createKeychain } = require('./keychain.cjs')
 const { createSettings } = require('./settings.cjs')
 
+/* Where keys are kept. The e2e test runs with a temp HOME, where the real Keychain can't be found
+   and macOS pops a dialog, so it sets OSAT_KEYCHAIN=memory. As with OSAT_NODES_DIR, only from source:
+   main gives the packaged app the service name 'OSAT' and source runs 'OSAT-Dev'. */
+function keychainFor({ service, env = process.env, platform = process.platform }) {
+  const memory = service !== 'OSAT' && env.OSAT_KEYCHAIN === 'memory'
+  return createKeychain({ service, platform: memory ? 'memory' : platform })
+}
+
 async function createBots({ dataDir, nodesDir, service, store, sharedModule, handle, fail, send, shell, clipboard, version = '0', offline = () => false }) {
   const core = await sharedModule('node-file.mjs')
   const providers = await sharedModule('providers.mjs')
@@ -22,7 +30,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   const { applyOps } = await sharedModule('store-core.mjs')
   const settings = createSettings({ file: path.join(dataDir, 'bots.json'), clean: providers.cleanBotSettings })
   await settings.load()
-  const keychain = createKeychain({ service })
+  const keychain = keychainFor({ service })
   const cloud = createCloud({ core: providers, settings, keychain, offline })
   const client = store.connect(() => {})
   const makeId = (prefix) => `${prefix}-${randomUUID()}`
@@ -180,4 +188,4 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   }
 }
 
-module.exports = { createBots }
+module.exports = { createBots, keychainFor }

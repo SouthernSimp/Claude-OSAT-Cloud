@@ -33,7 +33,7 @@ import { _electron as electron } from 'playwright'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 const home = await mkdtemp(path.join(os.tmpdir(), 'osat-e2e-'))
-const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac'), OSAT_NODES_DIR: path.join(home, 'OSAT Nodes') }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac'), OSAT_NODES_DIR: path.join(home, 'OSAT Nodes'), OSAT_KEYCHAIN: 'memory' }
 const dataFile = path.join(home, 'OSAT Test', 'store', 'workspace.json')
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }

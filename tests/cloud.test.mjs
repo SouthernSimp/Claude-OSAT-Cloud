@@ -10,6 +10,7 @@ import * as providers from '../shared/providers.mjs'
 
 const require = createRequire(import.meta.url)
 const { createKeychain } = require('../desktop/bots/keychain.cjs')
+const { keychainFor } = require('../desktop/bots/index.cjs')
 const { createCloud, readFrame } = require('../desktop/bots/cloud.cjs')
 const { createSettings } = require('../desktop/bots/settings.cjs')
 
@@ -22,6 +23,13 @@ test('keychain off the Mac: held in memory only, and it says so', async () => {
   assert.equal(await chain.get('cloud-model-deepseek'), KEY)
   await chain.remove('cloud-model-deepseek')
   assert.equal(await chain.get('cloud-model-deepseek'), null)
+})
+
+test('OSAT_KEYCHAIN=memory holds keys in memory from source, and is ignored in the packaged app', () => {
+  const lasting = (service, env) => keychainFor({ service, env, platform: 'darwin' }).lasting
+  assert.equal(lasting('OSAT-Dev', { OSAT_KEYCHAIN: 'memory' }), false)
+  assert.equal(lasting('OSAT-Dev', {}), true, 'from source the real Keychain is still the default')
+  assert.equal(lasting('OSAT', { OSAT_KEYCHAIN: 'memory' }), true, 'the packaged app never takes the switch')
 })
 
 test('keychain on the Mac: the key goes in on security’s input, never on a command line', async () => {
