@@ -10,6 +10,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { PLACES, extractText, inside, isPackage, rankFound, restoreItem, run, searchArgs, trashItem, walkFind } = require('./mac-files.cjs')
 const { cleanDropped, cleanName, freeName, makeFolder, moveInto, put, rename, toBin } = require('./file-ops.cjs')
+const { recentPaths } = require('./launcher/recent-files.cjs')
 const { resolveApprovedPath, resolveApprovedWritePath } = require('./path-guard.cjs')
 const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile, writeTextFile } = require('./text-files.cjs')
 
@@ -340,7 +341,7 @@ async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mai
 
   // Documents, pictures and media open in their app. Folders, apps, scripts and
   // installers are shown in Finder instead, so nothing runs from inside OSAT.
-  handle('files:open', async (rootId, relative = '') => {
+  async function openIt(rootId, relative = '') {
     const target = await approvedPath(getGrant(rootId), relative)
     if (!isSafeOpenFilename(path.basename(target))) {
       shell.showItemInFolder(target)
@@ -348,12 +349,14 @@ async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mai
     }
     if (await shell.openPath(target)) fail('The system could not open that item.')
     return 'opened'
-  }, { from: 'app' })
+  }
+  handle('files:open', openIt, { from: 'app' })
 
-  handle('files:reveal', async (rootId, relative = '') => {
+  async function revealIt(rootId, relative = '') {
     shell.showItemInFolder(await approvedPath(getGrant(rootId), relative))
     return true
-  }, { from: 'app' })
+  }
+  handle('files:reveal', revealIt, { from: 'app' })
 
   // What Finder would show for it: a picture of the page, or the file's own icon.
   handle('files:thumb', async (rootId, relative = '', size = 128) => thumbnail(await approvedPath(getGrant(rootId), relative), size), { from: 'app' })
@@ -370,17 +373,21 @@ async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mai
   // Find a file in plain words ("pdf taxes last week"): the words in its name or inside it, a
   // kind, a time. Spotlight, only in Desktop, Documents, Downloads and folders Nate added;
   // where there is none (tests, Linux) OSAT walks those folders itself.
-  handle('files:search', async (query) => {
+  // Tests from source (OSAT_NO_SPOTLIGHT) walk their stand-in folders even on a Mac: Spotlight doesn't index them.
+  const spotlight = () => process.platform === 'darwin' && !(!app.isPackaged && process.env.OSAT_NO_SPOTLIGHT)
+  const lookIn = async () => Promise.all([...places(), ...grants.filter((grant) => grant.kind === 'folder')]
+    .map(async (grant) => ({ id: grant.id, root: await fs.realpath(grant.root).catch(() => grant.root) })))
+
+  async function findFiles(query, { limit = 12 } = {}) {
     const words = typeof query === 'string' ? query.trim() : ''
     if (words.length < 2 || words.length > 100) return []
     const { parseFileQuery, spotlightQuery, matchesFile, matchedBy } = await sharedModule('file-query.mjs')
     const asked = parseFileQuery(words)
-    const spotlight = spotlightQuery(asked)
-    if (!spotlight) return []
-    const roots = await Promise.all([...places(), ...grants.filter((grant) => grant.kind === 'folder')]
-      .map(async (grant) => ({ id: grant.id, root: await fs.realpath(grant.root).catch(() => grant.root) })))
-    const paths = process.platform === 'darwin'
-      ? (await run('mdfind', searchArgs(spotlight, roots.map((item) => item.root)), { timeout: 4000 }).catch(() => '')).split('\n').filter(Boolean).slice(0, 400)
+    const clause = spotlightQuery(asked)
+    if (!clause) return []
+    const roots = await lookIn()
+    const paths = spotlight()
+      ? (await run('mdfind', searchArgs(clause, roots.map((item) => item.root)), { timeout: 4000 }).catch(() => '')).split('\n').filter(Boolean).slice(0, 400)
       : await walkFind(roots, (item) => matchesFile(asked, item))
     const filtered = asked.kinds.length > 0 || asked.since !== null
     const candidates = rankFound(inside([...new Set(paths)], roots), asked.words).slice(0, filtered ? 200 : 40)
@@ -390,8 +397,35 @@ async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mai
       const folder = stat.isDirectory() && !isPackage(item.name)
       return { ...item, kind: folder ? 'folder' : 'file', size: stat.isFile() ? stat.size : undefined, modifiedAt: stat.mtime.toISOString(), match: matchedBy(asked, item.name) }
     }))).filter(Boolean)
-    return rankFound(found, asked.words, { newest: filtered }).slice(0, 12).map(({ depth, ...item }) => item)
-  }, { from: 'app' })
+    return rankFound(found, asked.words, { newest: filtered }).slice(0, limit).map(({ depth, ...item }) => item)
+  }
+  handle('files:search', (query) => findFiles(query), { from: 'app' })
+
+  // What was used lately (the quick search's start): { rootId, relative, name, kind, size, modifiedAt }, newest first.
+  async function recentFiles(limit = 30) {
+    const roots = await lookIn()
+    const paths = await recentPaths({
+      roots: roots.map((item) => item.root),
+      platform: spotlight() ? 'darwin' : 'walk',
+      walk: async (since) => {
+        const files = await walkFind(roots, ({ modifiedAt }) => Boolean(modifiedAt) && new Date(modifiedAt) >= since, { max: 3000 })
+        const stats = await Promise.all(files.map(async (file) => [file, (await fs.stat(file).catch(() => null))?.mtimeMs || 0]))
+        return stats.sort((a, b) => b[1] - a[1]).map(([file]) => file)
+      },
+    })
+    const found = []
+    for (const item of inside([...new Set(paths)], roots).slice(0, limit * 2)) {
+      const stat = await fs.stat(path.join(roots.find((root) => root.id === item.rootId).root, item.relative)).catch(() => null)
+      if (!stat || (stat.isDirectory() && !isPackage(item.name))) continue
+      found.push({ rootId: item.rootId, relative: item.relative, name: item.name, kind: 'file', size: stat.isFile() ? stat.size : undefined, modifiedAt: stat.mtime.toISOString() })
+      if (found.length >= limit) break
+    }
+    return found
+  }
+
+  // "Documents › Taxes": the name of the place a file lives in, then its folders.
+  const rootName = (rootId) => publicGrant(getGrant(rootId)).name
+  const whereOf = (item) => [rootName(item.rootId), ...item.relative.split('/').slice(0, -1)].join(' › ')
 
   // The text Ask reads from a file in a folder OSAT can see…
   handle('files:extract', async (rootId, relative = '') => {
@@ -450,17 +484,19 @@ async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mai
   }, { from: 'app' })
 
   // "Delete" is the Mac's Bin.
-  handle('files:trash', async (items) => {
+  async function trashIt(items) {
     const { done, failed, undo } = await toBin(await sourcePaths(items), binTrash, process.platform === 'darwin' ? restoreItem : undefined)
     return { count: done.length, failed, undo: keepUndo(undo) }
-  }, { from: 'app' })
+  }
+  handle('files:trash', trashIt, { from: 'app' })
 
-  handle('files:undo', async (token) => {
+  async function undoIt(token) {
     const undo = undos.get(token)
     if (!undo) fail('That can’t be undone any more.')
     undos.delete(token)
     return undo()
-  }, { from: 'app' })
+  }
+  handle('files:undo', undoIt, { from: 'app' })
 
   handle('files:forget', async (rootId) => {
     if (getGrant(rootId).place) fail('Desktop, Documents and Downloads are always here.')
@@ -469,8 +505,17 @@ async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mai
     return grants.map(publicGrant)
   })
 
+  // What the quick search (desktop/launcher) asks of the same places, with the same checks.
   return {
     thumbnail,
+    find: async (query, options) => (await findFiles(query, options)).map((item) => ({ ...item, where: whereOf(item) })),
+    recent: async (limit) => (await recentFiles(limit)).map((item) => ({ ...item, where: whereOf(item) })),
+    resolve: (rootId, relative = '') => approvedPath(getGrant(rootId), relative),
+    whereOf,
+    open: openIt,
+    reveal: revealIt,
+    trash: trashIt,
+    undo: undoIt,
     stop() {
       for (const id of grantAccessStops.keys()) stopGrantAccess(id)
     },

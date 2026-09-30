@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process'
 import { mkdir, readFile } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { installSearchBridge } from './search-bridge.mjs'
 
 const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
@@ -482,6 +483,72 @@ async function main() {
   await sleep(400)
   await chat.screenshot({ path: `${OUT}/quick-chat.png` })
   await chat.close()
+
+  // The quick search (⌘⇧Space in the Mac app), with a stand-in for what the Mac app gives it: a bar; typing opens
+  // the full view with a big preview; Return, ⌘K and Esc; the clipboard and a sum. Light, then dark.
+  for (const scheme of ['light', 'dark']) {
+    room = `quick search (${scheme})`
+    const search = await browser.newPage({ viewport: { width: 1000, height: 580 }, colorScheme: scheme })
+    search.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
+    search.on('console', (message) => { if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) problems.push(`${room}: ${message.text()}`) })
+    await search.addInitScript(installSearchBridge)
+    await search.goto(`${url}?surface=search&fresh=1`)
+    await search.locator('.quick-search[data-mode="bar"]').waitFor({ timeout: 8000 }).catch(() => problems.push(`${room}: the bar did not open`))
+    if (await search.locator('.qs-body').count()) problems.push(`${room}: the bar showed results before anything was typed`)
+    await search.fill('#qs-input', 'taxes')
+    const taxes = search.locator('.qs-row', { hasText: 'Taxes 2025.pdf' })
+    await taxes.waitFor({ timeout: 5000 }).catch(() => problems.push(`${room}: typing did not find the file`))
+    if (!await search.locator('.quick-search[data-mode="full"]').count()) problems.push(`${room}: typing did not open the full view`)
+    await search.locator('.qs-picture').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the preview did not show the file`))
+    const facts = await search.locator('.qs-details').innerText().catch(() => '')
+    if (!/Documents › Taxes/.test(facts) || !/PDF document/.test(facts) || !/1\.2 MB/.test(facts)) problems.push(`${room}: the details did not say where, what and how big (${facts})`)
+    await sleep(300)
+    await search.screenshot({ path: `${OUT}/${scheme}-QuickSearch.png` })
+    // ⌘K lists the other actions (Ctrl stands in for ⌘ off the Mac); Esc closes just that.
+    await search.keyboard.press('Control+k')
+    const actions = search.locator('.qs-actions')
+    await actions.waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: ⌘K did not list the actions`))
+    for (const label of ['Open', 'Show in Finder', 'Copy path', 'Ask about it', 'Add to a node…', 'Pin', 'Delete']) {
+      if (!(await actions.innerText().catch(() => '')).includes(label)) problems.push(`${room}: ⌘K did not list ${label}`)
+    }
+    if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-actions.png` })
+    await search.keyboard.press('Escape')
+    if (await actions.count()) problems.push(`${room}: Esc did not close the actions first`)
+    // Return does the obvious thing: open the file.
+    await search.keyboard.press('Enter')
+    await sleep(200)
+    if (!(await search.evaluate(() => window.__calls)).some(([name, root, relative]) => name === 'openFile' && root === 'documents' && relative === 'Taxes/Taxes 2025.pdf')) problems.push(`${room}: Return did not open the file`)
+    // v is the clipboard: pins first, then the day; Return pastes (the stand-in says it needs Accessibility, so it says so).
+    await search.fill('#qs-input', 'v')
+    await search.locator('.qs-head', { hasText: 'Pinned' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "v" did not show the clipboard with its pins first`))
+    if (!await search.locator('.qs-head', { hasText: 'Today' }).count()) problems.push(`${room}: the clipboard was not grouped by day`)
+    await search.getByRole('tab', { name: 'Clipboard' }).click()
+    await search.getByRole('button', { name: 'Images' }).click()
+    await search.locator('.qs-row', { hasText: 'Image' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the Images filter showed no picture`))
+    await search.locator('.qs-picture').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the copied picture had no big preview`))
+    await search.getByRole('button', { name: 'All', exact: true }).click()
+    await search.locator('.qs-row', { hasText: 'Jordan asked for the revised quote' }).click()
+    if (!/Mail/.test(await search.locator('.qs-details').innerText().catch(() => ''))) problems.push(`${room}: the details of a copy did not say which app it came from`)
+    if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-clipboard.png` })
+    await search.keyboard.press('Enter')
+    await search.locator('.qs-foot [role="status"]', { hasText: 'Copied. Press ⌘V to paste' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: Return on a copy did not say to press ⌘V without Accessibility`))
+    // A sum answers (on Everything); a room is found; Tab moves between the tabs; Esc backs out a step at a time, then away.
+    await search.getByRole('tab', { name: 'Everything' }).click()
+    await search.fill('#qs-input', '2*49')
+    await search.locator('.qs-row', { hasText: '= 98' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a sum did not answer`))
+    await search.fill('#qs-input', 'sky')
+    await search.locator('.qs-row', { hasText: 'Sky' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a room was not found`))
+    await search.keyboard.press('Tab')
+    if ((await search.locator('[role="tab"][aria-selected="true"]').innerText()) !== 'Files') problems.push(`${room}: Tab did not move to the next tab`)
+    await search.keyboard.press('Escape')
+    if ((await search.inputValue('#qs-input')) !== '') problems.push(`${room}: Esc did not clear the words first`)
+    await search.keyboard.press('Escape')
+    if (!await search.locator('.quick-search[data-mode="bar"]').count()) problems.push(`${room}: Esc did not go back to the bar`)
+    await search.keyboard.press('Escape')
+    await sleep(150)
+    if (!(await search.evaluate(() => window.__calls)).some(([name]) => name === 'hide')) problems.push(`${room}: the last Esc did not put the bar away`)
+    await search.close()
+  }
 
   // The iPhone app, with a stand-in for its Swift side (files, and an iCloud that
   // already holds a snapshot from a Mac): it catches up, then sends its own change.

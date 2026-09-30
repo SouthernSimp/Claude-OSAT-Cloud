@@ -418,7 +418,7 @@ function ShortcutCard() {
     setRecording(null);
     try {
       const saved = await bridge.setHotkey([...modifiers, key].join("+"), which);
-      setInfo((value) => (which === "chat" ? { ...value, chat: saved } : { ...value, ...saved }));
+      setInfo((value) => (which === "layer" ? { ...value, ...saved } : { ...value, [which]: saved }));
       setMessage("Saved. Try it from any app.");
     } catch (error) {
       setMessage(String(error?.message || "That shortcut didn’t work.").replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
@@ -458,6 +458,15 @@ function ShortcutCard() {
             : "Ask in a small window that floats over your other apps."}
         </p>
         {button("chat", info?.chat, "⌥⇧Space")}
+      </div>
+      <div className="shortcut-row">
+        <p>
+          <strong>Quick search</strong>
+          {info?.search?.failed
+            ? `${info.search.label} is already used by another app. Choose a different shortcut.`
+            : "A small bar over your other apps: find a file, something you copied, an app or a note, and go straight to it."}
+        </p>
+        {button("search", info?.search, "⌘⇧Space")}
       </div>
       {message && <p role="status">{message}</p>}
     </section>

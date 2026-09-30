@@ -1,0 +1,66 @@
+import { useEffect, useState } from 'react'
+
+import { detailsFor } from '../../shared/quick-search-model.mjs'
+import { RowIcon } from './icons.jsx'
+
+const COPIED_WORDS = new Set(['text', 'link', 'email', 'phone', 'number'])
+
+/* The big preview beside the results: the file (the words of a text file, or the page Quick Look draws),
+   the copied picture or text, the app's icon, the note; and, under it, the details: where, what kind, how
+   big; for a copy, which app it came from and when. Whatever is loading shows what the list already knew. */
+export function Preview({ row, bridge, workspace, now }) {
+  const [loaded, setLoaded] = useState({ key: null })
+  useEffect(() => {
+    if (!row || !bridge) return undefined
+    let live = true
+    const done = (patch) => { if (live) setLoaded({ key: row.key, ...patch }) }
+    const d = row.data
+    if (row.kind === 'file') bridge.preview(d.rootId, d.relative).then(done, () => done({}))
+    else if (row.kind === 'image') bridge.clipboardImage(d.id).then((image) => done({ image }), () => done({}))
+    else if (COPIED_WORDS.has(row.kind)) bridge.clipboardText(d.id).then((text) => done({ text }), () => done({}))
+    else if (row.kind === 'app') bridge.appIcon(d.path).then((thumb) => done({ thumb }), () => done({}))
+    return () => { live = false }
+  }, [row?.key, bridge]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!row) return <section className="qs-preview is-empty" aria-label="Preview"><p>Nothing to show yet.</p></section>
+  const d = row.data
+  const own = loaded.key === row.key ? loaded : {}
+  const details = detailsFor(row, { now })
+
+  let body
+  if (row.kind === 'file' && own.text) body = <pre className="qs-text">{own.text}</pre>
+  else if (row.kind === 'file' && own.thumb) body = <img className="qs-picture" src={own.thumb} alt="" draggable={false} />
+  else if (row.kind === 'image') body = <img className="qs-picture" src={own.image || d.thumb} alt="A copied picture" draggable={false} />
+  else if (row.kind === 'app' && own.thumb) body = <img className="qs-app-icon" src={own.thumb} alt="" draggable={false} />
+  else if (row.kind === 'calc') body = <p className="qs-big">{row.title}</p>
+  else if (COPIED_WORDS.has(row.kind)) body = <pre className={`qs-text ${row.kind === 'link' ? 'is-link' : ''}`}>{own.text ?? d.text}</pre>
+  else if (row.kind === 'note') body = <NotePreview workspace={workspace} id={d.go?.[1]?.noteId} />
+  else if (row.kind === 'node') body = <NodePreview workspace={workspace} id={d.go?.[1]?.folderId} />
+  else body = <div className="qs-glyph"><RowIcon row={row} weight="light" /></div>
+
+  return (
+    <section className="qs-preview" aria-label="Preview">
+      <div className="qs-stage" data-kind={row.kind}>{body}</div>
+      <footer className="qs-facts">
+        <h2>{row.kind === 'calc' ? row.subtitle : row.title}</h2>
+        {details.length > 0 && (
+          <dl className="qs-details">
+            {details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>
+        )}
+      </footer>
+    </section>
+  )
+}
+
+function NotePreview({ workspace, id }) {
+  const note = workspace?.notes.find((item) => item.id === id)
+  if (!note) return <div className="qs-glyph"><RowIcon row={{ kind: 'note' }} weight="light" /></div>
+  return <pre className="qs-text">{note.markdown.slice(0, 1200)}</pre>
+}
+
+function NodePreview({ workspace, id }) {
+  const stickies = (workspace?.notes || []).filter((note) => note.folderId === id && !note.trashedAt).slice(0, 8)
+  if (!stickies.length) return <div className="qs-glyph"><RowIcon row={{ kind: 'node' }} weight="light" /></div>
+  return <ul className="qs-stickies">{stickies.map((note) => <li key={note.id}>{note.title}</li>)}</ul>
+}

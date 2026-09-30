@@ -4,6 +4,8 @@
    pieces; main.cjs owns the window. */
 
 const DEFAULT_HOTKEY = 'Alt+Space'
+// The quick search (Phase 13). ⌥Space is the desk and ⌥⇧Space the quick chat; ⌘⇧Space is free on a Mac.
+const DEFAULT_SEARCH_HOTKEY = 'Command+Shift+Space'
 const MODIFIERS = new Set(['Command', 'Control', 'Alt', 'Shift'])
 
 /* The display under the cursor, or the first one. */
@@ -82,4 +84,4 @@ function deskAction({ visible, focused }) {
   return focused ? 'hide' : 'show'
 }
 
-module.exports = { DEFAULT_HOTKEY, accentCss, addLauncher, placeItem, pickWidgets, deskAction, displayAt, hotkeyLabel, validHotkey }
+module.exports = { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, accentCss, addLauncher, placeItem, pickWidgets, deskAction, displayAt, hotkeyLabel, validHotkey }

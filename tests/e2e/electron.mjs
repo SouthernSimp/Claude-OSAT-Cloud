@@ -22,6 +22,10 @@
 //      one connects, the line's answer comes from it, the running total grows, no key on disk
 //  12. the connector (MCP on 127.0.0.1): off until turned on, the key from the copied setup,
 //      a node added over MCP arrives in the Sky, and Undo takes it away
+//  13. the quick search (Phase 13): its bar opens from the File menu, typing opens the full view with a big
+//      preview, a word inside a file is found, Return pastes a copy (or says to press ⌘V), ⌘K lists the other
+//      actions, ⌘⌫ deletes with Undo, a sum answers, Esc backs out a step at a time; the clipboard history
+//      keeps what is copied (not what OSAT copies itself) and Return on a note opens it on the desk
 // On Linux CI run it under xvfb:  xvfb-run -a node tests/e2e/electron.mjs
 import { access, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -33,7 +37,7 @@ import { _electron as electron } from 'playwright'
 
 const root = fileURLToPath(new URL('../..', import.meta.url))
 const home = await mkdtemp(path.join(os.tmpdir(), 'osat-e2e-'))
-const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac'), OSAT_NODES_DIR: path.join(home, 'OSAT Nodes') }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac'), OSAT_NODES_DIR: path.join(home, 'OSAT Nodes'), OSAT_NO_SPOTLIGHT: '1' }
 const dataFile = path.join(home, 'OSAT Test', 'store', 'workspace.json')
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }
@@ -260,6 +264,97 @@ try {
   }
   await main.keyboard.press('Control+1')
 
+  // 13. The quick search: a bar over every app; typing opens the full view.
+  const searchPage = app.windows().find((page) => page.url().includes('surface=search'))
+  check(Boolean(searchPage), 'the quick search window was not created at launch')
+  const searchWindow = (pick) => app.evaluate(({ BrowserWindow }, code) => {
+    const window = BrowserWindow.getAllWindows().find((item) => item.webContents.getURL().includes('surface=search'))
+    return code === 'shown' ? window.isVisible() : window.getBounds()
+  }, pick)
+  const fileMenu = (label) => app.evaluate(({ Menu }, name) => Menu.getApplicationMenu().items.find((item) => item.label === 'File').submenu.items.find((item) => item.label === name).click(), label)
+  const clipboardNow = () => app.evaluate(({ clipboard }) => clipboard.readText())
+  const original = await clipboardNow()
+  if (searchPage) {
+    await fileMenu('Quick Search')
+    check(await until(() => searchWindow('shown'), 3000), 'Quick Search in the File menu did not show the bar')
+    await searchPage.locator('#qs-input').waitFor({ timeout: 5000 })
+    check((await searchWindow('bounds')).height < 140, 'the quick search did not open as a small bar')
+    // Typing opens the full view; a note is found and its words are the preview.
+    await searchPage.fill('#qs-input', 'restart')
+    const noteRow = searchPage.locator('.qs-row', { hasText: 'Saved across a restart' })
+    await noteRow.waitFor({ timeout: 5000 }).catch(() => problems.push('the quick search did not find a note'))
+    check((await searchWindow('bounds')).height > 400, 'typing did not open the full view')
+    check(/Saved across a restart/.test(await searchPage.locator('.qs-preview').innerText().catch(() => '')), 'the preview did not show the note')
+    // A file: a word inside it.
+    {
+      await searchPage.fill('#qs-input', 'stove')
+      const fileRow = searchPage.locator('.qs-row', { hasText: 'packing.txt' })
+      await fileRow.waitFor({ timeout: 5000 }).catch(() => problems.push('the quick search did not find a word inside a file'))
+      await searchPage.locator('.qs-text', { hasText: 'Tent, stove' }).waitFor({ timeout: 5000 }).catch(() => problems.push('the preview did not show the words of the file'))
+      const facts = await searchPage.locator('.qs-details').innerText().catch(() => '')
+      check(/Desktop › Plans/.test(facts) && /Text file/.test(facts), `the details did not say where and what: ${facts}`)
+      await searchPage.keyboard.press('ControlOrMeta+k')
+      const menu = searchPage.locator('.qs-actions')
+      await menu.waitFor({ timeout: 3000 }).catch(() => problems.push('⌘K did not list the actions'))
+      const listed = await menu.innerText().catch(() => '')
+      check(['Open', 'Show in Finder', 'Copy path', 'Add to a node…', 'Pin', 'Delete'].every((label) => listed.includes(label)), `⌘K did not list every action: ${listed}`)
+      await searchPage.keyboard.press('Escape')
+      check(!(await menu.count()), 'Esc did not close the actions first')
+      await searchPage.keyboard.press('ControlOrMeta+Shift+c')
+      check(await until(async () => (await clipboardNow()).endsWith('Plans/packing.txt'), 3000), '⇧⌘C did not copy the path')
+    }
+    // The clipboard: what is copied is kept, Return pastes it (or says to press ⌘V), ⌘⌫ deletes with Undo, ⌘P pins.
+    await app.evaluate(({ clipboard }) => clipboard.writeText('Quote for Jordan: 12 units by Friday'))
+    const kept = () => main.evaluate(() => window.osatSearch.clipboard().then((list) => list.items.map((item) => item.text)))
+    check(await until(async () => (await kept()).includes('Quote for Jordan: 12 units by Friday'), 4000), 'the clipboard history did not keep a copy')
+    await searchPage.fill('#qs-input', 'v jordan')
+    const copyRow = searchPage.locator('.qs-row', { hasText: 'Quote for Jordan' })
+    await copyRow.waitFor({ timeout: 5000 }).catch(() => problems.push('"v" did not show the clipboard'))
+    check(/just now|minute/.test(await searchPage.locator('.qs-details').innerText().catch(() => '')), 'the details of a copy did not say when it was copied')
+    await app.evaluate(({ clipboard }) => clipboard.writeText('something else'))
+    await searchPage.keyboard.press('Enter')
+    check(await until(async () => (await clipboardNow()) === 'Quote for Jordan: 12 units by Friday', 3000), 'Return on a copy did not put it back on the clipboard')
+    await searchPage.locator('.qs-foot [role="status"]', { hasText: /Copied/ }).waitFor({ timeout: 3000 }).catch(() => { /* pasted for real: the panel hid itself */ })
+    if (await searchWindow('shown')) {
+      await searchPage.fill('#qs-input', 'v jordan')
+      await searchPage.keyboard.press('ControlOrMeta+Backspace')
+      const undoButton = searchPage.locator('.qs-toast button', { hasText: 'Undo' })
+      await undoButton.waitFor({ timeout: 3000 }).catch(() => problems.push('deleting a copy did not offer Undo'))
+      check(!(await kept()).includes('Quote for Jordan: 12 units by Friday'), '⌘⌫ did not delete the copy')
+      await undoButton.click()
+      check(await until(async () => (await kept()).includes('Quote for Jordan: 12 units by Friday'), 3000), 'Undo did not bring the copy back')
+      await searchPage.fill('#qs-input', 'v jordan')
+      await searchPage.keyboard.press('ControlOrMeta+p')
+      await searchPage.locator('.qs-head', { hasText: 'Pinned' }).waitFor({ timeout: 3000 }).catch(() => problems.push('⌘P did not pin the copy'))
+      await searchPage.keyboard.press('ControlOrMeta+p')
+      // A sum answers in place, and Return copies the answer.
+      await searchPage.fill('#qs-input', '2*49')
+      await searchPage.locator('.qs-row', { hasText: '= 98' }).waitFor({ timeout: 3000 }).catch(() => problems.push('a sum did not answer'))
+      await searchPage.keyboard.press('Enter')
+      check(await until(async () => (await clipboardNow()) === '98', 3000), 'Return on a sum did not copy the answer')
+    }
+    // What OSAT itself puts on the clipboard (the connector's key, later) is never kept; only what was copied is.
+    check(!(await kept()).some((words) => /Bearer/.test(words)), 'something OSAT copied itself was kept in the history')
+    // Esc backs out a step at a time: the words, then the bar.
+    if (!(await searchWindow('shown'))) await fileMenu('Quick Search')
+    await searchPage.fill('#qs-input', 'restart')
+    await searchPage.keyboard.press('Escape')
+    check((await searchPage.inputValue('#qs-input')) === '', 'Esc did not clear the words first')
+    await searchPage.keyboard.press('Escape')
+    check(await until(async () => !(await searchWindow('shown')), 3000), 'Esc did not put the quick search away')
+    // Return on a note opens it on the desk.
+    await fileMenu('Quick Search')
+    await searchPage.fill('#qs-input', 'restart')
+    await searchPage.locator('.qs-row', { hasText: 'Saved across a restart' }).waitFor({ timeout: 5000 })
+    await searchPage.keyboard.press('Enter')
+    await main.getByRole('dialog', { name: 'Saved across a restart' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Return on a note did not open it on the desk'))
+    check(await until(async () => !(await searchWindow('shown')), 3000), 'the quick search stayed up after opening a note')
+    await main.keyboard.press('Escape')
+    await main.keyboard.press('Escape')
+  }
+  await app.evaluate(({ clipboard }, words) => clipboard.writeText(words), original)
+  await main.keyboard.press('Control+1')
+
   // 2. Two windows stay in step.
   const second = await openSecondWindow(app)
   await second.waitForFunction(() => Boolean(window.osat?.store))
@@ -377,6 +472,7 @@ try {
     await main.evaluate(() => window.osatBots.copySetup('other'))
     const connectorKey = /Bearer (\S+)/.exec(await app.evaluate(({ clipboard }) => clipboard.readText()))?.[1]
     check(Boolean(connectorKey), 'the copied setup did not carry the key')
+    check(!(await main.evaluate(() => window.osatSearch.clipboard().then((list) => list.items.some((item) => /Bearer/.test(item.text || ''))))), 'the connector\'s key was kept in the clipboard history')
     const mcp = (body, key = connectorKey) => fetch(connector.url, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` }, body: JSON.stringify(body) })
     check((await mcp({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'wrong')).status === 401, 'the connector answered without its key')
     const init = await (await mcp({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } } })).json()

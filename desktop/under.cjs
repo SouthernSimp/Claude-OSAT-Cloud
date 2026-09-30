@@ -43,7 +43,10 @@ function guardFetch(fetch, isUnder) {
 const WAITS = [
   [/^browser:(open|navigate)$/, 'The web waits until you’re back online.'],
   // Files on this Mac still show; only handing one to another app waits.
-  [/^files:open$/, 'Opening it in another app waits until you’re back online.'],
+  [/^(files:open|search:open-file)$/, 'Opening it in another app waits until you’re back online.'],
+  // The quick search opens an app or a web address for you; a web address needs the internet.
+  [/^search:open-app(-named)?$/, 'Apps open again when you’re back online.'],
+  [/^search:open-link$/, 'The web waits until you’re back online.'],
   [/^media:/, 'Music waits until you’re back online.'],
   [/^desk:launch$/, 'Apps open again when you’re back online.'],
   [/^terminal:start$/, 'A new terminal waits until you’re back online.'],
