@@ -15,6 +15,12 @@ const PORT = Number(process.env.OSAT_PORT || 4317)
 const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
 const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Pile', 'Sort a pile'], ['Settings', 'Settings']]
 
+/* Opens a node on the Sky as a map (a click opens or closes one, so only when it isn't open yet). */
+async function openNode(page, name) {
+  if (await page.locator('.board-card.is-open [data-node-head]', { hasText: name }).count()) return
+  await page.locator('[data-node-head]', { hasText: name }).click({ force: true })
+}
+
 let server
 async function start() {
   if (process.env.OSAT_URL) return process.env.OSAT_URL
@@ -143,8 +149,8 @@ async function main() {
     // Opening a node never moves the other cards (it used to push them away for good).
     const cardSpots = () => page.evaluate(() => JSON.stringify([...document.querySelectorAll('.board-card[data-card]')].map((card) => [card.dataset.card, card.style.translate])))
     const spotsBefore = await cardSpots()
-    await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true }).catch(() => problems.push(`sky: Project Direction was not there to open (${theme})`))
-    await page.locator('.board-card.is-open .lane').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`sky: opening a node showed no lanes (${theme})`))
+    await openNode(page, 'Project Direction').catch(() => problems.push(`sky: Project Direction was not there to open (${theme})`))
+    await page.locator('.map-card').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`sky: opening a node showed no map (${theme})`))
     if (await cardSpots() !== spotsBefore) problems.push(`sky: opening a node moved the other cards (${theme})`)
     await sleep(900)
     await page.screenshot({ path: `${OUT}/${theme}-Sky-node.png` })
@@ -497,8 +503,8 @@ async function main() {
     for (let step = 1; step <= 6; step += 1) await page.mouse.move(skyButton.x + ((head.x + head.width / 2 - skyButton.x) * step) / 6, skyButton.y + ((head.y + head.height / 2 - skyButton.y) * step) / 6)
     await page.mouse.up()
     await sleep(300)
-    await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true })
-    await page.locator('.lane.is-loose .sticky', { hasText: 'Left on the desk' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: the sticky dropped on a node was not in it'))
+    await openNode(page, 'Project Direction')
+    await page.locator('.map-sticky .sticky', { hasText: 'Left on the desk' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: the sticky dropped on a node was not in it'))
     await page.keyboard.press('Escape')
     await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('stickies: Esc did not come back down from the Sky'))
     if (await left.count()) problems.push('stickies: a sticky filed in a node stayed on the desk')
@@ -563,13 +569,21 @@ async function main() {
     await page.mouse.wheel(0, top - 350)
     await sleep(500)
   }
-  await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true })
+  await openNode(page, 'Project Direction')
   await sleep(900)
-  await reveal(page.locator('.lane-head', { hasText: 'Later' }).first())
+  await reveal(page.locator('.branch-card', { hasText: 'Later' }).first())
   await page.getByRole('button', { name: 'Fold Later', exact: true }).click({ force: true }).catch(() => problems.push('sky: a branch had no fold arrow'))
-  await page.locator('.lane[aria-label="Branch: Later"] .lane-folded').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the fold arrow did not fold the branch to a line'))
+  await page.locator('.branch-card[aria-label="Branch: Later"][data-layers]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the fold arrow did not fold the branch away'))
   await page.getByRole('button', { name: 'Open Later', exact: true }).click({ force: true }).catch(() => {})
-  await page.locator('.lane[aria-label="Branch: Later"] .lane-folded').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the branch did not open again'))
+  await page.locator('.branch-card[aria-label="Branch: Later"][data-layers]').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the branch did not open again'))
+  // Focus: double-click a node and only it is left; Done (or Esc) brings the rest back.
+  await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true })
+  await page.locator('.board-focus').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: double-clicking a node did not focus on it'))
+  if (await page.locator('.board-card.is-unsorted').count()) problems.push('sky: focus still showed Unsorted')
+  await page.screenshot({ path: `${OUT}/sky-focus.png` })
+  await page.locator('.board-focus').getByRole('button', { name: 'Done' }).click().catch(() => {})
+  await page.locator('.board-focus').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Done did not end the focus'))
+  await openNode(page, 'Project Direction')
   room = 'sky menus'
   await reveal(page.locator('[data-node-head]', { hasText: 'Project Direction' }))
   await page.locator('[data-node-head]', { hasText: 'Project Direction' }).click({ button: 'right', force: true })
@@ -580,24 +594,24 @@ async function main() {
   await sleep(300)
   await page.screenshot({ path: `${OUT}/sky-sort.png` })
   // A branch's menu: New branch inside puts one inside it, on its own line, and Rename works.
-  await reveal(page.locator('.lane-head', { hasText: 'Later' }).first())
-  await page.locator('.lane-head', { hasText: 'Later' }).first().click({ button: 'right', force: true })
+  await reveal(page.locator('.branch-card', { hasText: 'Later' }).first())
+  await page.locator('.branch-card', { hasText: 'Later' }).first().click({ button: 'right', force: true })
   await page.getByRole('menuitem', { name: 'New branch inside' }).click().catch(() => problems.push('sky: a branch menu has no "New branch inside"'))
   await page.keyboard.type('Mac apps')
   await page.keyboard.press('Enter')
-  await page.locator('.branch:has(> .lane[aria-label="Branch: Later"]) .branch-tree .lane[aria-label="Branch: Mac apps"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: New branch inside did not make a branch inside'))
-  await page.locator('.lane-head', { hasText: 'Mac apps' }).click({ button: 'right', force: true })
+  await page.locator('.branch-card[aria-label="Branch: Mac apps"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: New branch inside did not make a branch inside'))
+  await page.locator('.branch-card', { hasText: 'Mac apps' }).click({ button: 'right', force: true })
   await page.getByRole('menuitem', { name: 'Rename' }).click().catch(() => {})
   await page.keyboard.type('Apps')
   await page.keyboard.press('Enter')
-  await page.locator('.lane[aria-label="Branch: Apps"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Rename in a branch menu did nothing'))
+  await page.locator('.branch-card[aria-label="Branch: Apps"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Rename in a branch menu did nothing'))
   await sleep(400)
   await page.screenshot({ path: `${OUT}/sky-tree.png` })
   const nodeFile = { title: 'Garden', summary: 'What grows where.', branches: [{ title: 'Beds', leaves: [{ text: 'Tomatoes', done: false }, { text: 'Dig', done: true }], sub_branches: [{ title: 'Herbs', leaves: [{ text: 'Basil' }] }] }] }
   await page.locator('.sky-layer input[type="file"]').setInputFiles({ name: 'garden.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(nodeFile)) })
   await page.getByText('Imported Garden with 2 branches').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Import did not say what it made'))
   await page.locator('[data-node-head]', { hasText: 'Garden' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the imported node was not in the Sky'))
-  await page.locator('.branch:has(> .lane[aria-label="Branch: Beds"]) .branch-tree .lane[aria-label="Branch: Herbs"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: an imported sub-branch was not drawn inside its branch'))
+  await page.locator('.branch-card[aria-label="Branch: Herbs"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: an imported sub-branch was not drawn in its node\'s map'))
   await sleep(900)
   await page.screenshot({ path: `${OUT}/sky-import.png` })
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
@@ -608,8 +622,7 @@ async function main() {
   const packedHead = page.locator('[data-node-head]', { hasText: 'Spring launch' })
   await packedHead.locator('.node-origin', { hasText: 'packed' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: a packed node file did not arrive packed'))
   await page.locator('.board-card.is-open .packed-bar').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: a packed node showed no Unpack'))
-  // Fly to it (the board moves, it never scrolls, so a click can't reach a card off-screen).
-  await packedHead.dispatchEvent('dblclick').catch(() => {})
+  // Importing flew to it (the board moves, it never scrolls, so a click can't reach a card off-screen).
   await sleep(1100)
   await page.screenshot({ path: `${OUT}/sky-packed.png` })
   await page.locator('.packed-bar').getByRole('button', { name: 'Unpack', exact: true }).dispatchEvent('click').catch(() => problems.push('sky: Unpack could not be pressed'))

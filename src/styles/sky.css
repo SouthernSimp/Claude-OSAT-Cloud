@@ -116,7 +116,7 @@
   box-shadow: 0 0 0 2px var(--accent);
   outline: none;
 }
-:root[data-theme="dark"] .name-field:not(.node-head .name-field, .lane-head .name-field) { background: var(--surface-sunken); color: var(--ink); }
+:root[data-theme="dark"] .name-field:not(.node-head .name-field, .branch-card .name-field) { background: var(--surface-sunken); color: var(--ink); }
 
 /* ---- Carrying things ------------------------------------------------------ */
 
@@ -129,10 +129,10 @@
 :is(.desk-sticky, .desk-stack):is(.is-moving, :has(> .is-lifted)) { z-index: 6; pointer-events: none; transition: none; rotate: 0deg; }
 :is(.desk-sticky, .desk-stack).is-moving > :is(.sticky, .stack-head) { box-shadow: var(--lift-held); }
 html[data-carrying] { cursor: grabbing; user-select: none; }
-:is(.sticky:not(.is-editing), .node-head, .branch-head, .lane-head, .node-list-item) { user-select: none; -webkit-user-select: none; }
+:is(.sticky:not(.is-editing), .node-head, .branch-head, .node-list-item) { user-select: none; -webkit-user-select: none; }
 html[data-carrying] * { cursor: grabbing !important; }
-:is(.sticky-list, .node-above, .node-head, .branch-head, .lane-head, .node-list-item, .sky-toss, .icon, .app-dock button)[data-over] { outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 4px; }
-.sticky-list.is-x[data-over], .lanes[data-over], .node-grid[data-over] { outline: none; }
+:is(.sticky-list, .node-above, .node-head, .branch-head, .node-list-item, .sky-toss, .icon, .app-dock button)[data-over] { outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 4px; }
+.sticky-list.is-x[data-over], .node-grid[data-over] { outline: none; }
 /* Held at the top of the screen: up to the Sky. */
 html[data-carrying="note"] body::before,
 html[data-carrying="folder"] body::before {
@@ -476,51 +476,77 @@ html[data-carry-edge="up"] body::after {
 .node-head.is-naming { align-content: center; box-shadow: var(--lift-held); }
 .pile-label { margin: 0; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: var(--tr-wide); text-transform: uppercase; color: var(--muted); }
 
-/* ---- Inside an open node: a tree. Only stickies are paper; names are labels ------ */
+/* ---- An open node: a mind map, its branches and stickies hung around it --------- */
 
-.lanes { min-width: 0; }
-.lanes.is-across { display: grid; align-content: start; grid-template-columns: fit-content(960px); gap: 14px; }
-.lane { display: grid; gap: 10px; min-width: 0; }
-.lanes.is-across .lane { grid-template-columns: 172px minmax(0, 1fr); align-items: start; }
-.lanes.is-across .lane.is-bare { grid-template-columns: minmax(0, 1fr); }
-/* A branch's name: a dot of its colour and the name, on the line that joins it. */
-.lane-head {
+/* The lines: a map's branches (quiet, solid), connections (the accent), @mentions (dotted). */
+.board-lines path.is-tree { stroke: color-mix(in srgb, var(--ink) 34%, transparent); stroke-width: 2; stroke-opacity: 1; stroke-dasharray: none; animation: none; }
+.board-lines path.is-link { stroke: var(--accent); stroke-width: 2.5; stroke-opacity: 0.9; stroke-dasharray: none; animation: none; }
+.board-lines path.is-link.is-drawing { stroke-dasharray: 6 6; }
+.board-lines .link-hit { stroke: transparent; stroke-width: 16; stroke-dasharray: none; animation: none; pointer-events: stroke; cursor: pointer; }
+.board-lines g:hover > path.is-link { stroke-width: 3.5; stroke-opacity: 1; }
+
+/* A card in a map: laid out by the map, gliding when the map changes. */
+.map-card { position: absolute; top: 0; left: 0; display: grid; gap: 8px; width: max-content; transition: translate 460ms var(--glide); animation: card-in 420ms var(--spring) both; }
+.map-card:is(:hover, :focus-within) { z-index: 3; }
+:is(.map-card, .board-sticky).is-moving, .board-card.is-dragging { z-index: 6; transition: none; pointer-events: none; }
+.map-sticky { width: 200px; }
+.map-sticky > .sticky { min-height: 64px; }
+.board-sticky { transition: translate 200ms var(--ease-out); }
+/* A branch: its name on its paper, a little pile when folded. */
+.branch-card {
   position: relative;
+  min-width: 150px;
+  max-width: 240px;
   min-height: 44px;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 32px 8px 10px;
-  border-radius: 10px;
-  color: var(--ink);
+  gap: 6px;
+  padding: 9px 58px 9px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--paper-gloss), transparent 40%), var(--paper-bg, var(--paper-bone));
+  color: var(--paper-ink);
+  box-shadow: var(--lift-rest);
   cursor: grab;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.lane-head::before { content: ""; flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--paper-bg, var(--paper-bone)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent); }
-.lane-head:hover { background: var(--surface-hover); }
-.lane-head strong { font: 700 var(--t-md)/1.25 var(--font-display); letter-spacing: var(--tr-display); overflow-wrap: anywhere; }
-.lane.is-loose .lane-head { cursor: default; color: var(--muted); }
-.lane.is-loose .lane-head::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line-strong); }
-.lane.is-loose .lane-head:hover { background: transparent; }
-.lane.is-loose .lane-head strong { font: 650 var(--t-sm)/1.25 var(--font); letter-spacing: 0; }
-.lane-more { position: absolute; top: 50%; right: 4px; translate: 0 -50%; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; color: var(--muted); opacity: 0; }
-.lane-head:hover .lane-more, .lane-more:focus-visible { opacity: 1; }
-.lane-more:hover { color: var(--ink); background: var(--surface-sunken); }
-.lane-more svg { width: 14px; height: 14px; }
-.lane-add { justify-self: start; align-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 12px; border-radius: 12px; font-size: var(--t-sm); font-weight: 650; color: var(--muted); border: 1.5px dashed var(--line-strong); }
-.lane-add:hover { color: var(--ink); }
-.lane-add svg { width: 12px; height: 12px; }
-.lane.is-naming { max-width: 240px; }
+.branch-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.branch-card strong { min-width: 0; font: 700 var(--t-md)/1.25 var(--font-display); letter-spacing: var(--tr-display); overflow-wrap: anywhere; }
+.branch-card .name-field { flex: 1; min-width: 0; }
+.branch-card[data-over] { outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 4px; }
+.branch-fold { flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-left: -4px; border-radius: 6px; color: var(--paper-ink-2); }
+.branch-fold:hover { color: var(--paper-ink); background: rgb(0 0 0 / 8%); }
+.branch-fold svg { width: 12px; height: 12px; transition: rotate 160ms var(--ease-out); }
+.branch-fold[aria-expanded="false"] svg { rotate: -90deg; }
+.map-tools { position: absolute; right: 6px; top: 50%; translate: 0 -50%; display: flex; gap: 2px; opacity: 0; transition: opacity 140ms; }
+.branch-card:is(:hover, :focus-within) .map-tools, .map-tools:focus-within { opacity: 1; }
+.map-tools button { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; color: var(--paper-ink-2); }
+.map-tools button:hover { color: var(--paper-ink); background: rgb(0 0 0 / 8%); }
+.map-tools svg { width: 13px; height: 13px; }
+.map-folder > :is(.sort-help, .sticky) { max-width: 280px; }
+.map-folder > .sticky.is-new { width: 200px; }
 
-/* The lines that make it a tree: one down the side of a node's (or a branch's) branches,
-   and a turn into each name. */
-.branch-tree { position: relative; display: grid; gap: 12px; margin: 0; padding: 0 0 0 26px; list-style: none; }
-.branch-tree .branch-tree { margin-top: 12px; }
-.branch { position: relative; }
-.branch::before, .branch:not(:last-child)::after { content: ""; position: absolute; left: -18px; border-color: color-mix(in srgb, var(--ink) 24%, var(--surface-raised)); border-style: solid; pointer-events: none; }
-.branch::before { top: -12px; width: 14px; height: 34px; border-width: 0 0 2px 2px; border-bottom-left-radius: 10px; }
-/* Solid (mixed with the card), so where the pieces overlap the line keeps one shade. */
-.branch:not(:last-child)::after { top: 20px; bottom: -14px; border-width: 0 0 0 2px; }
-.branch.is-naming { max-width: 240px; }
+/* Focus: one node alone, and a way back. */
+.board-focus {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 6px 6px 16px;
+  border-radius: 999px;
+  font-size: var(--t-sm);
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-3);
+  cursor: default;
+}
+.board-focus button { height: 30px; padding: 0 16px; border-radius: 999px; font: 650 var(--t-sm)/1 var(--font); color: var(--accent-ink); background: var(--accent); }
+.board-focus button:hover { background: var(--accent-hover); }
 
 /* How the Sky works: a solid card over the board, bottom left. */
 .sky-guide {
@@ -563,10 +589,6 @@ html[data-carry-edge="up"] body::after {
 .sort-help button.is-primary { color: var(--accent-ink); background: var(--accent); }
 .sort-help button.is-primary:hover { background: var(--accent-hover); }
 .sort-help svg { width: 12px; height: 12px; }
-.lanes .sticky-list.is-x { flex-wrap: wrap; overflow: visible; padding: 2px 2px 4px; }
-/* An empty node says so on a line of its own, with "Write a sticky" under it. */
-.lanes .sticky-list.is-x:has(> .sticky-empty) { flex-wrap: wrap; max-width: 420px; min-height: 0; }
-.lanes .sticky-list.is-x > .sticky-empty { flex: 0 0 100%; margin: 0; }
 
 /* ---- Stickies on the desk ------------------------------------------------------ */
 
@@ -646,7 +668,7 @@ html[data-carry-edge="up"] body::after {
   transition: opacity 140ms, scale 160ms var(--ease-out);
 }
 .stack-item > .link-dot { right: 4px; }
-:is(.desk-sticky, .stack-item, .map-card, .board-sticky):is(:hover, :focus-within) > .link-dot,
+:is(.desk-sticky, .stack-item, .map-card, .board-sticky, .board-card):is(:hover, :focus-within) > .link-dot,
 .link-dot:focus-visible { opacity: 1; scale: 1; }
 .link-dot:hover { scale: 1.2; }
 .link-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -767,8 +789,3 @@ g:hover > .link-line { stroke-width: 3.5px; opacity: 1; }
 .fold-pile { display: grid; gap: 4px; width: 100%; padding: 0; text-align: left; }
 .fold-strip { display: block; padding: 7px 10px; border-radius: 4px; font-size: var(--t-xs); color: var(--paper-ink); background: var(--paper-bg, var(--paper-canary)); box-shadow: var(--e-1); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fold-more { padding: 2px 4px; font-size: var(--t-xs); color: var(--muted); }
-.lane-fold { order: -1; flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin: 0 -2px 0 -6px; border-radius: 6px; color: var(--muted); }
-.lane-fold:hover { color: var(--ink); background: var(--surface-sunken); }
-.lane-fold svg { width: 12px; height: 12px; transition: rotate 160ms var(--ease-out); }
-.lane-fold[aria-expanded="false"] svg { rotate: -90deg; }
-.lane-folded { min-width: 0; margin: 0; padding: 12px 4px; overflow: hidden; font-size: var(--t-sm); color: var(--muted); white-space: nowrap; text-overflow: ellipsis; }
