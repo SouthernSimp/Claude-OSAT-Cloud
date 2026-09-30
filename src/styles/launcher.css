@@ -41,10 +41,16 @@
 .launcher-add label { display: grid; gap: 4px; font-size: var(--t-xs); color: var(--muted); }
 .launcher-add input { min-height: 0; height: 34px; padding: 0 10px; font-size: var(--t-sm); }
 
+.launcher-layouts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.launcher-layouts li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); color: var(--ink); }
+.launcher-layouts .launcher-hotkey button { min-height: 0; height: 30px; }
 .launcher-steps { display: grid; gap: 14px; margin: 14px 0 0; }
 .launcher-steps dt { font-weight: 620; color: var(--ink); }
 .launcher-steps dd { margin: 3px 0 0; max-width: 60ch; font-size: var(--t-sm); line-height: 1.55; color: var(--muted); }
 
+@container room (max-width: 760px) {
+  .launcher-layouts { grid-template-columns: minmax(0, 1fr); }
+}
 @container room (max-width: 560px) {
   .launcher-add { grid-template-columns: minmax(0, 1fr); }
   .launcher-add .outline-button { justify-self: start; }

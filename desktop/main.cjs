@@ -3,7 +3,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
-const { app, BrowserWindow, Menu, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell, systemPreferences, utilityProcess } = require('electron')
+const { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell, systemPreferences, utilityProcess } = require('electron')
 const { createUnder, guardFetch, isLocal, refusal } = require('./under.cjs')
 
 /* Offline (see "Offline" below). Two locks, set before any of OSAT's own modules load:
@@ -642,6 +642,7 @@ async function registerLauncher() {
     // The panel goes when you click away, on the Mac (the tests drive it without a real focus).
     hideOnBlur: process.platform === 'darwin' && (app.isPackaged || !process.env.OSAT_DATA_DIR),
     isTaken: (accelerator) => Object.values(shortcuts).some((shortcut) => shortcut.value === accelerator),
+    notify: (options) => { if (Notification.isSupported()) new Notification(options).show() },
     onHide: releaseEscape,
   })
   launcher.search.window.on('focus', claimEscape)

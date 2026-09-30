@@ -5,10 +5,11 @@
 import { calculate } from './calc.mjs'
 import { groupItems, searchItems, titleOf, whenCopied } from './clipboard-model.mjs'
 import { keywordAddress, matchKeyword } from './launcher-model.mjs'
+import { findLayouts } from './window-layouts.mjs'
 
 /* The tabs under the field. Only the sources that are on show. */
-export const SCOPES = [['all', 'Everything'], ['files', 'Files'], ['clipboard', 'Clipboard'], ['apps', 'Apps'], ['notes', 'Notes']]
-const SCOPE_OF_SOURCE = { files: 'files', clipboard: 'clipboard', apps: 'apps', notes: 'notes' }
+export const SCOPES = [['all', 'Everything'], ['files', 'Files'], ['clipboard', 'Clipboard'], ['apps', 'Apps'], ['notes', 'Notes'], ['windows', 'Windows']]
+const SCOPE_OF_SOURCE = { files: 'files', clipboard: 'clipboard', apps: 'apps', notes: 'notes', windows: 'windows' }
 
 export function scopesOn(settings) {
   return SCOPES.filter(([id]) => id === 'all' || settings.sources[id]?.on)
@@ -107,6 +108,7 @@ const clipRow = (item, now, section) => ({
   data: item,
 })
 
+const layoutRow = (layout, keys = {}) => ({ key: `layout:${layout.id}`, source: 'windows', kind: 'layout', title: layout.label, subtitle: layout.id === 'restore' ? 'Where the window was before OSAT moved it' : 'Move the window you were in', section: 'Windows', data: { layout: layout.id, key: keys[layout.id] || null } })
 const appRow = (item, section) => ({ key: `app:${item.path}`, source: 'apps', kind: 'app', title: item.name, subtitle: 'Application', section, data: item })
 
 /* The desk's own search (lib/find.js) gives notes, nodes, rooms and actions. */
@@ -163,6 +165,8 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     return dedupe(rows)
   }
   if (read.scope === 'apps') return [...rows, ...rankApps(found.apps || [], read.query).slice(0, 40).map((item) => appRow(item, 'Apps'))]
+  const keys = settings.windows?.on ? settings.windows.hotkeys : {}
+  if (read.scope === 'windows') return [...rows, ...findLayouts(read.query).map((layout) => layoutRow(layout, keys))]
   if (read.scope === 'notes') return [...rows, ...(found.notes || []).map((item) => noteRow(item, 'Notes'))]
 
   if (has) {
@@ -170,6 +174,8 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     rows.push(...files(found.files || [], 'Files').slice(0, 6))
     rows.push(...clipFound.slice(0, 4).map((item) => clipRow(item, now, 'Clipboard')))
     rows.push(...(found.notes || []).slice(0, 5).map((item) => noteRow(item, 'Notes')))
+    // "left half", "max": a layout, when the words are about a window.
+    if (settings.sources.windows?.on && read.query.length >= 3) rows.push(...findLayouts(read.query).slice(0, 2).map((layout) => layoutRow(layout, keys)))
   } else {
     rows.push(...files(pins, 'Pinned'))
     rows.push(...files(found.recentFiles || [], 'Recent files').slice(0, 5))
@@ -224,7 +230,7 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
     case 'calc': return [{ id: 'copy-text', label: 'Copy the answer', keys: '↵' }, { id: 'paste-text', label: 'Paste the answer', keys: '⌘↵' }]
     case 'keyword-app': return [{ id: 'open-app-named', label: 'Open', keys: '↵' }]
     case 'keyword-link': return [{ id: 'open-link', label: 'Open in your browser', keys: '↵' }]
-    case 'layout': return [{ id: 'snap', label: 'Move the window', keys: '↵' }]
+    case 'layout': return [{ id: 'snap', label: row.data?.layout === 'restore' ? 'Put the window back' : 'Move the window', keys: '↵' }]
     default: return []
   }
 }
@@ -244,6 +250,7 @@ export function detailsFor(row, { now = new Date() } = {}) {
     case 'image': return [['Kind', 'Image'], ...(d.image?.w ? [['Size', `${d.image.w} × ${d.image.h}`]] : []), ...(d.app ? [['From', d.app]] : []), ['Copied', whenCopied(d.at, now)]]
     case 'text': case 'link': case 'email': case 'phone': case 'number':
       return [['Kind', { text: 'Text', link: 'Link', email: 'Email address', phone: 'Phone number', number: 'Number' }[row.kind]], ...(d.app ? [['From', d.app]] : []), ['Copied', whenCopied(d.at, now)], ...(d.chars > 1 ? [['Length', `${d.chars.toLocaleString('en-US')} characters`]] : [])]
+    case 'layout': return [['Moves', 'the window you were in'], ...(d.key ? [['Key', d.key.split('+').map((part) => ({ Control: '⌃', Alt: '⌥', Shift: '⇧', Command: '⌘' }[part] || part)).join('')]] : [])]
     case 'app': return [['Kind', 'Application'], ['Where', d.path]]
     case 'note': return [['Kind', 'Note'], ['Where', row.subtitle]]
     case 'node': return [['Kind', 'Node'], ['Where', row.subtitle]]

@@ -228,6 +228,7 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   openAppNamed: search('open-app-named'),
   revealApp: search('reveal-app'),
   openLink: search('open-link'),
+  snap: search('snap'),
   hide: search('hide'),
   mode: search('mode'),
   openInOSAT: search('open-in-osat'),

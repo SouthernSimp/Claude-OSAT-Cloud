@@ -148,6 +148,12 @@ export function QuickSearchSurface() {
         case 'open-app': await bridge.openApp(d.path); away(); break
         case 'reveal-app': await bridge.revealApp(d.path); away(); break
         case 'open-app-named': await bridge.openAppNamed(d.app); away(); break
+        case 'snap': {
+          const result = await bridge.snap(d.layout)
+          if (!result.ok && result.reason === 'access') { said('To move windows, OSAT needs to be allowed in Accessibility. Settings → Launcher shows how.', 0); window.setTimeout(away, 3400) }
+          else if (!result.ok && result.reason === 'mac') { said('Moving windows works in the Mac app.') }
+          break
+        }
         case 'go': toOSAT(...d.go); break
         default: break
       }

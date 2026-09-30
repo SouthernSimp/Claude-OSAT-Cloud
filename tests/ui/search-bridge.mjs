@@ -46,6 +46,8 @@ export function installSearchBridge(defaults) {
     clipboardText: async (id) => clipboard.find((item) => item.id === id).text,
     mode: async () => true,
     hide: async () => { window.__calls.push(['hide']); return true },
+    // Without Accessibility the Mac app answers that it can't move a window (and touches nothing).
+    snap: async (layout) => { window.__calls.push(['snap', layout]); return { ok: false, reason: 'access' } },
   }
   window.osatSearch = new Proxy(known, {
     get: (target, name) => (name in target ? target[name] : async (...args) => { window.__calls.push([name, ...args]); return { pasted: false, reason: 'access', undo: 'u1' } }),

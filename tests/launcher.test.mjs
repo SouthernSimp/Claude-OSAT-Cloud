@@ -11,9 +11,9 @@ const { createLauncher } = require('../desktop/launcher/index.cjs')
 const repo = fileURLToPath(new URL('..', import.meta.url))
 
 /* Electron's pieces, as stand-ins: enough to run the launcher's wiring end to end. */
-async function setup({ trusted = false, offline = false, taken = () => false, refuse = [], places = {} } = {}) {
+async function setup({ trusted = false, offline = false, taken = () => false, refuse = [], script = null } = {}) {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'osat-launcher-'))
-  const calls = { open: [], external: [], showItem: [], sent: [], command: [], exec: [], written: [] }
+  const calls = { open: [], external: [], showItem: [], sent: [], command: [], exec: [], written: [], notified: [] }
   const handlers = new Map()
   const board = { text: '' }
   const clipboard = {
@@ -73,7 +73,8 @@ async function setup({ trusted = false, offline = false, taken = () => false, re
     sendToAllWindows: (...args) => sent.push(['all', ...args]),
     offline: () => offline,
     isTaken: (key) => taken(key),
-    exec: async (command, args) => { calls.exec.push([command, ...args]); return command === 'lsappinfo' ? 'nothing' : '' },
+    notify: (options) => calls.notified.push(options),
+    exec: async (command, args) => { calls.exec.push([command, ...args]); if (script) return script(command, args); return command === 'lsappinfo' ? 'nothing' : '' },
   })
   const ask = (channel, ...args) => handlers.get(channel).operation(...args)
   return { dir, launcher, handlers, ask, calls, sent, registered, board, desk, files, done: async () => { launcher.stop(); await rm(dir, { recursive: true, force: true }) } }
@@ -83,7 +84,7 @@ test('starting registers a Hyper key for each source and reads what is saved', a
   const t = await setup()
   try {
     await t.launcher.start()
-    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+V'])
+    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+V', 'Control+Alt+Shift+Command+W'])
     assert.equal(t.launcher.taken('Control+Alt+Shift+Command+V'), true, 'the desk’s shortcut picker can’t take it')
     assert.equal(t.launcher.hotkeyLabel('Control+Alt+Shift+Command+V'), 'Hyper V')
     assert.equal((await t.ask('search:settings')).sources.clipboard.keyword, 'v')
@@ -263,5 +264,76 @@ test('Open in OSAT puts the panel away and sends the desk there; a new copy is t
     const told = t.sent.find(([who, channel]) => who === 'desk' && channel === 'clipboard:copied')
     assert.equal(told[2].kind, 'email')
     assert.equal(told[2].text, 'jordan@acme.com')
+  } finally { await t.done() }
+})
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/* A Mac whose front window is a Safari window, and which records where it was told to put it. */
+const macScript = (moves) => (command, args) => {
+  if (command !== 'osascript') return 'nothing'
+  if (args[3].includes('const [x, y, width, height]')) { moves.push(args.slice(4).map(Number)); return 'ok' }
+  return JSON.stringify({ app: 'Safari', x: 100, y: 120, width: 900, height: 600 })
+}
+
+test('window keys are off until turned on; then each layout has its key, and a press moves the window', async () => {
+  const moves = []
+  const t = await setup({ trusted: true, script: macScript(moves) })
+  try {
+    await t.launcher.start()
+    assert.equal(t.registered.has('Control+Alt+Left'), false, 'off by default: global keys are not taken without being asked')
+    const saved = await t.ask('search:save-settings', { windows: { on: true } })
+    assert.equal(saved.windows.on, true)
+    assert.equal(t.registered.has('Control+Alt+Left'), true)
+    assert.equal(t.registered.size, 5 + 16, 'a key for each layout, beside the Hyper keys')
+    t.registered.get('Control+Alt+Left')()
+    await wait(120)
+    assert.deepEqual(moves, [[0, 0, 720, 900]])
+    // A key can be changed or taken away; a key the Mac won't give keeps the old one and says which.
+    await t.ask('search:save-settings', { windows: { hotkeys: { 'left-half': 'Control+Alt+Shift+Command+H', maximize: null } } })
+    assert.equal(t.registered.has('Control+Alt+Left'), false)
+    assert.equal(t.registered.has('Control+Alt+Shift+Command+H'), true)
+    assert.equal(t.registered.has('Control+Alt+Return'), false)
+    assert.equal((await t.ask('search:settings')).windows.hotkeys['top-half'], 'Control+Alt+Up', 'the others keep their usual keys')
+    t.registered.set('Control+Alt+Shift+Command+Q', () => {})
+    await assert.rejects(t.ask('search:save-settings', { windows: { hotkeys: { center: 'Control+Alt+Shift+Command+Q' } } }), /Center keeps its old one/)
+    assert.equal((await t.ask('search:settings')).windows.hotkeys.center, 'Control+Alt+C')
+    await t.ask('search:save-settings', { windows: { on: false } })
+    assert.equal(t.registered.has('Control+Alt+Shift+Command+H'), false, 'turned off, every layout key goes')
+  } finally { await t.done() }
+})
+
+test('a layout from the panel puts the panel away first, then moves the window; without Accessibility nothing is touched', async () => {
+  const moves = []
+  const allowed = await setup({ trusted: true, script: macScript(moves) })
+  try {
+    await allowed.launcher.start()
+    allowed.launcher.search.show()
+    assert.deepEqual(await allowed.ask('search:snap', 'maximize'), { ok: true, app: 'Safari', layout: 'maximize' })
+    assert.equal(allowed.launcher.search.window.isVisible(), false)
+    assert.deepEqual(moves, [[0, 0, 1440, 900]])
+    await assert.rejects(allowed.ask('search:snap', 'sideways'), /isn’t a layout/)
+  } finally { await allowed.done() }
+  const locked = await setup({ trusted: false, script: macScript([]) })
+  try {
+    await locked.launcher.start()
+    locked.launcher.search.show()
+    assert.deepEqual(await locked.ask('search:snap', 'left-half'), { ok: false, reason: 'access' })
+    assert.equal(locked.launcher.search.window.isVisible(), true, 'the panel stays, to say what is waiting')
+    assert.ok(!locked.calls.exec.some((call) => Array.isArray(call) && call[0] === 'osascript'), 'no script ran')
+  } finally { await locked.done() }
+})
+
+test('a layout key pressed without Accessibility says so once, calmly, and never moves anything', async () => {
+  const t = await setup({ trusted: false, script: macScript([]) })
+  try {
+    await t.launcher.start()
+    await t.ask('search:save-settings', { windows: { on: true } })
+    t.registered.get('Control+Alt+Left')()
+    t.registered.get('Control+Alt+Right')()
+    await wait(160)
+    assert.equal(t.calls.notified.length, 1, 'once, not on every press')
+    assert.match(t.calls.notified[0].body, /allowed in Accessibility/)
+    assert.ok(!t.calls.exec.some((call) => Array.isArray(call) && call[0] === 'osascript'))
   } finally { await t.done() }
 })

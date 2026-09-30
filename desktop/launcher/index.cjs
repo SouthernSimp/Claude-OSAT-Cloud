@@ -18,15 +18,16 @@ const { createClipboardHistory } = require('./clipboard-history.cjs')
 const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
+const { createSnap } = require('./snap.cjs')
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function createLauncher({
   BrowserWindow, screen, clipboard, nativeImage, shell, systemPreferences, globalShortcut, platform = process.platform,
   dataDir, preload, load, files, handle, fail, sharedModule, mainWindow, command, sendToAllWindows,
-  offline = () => false, hideOnBlur = false, isTaken = () => false, onHide = () => {}, exec,
+  offline = () => false, hideOnBlur = false, isTaken = () => false, onHide = () => {}, exec, notify = () => {},
 }) {
-  const [clipModel, launcherModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs')])
+  const [clipModel, launcherModel, layoutModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs')])
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -44,6 +45,18 @@ async function createLauncher({
     onCopy: (item) => desk()?.send('clipboard:copied', item.kind === 'image' ? { id: item.id, kind: 'image', at: item.at } : { id: item.id, kind: item.kind, at: item.at, text: item.text.slice(0, 2000), ...(item.app ? { app: item.app } : {}) }),
   })
   const hotkeys = createHotkeys({ globalShortcut, isTaken })
+  const trusted = () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(false)
+  // Window snapping: it needs Accessibility, and OSAT never moves its own windows.
+  const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel })
+  // A layout key pressed while OSAT isn't allowed says so once, calmly, and then leaves it alone.
+  let told = false
+  async function snapFromKey(id) {
+    const result = await snap.snap(id)
+    if (result.reason === 'access' && !told) {
+      told = true
+      notify({ title: 'OSAT', body: 'To move windows, OSAT needs to be allowed in Accessibility. Settings → Launcher shows how; nothing changes until you do.' })
+    }
+  }
 
   let search = null
   const startSearch = () => {
@@ -88,6 +101,12 @@ async function createLauncher({
       const own = next.sources[source.id]
       if (own.on && own.hotkey) wanted[`source:${source.id}`] = { key: own.hotkey, run: () => search?.toggle({ scope: source.id }) }
     }
+    if (next.windows.on) {
+      for (const layout of layoutModel.LAYOUTS) {
+        const key = next.windows.hotkeys[layout.id]
+        if (key) wanted[`snap:${layout.id}`] = { key, run: () => snapFromKey(layout.id) }
+      }
+    }
     return hotkeys.sync(wanted)
   }
 
@@ -100,12 +119,17 @@ async function createLauncher({
       ...from,
       sources: Object.fromEntries(Object.entries(settings.sources).map(([id, own]) => [id, { ...own, ...(from.sources?.[id] || {}) }])),
       clipboard: { ...settings.clipboard, ...(from.clipboard || {}) },
-      windows: { ...settings.windows, ...(from.windows || {}) },
+      windows: { ...settings.windows, ...(from.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(from.windows?.hotkeys || {}) } },
       ring: { ...settings.ring, ...(from.ring || {}) },
     }
     const next = clean(merged)
-    const failed = applyHotkeys(next).filter((id) => id.startsWith('source:') && next.sources[id.slice(7)].hotkey !== settings.sources[id.slice(7)]?.hotkey)
-    for (const id of failed) next.sources[id.slice(7)].hotkey = settings.sources[id.slice(7)].hotkey
+    // A key that changed in this patch and can't be had goes back to what it was; one that was already refused stays as it is.
+    const changed = (id) => (id.startsWith('source:') ? next.sources[id.slice(7)]?.hotkey !== settings.sources[id.slice(7)]?.hotkey : id.startsWith('snap:') && next.windows.hotkeys[id.slice(5)] !== settings.windows.hotkeys[id.slice(5)])
+    const failed = applyHotkeys(next).filter(changed)
+    for (const id of failed) {
+      if (id.startsWith('source:')) next.sources[id.slice(7)].hotkey = settings.sources[id.slice(7)].hotkey
+      else next.windows.hotkeys[id.slice(5)] = settings.windows.hotkeys[id.slice(5)]
+    }
     settings = next
     applyHotkeys()
     await writeSettings()
@@ -113,7 +137,7 @@ async function createLauncher({
     history.watch(settings.sources.clipboard.on)
     sendToAllWindows('launcher:changed', settings)
     if (failed.length) {
-      const label = launcherModel.SOURCES.find((source) => `source:${source.id}` === failed[0]).label
+      const label = launcherModel.SOURCES.find((source) => `source:${source.id}` === failed[0])?.label || layoutModel.layoutById(failed[0].slice(5))?.label
       fail(`That key is taken by another app or another OSAT shortcut, so ${label} keeps its old one. Try a different key.`)
     }
     return settings
@@ -210,6 +234,16 @@ async function createLauncher({
     if (typeof url !== 'string' || url.length > 2000 || !/^https?:\/\/[^\s]+$/i.test(url)) fail('That isn’t a web address OSAT can open.')
     if (!offline() && /^https?:\/\//i.test(url)) await shell.openExternal(url)
     return true
+  })
+
+  /* A layout for the window you were in: the panel goes away first, so that window is in front again. Without
+     Accessibility nothing is touched, and the panel stays to say so. */
+  on('search:snap', async (id) => {
+    if (!layoutModel.layoutById(id)) fail('That isn’t a layout OSAT knows.')
+    if (!snap.allowed()) return { ok: false, reason: platform === 'darwin' ? 'access' : 'mac' }
+    search.hide()
+    await wait(140)
+    return snap.snap(id)
   })
 
   on('search:hide', () => { search.hide(); return true })

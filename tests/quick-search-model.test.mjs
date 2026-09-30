@@ -33,9 +33,9 @@ test('what is typed is read: a keyword at the start picks the tab, a sum answers
 })
 
 test('the tabs are the sources that are on', () => {
-  assert.deepEqual(scopesOn(settings).map(([id]) => id), ['all', 'files', 'clipboard', 'apps', 'notes'])
+  assert.deepEqual(scopesOn(settings).map(([id]) => id), ['all', 'files', 'clipboard', 'apps', 'notes', 'windows'])
   const some = cleanSettings({ sources: { clipboard: { on: false }, apps: { on: false } } }, { validHotkey })
-  assert.deepEqual(scopesOn(some).map(([id]) => id), ['all', 'files', 'notes'])
+  assert.deepEqual(scopesOn(some).map(([id]) => id), ['all', 'files', 'notes', 'windows'])
 })
 
 test('each source is asked only what it can answer', () => {
@@ -144,4 +144,22 @@ test('the details under the preview say where, what and how big; for a copy, whi
   assert.equal(isPicture('a.png'), true)
   assert.equal(isPicture('a.pdf'), false)
   assert.deepEqual([sizeText(0), sizeText(900), sizeText(2048), sizeText(1258291), sizeText(5 * 1024 ** 3), sizeText(NaN)], ['0 B', '900 B', '2 KB', '1.2 MB', '5 GB', ''])
+})
+
+test('window layouts: a tab of their own, and "left half" finds one from Everything', () => {
+  const keys = cleanSettings({ windows: { on: true } }, { validHotkey })
+  const all = buildRows(readTyped('left half', keys), {}, keys, { now })
+  assert.deepEqual(all.map((row) => [row.section, row.kind, row.title, row.data.key]), [['Windows', 'layout', 'Left half', 'Control+Alt+Left']])
+  assert.deepEqual(buildRows(readTyped('le', keys), {}, keys, { now }), [], 'two letters are too little to offer a layout from Everything')
+  assert.deepEqual(buildRows(readTyped('w top', keys), {}, keys, { now }).map((row) => row.title), ['Top half', 'Top left', 'Top right'], 'w is the tab')
+  const every = buildRows(readTyped('', keys, 'windows'), {}, keys, { now })
+  assert.equal(every.length, 16)
+  assert.equal(every.at(-1).title, 'Put it back')
+  const off = buildRows(readTyped('left half', settings), {}, settings, { now })
+  assert.equal(off[0].data.key, null, 'with window keys off, no key is promised')
+  const noWindows = cleanSettings({ sources: { windows: { on: false } } }, { validHotkey })
+  assert.deepEqual(buildRows(readTyped('left half', noWindows), {}, noWindows, { now }), [])
+  assert.deepEqual(actionsFor(every[0]).map((action) => action.label), ['Move the window'])
+  assert.equal(actionsFor(every.at(-1))[0].label, 'Put the window back')
+  assert.deepEqual(detailsFor(all[0]), [['Moves', 'the window you were in'], ['Key', '⌃⌥Left']])
 })

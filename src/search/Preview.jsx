@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { detailsFor } from '../../shared/quick-search-model.mjs'
+import { layoutById } from '../../shared/window-layouts.mjs'
 import { RowIcon } from './icons.jsx'
 
 const COPIED_WORDS = new Set(['text', 'link', 'email', 'phone', 'number'])
@@ -33,6 +34,7 @@ export function Preview({ row, bridge, workspace, offer = null, now }) {
   else if (row.kind === 'image') body = <img className="qs-picture" src={own.image || d.thumb} alt="A copied picture" draggable={false} />
   else if (row.kind === 'app' && own.thumb) body = <img className="qs-app-icon" src={own.thumb} alt="" draggable={false} />
   else if (row.kind === 'calc') body = <p className="qs-big">{row.title}</p>
+  else if (row.kind === 'layout') body = <LayoutPreview id={d.layout} />
   else if (COPIED_WORDS.has(row.kind)) body = <pre className={`qs-text ${row.kind === 'link' ? 'is-link' : ''}`}>{own.text ?? d.text}</pre>
   else if (row.kind === 'note') body = <NotePreview workspace={workspace} id={d.go?.[1]?.noteId} />
   else if (row.kind === 'node') body = <NodePreview workspace={workspace} id={d.go?.[1]?.folderId} />
@@ -51,6 +53,16 @@ export function Preview({ row, bridge, workspace, offer = null, now }) {
         {offer && <p className="qs-offer">This looks like {offer.folderName}’s. <kbd>⇧⌘N</kbd> adds it to {offer.folderName}.</p>}
       </footer>
     </section>
+  )
+}
+
+/* A screen, and the part of it the window will take. */
+function LayoutPreview({ id }) {
+  const box = layoutById(id)?.box
+  return (
+    <div className="qs-screen" aria-hidden="true">
+      <i className={box ? '' : 'is-back'} style={box ? { left: `${box[0] * 100}%`, top: `${box[1] * 100}%`, width: `${box[2] * 100}%`, height: `${box[3] * 100}%` } : undefined} />
+    </div>
   )
 }
 

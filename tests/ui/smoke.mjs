@@ -189,7 +189,7 @@ async function main() {
   const sources = page.locator('.launcher-sources > li')
   await sources.first().waitFor({ timeout: 3000 }).catch(() => problems.push('launcher settings: the sources were not listed'))
   const names = (await sources.locator('.launcher-switch b').allInnerTexts().catch(() => [])).join(', ')
-  if (names !== 'Files, Clipboard, Apps, Notes and nodes, Calculator') problems.push(`launcher settings: the sources were ${names}`)
+  if (names !== 'Files, Clipboard, Apps, Notes and nodes, Calculator, Window layouts') problems.push(`launcher settings: the sources were ${names}`)
   const clipboardRow = sources.filter({ hasText: 'Clipboard' })
   await clipboardRow.getByRole('switch').uncheck()
   await clipboardRow.locator('.launcher-keys').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('launcher settings: turning a place off left its word and key'))
@@ -219,7 +219,7 @@ async function main() {
   await page.getByRole('button', { name: 'Take off gh' }).click()
   await page.locator('.undo-toasts .toast', { hasText: 'Took off “gh”' }).getByRole('button', { name: 'Undo' }).click()
   await words.filter({ hasText: 'gh' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher settings: Undo did not bring a word back'))
-  for (const said of ['A Hyper key', '⌘Space for the quick search', 'OSAT can paste for you, once you allow it.']) {
+  for (const said of ['A Hyper key', '⌘Space for the quick search', 'OSAT can paste and move windows, once you allow it.']) {
     if (!await page.getByText(said, { exact: false }).count()) problems.push(`launcher settings: missing "${said}"`)
   }
   await page.screenshot({ path: `${OUT}/settings-launcher-end.png` })
@@ -659,6 +659,19 @@ async function main() {
     await search.getByRole('tab', { name: 'Everything' }).click()
     await search.fill('#qs-input', '2*49')
     await search.locator('.qs-row', { hasText: '= 98' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a sum did not answer`))
+    // A window layout: "left half" finds one with a picture of where the window will go; without Accessibility the panel
+    // says what is waiting (the Mac app touches nothing); w is the Windows tab with every layout.
+    await search.fill('#qs-input', 'left half')
+    await search.locator('.qs-row', { hasText: 'Left half' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "left half" did not find a layout`))
+    await search.locator('.qs-screen i').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a layout had no picture of where the window goes`))
+    await search.keyboard.press('Enter')
+    await search.locator('.qs-foot [role="status"]', { hasText: 'allowed in Accessibility' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a layout did not say what is waiting without Accessibility`))
+    if (!(await search.evaluate(() => window.__calls)).some(([name, layout]) => name === 'snap' && layout === 'left-half')) problems.push(`${room}: Return on a layout did not ask for it`)
+    await search.fill('#qs-input', 'w')
+    await search.locator('.qs-row', { hasText: 'Put it back' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: w did not list every layout`))
+    if ((await search.locator('.qs-row').count()) !== 16) problems.push(`${room}: the Windows tab did not list all sixteen layouts`)
+    if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-windows.png` })
+    await search.getByRole('tab', { name: 'Everything' }).click()
     await search.fill('#qs-input', 'sky')
     await search.locator('.qs-row', { hasText: 'Sky' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a room was not found`))
     await search.keyboard.press('Tab')

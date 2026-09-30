@@ -5,6 +5,7 @@
    main and in the windows. Pure. */
 
 import { calculate } from './calc.mjs'
+import { cleanWindowKeys } from './window-layouts.mjs'
 
 export const SEARCH_HOTKEY = 'Command+Shift+Space'
 export const HYPER = ['Control', 'Alt', 'Shift', 'Command']
@@ -16,8 +17,7 @@ export const SOURCES = [
   { id: 'apps', label: 'Apps', blurb: 'Open any app on this Mac', keyword: 'a', letter: 'A' },
   { id: 'notes', label: 'Notes and nodes', blurb: 'Your own notes, nodes and rooms', keyword: 'n', letter: 'N' },
   { id: 'calc', label: 'Calculator', blurb: 'Type a sum and the answer is right there', keyword: null, letter: null },
-  // `panel: false` until the quick search has rows for it (window layouts come with window snapping).
-  { id: 'windows', label: 'Window layouts', blurb: 'Snap the front window to a half, a third or a corner', keyword: 'w', letter: 'W', panel: false },
+  { id: 'windows', label: 'Window layouts', blurb: 'Snap the window you were in to a half, a third or a corner', keyword: 'w', letter: 'W' },
 ]
 
 /* Words that open something: an app (`ss` → Spotify) or a web address with the search in it. */
@@ -53,8 +53,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   keywords: DEFAULT_KEYWORDS,
   clipboard: { items: 200, days: 30, offers: true },
   pins: [],
-  // Window snapping and the ring are read by their own modules (later steps of Phase 13).
-  windows: { hotkeys: {} },
+  // Window keys (Control+Option+Arrow…) are off until turned on: they are global, and moving windows needs Accessibility.
+  windows: { on: false, hotkeys: cleanWindowKeys(undefined) },
   ring: { on: true, items: null },
 })
 
@@ -97,7 +97,7 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     keywords,
     clipboard: { items: [50, 100, 200, 500].includes(clip.items) ? clip.items : 200, days: [0, 7, 30, 90].includes(clip.days) ? clip.days : 30, offers: clip.offers !== false },
     pins,
-    windows: { hotkeys: from.windows?.hotkeys && typeof from.windows.hotkeys === 'object' ? Object.fromEntries(Object.entries(from.windows.hotkeys).filter(([id, key]) => /^[a-z-]{2,24}$/.test(id) && (key === null || validHotkey(key))).slice(0, 40)) : {} },
+    windows: { on: from.windows?.on === true, hotkeys: cleanWindowKeys(from.windows?.hotkeys, validHotkey) },
     ring: { on: from.ring?.on !== false, items: Array.isArray(from.ring?.items) ? from.ring.items.filter((id) => typeof id === 'string' && /^[a-z-]{2,24}$/.test(id)).slice(0, 12) : null },
   }
 }

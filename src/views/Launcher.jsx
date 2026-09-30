@@ -3,6 +3,7 @@ import { Keyboard, LockSimple, Plus, X } from '@phosphor-icons/react'
 
 import { DAY_CHOICES, ITEM_CHOICES } from '../../shared/clipboard-model.mjs'
 import { SOURCES, validAddress, validKeyword } from '../../shared/launcher-model.mjs'
+import { LAYOUTS } from '../../shared/window-layouts.mjs'
 import { comboFrom, labelOf } from '../lib/hotkey.js'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import '../styles/launcher.css'
@@ -123,6 +124,26 @@ export function LauncherSettings() {
         </label>
       </section>
 
+      <section className="content-card launcher-card">
+        <p className="eyebrow">WINDOW LAYOUTS</p>
+        <h2>Snap a window to a half, a third or a corner.</h2>
+        <p>Type “left half” in the quick search (or w and a word), and the window you were in moves there. Keys that work from any app are off until you turn them on. Moving windows needs OSAT to be allowed in Accessibility (see Pasting and windows, below).</p>
+        <label className="launcher-check">
+          <input type="checkbox" checked={settings.windows.on} onChange={(event) => save({ windows: { on: event.target.checked } })} />
+          <span>Use keys to move the window I’m in, from any app.</span>
+        </label>
+        {settings.windows.on && (
+          <ul className="launcher-layouts">
+            {LAYOUTS.map((layout) => (
+              <li key={layout.id}>
+                <span>{layout.label}</span>
+                <KeyButton value={settings.windows.hotkeys[layout.id]} name={layout.label} failed={status?.keysFailed?.includes(`snap:${layout.id}`)} onSet={(key) => save({ windows: { hotkeys: { [layout.id]: key } } })} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <KeywordsCard settings={settings} save={save} showUndo={showUndo} />
 
       <section className="content-card launcher-card">
@@ -143,12 +164,12 @@ export function LauncherSettings() {
 
       {status?.accessibility && status.accessibility !== 'unavailable' && (
         <section className="content-card launcher-card">
-          <p className="eyebrow">PASTING</p>
-          <h2>{status.accessibility === 'granted' ? 'OSAT can paste for you.' : 'OSAT can paste for you, once you allow it.'}</h2>
+          <p className="eyebrow">PASTING AND WINDOWS</p>
+          <h2>{status.accessibility === 'granted' ? 'OSAT can paste and move windows for you.' : 'OSAT can paste and move windows, once you allow it.'}</h2>
           <p>
             {status.accessibility === 'granted'
-              ? 'Return on a copy puts it into the app you were in.'
-              : 'Return on a copy always puts it on the clipboard; to send ⌘V into the app you were in, macOS wants you to allow OSAT under Accessibility. Until then, OSAT says “Press ⌘V”, and nothing else changes.'}
+              ? 'Return on a copy puts it into the app you were in, and a layout moves the window you were in.'
+              : 'Without this, Return on a copy puts it on the clipboard and OSAT says “Press ⌘V”, and a layout says what is waiting; nothing else changes. To turn it on, macOS wants you to allow OSAT under Accessibility. OSAT asks only when you press the button below.'}
           </p>
           {status.accessibility !== 'granted' && (
             <div className="button-row">

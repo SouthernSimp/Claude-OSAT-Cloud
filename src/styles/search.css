@@ -76,6 +76,9 @@ html:has(.quick-search) body { background: transparent; }
 .qs-big { margin: 0; padding: 0 16px; overflow-wrap: anywhere; text-align: center; font: 600 clamp(28px, 5vw, 46px)/1.1 var(--font-display); letter-spacing: var(--tr-display); color: var(--ink-strong); }
 .qs-stickies { list-style: none; width: 100%; margin: 0; padding: 12px 16px; display: grid; gap: 6px; align-self: start; font-size: var(--t-sm); color: var(--ink); }
 .qs-stickies li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qs-screen { position: relative; width: min(78%, 320px); aspect-ratio: 16 / 10; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.qs-screen i { position: absolute; border-radius: 6px; background: color-mix(in srgb, var(--accent) 38%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.qs-screen i.is-back { inset: 24% 30% 26% 22%; border-style: dashed; background: transparent; box-shadow: inset 0 0 0 1.5px var(--faint); }
 .qs-facts h2 { margin: 0 0 8px; font: 650 var(--t-lg)/1.25 var(--font); overflow-wrap: anywhere; color: var(--ink-strong); }
 .qs-offer { margin: 10px 0 0; font-size: var(--t-xs); line-height: 1.5; color: var(--muted); }
 .qs-offer kbd { padding: 1px 5px; border-radius: 5px; color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }

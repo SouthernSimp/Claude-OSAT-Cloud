@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   AppWindow, Calculator, Clipboard, EnvelopeSimple, File, FileAudio, FileDoc, FileImage, FilePdf, FileText, FileVideo, FileXls, FileZip,
-  FolderSimple, Globe, Hash, Image, Link, NotePencil, Phone, Sparkle, TreeStructure,
+  FolderSimple, Globe, Hash, Image, Layout, Link, NotePencil, Phone, Sparkle, TreeStructure,
 } from '@phosphor-icons/react'
 
 /* One small picture for each kind of row; a file's is drawn from its name. */
@@ -12,7 +12,7 @@ const FILE_ICONS = [
 ]
 const BY_KIND = {
   folder: FolderSimple, text: Clipboard, link: Link, email: EnvelopeSimple, phone: Phone, number: Hash, image: Image, app: AppWindow,
-  note: NotePencil, node: TreeStructure, room: Sparkle, calc: Calculator, 'keyword-app': AppWindow, 'keyword-link': Globe,
+  note: NotePencil, node: TreeStructure, room: Sparkle, calc: Calculator, 'keyword-app': AppWindow, 'keyword-link': Globe, layout: Layout,
 }
 
 export function RowIcon({ row, weight = 'regular' }) {
