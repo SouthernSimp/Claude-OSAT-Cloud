@@ -152,3 +152,25 @@
 .app-dock .tools-foot button[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
 .app-dock .tools-foot button svg { width: 16px; height: 16px; scale: none; }
 @media (prefers-reduced-motion: reduce) { .app-dock .tools-row { transition: none; } }
+
+/* ---- Resizing widgets (field/Widgets.jsx, field/widget-size.js) --------------------------------
+   A grip at the bottom right corner, shown like the –: while the widget is under the pointer. */
+.widget[data-sized] { height: auto; min-height: var(--widget-h); }
+.widget-calendar[data-sized] { min-height: max(148px, var(--widget-h)); }
+.widget-grip {
+  position: absolute;
+  z-index: 2;
+  right: 3px;
+  bottom: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  cursor: nwse-resize;
+  opacity: 0;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 0 46%, var(--on-3) 46% 53%, transparent 53% 66%, var(--on-3) 66% 73%, transparent 73%);
+  transition: opacity var(--d-fast);
+}
+.widget:is(:hover, :focus-within):not(.is-moving) > .widget-grip { opacity: 0.7; }
+.widget-grip:hover,
+.widget-grip:focus-visible { opacity: 1 !important; }

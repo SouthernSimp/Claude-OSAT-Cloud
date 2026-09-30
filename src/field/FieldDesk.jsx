@@ -392,6 +392,7 @@ export function FieldDesk({
         {...widgets}
         places={places}
         move={movable}
+        onPlace={onPlace}
         props={{ workspace, commit, navigate, now, today, notes, media, visit, onOpenNote: openNote }}
       />
 

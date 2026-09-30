@@ -262,6 +262,47 @@ async function main() {
   await page.keyboard.press('3')
   await page.waitForFunction(() => document.activeElement?.id === 'home-line', null, { timeout: 3000 }).catch(() => problems.push('ring: New sticky did not take you to the line'))
 
+  // Widgets grow by their bottom right corner: taller in the column, never smaller than their own content, kept, and
+  // put back with a double-click.
+  room = 'widget size'
+  await page.mouse.move(720, 700)
+  const nextWidget = page.locator('.widget-next')
+  const natural = await nextWidget.boundingBox()
+  await nextWidget.hover()
+  const resizer = page.getByRole('button', { name: 'Resize Next' })
+  const drag = async (dy) => {
+    const here = await resizer.boundingBox()
+    await page.mouse.move(here.x + here.width / 2, here.y + here.height / 2)
+    await page.mouse.down()
+    for (let step = 1; step <= 8; step += 1) await page.mouse.move(here.x + here.width / 2, here.y + here.height / 2 + (dy * step) / 8)
+    await page.mouse.up()
+    await sleep(200)
+  }
+  await drag(100)
+  const grown = await nextWidget.boundingBox()
+  if (grown.height < natural.height + 80) problems.push(`widget size: dragging its corner did not make it taller (${natural.height} → ${grown.height})`)
+  if (Math.abs(grown.width - natural.width) > 1) problems.push('widget size: a widget in the column changed its width')
+  if (!(await page.evaluate(() => JSON.parse(localStorage.getItem('osat.places'))['size:widget:next']?.h)) > natural.height) problems.push('widget size: the size was not kept with the other places')
+  await sleep(300)
+  await page.screenshot({ path: `${OUT}/desk-widget-grown.png` })
+  await nextWidget.hover()
+  await drag(-400)
+  const least = await nextWidget.boundingBox()
+  if (least.height < natural.height - 2) problems.push(`widget size: it went smaller than its own content (${natural.height} → ${least.height})`)
+  await nextWidget.hover()
+  await drag(60)
+  await nextWidget.hover()
+  await resizer.dblclick()
+  await sleep(200)
+  const back = await nextWidget.boundingBox()
+  if (Math.abs(back.height - natural.height) > 2 || await nextWidget.getAttribute('data-sized') !== null) problems.push('widget size: a double-click did not put it back')
+  await resizer.focus()
+  await page.keyboard.press('ArrowDown')
+  await sleep(200)
+  if ((await nextWidget.boundingBox()).height < natural.height + 20) problems.push('widget size: the arrow keys on the corner did not make it taller')
+  await page.keyboard.press('Home')
+  await page.mouse.move(720, 700)
+
   // Tools is a wheel with a line for each tool; the dock can move to the left or right edge (and back), and rooms keep clear of it.
   room = 'dock'
   const wheelRows = page.locator('.tools-list [role="menuitem"]')

@@ -3,6 +3,7 @@ import { ArrowCounterClockwise, Minus, Plus } from '@phosphor-icons/react'
 
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { grow } from '../shell/placement.js'
+import { resize, roomFor, sizeKey, sizeOf } from './widget-size.js'
 import { DEFAULT_WIDGETS, MAX_WIDGETS, WIDGETS } from './widgets/index.js'
 
 /* The widget column on the left of the desk: up to five of the widgets in widgets/index.js,
@@ -10,8 +11,9 @@ import { DEFAULT_WIDGETS, MAX_WIDGETS, WIDGETS } from './widgets/index.js'
    its own controls opens its room, growing out of it; the widget's spot stays empty while
    the room is open (`openIds`). A faint + under the column raises the tray of widgets not
    out yet; hovering a widget shows a – that takes it off at once, with Undo. `tray` is ⌘K's
-   "Add a widget". `props` go to every widget. */
-export function Widgets({ list, onList, openIds, tray: summoned = 0, places, move, hasPlaces, onTidy, props }) {
+   "Add a widget". `props` go to every widget. Each grows by its bottom right corner (`onPlace` keeps the size with the
+   other places; widget-size.js); a taller widget shows more. */
+export function Widgets({ list, onList, openIds, tray: summoned = 0, places, move, onPlace, hasPlaces, onTidy, props }) {
   const [toast, showUndo] = useUndoToast()
   const [tray, setTray] = useState(false)
   const [fresh, setFresh] = useState(null)
@@ -49,6 +51,8 @@ export function Widgets({ list, onList, openIds, tray: summoned = 0, places, mov
             onSettled={() => setFresh(null)}
             // Nate's old Day widget spot carries over to Calendar.
             move={move(`widget:${widget.id}`, widget.id === 'calendar' ? places['widget:calendar'] ?? places['widget:day'] : undefined)}
+            size={sizeOf(places, widget.id)}
+            onSize={(size) => onPlace?.(sizeKey(widget.id), size ? { x: 0, y: 0, ...size } : null)}
             onRemove={() => remove(widget)}
           />
         ))}
@@ -78,9 +82,44 @@ export function Widgets({ list, onList, openIds, tray: summoned = 0, places, mov
 
 /* One widget on the desk. Its title is the button that opens its room; a click anywhere
    else that isn't one of its own controls presses that title. */
-function Frame({ widget, props, open, fresh, onSettled, move, onRemove }) {
+function Frame({ widget, props, open, fresh, onSettled, move, size, onSize, onRemove }) {
   const node = useRef(null)
   const openRoom = (view, detail = null) => props.navigate(view, detail, { from: rect(node.current), widget: widget.id })
+  const placed = move?.['data-placed'] === ''
+
+  /* Grow it by its corner: live while the pointer is down, kept when it lets go. It never goes below its own content. */
+  function startResize(event) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    const element = node.current
+    const box = element.getBoundingClientRect()
+    const start = { w: box.width, h: box.height }
+    const from = { x: event.clientX, y: event.clientY }
+    // Its own content's height: what it is with nothing asked of it.
+    const kept = element.style.getPropertyValue('--widget-h')
+    element.setAttribute('data-sized', '')
+    element.style.setProperty('--widget-h', '0px')
+    const floor = element.getBoundingClientRect().height
+    element.style.setProperty('--widget-h', kept || `${start.h}px`)
+    let next = null
+    const move = (pointer) => {
+      next = resize(start, { x: pointer.clientX - from.x, y: pointer.clientY - from.y }, { placed, floor })
+      element.style.setProperty('--widget-h', `${next.h}px`)
+      if (placed) element.style.width = `${next.w}px`
+    }
+    const end = (pointer) => {
+      removeEventListener('pointermove', move)
+      removeEventListener('pointerup', end)
+      removeEventListener('pointercancel', end)
+      if (next && pointer.type === 'pointerup') onSize(next)
+      else if (!size) element.removeAttribute('data-sized')
+    }
+    addEventListener('pointermove', move)
+    addEventListener('pointerup', end)
+    addEventListener('pointercancel', end)
+  }
+
   return (
     <section
       ref={node}
@@ -88,7 +127,9 @@ function Frame({ widget, props, open, fresh, onSettled, move, onRemove }) {
       aria-label={widget.label}
       data-widget={widget.id}
       data-open={open || undefined}
+      data-sized={size ? '' : undefined}
       {...move}
+      style={{ ...(move?.style || {}), ...(size ? { '--widget-h': `${size.h}px`, ...(placed ? { width: size.w } : {}) } : {}) }}
       onClick={(event) => {
         if (!event.target.closest('button, a, input, label, textarea, select')) node.current.querySelector('.widget-title')?.click()
       }}
@@ -97,7 +138,23 @@ function Frame({ widget, props, open, fresh, onSettled, move, onRemove }) {
       <button type="button" className="widget-remove" aria-label={`Take ${widget.label} off the desk`} title="Take off the desk" onClick={onRemove}>
         <Minus weight="bold" />
       </button>
-      <widget.Component {...props} open={openRoom} />
+      <widget.Component {...props} open={openRoom} room={roomFor(size?.h, widget.id)} />
+      <button
+        type="button"
+        className="widget-grip"
+        aria-label={`Resize ${widget.label}`}
+        title="Drag to make it bigger. Double-click to put it back."
+        onPointerDown={startResize}
+        onDoubleClick={() => onSize(null)}
+        onKeyDown={(event) => {
+          const step = { ArrowDown: [0, 24], ArrowUp: [0, -24], ArrowRight: [24, 0], ArrowLeft: [-24, 0] }[event.key]
+          if (event.key === 'Home') { event.preventDefault(); onSize(null) }
+          if (!step) return
+          event.preventDefault()
+          const box = node.current.getBoundingClientRect()
+          onSize(resize({ w: box.width, h: box.height }, { x: step[0], y: step[1] }, { placed, floor: 0 }))
+        }}
+      />
     </section>
   )
 }
