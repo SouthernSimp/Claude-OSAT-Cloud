@@ -619,3 +619,116 @@
     padding-bottom: var(--s-8);
   }
 }
+
+/* ---- Your Mac's calendars and reminders (Phase 14) -------------------------- */
+/* A calendar's own colour shows only as a small dot, the way a sticky's paper is data. */
+
+.mac-cal,
+.mac-reminders {
+  display: grid;
+  gap: var(--s-2);
+  align-content: start;
+}
+
+.mac-cal-note {
+  color: var(--muted);
+  font-size: var(--t-xs);
+  line-height: var(--lh-snug);
+}
+
+.mac-cal-list {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.mac-cal-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) 0;
+  font-size: var(--t-xs);
+  cursor: pointer;
+}
+
+.mac-cal-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-cal-row small {
+  color: var(--faint);
+  font-size: var(--t-2xs);
+}
+
+.mac-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--faint);
+}
+
+.mac-from {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--t-2xs);
+}
+
+.event-chip .mac-dot {
+  width: 6px;
+  height: 6px;
+  align-self: center;
+}
+
+.mac-reminder-list {
+  display: grid;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mac-reminder-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-xs);
+}
+
+.mac-reminder-list label {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.mac-reminder-list label span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-reminder-list small {
+  color: var(--muted);
+  font-size: var(--t-2xs);
+}
+
+.mac-reminder-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-2);
+}
+
+.mac-reminder-add input {
+  min-width: 0;
+  font-size: var(--t-xs);
+}

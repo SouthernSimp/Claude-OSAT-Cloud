@@ -23,6 +23,8 @@ The isolated browser preview is `http://127.0.0.1:5240/`; the installed app was 
 Next: connectors, selection/bundling, focused node editing, then contextual AI and
 navigation polish. Phase 27 is unfinished; use the roadmap and the implementation notes below.
 
+Phase 14 step one (the Mac's Calendar and Reminders) is on `claude/phase-14-calendar-reminders`, draft PR: see the PR list.
+
 ## Working with Nate
 
 - Nate is new to git and GitHub. Claude runs the repo: one branch and one draft pull
@@ -107,6 +109,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     (`mdfind -onlyin … <query>`; `inside`, `rankFound`, and `walkFind` where there is no Spotlight:
     tests and Linux) and the text Ask reads from a file (PDFKit through `osascript -l
     JavaScript`, Word/RTF through `textutil`, capped at 12,000 characters).
+  - `mac-calendar.cjs` (Phase 14 step one): the Mac's Calendar and Reminders through EventKit in `osascript -l
+    JavaScript` (one script, one command per run); `createMacCalendar({ handle, fail })` registers the `maccal:*`
+    channels (`osatMacCalendar` in the preload). A status check never asks macOS; `allow` does, once. Reads and
+    writes go to the Mac's own store; nothing enters `calendar.events`. The window's side is
+    `shared/mac-calendar-model.mjs` (shapes, merging, reminder words) and `src/views/MacCalendar.jsx` (hook and the
+    two panels in the Calendar room). Needs four usage strings in `package.json` `build.mac.extendInfo`
+    (`NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription`, `NSRemindersFullAccessUsageDescription`,
+    `NSRemindersUsageDescription`). Mail, Gmail, Outlook and Messages are later steps.
   - `file-ops.cjs`: tidying (Phase 21 step 2): New folder, rename, move / copy, the Bin, all on absolute
     paths files.cjs has already checked (`sourcePath`/`folderPath`: never a root, never hidden, never
     a link); each returns `undo`, a function kept in files.cjs's `undos` map so the window holds only a token
