@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process'
 import { mkdir, readFile } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
 import { installSearchBridge } from './search-bridge.mjs'
 
 const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
@@ -36,7 +37,7 @@ async function main() {
   // The name of the drawer row Return would run.
   const picked = () => page.locator('.home-row[aria-selected="true"] .home-row-label').evaluate((node) => node.firstChild.textContent).catch(() => null)
   // The Mac app's quick search bridge, so the desk can hear of a copy (the offer to add it to a node).
-  await page.addInitScript(installSearchBridge)
+  await page.addInitScript(installSearchBridge, DEFAULT_SETTINGS)
   page.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
   page.on('console', (message) => {
     // The local AI runtime is not running in CI; a refused request is expected.
@@ -178,6 +179,61 @@ async function main() {
   await habits.waitFor({ timeout: 3000 }).catch(() => problems.push('widgets: Undo did not bring Habits back'))
   await page.mouse.move(720, 700)
 
+  // Settings → Launcher: each place to turn on or off, its word and Hyper key, how it opens, the clipboard's pause, clear
+  // (with Undo) and limits, Nate's own words, and the two things only he can change on the Mac.
+  room = 'launcher settings'
+  const calls = () => page.evaluate(() => window.__calls)
+  await page.keyboard.press('Control+,')
+  const rail = page.getByRole('navigation', { name: 'Settings sections' })
+  await rail.getByRole('button', { name: 'Launcher' }).click()
+  const sources = page.locator('.launcher-sources > li')
+  await sources.first().waitFor({ timeout: 3000 }).catch(() => problems.push('launcher settings: the sources were not listed'))
+  const names = (await sources.locator('.launcher-switch b').allInnerTexts().catch(() => [])).join(', ')
+  if (names !== 'Files, Clipboard, Apps, Notes and nodes, Calculator') problems.push(`launcher settings: the sources were ${names}`)
+  const clipboardRow = sources.filter({ hasText: 'Clipboard' })
+  await clipboardRow.getByRole('switch').uncheck()
+  await clipboardRow.locator('.launcher-keys').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('launcher settings: turning a place off left its word and key'))
+  await clipboardRow.getByRole('switch').check()
+  await clipboardRow.getByLabel('Word for Clipboard').fill('cb')
+  await clipboardRow.getByLabel('Word for Clipboard').blur()
+  await page.getByRole('button', { name: 'Key for Files' }).click()
+  await page.keyboard.press('Control+Alt+Shift+Meta+F')
+  await page.getByRole('button', { name: 'Key for Files' }).filter({ hasText: 'Hyper F' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher settings: a recorded Hyper key was not shown as Hyper F'))
+  await page.getByRole('radio', { name: 'The full view' }).click()
+  await page.getByLabel('How many copies to keep').selectOption('100')
+  await page.getByLabel('How long to keep a copy').selectOption('7')
+  if (!(await page.evaluate(() => window.osatSearch.settings())).view || (await page.evaluate(() => window.osatSearch.settings())).clipboard.days !== 7) problems.push('launcher settings: a change was not saved at once')
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await page.getByRole('heading', { name: 'Not keeping what you copy.' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher settings: Pause did not say so'))
+  await page.getByRole('button', { name: 'Keep what I copy again' }).click()
+  await page.getByRole('button', { name: 'Clear the history' }).click()
+  const cleared = page.locator('.undo-toasts .toast', { hasText: 'Cleared the clipboard history' })
+  await cleared.waitFor({ timeout: 3000 }).catch(() => problems.push('launcher settings: Clear did not offer Undo'))
+  await cleared.getByRole('button', { name: 'Undo' }).click()
+  if (!(await calls()).some(([name, token]) => name === 'undoClip' && token === 'undo-clear')) problems.push('launcher settings: Undo did not bring the history back')
+  await page.getByLabel('A new word').fill('gh')
+  await page.getByLabel('What it opens').fill('https://github.com/{query}')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  const words = page.locator('.launcher-words li')
+  await words.filter({ hasText: 'gh' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher settings: a new word was not added'))
+  await page.getByRole('button', { name: 'Take off gh' }).click()
+  await page.locator('.undo-toasts .toast', { hasText: 'Took off “gh”' }).getByRole('button', { name: 'Undo' }).click()
+  await words.filter({ hasText: 'gh' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher settings: Undo did not bring a word back'))
+  for (const said of ['A Hyper key', '⌘Space for the quick search', 'OSAT can paste for you, once you allow it.']) {
+    if (!await page.getByText(said, { exact: false }).count()) problems.push(`launcher settings: missing "${said}"`)
+  }
+  await page.screenshot({ path: `${OUT}/settings-launcher-end.png` })
+  await page.locator('.launcher-sources').evaluate((node) => { let up = node.parentElement; while (up && up.scrollHeight <= up.clientHeight + 1) up = up.parentElement; up?.scrollTo(0, 0) })
+  await sleep(300)
+  await page.screenshot({ path: `${OUT}/settings-launcher.png` })
+  // The line hears the new word at once.
+  await page.locator('.popout.is-top .popout-bar strong').click()
+  await page.keyboard.press('Escape')
+  await page.fill('#home-line', 'cb')
+  await page.locator('.home-row', { hasText: 'jordan@acme.com' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher settings: the line did not use the new word for the clipboard'))
+  await page.fill('#home-line', '')
+  await page.evaluate(() => window.osatSearch.saveSettings({ sources: { clipboard: { keyword: 'v' } } }))
+
   // A copy that looks like a customer's email, for a node that exists (the seeded "Project Direction"), is offered
   // once, calmly; Add puts it in that node with Undo; Not now lets it go; an address for no node is not offered.
   room = 'clipboard offer'
@@ -202,7 +258,6 @@ async function main() {
   // The line is a launcher: a sum answers in place, a keyword opens an app or a web search, `v` lists what was copied, an
   // app by name is a row, `>` says no bot takes jobs yet; and Save stays first, so Return never guesses.
   room = 'launcher'
-  const calls = () => page.evaluate(() => window.__calls)
   await page.fill('#home-line', '2*49')
   await page.locator('.home-sum', { hasText: '= 98' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher: a sum did not answer in the line'))
   if (await picked() !== 'Save as a sticky') problems.push(`launcher: a sum moved the pick off Save (${await picked()})`)
@@ -559,7 +614,7 @@ async function main() {
     const search = await browser.newPage({ viewport: { width: 1000, height: 580 }, colorScheme: scheme })
     search.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
     search.on('console', (message) => { if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) problems.push(`${room}: ${message.text()}`) })
-    await search.addInitScript(installSearchBridge)
+    await search.addInitScript(installSearchBridge, DEFAULT_SETTINGS)
     await search.goto(`${url}?surface=search&fresh=1`)
     await search.locator('.quick-search[data-mode="bar"]').waitFor({ timeout: 8000 }).catch(() => problems.push(`${room}: the bar did not open`))
     if (await search.locator('.qs-body').count()) problems.push(`${room}: the bar showed results before anything was typed`)

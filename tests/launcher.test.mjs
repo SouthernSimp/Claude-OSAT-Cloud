@@ -83,7 +83,7 @@ test('starting registers a Hyper key for each source and reads what is saved', a
   const t = await setup()
   try {
     await t.launcher.start()
-    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+V', 'Control+Alt+Shift+Command+W'])
+    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+V'])
     assert.equal(t.launcher.taken('Control+Alt+Shift+Command+V'), true, 'the desk’s shortcut picker can’t take it')
     assert.equal(t.launcher.hotkeyLabel('Control+Alt+Shift+Command+V'), 'Hyper V')
     assert.equal((await t.ask('search:settings')).sources.clipboard.keyword, 'v')

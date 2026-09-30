@@ -84,9 +84,9 @@ async function createLauncher({
   /* Each source's Hyper key opens the quick search on it. → the ids that couldn't have their key. */
   function applyHotkeys(next = settings) {
     const wanted = {}
-    for (const source of launcherModel.SOURCES) {
+    for (const source of launcherModel.SOURCES.filter((item) => item.panel !== false)) {
       const own = next.sources[source.id]
-      if (own.on && own.hotkey) wanted[`source:${source.id}`] = { key: own.hotkey, run: () => search?.toggle({ scope: source.id === 'notes' ? 'notes' : source.id }) }
+      if (own.on && own.hotkey) wanted[`source:${source.id}`] = { key: own.hotkey, run: () => search?.toggle({ scope: source.id }) }
     }
     return hotkeys.sync(wanted)
   }

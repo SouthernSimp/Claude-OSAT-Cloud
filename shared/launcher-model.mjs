@@ -16,7 +16,8 @@ export const SOURCES = [
   { id: 'apps', label: 'Apps', blurb: 'Open any app on this Mac', keyword: 'a', letter: 'A' },
   { id: 'notes', label: 'Notes and nodes', blurb: 'Your own notes, nodes and rooms', keyword: 'n', letter: 'N' },
   { id: 'calc', label: 'Calculator', blurb: 'Type a sum and the answer is right there', keyword: null, letter: null },
-  { id: 'windows', label: 'Window layouts', blurb: 'Snap the front window to a half, a third or a corner', keyword: 'w', letter: 'W' },
+  // `panel: false` until the quick search has rows for it (window layouts come with window snapping).
+  { id: 'windows', label: 'Window layouts', blurb: 'Snap the front window to a half, a third or a corner', keyword: 'w', letter: 'W', panel: false },
 ]
 
 /* Words that open something: an app (`ss` → Spotify) or a web address with the search in it. */

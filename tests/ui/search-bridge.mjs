@@ -1,6 +1,6 @@
 // A stand-in for what the Mac app gives the quick search (`window.osatSearch`), so the web preview can show and
 // test the panel: a few files, a clipboard, some apps. Every call it doesn't know is recorded in window.__calls.
-export function installSearchBridge() {
+export function installSearchBridge(defaults) {
   const at = (hours) => new Date(Date.now() - hours * 3600000).toISOString()
   const picture = (color, words) => `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="%23${color}"/><text x="30" y="60" font-size="28">${words}</text></svg>`
   const clipboard = [
@@ -13,12 +13,26 @@ export function installSearchBridge() {
     taxes: { rootId: 'documents', relative: 'Taxes/Taxes 2025.pdf', name: 'Taxes 2025.pdf', kind: 'file', size: 1258291, modifiedAt: '2026-09-20T10:00:00Z', where: 'Documents › Taxes' },
     trip: { rootId: 'desktop', relative: 'Trip notes.md', name: 'Trip notes.md', kind: 'file', size: 400, modifiedAt: '2026-09-28T10:00:00Z', where: 'Desktop' },
   }
+  let paused = false
   window.__calls = []
   window.__shown = () => {}
+  // The launcher's settings as main keeps them (saved at once, and every window hears).
+  let settings = defaults
+  const heard = new Set()
+  const merge = (patch) => ({
+    ...settings,
+    ...patch,
+    sources: Object.fromEntries(Object.entries(settings.sources).map(([id, own]) => [id, { ...own, ...(patch.sources?.[id] || {}) }])),
+    clipboard: { ...settings.clipboard, ...(patch.clipboard || {}) },
+  })
   const known = {
     ready: async () => true,
-    settings: async () => null,
-    onSettings: () => () => {},
+    settings: async () => settings,
+    saveSettings: async (patch) => { settings = merge(patch); heard.forEach((listener) => listener(settings)); return settings },
+    onSettings: (listener) => { heard.add(listener); return () => heard.delete(listener) },
+    status: async () => ({ accessibility: 'needed', keysFailed: [] }),
+    pauseClipboard: async (on) => { paused = on === true; return paused },
+    clearClipboard: async () => 'undo-clear',
     onShown: (listener) => { window.__shown = listener; return () => {} },
     onEscape: () => () => {},
     // The desk hears of a new copy; a test calls window.__copied({ id, kind, at, text }).
@@ -27,7 +41,7 @@ export function installSearchBridge() {
     preview: async (root, relative) => (relative.endsWith('.md') ? { text: '# Trip\nLeave Friday\nBring the tent', thumb: null } : { text: null, thumb: picture('f9c6cc', 'Taxes 2025') }),
     apps: async () => [{ name: 'Notes', path: '/Applications/Notes.app' }, { name: 'Spotify', path: '/Applications/Spotify.app' }],
     appIcon: async () => null,
-    clipboard: async () => ({ paused: false, watching: true, items: clipboard }),
+    clipboard: async () => ({ paused, watching: true, items: clipboard }),
     clipboardImage: async (id) => clipboard.find((item) => item.id === id).thumb,
     clipboardText: async (id) => clipboard.find((item) => item.id === id).text,
     mode: async () => true,
