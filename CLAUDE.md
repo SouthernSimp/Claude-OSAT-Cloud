@@ -250,7 +250,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     first, under "Not in a branch yet" once it has branches; each branch a label (a dot of its colour
     and its name) on a line, its stickies in a row, its own branches on a line under it; only stickies
     are paper; a branch dropped on a branch's name goes inside it; a closed card lists its first three
-    branches); `makeRoom` slides neighbours aside; lines for @mentions;
+    branches); opening a node never moves the other cards: the camera flies to it (`goTo`, `frameTop`: a node taller than the view shows its top at 60% or more), the others dim, and closing the last one flies back (unless the board was moved since); lines for @mentions;
     far out (`z < 0.5`) names grow and insides fade), `Piles.jsx` (`StickyList`, `AddSticky`,
     `NameField`), `Sticky.jsx` (one sticky: click to write, carry, right-click). `SkyGuide` (in Sky.jsx):
     "How the Sky works", shown once per Mac (`osat.sky.guide.v1`), again from ? or the board's menu.

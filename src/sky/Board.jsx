@@ -5,7 +5,7 @@ import { hashUnit } from '../field/field-model.js'
 import { carryable, useDrop } from '../lib/carry.js'
 import { folderChildren, folderSubtree } from '../notes-model.js'
 import {
-  addFolder, asksIn, askStart, boardSpots, CARD, makeRoom, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
+  addFolder, asksIn, askStart, boardSpots, CARD, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
 } from '../nodes-model.js'
 import { NameField, StickyList } from './Piles.jsx'
 
@@ -13,6 +13,7 @@ const CAMERA_KEY = 'osat.sky.camera.v1'
 const ZOOM = { min: 0.2, max: 1.6 }
 // Further out than this, a card shows its name big and what's inside it faintly.
 const FAR = 0.5
+const READABLE = 0.6 // the smallest an opened node is shown at
 const clampZoom = (z) => Math.min(ZOOM.max, Math.max(ZOOM.min, z))
 
 /* How thick a pile looks: a layer of paper for every few stickies, never a number. */
@@ -40,7 +41,7 @@ function rootOf(folders, id) {
    zoom; double-click it to start a node there. A card's paper is its handle: drag it to
    move the node, click it to open or close it, double-click to fly to it. Open, a node
    shows its branches as lanes and its own stickies still to sort (its Unsorted); a node
-   that grows slides its neighbours aside. Nodes a note @mentions are joined by lines.
+   that opens never moves its neighbours: they dim, and the view goes to it. Nodes a note @mentions are joined by lines.
    Unsorted waits on the far left. */
 export const Board = forwardRef(function Board({ workspace, actions, open, toggle, sorting }, ref) {
   const view = useRef(null)
@@ -53,7 +54,8 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const [panning, setPanning] = useState(false)
   const flyTimer = useRef(0)
   const dragged = useRef(false)
-  const seen = useRef(new Map())
+  const flown = useRef(null)
+  const before = useRef({ open: new Set(open), home: null })
 
   const nodes = nodesOf(workspace.folders)
   const spots = useMemo(() => boardSpots(workspace.folders, sizes), [workspace.folders, sizes])
@@ -99,6 +101,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     return { x: box.width / 2 - (rect.x + rect.w / 2) * z, y: box.height / 2 - (rect.y + rect.h / 2) * z, z }
   }
   function fly(next) {
+    flown.current = next
     setFlying(true)
     setCamera(next)
     clearTimeout(flyTimer.current)
@@ -142,26 +145,6 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   /* Nodes set down somewhere new; everything else keeps its place. */
   const place = (changes) => actions.commit((state) => placeNodes(state, boardSpots(state.folders, latest.current.sizes), changes))
 
-  /* A node that grew (opened, or a sticky added) slides the cards it now covers aside. */
-  useEffect(() => {
-    const before = seen.current
-    seen.current = sizes
-    if (drag) return
-    const grown = nodes.filter(({ folder }) => {
-      const was = before.get(folder.id)
-      const now = sizes.get(folder.id)
-      return was && now && (now.w > was.w + 2 || now.h > was.h + 2)
-    })
-    if (!grown.length) return
-    const boxes = new Map(nodes.map(({ folder }) => [folder.id, boxOf(folder.id)]))
-    const moved = new Map()
-    grown.forEach(({ folder }) => makeRoom(boxes, folder.id).forEach((spot, id) => {
-      moved.set(id, spot)
-      boxes.set(id, { ...boxes.get(id), ...spot })
-    }))
-    if (moved.size) place(moved)
-  }, [sizes]) // eslint-disable-line react-hooks/exhaustive-deps
-
   /* Fly to a node (or a branch's node, or Unsorted), opening it; a sticky in it glows. */
   function goTo({ folderId = null, noteId = null } = {}) {
     const root = folderId ? rootOf(latest.current.folders, folderId) : null
@@ -169,13 +152,45 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const card = view.current?.querySelector(`[data-card="${root || 'unsorted'}"]`)
       const spot = latest.current.spots.get(root)
-      if (card && spot) fly(frame({ x: spot.x, y: spot.y, w: card.offsetWidth, h: card.offsetHeight }, 1))
       const sticky = noteId && view.current?.querySelector(`[data-note="${noteId}"]`)
+      if (card && spot) fly(sticky ? frame(inside(card, sticky, spot), 1) : frameTop({ x: spot.x, y: spot.y, w: card.offsetWidth, h: card.offsetHeight }))
       if (!sticky) return
       sticky.classList.add('is-found')
       setTimeout(() => sticky.classList.remove('is-found'), 1800)
     }))
   }
+
+  /* Where `element` lies on the board, from its offsets inside `card` (not its pixels, which move mid-flight). */
+  function inside(card, element, spot) {
+    let x = 0
+    let y = 0
+    for (let at = element; at && at !== card; at = at.offsetParent) { x += at.offsetLeft; y += at.offsetTop }
+    return { x: spot.x + x, y: spot.y + y, w: element.offsetWidth, h: element.offsetHeight }
+  }
+
+  /* A node taller than the view shows its top at a size you can read; the rest is a scroll away. */
+  function frameTop(rect) {
+    const next = frame(rect, 1)
+    if (next.z >= READABLE) return next
+    const box = view.current.getBoundingClientRect()
+    return { x: box.width / 2 - (rect.x + rect.w / 2) * READABLE, y: Math.min(96, box.width * 0.08) - rect.y * READABLE, z: READABLE }
+  }
+
+  /* Opening a node brings it into view; closing the last one goes back to where the board
+     was, unless it has been moved since. Nothing else on the board moves. */
+  useEffect(() => {
+    const was = before.current
+    const now = new Set(nodes.filter(({ folder }) => open.has(folder.id)).map(({ folder }) => folder.id))
+    before.current = { open: now, home: was.home }
+    const opened = [...now].filter((id) => !was.open.has(id))
+    if (opened.length) {
+      if (!was.open.size) before.current.home = latest.current.camera
+      goTo({ folderId: opened[opened.length - 1] })
+    } else if (was.open.size && !now.size && was.home) {
+      if (flown.current === latest.current.camera) fly(was.home)
+      before.current.home = null
+    }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useImperativeHandle(ref, () => ({
     goTo,
