@@ -359,6 +359,15 @@ export function Desk() {
 
   /* Set down right away (null picks it up); the Mac app keeps the spot for next time. */
   function place(id, spot) {
+    // Returning a free Sky sticky to the desk retires its Sky presentation, not its note.
+    if (spot && id.startsWith('note:')) commit((state) => {
+      if (!state.notes.some((note) => note.id === id.slice(5) && note.at)) return state
+      return { ...state, notes: state.notes.map((note) => {
+        if (note.id !== id.slice(5)) return note
+        const { at, ...rest } = note
+        return rest
+      }) }
+    })
     setPrefs((value) => {
       const places = { ...value.places }
       if (spot === null) delete places[id]
@@ -437,7 +446,7 @@ export function Desk() {
             <Dock
               view={top?.view === 'note' ? 'Notes' : top?.view || 'Today'}
               navigate={navigate}
-              onSendUp={(noteId) => { if (prefs.places?.[`note:${noteId}`]) place(`note:${noteId}`, null); goUp() }}
+              onSendUp={(noteId) => goUp({ action: 'place-sticky', noteId })}
               storage={storage}
             >
               {bridge && (
@@ -468,7 +477,12 @@ export function Desk() {
             navigate={navigate}
             target={skyTarget}
             onClose={goDown}
-            onFiled={(noteId) => { if (prefs.places?.[`note:${noteId}`]) place(`note:${noteId}`, null) }}
+            onFiled={(noteId) => {
+              const spot = prefs.places?.[`note:${noteId}`]
+              if (!spot) return
+              place(`note:${noteId}`, null)
+              return () => place(`note:${noteId}`, spot)
+            }}
           />
         </div>
       )}

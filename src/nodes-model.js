@@ -99,7 +99,7 @@ export function addFolder(state, name, parentId = null, index = Infinity) {
 
 /* A new sticky in a folder's pile (null: Unsorted), at the end or at `index`. Its @s point
    at their nodes (linkMentions). */
-export function addSticky(state, text, folderId = null, { source = 'Sky', index, color, ask } = {}) {
+export function addSticky(state, text, folderId = null, { source = 'Sky', index, color, ask, at } = {}) {
   const value = typeof text === 'string' ? text.trim().slice(0, 8000) : ''
   if (!value) return { state, note: null }
   const target = folderExists(state, folderId) ? folderId : null
@@ -111,9 +111,22 @@ export function addSticky(state, text, folderId = null, { source = 'Sky', index,
     base = { ...state, notes: withRanks(state.notes, placed.renumber) }
     rank = placed.rank
   }
-  const made = createNote(base, { title, markdown: value, folderId: target, unsorted: !target, source, color, rank, ask })
+  const made = createNote(base, { title, markdown: value, folderId: target, unsorted: !target, source, color, rank, ask, at })
   const linked = linkMentions(made.state, made.note.id)
   return { state: linked, note: linked.notes.find((note) => note.id === made.note.id) }
+}
+
+/* A sticky set down on the Sky keeps its identity; null returns it to the Unsorted pile.
+   Filing it later keeps its spot for when it is brought out again. */
+export function placeSticky(state, noteId, at) {
+  const note = state.notes.find((item) => item.id === noteId)
+  if (!isActiveNote(note) || note.kind || (at !== null && (!Number.isFinite(at?.x) || !Number.isFinite(at?.y)))) return state
+  const next = moveSticky(state, noteId)
+  return { ...next, notes: next.notes.map((item) => {
+    if (item.id !== noteId) return item
+    const { at: previous, ...rest } = item
+    return at ? { ...rest, at: { x: at.x, y: at.y } } : rest
+  }) }
 }
 
 /* Removing a node keeps its stickies: its branches go with it and everything in them lands

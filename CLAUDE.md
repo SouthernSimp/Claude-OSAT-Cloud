@@ -308,6 +308,15 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   this belong?" (`sky/where.js`, `whereMessages`/`readWhereAnswer` in ai-tasks): the model picks one node or
   branch with a reason (`placing` in Sky.jsx, `PlaceHelp` in Board.jsx); nothing moves until Move (it checks the
   branch and the place still exist and are not inside each other), and Undo restores the branch's old record.
+- Free stickies (Phase 27 step 3, schema 9): a note may carry `at: { x, y }` in Sky board points.
+  `New sticky`, double-click and the empty-board menu write one at that position; no node is created.
+  `placeSticky` in nodes-model moves the same note out onto the board; `null` returns it to the Unsorted
+  pile. Board draws active, unfiled notes with `at` as free paper, and only unplaced ones in that pile.
+  Arrow keys move a focused free sticky (Shift moves further); Find and See everything include them.
+  A filed sticky keeps its former position for when it becomes loose again. Sending up from the desk
+  places it near the Sky viewport, clears its desk place after the workspace change, and offers Undo
+  of both. Dragging it back to the desk clears its Sky presentation. Notes, backups and sync use the
+  same note and saved position. Connectors, selection/bundling and focused node editing are still next.
 - @mentions (`nodes-model.js`, schema 4): an @ only links, it never files or makes a node.
   `findMentions` (longest node name wins, `/` for a branch, never after a letter/dot, so emails
   don't count; a name that matches no node is just words), `linkMentions(state, id)` records

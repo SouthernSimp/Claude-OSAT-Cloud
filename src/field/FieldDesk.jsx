@@ -261,7 +261,7 @@ export function FieldDesk({
       { label: 'Open as a page', icon: NotePencil, onSelect: () => openNote(note.id) },
       { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
       { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => fileSticky(note.id, folderId), { skip: note.folderId || null }) },
-      { label: 'Send up to the Sky', icon: CaretUp, onSelect: () => onPlace(`note:${note.id}`, null) },
+      { label: 'Send up to the Sky', icon: CaretUp, onSelect: () => navigate('Mindmap', { action: 'place-sticky', noteId: note.id }) },
       { divider: true },
       { label: 'Delete', icon: Trash, danger: true, onSelect: () => toss(note) },
     ])

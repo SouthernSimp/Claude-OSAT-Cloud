@@ -379,7 +379,7 @@ async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mai
     if (!spotlight) return []
     const roots = await Promise.all([...places(), ...grants.filter((grant) => grant.kind === 'folder')]
       .map(async (grant) => ({ id: grant.id, root: await fs.realpath(grant.root).catch(() => grant.root) })))
-    const paths = process.platform === 'darwin'
+    const paths = process.platform === 'darwin' && (app.isPackaged || !process.env.OSAT_PLACES_DIR)
       ? (await run('mdfind', searchArgs(spotlight, roots.map((item) => item.root)), { timeout: 4000 }).catch(() => '')).split('\n').filter(Boolean).slice(0, 400)
       : await walkFind(roots, (item) => matchesFile(asked, item))
     const filtered = asked.kinds.length > 0 || asked.since !== null

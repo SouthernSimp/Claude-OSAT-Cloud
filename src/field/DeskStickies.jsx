@@ -96,7 +96,7 @@ function DeskSticky({ note, spot, fresh, commit, onResize, onToss, onMenu, menti
   )
 }
 
-function DraftSticky({ draft, onDone }) {
+export function DraftSticky({ draft, onDone }) {
   const field = useRef(null)
   const settled = useRef(false)
   useEffect(() => { field.current?.focus() }, [])

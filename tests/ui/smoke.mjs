@@ -93,6 +93,47 @@ async function main() {
     }
     await sleep(300)
     if (await guide.count()) problems.push(`sky: the guide showed again after Got it (${theme})`)
+    if (theme === 'light') {
+      room = 'free Sky stickies'
+      await page.getByRole('button', { name: 'New sticky', exact: true }).click()
+      await page.getByRole('textbox', { name: 'A new sticky', exact: true }).fill('Freely placed Sky sticky\nSame note everywhere')
+      await page.getByRole('textbox', { name: 'A new sticky', exact: true }).press('Escape')
+      const free = page.locator('.board-sticky', { hasText: 'Freely placed Sky sticky' })
+      await free.waitFor({ timeout: 3000 })
+      if (await page.locator('[data-card="unsorted"] .sticky', { hasText: 'Freely placed Sky sticky' }).count()) problems.push('sky: a free sticky was duplicated in the Unsorted pile')
+      const before = await free.evaluate((element) => element.style.translate)
+      await free.locator('.sticky').focus()
+      await page.keyboard.press('ArrowRight')
+      await sleep(250)
+      if (await free.evaluate((element) => element.style.translate) === before) problems.push('sky: arrow keys did not move a focused free sticky')
+      const from = await free.boundingBox()
+      const board = await page.locator('.board').boundingBox()
+      await page.mouse.move(from.x + 30, from.y + 25)
+      await page.mouse.down()
+      await page.mouse.move(board.x + board.width - 280, board.y + 260, { steps: 12 })
+      await page.mouse.up()
+      await sleep(250)
+      const placed = await free.evaluate((element) => element.style.translate)
+      await free.locator('.sticky').click({ button: 'right' })
+      await page.getByRole('menuitem', { name: 'Back to Unsorted', exact: true }).click()
+      await free.waitFor({ state: 'detached', timeout: 3000 })
+      await page.locator('[data-card="unsorted"] .sticky', { hasText: 'Freely placed Sky sticky' }).waitFor({ timeout: 3000 })
+      await page.getByRole('button', { name: 'Undo', exact: true }).click()
+      await free.waitFor({ timeout: 3000 })
+      if (await free.evaluate((element) => element.style.translate) !== placed) problems.push('sky: Undo did not restore the sticky’s exact placement')
+      await page.getByRole('textbox', { name: 'Find a sticky' }).fill('Freely placed Sky sticky')
+      await page.getByRole('textbox', { name: 'Find a sticky' }).press('Enter')
+      await free.locator('.sticky.is-found').waitFor({ timeout: 3000 })
+      await sleep(800)
+      await page.screenshot({ path: `${OUT}/sky-free-stickies.png` })
+      await page.reload()
+      await page.waitForSelector('.workspace-content')
+      await page.keyboard.press('Control+3')
+      await free.waitFor({ timeout: 5000 })
+      if (await free.evaluate((element) => element.style.translate) !== placed) problems.push('sky: a free sticky lost its placement after reload')
+      await page.locator('.board-zoom-fit').click()
+      await sleep(800)
+    }
     await sleep(700)
     await page.screenshot({ path: `${OUT}/${theme}-Sky.png` })
     // Opening a node never moves the other cards (it used to push them away for good).
@@ -360,13 +401,18 @@ async function main() {
 
   // On the desk: the Unsorted pile, a note found from the line, stacked pop-outs, Esc.
   room = 'pop-outs'
-  // Sent up to the Sky (its menu), the sticky joins the smoke test's sticky in the Unsorted pile, which opens Unsorted.
+  // Sent up to the Sky (its menu), the same sticky is set down freely; Notes still finds it in Unsorted.
   await here.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Send up to the Sky' }).click()
+  await page.locator('.board-sticky', { hasText: 'Written right here' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: Send up to the Sky did not set the sticky on the canvas'))
+  await page.locator('.sky-layer').getByRole('button', { name: 'Desk', exact: true }).click()
+  await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 })
   const shelfSticky = page.locator('.home .desk-sticky', { hasText: 'Smoke test thought' })
   if (await shelfSticky.count()) {
     await shelfSticky.click({ button: 'right' })
     await page.getByRole('menuitem', { name: 'Send up to the Sky' }).click()
+    await page.locator('.sky-layer').getByRole('button', { name: 'Desk', exact: true }).click()
+    await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 })
   }
   await page.getByRole('button', { name: /^Unsorted, / }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
