@@ -21,6 +21,8 @@ export function installSearchBridge() {
     onSettings: () => () => {},
     onShown: (listener) => { window.__shown = listener; return () => {} },
     onEscape: () => () => {},
+    // The desk hears of a new copy; a test calls window.__copied({ id, kind, at, text }).
+    onCopied: (listener) => { window.__copied = listener; return () => {} },
     files: async (query) => (query ? [files.taxes] : [files.trip]),
     preview: async (root, relative) => (relative.endsWith('.md') ? { text: '# Trip\nLeave Friday\nBring the tent', thumb: null } : { text: null, thumb: picture('f9c6cc', 'Taxes 2025') }),
     apps: async () => [{ name: 'Notes', path: '/Applications/Notes.app' }, { name: 'Spotify', path: '/Applications/Spotify.app' }],

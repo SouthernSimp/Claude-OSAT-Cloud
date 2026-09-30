@@ -48,7 +48,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   view: 'bar',
   sources: Object.fromEntries(SOURCES.map((source) => [source.id, { on: true, keyword: source.keyword, hotkey: hyper(source.letter) }])),
   keywords: DEFAULT_KEYWORDS,
-  clipboard: { items: 200, days: 30 },
+  clipboard: { items: 200, days: 30, offers: true },
   pins: [],
   // Window snapping and the ring are read by their own modules (later steps of Phase 13).
   windows: { hotkeys: {} },
@@ -92,7 +92,7 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     view: from.view === 'full' ? 'full' : 'bar',
     sources,
     keywords,
-    clipboard: { items: [50, 100, 200, 500].includes(clip.items) ? clip.items : 200, days: [0, 7, 30, 90].includes(clip.days) ? clip.days : 30 },
+    clipboard: { items: [50, 100, 200, 500].includes(clip.items) ? clip.items : 200, days: [0, 7, 30, 90].includes(clip.days) ? clip.days : 30, offers: clip.offers !== false },
     pins,
     windows: { hotkeys: from.windows?.hotkeys && typeof from.windows.hotkeys === 'object' ? Object.fromEntries(Object.entries(from.windows.hotkeys).filter(([id, key]) => /^[a-z-]{2,24}$/.test(id) && (key === null || validHotkey(key))).slice(0, 40)) : {} },
     ring: { on: from.ring?.on !== false, items: Array.isArray(from.ring?.items) ? from.ring.items.filter((id) => typeof id === 'string' && /^[a-z-]{2,24}$/.test(id)).slice(0, 12) : null },

@@ -48,7 +48,7 @@ test('what is saved is read carefully: a bad hotkey, keyword or address falls ba
   assert.equal(settings.sources.apps.keyword, 'a', 'a word already taken falls back to the usual one')
   assert.equal(settings.sources.notes.keyword, 'n')
   assert.deepEqual(settings.keywords.map((item) => [item.keyword, item.app || item.url]), [['ss', 'Music'], ['gh', 'https://github.com/{query}']])
-  assert.deepEqual(settings.clipboard, { items: 200, days: 90 })
+  assert.deepEqual(settings.clipboard, { items: 200, days: 90, offers: true })
   assert.deepEqual(settings.pins, [{ kind: 'file', rootId: 'desktop', relative: 'a.txt', name: 'a.txt', where: '' }])
   assert.equal(clean({ keywords: [] }).keywords.length, 0, 'an empty list stays empty')
   assert.equal(validKeyword('ss'), true)

@@ -4,6 +4,7 @@ import { AppWindow, ArrowsIn, ArrowsOut, Database, Plus, X } from '@phosphor-ico
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
 import { cleanError } from '../assistant/useAi.js'
 import { localDateKey } from '../daily-practice.js'
+import { ClipboardOffer } from '../field/ClipboardOffer.jsx'
 import { FieldDesk } from '../field/FieldDesk.jsx'
 import { FieldSheet } from '../field/FieldSheet.jsx'
 import { onCarryEdge } from '../lib/carry.js'
@@ -499,6 +500,7 @@ export function Desk() {
             <button type="button" onClick={() => { const last = arrived.at(-1); goUp(last.folderId ? { folderId: last.folderId, open: true } : { noteId: last.noteId }) }}>Show me</button>
           </p>
         )}
+      <ClipboardOffer workspace={workspace} commit={commit} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
     </main>
   )

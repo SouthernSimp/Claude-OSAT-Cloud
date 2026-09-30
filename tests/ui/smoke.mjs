@@ -35,6 +35,8 @@ async function main() {
   let room = 'start'
   // The name of the drawer row Return would run.
   const picked = () => page.locator('.home-row[aria-selected="true"] .home-row-label').evaluate((node) => node.firstChild.textContent).catch(() => null)
+  // The Mac app's quick search bridge, so the desk can hear of a copy (the offer to add it to a node).
+  await page.addInitScript(installSearchBridge)
   page.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
   page.on('console', (message) => {
     // The local AI runtime is not running in CI; a refused request is expected.
@@ -175,6 +177,27 @@ async function main() {
   await page.getByRole('button', { name: 'Undo' }).click()
   await habits.waitFor({ timeout: 3000 }).catch(() => problems.push('widgets: Undo did not bring Habits back'))
   await page.mouse.move(720, 700)
+
+  // A copy that looks like a customer's email, for a node that exists (the seeded "Project Direction"), is offered
+  // once, calmly; Add puts it in that node with Undo; Not now lets it go; an address for no node is not offered.
+  room = 'clipboard offer'
+  const copied = (text, id) => page.evaluate(([words, key]) => window.__copied({ id: key, kind: 'email', at: new Date().toISOString(), text: words }), [text, id])
+  await copied('pat@nobody-here.example', 'c-none')
+  await sleep(300)
+  if (await page.locator('.desk-note.is-offer').count()) problems.push('clipboard offer: an address for no node was offered')
+  await copied('ann@project-direction.example', 'c-1')
+  const offerLine = page.locator('.desk-note.is-offer')
+  await offerLine.waitFor({ timeout: 3000 }).catch(() => problems.push('clipboard offer: a copied email for an existing node was not offered'))
+  if (!/Add it to Project Direction\?/.test(await offerLine.innerText().catch(() => ''))) problems.push('clipboard offer: the offer did not name the node')
+  await page.screenshot({ path: `${OUT}/desk-clipboard-offer.png` })
+  await offerLine.getByRole('button', { name: 'Not now' }).click()
+  await offerLine.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('clipboard offer: Not now did not let it go'))
+  await copied('ann@project-direction.example', 'c-2')
+  await offerLine.getByRole('button', { name: 'Add', exact: true }).click()
+  const added = page.locator('.undo-toasts .toast', { hasText: 'Added to Project Direction' })
+  await added.waitFor({ timeout: 3000 }).catch(() => problems.push('clipboard offer: Add did not say it was added'))
+  await added.getByRole('button', { name: 'Undo' }).click()
+  await added.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('clipboard offer: Undo did not clear the toast'))
 
   // Stickies on the desk: a thought saved in the line lands there as a sticky; a double-click
   // writes one where it was clicked.

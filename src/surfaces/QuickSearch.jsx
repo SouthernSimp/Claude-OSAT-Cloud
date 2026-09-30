@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MagnifyingGlass, PushPin } from '@phosphor-icons/react'
 
+import { offerFor } from '../../shared/clipboard-offer.mjs'
 import { KIND_FILTERS } from '../../shared/clipboard-model.mjs'
 import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
 import { FILE_FILTERS, actionsFor, buildRows, readTyped, scopesOn } from '../../shared/quick-search-model.mjs'
@@ -30,6 +31,7 @@ export function QuickSearchSurface() {
   const bridge = window.osatSearch
   const { workspace, commit, ready } = useWorkspace()
   const input = useRef(null)
+  const live = useRef(null)
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [text, setText] = useState('')
   const [scope, setScope] = useState('all')
@@ -54,7 +56,9 @@ export function QuickSearchSurface() {
   )
   const active = Math.min(cursor, Math.max(0, rows.length - 1))
   const row = rows[active] || null
-  const actions = useMemo(() => actionsFor(row, { canAsk: row?.kind === 'file' && canAsk({ kind: 'file', name: row.title }) }), [row])
+  // "Add to Jordan": a copied email or phone number that belongs to a node that already exists.
+  const offer = useMemo(() => (row && ['text', 'email', 'phone'].includes(row.kind) && settings.clipboard.offers !== false ? offerFor(row.data, workspace || {}) : null), [row, settings, workspace])
+  const actions = useMemo(() => actionsFor(row, { offer, canAsk: row?.kind === 'file' && canAsk({ kind: 'file', name: row.title }) }), [row, offer])
   const full = opened === 'full' || text.trim().length > 0 || scope !== 'all' || Boolean(picker)
   const tabs = scopesOn(settings)
 
@@ -109,6 +113,7 @@ export function QuickSearchSurface() {
         case 'copy-path': await bridge.copyPath(d.rootId, d.relative); said('Copied the path'); break
         case 'ask': toOSAT('Assistant', { file: { rootId: d.rootId, relative: d.relative, name: d.name } }); break
         case 'add': setMenu(null); setPicker({ row: target }); break
+        case 'offer': if (live.current.offer) await addTo(target, live.current.offer.folderId); break
         case 'pin':
           if (target.source === 'files') await bridge.pinFile({ rootId: d.rootId, relative: d.relative, kind: target.kind }, !target.pinned)
           else { await bridge.pinClip(d.id, !d.pinned); reloadClipboard() }
@@ -149,11 +154,10 @@ export function QuickSearchSurface() {
     } catch (error) {
       said(cleanError(error), 4000)
     }
-  }, [bridge, said, away, toOSAT, reloadClipboard])
+  }, [bridge, said, away, toOSAT, reloadClipboard, addTo])
 
   /* The keys. One listener that reads the latest state, so nothing is stale. */
-  const live = useRef(null)
-  live.current = { rows, active, row, actions, menu, picker, text, scope, tabs, toast, full }
+  live.current = { rows, active, row, actions, menu, picker, text, scope, tabs, toast, full, offer }
 
   /* Esc backs out one step at a time. */
   const back = useCallback(() => {
@@ -294,7 +298,7 @@ export function QuickSearchSurface() {
                   ))}
                 </ul>
               )}
-            <Preview row={picker ? picker.row : row} bridge={bridge} workspace={workspace} now={new Date()} />
+            <Preview row={picker ? picker.row : row} bridge={bridge} workspace={workspace} offer={picker ? null : offer} now={new Date()} />
             {menu && row && (
               <div className="qs-actions" role="menu" aria-label="Actions">
                 {actions.map((action, index) => (

@@ -77,6 +77,8 @@ html:has(.quick-search) body { background: transparent; }
 .qs-stickies { list-style: none; width: 100%; margin: 0; padding: 12px 16px; display: grid; gap: 6px; align-self: start; font-size: var(--t-sm); color: var(--ink); }
 .qs-stickies li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qs-facts h2 { margin: 0 0 8px; font: 650 var(--t-lg)/1.25 var(--font); overflow-wrap: anywhere; color: var(--ink-strong); }
+.qs-offer { margin: 10px 0 0; font-size: var(--t-xs); line-height: 1.5; color: var(--muted); }
+.qs-offer kbd { padding: 1px 5px; border-radius: 5px; color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .qs-details { display: grid; gap: 4px; margin: 0; font-size: var(--t-xs); }
 .qs-details div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; }
 .qs-details dt { color: var(--faint); }
@@ -88,6 +90,13 @@ html:has(.quick-search) body { background: transparent; }
 .qs-keys kbd { padding: 2px 6px; border-radius: 6px; color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .qs-toast button { margin-left: 10px; padding: 3px 10px; border-radius: var(--r-full); font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
 .qs-wait { color: var(--faint); }
+
+/* "Add to Jordan?" on the desk: one calm line above the dock, above a note or a toast that may share the spot. */
+.desk-note.is-offer { display: flex; align-items: center; gap: 10px; bottom: 148px; padding-right: 6px; pointer-events: auto; }
+.desk-note.is-offer button { height: 26px; padding: 0 12px; border-radius: var(--r-full); font-size: var(--t-xs); font-weight: 650; color: var(--accent-ink); background: var(--accent); }
+.desk-note.is-offer button:hover { background: var(--accent-hover); }
+.desk-note.is-offer .is-quiet { color: var(--muted); background: transparent; font-weight: 560; }
+.desk-note.is-offer .is-quiet:hover { color: var(--ink); background: var(--surface-hover); }
 
 /* ⌘K: every other action for the picked row. Solid, because it sits over the preview. */
 .qs-actions { position: absolute; z-index: 5; right: 14px; bottom: 10px; width: 280px; padding: 6px; border-radius: 14px; color: var(--ink); background: var(--surface-solid); box-shadow: 0 0 0 0.5px var(--line-strong), 0 22px 50px -20px rgb(0 0 0 / 55%); }

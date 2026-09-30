@@ -8,7 +8,7 @@ const COPIED_WORDS = new Set(['text', 'link', 'email', 'phone', 'number'])
 /* The big preview beside the results: the file (the words of a text file, or the page Quick Look draws),
    the copied picture or text, the app's icon, the note; and, under it, the details: where, what kind, how
    big; for a copy, which app it came from and when. Whatever is loading shows what the list already knew. */
-export function Preview({ row, bridge, workspace, now }) {
+export function Preview({ row, bridge, workspace, offer = null, now }) {
   const [loaded, setLoaded] = useState({ key: null })
   useEffect(() => {
     if (!row || !bridge) return undefined
@@ -48,6 +48,7 @@ export function Preview({ row, bridge, workspace, now }) {
             {details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
           </dl>
         )}
+        {offer && <p className="qs-offer">This looks like {offer.folderName}’s. <kbd>⇧⌘N</kbd> adds it to {offer.folderName}.</p>}
       </footer>
     </section>
   )
