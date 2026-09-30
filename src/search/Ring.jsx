@@ -17,7 +17,7 @@ export function Ring({ items, onPick, onClose }) {
       if (event.metaKey || event.ctrlKey || event.altKey) return
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); return }
       const item = items[Number(event.key) - 1]
-      if (item) { event.preventDefault(); onPick(item) }
+      if (item) { event.preventDefault(); event.stopPropagation(); onPick(item) }
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)

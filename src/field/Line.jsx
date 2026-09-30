@@ -155,7 +155,8 @@ export function Line({
       middle.style.setProperty('--rise', `${form.offsetTop}px`)
       // The room under the line down to the dock, so a long drawer scrolls rather than slip under it.
       const dock = middle.parentElement.querySelector(':scope > .dock')
-      const floor = dock ? dock.offsetTop - middle.offsetTop : middle.clientHeight
+      // Only a dock at the foot of the desk takes room from the drawer; on a side edge it has the whole height.
+      const floor = dock && dock.dataset.side !== 'left' && dock.dataset.side !== 'right' ? dock.offsetTop - middle.offsetTop : middle.clientHeight
       middle.style.setProperty('--below', `${floor - form.offsetTop - form.firstElementChild.offsetHeight}px`)
       const key = JSON.stringify(rest)
       if (key === lastLine.current) return

@@ -30,6 +30,7 @@ import { PileView } from '../views/Pile.jsx'
 import { RoadmapView } from '../views/Roadmap.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
+import { DOCK_KEY, cleanSide, fullBox } from './dock-model.js'
 import { covers, grow, placeRoom } from './placement.js'
 import { Dock } from './Shell.jsx'
 import { Welcome } from './Welcome.jsx'
@@ -103,6 +104,8 @@ export function Desk() {
   // Offline, as main says it is ({ on, terminal }). The preview has no main: the look only.
   const [offline, setOffline] = useState({ on: false })
   const [notice, setNotice] = useState('')
+  // The dock: at the bottom, or on the left or right edge; kept on this Mac (a convenience, like the icon size).
+  const [dockSide, setDockSideState] = useState(() => { try { return cleanSide(localStorage.getItem(DOCK_KEY)) } catch { return 'bottom' } })
   // The ring (⌘ + middle-click): where it is open, if it is, and which tools (Settings → Launcher).
   const [ring, setRing] = useState(null)
   const [ringTools, setRingTools] = useState(DEFAULT_SETTINGS.ring)
@@ -329,7 +332,7 @@ export function Desk() {
       if (existing) return [...list.filter((pop) => pop !== existing), { ...existing, detail, at: Date.now(), closing: false }]
       const { line } = latest.current
       const prefer = widget && line && from ? (from.left + from.width / 2 < (line.left + line.right) / 2 ? 'left' : 'right') : undefined
-      const spot = placeRoom({ width: innerWidth, height: innerHeight }, ROOMS[view], line, list.filter((pop) => !pop.closing), { prefer })
+      const spot = placeRoom({ width: innerWidth, height: innerHeight }, ROOMS[view], line, list.filter((pop) => !pop.closing), { prefer, dock: latest.current.dockSide })
       return [...list, { key, view, detail, at: Date.now(), ...spot, from, widget }]
     })
   }
@@ -382,7 +385,7 @@ export function Desk() {
     else if (view === 'Today') { if (latest.current.sky === 'sky') goDown(); else setVisit((value) => value + 1) }
     else if (ROOMS[view]) open(view, detail, origin)
   }
-  latest.current = { navigate, pops, welcome, line, offline: on, sky, step, ringOn: ringTools.on !== false }
+  latest.current = { navigate, pops, welcome, line, offline: on, sky, step, ringOn: ringTools.on !== false, dockSide }
 
   async function launcher(action, ...args) {
     try {
@@ -391,6 +394,11 @@ export function Desk() {
     } catch {
       // The app may have moved; the dock simply stays as it was.
     }
+  }
+
+  function setDockSide(side) {
+    setDockSideState(side)
+    try { localStorage.setItem(DOCK_KEY, side) } catch { /* a convenience only */ }
   }
 
   /* Set down right away (null picks it up); the Mac app keeps the spot for next time. */
@@ -462,6 +470,7 @@ export function Desk() {
           raised={shown.some((pop) => covers(pop, line))}
           onLine={setLine}
           onNote={setNotice}
+          dockSide={dockSide}
           widgets={{
             list: prefs.widgets,
             onList: setWidgets,
@@ -476,6 +485,8 @@ export function Desk() {
               navigate={navigate}
               onSendUp={(noteId) => { if (prefs.places?.[`note:${noteId}`]) place(`note:${noteId}`, null); goUp() }}
               storage={storage}
+              side={dockSide}
+              onSide={setDockSide}
             >
               {bridge && (
                 <>
@@ -517,6 +528,7 @@ export function Desk() {
             pop={pop}
             z={index + 1}
             top={pop.key === top?.key}
+            dock={dockSide}
             title={pop.view === 'note' ? workspace.notes.find((note) => note.id === pop.detail.noteId)?.title || 'Note' : titleFor(pop.view)}
             onRaise={() => raise(pop.key)}
             onClose={() => close(pop.key)}
@@ -592,7 +604,7 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
 
 /* A floating window on the desk: drag it by its bar, resize it from the corner. It grows
    out of where it was opened from (`pop.from`) and, closing, shrinks into its widget. */
-function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, children }) {
+function PopOut({ pop, z, top, dock, title, onRaise, onClose, onGone, onChange, children }) {
   const node = useRef(null)
   const drag = useRef(null)
   const changeRef = useRef(onChange)
@@ -627,7 +639,7 @@ function PopOut({ pop, z, top, title, onRaise, onClose, onGone, onChange, childr
     <section
       ref={node}
       className={`popout ${top ? 'is-top' : ''} ${pop.from ? 'is-grown' : ''} ${pop.closing ? 'is-closing' : ''} ${pop.full ? 'is-full' : ''}`}
-      style={pop.full ? { left: 12, top: 12, width: innerWidth - 24, height: innerHeight - 108, zIndex: z } : { left: pop.x, top: pop.y, width: pop.w, height: pop.h, zIndex: z }}
+      style={pop.full ? { ...fullBox({ width: innerWidth, height: innerHeight }, dock), zIndex: z } : { left: pop.x, top: pop.y, width: pop.w, height: pop.h, zIndex: z }}
       role="dialog"
       aria-label={title}
       onPointerDownCapture={onRaise}

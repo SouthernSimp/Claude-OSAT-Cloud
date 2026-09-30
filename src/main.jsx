@@ -16,6 +16,7 @@ import "./styles/overlay.css";
 import "./styles/sky.css";
 import "./styles/glass.css";
 import "./styles/search.css";
+import "./styles/dock.css";
 
 // The Mac app draws its own title bar: leave room for the window buttons.
 if (window.osatApp) document.documentElement.classList.add("is-mac-app");

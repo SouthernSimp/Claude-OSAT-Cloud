@@ -3,18 +3,21 @@
    room (and fewer rooms already on it) wins; each new room on a side steps down a little.
    A room that can't keep most of its size beside the line opens in the middle, under the
    band the line rises into (`raised` in Desk.jsx lifts it there). A room opened from a
-   widget `prefer`s the widget's side ('left' or 'right'): that side, or else the middle. */
+   widget `prefer`s the widget's side ('left' or 'right'): that side, or else the middle. The dock (`dock`: 'bottom' by
+   default, or 'left' or 'right') keeps its strip clear. */
 
 const EDGE = 16
 const DOCK = 96 // the dock's band at the foot of the desk
 const RAISED = 170 // the band at the top the line rises into
 const STEP = 28
 
-export function placeRoom(view, [w, h], line, pops = [], { prefer } = {}) {
-  const bottom = view.height - DOCK
+export function placeRoom(view, [w, h], line, pops = [], { prefer, dock = 'bottom' } = {}) {
+  const bottom = view.height - (dock === 'bottom' ? DOCK : EDGE)
+  const from = dock === 'left' ? DOCK : EDGE
+  const to = view.width - (dock === 'right' ? DOCK : EDGE)
   const sides = line ? [
-    { name: 'right', left: line.right + EDGE, right: view.width - EDGE },
-    { name: 'left', left: EDGE, right: line.left - EDGE },
+    { name: 'right', left: line.right + EDGE, right: to },
+    { name: 'left', left: from, right: line.left - EDGE },
   ] : []
   const fits = sides
     .filter((side) => !prefer || side.name === prefer)
@@ -33,13 +36,13 @@ export function placeRoom(view, [w, h], line, pops = [], { prefer } = {}) {
       y: Math.round(Math.min(EDGE + Math.max(0, (bottom - EDGE - height) / 2) + step, bottom - height)),
     }
   }
-  const width = Math.min(w, view.width - EDGE * 4)
+  const width = Math.min(w, to - from - EDGE * 2)
   const height = Math.min(h, bottom - RAISED)
   const step = (pops.length * STEP) % 140
   return {
     w: width,
     h: height,
-    x: Math.round(Math.min((view.width - width) / 2 + step, view.width - width - EDGE)),
+    x: Math.round(Math.min((from + to - width) / 2 + step, to - width)),
     y: Math.round(Math.min(RAISED + step, bottom - height)),
   }
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { DOCK_BAND, cleanSide, deskArea, fullBox, nearestSide } from '../src/shell/dock-model.js'
 import { covers, placeRoom, shrinkTo } from '../src/shell/placement.js'
 
 const wide = { width: 3440, height: 1410 }
@@ -74,4 +75,45 @@ test('a room from a widget opens on the widget\'s side when it fits, else in the
 
 test('a room grows out of the rectangle it came from', () => {
   assert.equal(shrinkTo({ left: 30, top: 40, width: 300, height: 150 }, { left: 530, top: 240, width: 1200, height: 600 }), 'translate(-500px, -200px) scale(0.25, 0.25)')
+})
+
+test('with the dock on a side, rooms leave that strip clear, and the bottom is theirs again', () => {
+  for (const view of [wide, laptop, { width: 1280, height: 720 }]) {
+    for (const side of ['left', 'right']) {
+      let pops = []
+      for (let index = 0; index < 8; index += 1) {
+        const spot = placeRoom(view, [1120, 760], lineOn(view), pops, { dock: side })
+        assert.ok(spot.y >= 0 && spot.y + spot.h <= view.height - 16, `y with the dock on the ${side} of ${view.width}`)
+        if (side === 'left') assert.ok(spot.x >= DOCK_BAND && spot.x + spot.w <= view.width, `clear of the left dock on ${view.width}`)
+        else assert.ok(spot.x >= 0 && spot.x + spot.w <= view.width - DOCK_BAND, `clear of the right dock on ${view.width}`)
+        pops = [...pops, spot]
+      }
+    }
+  }
+  const low = placeRoom(laptop, [1100, 720], lineOn(laptop), [], { dock: 'left' })
+  assert.ok(low.y + low.h > laptop.height - DOCK_BAND, 'nothing keeps a room off the foot of the desk with the dock at the side')
+  const same = placeRoom(laptop, [1100, 720], lineOn(laptop))
+  assert.deepEqual(placeRoom(laptop, [1100, 720], lineOn(laptop), [], { dock: 'bottom' }), same, 'bottom is the usual')
+})
+
+test('the dock goes to the nearest edge: bottom, left or right; and a saved side is only ever one of those', () => {
+  const view = { width: 1440, height: 900 }
+  assert.equal(nearestSide({ x: 720, y: 850 }, view), 'bottom')
+  assert.equal(nearestSide({ x: 300, y: 880 }, view), 'bottom')
+  assert.equal(nearestSide({ x: 30, y: 400 }, view), 'left')
+  assert.equal(nearestSide({ x: 1420, y: 300 }, view), 'right')
+  assert.equal(nearestSide({ x: 720, y: 100 }, view), 'bottom', 'far from every side edge (the top is not one for the dock): back to the bottom')
+  assert.equal(nearestSide({ x: 1000, y: 100 }, view), 'right', 'nearer a side than the bottom')
+  assert.deepEqual(['left', 'right', 'bottom', 'top', '', null, 'sideways'].map(cleanSide), ['left', 'right', 'bottom', 'bottom', 'bottom', 'bottom', 'bottom'])
+})
+
+test('a room that fills the screen, and the stickies\' area, leave the dock\'s strip clear', () => {
+  const view = { width: 1440, height: 900 }
+  assert.deepEqual(fullBox(view), { left: 12, top: 12, width: 1416, height: 792 }, 'the same as before the dock could move')
+  assert.deepEqual(fullBox(view, 'left'), { left: 96, top: 12, width: 1332, height: 876 })
+  assert.deepEqual(fullBox(view, 'right'), { left: 12, top: 12, width: 1332, height: 876 })
+  const box = { left: 0, top: 0, right: 1440, bottom: 900 }
+  assert.deepEqual(deskArea(box), { left: 12, top: 12, right: 1428, bottom: 804 })
+  assert.deepEqual(deskArea(box, 'left'), { left: 96, top: 12, right: 1428, bottom: 888 })
+  assert.deepEqual(deskArea(box, 'right'), { left: 12, top: 12, right: 1344, bottom: 888 })
 })

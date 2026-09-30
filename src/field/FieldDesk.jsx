@@ -15,6 +15,7 @@ import { NameField } from '../sky/Piles.jsx'
 import { FileThumb, filesBridge, openEntry, useFolder, useFreshness } from '../views/Files.jsx'
 import { GRID, STICKY, StickyLayer, spotOn, useStickySurface } from './DeskStickies.jsx'
 import { useReducedMotion } from './FieldChrome.jsx'
+import { deskArea } from '../shell/dock-model.js'
 import { dayPhase, fitCells, freeSpot, homeItems, paperFields, phaseCopy } from './field-model.js'
 import { Line } from './Line.jsx'
 import { Widgets } from './Widgets.jsx'
@@ -40,7 +41,7 @@ const keep = (key, value) => { try { localStorage.setItem(key, value) } catch { 
 export function FieldDesk({
   workspace, commit, navigate,
   storage, focusAt, summon, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
-  raised = false, onLine, widgets, offline, onOffline, onNote,
+  raised = false, onLine, widgets, offline, onOffline, onNote, dockSide = 'bottom',
 }) {
   const home = useRef(null)
   const justMoved = useRef(false)
@@ -174,7 +175,7 @@ export function FieldDesk({
     const { box, taken } = deskBoxes()
     const line = home.current.querySelector('.home-composer-wrap')?.getBoundingClientRect()
     const near = line ? { x: line.left + line.width / 2 - STICKY.w / 2, y: line.bottom + 28 } : { x: box.left + box.width / 2, y: box.top + box.height / 2 }
-    const spot = freeSpot(taken, { left: box.left + 12, top: box.top + 12, right: box.right - 12, bottom: box.bottom - 96 }, { width: STICKY.w, height: STICKY.h }, near, GRID * 2)
+    const spot = freeSpot(taken, deskArea(box, dockSide), { width: STICKY.w, height: STICKY.h }, near, GRID * 2)
     onPlace(`note:${noteId}`, spotOn(box, spot.x, spot.y, null))
   }
 
@@ -229,7 +230,7 @@ export function FieldDesk({
       .map((element) => element.getBoundingClientRect())
       .filter((rect) => rect.width && rect.height)
     const line = home.current.querySelector('.home-composer-wrap')?.getBoundingClientRect()
-    const area = { left: box.left + 12, top: box.top + 12, right: box.right - 12, bottom: box.bottom - 96 }
+    const area = deskArea(box, dockSide)
     const near = line ? { x: line.left, y: line.bottom + 28 } : { x: area.left, y: area.top }
     const done = []
     ;[...stickies].sort((a, b) => a.spot.y - b.spot.y || a.spot.x - b.spot.x).forEach(({ note, spot }) => {
@@ -378,6 +379,7 @@ export function FieldDesk({
       ref={home}
       className={`home is-layer ${arrived ? '' : 'is-arriving'} ${collapsed ? 'icons-collapsed' : ''} ${raised ? 'is-raised' : ''}`}
       data-phase={phase}
+      data-dock={dockSide}
       {...surface}
       onDoubleClick={(event) => {
         if (!bareDesk(event.target)) return
