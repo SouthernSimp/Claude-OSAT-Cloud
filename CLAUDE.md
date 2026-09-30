@@ -23,7 +23,7 @@ The isolated browser preview is `http://127.0.0.1:5240/`; the installed app was 
 Next: connectors, selection/bundling, focused node editing, then contextual AI and
 navigation polish. Phase 27 is unfinished; use the roadmap and the implementation notes below.
 
-Phase 14 step one (the Mac's Calendar and Reminders) is on `claude/phase-14-calendar-reminders`, draft PR: see the PR list.
+Phase 14 step one (the Mac's Calendar and Reminders) is on `claude/phase-14-calendar-reminders`, [draft PR #36](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/36).
 
 ## Working with Nate
 
