@@ -30,6 +30,9 @@ export function normalizeFolders(value) {
       ...(PAPERS.includes(folder.color) ? { color: folder.color } : {}),
       ...(Array.isArray(folder.links) && folder.links.length ? { links: [...new Set(folder.links.filter((id) => typeof id === 'string' && id))].slice(0, 50) } : {}),
       ...(folder.layout === 'down' ? { layout: 'down' } : {}),
+      // A branch set down on the Sky on its own keeps being a branch (schema 8). Inside a
+      // node it is a branch anyway, so the mark only stays on a top-level one (below).
+      ...(folder.kind === 'branch' ? { kind: 'branch' } : {}),
       ...(Number.isFinite(folder.at?.x) && Number.isFinite(folder.at?.y) ? { at: { x: clamp(folder.at.x), y: clamp(folder.at.y) } } : {}),
       // A node that arrived from outside (schema 6): only a summary so far (packed), New
       // until it is first opened (fresh), and where it came from (a bot, a file, a scan).
@@ -54,8 +57,13 @@ export function normalizeFolders(value) {
       cursor = byId.get(cursor)?.parentId || null
     }
   })
+  folders.forEach((folder) => { if (folder.parentId) delete folder.kind })
   return folders
 }
+
+/* A branch is inside another folder, or set down on the Sky on its own; a node is a
+   top-level folder that was never marked as a branch. */
+export const isBranch = (folder) => Boolean(folder?.parentId) || folder?.kind === 'branch'
 
 export function createFolder(name, parentId = null) {
   const cleanName = clean(name).trim().slice(0, 80)

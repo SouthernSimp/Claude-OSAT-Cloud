@@ -72,13 +72,18 @@ export function moveSticky(state, noteId, folderId = null, index = Infinity) {
 }
 
 /* Moves a folder among its siblings, or under another folder (a node dropped on another
-   node becomes one of its branches; a branch dropped between nodes becomes a node). */
-export function moveFolder(state, folderId, parentId = null, index = Infinity) {
+   node becomes one of its branches; a branch taken out to the top becomes a node, or, when
+   `loose`, stays a branch set down on the Sky on its own). */
+export function moveFolder(state, folderId, parentId = null, index = Infinity, { loose = false } = {}) {
   if (!folderExists(state, folderId)) return state
   const parent = folderExists(state, parentId) ? parentId : null
   if (!canMoveFolder(state.folders, folderId, parent)) return state
   const { rank, renumber } = rankAt(folderChildren(state.folders, parent).filter((item) => item.id !== folderId), index)
-  const folders = withRanks(state.folders, renumber).map((item) => (item.id === folderId ? { ...item, parentId: parent, rank } : item))
+  const folders = withRanks(state.folders, renumber).map((item) => {
+    if (item.id !== folderId) return item
+    const { kind, ...rest } = item
+    return { ...rest, parentId: parent, rank, ...(loose && !parent ? { kind: 'branch' } : {}) }
+  })
   return { ...state, folders }
 }
 

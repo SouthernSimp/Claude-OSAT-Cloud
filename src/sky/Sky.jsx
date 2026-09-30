@@ -7,18 +7,19 @@ import { useCarrying, useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { PAPERS } from '../note-core.js'
-import { folderChildren, folderPath, folderSubtree, isActiveNote, purgeNotes, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
+import { folderChildren, folderPath, folderSubtree, isActiveNote, isBranch, purgeNotes, restoreNotes, searchNotes, trashNotes } from '../notes-model.js'
 import {
   addAskedEvent, addFolder, addSticky, importNode, markOpened, markUnpacked, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, removeFolder, renameFolder,
   skipAsk, splitMentions, suggestionGroups, tidyBoard, unpackInto,
 } from '../nodes-model.js'
 import { isPacked, readNodeFile } from '../../shared/node-file.mjs'
-import { readSortAnswer, readUnpackAnswer, sortMessages, unpackMessages } from '../../shared/ai-tasks.mjs'
+import { readSortAnswer, readUnpackAnswer, readWhereAnswer, sortMessages, unpackMessages, whereMessages } from '../../shared/ai-tasks.mjs'
 import { answeringLabel, askModel } from '../assistant/ask-model.js'
 import { cleanError, useAi } from '../assistant/useAi.js'
 import { seedDirection } from '../project-direction.js'
 import { Board } from './Board.jsx'
 import { SkyAsk } from './SkyAsk.jsx'
+import { branchWords, wherePlaces } from './where.js'
 
 const OPEN_KEY = 'osat.sky.open.v1'
 function readOpen() {
@@ -48,7 +49,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   const [sorting, setSorting] = useState(null)
   const [renaming, setRenaming] = useState(null)
   const [unpacking, setUnpacking] = useState(null)
+  // Where does this belong?: { id, asking } while it thinks, then { id, place: { folderId, name, why } } or { id, line }.
+  const [placing, setPlacing] = useState(null)
   const sortAsk = useRef(null)
+  const placeAsk = useRef(null)
   // The model chosen in Settings → Bots (or the AI on this Mac) does Unpack with AI and
   // helps Help me sort; with none, both work by hand and by matching words.
   const { models } = useAi()
@@ -90,6 +94,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       if (guide) { endGuide(); return true }
       if (query) { setQuery(''); return true }
       if (asking) { setAsking(false); return true }
+      if (placing) { placeAsk.current = null; setPlacing(null); return true }
       return Boolean(board.current?.back())
     },
   }))
@@ -139,9 +144,45 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       unsuggest([noteId])
       if (folderId) onFiled?.(noteId)
     },
-    moveFolder(id, parentId, index) {
-      commit((state) => moveFolder(state, id, parentId, index))
+    moveFolder(id, parentId, index, options) {
+      commit((state) => moveFolder(state, id, parentId, index, options))
     },
+    /* Where does this belong?: the model reads the branch and picks one place with a reason.
+       Nothing moves until Move; Undo puts the branch back where it was. */
+    placing,
+    askWhere: answering ? async (folder) => {
+      const state = latest.current
+      const places = wherePlaces(state, folder.id)
+      const token = {}
+      placeAsk.current = token
+      board.current?.goTo({ folderId: folder.id })
+      if (!places.length) { setPlacing({ id: folder.id, line: 'There’s nowhere else to put it yet.' }); return }
+      setPlacing({ id: folder.id, asking: `Asking ${answering}…` })
+      try {
+        const answer = await askModel(whereMessages({ branch: folder.name, peek: branchWords(state, folder.id), places }))
+        if (placeAsk.current !== token) return
+        const pick = readWhereAnswer(answer, places.map((place) => place.name))
+        setPlacing(pick
+          ? { id: folder.id, place: { folderId: places[pick.place].id, name: places[pick.place].name, why: pick.why } }
+          : { id: folder.id, line: 'Nothing looks like a clear fit yet.' })
+      } catch (error) {
+        if (placeAsk.current === token) setPlacing({ id: folder.id, line: cleanError(error) })
+      }
+    } : null,
+    acceptPlace() {
+      const { id, place } = placing || {}
+      const state = latest.current
+      const folder = state.folders.find((item) => item.id === id)
+      const home = state.folders.find((item) => item.id === place?.folderId)
+      // The notes may have changed while the model was thinking.
+      if (!folder || !home || folderSubtree(state.folders, id).has(home.id)) { setPlacing({ id, line: 'That changed while the AI was thinking. Ask again.' }); return }
+      placeAsk.current = null
+      setPlacing(null)
+      commit((current) => moveFolder(current, id, home.id))
+      board.current?.goTo({ folderId: home.id })
+      showUndo(`Moved “${folder.name}” into ${place.name}`, () => commit((current) => ({ ...current, folders: current.folders.map((item) => (item.id === id ? folder : item)) })))
+    },
+    dismissPlace() { placeAsk.current = null; setPlacing(null) },
     addNode(name) {
       let made
       commit((state) => { const result = addFolder(state, name); made = result.folder; return result.state })
@@ -219,12 +260,14 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       const before = latest.current
       const moved = new Set(before.notes.filter((note) => folderSubtree(before.folders, folder.id).has(note.folderId)).map((note) => note.id))
       commit((state) => removeFolder(state, folder.id))
-      showUndo(`Deleted ${folder.parentId ? 'branch' : 'node'} “${folder.name}”. ${folder.parentId ? 'Its stickies moved up a level.' : 'Its stickies are in Unsorted.'}`, () => commit((state) => {
+      showUndo(`Deleted ${isBranch(folder) ? 'branch' : 'node'} “${folder.name}”. ${folder.parentId ? 'Its stickies moved up a level.' : 'Its stickies are in Unsorted.'}`, () => commit((state) => {
         const old = new Map(before.notes.filter((note) => moved.has(note.id)).map((note) => [note.id, note]))
         return { ...state, folders: before.folders, notes: state.notes.map((note) => (old.has(note.id) ? { ...note, folderId: old.get(note.id).folderId, unsorted: old.get(note.id).unsorted, rank: old.get(note.id).rank } : note)) }
       }))
     },
     nodeMenu(event, folder) {
+      // A branch set down on the Sky on its own has a branch's menu.
+      if (isBranch(folder)) return actions.branchMenu(event, folder)
       const others = nodesList.filter((item) => item.folder.id !== folder.id)
       openMenu(event, [
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(folder.id) },
@@ -257,8 +300,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(branch.id) },
         { label: 'New branch inside', icon: Plus, onSelect: () => actions.startBranch(branch.id) },
         { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: branch.color || 'bone', onPick: (paper) => actions.paint(branch.id, paper) }] },
+        actions.askWhere ? { label: 'Where does this belong?', icon: Sparkle, onSelect: () => actions.askWhere(branch) } : null,
         {
           label: 'Move to', icon: ShareNetwork, items: [
+            ...(branch.parentId ? [{ label: 'On the Sky, as a branch', onSelect: () => actions.moveFolder(branch.id, null, Infinity, { loose: true }) }] : []),
             { label: 'Its own node', onSelect: () => actions.moveFolder(branch.id, null) },
             ...nodesList.filter(({ folder }) => !folderSubtree(workspace.folders, branch.id).has(folder.id) && folder.id !== branch.parentId).map(({ folder }) => ({ label: folder.name, onSelect: () => actions.moveFolder(branch.id, folder.id) })),
           ],

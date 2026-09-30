@@ -135,7 +135,7 @@ test('schema 7: arrival fields are kept on folders, bad ones dropped; nothing el
   assert.equal(fromOf({ source: '  ' }), null)
   const old = { ...createEmptyDoc(), schema: 6, rev: 2, folders: [{ id: 'x', name: 'X' }] }
   assert.deepEqual(migrate(old), { ...old, schema: SCHEMA })
-  assert.equal(SCHEMA, 7)
+  assert.equal(SCHEMA, 8)
 })
 
 test('opening a New node clears New; a branch or Unpack clears packed; nothing else moves', () => {
