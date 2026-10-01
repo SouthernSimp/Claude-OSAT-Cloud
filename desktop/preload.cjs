@@ -253,6 +253,7 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   revealApp: search('reveal-app'),
   openLink: search('open-link'),
   snap: search('snap'),
+  emoji: search('emoji'),
   // The desk's own ring (⌘ + middle-click) opens the quick search over it, on a tab.
   show: search('show'),
   hide: search('hide'),

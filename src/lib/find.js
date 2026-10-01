@@ -12,6 +12,7 @@ const PLACE = { desktop: 'Desktop', documents: 'Documents', downloads: 'Download
 
 // Other words each action answers to, so ⌘K finds it the way Nate would say it.
 const ACTIONS = [
+  { key: 'act:tidy-desktop', label: 'Tidy my Desktop', hint: 'Review a plan before moving files', also: 'clean organize files', go: ['Files', { rootId: 'desktop', tidy: true }] },
   { key: 'act:new-note', label: 'New note', also: 'write page', go: ['Notes', { action: 'new' }] },
   { key: 'act:today', label: 'Today’s note', also: 'journal day page', go: ['Notes', { action: 'today' }] },
   { key: 'act:new-folder', label: 'New node', also: 'folder group pile project', go: ['Mindmap', { action: 'new-node' }] },

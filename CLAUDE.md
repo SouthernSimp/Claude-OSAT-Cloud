@@ -10,21 +10,22 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — September 30, 2026
 
-Continue from `codex/phase-27-free-stickies` in
-`SouthernSimp/Claude-OSAT-Cloud` ([draft PR #32](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/32)).
-The local source is `/Users/nate/Desktop/OSAT Field copy`. Fetch and check out that branch
-before continuing; older Phase 27 branches do not include this work. PR #32 is stacked on
-#30, which depends on #29; all remain in review, awaiting Nate's merge instruction.
+Continue from `codex/finish-claude-osat` in `SouthernSimp/Claude-OSAT-Cloud`.
+The active Claude source is `/Users/nate/Desktop/OSAT Field copy`; the separate
+`Desktop/Projects/OSAT V2` copy is not this repository. Original worktrees and local edits
+were preserved before consolidation, with recovery refs under `recovery/2026-09-30/`.
 
-Completed: free Sky stickies, saved positions (schema 9), Find/Fit, keyboard movement,
-Desk-to-Sky placement and Undo. Implementation commit `025cd5a` passed 308 unit checks,
-the build, browser and isolated native tests, and GitHub's Mac build/launch/AI checks.
-The isolated browser preview is `http://127.0.0.1:5240/`; the installed app was not updated.
-Next: connectors, selection/bundling, focused node editing, then contextual AI and
-navigation polish. Phase 27 is unfinished; use the roadmap and the implementation notes below.
+Combined: PR #34 connectors, desk stacks and focused mind map; its uncommitted first-run
+tour; uncommitted Raycast-style Settings and Phase 13b; PR #35 Desktop tidy; PR #36
+Mac Calendar and Reminders. Finished the top Sky entry, all-tools menu, native emoji picker,
+Desktop shelf/Find tidy entries and Mac privacy usage strings. Quick search cancels pending
+copy-dismiss timers when someone keeps using it. Native calendar writes report failed saves.
+Nate explicitly authorized finishing and merging. Earlier PRs #29, #30, #32 and #33 are merged.
 
-Phase 14 step one (the Mac's Calendar and Reminders) is on `claude/phase-14-calendar-reminders`, draft PR #36.
-Phase 21b (Tidy my Desktop, in the Files room) is on `claude/phase-21b-tidy-desktop`, draft PR #35.
+Paused Projects, tags/date words and Stratosphere prototypes remain separately preserved;
+they are not part of this continuation. Later Phase 27 combine/split operations, “Make a folder
+for this node”, and the remaining Mail/Messages connectors remain future roadmap work.
+
 
 
 ## Working with Nate

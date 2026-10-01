@@ -163,3 +163,12 @@ test('window layouts: a tab of their own, and "left half" finds one from Everyth
   assert.equal(actionsFor(every.at(-1))[0].label, 'Put the window back')
   assert.deepEqual(detailsFor(all[0]), [['Moves', 'the window you were in'], ['Key', '⌃⌥Left']])
 })
+
+ test('emoji and symbols use the native picker without replacing search scopes', () => {
+  for (const word of ['emoji', 'symbols']) {
+    const row = buildRows(readTyped(word, settings), {}, settings)[0]
+    assert.equal(row.kind, 'emoji')
+    assert.equal(actionsFor(row)[0].id, 'emoji')
+  }
+  assert.equal(buildRows(readTyped('emoji', settings, 'files'), {}, settings).some((row) => row.kind === 'emoji'), false)
+})

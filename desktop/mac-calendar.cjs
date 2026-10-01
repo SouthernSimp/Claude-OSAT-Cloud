@@ -77,7 +77,7 @@ function run(argv) {
     }
     if (cmd === "remove-event") {
       const e = store.eventWithIdentifier(a.id)
-      if (e && !e.isNil()) store.removeEventSpanCommitError(e, 0, true, null)
+      if (e && !e.isNil() && !store.removeEventSpanCommitError(e, 0, true, null)) return JSON.stringify({ error: "notSaved" })
       return JSON.stringify({ ok: true })
     }
     if (cmd === "reminders") {
@@ -111,8 +111,8 @@ function run(argv) {
     if (cmd === "set-reminder-done" || cmd === "remove-reminder") {
       const r = store.calendarItemWithIdentifier(a.id)
       if (!r || r.isNil()) return JSON.stringify({ error: "gone" })
-      if (cmd === "remove-reminder") store.removeReminderCommitError(r, true, null)
-      else { r.completed = a.done === true; store.saveReminderCommitError(r, true, null) }
+      if (cmd === "remove-reminder") { if (!store.removeReminderCommitError(r, true, null)) return JSON.stringify({ error: "notSaved" }) }
+      else { r.completed = a.done === true; if (!store.saveReminderCommitError(r, true, null)) return JSON.stringify({ error: "notSaved" }) }
       return JSON.stringify({ ok: true })
     }
     return JSON.stringify({ error: "unknown" })

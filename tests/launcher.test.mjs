@@ -49,6 +49,7 @@ async function setup({ trusted = false, offline = false, taken = () => false, re
   await mkdir(path.join(dir, 'files', 'desktop'), { recursive: true })
   await writeFile(path.join(dir, 'files', 'desktop', 'notes.md'), '# A note\nwords inside')
   const launcher = await createLauncher({
+    app: { showEmojiPanel: () => calls.exec.push('emoji') },
     BrowserWindow: FakeWindow,
     screen: { getAllDisplays: () => [{ bounds: { x: 0, y: 0, width: 1440, height: 900 }, workArea: { x: 0, y: 0, width: 1440, height: 900 } }], getCursorScreenPoint: () => ({ x: 5, y: 5 }) },
     clipboard,
@@ -421,5 +422,15 @@ test('a Hyper key made by another app that leaves ⇧ out: the Mac is asked for 
     assert.equal(t.launcher.hotkeyLabel(HYPER('V')), 'Hyper V')
     await t.ask('search:save-settings', { hyper: { sends: 'four' } })
     assert.equal(t.registered.has(HYPER('V')), true)
+  } finally { await t.done() }
+})
+
+test('emoji picker hides quick search and opens the native panel', async () => {
+  const t = await setup()
+  try {
+    t.launcher.search.show()
+    assert.deepEqual(await t.ask('search:emoji'), { ok: true })
+    assert.equal(t.launcher.search.window.isVisible(), false)
+    assert.ok(t.calls.exec.includes('emoji'))
   } finally { await t.done() }
 })

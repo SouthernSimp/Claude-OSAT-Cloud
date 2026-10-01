@@ -225,6 +225,7 @@ export function FilesView({ navigate, target = null }) {
   useEffect(() => {
     if (!target?.rootId) return;
     setFind("");
+    setTidying(Boolean(target.tidy && api?.tidyPlan));
     go({ rootId: target.rootId, relative: target.relative || "" }, target.select || null);
   }, [target?.at]); // eslint-disable-line react-hooks/exhaustive-deps
 

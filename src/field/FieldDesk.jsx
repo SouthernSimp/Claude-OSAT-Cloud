@@ -520,6 +520,7 @@ export function FieldDesk({
 
       <nav className="home-icons" aria-label={onDesktop ? 'Your Desktop' : 'OSAT items'} data-size={iconSize}>
         <div className="icons-head">
+          {onDesktop && !collapsed && filesBridge()?.tidyPlan && <button type="button" onClick={() => navigate('Files', { rootId: 'desktop', tidy: true })}>Tidy</button>}
           {filesBridge() && !collapsed && (
             <div className="icons-switch" role="radiogroup" aria-label="What the desk shows">
               <button type="button" role="radio" aria-checked={onDesktop} onClick={() => pickShelf('desktop')}>Desktop</button>

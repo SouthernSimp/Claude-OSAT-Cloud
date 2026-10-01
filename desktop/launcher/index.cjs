@@ -24,7 +24,7 @@ const { createSnap } = require('./snap.cjs')
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function createLauncher({
-  BrowserWindow, screen, clipboard, nativeImage, shell, systemPreferences, globalShortcut, platform = process.platform,
+  app, BrowserWindow, screen, clipboard, nativeImage, shell, systemPreferences, globalShortcut, platform = process.platform,
   dataDir, preload, load, files, handle, fail, sharedModule, mainWindow, command, sendToAllWindows,
   offline = () => false, hideOnBlur = false, isTaken = () => false, onHide = () => {}, exec, notify = () => {},
   // What the ring does that only main can: the desk, the quick chat, a new sticky, the Sky, Files.
@@ -224,6 +224,13 @@ async function createLauncher({
   on('search:pin-clip', (id, pinned) => history.pin(id, pinned === true))
   on('search:forget-clip', (id) => history.forget(id))
   on('search:undo-clip', (token) => history.undo(token))
+  on('search:emoji', async () => {
+    if (platform !== 'darwin' || !app?.showEmojiPanel) return { ok: false, reason: 'mac' }
+    search.hide()
+    await wait(140)
+    app.showEmojiPanel()
+    return { ok: true }
+  })
   on('search:copy-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return true })
   on('search:paste-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return pasteWhenAble() })
 

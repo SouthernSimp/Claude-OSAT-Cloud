@@ -267,3 +267,16 @@ test('turning the source off stops the watching; what is copied meanwhile is not
     assert.equal(t.history.textOf('nope'), null)
   } finally { await t.done() }
 })
+
+test('private writes stay out of history even when the clipboard update is delayed', async () => {
+  const t = await setup()
+  try {
+    t.copy('before'); await t.history.poll()
+    let waiting
+    t.history.quiet({ writeText: (text) => { waiting = text } }).writeText('Bearer private-key')
+    await t.history.poll()
+    t.copy('another ordinary copy'); await t.history.poll()
+    t.copy(waiting); await t.history.poll()
+    assert.deepEqual(texts(t.history), ['another ordinary copy', 'before'])
+  } finally { await t.done() }
+})

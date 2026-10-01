@@ -2,7 +2,7 @@
   "name": "osat",
   "version": "0.1.0",
   "private": true,
-  "description": "OSAT — a calm, private layer over your Mac",
+  "description": "OSAT \u2014 a calm, private layer over your Mac",
   "author": "Nate McCreery",
   "main": "desktop/main.cjs",
   "type": "module",
@@ -70,10 +70,14 @@
       "category": "public.app-category.productivity",
       "artifactName": "OSAT-${version}-${arch}-mac.${ext}",
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "OSAT shows what is playing in Spotify and lets you play, pause and skip. If the Bin won’t let OSAT read it, Undo asks Finder to put a file back. To paste something you copied into the app you were in, and to move windows to a half or a corner, it asks System Events to press ⌘V and to move the front window.",
+        "NSAppleEventsUsageDescription": "OSAT shows what is playing in Spotify and lets you play, pause and skip. If the Bin won\u2019t let OSAT read it, Undo asks Finder to put a file back. To paste something you copied into the app you were in, and to move windows to a half or a corner, it asks System Events to press \u2318V and to move the front window.",
         "NSDesktopFolderUsageDescription": "OSAT shows the files on your Desktop, so you can open them or ask about them without leaving it.",
-        "NSDocumentsFolderUsageDescription": "OSAT shows your Documents folder when you open it in Files, and finds files there from ⌘K.",
-        "NSDownloadsFolderUsageDescription": "OSAT shows your Downloads folder when you open it in Files, and finds files there from ⌘K."
+        "NSDocumentsFolderUsageDescription": "OSAT shows your Documents folder when you open it in Files, and finds files there from \u2318K.",
+        "NSDownloadsFolderUsageDescription": "OSAT shows your Downloads folder when you open it in Files, and finds files there from \u2318K.",
+        "NSCalendarsFullAccessUsageDescription": "OSAT shows your Mac's calendar events beside its own and lets you add an event to a calendar you choose.",
+        "NSCalendarsUsageDescription": "OSAT shows your Mac's calendar events beside its own and lets you add an event to a calendar you choose.",
+        "NSRemindersFullAccessUsageDescription": "OSAT shows your Mac's reminders that are due soon and lets you add or complete a reminder.",
+        "NSRemindersUsageDescription": "OSAT shows your Mac's reminders that are due soon and lets you add or complete a reminder."
       },
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",

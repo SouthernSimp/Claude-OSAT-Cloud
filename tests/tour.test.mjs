@@ -13,7 +13,7 @@ test('the tour has a few short cards in plain words, and every target is a real 
     assert.ok(step.title.length <= 40 && step.body.length <= 220, `${step.id} is short`)
     assert.doesNotMatch(`${step.title} ${step.body}`, /\b(Inbox|folder|record|canonical|OSAT Field)\b/, `${step.id} uses OSAT's own words`)
   }
-  assert.deepEqual(TOUR.filter((step) => step.target).map((step) => step.target), ['.home-composer-wrap', '.app-dock [data-space="Mindmap"]', '.app-dock [data-space="tools"]'])
+  assert.deepEqual(TOUR.filter((step) => step.target).map((step) => step.target), ['.home-composer-wrap', '.sky-entry', '.app-dock [data-space="tools"]'])
 })
 
 test('the shortcuts are filled in as they are set now, with a plain fallback', () => {

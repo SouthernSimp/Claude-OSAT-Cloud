@@ -22,7 +22,8 @@
 | 12b | Offline mode: Incognito becomes a switch on the line instead of a place | Merged (PR #15) |
 | 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | Merged (PR #18) |
 | 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | Merged (PR #19) |
-| 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | In review |
+| 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools menu, a movable dock, resizing | Merged (PR #33) |
+| 13b | Raycast-style Settings sidebar and row search; named quicklinks, app/link shortcuts, three/four-key Hyper, ring ordering, native Emoji & symbols | Completed in continuation |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
@@ -36,7 +37,7 @@
 | 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | Merged (PR #21, done before 21–23) |
 | 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
 | 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | Merged (PR #27) |
-| 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Planned (in review, step by step: opening a node keeps other cards in place (PR #29); detached branches stay branches (PR #30); free stickies with saved positions and Undo; next: connectors, selection and focus) |
+| 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Completed continuation: connectors, stacks, focused mind map, tour and navigation; combine/split operations remain planned |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
@@ -790,8 +791,7 @@ Built (in review). What Nate sees, in the Files room with Desktop open:
   or Not now; Not now waits until next month; never a count).
 - Folders go inside **Documents** (Desktop, Documents and Downloads are the places OSAT is allowed
   into; Pictures isn't one yet).
-- Still to do: the desk's Desktop shelf button and a ⌘K entry (both wait for Phase 27 to land),
-  and "Make a folder for this node" (nodes are being changed in Phase 27).
+- The Desktop shelf and ⌘K now open the same reviewed tidy plan. "Make a folder for this node" remains planned.
 
 #### Phase 22: Files in the Sky
 - **Toss a file up.** Drag a file from the desk's Desktop shelf, from Files or from Finder up into the
@@ -1059,3 +1059,17 @@ calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
   - the hotkey-conflict path
   - Metal model speed
   - first-run download.
+
+### Phase 13b and interrupted-session continuation — September 30, 2026
+
+Settings now has searchable pages and rows, grouped shortcut tables, a key recorder,
+clipboard controls, quicklinks with `{query}`, and ordered ring tools. Emoji & symbols
+opens the Mac's native character picker from quick search. No global mouse hook was added.
+
+The recovered Phase 27 tour points at the actual line, top Sky tab and Tools button;
+Tools shows all tools together with keyboard navigation. Connectors, reorderable/foldable
+desk stacks, focused mind map and AI context share the existing workspace/schema 10.
+Calendar/Reminders and Desktop tidy are consolidated from their completed branches.
+Tidy remains a proposal requiring selected moves, with Undo; no real files are moved by a tour.
+Calendar permission descriptions ship with the Mac app; live EventKit access still requires
+Nate's Mac permission. Older paused prototypes were backed up separately.

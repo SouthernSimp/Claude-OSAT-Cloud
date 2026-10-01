@@ -617,6 +617,7 @@ function registerDesk() {
 
 async function registerLauncher() {
   launcher = await createLauncher({
+    app,
     BrowserWindow,
     screen,
     clipboard: require('electron').clipboard,

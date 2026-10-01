@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { AppWindow, ArrowsIn, ArrowsOut, Database, Plus, X } from '@phosphor-icons/react'
+import { AppWindow, ArrowsIn, ArrowsOut, Database, Plus, TreeStructure, X } from '@phosphor-icons/react'
 
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
 import { cleanError } from '../assistant/useAi.js'
@@ -477,7 +477,8 @@ export function Desk() {
   return (
     <main className={`overlay-surface ${bridge ? '' : 'is-preview'}`} data-sky={sky || undefined}>
       <GlassDefs />
-      <div className="workspace-content is-filled" inert={welcome || away || undefined}>
+      <div className="workspace-content is-filled" inert={welcome || tour || away || undefined}>
+        <button type="button" className="sky-entry" aria-label="Open the Sky" onClick={() => goUp()}><TreeStructure aria-hidden="true" /> Sky <kbd>⌘3</kbd></button>
         <FieldDesk
           {...common}
           visit={visit}
