@@ -30,7 +30,7 @@
 | 19 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
 | 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
 | 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidy and drag-to-move merged in PR #24; dragging in from Finder and out to other apps merged in PR #25; the desk's shelf and the Notes room on the same drag can wait) |
-| 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | Planned |
+| 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | In review |
 | 22 | Files in the Sky: toss a file up as a card, a node can link a real folder (schema 8) | Planned |
 | 23 | Nodes become projects: Track it (Done / Now / Next), Rush it, on top of the Roadmap's Timeline | Planned |
 | 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | Merged (PR #21, done before 21–23) |
@@ -776,17 +776,22 @@ Still to come in this phase: the desk's Desktop shelf and the Notes room on the 
   again.").
 
 #### Phase 21b: A tidy desk and folders (OSAT helps, Nate decides)
-- **Tidy my Desktop.** One button on the desk's Desktop shelf. The built-in AI looks at the names (and,
-  for a few, what's inside) and proposes a plan: "12 screenshots → Pictures/Screenshots, 4 invoices →
-  Documents/Money, 3 installers → Bin". The plan is a list Nate ticks through: Do it, Skip, or change
-  where each goes. Nothing moves until he says so, and the whole tidy has one Undo. The AI step runs in
-  the main process with a fixed answer shape, like scans do, in small batches.
-- **A folder layout to grow into (optional):** OSAT offers a simple home layout (for example Projects,
-  Money, Home, School, Archive) and can make it. Nodes and folders can then match: "Make a folder for
-  this node".
-- **Keeps itself tidy:** a quiet "Anything on the Desktop older than 30 days goes to Archive/2026-09?"
-  offer, off by default, never a nag or a count.
-- Same rule as Tidy Unsorted in "Later": AI proposes, Nate accepts or declines each.
+Built (in review). What Nate sees, in the Files room with Desktop open:
+- **Tidy my Desktop.** A button in the bar. The built-in AI reads the names on the Desktop (and the
+  first words of a few PDFs and documents), 25 files at a time, and proposes a plan as calm lines:
+  "12 screenshots → Documents/Screenshots", "3 installers → the Bin". Each line is Do it or Skip, has
+  a "Move to" choice and "Show the files". Nothing moves until "Do the ticked ones", and the whole
+  tidy has one Undo. Without the built-in AI it sorts by kind of file and says so in one line.
+  Folders, apps, scripts and hidden files are never touched; the Bin is only proposed for installers.
+- **A folder layout to grow into.** "Make Projects, Money, Home, School and Archive folders" in
+  Documents (only the missing ones; one Undo).
+- **Keeps itself tidy.** A switch in the same panel, off by default: when on, a quiet line under the
+  Desktop asks "Anything on the Desktop older than 30 days goes to Documents/Archive/2026-09?" (Do it
+  or Not now; Not now waits until next month; never a count).
+- Folders go inside **Documents** (Desktop, Documents and Downloads are the places OSAT is allowed
+  into; Pictures isn't one yet).
+- Still to do: the desk's Desktop shelf button and a ⌘K entry (both wait for Phase 27 to land),
+  and "Make a folder for this node" (nodes are being changed in Phase 27).
 
 #### Phase 22: Files in the Sky
 - **Toss a file up.** Drag a file from the desk's Desktop shelf, from Files or from Finder up into the
