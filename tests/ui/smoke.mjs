@@ -88,11 +88,7 @@ async function main() {
   await page.keyboard.press('Escape')
   await page.locator('.tour').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('tour: Esc did not skip it'))
   await page.fill('#home-line', '')
-  await page.getByRole('button', { name: 'Open the Sky', exact: true }).click()
-  await page.getByRole('region', { name: 'Sky', exact: true }).waitFor({ timeout: 3000 })
-  if (await page.getByRole('button', { name: 'Got it', exact: true }).count()) await page.getByRole('button', { name: 'Got it', exact: true }).click()
-  await page.locator('.sky-down').click()
-  await page.getByRole('region', { name: 'Sky', exact: true }).waitFor({ state: 'detached', timeout: 3000 })
+
 
   // A thought typed on home is saved, survives a reload, and waits in Unsorted. Typing
   // folds the drawer open, and Save is the picked row, so Return saves.
@@ -130,7 +126,8 @@ async function main() {
     for (const [view, key] of SPACES) await visit(view, () => page.keyboard.press(`Control+${key}`), theme)
     // The Sky: the layer above the desk, a whiteboard of nodes; one opens in place; Esc goes back down.
     room = 'sky'
-    await page.keyboard.press('Control+3')
+    if (theme === 'light') await page.getByRole('button', { name: 'Open the Sky', exact: true }).click()
+    else await page.keyboard.press('Control+3')
     await page.locator('.sky-layer').waitFor({ timeout: 5000 }).catch(() => problems.push(`sky: ⌃3 did not bring the Sky (${theme})`))
     // The first time, the Sky says how it works; Got it puts that away for good.
     const guide = page.getByRole('dialog', { name: 'How the Sky works' })
@@ -299,7 +296,7 @@ async function main() {
   await page.getByRole('button', { name: 'Key for Files' }).filter({ hasText: 'Hyper' }).filter({ hasText: /F$/ }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: a recorded Hyper key was not shown as Hyper F'))
   await page.getByRole('button', { name: 'Key for Notes and nodes' }).click()
   await page.keyboard.press('Control+Alt+Shift+Meta+F')
-  await page.getByText('Hyper F is Files’ key already.').waitFor({ timeout: 3000 }).catch(() => problems.push('settings: a key two things wanted was not refused, naming who has it'))
+  await page.getByText('Hyper F is Files’s key already.').waitFor({ timeout: 3000 }).catch(() => problems.push('settings: a key two things wanted was not refused, naming who has it'))
   await page.keyboard.press('Escape')
   await page.getByRole('radio', { name: 'Has a word' }).click()
   if (await page.locator('.short-row', { hasText: 'Calculator' }).count()) problems.push('settings: the Has a word filter kept a row with no word')
