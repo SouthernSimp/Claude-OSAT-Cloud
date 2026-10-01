@@ -19,12 +19,26 @@ export function installSearchBridge(defaults) {
   // The launcher's settings as main keeps them (saved at once, and every window hears).
   let settings = defaults
   const heard = new Set()
-  const merge = (patch) => ({
-    ...settings,
-    ...patch,
-    sources: Object.fromEntries(Object.entries(settings.sources).map(([id, own]) => [id, { ...own, ...(patch.sources?.[id] || {}) }])),
-    clipboard: { ...settings.clipboard, ...(patch.clipboard || {}) },
-  })
+  // What main does with a patch (shared/launcher-model.mjs `applyPatch`): one level down, an app set to null goes.
+  const merge = (patch) => {
+    const one = (key) => ({ ...(settings[key] || {}), ...(patch[key] || {}) })
+    const apps = { ...(settings.apps || {}) }
+    for (const [name, own] of Object.entries(patch.apps || {})) {
+      if (own === null) delete apps[name]
+      else apps[name] = { ...(apps[name] || {}), ...own }
+      if (apps[name] && !apps[name].keyword && !apps[name].hotkey) delete apps[name]
+    }
+    return {
+      ...settings,
+      ...patch,
+      sources: Object.fromEntries(Object.entries(settings.sources).map(([id, own]) => [id, { ...own, ...(patch.sources?.[id] || {}) }])),
+      apps,
+      clipboard: one('clipboard'),
+      ring: one('ring'),
+      hyper: one('hyper'),
+      windows: { ...settings.windows, ...(patch.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(patch.windows?.hotkeys || {}) } },
+    }
+  }
   const known = {
     ready: async () => true,
     settings: async () => settings,

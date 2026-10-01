@@ -147,8 +147,8 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   if (read.math) rows.push({ key: 'calc', source: 'calc', kind: 'calc', title: `= ${read.math.text}`, subtitle: read.typed, section: 'Calculator', data: read.math })
   if (read.keyword) {
     const { keyword, query } = read.keyword
-    if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Keywords', data: { app: keyword.app } })
-    else rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-link', title: `Search ${keyword.label} for “${query}”`, subtitle: `${keyword.keyword} · web address`, section: 'Keywords', data: { url: keywordAddress(keyword, query) } })
+    if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Apps', data: { app: keyword.app } })
+    else rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-link', title: keyword.url.includes('{query}') ? `Search ${keyword.label} for “${query}”` : `Open ${keyword.label}`, subtitle: `${keyword.keyword} · web address`, section: 'Quick links', data: { url: keywordAddress(keyword, query) } })
   }
 
   const has = read.query.length > 0

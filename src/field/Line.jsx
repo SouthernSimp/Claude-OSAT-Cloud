@@ -109,7 +109,7 @@ export function Line({
     ...(line.sum ? [{ key: 'sum', label: `= ${line.sum.text}`, hint: 'Copy the answer', icon: Calculator, run: () => { reset(); attempt(async () => { await copyText(line.sum.plain); say(`Copied ${line.sum.text}`) }) } }] : []),
     ...(line.keyword && bridge ? [line.keyword.keyword.app
       ? { key: `kw:${line.keyword.keyword.id}`, label: `Open ${line.keyword.keyword.label}`, hint: line.keyword.keyword.keyword, icon: AppWindow, run: () => { reset(); attempt(() => bridge.openAppNamed(line.keyword.keyword.app)) } }
-      : { key: `kw:${line.keyword.keyword.id}`, label: `Search ${line.keyword.keyword.label} for “${line.keyword.query}”`, tag: 'Web', icon: Globe, run: () => { reset(); attempt(() => bridge.openLink(keywordAddress(line.keyword.keyword, line.keyword.query))) } }] : []),
+      : { key: `kw:${line.keyword.keyword.id}`, label: line.keyword.keyword.url.includes('{query}') ? `Search ${line.keyword.keyword.label} for “${line.keyword.query}”` : `Open ${line.keyword.keyword.label}`, tag: 'Web', icon: Globe, run: () => { reset(); attempt(() => bridge.openLink(keywordAddress(line.keyword.keyword, line.keyword.query))) } }] : []),
     ...(line.bot ? [{ key: 'bot', label: 'Hand this to a bot', hint: botTakers().length ? line.bot.job : 'No bot takes jobs yet', tag: 'Bots', icon: Robot, run: () => { const sent = handOff(line.bot.job, botTakers()); if (sent.ok) { sent.run(); reset() } else say(sent.message) } }] : []),
   ]
   const named = open && bridge && !clipboardScope && text.length >= 2

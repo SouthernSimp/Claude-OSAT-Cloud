@@ -11,7 +11,7 @@ const { createLauncher } = require('../desktop/launcher/index.cjs')
 const repo = fileURLToPath(new URL('..', import.meta.url))
 
 /* Electron's pieces, as stand-ins: enough to run the launcher's wiring end to end. */
-async function setup({ trusted = false, offline = false, taken = () => false, refuse = [], script = null } = {}) {
+async function setup({ trusted = false, offline = false, taken = () => false, refuse = [], script = null, apps = undefined } = {}) {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'osat-launcher-'))
   const calls = { open: [], external: [], showItem: [], sent: [], command: [], exec: [], written: [], notified: [], ring: [] }
   const handlers = new Map()
@@ -73,6 +73,7 @@ async function setup({ trusted = false, offline = false, taken = () => false, re
     sendToAllWindows: (...args) => sent.push(['all', ...args]),
     offline: () => offline,
     isTaken: (key) => taken(key),
+    ...(apps ? { apps } : {}),
     notify: (options) => calls.notified.push(options),
     ringActions: { sticky: () => calls.ring.push('sticky'), chat: () => calls.ring.push('chat'), desk: () => calls.ring.push('desk'), sky: () => calls.ring.push('sky'), files: () => calls.ring.push('files') },
     exec: async (command, args) => { calls.exec.push([command, ...args]); if (script) return script(command, args); return command === 'lsappinfo' ? 'nothing' : '' },
@@ -125,8 +126,8 @@ test('a keyword, a hotkey or a limit is saved privately, tells every window, and
   const t = await setup({ refuse: ['Control+Alt+Shift+Command+K'] })
   try {
     await t.launcher.start()
-    const saved = await t.ask('search:save-settings', { view: 'full', sources: { clipboard: { keyword: 'clip', hotkey: 'Control+Alt+Shift+Command+C' } }, clipboard: { days: 7 }, keywords: [{ keyword: 'ss', app: 'Music' }] })
-    assert.deepEqual([saved.view, saved.sources.clipboard.keyword, saved.sources.clipboard.hotkey, saved.clipboard.days, saved.keywords[0].app], ['full', 'clip', 'Control+Alt+Shift+Command+C', 7, 'Music'])
+    const saved = await t.ask('search:save-settings', { view: 'full', sources: { clipboard: { keyword: 'clip', hotkey: 'Control+Alt+Shift+Command+C' } }, clipboard: { days: 7 }, apps: { Spotify: null, Music: { keyword: 'ss' } } })
+    assert.deepEqual([saved.view, saved.sources.clipboard.keyword, saved.sources.clipboard.hotkey, saved.clipboard.days, Object.keys(saved.apps)[0]], ['full', 'clip', 'Control+Alt+Shift+Command+C', 7, 'Music'])
     assert.equal(t.registered.has('Control+Alt+Shift+Command+V'), false, 'the old key was let go')
     assert.equal(t.registered.has('Control+Alt+Shift+Command+C'), true)
     const file = path.join(t.dir, 'data', 'launcher.json')
@@ -373,5 +374,52 @@ test('the ring: its key is on by default, its window is made the first time, and
     assert.equal((await t.ask('search:settings')).ring.hotkey, 'Control+Alt+Shift+Command+R')
     const saved = await t.ask('search:save-settings', { ring: { items: ['files', 'desk', 'files', 'bogus'] } })
     assert.deepEqual(saved.ring.items, ['files', 'desk'], 'unknown tools and repeats go')
+  } finally { await t.done() }
+})
+
+const HYPER = (letter) => `Control+Alt+Shift+Command+${letter}`
+
+test('an app or a quick link can have a key: it opens the app or the address, or the search with its word waiting', async () => {
+  const notes = { name: 'Notes', path: '/Applications/Notes.app' }
+  const apps = { list: async () => [notes], has: async (appPath) => appPath === notes.path, named: async (name) => (name === 'Notes' ? notes : null) }
+  const t = await setup({ apps })
+  try {
+    await t.launcher.start()
+    await t.ask('search:save-settings', {
+      apps: { Notes: { hotkey: HYPER('Q') } },
+      links: [
+        { id: 'l1', name: 'Jira', url: 'https://jira.example.com/board', keyword: 'jira', hotkey: HYPER('J') },
+        { id: 'l2', name: 'GitHub', url: 'https://github.com/search?q={query}', keyword: 'gh', hotkey: HYPER('H') },
+      ],
+    })
+    t.registered.get(HYPER('Q'))()
+    await wait(140)
+    assert.deepEqual(t.calls.open.at(-1), '/Applications/Notes.app', 'the app opened')
+    t.registered.get(HYPER('J'))()
+    await wait(140)
+    assert.deepEqual(t.calls.external, ['https://jira.example.com/board'])
+    t.registered.get(HYPER('H'))()
+    await wait(140)
+    assert.deepEqual(t.sent.filter(([channel]) => channel === 'search:shown').at(-1)[1], { scope: 'all', mode: 'bar', text: 'gh ' }, 'a link that wants words opens the search with its word typed')
+    assert.equal(t.calls.external.length, 1, 'and opens nothing yet')
+    // Taking a link off takes its key off.
+    await t.ask('search:save-settings', { links: [] })
+    assert.equal(t.registered.has(HYPER('J')), false)
+    assert.equal(t.registered.has(HYPER('Q')), true, 'the app’s key stays')
+  } finally { await t.done() }
+})
+
+test('a Hyper key made by another app that leaves ⇧ out: the Mac is asked for ⌃⌥⌘, and the key still shows as Hyper', async () => {
+  const t = await setup()
+  try {
+    await t.launcher.start()
+    assert.equal(t.registered.has(HYPER('V')), true)
+    const saved = await t.ask('search:save-settings', { hyper: { sends: 'three' } })
+    assert.equal(saved.sources.clipboard.hotkey, HYPER('V'), 'stored as Hyper V')
+    assert.equal(t.registered.has(HYPER('V')), false)
+    assert.equal(t.registered.has('Control+Alt+Command+V'), true, 'registered as the Mac hears it')
+    assert.equal(t.launcher.hotkeyLabel(HYPER('V')), 'Hyper V')
+    await t.ask('search:save-settings', { hyper: { sends: 'four' } })
+    assert.equal(t.registered.has(HYPER('V')), true)
   } finally { await t.done() }
 })

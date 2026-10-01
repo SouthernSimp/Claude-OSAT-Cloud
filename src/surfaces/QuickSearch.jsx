@@ -80,8 +80,8 @@ export function QuickSearchSurface() {
   const toOSAT = useCallback((view, detail) => { bridge?.openInOSAT(view, detail) }, [bridge])
 
   /* Shown again: a clean bar (or the tab the Hyper key names), ready to type into. */
-  useEffect(() => bridge?.onShown(({ scope: tab = 'all', mode = 'bar' } = {}) => {
-    setText(''); setScope(tab); setFileFilter('all'); setClipFilter('all'); setCursor(0); setMenu(null); setPicker(null)
+  useEffect(() => bridge?.onShown(({ scope: tab = 'all', mode = 'bar', text: waiting = '' } = {}) => {
+    setText(waiting); setScope(tab); setFileFilter('all'); setClipFilter('all'); setCursor(0); setMenu(null); setPicker(null)
     setNote(''); setToast(null); setGone(new Set()); setOpened(mode); setVisit((value) => value + 1)
     requestAnimationFrame(() => input.current?.focus())
   }), [bridge])

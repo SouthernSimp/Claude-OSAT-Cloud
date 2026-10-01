@@ -1,4 +1,5 @@
 import { folderPath, isActiveNote, parseQuery } from '../notes-model.js'
+import { SETTINGS_PAGES } from '../views/settings/pages.js'
 import { EVERYWHERE, SPACES } from './spaces.js'
 
 /* What the desk's line finds as you type: notes, files on this Mac (Spotlight's answers,
@@ -19,6 +20,8 @@ const ACTIONS = [
   { key: 'act:focus', label: 'Focus for 25 minutes', also: 'timer pomodoro quiet concentrate', go: ['Focus'] },
   { key: 'act:widget', label: 'Add a widget', hint: 'Calendar, Next, Focus, Habits…', also: 'widgets tray', go: ['Widgets'] },
   { key: 'act:offline', label: 'Offline', hint: 'Turn OSAT’s internet off, or back on', also: 'go online private incognito wifi internet network airplane', go: ['Offline'] },
+  // Every page of Settings, so ⌘K finds it by what it is about ("hyper", "clipboard", "words").
+  ...SETTINGS_PAGES.map((page) => ({ key: `settings:${page.id}`, label: `${page.label} settings`, hint: 'Settings', also: `preferences ${page.words}`, go: ['Settings', { section: page.id }] })),
 ]
 
 const newest = (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))
