@@ -39,11 +39,15 @@ const root = fileURLToPath(new URL('../..', import.meta.url))
 const home = await mkdtemp(path.join(os.tmpdir(), 'osat-e2e-'))
 const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), OSAT_DATA_DIR: path.join(home, 'OSAT Test'), OSAT_AI: 'mock', OSAT_ICLOUD_DIR: path.join(home, 'iCloud Drive'), OSAT_PLACES_DIR: path.join(home, 'Mac'), OSAT_NODES_DIR: path.join(home, 'OSAT Nodes'), OSAT_NO_SPOTLIGHT: '1', OSAT_KEYCHAIN: 'memory' }
 const dataFile = path.join(home, 'OSAT Test', 'store', 'workspace.json')
+let currentApp = null
+let originalClipboard
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }
 
 async function launch(withEnv = env) {
   const app = await electron.launch({ cwd: root, args: [root, '--no-sandbox'], env: withEnv })
+  currentApp = app
+  if (originalClipboard === undefined) originalClipboard = await app.evaluate(({ clipboard }) => clipboard.readText())
   // The quick chat is a window too; the desk is the one without a surface.
   let main
   while (!main) {
@@ -92,6 +96,11 @@ try {
   await main.getByRole('button', { name: 'Start', exact: true }).click()
   await main.getByRole('dialog', { name: /AI’s size/ }).waitFor({ state: 'detached', timeout: 5000 })
     .catch(() => problems.push('the welcome did not close after Start'))
+  // The first-run tour follows the welcome, once: Skip ends it for good.
+  const tour = main.getByRole('dialog', { name: /One line for everything/ })
+  await tour.waitFor({ timeout: 8000 }).catch(() => problems.push('the tour did not follow the welcome'))
+  await main.getByRole('button', { name: 'Skip the tour' }).click().catch(() => {})
+  await tour.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('Skip the tour did not end it'))
   const keep = main.getByRole('button', { name: 'Start blank' })
   if (await keep.count()) await keep.click()
   await main.fill('#home-line', 'Saved across a restart')
@@ -103,6 +112,8 @@ try {
   ;({ app, main } = await launch())
   check((await notesIn(main)).includes('Saved across a restart'), 'the thought was not there after a restart')
   check(!(await main.getByRole('dialog', { name: /Everything stays/ }).count()), 'the welcome came back after it was finished')
+  await sleep(2500)
+  check(!(await main.locator('.tour').count()), 'the tour came back after it was skipped')
 
   // 4. Ask on the desk: a question in the line and ⌘↵ (Ctrl↵ elsewhere); the answer
   //    appears under the line and is kept as a chat.
@@ -305,7 +316,6 @@ try {
   }, pick)
   const fileMenu = (label) => app.evaluate(({ Menu }, name) => Menu.getApplicationMenu().items.find((item) => item.label === 'File').submenu.items.find((item) => item.label === name).click(), label)
   const clipboardNow = () => app.evaluate(({ clipboard }) => clipboard.readText())
-  const original = await clipboardNow()
   if (searchPage) {
     await fileMenu('Quick Search')
     check(await until(() => searchWindow('shown'), 3000), 'Quick Search in the File menu did not show the bar')
@@ -356,6 +366,7 @@ try {
       await undoButton.click()
       check(await until(async () => (await kept()).includes('Quote for Jordan: 12 units by Friday'), 3000), 'Undo did not bring the copy back')
       await searchPage.fill('#qs-input', 'v jordan')
+      await copyRow.waitFor({ timeout: 3000 })
       await searchPage.keyboard.press('ControlOrMeta+p')
       await searchPage.locator('.qs-head', { hasText: 'Pinned' }).waitFor({ timeout: 3000 }).catch(() => problems.push('⌘P did not pin the copy'))
       await searchPage.keyboard.press('ControlOrMeta+p')
@@ -384,7 +395,6 @@ try {
     await main.keyboard.press('Escape')
     await main.keyboard.press('Escape')
   }
-  await app.evaluate(({ clipboard }, words) => clipboard.writeText(words), original)
   await main.keyboard.press('Control+1')
 
   // 2. Two windows stay in step.
@@ -446,7 +456,7 @@ try {
   const otherData = path.join(home, 'OSAT Other')
   await mkdir(otherData, { recursive: true })
   await writeFile(path.join(otherData, 'osat-data-folder.json'), '{"app":"ai.mccreery.osat"}')
-  await writeFile(path.join(otherData, 'prefs.json'), '{"welcomed":true}')
+  await writeFile(path.join(otherData, 'prefs.json'), '{"welcomed":true,"toured":true}')
   const other = await launch({ ...env, OSAT_DATA_DIR: otherData })
   await other.main.evaluate(() => window.osatPhone.enable())
   check(await until(async () => (await notesIn(other.main)).includes('Captured before putting it away'), 15000),
@@ -645,6 +655,7 @@ try {
     await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.find((item) => item.label === 'Go Online').click())
     await main.locator('.home-offline-note').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('Go Online in the Go menu did not reach the line'))
     check((await main.evaluate(() => window.osatUnder.status())).on === false, 'Go Online in the Go menu did not go back online')
+    await app.evaluate(({ clipboard }, words) => clipboard.writeText(words), originalClipboard)
     await app.close()
   } finally {
     local.closeAllConnections()
@@ -653,6 +664,10 @@ try {
 } catch (error) {
   problems.push(error.stack || String(error))
 } finally {
+  if (currentApp) {
+    await currentApp.evaluate(({ clipboard }, words) => clipboard.writeText(words), originalClipboard).catch(() => {})
+    await currentApp.close().catch(() => {})
+  }
   await rm(home, { recursive: true, force: true })
 }
 

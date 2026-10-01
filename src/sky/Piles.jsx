@@ -32,9 +32,11 @@ export function StickyList({ id, folderId, notes, axis = 'y', actions, paper, ad
 }
 
 /* "Write a sticky": a blank sticky to write on. Return keeps it and gives a fresh one right
-   away, so a whole pile can be typed in a row; Shift-Return is a new line; Esc stops. */
-export function AddSticky({ placeholder = 'Write a sticky', onAdd }) {
-  const [open, setOpen] = useState(false)
+   away, so a whole pile can be typed in a row; Shift-Return is a new line; Esc stops.
+   `startOpen` begins with the blank sticky out; `onClose` hears when writing stops. */
+export function AddSticky({ placeholder = 'Write a sticky', onAdd, startOpen = false, onClose }) {
+  const [open, setOpenState] = useState(startOpen)
+  const setOpen = (value) => { setOpenState(value); if (!value) onClose?.() }
   const field = useRef(null)
   useEffect(() => { if (open) field.current?.focus() }, [open])
   if (!open) {

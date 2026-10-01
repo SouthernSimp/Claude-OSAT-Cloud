@@ -37,6 +37,17 @@ function addLauncher(list, appPath) {
   return [...list, { path: appPath, name }].slice(0, 12)
 }
 
+/* A stack of stickies on the desk (Phase 27, 'stack:<id>'): which stickies stand in it, in
+   order, its name and whether it is folded. A stack with no stickies isn't kept. */
+function stackOf(spot) {
+  const ids = Array.isArray(spot?.ids) ? [...new Set(spot.ids.filter((id) => typeof id === 'string' && /^[\w.-]{1,120}$/.test(id)))].slice(0, 200) : []
+  return {
+    ids,
+    ...(typeof spot?.name === 'string' && spot.name.trim() ? { name: spot.name.trim().slice(0, 80) } : {}),
+    ...(spot?.folded === true ? { folded: true } : {}),
+  }
+}
+
 /* Where Nate set a widget, an icon or a sticky down on the desk, as fractions of the desk
    (so it survives a different display); a sticky also keeps its size in points. null
    puts it back in its usual place. */
@@ -50,10 +61,13 @@ function placeItem(places, id, spot) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return places
   const w = Number(spot?.w)
   const h = Number(spot?.h)
+  const stack = id.startsWith('stack:') ? stackOf(spot) : null
+  if (stack && !stack.ids.length) return next
   next[id] = {
     x: Math.min(Math.max(x, 0), 0.97),
     y: Math.min(Math.max(y, 0), 0.97),
     ...(Number.isFinite(w) && Number.isFinite(h) ? { w: Math.round(Math.min(Math.max(w, 120), 720)), h: Math.round(Math.min(Math.max(h, 90), 720)) } : {}),
+    ...stack,
   }
   // ponytail: oldest spots drop off past 600 (stickies included); a desk that full wants sorting
   return Object.fromEntries(Object.entries(next).slice(-600))

@@ -5,7 +5,7 @@
      for everything through the `search:*` channels below, which answer only the panel and the desk.
    - `history`: the clipboard history (clipboard-history.cjs), kept in `<data folder>/clipboard/`.
    - settings: `launcher.json` in the data folder (shared/launcher-model.mjs): which sources are on,
-     each one's keyword and Hyper key, Nate's keywords, how much the clipboard keeps, pins.
+     each one's word and Hyper key, apps and quick links with a word or a key, how much the clipboard keeps, pins.
    Nothing here sends anything anywhere, except opening a link Nate chose in his own browser, which
    waits while OSAT is offline. */
 const crypto = require('node:crypto')
@@ -24,18 +24,19 @@ const { createSnap } = require('./snap.cjs')
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function createLauncher({
-  BrowserWindow, screen, clipboard, nativeImage, shell, systemPreferences, globalShortcut, platform = process.platform,
+  app, BrowserWindow, screen, clipboard, nativeImage, shell, systemPreferences, globalShortcut, platform = process.platform,
   dataDir, preload, load, files, handle, fail, sharedModule, mainWindow, command, sendToAllWindows,
   offline = () => false, hideOnBlur = false, isTaken = () => false, onHide = () => {}, exec, notify = () => {},
   // What the ring does that only main can: the desk, the quick chat, a new sticky, the Sky, Files.
   ringActions = {},
+  // The apps on this Mac (tests hand in a short list).
+  apps = createApps(),
 }) {
   const [clipModel, launcherModel, layoutModel, ringModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs')])
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
 
-  const apps = createApps()
   const desk = () => { const window = mainWindow(); return window && !window.isDestroyed() ? window.webContents : null }
   const history = createClipboardHistory({
     dir: path.join(dataDir, 'clipboard'),
@@ -108,54 +109,53 @@ async function createLauncher({
     }
   }
 
-  /* Each source's Hyper key opens the quick search on it. → the ids that couldn't have their key. */
+  /* What each key does, by the id `keysOf` gives it. */
+  const runKey = (id) => {
+    const at = id.indexOf(':')
+    const [kind, rest] = at === -1 ? [id, ''] : [id.slice(0, at), id.slice(at + 1)]
+    if (kind === 'source') return () => search?.toggle({ scope: rest })
+    if (kind === 'ring') return () => ensureRing().toggle()
+    if (kind === 'snap') return () => snapFromKey(rest)
+    if (kind === 'app') return () => openAppByName(rest).catch(() => {})
+    if (kind === 'link') return () => openLinkKey(rest).catch(() => {})
+    return () => {}
+  }
+  /* A key on an app opens it. A key on a link opens it, or, when it wants words, opens the search with its word waiting. */
+  async function openAppByName(name) {
+    const found = await apps.named(name)
+    if (found) await openApp(found.path)
+  }
+  async function openLinkKey(id) {
+    const link = settings.links.find((item) => item.id === id && item.on !== false)
+    if (!link) return
+    if (link.url.includes('{query}')) search?.show({ scope: 'all', text: link.keyword ? `${link.keyword} ` : '' })
+    else await openLink(link.url)
+  }
+
+  /* Every key in use goes to the Mac, as the Mac will hear it (a Hyper key made by another app may leave ⇧ out).
+     → the ids that couldn't have their key. */
   function applyHotkeys(next = settings) {
     const wanted = {}
-    for (const source of launcherModel.SOURCES.filter((item) => item.panel !== false)) {
-      const own = next.sources[source.id]
-      if (own.on && own.hotkey) wanted[`source:${source.id}`] = { key: own.hotkey, run: () => search?.toggle({ scope: source.id }) }
-    }
-    if (next.ring.on && next.ring.hotkey) wanted.ring = { key: next.ring.hotkey, run: () => ensureRing().toggle() }
-    if (next.windows.on) {
-      for (const layout of layoutModel.LAYOUTS) {
-        const key = next.windows.hotkeys[layout.id]
-        if (key) wanted[`snap:${layout.id}`] = { key, run: () => snapFromKey(layout.id) }
-      }
-    }
+    for (const [id, key] of Object.entries(launcherModel.keysOf(next))) wanted[id] = { key: launcherModel.systemKey(key, next.hyper.sends), run: runKey(id) }
     return hotkeys.sync(wanted)
   }
 
-  /* A patch is { view?, sources?: { id: { on?, keyword?, hotkey? } }, keywords?, clipboard?, pins?, … }. A key another
+  /* A patch is { view?, sources?: { id: { on?, keyword?, hotkey? } }, apps?, links?, clipboard?, pins?, … }. A key another
      app (or one of OSAT's own shortcuts) holds is refused, and everything else in the patch still stands. */
   async function save(patch) {
-    const from = patch && typeof patch === 'object' ? patch : {}
-    const merged = {
-      ...settings,
-      ...from,
-      sources: Object.fromEntries(Object.entries(settings.sources).map(([id, own]) => [id, { ...own, ...(from.sources?.[id] || {}) }])),
-      clipboard: { ...settings.clipboard, ...(from.clipboard || {}) },
-      windows: { ...settings.windows, ...(from.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(from.windows?.hotkeys || {}) } },
-      ring: { ...settings.ring, ...(from.ring || {}) },
-    }
-    const next = clean(merged)
+    let next = clean(launcherModel.applyPatch(settings, patch))
     // A key that changed in this patch and can't be had goes back to what it was; one that was already refused stays as it is.
-    const changed = (id) => (id === 'ring' ? next.ring.hotkey !== settings.ring.hotkey : id.startsWith('source:') ? next.sources[id.slice(7)]?.hotkey !== settings.sources[id.slice(7)]?.hotkey : id.startsWith('snap:') && next.windows.hotkeys[id.slice(5)] !== settings.windows.hotkeys[id.slice(5)])
-    const failed = applyHotkeys(next).filter(changed)
-    for (const id of failed) {
-      if (id === 'ring') next.ring.hotkey = settings.ring.hotkey
-      else if (id.startsWith('source:')) next.sources[id.slice(7)].hotkey = settings.sources[id.slice(7)].hotkey
-      else next.windows.hotkeys[id.slice(5)] = settings.windows.hotkeys[id.slice(5)]
-    }
+    const before = launcherModel.keysOf(settings, { all: true })
+    const after = launcherModel.keysOf(next, { all: true })
+    const failed = applyHotkeys(next).filter((id) => after[id] !== before[id])
+    for (const id of failed) next = clean(launcherModel.withKey(next, id, before[id] ?? null))
     settings = next
     applyHotkeys()
     await writeSettings()
     history.limitsChanged()
     history.watch(settings.sources.clipboard.on)
     sendToAllWindows('launcher:changed', settings)
-    if (failed.length) {
-      const label = failed[0] === 'ring' ? 'The ring' : launcherModel.SOURCES.find((source) => `source:${source.id}` === failed[0])?.label || layoutModel.layoutById(failed[0].slice(5))?.label
-      fail(`That key is taken by another app or another OSAT shortcut, so ${label} keeps its old one. Try a different key.`)
-    }
+    if (failed.length) fail(`That key is taken by another app or another OSAT shortcut, so ${launcherModel.nameOf(settings, failed[0])} keeps its old one. Try a different key.`)
     return settings
   }
 
@@ -224,6 +224,13 @@ async function createLauncher({
   on('search:pin-clip', (id, pinned) => history.pin(id, pinned === true))
   on('search:forget-clip', (id) => history.forget(id))
   on('search:undo-clip', (token) => history.undo(token))
+  on('search:emoji', async () => {
+    if (platform !== 'darwin' || !app?.showEmojiPanel) return { ok: false, reason: 'mac' }
+    search.hide()
+    await wait(140)
+    app.showEmojiPanel()
+    return { ok: true }
+  })
   on('search:copy-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return true })
   on('search:paste-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return pasteWhenAble() })
 
@@ -245,12 +252,13 @@ async function createLauncher({
     shell.showItemInFolder(appPath)
     return true
   })
-  // A web address opens in Nate's own browser, only while OSAT is online.
-  on('search:open-link', async (url) => {
+  // A web address opens in Nate's own browser, only while OSAT is online (the one way out: a link, or a key on a quick link).
+  async function openLink(url) {
     if (typeof url !== 'string' || url.length > 2000 || !/^https?:\/\/[^\s]+$/i.test(url)) fail('That isn’t a web address OSAT can open.')
     if (!offline() && /^https?:\/\//i.test(url)) await shell.openExternal(url)
     return true
-  })
+  }
+  on('search:open-link', openLink)
 
   /* A layout for the window you were in: the panel goes away first, so that window is in front again. Without
      Accessibility nothing is touched, and the panel stays to say so. */

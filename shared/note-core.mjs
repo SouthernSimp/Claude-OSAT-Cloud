@@ -59,7 +59,18 @@ export function normalizeNote(value, index = 0) {
     ...refsOf(value.refs),
     // A day it names (from a scan), until Nate adds it to the Calendar or says Not now.
     ...askOf(value.ask),
+    // What it is connected to (schema 10), drawn as a line; it never files or moves either end.
+    ...linksOf(value.links),
   }
+}
+
+/* Connections (schema 10): the other ends of the lines drawn from a note or a folder, as
+   'note:<id>' or 'folder:<id>'. A connection only says two things relate. */
+const LINK = /^(note|folder):[\w.-]{1,120}$/
+export function linksOf(value) {
+  if (!Array.isArray(value)) return {}
+  const links = [...new Set(value.filter((key) => typeof key === 'string' && LINK.test(key)))].slice(0, 60)
+  return links.length ? { links } : {}
 }
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/

@@ -22,21 +22,22 @@
 | 12b | Offline mode: Incognito becomes a switch on the line instead of a place | Merged (PR #15) |
 | 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | Merged (PR #18) |
 | 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | Merged (PR #19) |
-| 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | In review |
-| 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
+| 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools menu, a movable dock, resizing | Merged (PR #33) |
+| 13b | Raycast-style Settings sidebar and row search; named quicklinks, app/link shortcuts, three/four-key Hyper, ring ordering, native Emoji & symbols | Completed in continuation |
+| 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
 | 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | Merged (PR #18) |
 | 19 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
 | 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
 | 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidy and drag-to-move merged in PR #24; dragging in from Finder and out to other apps merged in PR #25; the desk's shelf and the Notes room on the same drag can wait) |
-| 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | Planned |
+| 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | In review |
 | 22 | Files in the Sky: toss a file up as a card, a node can link a real folder (schema 8) | Planned |
 | 23 | Nodes become projects: Track it (Done / Now / Next), Rush it, on top of the Roadmap's Timeline | Planned |
 | 24 | Sort a pile: a table of its own to toss a pile of stickies down, group them, ask for help, then send it to the Sky | Merged (PR #21, done before 21–23) |
 | 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
 | 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | Merged (PR #27) |
-| 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Planned (in review, step by step: opening a node keeps other cards in place (PR #29); detached branches stay branches (PR #30); free stickies with saved positions and Undo; next: connectors, selection and focus) |
+| 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Completed continuation: connectors, stacks, focused mind map, tour and navigation; combine/split operations remain planned |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
@@ -535,6 +536,21 @@ changes the Mac itself.
 - Not done: emoji, quicklinks beyond Nate's own words, Settings for the ring's order (it is the order ticked), the
   dock at the top.
 
+### Phase 14: Connectors (step one: your Mac's Calendar and Reminders, in review)
+
+- What Nate gets: in the Calendar room, the events from the Mac's own Calendar app (iCloud, Google, Exchange:
+  whatever the Mac has) show beside OSAT's own, with a small dot in each calendar's colour and a switch for each
+  calendar. A "Show my Mac's calendars" button asks macOS once; until then nothing is read, and a refusal says
+  where to turn it on (System Settings → Privacy & Security → Calendars).
+- Adding an event now asks "Keep it": in OSAT, or on one of the Mac's calendars (written through the Mac, so it
+  syncs wherever that calendar does). Undo takes it back off.
+- Reminders due within a week (and any with no date) sit in a small list; tick one done (Undo unticks it) or add
+  one. It has its own one-time ask.
+- Everything is read on the Mac and goes nowhere else, works offline, and is never copied into `calendar.events`.
+- Built with EventKit through `osascript -l JavaScript` (`desktop/mac-calendar.cjs`); the pure rules are in
+  `shared/mac-calendar-model.mjs`. The browser preview has no Mac, so the room shows only OSAT's events there.
+- Next steps of Phase 14 (not started): Apple Mail, Gmail in the browser, Outlook, and Messages beside OSAT.
+
 ### Phase 15: Paper in (merged, PR #17)
 Nate's goal: scan something at the printer, walk over to the Mac, and a new node is waiting, already
 sorted, to look through and rearrange.
@@ -761,17 +777,21 @@ Still to come in this phase: the desk's Desktop shelf and the Notes room on the 
   again.").
 
 #### Phase 21b: A tidy desk and folders (OSAT helps, Nate decides)
-- **Tidy my Desktop.** One button on the desk's Desktop shelf. The built-in AI looks at the names (and,
-  for a few, what's inside) and proposes a plan: "12 screenshots → Pictures/Screenshots, 4 invoices →
-  Documents/Money, 3 installers → Bin". The plan is a list Nate ticks through: Do it, Skip, or change
-  where each goes. Nothing moves until he says so, and the whole tidy has one Undo. The AI step runs in
-  the main process with a fixed answer shape, like scans do, in small batches.
-- **A folder layout to grow into (optional):** OSAT offers a simple home layout (for example Projects,
-  Money, Home, School, Archive) and can make it. Nodes and folders can then match: "Make a folder for
-  this node".
-- **Keeps itself tidy:** a quiet "Anything on the Desktop older than 30 days goes to Archive/2026-09?"
-  offer, off by default, never a nag or a count.
-- Same rule as Tidy Unsorted in "Later": AI proposes, Nate accepts or declines each.
+Built (in review). What Nate sees, in the Files room with Desktop open:
+- **Tidy my Desktop.** A button in the bar. The built-in AI reads the names on the Desktop (and the
+  first words of a few PDFs and documents), 25 files at a time, and proposes a plan as calm lines:
+  "12 screenshots → Documents/Screenshots", "3 installers → the Bin". Each line is Do it or Skip, has
+  a "Move to" choice and "Show the files". Nothing moves until "Do the ticked ones", and the whole
+  tidy has one Undo. Without the built-in AI it sorts by kind of file and says so in one line.
+  Folders, apps, scripts and hidden files are never touched; the Bin is only proposed for installers.
+- **A folder layout to grow into.** "Make Projects, Money, Home, School and Archive folders" in
+  Documents (only the missing ones; one Undo).
+- **Keeps itself tidy.** A switch in the same panel, off by default: when on, a quiet line under the
+  Desktop asks "Anything on the Desktop older than 30 days goes to Documents/Archive/2026-09?" (Do it
+  or Not now; Not now waits until next month; never a count).
+- Folders go inside **Documents** (Desktop, Documents and Downloads are the places OSAT is allowed
+  into; Pictures isn't one yet).
+- The Desktop shelf and ⌘K now open the same reviewed tidy plan. "Make a folder for this node" remains planned.
 
 #### Phase 22: Files in the Sky
 - **Toss a file up.** Drag a file from the desk's Desktop shelf, from Files or from Finder up into the
@@ -1039,3 +1059,17 @@ calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
   - the hotkey-conflict path
   - Metal model speed
   - first-run download.
+
+### Phase 13b and interrupted-session continuation — September 30, 2026
+
+Settings now has searchable pages and rows, grouped shortcut tables, a key recorder,
+clipboard controls, quicklinks with `{query}`, and ordered ring tools. Emoji & symbols
+opens the Mac's native character picker from quick search. No global mouse hook was added.
+
+The recovered Phase 27 tour points at the actual line, top Sky tab and Tools button;
+Tools shows all tools together with keyboard navigation. Connectors, reorderable/foldable
+desk stacks, focused mind map and AI context share the existing workspace/schema 10.
+Calendar/Reminders and Desktop tidy are consolidated from their completed branches.
+Tidy remains a proposal requiring selected moves, with Undo; no real files are moved by a tour.
+Calendar permission descriptions ship with the Mac app; live EventKit access still requires
+Nate's Mac permission. Older paused prototypes were backed up separately.

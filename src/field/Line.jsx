@@ -55,7 +55,7 @@ const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceF
    stays first: only the arrows ever move to a launcher row, so Return never guesses. `onNote` says one calm line. */
 export function Line({
   workspace, commit, navigate, greeting, storage, visit = 0, summon = 0, paused = false, offline = null, onOffline,
-  raised = false, onLine, onOpenNote, onSaved, onNote,
+  raised = false, onLine, onOpenNote, onSaved, onNote, stacks,
 }) {
   const center = useRef(null)
   const greetingRef = useRef(null)
@@ -73,7 +73,7 @@ export function Line({
 
   /* Ask talks to the model chosen in Settings (the AI on this Mac unless a cloud one was picked). */
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
-  const { answer, setAnswer, ask: askHere, stop, close } = useAskHere({ workspace, commit, modelId: ai.id })
+  const { answer, setAnswer, ask: askHere, stop, close } = useAskHere({ workspace, commit, modelId: ai.id, context: { stacks } })
 
   /* The launcher (Settings → Launcher): a sum, Nate's keywords, what he copied, an app by name, a job for a bot. In the
      line only `v` and his own keywords are special: a sentence that starts with "a" or "f" is only a sentence. */
@@ -109,7 +109,7 @@ export function Line({
     ...(line.sum ? [{ key: 'sum', label: `= ${line.sum.text}`, hint: 'Copy the answer', icon: Calculator, run: () => { reset(); attempt(async () => { await copyText(line.sum.plain); say(`Copied ${line.sum.text}`) }) } }] : []),
     ...(line.keyword && bridge ? [line.keyword.keyword.app
       ? { key: `kw:${line.keyword.keyword.id}`, label: `Open ${line.keyword.keyword.label}`, hint: line.keyword.keyword.keyword, icon: AppWindow, run: () => { reset(); attempt(() => bridge.openAppNamed(line.keyword.keyword.app)) } }
-      : { key: `kw:${line.keyword.keyword.id}`, label: `Search ${line.keyword.keyword.label} for “${line.keyword.query}”`, tag: 'Web', icon: Globe, run: () => { reset(); attempt(() => bridge.openLink(keywordAddress(line.keyword.keyword, line.keyword.query))) } }] : []),
+      : { key: `kw:${line.keyword.keyword.id}`, label: line.keyword.keyword.url.includes('{query}') ? `Search ${line.keyword.keyword.label} for “${line.keyword.query}”` : `Open ${line.keyword.keyword.label}`, tag: 'Web', icon: Globe, run: () => { reset(); attempt(() => bridge.openLink(keywordAddress(line.keyword.keyword, line.keyword.query))) } }] : []),
     ...(line.bot ? [{ key: 'bot', label: 'Hand this to a bot', hint: botTakers().length ? line.bot.job : 'No bot takes jobs yet', tag: 'Bots', icon: Robot, run: () => { const sent = handOff(line.bot.job, botTakers()); if (sent.ok) { sent.run(); reset() } else say(sent.message) } }] : []),
   ]
   const named = open && bridge && !clipboardScope && text.length >= 2

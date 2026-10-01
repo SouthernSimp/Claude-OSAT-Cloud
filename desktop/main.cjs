@@ -45,6 +45,7 @@ const { extractText } = require('./mac-files.cjs')
 const { TidyError } = require('./file-ops.cjs')
 const { NOT_ALLOWED, createFiles } = require('./files.cjs')
 const { createMedia } = require('./media.cjs')
+const { createMacCalendar } = require('./mac-calendar.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
@@ -55,7 +56,7 @@ let mainWindow
 let quitting = false
 let quickChat
 let tray
-let prefs = { hotkey: DEFAULT_HOTKEY, chatHotkey: CHAT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, chatBounds: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, phone: false, under: false }
+let prefs = { hotkey: DEFAULT_HOTKEY, chatHotkey: CHAT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, chatBounds: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
 // The three shortcuts: the desk, the quick chat and the quick search. `value` is null when another app has it.
 const shortcuts = {
   layer: { value: null, failed: false, run: () => toggleDesk() },
@@ -138,7 +139,7 @@ function handle(channel, operation, { from = 'main' } = {}) {
 
 /* The Files room and Ask's files (desktop/files.cjs): places, folders Nate added, tidying. */
 async function registerFiles() {
-  files = await createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mainWindow: () => mainWindow, dataDir, handle, fail, sharedModule })
+  files = await createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mainWindow: () => mainWindow, dataDir, handle, fail, sharedModule, ai: () => ai })
 }
 
 function send(channel, ...args) {
@@ -470,6 +471,7 @@ async function loadPrefs() {
       widgets: pickWidgets(saved.widgets),
       ai: { tier: typeof saved.ai?.tier === 'string' ? saved.ai.tier : null },
       welcomed: saved.welcomed === true,
+      toured: saved.toured === true,
       phone: saved.phone === true,
       under: saved.under === true,
     }
@@ -615,6 +617,7 @@ function registerDesk() {
 
 async function registerLauncher() {
   launcher = await createLauncher({
+    app,
     BrowserWindow,
     screen,
     clipboard: require('electron').clipboard,
@@ -793,6 +796,9 @@ function registerAi() {
   handle('ai:remove', plain((tier) => ai.remove(tier)), { from: 'app' })
   handle('app:welcome', () => !prefs.welcomed, { from: 'main' })
   handle('app:welcomed', async () => { prefs = { ...prefs, welcomed: true }; await savePrefs(); return true }, { from: 'main' })
+  // The first-run tour (Phase 27) shows once per Mac, after the welcome; Take the tour in ⌘K brings it back.
+  handle('app:tour', () => !prefs.toured, { from: 'main' })
+  handle('app:toured', async () => { prefs = { ...prefs, toured: true }; await savePrefs(); return true }, { from: 'main' })
 
   handle('local-ai:models', () => answeringModels(), { from: 'any' })
   const streams = new Map()
@@ -1222,6 +1228,7 @@ app.whenReady().then(async () => {
   await registerScans()
   await registerLauncher()
   await registerBots()
+  createMacCalendar({ handle, fail })
   registerDesk()
   registerQuickChat()
   createWindow()

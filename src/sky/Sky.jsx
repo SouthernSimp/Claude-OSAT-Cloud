@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsIn, CornersOut, DownloadSimple, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, Sparkle, Stack, Trash,
+  ArrowDown, ArrowsIn, Broom, CornersOut, Crosshair, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, Sparkle, Stack, Trash,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
@@ -21,6 +21,8 @@ import { seedDirection } from '../project-direction.js'
 import { Board } from './Board.jsx'
 import { SkyAsk } from './SkyAsk.jsx'
 import { branchWords, wherePlaces } from './where.js'
+import { tidyTree } from './map-layout.js'
+import { connect, disconnect, folderKey, linksAt, noteKey, recordOf } from '../links-model.js'
 
 const OPEN_KEY = 'osat.sky.open.v1'
 function readOpen() {
@@ -41,7 +43,7 @@ function guideSeen() {
    of the screen). Your nodes on one whiteboard (Board). `target` says where to fly on
    arriving ({ folderId } or { noteId }). Esc: a node being named, the search, then back
    down (Desk.jsx asks `back()`). `onFiled` hears when a sticky from the desk went into a node. */
-export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target, onClose, onFiled }, ref) {
+export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target, onClose, onFiled, onStackSent }, ref) {
   const board = useRef(null)
   const [open, setOpen] = useState(readOpen)
   const [folds, setFolds] = useState(readFolds)
@@ -61,6 +63,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   // Where a new branch is being named: a node's id, or a branch's for one inside it.
   const [branching, setBranching] = useState(null)
   const [guide, setGuide] = useState(() => !guideSeen())
+  // Focus: one node alone on the Sky (its id), until Done or Esc.
+  const [focus, setFocus] = useState(null)
   const [menu, openMenu] = useContextMenu()
   const [toast, showUndo] = useUndoToast()
   const latest = useRef(workspace)
@@ -74,12 +78,16 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     if (!workspace.settings?.seeded?.direction) commit(seedDirection)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Arriving with somewhere to go: a node, or the node a note is in. */
+  /* Arriving with somewhere to go: a node, or the node a note is in. Each arrival is
+     handled once (something it makes, like a stack's branch, is never made twice). */
+  const arrived = useRef(null)
   useEffect(() => {
-    if (!target) return
+    if (!target || arrived.current === target.at) return
+    arrived.current = target.at
     if (target.action === 'new-node') { board.current?.newNode(); return }
     if (target.action === 'new-sticky') { board.current?.newSticky(); return }
     if (target.action === 'place-sticky') { board.current?.placeSticky(target.noteId); return }
+    if (target.action === 'place-stack') { board.current?.placeStack(target); return }
     const noteId = target.noteId || target.focusNoteId
     const folderId = target.folderId || (noteId && workspace.notes.find((note) => note.id === noteId)?.folderId)
     if (target.open && folderId) toggle(folderId, true)
@@ -98,7 +106,9 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       if (query) { setQuery(''); return true }
       if (asking) { setAsking(false); return true }
       if (placing) { placeAsk.current = null; setPlacing(null); return true }
-      return Boolean(board.current?.back())
+      if (board.current?.back()) return true
+      if (focus) { setFocus(null); return true }
+      return false
     },
   }))
 
@@ -133,12 +143,35 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   }
 
   const nodesList = nodesOf(workspace.folders)
+  /* One node (or a branch on its own) alone, open; Done or Esc brings the rest back. */
+  function focusOn(id) {
+    toggle(id, true)
+    setFocus(id)
+  }
   // A suggestion goes once its stickies have gone somewhere else; with none left, so does the help.
   const unsuggest = (ids) => setSorting((value) => {
     if (!value) return value
     const groups = value.groups.map((group) => ({ ...group, noteIds: group.noteIds.filter((id) => !ids.includes(id)) })).filter((group) => group.noteIds.length)
     return groups.length || value.line || value.asking ? { ...value, groups } : null
   })
+
+  const nameOf = (key) => {
+    const record = recordOf(latest.current, key)
+    return (record?.title || record?.name || 'something').slice(0, 40)
+  }
+  /* The menu items that connect `key` to a node or branch, and take its connections away. */
+  function connectItems(key) {
+    const state = latest.current
+    const already = linksAt(state, key)
+    // The same nodes and branches as every Move to menu, in its order, less itself and those already joined.
+    const ids = nodesOf(state.folders).flatMap(({ folder }) => [folder.id, ...folderChildren(state.folders, folder.id).map((branch) => branch.id)])
+    const items = moveToItems(state.folders, (folderId) => actions.link(key, folderKey(folderId)), { unsorted: false })
+    const targets = items[0]?.note ? items : items.filter((item, index) => key !== folderKey(ids[index]) && !already.includes(folderKey(ids[index])))
+    return [
+      targets.length ? { label: 'Connect to', icon: LineSegment, items: targets } : null,
+      already.length ? { label: 'Remove a connection', icon: Trash, items: already.map((other) => ({ label: nameOf(other), onSelect: () => actions.unlink(key, other) })) } : null,
+    ]
+  }
 
   const actions = {
     commit,
@@ -164,6 +197,69 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     moveFolder(id, parentId, index, options) {
       commit((state) => moveFolder(state, id, parentId, index, options))
+    },
+    /* Cards of a map set down where they are, still in their folders: [{ kind, id, at }],
+       `at` from the folder's corner. */
+    hang(cards) {
+      const where = (kind) => new Map(cards.filter((card) => card.kind === kind).map((card) => [card.id, card.at]))
+      const notes = where('note')
+      const folders = where('folder')
+      commit((state) => ({
+        ...state,
+        notes: notes.size ? state.notes.map((item) => (notes.has(item.id) ? { ...item, at: notes.get(item.id) } : item)) : state.notes,
+        folders: folders.size ? state.folders.map((item) => (folders.has(item.id) ? { ...item, at: folders.get(item.id) } : item)) : state.folders,
+      }))
+    },
+    /* Tidy: a node's (or a branch's) map laid out again in order, with Undo. */
+    tidy(folder) {
+      let inverse = null
+      commit((state) => {
+        const next = tidyTree(state, folder.id)
+        inverse = applyOps(state, diffDocs(state, next)).inverse
+        return next
+      })
+      if (inverse?.length) showUndo(`Tidied ${folder.name}`, () => commit((state) => applyOps(state, inverse).doc))
+    },
+    /* Connections: a line between two things; removing one offers Undo. */
+    link(a, b) {
+      if (a !== b) commit((state) => connect(state, a, b))
+    },
+    unlink(a, b) {
+      const state = latest.current
+      const drawnFrom = recordOf(state, a)?.links?.includes(b) ? [a, b] : [b, a]
+      commit((current) => disconnect(current, a, b))
+      showUndo(`Removed the connection to “${nameOf(b)}”`, () => commit((current) => connect(current, ...drawnFrom)))
+    },
+    lineMenu(event, line) {
+      openMenu(event, [{ label: 'Remove the connection', icon: Trash, onSelect: () => actions.unlink(line.a, line.b) }])
+    },
+    /* Connect to (a node or branch; drag the dot for anything else) and Remove a connection. */
+    connectMenu(event, key) {
+      openMenu(event.clientX || event.clientY ? event : { preventDefault() {}, stopPropagation() {}, clientX: innerWidth / 2, clientY: innerHeight / 3 }, connectItems(key))
+    },
+    /* A stack sent up from the desk: its stickies become a branch on the Sky, on its own,
+       where `place` sets it down. It leaves the desk; Undo brings both back. */
+    sendStack({ noteIds, name, stackKey }, place) {
+      let inverse = null
+      let made = null
+      commit((state) => {
+        const created = addFolder(state, name || 'Untitled branch')
+        if (!created.folder) return state
+        made = created.folder
+        let next = moveFolder(created.state, made.id, null, Infinity, { loose: true })
+        noteIds.forEach((id) => { next = moveSticky(next, id, made.id) })
+        next = place(next, made.id)
+        inverse = applyOps(state, diffDocs(state, next)).inverse
+        return next
+      })
+      if (!made) return null
+      toggle(made.id, true)
+      const restoreDesk = onStackSent?.(stackKey)
+      showUndo(`Sent “${made.name}” up as a branch`, () => {
+        commit((state) => applyOps(state, inverse).doc)
+        restoreDesk?.()
+      })
+      return made
     },
     /* Where does this belong?: the model reads the branch and picks one place with a reason.
        Nothing moves until Move; Undo puts the branch back where it was. */
@@ -291,7 +387,12 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
         { label: 'Rename', icon: PencilSimple, onSelect: () => actions.startRename(folder.id) },
         { label: 'New branch', icon: Plus, onSelect: () => { toggle(folder.id, true); actions.startBranch(folder.id) } },
         { label: 'Help me sort', icon: Sparkle, onSelect: () => { toggle(folder.id, true); actions.sort(folder.id) } },
+        focus === folder.id
+          ? { label: 'Done focusing', icon: Crosshair, onSelect: () => setFocus(null) }
+          : { label: 'Focus on it', icon: Crosshair, hint: 'Double-click', onSelect: () => focusOn(folder.id) },
+        { label: 'Tidy', icon: Broom, onSelect: () => actions.tidy(folder) },
         { label: 'See it in Notes', icon: NotePencil, onSelect: () => navigate('Notes', { folderId: folder.id }) },
+        ...connectItems(folderKey(folder.id)),
         { divider: true },
         { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: folder.color || 'canary', onPick: (paper) => actions.paint(folder.id, paper) }] },
         // Into another node, as one of its branches.
@@ -320,6 +421,9 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
         { label: 'New branch inside', icon: Plus, onSelect: () => actions.startBranch(branch.id) },
         { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: branch.color || 'bone', onPick: (paper) => actions.paint(branch.id, paper) }] },
         actions.askWhere ? { label: 'Where does this belong?', icon: Sparkle, onSelect: () => actions.askWhere(branch) } : null,
+        !branch.parentId ? { label: focus === branch.id ? 'Done focusing' : 'Focus on it', icon: Crosshair, onSelect: () => (focus === branch.id ? setFocus(null) : focusOn(branch.id)) } : null,
+        { label: 'Tidy', icon: Broom, onSelect: () => actions.tidy(branch) },
+        ...connectItems(folderKey(branch.id)),
         {
           label: 'Move to', icon: ShareNetwork, items: [
             ...(branch.parentId ? [{ label: 'On the Sky, as a branch', onSelect: () => actions.moveFolder(branch.id, null, Infinity, { loose: true }) }] : []),
@@ -337,6 +441,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
         note.at && !note.folderId ? { label: 'Back to Unsorted', icon: Stack, onSelect: () => actions.placeSticky(note.id, null) } : null,
         { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
         { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => actions.moveSticky(note.id, folderId), { skip: note.folderId || null }) },
+        ...connectItems(noteKey(note.id)),
         { divider: true },
         { label: 'Delete', icon: Trash, danger: true, onSelect: () => actions.toss(note) },
       ])
@@ -479,7 +584,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       </header>
 
       <div className="sky-body">
-        <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} />
+        <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} focus={focus} onFocus={(id) => (id ? focusOn(id) : setFocus(null))} />
         <SkyAsk workspace={workspace} commit={commit} models={models} open={open} asking={asking} setAsking={setAsking} navigate={navigate} showUndo={showUndo} />
       </div>
 
@@ -519,7 +624,7 @@ function SkyGuide({ onDone }) {
           <p><strong>Branches group stickies.</strong> They can sit on their own or inside a node, and hold smaller branches.</p>
         </li>
       </ol>
-      <p className="sky-guide-foot">Double-click the Sky to write a sticky anywhere. Drag one onto a node or branch when you want to give it a home. Other captures wait in <strong>Unsorted</strong>.</p>
+      <p className="sky-guide-foot">Click a node to open it as a map: its branches and stickies spread out around it. Double-click the Sky to write a sticky anywhere, and drag the dot on any card to connect it to another. Drop a sticky on a node or branch when you want to give it a home. Other captures wait in <strong>Unsorted</strong>.</p>
       <button type="button" className="is-primary" onClick={onDone}>Got it</button>
     </section>
   )

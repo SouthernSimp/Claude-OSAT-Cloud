@@ -27,6 +27,7 @@ function createClipboardHistory({
   let paused = false
   let watching = true
   let last = ''
+  const privateCopies = new Set()
   let busy = false
   let timer = null
   let saveTimer = null
@@ -141,7 +142,7 @@ function createClipboardHistory({
       const sig = seen?.sig || ''
       if (sig === last) return
       last = sig
-      if (!seen || concealed()) return
+      if (!seen || concealed() || privateCopies.has(sha(sig))) return
       const result = await record(seen)
       if (result && !result.repeat) onCopy(result.added)
       if (Date.now() - lookedAtAge > 3600000) { lookedAtAge = Date.now(); tidyAge() }
@@ -281,7 +282,7 @@ function createClipboardHistory({
       }
     },
     /* A clipboard that OSAT itself writes to (a key for the connector) and never keeps. */
-    quiet: (target) => ({ writeText: (text) => { target.writeText(text); prime() }, readText: () => target.readText() }),
+    quiet: (target) => ({ writeText: (text) => { privateCopies.add(sha(`t:${text}`)); target.writeText(text); prime() }, readText: () => target.readText() }),
   }
 }
 

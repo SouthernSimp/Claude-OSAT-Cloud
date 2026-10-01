@@ -147,9 +147,11 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   if (read.math) rows.push({ key: 'calc', source: 'calc', kind: 'calc', title: `= ${read.math.text}`, subtitle: read.typed, section: 'Calculator', data: read.math })
   if (read.keyword) {
     const { keyword, query } = read.keyword
-    if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Keywords', data: { app: keyword.app } })
-    else rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-link', title: `Search ${keyword.label} for “${query}”`, subtitle: `${keyword.keyword} · web address`, section: 'Keywords', data: { url: keywordAddress(keyword, query) } })
+    if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Apps', data: { app: keyword.app } })
+    else rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-link', title: keyword.url.includes('{query}') ? `Search ${keyword.label} for “${query}”` : `Open ${keyword.label}`, subtitle: `${keyword.keyword} · web address`, section: 'Quick links', data: { url: keywordAddress(keyword, query) } })
   }
+
+  if (read.scope === 'all' && /^(emoji|emojis|symbols?|characters?)$/i.test(read.query)) rows.push({ key: 'emoji', source: 'tools', kind: 'emoji', title: 'Emoji & symbols', subtitle: 'Open the Mac’s character picker', section: 'Tools', data: {} })
 
   const has = read.query.length > 0
   const clipboard = found.clipboard?.items || []
@@ -223,6 +225,7 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
         pin(row.data.pinned),
         { id: 'delete', label: 'Delete', hint: 'Forgets this copy', keys: '⌘⌫', danger: true },
       ]
+    case 'emoji': return [{ id: 'emoji', label: 'Open', keys: '↵' }]
     case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⌘↵' }]
     case 'note': return [{ id: 'go', label: 'Open', keys: '↵' }]
     case 'node': return [{ id: 'go', label: 'Open in the Sky', keys: '↵' }]

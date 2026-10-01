@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Broom, CaretDown, CaretUp, NotePencil, PaintBucket, PushPin, ShareNetwork, SquaresFour, Trash, TreeStructure } from '@phosphor-icons/react'
+import {
+  ArrowsOut, Broom, CaretDown, CaretUp, LineSegment, NotePencil, PaintBucket, PencilSimple, PushPin, ShareNetwork, SquaresFour, Stack, Trash, TreeStructure,
+} from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
 import { cleanError } from '../assistant/useAi.js'
@@ -9,11 +11,13 @@ import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { clamp } from '../lib/ui.js'
 import { PAPERS } from '../note-core.js'
-import { excerpt, isActiveNote, restoreNotes, trashNotes, wikilinkPairs } from '../notes-model.js'
+import { excerpt, isActiveNote, restoreNotes, trashNotes, uid, wikilinkPairs } from '../notes-model.js'
 import { addFolder, addSticky, moveSticky, moveToItems, splitMentions } from '../nodes-model.js'
+import { connect, disconnect, linksAt, linksOf, noteKey, recordOf } from '../links-model.js'
 import { NameField } from '../sky/Piles.jsx'
 import { FileThumb, filesBridge, openEntry, useFolder, useFreshness } from '../views/Files.jsx'
-import { GRID, STICKY, StickyLayer, spotOn, useStickySurface } from './DeskStickies.jsx'
+import { GRID, STICKY, StickyLayer, menuEvent, spotOn, useLinking, useStickySurface } from './DeskStickies.jsx'
+import { addToStack, changes, isStack, setDown, stackOf, stackUp, unstack } from './stacks.js'
 import { useReducedMotion } from './FieldChrome.jsx'
 import { deskArea } from '../shell/dock-model.js'
 import { dayPhase, fitCells, freeSpot, homeItems, paperFields, phaseCopy } from './field-model.js'
@@ -41,7 +45,7 @@ const keep = (key, value) => { try { localStorage.setItem(key, value) } catch { 
 export function FieldDesk({
   workspace, commit, navigate,
   storage, focusAt, summon, dock, onOpenNote, visit = 0, places = {}, onPlace, media,
-  raised = false, onLine, widgets, offline, onOffline, onNote, dockSide = 'bottom',
+  raised = false, onLine, widgets, offline, onOffline, onNote, dockSide = 'bottom', onSendStack,
 }) {
   const home = useRef(null)
   const justMoved = useRef(false)
@@ -65,6 +69,9 @@ export function FieldDesk({
   const [hoverId, setHoverId] = useState(null)
   const [menu, openMenu] = useContextMenu()
   const [toast, showUndo] = useUndoToast()
+  // What is being carried itself right now ({ key, dx, dy }), so its lines follow it.
+  const [drag, setDrag] = useState(null)
+  const [renamingStack, setRenamingStack] = useState(null)
 
   const phase = dayPhase(now)
   const today = localDateKey(now)
@@ -77,7 +84,13 @@ export function FieldDesk({
     .filter(([key]) => key.startsWith('note:'))
     .map(([key, spot]) => ({ note: byId.get(key.slice(5)), spot }))
     .filter(({ note }) => note && note.kind !== 'day')
-  const out = new Set(stickies.map(({ note }) => note.id))
+  // Stacks: stickies in a column (stacks.js); a stack's stickies that are gone are left out.
+  const stacks = Object.entries(places)
+    .filter(([key, spot]) => isStack(key) && Array.isArray(spot?.ids))
+    .map(([key, spot]) => ({ key, ...spot, notes: spot.ids.map((id) => byId.get(id)).filter((note) => note && note.kind !== 'day') }))
+    .filter((stack) => stack.notes.length)
+  const out = new Set([...stickies.map(({ note }) => note.id), ...stacks.flatMap((stack) => stack.notes.map((note) => note.id))])
+  const links = linksOf(workspace)
 
   const allItems = homeItems({ notes, folders: workspace.folders }, Infinity, out)
   const placed = (item) => item.kind !== 'note' && Boolean(places[`${item.kind}:${item.id}`])
@@ -89,11 +102,93 @@ export function FieldDesk({
   const linked = new Set(hoverId ? pairs.flatMap((pair) => (pair.a === hoverId ? [pair.b] : pair.b === hoverId ? [pair.a] : [])) : [])
   const linkedFolders = new Set(notes.filter((note) => linked.has(note.id) && note.folderId).map((note) => note.folderId))
 
-  const surface = useStickySurface({ id: 'desk', surface: home, prefix: 'note', places, onPlace })
+  /* Set down on the desk: a sticky by itself (out of any stack, keeping its size), a stack where it lands. */
+  const surface = useStickySurface({
+    id: 'desk',
+    surface: home,
+    onSet: ({ kind, id }, spot) => {
+      if (kind === 'stack') { if (places[id]) onPlace(id, { ...places[id], x: spot.x, y: spot.y }); return }
+      const before = places[`note:${id}`]
+      rearrange(setDown(places, id, before?.w ? { ...spot, w: before.w, h: before.h } : spot))
+    },
+  })
   const shelfDrop = useDrop('desk:shelf', {
     accepts: ['note'],
-    onDrop: ({ id }) => onPlace(`note:${id}`, null),
+    onDrop: ({ id }) => rearrange(setDown(places, id, null)),
   })
+
+  /* Places changed together (a stack made or undone): each saved, and Undo puts them back. */
+  function rearrange(next, undo) {
+    const before = places
+    changes(before, next).forEach(([key, spot]) => onPlace(key, spot))
+    if (undo) showUndo(undo, () => changes(next, before).forEach(([key, spot]) => onPlace(key, spot)))
+  }
+
+  /* Connections: drag a sticky's dot onto another; the line follows the pointer. */
+  const title = (key) => {
+    const record = recordOf(workspace, key)
+    return (record?.title || record?.name || 'something').slice(0, 40)
+  }
+  function link(a, b) {
+    if (a === b || linksAt(workspace, a).includes(b)) return
+    commit((state) => connect(state, a, b))
+  }
+  function unlink(a, b) {
+    const drawnFrom = recordOf(workspace, a)?.links?.includes(b) ? [a, b] : [b, a]
+    commit((state) => disconnect(state, a, b))
+    showUndo(`Removed the connection to “${title(b)}”`, () => commit((state) => connect(state, ...drawnFrom)))
+  }
+  const linker = useLinking({
+    toLocal: (x, y) => {
+      const box = home.current.querySelector('.sticky-layer').getBoundingClientRect()
+      return { x: x - box.left, y: y - box.top }
+    },
+    onLink: link,
+    onMenu: (event, key) => connectMenu(event, key),
+  })
+  /* What a sticky can be connected to from here: the others on the desk, then those it already is (to remove). */
+  function connectMenu(event, key) {
+    const already = linksAt(workspace, key)
+    const others = [...out].map(noteKey).filter((other) => other !== key && !already.includes(other))
+    openMenu(menuEvent(event), [
+      others.length
+        ? { label: 'Connect to', icon: LineSegment, items: others.map((other) => ({ label: title(other), onSelect: () => link(key, other) })) }
+        : { note: 'Put another sticky on the desk to connect it.' },
+      already.length ? { label: 'Remove a connection', icon: Trash, items: already.map((other) => ({ label: title(other), onSelect: () => unlink(key, other) })) } : null,
+    ])
+  }
+  function lineMenu(event, line) {
+    openMenu(event, [
+      { label: 'Remove the connection', icon: Trash, onSelect: () => unlink(line.a, line.b) },
+    ])
+  }
+
+  /* Stacks: one sticky dropped on another; into a stack; folded; named; spread out again. */
+  function stackOnto(targetId, droppedId) {
+    rearrange(stackUp(places, targetId, droppedId, uid('stack').slice(6)), 'Stacked')
+  }
+  function joinStack(key, noteId, index) {
+    const before = places
+    rearrange(addToStack(places, key, noteId, index), stackOf(before, noteId) === key ? null : 'Added to the stack')
+  }
+  function foldStack(key) {
+    if (places[key]) onPlace(key, { ...places[key], folded: !places[key].folded })
+  }
+  function renameStack(key, start, name) {
+    if (start) { setRenamingStack(key); return }
+    setRenamingStack(null)
+    if (name !== null && places[key]) onPlace(key, { ...places[key], name: name || '' })
+  }
+  function stackMenu(event, stack) {
+    const name = stack.name || 'Stack'
+    openMenu(event, [
+      { label: 'Rename', icon: PencilSimple, onSelect: () => setRenamingStack(stack.key) },
+      { label: stack.folded ? 'Open the stack' : 'Fold the stack', icon: CaretDown, onSelect: () => foldStack(stack.key) },
+      onSendStack ? { label: 'Send up to the Sky', icon: CaretUp, hint: 'as a branch', onSelect: () => onSendStack(stack) } : null,
+      { divider: true },
+      { label: 'Unstack', icon: ArrowsOut, onSelect: () => rearrange(unstack(places, stack.key), `Unstacked ${name}`) },
+    ])
+  }
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60000)
@@ -163,7 +258,7 @@ export function FieldDesk({
   /* The desk's own rectangle, and what's already on it, for finding a free spot. */
   function deskBoxes() {
     const box = home.current.getBoundingClientRect()
-    const taken = [...home.current.querySelectorAll('.home-widgets, .home-icons, .home-composer-wrap, .home-greeting, .dock, .desk-sticky')]
+    const taken = [...home.current.querySelectorAll('.home-widgets, .home-icons, .home-composer-wrap, .home-greeting, .dock, .desk-sticky, .desk-stack')]
       .map((element) => element.getBoundingClientRect())
       .filter((rect) => rect.width && rect.height)
     return { box, taken }
@@ -211,14 +306,15 @@ export function FieldDesk({
   /* A sticky dropped on a node goes into it (off the desk); on the loose pile, into Unsorted. */
   function fileSticky(noteId, folderId) {
     const before = workspace.notes.find((note) => note.id === noteId)
-    const spot = places[`note:${noteId}`]
+    const was = places
+    const next = setDown(places, noteId, null)
     commit((state) => moveSticky(state, noteId, folderId))
-    if (spot) onPlace(`note:${noteId}`, null)
+    changes(was, next).forEach(([key, spot]) => onPlace(key, spot))
     const name = folderId ? workspace.folders.find((folder) => folder.id === folderId)?.name : 'Unsorted'
     if (before && name) {
       showUndo(`Moved to ${name}`, () => {
-        commit((state) => ({ ...state, notes: state.notes.map((note) => (note.id === noteId ? { ...note, folderId: before.folderId, unsorted: before.unsorted, rank: before.rank, kind: before.kind } : note)) }))
-        if (spot) onPlace(`note:${noteId}`, spot)
+        commit((state) => ({ ...state, notes: state.notes.map((note) => (note.id === noteId ? { ...note, folderId: before.folderId, unsorted: before.unsorted, rank: before.rank, kind: before.kind, ...(before.at ? { at: before.at } : {}) } : note)) }))
+        changes(next, was).forEach(([key, spot]) => onPlace(key, spot))
       })
     }
   }
@@ -226,7 +322,7 @@ export function FieldDesk({
   /* Clean up: the stickies on the desk set out neatly under the line, in reading order. */
   function cleanUp() {
     const box = home.current.getBoundingClientRect()
-    const fixed = [...home.current.querySelectorAll('.home-widgets, .home-icons, .home-composer-wrap, .home-greeting, .dock')]
+    const fixed = [...home.current.querySelectorAll('.home-widgets, .home-icons, .home-composer-wrap, .home-greeting, .dock, .desk-stack')]
       .map((element) => element.getBoundingClientRect())
       .filter((rect) => rect.width && rect.height)
     const line = home.current.querySelector('.home-composer-wrap')?.getBoundingClientRect()
@@ -258,8 +354,15 @@ export function FieldDesk({
   }
 
   function stickyMenu(event, note) {
+    const key = noteKey(note.id)
+    const already = linksAt(workspace, key)
+    const others = [...out].map(noteKey).filter((other) => other !== key && !already.includes(other))
+    const stacked = stackOf(places, note.id)
     openMenu(event, [
       { label: 'Open as a page', icon: NotePencil, onSelect: () => openNote(note.id) },
+      others.length ? { label: 'Connect to', icon: LineSegment, items: others.map((other) => ({ label: title(other), onSelect: () => link(key, other) })) } : null,
+      already.length ? { label: 'Remove a connection', icon: Trash, items: already.map((other) => ({ label: title(other), onSelect: () => unlink(key, other) })) } : null,
+      stacked ? { label: 'Take out of the stack', icon: Stack, onSelect: () => rearrange(setDown(places, note.id, { x: Math.min(0.9, places[stacked].x + 0.16), y: places[stacked].y }), null) } : null,
       { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
       { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => fileSticky(note.id, folderId), { skip: note.folderId || null }) },
       { label: 'Send up to the Sky', icon: CaretUp, onSelect: () => navigate('Mindmap', { action: 'place-sticky', noteId: note.id }) },
@@ -412,10 +515,12 @@ export function FieldDesk({
         onNote={onNote}
         onOpenNote={openNote}
         onSaved={(id) => { setFreshId(id); landOnDesk(id) }}
+        stacks={stacks.map((stack) => ({ name: stack.name, titles: stack.notes.map((note) => note.title) }))}
       />
 
       <nav className="home-icons" aria-label={onDesktop ? 'Your Desktop' : 'OSAT items'} data-size={iconSize}>
         <div className="icons-head">
+          {onDesktop && !collapsed && filesBridge()?.tidyPlan && <button type="button" onClick={() => navigate('Files', { rootId: 'desktop', tidy: true })}>Tidy</button>}
           {filesBridge() && !collapsed && (
             <div className="icons-switch" role="radiogroup" aria-label="What the desk shows">
               <button type="button" role="radio" aria-checked={onDesktop} onClick={() => pickShelf('desktop')}>Desktop</button>
@@ -444,7 +549,8 @@ export function FieldDesk({
 
       <StickyLayer
         stickies={stickies}
-        prefix="note"
+        stacks={stacks}
+        links={links}
         commit={commit}
         onPlace={onPlace}
         onToss={toss}
@@ -453,6 +559,14 @@ export function FieldDesk({
         draft={draft}
         onDraft={writeSticky}
         fresh={freshId}
+        drag={drag}
+        onDrag={setDrag}
+        onStack={stackOnto}
+        stackProps={{ onJoin: joinStack, onFold: foldStack, onStackMenu: stackMenu, renamingKey: renamingStack, onRename: renameStack }}
+        linking={linker.linking}
+        onLinkStart={linker.start}
+        onLinkMenu={connectMenu}
+        onLineMenu={lineMenu}
       />
       {nodeDraft && (
         <div className="node-draft" style={{ left: nodeDraft.x, top: nodeDraft.y }}>
@@ -477,7 +591,7 @@ export function FieldDesk({
 }
 
 /* Empty desk: nothing there but the desk itself (the space around the icons counts). */
-const bareDesk = (target) => !target.closest('button, a, input, textarea, select, .widget, .widgets-tray, .desk-sticky, .node-draft, .dock, .home-composer-wrap, .home-answer, .home-greeting, .icons-head, .icons-note, .context-menu, .focus-environment')
+const bareDesk = (target) => !target.closest('button, a, input, textarea, select, .widget, .widgets-tray, .desk-sticky, .desk-stack, .link-lines, .node-draft, .dock, .home-composer-wrap, .home-answer, .home-greeting, .icons-head, .icons-note, .context-menu, .focus-environment')
 
 /* One icon on the desk's right side. A note can be carried out onto the desk (it becomes a
    sticky there) or into a node; a node takes stickies dropped on it, and the Unsorted pile

@@ -25,6 +25,13 @@ contextBridge.exposeInMainWorld('nateOSFiles', Object.freeze({
   ),
   dragOut: (items) => ipcRenderer.invoke('files:drag-out', items),
   trash: (items) => ipcRenderer.invoke('files:trash', items),
+  // Tidy my Desktop: a plan (moves nothing), then the ticked groups ({ to, folder, names }) as one undo.
+  tidyPlan: () => ipcRenderer.invoke('files:tidy-plan'),
+  tidyDo: (groups) => ipcRenderer.invoke('files:tidy-do', groups),
+  tidyLayout: () => ipcRenderer.invoke('files:tidy-layout'),
+  tidyOffer: () => ipcRenderer.invoke('files:tidy-offer'),
+  tidySet: (on) => ipcRenderer.invoke('files:tidy-set', on === true),
+  tidyLater: () => ipcRenderer.invoke('files:tidy-later'),
   undo: (token) => ipcRenderer.invoke('files:undo', token),
   // The text Ask reads: from a file OSAT can see, a file dropped on a chat, or one chosen now.
   extract: (rootId, relative = '') => ipcRenderer.invoke('files:extract', rootId, relative),
@@ -122,6 +129,9 @@ contextBridge.exposeInMainWorld('osatApp', Object.freeze({
   // The first-launch welcome shows once per Mac.
   needsWelcome: () => ipcRenderer.invoke('app:welcome'),
   welcomed: () => ipcRenderer.invoke('app:welcomed'),
+  // The first-run tour shows once per Mac, after the welcome.
+  needsTour: () => ipcRenderer.invoke('app:tour'),
+  toured: () => ipcRenderer.invoke('app:toured'),
   showDataFolder: () => ipcRenderer.invoke('app:show-data-folder'),
   onCommand: (listener) => {
     const stop = listen('app:command', listener)
@@ -170,6 +180,20 @@ contextBridge.exposeInMainWorld('osatScans', Object.freeze({
   done: (id) => ipcRenderer.invoke('scans:done', id),
   onStatus: (listener) => listen('scans:status', listener),
   onReady: (listener) => listen('scans:ready', listener),
+}))
+
+/* Your Mac's own Calendar and Reminders (Phase 14): nothing is read until allow() is answered yes. */
+contextBridge.exposeInMainWorld('osatMacCalendar', Object.freeze({
+  status: () => ipcRenderer.invoke('maccal:status'),
+  allow: (kind) => ipcRenderer.invoke('maccal:allow', kind),
+  calendars: () => ipcRenderer.invoke('maccal:calendars'),
+  events: (range) => ipcRenderer.invoke('maccal:events', range),
+  addEvent: (event) => ipcRenderer.invoke('maccal:add-event', event),
+  removeEvent: (id) => ipcRenderer.invoke('maccal:remove-event', id),
+  reminders: () => ipcRenderer.invoke('maccal:reminders'),
+  addReminder: (reminder) => ipcRenderer.invoke('maccal:add-reminder', reminder),
+  removeReminder: (id) => ipcRenderer.invoke('maccal:remove-reminder', id),
+  setReminderDone: (id, done) => ipcRenderer.invoke('maccal:reminder-done', id, done),
 }))
 
 /* The desk (⌥Space): put it away, the shortcuts, the app launchers, where things sit
@@ -229,6 +253,7 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   revealApp: search('reveal-app'),
   openLink: search('open-link'),
   snap: search('snap'),
+  emoji: search('emoji'),
   // The desk's own ring (⌘ + middle-click) opens the quick search over it, on a tab.
   show: search('show'),
   hide: search('hide'),

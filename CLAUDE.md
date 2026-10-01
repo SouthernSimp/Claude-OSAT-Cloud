@@ -10,18 +10,23 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — September 30, 2026
 
-Continue from `codex/phase-27-free-stickies` in
-`SouthernSimp/Claude-OSAT-Cloud` ([draft PR #32](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/32)).
-The local source is `/Users/nate/Desktop/OSAT Field copy`. Fetch and check out that branch
-before continuing; older Phase 27 branches do not include this work. PR #32 is stacked on
-#30, which depends on #29; all remain in review, awaiting Nate's merge instruction.
+Continue from `codex/finish-claude-osat` in `SouthernSimp/Claude-OSAT-Cloud`.
+The active Claude source is `/Users/nate/Desktop/OSAT Field copy`; the separate
+`Desktop/Projects/OSAT V2` copy is not this repository. Original worktrees and local edits
+were preserved before consolidation, with recovery refs under `recovery/2026-09-30/`.
 
-Completed: free Sky stickies, saved positions (schema 9), Find/Fit, keyboard movement,
-Desk-to-Sky placement and Undo. Implementation commit `025cd5a` passed 308 unit checks,
-the build, browser and isolated native tests, and GitHub's Mac build/launch/AI checks.
-The isolated browser preview is `http://127.0.0.1:5240/`; the installed app was not updated.
-Next: connectors, selection/bundling, focused node editing, then contextual AI and
-navigation polish. Phase 27 is unfinished; use the roadmap and the implementation notes below.
+Combined: PR #34 connectors, desk stacks and focused mind map; its uncommitted first-run
+tour; uncommitted Raycast-style Settings and Phase 13b; PR #35 Desktop tidy; PR #36
+Mac Calendar and Reminders. Finished the top Sky entry, all-tools menu, native emoji picker,
+Desktop shelf/Find tidy entries and Mac privacy usage strings. Quick search cancels pending
+copy-dismiss timers when someone keeps using it. Native calendar writes report failed saves.
+Nate explicitly authorized finishing and merging. Earlier PRs #29, #30, #32 and #33 are merged.
+
+Paused Projects, tags/date words and Stratosphere prototypes remain separately preserved;
+they are not part of this continuation. Later Phase 27 combine/split operations, “Make a folder
+for this node”, and the remaining Mail/Messages connectors remain future roadmap work.
+
+
 
 ## Working with Nate
 
@@ -107,6 +112,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     (`mdfind -onlyin … <query>`; `inside`, `rankFound`, and `walkFind` where there is no Spotlight:
     tests and Linux) and the text Ask reads from a file (PDFKit through `osascript -l
     JavaScript`, Word/RTF through `textutil`, capped at 12,000 characters).
+  - `mac-calendar.cjs` (Phase 14 step one): the Mac's Calendar and Reminders through EventKit in `osascript -l
+    JavaScript` (one script, one command per run); `createMacCalendar({ handle, fail })` registers the `maccal:*`
+    channels (`osatMacCalendar` in the preload). A status check never asks macOS; `allow` does, once. Reads and
+    writes go to the Mac's own store; nothing enters `calendar.events`. The window's side is
+    `shared/mac-calendar-model.mjs` (shapes, merging, reminder words) and `src/views/MacCalendar.jsx` (hook and the
+    two panels in the Calendar room). Needs four usage strings in `package.json` `build.mac.extendInfo`
+    (`NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription`, `NSRemindersFullAccessUsageDescription`,
+    `NSRemindersUsageDescription`). Mail, Gmail, Outlook and Messages are later steps.
   - `file-ops.cjs`: tidying (Phase 21 step 2): New folder, rename, move / copy, the Bin, all on absolute
     paths files.cjs has already checked (`sourcePath`/`folderPath`: never a root, never hidden, never
     a link); each returns `undo`, a function kept in files.cjs's `undos` map so the window holds only a token
@@ -180,6 +193,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     first-launch welcome), `osatDesk`, `osatChat`). An AbortSignal can't cross the bridge; pass
     functions. A dropped file's path comes from `webUtils.getPathForFile` in the preload, never
     from the page.
+- `shared/tidy-model.mjs` + `desktop/tidy.cjs` + `src/views/TidyDesktop.jsx` — Tidy my Desktop (Phase 21b).
+  The model is pure: `kindOf`, `ruleDest` (by-kind fallback), `tidyMessages` / `tidySchema` /
+  `readTidyAnswer` (the AI's answer, cleaned: only menu folders, the Bin only for installers, apps never
+  move), `groupPlan` / `describeGroup` ("12 screenshots → Documents/Screenshots"), the archive offer's
+  `oldFiles` / `archiveFolder`. `tidy.cjs` is registered from files.cjs (`registerTidy`, given its checks,
+  `keepUndo` and `ai: () => ai`): `files:tidy-plan` (moves nothing; the built-in AI in batches of 25, else the
+  rules), `files:tidy-do` (the ticked groups as ONE undo token; folders are made inside Documents),
+  `files:tidy-layout`, and `files:tidy-offer` / `-set` / `-later` (`tidy.json` in the data folder; off by default).
 - `shared/file-query.mjs` — finding a file in plain words (Phase 21, step 1): `parseFileQuery`
   ("pdf taxes last week" → words, kinds, since; "quoted" words stay words; glue words drop only when
   a kind or time was named), `spotlightQuery` (each word in the name or inside, any kind, the day),

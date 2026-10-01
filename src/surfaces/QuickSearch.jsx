@@ -32,6 +32,7 @@ export function QuickSearchSurface() {
   const { workspace, commit, ready } = useWorkspace()
   const input = useRef(null)
   const live = useRef(null)
+  const hideTimer = useRef(null)
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [text, setText] = useState('')
   const [scope, setScope] = useState('all')
@@ -76,12 +77,21 @@ export function QuickSearchSurface() {
     setNote(message)
     if (ms) window.setTimeout(() => setNote((now) => (now === message ? '' : now)), ms)
   }, [])
-  const away = useCallback(() => { bridge?.hide() }, [bridge])
+  const cancelHide = useCallback(() => window.clearTimeout(hideTimer.current), [])
+  const away = useCallback(() => { cancelHide(); bridge?.hide() }, [bridge, cancelHide])
+  const hideLater = useCallback((ms) => { cancelHide(); hideTimer.current = window.setTimeout(away, ms) }, [away, cancelHide])
+  // A copied-result timeout must not close the panel while someone continues using it.
+  useEffect(() => {
+    window.addEventListener('keydown', cancelHide, true)
+    window.addEventListener('pointerdown', cancelHide, true)
+    const stop = bridge?.onShown(cancelHide)
+    return () => { cancelHide(); stop?.(); window.removeEventListener('keydown', cancelHide, true); window.removeEventListener('pointerdown', cancelHide, true) }
+  }, [bridge, cancelHide])
   const toOSAT = useCallback((view, detail) => { bridge?.openInOSAT(view, detail) }, [bridge])
 
   /* Shown again: a clean bar (or the tab the Hyper key names), ready to type into. */
-  useEffect(() => bridge?.onShown(({ scope: tab = 'all', mode = 'bar' } = {}) => {
-    setText(''); setScope(tab); setFileFilter('all'); setClipFilter('all'); setCursor(0); setMenu(null); setPicker(null)
+  useEffect(() => bridge?.onShown(({ scope: tab = 'all', mode = 'bar', text: waiting = '' } = {}) => {
+    setText(waiting); setScope(tab); setFileFilter('all'); setClipFilter('all'); setCursor(0); setMenu(null); setPicker(null)
     setNote(''); setToast(null); setGone(new Set()); setOpened(mode); setVisit((value) => value + 1)
     requestAnimationFrame(() => input.current?.focus())
   }), [bridge])
@@ -95,9 +105,9 @@ export function QuickSearchSurface() {
     commit((state) => { const result = addSticky(state, words, folderId, { source: 'Quick search' }); made = result.note; return result.state })
     const name = workspace.folders.find((folder) => folder.id === folderId)?.name
     said(made ? `Added to ${name}` : 'Nothing to add', 900)
-    if (made) window.setTimeout(away, 900)
+    if (made) hideLater(900)
     setPicker(null)
-  }, [bridge, commit, workspace, said, away])
+  }, [bridge, commit, workspace, said, away, hideLater])
 
   const run = useCallback(async (id, target) => {
     if (!target) return
@@ -105,6 +115,7 @@ export function QuickSearchSurface() {
     const undoable = (message, undo) => setToast({ message, undo, at: Date.now() })
     try {
       switch (id) {
+        case 'emoji': { const result = await bridge.emoji(); if (!result.ok) said('The character picker is available on the Mac.'); break }
         case 'open':
           if (target.kind === 'folder') toOSAT('Files', { rootId: d.rootId, relative: d.relative })
           else { await bridge.openFile(d.rootId, d.relative); away() }
@@ -133,15 +144,15 @@ export function QuickSearchSurface() {
           const result = await bridge.pasteClip(d.id)
           if (!result.pasted) {
             said(result.reason === 'access' ? 'Copied. Press ⌘V to paste. To paste for you, allow OSAT in Accessibility: Settings → Launcher.' : 'Copied. Press ⌘V to paste.', 0)
-            window.setTimeout(away, 2400)
+            hideLater(2400)
           }
           break
         }
-        case 'copy': await bridge.copyClip(d.id); said('Copied'); window.setTimeout(away, 500); break
-        case 'copy-text': await bridge.copyText(d.plain); said('Copied the answer'); window.setTimeout(away, 500); break
+        case 'copy': await bridge.copyClip(d.id); said('Copied'); hideLater(500); break
+        case 'copy-text': await bridge.copyText(d.plain); said('Copied the answer'); hideLater(500); break
         case 'paste-text': {
           const result = await bridge.pasteText(d.plain)
-          if (!result.pasted) { said('Copied. Press ⌘V to paste.', 0); window.setTimeout(away, 2000) }
+          if (!result.pasted) { said('Copied. Press ⌘V to paste.', 0); hideLater(2000) }
           break
         }
         case 'open-link': await bridge.openLink(target.kind === 'link' ? (await bridge.clipboardText(d.id)) || d.text : d.url); away(); break
@@ -150,7 +161,7 @@ export function QuickSearchSurface() {
         case 'open-app-named': await bridge.openAppNamed(d.app); away(); break
         case 'snap': {
           const result = await bridge.snap(d.layout)
-          if (!result.ok && result.reason === 'access') { said('To move windows, OSAT needs to be allowed in Accessibility. Settings → Launcher shows how.', 0); window.setTimeout(away, 3400) }
+          if (!result.ok && result.reason === 'access') { said('To move windows, OSAT needs to be allowed in Accessibility. Settings → Launcher shows how.', 0); hideLater(3400) }
           else if (!result.ok && result.reason === 'mac') { said('Moving windows works in the Mac app.') }
           break
         }
@@ -160,7 +171,7 @@ export function QuickSearchSurface() {
     } catch (error) {
       said(cleanError(error), 4000)
     }
-  }, [bridge, said, away, toOSAT, reloadClipboard, addTo])
+  }, [bridge, said, away, hideLater, toOSAT, reloadClipboard, addTo])
 
   /* The keys. One listener that reads the latest state, so nothing is stale. */
   live.current = { rows, active, row, actions, menu, picker, text, scope, tabs, toast, full, offer }
