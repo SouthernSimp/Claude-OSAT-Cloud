@@ -67,38 +67,7 @@
   width: 15px;
   height: 15px;
 }
-.settings {
-  max-width: 1000px;
-  display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
-  align-items: start;
-  gap: 28px;
-  margin: 0 auto;
-}
-.settings-rail { position: sticky; top: 0; display: grid; gap: 2px; }
-.settings-rail button {
-  height: 34px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 12px;
-  border-radius: 10px;
-  color: var(--muted);
-  font-size: var(--t-md);
-  font-weight: 540;
-  text-align: left;
-}
-.settings-rail button svg { width: 16px; height: 16px; }
-.settings-rail button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
-.settings-rail button[aria-current="page"] { color: var(--ink-strong); background: color-mix(in srgb, var(--ink) 8%, transparent); }
-.settings-rail button[aria-current="page"] svg { color: var(--accent); }
-.settings-page { display: grid; gap: 14px; animation: body-in 480ms var(--glide) both; }
-.settings .button-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .settings-path { font: 12px var(--font-mono); word-break: break-all; }
-.key-list { display: grid; gap: 8px; margin: 14px 0 0; }
-.key-list > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; }
-.key-list kbd { padding: 3px 8px; border-radius: 6px; font: 560 12px var(--font); background: color-mix(in srgb, var(--ink) 7%, transparent); }
-.key-list dd { margin: 0; color: var(--muted); font-size: var(--t-md); }
 .settings-obsidian > :last-child { margin-top: 10px; }
 
 /* Settings → AI and the welcome: three sizes of built-in AI, one chosen. */
@@ -203,14 +172,6 @@
 .csv-result.blocked {
   background: color-mix(in srgb, var(--critical) 10%, var(--surface));
   color: var(--critical);
-}
-.storage-facts {
-  display: grid;
-  gap: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: var(--t-2xs);
 }
 
 .habit-groups {
@@ -318,17 +279,7 @@
   color: var(--muted);
   font-size: var(--t-2xs);
 }
-.settings-page > .content-card {
-  width: 100%;
-  margin: 0;
-}
-.settings h2 {
-  margin-bottom: 10px;
-}
-.settings p:not(.eyebrow) {
-  color: var(--muted);
-  line-height: 1.55;
-}.connection-gate {
+.connection-gate {
   max-width: 520px;
   min-height: 280px;
   display: grid;
@@ -385,8 +336,8 @@
 /* ---- In a pop-out ------------------------------------------------------- */
 /* Page rooms scroll inside their pop-out and keep a page's margins (the pop-out
    body is "filled", which takes both away). The full-bleed rooms scroll themselves. */
-.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"], [data-view="Settings"]) { overflow-y: auto; }
-.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"], [data-view="Settings"]) > * { height: auto; padding: 28px clamp(16px, 5cqi, 44px) 56px; }
+.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"]) { overflow-y: auto; }
+.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"]) > * { height: auto; padding: 28px clamp(16px, 5cqi, 44px) 56px; }
 
 /* Rooms lay themselves out for their own pop-out (the "room" container), not the screen. */
 @container room (max-width: 760px) {
@@ -396,8 +347,6 @@
   .ai-sizes { grid-template-columns: minmax(0, 1fr); }
 }
 @container room (max-width: 560px) {
-  .settings { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-  .settings-rail { position: static; grid-auto-flow: column; justify-content: start; overflow-x: auto; scrollbar-width: none; }
   .bridge-preview { padding: 20px; border-radius: 16px; }
   .project-row, .money-row { align-items: flex-start; flex-wrap: wrap; }
   .project-row .row-actions { width: 100%; }
@@ -405,7 +354,6 @@
   .habit-groups, .bridge-steps { grid-template-columns: minmax(0, 1fr); }
   .bridge-steps span { min-height: 52px; }
   .bridge-diff { grid-template-columns: minmax(0, 1fr); }
-  .shortcut-row { flex-wrap: wrap; }
 }
 /* The desk's "can't reach your workspace" card follows the screen. */
 @media (max-width: 720px) {
@@ -703,10 +651,6 @@
 @container room (max-width: 760px) { .settings-obsidian .bridge-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .settings-obsidian .bridge-preview pre { max-height: 240px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
 
-/* Settings → Shortcuts: one row each for the layer and the quick chat. */
-.shortcut-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-3) 0; border-top: 1px solid var(--line); }
-.shortcut-row p { margin: 0; }
-.shortcut-row strong { display: block; color: var(--ink); }
 
 /* ---- Roadmap ---------------------------------------------------------------- */
 

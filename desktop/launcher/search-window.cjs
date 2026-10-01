@@ -42,8 +42,8 @@ function createQuickSearch({ BrowserWindow, screen, platform, preload, load, hid
   const send = (channel, ...args) => { if (!window.isDestroyed()) window.webContents.send(channel, ...args) }
 
   /* `scope` opens on one source ('clipboard' from Hyper V); `expanded` opens the full view straight away (Settings →
-     Launcher can make that the way it always opens). */
-  function show({ scope = 'all', expanded = view() === 'full' } = {}) {
+     Quick search can make that the way it always opens); `text` is words waiting in the field (a quick link's word). */
+  function show({ scope = 'all', expanded = view() === 'full', text = '' } = {}) {
     mode = expanded || scope !== 'all' ? 'full' : 'bar'
     if (!window.isVisible()) window.setBounds(searchBounds(mode, screen.getAllDisplays(), screen.getCursorScreenPoint()))
     else window.setBounds({ ...window.getBounds(), ...SIZES[mode] })
@@ -51,7 +51,7 @@ function createQuickSearch({ BrowserWindow, screen, platform, preload, load, hid
     window.show()
     window.focus()
     window.webContents.focus()
-    send('search:shown', { scope, mode })
+    send('search:shown', { scope, mode, text: String(text).slice(0, 200) })
   }
   function hide() {
     if (window.isDestroyed() || !window.isVisible()) return

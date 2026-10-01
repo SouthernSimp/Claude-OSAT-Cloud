@@ -1,0 +1,157 @@
+/* ---- Settings (views/Settings.jsx, views/settings/*) ---------------------------------------------------------
+   Raycast's shape in OSAT's own look: a sidebar with a search box and a page for each thing; on the right, groups of
+   rows, each a bold title with a grey line and its one control. Solid surfaces, neutral greys and the Mac's accent.
+   Everything is prefixed with .settings so it beats the shared form styles that load after this file. */
+
+.settings {
+  --set-gap: 22px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  border-radius: inherit;
+  overflow: hidden;
+  background: var(--page);
+  color: var(--ink);
+}
+
+/* ---- The sidebar ---------------------------------------------------------------------------------------------- */
+.settings-rail { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; border-right: 1px solid var(--line); background: var(--surface); }
+.settings-search { position: relative; margin: 14px 12px 8px; }
+.settings-search svg { position: absolute; left: 11px; top: 50%; width: 15px; height: 15px; translate: 0 -50%; color: var(--faint); pointer-events: none; }
+.settings .settings-search input { height: 32px; min-height: 0; padding: 0 38px 0 33px; border-radius: 9px; background: var(--surface-sunken); font-size: var(--t-sm); -webkit-appearance: none; appearance: none; }
+.settings .settings-search input::-webkit-search-cancel-button { display: none; }
+.settings-search kbd { position: absolute; right: 10px; top: 50%; translate: 0 -50%; font: 560 var(--t-2xs) var(--font); color: var(--faint); pointer-events: none; }
+.settings-nav { min-height: 0; overflow-y: auto; padding: 2px 8px 20px; }
+.settings-nav-group + .settings-nav-group { margin-top: 8px; }
+.settings-nav-group h3 { padding: 12px 10px 6px; font: 650 var(--t-2xs) var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.settings-nav button { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 8px; border-radius: 9px; color: var(--ink); font-size: var(--t-md); font-weight: 520; text-align: left; }
+.settings-nav button:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.settings-nav button[aria-current="page"] { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink-strong); font-weight: 620; }
+.settings-nav i { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.settings-nav i svg { width: 15px; height: 15px; }
+.settings-nav [aria-current="page"] i { background: var(--accent); color: var(--accent-ink); }
+
+/* ---- The page ------------------------------------------------------------------------------------------------- */
+.settings-main { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 30px clamp(16px, 4cqi, 40px) 64px; }
+.settings-page { display: grid; gap: var(--set-gap); max-width: 680px; margin: 0 auto; animation: body-in 360ms var(--glide) both; }
+.settings-section { display: grid; gap: var(--set-gap); align-content: start; }
+.settings-message, .settings-none { max-width: 680px; margin: 0 auto 16px; padding: 10px 14px; border-radius: var(--r-md); background: color-mix(in srgb, var(--ink) 5%, transparent); color: var(--ink); font-size: var(--t-sm); line-height: 1.5; }
+.settings-none { margin: 8px auto 0; text-align: center; color: var(--muted); }
+
+.setting-head { display: grid; justify-items: center; gap: 8px; padding: 2px 0 6px; text-align: center; }
+.setting-tile { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 15px; background: var(--accent); color: var(--accent-ink); box-shadow: var(--accent-glow); }
+.setting-tile svg { width: 30px; height: 30px; }
+.setting-head h2 { margin-top: 4px; font-size: var(--t-2xl); }
+.setting-head p { max-width: 50ch; color: var(--muted); font-size: var(--t-md); line-height: 1.5; }
+.setting-found { display: none; padding: 6px 6px 0; font-size: var(--t-xl); }
+/* Searching: every page's rows that match, each page under its own title; a page or group with none left goes. */
+.settings[data-searching] .setting-head { display: none; }
+.settings[data-searching] .setting-found { display: block; }
+.settings[data-searching] .settings-section:not(:has(.setting-row, .settings-legacy, .short-row)) { display: none; }
+.settings[data-searching] .settings-section + .settings-section { padding-top: 6px; }
+
+/* ---- Groups, cards and rows ----------------------------------------------------------------------------------- */
+.setting-group { display: grid; gap: 8px; }
+.setting-group:not(:has(.setting-row)) { display: none; }
+.setting-group > h3 { padding: 0 6px; font: 600 var(--t-xs) var(--font); letter-spacing: 0; color: var(--muted); }
+.setting-card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); }
+.setting-card.is-padded { padding: 18px 20px; }
+.setting-note { padding: 0 6px; font-size: var(--t-xs); line-height: 1.5; color: var(--faint); }
+
+.setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; min-height: 58px; padding: 12px 16px; }
+.setting-row + .setting-row { border-top: 1px solid var(--line-soft); }
+.setting-text { display: grid; flex: 1 1 260px; gap: 3px; min-width: 0; }
+.setting-text b { font-size: var(--t-md); font-weight: 620; line-height: 1.3; color: var(--ink-strong); }
+.setting-text small { max-width: 62ch; font-size: var(--t-sm); line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.setting-control { display: flex; flex: 0 1 auto; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+.setting-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 12px; }
+.setting-row.is-stacked { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.setting-row.is-stacked .setting-control { display: grid; justify-content: stretch; gap: 8px; }
+.setting-kbd { padding: 3px 9px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 7%, transparent); font: 600 var(--t-sm) var(--font); color: var(--ink); }
+.setting-inline { font-size: var(--t-xs); color: var(--muted); }
+
+/* ---- Controls ------------------------------------------------------------------------------------------------- */
+.settings .setting-switch { appearance: none; flex: none; position: relative; width: 38px; height: 22px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: var(--r-full); background: color-mix(in srgb, var(--ink) 20%, transparent); cursor: pointer; transition: background var(--d-fast); }
+.settings .setting-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 28%); transition: translate var(--d-fast) var(--ease-out); }
+.settings .setting-switch:checked { background: var(--accent); }
+.settings .setting-switch:checked::after { translate: 16px 0; }
+.settings .setting-switch:focus-visible { outline: none; box-shadow: var(--ring); }
+
+.settings .setting-select { width: auto; min-width: 150px; max-width: 100%; min-height: 0; height: 32px; padding-top: 0; padding-bottom: 0; border-radius: 9px; background-color: var(--surface); font-size: var(--t-sm); font-weight: 520; }
+.settings .outline-button, .settings .primary-button { min-height: 32px; padding: 0 14px; }
+.settings .button-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.settings .segmented { width: max-content; max-width: 100%; }
+.settings .segmented button { padding: 0 12px; white-space: nowrap; }
+
+.word-field, .key-recorder { display: inline-grid; gap: 4px; justify-items: start; }
+.settings .word-field input { width: 108px; min-height: 0; height: 30px; padding: 0 10px; border-radius: 8px; background: var(--surface); font-size: var(--t-sm); }
+.word-field small, .key-recorder small { max-width: 220px; font-size: var(--t-xs); line-height: 1.35; color: var(--muted); }
+.key-line { display: inline-flex; align-items: center; gap: 4px; }
+.key-pill { min-width: 108px; height: 30px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: var(--t-sm); font-weight: 520; white-space: nowrap; }
+.key-pill:hover { border-color: var(--line-strong); }
+.key-pill.is-empty { color: var(--faint); font-weight: 450; }
+.key-pill.is-recording { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: var(--ring); }
+.caps { display: inline-flex; gap: 3px; }
+.caps kbd { min-width: 22px; padding: 2px 6px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ink) 12%, transparent); font: 600 var(--t-xs) var(--font); text-align: center; color: var(--ink); }
+.key-clear, .icon-plain { width: 24px; height: 24px; display: inline-grid; flex: none; place-items: center; border-radius: 50%; color: var(--faint); }
+.key-clear:hover, .icon-plain:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.key-clear svg, .icon-plain svg { width: 12px; height: 12px; }
+
+.setting-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) 96px auto; gap: 10px; align-items: end; }
+.setting-form label { display: grid; gap: 4px; font-size: var(--t-xs); font-weight: 600; color: var(--muted); }
+.settings .setting-form input { min-height: 0; height: 34px; padding: 0 10px; border-radius: 9px; font-size: var(--t-sm); }
+
+/* ---- Older cards kept whole (the AI, bots, scans, the iPhone) ------------------------------------------------ */
+.settings-legacy { display: grid; gap: 14px; }
+.settings-legacy .content-card { padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); box-shadow: none; }
+.settings-legacy .content-card h2 { margin: 4px 0 8px; font-size: var(--t-xl); }
+.settings-legacy p:not(.eyebrow) { color: var(--muted); font-size: var(--t-sm); line-height: 1.55; }
+.settings .appearance-card { max-width: none; margin: 0; }
+
+/* ---- Shortcuts: every word and key, in one table -------------------------------------------------------------- */
+.short-table { display: grid; gap: 12px; }
+.short-tools { display: flex; justify-content: flex-end; }
+.short-card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); overflow: clip; }
+.short-head, .short-row { display: grid; grid-template-columns: minmax(0, 1fr) 118px 172px 48px; align-items: center; gap: 12px; padding: 0 16px; }
+.short-head { height: 34px; border-bottom: 1px solid var(--line-soft); font-size: var(--t-xs); font-weight: 600; color: var(--faint); }
+.short-group-head { display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 16px 0 10px; border-top: 1px solid var(--line-soft); background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.short-head + .short-group > .short-group-head { border-top: 0; }
+.short-group-head button { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 650; color: var(--ink); }
+.short-group-head svg { width: 12px; height: 12px; color: var(--faint); }
+.short-row { min-height: 54px; padding-block: 8px; border-top: 1px solid var(--line-soft); }
+.short-group-head + .short-row { border-top: 0; }
+.short-row.is-off .short-name { opacity: 0.55; }
+.short-name { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.short-name i { flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.short-name i svg { width: 15px; height: 15px; }
+.short-name > span { display: grid; min-width: 0; }
+.short-name b { font-size: var(--t-md); font-weight: 600; }
+.short-name small { overflow: hidden; font-size: var(--t-xs); color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.short-on { display: flex; align-items: center; justify-content: flex-end; }
+.short-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; border-top: 1px solid var(--line-soft); font-size: var(--t-xs); color: var(--muted); }
+
+/* ---- Room-sized layouts: Settings follows its pop-out, not the screen ----------------------------------------- */
+@container room (max-width: 860px) {
+  .short-head { display: none; }
+  .short-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name on" "word key"; gap: 8px 12px; padding-block: 10px; }
+  .short-name { grid-area: name; }
+  .short-on { grid-area: on; }
+  .short-word { grid-area: word; }
+  .short-key { grid-area: key; justify-self: end; }
+  .setting-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .setting-form .outline-button { justify-self: start; }
+}
+@container room (max-width: 700px) {
+  .settings { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .settings-rail { grid-template-rows: auto auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .settings-nav { display: flex; gap: 4px; overflow: auto hidden; padding: 0 12px 10px; scrollbar-width: none; }
+  .settings-nav-group { display: contents; }
+  .settings-nav-group h3 { display: none; }
+  .settings-nav button { flex: none; width: auto; padding-right: 12px; white-space: nowrap; }
+  .settings-main { padding-top: 22px; }
+}
+@container room (max-width: 520px) {
+  .setting-form { grid-template-columns: minmax(0, 1fr); }
+  .setting-control { flex: 1 1 100%; justify-content: flex-start; }
+  .setting-controls { justify-content: flex-start; }
+}
