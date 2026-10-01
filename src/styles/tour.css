@@ -1,0 +1,36 @@
+/* The first-run tour: a dimmed screen with a bright window on the thing being pointed at, and a
+   solid card beside it. Solid like every dialog: it sits over the desk's content. */
+
+.tour { position: fixed; inset: 0; z-index: var(--z-modal); }
+.tour-hole {
+  position: absolute;
+  border-radius: 18px;
+  /* The hole is the box itself; its shadow dims everything else. */
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 50%), 0 0 0 2px color-mix(in srgb, var(--accent) 70%, #fff);
+  transition: left 420ms var(--glide), top 420ms var(--glide), width 420ms var(--glide), height 420ms var(--glide);
+  pointer-events: none;
+}
+/* Pointing at nothing: the whole screen is dimmed evenly. */
+.tour-hole.is-none { left: 50%; top: 50%; width: 0; height: 0; border-radius: 0; box-shadow: 0 0 0 100vmax rgb(0 0 0 / 50%); }
+.tour-card {
+  position: absolute;
+  width: min(380px, calc(100% - 24px));
+  display: grid;
+  gap: 10px;
+  padding: 22px 24px 18px;
+  border-radius: 22px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 0.5px var(--line-strong), 0 30px 80px -24px rgb(0 0 0 / 55%);
+  transition: left 420ms var(--glide), top 420ms var(--glide);
+  animation: palette-in 420ms var(--spring) both;
+}
+.tour-card .welcome-steps { margin: 0 0 2px; }
+.tour-card h2 { margin: 0; color: var(--ink-strong); font-size: 21px; line-height: 1.2; }
+.tour-card p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+.tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.tour-actions > span { flex: 1; }
+.tour-actions .ghost-button:first-child { margin-left: -8px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .tour-hole, .tour-card { transition: none; animation: none; }
+}

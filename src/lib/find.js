@@ -18,6 +18,7 @@ const ACTIONS = [
   { key: 'act:board', label: 'Open the Sky', also: 'map mindmap nodes board whiteboard canvas sort stars', go: ['Mindmap'] },
   { key: 'act:focus', label: 'Focus for 25 minutes', also: 'timer pomodoro quiet concentrate', go: ['Focus'] },
   { key: 'act:widget', label: 'Add a widget', hint: 'Calendar, Next, Focus, Habits…', also: 'widgets tray', go: ['Widgets'] },
+  { key: 'act:tour', label: 'Take the tour', hint: 'A quick look around OSAT', also: 'help guide tutorial welcome intro how it works learn', go: ['Tour'] },
   { key: 'act:offline', label: 'Offline', hint: 'Turn OSAT’s internet off, or back on', also: 'go online private incognito wifi internet network airplane', go: ['Offline'] },
 ]
 

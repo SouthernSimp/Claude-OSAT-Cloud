@@ -35,6 +35,7 @@ import { DOCK_KEY, cleanSide, fullBox } from './dock-model.js'
 import { covers, grow, placeRoom } from './placement.js'
 import { Dock } from './Shell.jsx'
 import { Welcome } from './Welcome.jsx'
+import { needsTour, Tour } from './Tour.jsx'
 
 /* The desk: OSAT's one window, laid over the real desktop (see-through, blurred),
    with every room opening as a pop-out you can drag, resize and stack. A room opened
@@ -97,6 +98,8 @@ export function Desk() {
   const [visit, setVisit] = useState(0)
   const [prefs, setPrefs] = useState(() => ({ launchers: [], places: bridge ? {} : readPlaces(), widgets: bridge ? null : readWidgets() }))
   const [welcome, setWelcome] = useState(false)
+  // The first-run tour: waits for the welcome, and for the desk to have arrived.
+  const [tour, setTour] = useState(false)
   const [focusAt, setFocusAt] = useState(0)
   const [summon, setSummon] = useState(0)
   const [trayAt, setTrayAt] = useState(0)
@@ -197,6 +200,15 @@ export function Desk() {
     window.osatApp?.needsWelcome?.().then((need) => setWelcome(need === true)).catch(() => {})
   }, [])
 
+  /* Then the tour, once: after the welcome is done and the desk has settled. Someone who used OSAT
+     before it existed sees it once too, as what's new. */
+  useEffect(() => {
+    if (!hydrated || welcome) return undefined
+    let cancelled = false
+    const timer = setTimeout(() => needsTour().then((need) => { if (need && !cancelled) setTour(true) }), 1400)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [hydrated, welcome])
+
   useEffect(() => {
     bridge?.prefs().then(setPrefs).catch(() => {})
     return bridge?.onShown(() => {
@@ -252,8 +264,8 @@ export function Desk() {
         return
       }
       if (event.key !== 'Escape' || event.defaultPrevented || document.documentElement.dataset.menu === 'open') return
-      const { pops: all, welcome: welcoming, sky: up } = latest.current
-      if (welcoming) return
+      const { pops: all, welcome: welcoming, tour: touring, sky: up } = latest.current
+      if (welcoming || touring) return
       const active = document.activeElement
       const open = all.filter((pop) => !pop.closing)
       if (open.length) {
@@ -363,7 +375,8 @@ export function Desk() {
 
   // `origin`: where it was opened from ({ from, widget }), so the room can grow out of it.
   function navigate(view, detail = null, origin) {
-    if (view === 'Offline') askOffline(!latest.current.offline)
+    if (view === 'Tour') { if (latest.current.sky === 'sky') goDown(); setTour(true) }
+    else if (view === 'Offline') askOffline(!latest.current.offline)
     else if (latest.current.offline && ONLINE_ONLY.has(view)) setNotice(`Offline: ${titleFor(view)} waits until you’re back online.`)
     // A new thought, or a search: the line takes it (it rises if a room covers it).
     else if (view === 'Capture') {
@@ -386,7 +399,7 @@ export function Desk() {
     else if (view === 'Today') { if (latest.current.sky === 'sky') goDown(); else setVisit((value) => value + 1) }
     else if (ROOMS[view]) open(view, detail, origin)
   }
-  latest.current = { navigate, pops, welcome, line, offline: on, sky, step, ringOn: ringTools.on !== false, dockSide }
+  latest.current = { navigate, pops, welcome, tour, line, offline: on, sky, step, ringOn: ringTools.on !== false, dockSide }
 
   async function launcher(action, ...args) {
     try {
@@ -582,6 +595,7 @@ export function Desk() {
       )}
       <ClipboardOffer workspace={workspace} commit={commit} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
+      {tour && !welcome && <Tour onDone={() => setTour(false)} />}
     </main>
   )
 }

@@ -55,6 +55,40 @@ async function main() {
   await sleep(600)
   if (await page.getByText(/sample room/i).count()) problems.push('desk: the sample room is still offered')
 
+  // The first-run tour comes by itself, once: the arrow keys and Back / Next walk it, Done ends it, and it stays away.
+  room = 'tour'
+  await page.locator('.tour').waitFor({ timeout: 6000 }).catch(() => problems.push('tour: the first-run tour did not appear'))
+  if (await page.locator('.tour').count()) {
+    const heading = () => page.locator('#tour-title').textContent()
+    await page.screenshot({ path: `${OUT}/tour.png` })
+    if (!/one line/i.test(await heading())) problems.push('tour: it did not start with the line')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await sleep(500)
+    if (!/Sky/.test(await heading())) problems.push('tour: the arrow keys did not walk it to the Sky')
+    await page.screenshot({ path: `${OUT}/tour-sky.png` })
+    await page.getByRole('button', { name: 'Back' }).click()
+    await page.getByRole('button', { name: 'Next' }).click()
+    await page.getByRole('button', { name: 'Next' }).click()
+    await page.getByRole('button', { name: 'Next' }).click()
+    if (!/any app/i.test(await heading())) problems.push('tour: it did not end on "from any app"')
+    await page.getByRole('button', { name: 'Done' }).click()
+    await page.locator('.tour').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('tour: Done did not end it'))
+  }
+  await page.goto(`${url}?fresh=1`)
+  await page.waitForSelector('.workspace-content', { timeout: 15000 })
+  await sleep(2600)
+  if (await page.locator('.tour').count()) problems.push('tour: it came back after it was finished')
+  // ⌘K brings it back, and Esc skips it.
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('take the tour')
+  for (let step = 0; step < 6 && await picked() !== 'Take the tour'; step += 1) await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await page.locator('.tour').waitFor({ timeout: 3000 }).catch(() => problems.push('tour: "Take the tour" in ⌘K did not start it'))
+  await page.keyboard.press('Escape')
+  await page.locator('.tour').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('tour: Esc did not skip it'))
+  await page.fill('#home-line', '')
+
   // A thought typed on home is saved, survives a reload, and waits in Unsorted. Typing
   // folds the drawer open, and Save is the picked row, so Return saves.
   room = 'capture'

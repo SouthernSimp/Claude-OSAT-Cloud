@@ -122,6 +122,9 @@ contextBridge.exposeInMainWorld('osatApp', Object.freeze({
   // The first-launch welcome shows once per Mac.
   needsWelcome: () => ipcRenderer.invoke('app:welcome'),
   welcomed: () => ipcRenderer.invoke('app:welcomed'),
+  // The first-run tour shows once per Mac, after the welcome.
+  needsTour: () => ipcRenderer.invoke('app:tour'),
+  toured: () => ipcRenderer.invoke('app:toured'),
   showDataFolder: () => ipcRenderer.invoke('app:show-data-folder'),
   onCommand: (listener) => {
     const stop = listen('app:command', listener)

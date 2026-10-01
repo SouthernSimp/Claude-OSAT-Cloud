@@ -92,6 +92,11 @@ try {
   await main.getByRole('button', { name: 'Start', exact: true }).click()
   await main.getByRole('dialog', { name: /AI’s size/ }).waitFor({ state: 'detached', timeout: 5000 })
     .catch(() => problems.push('the welcome did not close after Start'))
+  // The first-run tour follows the welcome, once: Skip ends it for good.
+  const tour = main.getByRole('dialog', { name: /One line for everything/ })
+  await tour.waitFor({ timeout: 8000 }).catch(() => problems.push('the tour did not follow the welcome'))
+  await main.getByRole('button', { name: 'Skip the tour' }).click().catch(() => {})
+  await tour.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('Skip the tour did not end it'))
   const keep = main.getByRole('button', { name: 'Start blank' })
   if (await keep.count()) await keep.click()
   await main.fill('#home-line', 'Saved across a restart')
@@ -103,6 +108,8 @@ try {
   ;({ app, main } = await launch())
   check((await notesIn(main)).includes('Saved across a restart'), 'the thought was not there after a restart')
   check(!(await main.getByRole('dialog', { name: /Everything stays/ }).count()), 'the welcome came back after it was finished')
+  await sleep(2500)
+  check(!(await main.locator('.tour').count()), 'the tour came back after it was skipped')
 
   // 4. Ask on the desk: a question in the line and ⌘↵ (Ctrl↵ elsewhere); the answer
   //    appears under the line and is kept as a chat.
@@ -446,7 +453,7 @@ try {
   const otherData = path.join(home, 'OSAT Other')
   await mkdir(otherData, { recursive: true })
   await writeFile(path.join(otherData, 'osat-data-folder.json'), '{"app":"ai.mccreery.osat"}')
-  await writeFile(path.join(otherData, 'prefs.json'), '{"welcomed":true}')
+  await writeFile(path.join(otherData, 'prefs.json'), '{"welcomed":true,"toured":true}')
   const other = await launch({ ...env, OSAT_DATA_DIR: otherData })
   await other.main.evaluate(() => window.osatPhone.enable())
   check(await until(async () => (await notesIn(other.main)).includes('Captured before putting it away'), 15000),
