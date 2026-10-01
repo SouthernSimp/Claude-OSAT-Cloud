@@ -531,10 +531,10 @@ changes the Mac itself.
   ⌘ + middle-click over OTHER apps, because Electron cannot see clicks outside its own windows and a global mouse
   hook is a native module (a prebuilt binary for Electron, signing and notarizing a third-party file, and a second
   scary permission). Nate's call whether that is worth it.
-- **A movable dock, the Tools wheel, resizing widgets.** The dock stands on the left or right edge as well as the
-  bottom; Tools is a wheel with a line for each tool; widgets grow by their corner.
-- Not done: emoji, quicklinks beyond Nate's own words, Settings for the ring's order (it is the order ticked), the
-  dock at the top.
+- **A movable dock, the Tools menu, resizing widgets.** The dock stands on the left or right edge as well as the
+  bottom; Tools shows every tool together with a line saying what it does; widgets grow by their corner.
+- Phase 13b finishes native emoji/symbols, named quicklinks and Settings for the ring's order.
+  The dock at the top remains planned.
 
 ### Phase 14: Connectors (step one: your Mac's Calendar and Reminders, in review)
 
