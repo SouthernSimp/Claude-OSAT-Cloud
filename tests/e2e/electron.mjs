@@ -47,7 +47,6 @@ const check = (ok, message) => { if (!ok) problems.push(message) }
 async function launch(withEnv = env) {
   const app = await electron.launch({ cwd: root, args: [root, '--no-sandbox'], env: withEnv })
   currentApp = app
-  if (originalClipboard === undefined) originalClipboard = await app.evaluate(({ clipboard }) => clipboard.readText())
   // The quick chat is a window too; the desk is the one without a surface.
   let main
   while (!main) {
@@ -55,6 +54,7 @@ async function launch(withEnv = env) {
     if (!main) await sleep(100)
   }
   await main.waitForSelector('.overlay-surface .workspace-content', { timeout: 20000 })
+  if (originalClipboard === undefined) originalClipboard = await app.evaluate(({ clipboard }) => clipboard.readText())
   return { app, main }
 }
 
