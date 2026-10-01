@@ -45,6 +45,7 @@ const { extractText } = require('./mac-files.cjs')
 const { TidyError } = require('./file-ops.cjs')
 const { NOT_ALLOWED, createFiles } = require('./files.cjs')
 const { createMedia } = require('./media.cjs')
+const { createMacCalendar } = require('./mac-calendar.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
@@ -1226,6 +1227,7 @@ app.whenReady().then(async () => {
   await registerScans()
   await registerLauncher()
   await registerBots()
+  createMacCalendar({ handle, fail })
   registerDesk()
   registerQuickChat()
   createWindow()

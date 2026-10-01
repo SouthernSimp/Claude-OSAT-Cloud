@@ -13,6 +13,8 @@ import {
 import { calendarMonthDays, localDateKey } from "../daily-practice.js";
 import { calendarToIcs } from "../osat-data.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
+import { MacCalendarBar, MacReminders, macError, useMacCalendar } from "./MacCalendar.jsx";
+import { macCalendarChoices, mergeEvents, newMacEvent } from "../../shared/mac-calendar-model.mjs";
 import {
   downloadFile,
   makeId,
@@ -53,9 +55,12 @@ export function CalendarView({ workspace, commit, initialDate }) {
   const [composing, setComposing] = useState(false);
   const [toast, showUndo] = useUndoToast();
   const [menuFor, setMenuFor] = useState(null);
-  const [form, setForm] = useState({ title: "", start: "", end: "", notes: "" });
+  const [form, setForm] = useState({ title: "", start: "", end: "", notes: "", where: "osat" });
+  const mac = useMacCalendar(cursor);
 
-  const events = workspace.calendar.events;
+  const own = workspace.calendar.events;
+  const events = useMemo(() => mergeEvents(own, mac.events, mac.hidden), [own, mac.events, mac.hidden]);
+  const macChoices = macCalendarChoices(mac.calendars);
   const byDay = useMemo(() => groupByDay(events), [events]);
   const days = useMemo(
     () => calendarMonthDays(cursor.getFullYear(), cursor.getMonth()),
@@ -83,7 +88,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
 
   function openComposer(dayKey = selected, hour = 9) {
     setSelected(dayKey);
-    setForm({ title: "", start: `${dayKey}T${String(hour).padStart(2, "0")}:00`, end: "", notes: "" });
+    setForm({ title: "", start: `${dayKey}T${String(hour).padStart(2, "0")}:00`, end: "", notes: "", where: "osat" });
     setComposing(true);
   }
 
@@ -92,9 +97,32 @@ export function CalendarView({ workspace, commit, initialDate }) {
     if (!day.inMonth) setCursor(new Date(day.date.getFullYear(), day.date.getMonth(), 1, 12));
   }
 
+  async function saveToMac() {
+    const payload = newMacEvent({
+      calendar: form.where,
+      title: form.title,
+      start: new Date(form.start).toISOString(),
+      end: form.end ? new Date(form.end).toISOString() : "",
+      notes: form.notes,
+    });
+    if (!payload) return;
+    try {
+      const { id } = await mac.bridge.addEvent(payload);
+      const name = mac.calendars.find((calendar) => calendar.id === form.where)?.name || "your Mac";
+      showUndo(`Put “${payload.title}” on ${name}`, () => mac.bridge.removeEvent(id).then(mac.refresh, (error) => mac.setNotice(macError(error))));
+      mac.refresh();
+      setSelected(localDateKey(new Date(payload.start)));
+      setForm({ title: "", start: "", end: "", notes: "", where: "osat" });
+      setComposing(false);
+    } catch (error) {
+      mac.setNotice(macError(error));
+    }
+  }
+
   function save(submitEvent) {
     submitEvent.preventDefault();
     if (!form.title.trim() || !form.start) return;
+    if (form.where !== "osat") return saveToMac();
     const item = {
       id: makeId("event"),
       title: form.title.trim(),
@@ -112,12 +140,12 @@ export function CalendarView({ workspace, commit, initialDate }) {
       },
     }));
     setSelected(localDateKey(new Date(item.start)));
-    setForm({ title: "", start: "", end: "", notes: "" });
+    setForm({ title: "", start: "", end: "", notes: "", where: "osat" });
     setComposing(false);
   }
 
   function remove(id) {
-    const event = workspace.calendar.events.find((item) => item.id === id);
+    const event = own.find((item) => item.id === id);
     if (event) showUndo(`Removed “${event.title}”`, () => commit((state) => ({
       ...state,
       calendar: {
@@ -142,7 +170,8 @@ export function CalendarView({ workspace, commit, initialDate }) {
           <div className="calendar-title">
             <h2>{MONTH_YEAR.format(cursor)}</h2>
             <span>
-              {events.length} {events.length === 1 ? "event" : "events"} on this device
+              {own.length} {own.length === 1 ? "event" : "events"} on this device
+              {mac.events.length > 0 && `, ${mac.events.length} from your Mac’s calendars`}
             </span>
           </div>
           <div className="calendar-nav">
@@ -171,7 +200,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
               onClick={() =>
                 downloadFile(
                   `osat-calendar-${today}.ics`,
-                  calendarToIcs(events),
+                  calendarToIcs(own),
                   "text/calendar;charset=utf-8",
                 )
               }
@@ -221,7 +250,8 @@ export function CalendarView({ workspace, commit, initialDate }) {
                       title={event.title}
                       onClick={() => setSelected(day.key)}
                     >
-                      <time dateTime={event.start}>{timeLabel(event.start)}</time>
+                      {event.color && <i className="mac-dot" style={{ background: event.color }} aria-hidden="true" />}
+                      <time dateTime={event.start}>{event.allDay ? "" : timeLabel(event.start)}</time>
                       <span>{event.title}</span>
                     </button>
                   ))}
@@ -255,6 +285,8 @@ export function CalendarView({ workspace, commit, initialDate }) {
               : "Nothing scheduled"}
           </span>
         </header>
+
+        <MacCalendarBar mac={mac} />
 
         {composing ? (
           <form className="agenda-composer" onSubmit={save}>
@@ -298,6 +330,19 @@ export function CalendarView({ workspace, commit, initialDate }) {
                 />
               </label>
             </div>
+            {mac.access?.events === "allowed" && macChoices.length > 0 && (
+              <label>
+                Keep it
+                <select value={form.where} onChange={(e) => setForm({ ...form, where: e.target.value })}>
+                  <option value="osat">In OSAT</option>
+                  {macChoices.map((calendar) => (
+                    <option value={calendar.id} key={calendar.id}>
+                      On my Mac: {calendar.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label>
               Notes
               <textarea
@@ -321,14 +366,20 @@ export function CalendarView({ workspace, commit, initialDate }) {
           {dayEvents.map((event) => (
             <article className="agenda-item" key={event.id}>
               <time dateTime={event.start}>
-                <strong>{timeLabel(event.start)}</strong>
-                {event.end && <small>{timeLabel(event.end)}</small>}
+                <strong>{event.allDay ? "All day" : timeLabel(event.start)}</strong>
+                {event.end && !event.allDay && <small>{timeLabel(event.end)}</small>}
               </time>
               <div>
                 <h4>{event.title}</h4>
+                {event.mac && (
+                  <small className="mac-from">
+                    {event.color && <i className="mac-dot" style={{ background: event.color }} aria-hidden="true" />}
+                    {event.calendarName || "Your Mac"}
+                  </small>
+                )}
                 {event.notes && <p>{event.notes}</p>}
               </div>
-              <div className="agenda-menu">
+              {!event.mac && <div className="agenda-menu">
                 <button
                   className="icon-button"
                   type="button"
@@ -358,7 +409,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
                     </button>
                   </div>
                 )}
-              </div>
+              </div>}
             </article>
           ))}
           {!dayEvents.length && !composing && (
@@ -368,6 +419,8 @@ export function CalendarView({ workspace, commit, initialDate }) {
             </div>
           )}
         </div>
+
+        <MacReminders mac={mac} showUndo={showUndo} />
 
         {upcoming.length > 0 && (
           <section className="agenda-upcoming">
@@ -390,8 +443,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
                       weekday: "short",
                       month: "short",
                       day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
+                      ...(event.allDay ? {} : { hour: "numeric", minute: "2-digit" }),
                     }).format(new Date(event.start))}
                   </small>
                 </span>
@@ -401,7 +453,9 @@ export function CalendarView({ workspace, commit, initialDate }) {
         )}
 
         <footer className="agenda-footer">
-          Local events only. No calendar account is connected.
+          {mac.access?.events === "allowed"
+            ? "Your Mac’s calendars are read on this Mac and stay there. They are never copied into OSAT."
+            : "Local events only. No calendar account is connected."}
         </footer>
       </aside>
       {toast}

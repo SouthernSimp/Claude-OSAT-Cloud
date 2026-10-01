@@ -175,6 +175,20 @@ contextBridge.exposeInMainWorld('osatScans', Object.freeze({
   onReady: (listener) => listen('scans:ready', listener),
 }))
 
+/* Your Mac's own Calendar and Reminders (Phase 14): nothing is read until allow() is answered yes. */
+contextBridge.exposeInMainWorld('osatMacCalendar', Object.freeze({
+  status: () => ipcRenderer.invoke('maccal:status'),
+  allow: (kind) => ipcRenderer.invoke('maccal:allow', kind),
+  calendars: () => ipcRenderer.invoke('maccal:calendars'),
+  events: (range) => ipcRenderer.invoke('maccal:events', range),
+  addEvent: (event) => ipcRenderer.invoke('maccal:add-event', event),
+  removeEvent: (id) => ipcRenderer.invoke('maccal:remove-event', id),
+  reminders: () => ipcRenderer.invoke('maccal:reminders'),
+  addReminder: (reminder) => ipcRenderer.invoke('maccal:add-reminder', reminder),
+  removeReminder: (id) => ipcRenderer.invoke('maccal:remove-reminder', id),
+  setReminderDone: (id, done) => ipcRenderer.invoke('maccal:reminder-done', id, done),
+}))
+
 /* The desk (⌥Space): put it away, the shortcuts, the app launchers, where things sit
    on it, Spotify, and the frosting behind it. */
 contextBridge.exposeInMainWorld('osatDesk', Object.freeze({

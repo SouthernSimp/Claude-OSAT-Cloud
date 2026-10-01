@@ -23,7 +23,7 @@
 | 12c | The roadmap inside OSAT: Tools → Roadmap shows this page | Merged (PR #18) |
 | 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | Merged (PR #19) |
 | 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools wheel, a movable dock, resizing | In review |
-| 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | Planned |
+| 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
 | 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | Merged (PR #18) |
@@ -534,6 +534,21 @@ changes the Mac itself.
   bottom; Tools is a wheel with a line for each tool; widgets grow by their corner.
 - Not done: emoji, quicklinks beyond Nate's own words, Settings for the ring's order (it is the order ticked), the
   dock at the top.
+
+### Phase 14: Connectors (step one: your Mac's Calendar and Reminders, in review)
+
+- What Nate gets: in the Calendar room, the events from the Mac's own Calendar app (iCloud, Google, Exchange:
+  whatever the Mac has) show beside OSAT's own, with a small dot in each calendar's colour and a switch for each
+  calendar. A "Show my Mac's calendars" button asks macOS once; until then nothing is read, and a refusal says
+  where to turn it on (System Settings → Privacy & Security → Calendars).
+- Adding an event now asks "Keep it": in OSAT, or on one of the Mac's calendars (written through the Mac, so it
+  syncs wherever that calendar does). Undo takes it back off.
+- Reminders due within a week (and any with no date) sit in a small list; tick one done (Undo unticks it) or add
+  one. It has its own one-time ask.
+- Everything is read on the Mac and goes nowhere else, works offline, and is never copied into `calendar.events`.
+- Built with EventKit through `osascript -l JavaScript` (`desktop/mac-calendar.cjs`); the pure rules are in
+  `shared/mac-calendar-model.mjs`. The browser preview has no Mac, so the room shows only OSAT's events there.
+- Next steps of Phase 14 (not started): Apple Mail, Gmail in the browser, Outlook, and Messages beside OSAT.
 
 ### Phase 15: Paper in (merged, PR #17)
 Nate's goal: scan something at the printer, walk over to the Mac, and a new node is waiting, already
