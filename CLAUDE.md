@@ -32,6 +32,16 @@ downloaded Balanced model answered, exited on unload, and reloaded on the next
 question through Metal. All-three simultaneous real inference was not tested.
 Nate then requested no more Mac application tests on his computer. Continue with
 code-only checks or CI unless he explicitly asks for native testing again.
+The Apple Silicon DMG is saved locally at
+`/Users/nate/Downloads/OSAT-AI-model-controls-2026-10-02-arm64.dmg`.
+The shared node_modules symlink caused dependency omissions in electron-builder;
+the local package uses complete production dependencies from installed OSAT
+(the unchanged node-llama-cpp 3.21.1) with this branch's desktop/shared/built UI.
+Packaging in the cloud-backed Documents folder added signing-disallowed Finder
+attributes, so the complete bundle was copied without attributes to /private/tmp,
+ad-hoc signed with the existing entitlements, and placed in a DMG with an Applications
+shortcut. Static signature/content and final copy checks passed. This package was
+not launched after Nate's request to stop native tests, and has not been installed.
 
 ### Consolidation checkpoint — September 30, 2026
 
