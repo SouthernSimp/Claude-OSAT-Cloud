@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 10
+export const SCHEMA = 11
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -71,6 +71,9 @@ export const migrations = [
       return { ...doc, notes: unplace(doc.notes, 'folderId'), folders: unplace(doc.folders, 'parentId') }
     },
   },
+  // 11: chats remember their model and replies record which model answered.
+  // Earlier renderers discard these fields, so they must refuse newer backups.
+  { from: 10, run: (doc) => doc },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding

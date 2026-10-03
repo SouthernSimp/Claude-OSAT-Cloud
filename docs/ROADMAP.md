@@ -10,6 +10,7 @@
 | 3a | One place: the desk, glass sheets, one navigation, Settings sections | Merged (PR #3) |
 | 3b | A calm day: Next ≤ 5 + bring forward (in #3), evening invitation, Undo, See in the Sky | Merged (PR #4) |
 | 4 | Local AI that sets itself up, Ask everywhere, chats in the workspace | Merged (PR #5) |
+| 4b | Conversation model selection and AI memory controls | In review |
 | 5 | Your iPhone, step one: capture from the phone, read your notes there | Merged (PR #6) |
 | 6a | Sync: devices stay in step through iCloud (Mac ↔ Mac now, the iPhone app next) | Merged (PR #7) |
 | 6b | The iPhone app | Merged (PR #8) |
@@ -310,6 +311,14 @@ Nate asked to condense and connect desk → notes → sky → mindmap, make the 
 - **Chats live in the workspace** (schema 2, with a migration and a test), so every window shares them; backups from schema 1 still restore.
 - **Checks:** unit tests for the catalog, resumable/verified downloads and the engine lifecycle (a fake engine); the Electron end-to-end test walks the welcome and asks on the desk with a practice model; `--osat-self-test[=model.gguf]` proves the engine (and a model) work inside the built app, and CI runs it on every Mac build.
 - Fixed on the way: Stop in Ask never worked in the Mac app (an AbortSignal can't cross the preload bridge).
+
+### Phase 4b: Model selection and AI memory controls (in review)
+- **Ask's model menu:** choose Light, Balanced, or Deep per conversation; choosing never loads. The next question uses that model and each reply keeps its producing model. Downloaded models remain selectable after unloading. Existing external models remain available.
+- **Settings → AI:** install models separately or queue all three, choose a default for new chats, explicitly load/unload, keep several loaded for this session, and opt into loading the downloaded default at startup (off initially, works offline).
+- **Memory review:** a combined native confirmation shows system/free memory, estimated model and context memory, combined residency, and reload cost before replacing larger models or keeping multiple models. Unknown estimates are honest; engine allocation safeguards stay enabled.
+- **Release safely:** Free AI memory in Ask, the floating chat, and the menu bar releases idle models after their processes exit and names busy models. Queued/running work wins over unloading, including questions arriving during confirmation. Manual unload blocks background reload until an interactive question or explicit load. Downloads and chats stay on disk.
+- **Data:** schema 11 preserves existing records and adds chat model selection/reply attribution. Device startup/default/download queue preferences remain outside the shared workspace. Session retention ends at quit.
+- **Validation:** unit lifecycle/routing/migration checks; isolated Electron model-interface checks with practice inference; `scripts/ai-memory-check.cjs` verifies actual Metal inference, resource estimates, process exit, preserved downloads, blocked background reload, and interactive reload using an already-downloaded model. Real simultaneous inference with all three models still needs a machine with those downloads. Installed OSAT is unchanged during review.
 
 ### Phase 5: Your iPhone, step one (merged, PR #6; no iPhone app needed)
 Opt-in in **Settings → iPhone**, because it is the first thing that leaves the Mac: it goes through Nate's own iCloud Drive (end-to-end encrypted only with Advanced Data Protection on; OSAT says so plainly). Until it's on, OSAT never touches iCloud Drive (macOS asks first).

@@ -145,3 +145,11 @@ test('a saved question remembers which files it read, and nothing else about the
   assert.deepEqual(chat.messages[0].files, ['plan.pdf', 'b', 'c'])
   assert.equal('files' in normalizeChat({ id: 'c', messages: [{ id: 'm', role: 'user', content: 'Q' }] }).messages[0], false)
 })
+
+test('conversation model choices and response attribution survive normalization and backups', () => {
+  const chat = { id: 'model-chat', title: '', createdAt: '', updatedAt: '', modelId: 'osat:deep',
+    messages: [{ id: 'reply', role: 'assistant', content: 'Here is the answer.', at: '', modelId: 'osat:balanced', modelName: 'Gemma · Balanced' }] }
+  assert.deepEqual(normalizeChat(chat), chat)
+  assert.equal(normalizeChat({ ...chat, modelId: 'https://example.com' }).modelId, undefined)
+  assert.equal(normalizeChat({ ...chat, modelId: 42 }).modelId, undefined)
+})

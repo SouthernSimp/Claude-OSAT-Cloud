@@ -115,7 +115,7 @@ function fakeEngine(log) {
         }
       })
     }
-    proc.kill = () => log.push('kill')
+    proc.kill = () => { log.push('kill'); setImmediate(() => proc.emit('exit', 0)) }
     return proc
   }
 }
@@ -204,4 +204,203 @@ test('the practice model answers without any download', async () => {
   assert.equal(ai.models()[0].name, 'Practice model')
   const text = await ai.chatStream({ messages: [{ role: 'user', content: 'What is next?' }] }, () => {})
   assert.match(text, /What is next\?/)
+})
+
+const settle = async (check) => {
+  for (let i = 0; i < 100; i += 1) {
+    if (check()) return
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+  assert.fail('condition did not settle')
+}
+
+async function pool(options = {}) {
+  const dir = await temp()
+  const procs = []
+  const killed = []
+  const confirmations = []
+  const factory = () => {
+    const proc = new EventEmitter()
+    procs.push(proc)
+    proc.postMessage = (message) => {
+      if (message.type === 'load') {
+        proc.tier = TIERS.find((tier) => message.modelPath.endsWith(tier.file)).id
+        setImmediate(() => proc.emit('message', { type: 'loaded' }))
+      } else if (message.type === 'chat') {
+        proc.job = message.id
+        if (message.messages[0].content !== 'hold') setImmediate(() => {
+          proc.emit('message', { type: 'delta', id: message.id, text: proc.tier })
+          proc.emit('message', { type: 'done', id: message.id })
+        })
+      } else if (message.type === 'cancel') {
+        setImmediate(() => proc.emit('message', { type: 'done', id: message.id }))
+      }
+    }
+    proc.kill = () => { killed.push(proc.tier); setTimeout(() => proc.emit('exit', 0), 5) }
+    return proc
+  }
+  const ai = createAi({ dir, totalMemory: 64 * GB, chosen: 'light', fork: factory, idle: 1000,
+    download: instantDownload, freeMemory: () => 48 * GB, estimate: async () => ({ bytes: 4 * GB }),
+    confirmLoad: async (info) => { confirmations.push(info); return info.keepOthers ? 'alongside' : 'replace' },
+    confirmUnload: async () => true, ...options })
+  await ai.install(TIERS.map((tier) => tier.id))
+  await settle(() => ai.status().queued.length === 0)
+  return { ai, dir, procs, killed, confirmations }
+}
+
+test('installing all three is sequential, preserves the default, and never loads them', async () => {
+  const { ai, procs } = await pool()
+  assert.equal(ai.status().chosen, 'light')
+  assert.equal(ai.models().length, 3)
+  assert.deepEqual(ai.status().tiers.map((tier) => tier.state), ['idle', 'idle', 'idle'])
+  await ai.select('deep')
+  assert.equal(ai.models()[0].id, 'osat:deep')
+  assert.equal(procs.length, 0)
+  ai.dispose()
+})
+
+test('a request routes to its own model; retained models survive switching and idle', async () => {
+  const { ai, killed, confirmations } = await pool({ idle: 10 })
+  await ai.setRetained('light', true)
+  await ai.setRetained('balanced', true)
+  assert.equal(confirmations.length, 1)
+  assert.equal(confirmations[0].keepOthers, true)
+  assert.equal(await ai.chatStream({ model: 'osat:balanced', messages: [{ role: 'user', content: 'hello' }] }, () => {}, undefined, { interactive: true }), 'balanced')
+  assert.equal(ai.status().chosen, 'light')
+  await new Promise((resolve) => setTimeout(resolve, 40))
+  assert.deepEqual(ai.status().tiers.map((tier) => tier.state), ['ready', 'ready', 'idle'])
+  assert.deepEqual(killed, [])
+  const freed = await ai.unloadAll()
+  assert.deepEqual(freed.unloaded, ['light', 'balanced'])
+  assert.deepEqual(killed, ['light', 'balanced'])
+  assert.equal(ai.models().length, 3, 'unloading never removes downloaded files')
+  ai.dispose()
+})
+
+test('ordinary switching releases the old process, and a larger-model cancellation changes nothing', async () => {
+  let approve = true
+  const { ai, procs, killed } = await pool({ confirmLoad: async () => approve ? 'replace' : 'cancel' })
+  await ai.load('light', { interactive: true })
+  await ai.load('balanced', { interactive: true })
+  assert.deepEqual(killed, ['light'])
+  assert.equal(ai.status().tiers[0].state, 'idle')
+  approve = false
+  await assert.rejects(ai.load('deep', { interactive: true }), /cancelled/)
+  assert.equal(ai.status().tiers[1].state, 'ready')
+  assert.equal(procs.length, 2)
+  ai.dispose()
+})
+
+test('busy work prevents unloading; success waits for process exit before saying memory is free', async () => {
+  const { ai, procs, killed } = await pool()
+  await ai.load('light', { interactive: true })
+  const reply = ai.chatStream({ model: 'osat:light', messages: [{ role: 'user', content: 'hold' }] }, () => {}, undefined, { interactive: true })
+  await settle(() => Boolean(procs[0].job))
+  await assert.rejects(ai.unload('light'), /busy/)
+  assert.deepEqual(killed, [])
+  const free = await ai.unloadAll()
+  assert.deepEqual(free.busyModels, ['light'])
+  procs[0].emit('message', { type: 'done', id: procs[0].job })
+  await reply
+  const stopping = ai.unload('light')
+  await settle(() => ai.status().tiers[0].state === 'unloading')
+  assert.equal(ai.status().tiers[0].busy, true)
+  await stopping
+  assert.equal(ai.status().tiers[0].state, 'idle')
+  ai.dispose()
+})
+
+test('a manually unloaded model cannot be woken by background work; the next question can wake it', async () => {
+  const { ai, procs, dir } = await pool()
+  await ai.load('light', { interactive: true })
+  await ai.unload('light')
+  await assert.rejects(ai.chatStream({ model: 'osat:light', messages: [{ role: 'user', content: 'scan' }] }, () => {}), /unloaded/)
+  assert.equal(procs.length, 1)
+  assert.equal(await ai.chatStream({ model: 'osat:light', messages: [{ role: 'user', content: 'question' }] }, () => {}, undefined, { interactive: true }), 'light')
+  assert.equal((await fs.stat(path.join(dir, TIERS[0].file))).size, TIERS[0].size)
+  ai.dispose()
+})
+
+test('a question queued during an unload confirmation protects its model', async () => {
+  for (const all of [false, true]) {
+    let approve
+    const { ai, procs, killed } = await pool({ confirmUnload: () => new Promise((resolve) => { approve = resolve }) })
+    await ai.load('balanced', { interactive: true })
+    const freeing = all ? ai.unloadAll() : ai.unload('balanced')
+    await settle(() => Boolean(approve))
+    const answer = ai.chatStream({ model: 'osat:balanced', messages: [{ role: 'user', content: 'hold' }] }, () => {}, undefined, { interactive: true })
+    assert.equal(ai.status().tiers[1].busy, true)
+    approve(true)
+    if (all) {
+      const result = await freeing
+      assert.deepEqual(result.unloaded, [])
+      assert.deepEqual(result.busyModels, ['balanced'])
+    } else await assert.rejects(freeing, /busy/)
+    assert.deepEqual(killed, [])
+    await settle(() => Boolean(procs[0].job))
+    procs[0].emit('message', { type: 'done', id: procs[0].job })
+    await answer
+    ai.dispose()
+  }
+})
+
+test('an offline launch can load its downloaded default without starting a queued download', async () => {
+  const dir = await temp()
+  await fs.writeFile(path.join(dir, TIERS[0].file), '')
+  await fs.truncate(path.join(dir, TIERS[0].file), TIERS[0].size)
+  let downloads = 0
+  const procs = []
+  const ai = createAi({ dir, totalMemory: 64 * GB, chosen: 'light', startup: true, downloadQueue: ['balanced'],
+    fork: fakeEngine(procs), estimate: async () => ({ bytes: 2 * GB }), freeMemory: () => 48 * GB,
+    download: async () => { downloads += 1 } })
+  ai.start({ downloads: false })
+  await settle(() => ai.status().tiers[0].state === 'ready')
+  assert.equal(downloads, 0)
+  assert.deepEqual(ai.status().queued, ['balanced'])
+  ai.dispose()
+})
+
+test('a demanding first model warns about memory, and cancelling never allocates a model', async () => {
+  const warnings = []
+  const { ai, procs } = await pool({ freeMemory: () => 2 * GB, estimate: async () => ({ bytes: 12 * GB }),
+    confirmLoad: async (info) => { warnings.push(info); return 'cancel' } })
+  await assert.rejects(ai.load('deep', { interactive: true }), /cancelled/)
+  assert.equal(warnings[0].low, true)
+  assert.equal(warnings[0].others.length, 0)
+  assert.equal(procs.length, 0)
+  ai.dispose()
+})
+
+test('a missing estimate is reported honestly before loading alongside another model', async () => {
+  const warnings = []
+  const { ai } = await pool({ estimate: async () => null, confirmLoad: async (info) => { warnings.push(info); return 'alongside' } })
+  await ai.setRetained('light', true)
+  await ai.setRetained('deep', true)
+  assert.equal(warnings[0].estimatedMemory, null)
+  assert.equal(warnings[0].combinedMemory, null)
+  assert.equal(warnings[0].others.length, 1)
+  ai.dispose()
+})
+
+test('only ordinary idle models unload automatically', async () => {
+  const { ai, killed } = await pool({ idle: 10 })
+  await ai.load('light', { interactive: true })
+  await settle(() => ai.status().tiers[0].state === 'idle')
+  assert.deepEqual(killed, ['light'])
+  assert.equal(ai.status().tiers[0].blocked, false, 'automatic rest is not a manual unload')
+  ai.dispose()
+})
+
+test('startup preference is persisted, selection keeps it, and startup loads only the default', async () => {
+  const saved = []
+  const { ai, procs } = await pool({ saveStartup: async (value) => saved.push(value) })
+  await ai.setStartup(true)
+  await ai.select('balanced')
+  ai.start()
+  await settle(() => ai.status().tiers[1].state === 'ready')
+  assert.deepEqual(saved, [true])
+  assert.equal(ai.status().startup, true)
+  assert.equal(procs.length, 1)
+  assert.equal(procs[0].tier, 'balanced')
+  ai.dispose()
 })

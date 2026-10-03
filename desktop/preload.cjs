@@ -46,6 +46,13 @@ contextBridge.exposeInMainWorld('osatLocalAI', Object.freeze({
   // The built-in AI: which size, the download, and whether the model is awake.
   status: () => ipcRenderer.invoke('ai:status'),
   choose: (tier) => ipcRenderer.invoke('ai:choose', tier),
+  select: (tier) => ipcRenderer.invoke('ai:select', tier),
+  install: (tiers) => ipcRenderer.invoke('ai:install', tiers),
+  load: (tier) => ipcRenderer.invoke('ai:load', tier),
+  unload: (tier) => ipcRenderer.invoke('ai:unload', tier),
+  freeMemory: () => ipcRenderer.invoke('ai:free-memory'),
+  keepLoaded: (tier, value) => ipcRenderer.invoke('ai:retain', tier, value),
+  startup: (value) => ipcRenderer.invoke('ai:startup', value),
   cancel: () => ipcRenderer.invoke('ai:cancel'),
   resume: () => ipcRenderer.invoke('ai:resume'),
   remove: (tier) => ipcRenderer.invoke('ai:remove', tier),
