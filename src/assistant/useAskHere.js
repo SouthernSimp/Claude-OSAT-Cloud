@@ -20,7 +20,7 @@ export function useAskHere({ workspace, commit, modelId, context }) {
     abort.current?.abort()
     const active = workspace.notes.filter(isActiveNote)
     const noteIds = relatedNotes(active, question).map((note) => note.id)
-    const chat = { ...newChat(), messages: [newMessage('user', question, noteIds.length ? { noteIds } : {})] }
+    const chat = { ...newChat({ modelId }), messages: [newMessage('user', question, noteIds.length ? { noteIds } : {})] }
     commit((state) => putChat(state, chat))
     const controller = new AbortController()
     abort.current = controller
@@ -42,7 +42,7 @@ export function useAskHere({ workspace, commit, modelId, context }) {
     if (!body.trim()) return
     commit((state) => {
       const saved = (state.chats || []).find((item) => item.id === chat.id) || chat
-      return putChat(state, { ...saved, messages: [...saved.messages, newMessage('assistant', body)] })
+      return putChat(state, { ...saved, messages: [...saved.messages, newMessage('assistant', body, { modelId })] })
     })
   }
 

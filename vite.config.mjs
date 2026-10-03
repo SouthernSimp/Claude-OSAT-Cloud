@@ -89,6 +89,7 @@ function localAiApi() {
 
 export default defineConfig({
   base: "./",
+  cacheDir: ".vite/",
   build: {
     outDir: "dist/client",
   },

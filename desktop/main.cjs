@@ -30,6 +30,8 @@ app.on('session-created', guardSession)
 const { claimDataFolder } = require('./data-folder.cjs')
 const { localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
 const { createAi } = require('./ai/index.cjs')
+const { estimateResources } = require('./ai/resources.cjs')
+const { tierById } = require('./ai/catalog.cjs')
 const { createPhoneBridge } = require('./phone.cjs')
 const { watchFolder } = require('./folder-watch.cjs')
 const { createBots } = require('./bots/index.cjs')
@@ -469,7 +471,8 @@ async function loadPrefs() {
       launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
       places: Object.entries(saved.places || {}).reduce((places, [id, spot]) => placeItem(places, id, spot), {}),
       widgets: pickWidgets(saved.widgets),
-      ai: { tier: typeof saved.ai?.tier === 'string' ? saved.ai.tier : null },
+      ai: { tier: typeof saved.ai?.tier === 'string' ? saved.ai.tier : null, startup: saved.ai?.startup === true,
+        downloadQueue: Array.isArray(saved.ai?.downloadQueue) ? saved.ai.downloadQueue : [] },
       welcomed: saved.welcomed === true,
       toured: saved.toured === true,
       phone: saved.phone === true,
@@ -713,7 +716,9 @@ function aiLine() {
   if (download?.state === 'running') return `Setting up the AI · ${Math.floor((download.received / download.total) * 100)}%`
   if (download?.state === 'failed') return 'AI download stopped · see Settings'
   const tier = status.tiers.find((item) => item.id === status.chosen)
-  if (tier?.ready) return `Local AI · ${tier.model}${status.engine === 'ready' ? ' · awake' : ''}`
+  const loaded = status.tiers.filter((item) => item.state === 'ready').map((item) => item.label)
+  if (loaded.length) return 'Local AI · ' + loaded.join(', ') + ' ready'
+  if (tier?.ready) return 'Local AI · ' + tier.label + ' · unloaded'
   return 'Local AI: not set up yet'
 }
 
@@ -739,6 +744,16 @@ function updateTray() {
     { label: 'Offline', type: 'checkbox', checked: under.on, accelerator: 'CmdOrCtrl+Shift+U', registerAccelerator: false, click: () => toggleUnder() },
     { type: 'separator' },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
+    { label: 'Free AI memory', enabled: Boolean(ai?.status().tiers.some((tier) => tier.state === 'ready')),
+      click: async () => {
+        try {
+          const result = await ai.unloadAll()
+          if (!result.cancelled && result.busyModels.length) await dialog.showMessageBox(mainWindow, {
+            type: 'info', title: 'AI memory', message: 'Some models are still working',
+            detail: result.busyModels.map((id) => tierById(id).label).join(', ') + ' stays loaded until its work finishes.' + (result.unloaded.length ? '\n\nIdle models were unloaded.' : ''),
+          })
+        } catch (error) { dialog.showErrorBox('AI memory', error.message) }
+      } },
     { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'general' } }) },
     ...(app.isPackaged ? [{
       label: 'Open at Login',
@@ -765,27 +780,84 @@ function sendToAllWindows(channel, ...args) {
 }
 
 function registerAi() {
+  const mockAi = !app.isPackaged && process.env.OSAT_AI === 'mock'
+  const forkAi = () => utilityProcess.fork(path.join(__dirname, 'ai', 'runtime.cjs'), [], { serviceName: 'OSAT AI' })
+  const memory = (bytes) => (bytes / 1024 ** 3).toFixed(1) + ' GiB'
+  const confirmLoad = async (info) => {
+    if (mockAi) return info.keepOthers ? 'alongside' : 'replace'
+    const others = info.others.map((item) => item.label).join(', ')
+    const detail = [
+      memory(info.totalMemory) + ' system memory · about ' + memory(info.freeMemory) + ' currently free.',
+      info.estimatedMemory ? 'Estimated memory for ' + info.label + ': ' + memory(info.estimatedMemory) + ', including conversation context.' : 'A memory estimate is unavailable for this model.',
+      info.combinedMemory && info.others.length ? 'Estimated AI memory with all these models kept loaded: ' + memory(info.combinedMemory) + '.' : '',
+      info.others.length ? others + ' is already loaded. Switching and unloading releases idle, unretained models. Switching back will need to load them again.' : '',
+      info.low ? 'This may leave little room for macOS and your other apps, causing slowdown or swap use. A smaller model is recommended.' : '',
+      !info.low && info.lowKeeping && info.others.length ? 'Keeping these models loaded together may leave little room for macOS and your other apps, causing slowdown or swap use.' : '',
+      info.others.some((item) => item.retained) ? 'Models marked Keep loaded stay until you unload them or quit OSAT.' : '',
+      'These are estimates. OSAT keeps the engine’s allocation safeguards.',
+    ].filter(Boolean).join('\n\n')
+    const canReplace = !info.others.some((item) => !item.retained && item.busy)
+    const keepLabel = info.others.length > 1 ? 'Keep all loaded' : 'Keep both'
+    const buttons = ['Cancel', ...(canReplace ? [info.others.length ? 'Switch and unload' : 'Load model'] : []), ...(info.others.length ? [keepLabel] : [])]
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'warning', title: 'AI memory', message: 'Load ' + info.label + '?', detail,
+      buttons, defaultId: 0, cancelId: 0, noLink: true,
+    })
+    const picked = buttons[result.response]
+    return picked === keepLabel ? 'alongside' : ['Load model', 'Switch and unload'].includes(picked) ? 'replace' : 'cancel'
+  }
+  const confirmUnload = async (ids) => {
+    if (mockAi) return true
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'question', title: 'Free AI memory', message: 'Unload ' + ids.map((id) => tierById(id).label).join(', ') + '?',
+      detail: 'This releases their working memory. The downloaded files and your conversations stay on this Mac. Larger models can take a while to load again.',
+      buttons: ['Cancel', 'Unload'], defaultId: 0, cancelId: 0, noLink: true,
+    })
+    return result.response === 1
+  }
+  const saveAiPrefs = async (change) => {
+    const previous = prefs.ai
+    const next = { ...previous, ...change }
+    prefs = { ...prefs, ai: next }
+    try { await savePrefs() } catch (error) {
+      if (prefs.ai === next) prefs = { ...prefs, ai: previous }
+      throw error
+    }
+  }
   ai = createAi({
     dir: path.join(app.getPath('userData'), 'models'),
     totalMemory: os.totalmem(),
     chosen: prefs.ai.tier,
-    save: async (tier) => { prefs = { ...prefs, ai: { tier } }; await savePrefs() },
-    fork: () => utilityProcess.fork(path.join(__dirname, 'ai', 'runtime.cjs'), [], { serviceName: 'OSAT AI' }),
+    save: (tier) => saveAiPrefs({ tier }),
+    startup: prefs.ai.startup,
+    saveStartup: (startup) => saveAiPrefs({ startup }),
+    downloadQueue: prefs.ai.downloadQueue,
+    saveQueue: (downloadQueue) => saveAiPrefs({ downloadQueue }),
+    fork: forkAi,
+    estimate: (modelPath) => estimateResources(forkAi, modelPath),
+    confirmLoad, confirmUnload,
     emit: (status) => {
       sendToAllWindows('ai:status', status)
       if (aiLine() !== trayAiLine) updateTray()
     },
     // Tests and CI answer with a practice model instead of downloading one.
-    mock: !app.isPackaged && process.env.OSAT_AI === 'mock',
+    mock: mockAi,
   })
-  // A download under way carries on at launch, unless OSAT opens offline.
-  if (under.on) aiWaiting = 'start'
-  else ai.start()
+  // Local startup loading works offline too. Only downloads wait for online.
+  ai.start({ downloads: !under.on })
+  if (under.on) aiWaiting = 'resume'
   // AI messages are written for Nate, so they pass through as they are.
   const plain = (fn) => async (...args) => {
     try { return await fn(...args) } catch (error) { throw new FileAccessError(error.message) }
   }
   handle('ai:status', () => ai.status(), { from: 'any' })
+  handle('ai:select', plain((tier) => ai.select(tier)), { from: 'app' })
+  handle('ai:install', plain((tiers) => ai.install(tiers)), { from: 'app' })
+  handle('ai:load', plain((tier) => ai.load(tier, { interactive: true })), { from: 'app' })
+  handle('ai:unload', plain((tier) => ai.unload(tier)), { from: 'app' })
+  handle('ai:free-memory', plain(() => ai.unloadAll()), { from: (sender) => sender === mainWindow?.webContents || sender === quickChat?.window?.webContents })
+  handle('ai:retain', plain((tier, value) => ai.setRetained(tier, value)), { from: 'app' })
+  handle('ai:startup', plain((value) => ai.setStartup(value)), { from: 'app' })
   handle('ai:choose', plain((tier) => {
     // Offline, only a size already on this Mac can be chosen.
     if (under.on && !ai.status().tiers.some((item) => item.id === tier && item.ready)) throw new Error('Downloads wait until you’re back online.')
@@ -804,14 +876,15 @@ function registerAi() {
   const streams = new Map()
   ipcMain.on('local-ai:cancel', (event, id) => {
     assertTrustedSender(event)
-    if (typeof id === 'string') streams.get(id)?.abort()
+    if (typeof id === 'string') streams.get(event.sender.id + ':' + id)?.abort()
   })
   ipcMain.handle('local-ai:chat-stream', async (event, id, payload) => {
     assertTrustedSender(event)
     if (typeof id !== 'string' || !/^stream-\d+$/.test(id)) throw new FileAccessError('Bad stream id.')
     const valid = validateLocalChatPayload(payload)
     const controller = new AbortController()
-    streams.set(id, controller)
+    const key = event.sender.id + ':' + id
+    streams.set(key, controller)
     const onDelta = (delta) => { if (!event.sender.isDestroyed()) event.sender.send(`local-ai:delta:${id}`, delta) }
     try {
       return await chatWith(valid, onDelta, controller.signal)
@@ -819,7 +892,7 @@ function registerAi() {
       if (error?.name === 'AbortError') return ''
       throw new FileAccessError(error.message || 'Local AI is unavailable.')
     } finally {
-      streams.delete(id)
+      streams.delete(key)
     }
   })
 }
@@ -837,7 +910,7 @@ async function answeringModels() {
 
 function chatWith(valid, onDelta, signal) {
   if (valid.model.startsWith('cloud:')) return bots.chatStream(valid, onDelta, signal)
-  return valid.model.startsWith('osat:') ? ai.chatStream(valid, onDelta, signal) : localAiChatStream(valid, onDelta, signal)
+  return valid.model.startsWith('osat:') ? ai.chatStream(valid, onDelta, signal, { interactive: true }) : localAiChatStream(valid, onDelta, signal)
 }
 
 /* ---- Your iPhone, through an OSAT folder in iCloud Drive (off until turned on) ---- */

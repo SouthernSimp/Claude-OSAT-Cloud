@@ -56,7 +56,7 @@ test('under, a loopback answer can’t send the main process fetch anywhere else
 })
 
 test('what reaches out answers in plain words while offline; the rest works', () => {
-  for (const channel of ['browser:open', 'browser:navigate', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'phone:enable', 'phone:disable']) {
+  for (const channel of ['browser:open', 'browser:navigate', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'ai:install', 'phone:enable', 'phone:disable']) {
     assert.match(refusal(channel), /when you’re back online|until you’re back online/, channel)
   }
   // Files on this Mac still list, show and search; the desk shows the Desktop while offline.
