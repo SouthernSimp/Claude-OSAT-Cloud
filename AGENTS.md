@@ -48,3 +48,13 @@ motion. The review implementation separates the topic overview from focused maps
 keeps Unsorted optional, and makes arrangement explicit with Undo. Preserve note
 identities, relationships and hand-placed geometry; don't automatically arrange
 the workspace. Continue browser review at 127.0.0.1:5232.
+
+## October 4, 2026 — sorting a large Unsorted pile
+
+Nate authorized merging the previous Sky review and building a practical way to
+sort many Unsorted stickies. Keep the current Sky design. Use an optional review
+queue with small batches, search, full sticky reading, explicit multi-select and
+moves to topics or branches. Local word/tag hints are proposals only. Preserve
+canonical notes, writing, relationships and hand-placed geometry. Sorting Undo
+must remain available during the Sky session and preserve later edits and moves.
+No installed-app update or native Mac testing is authorized by this request.

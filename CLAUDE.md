@@ -8,7 +8,20 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 4, 2026
+## Resume checkpoint — October 4, 2026: Unsorted review
+
+The previous Sky review (PR #40) is merged into `codex/osat-ai-model-controls`.
+New sorting work is on `codex/unsorted-review-20261004` in the isolated 5232 preview.
+Nate authorized merging that review and beginning a practical
+sorting workflow for a large Unsorted pile. The optional drawer now opens a twenty-
+sticky review queue with search, full reading, multi-select, destination paths,
+explicit new-topic creation and local word/tag hints. Suggestions only select a
+review group; moves require a click. Session Undo persists after closing the drawer,
+preserves later writing/moves, and keeps newly created topics. History ends on Sky
+unmount or reload. See `docs/UNSORTED-REVIEW-20261004.md` for checks and limits.
+Installed apps/data and the native-testing pause remain preserved.
+
+### Previous checkpoint — October 4, 2026
 
 Sky refinement continues on `codex/core-workflow-20261003` in the same isolated
 checkout and PR #40. A persistent topic/branch navigator and quieter workspace

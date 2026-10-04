@@ -1,5 +1,12 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 4: large Unsorted review
+
+Sky has an optional twenty-sticky review queue, full reading/search, multi-select,
+explicit moves to topics/branches, new-topic creation and local word/tag hints.
+Session Undo preserves later edits and moves. See `UNSORTED-REVIEW-20261004.md`.
+The installed app and personal workspace are preserved.
+
 ## Status
 
 | Phase | What | State |

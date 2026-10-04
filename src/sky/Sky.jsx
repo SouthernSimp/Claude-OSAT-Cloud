@@ -24,6 +24,7 @@ import { findSky } from './find.js'
 import { applyUnpackProposal, undoUnpackProposal } from './unpack-proposal.js'
 import { UnsortedDrawer } from './UnsortedDrawer.jsx'
 import { SkyNavigator } from './SkyNavigator.jsx'
+import { fileUnsorted, undoFiling } from './sort-review.js'
 import { arrangeTopics } from './arrange.js'
 import { branchWords, wherePlaces } from './where.js'
 import { tidyTree } from './map-layout.js'
@@ -55,6 +56,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   const [asking, setAsking] = useState(false)
   const [query, setQuery] = useState('')
   const [findAt, setFindAt] = useState(0)
+  const [sortHistory, setSortHistory] = useState([])
+  const [sortNotice, setSortNotice] = useState('')
   const [unsortedOpen, setUnsortedOpen] = useState(false)
   const [navigatorOpen, setNavigatorOpen] = useState(() => !window.matchMedia('(max-width: 720px)').matches)
   const [unsortedTarget, setUnsortedTarget] = useState(null)
@@ -199,6 +202,25 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
 
   const actions = {
     commit,
+    fileUnsorted(ids, folderId, name) {
+      let result
+      commit((state) => { result = fileUnsorted(state, ids, folderId, name); return result.state })
+      if (!result?.moved.length) { setSortNotice('Nothing moved. Check your selection and destination.'); return }
+      const restores = result.moved.map((id) => ({ id, restore: onFiled?.(id) })).filter((item) => typeof item.restore === 'function')
+      setSortHistory((value) => [...value, { changes: result.changes, restores }])
+      unsuggest(result.moved)
+      setSortNotice(`Moved ${result.moved.length} ${result.moved.length === 1 ? 'sticky' : 'stickies'}. Undo is available below.`)
+    },
+    undoUnsorted() {
+      const last = sortHistory.at(-1)
+      if (!last) return
+      let restored = 0
+      let restoredIds = []
+      commit((state) => { const result = undoFiling(state, last.changes); restored = result.restored; restoredIds = result.restoredIds; return result.state })
+      last.restores.filter((item) => restoredIds.includes(item.id)).forEach((item) => item.restore())
+      setSortHistory((value) => value.slice(0, -1))
+      setSortNotice(restored ? 'Undid the move. Later writing is preserved; new topics remain available.' : 'These stickies changed location since the move, so their newer places were kept.')
+    },
     moveSticky(noteId, folderId, index) {
       commit((state) => moveSticky(state, noteId, folderId, index))
       unsuggest([noteId])
@@ -670,7 +692,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
           </div>
           <div className="sky-body">
         <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} focus={focus} onOpenUnsorted={(noteId) => { setUnsortedTarget(noteId); setUnsortedOpen(true) }} onFocus={(id) => (id ? focusOn(id) : setFocus(null))} />
-        {unsortedOpen && <div id="sky-unsorted"><UnsortedDrawer notes={unsorted} actions={{ ...actions, openUnsortedNotes: () => navigate('Notes', { list: 'unsorted' }) }} target={unsortedTarget} onClose={() => setUnsortedOpen(false)} /></div>}
+        {unsortedOpen && <div id="sky-unsorted"><UnsortedDrawer workspace={workspace} history={sortHistory} notice={sortNotice} notes={unsorted} actions={{ ...actions, openUnsortedNotes: () => navigate('Notes', { list: 'unsorted' }) }} target={unsortedTarget} onClose={() => setUnsortedOpen(false)} /></div>}
         <SkyAsk workspace={workspace} commit={commit} models={models} open={open} focus={focus} asking={asking} setAsking={setAsking} navigate={navigate} showUndo={showUndo} />
           </div>
         </main>
