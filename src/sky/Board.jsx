@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ArrowRight, At, CalendarPlus, CaretDown, DotsThree, Minus, Plus, Question, Sparkle } from '@phosphor-icons/react'
+import { ArrowRight, At, CalendarPlus, CaretDown, Crosshair, DotsThree, Minus, Plus, Question, Sparkle } from '@phosphor-icons/react'
 
 import { freeSpot, hashUnit } from '../field/field-model.js'
 import { DraftSticky, LinkDot, STICKY, menuEvent, useLinking } from '../field/DeskStickies.jsx'
@@ -10,14 +10,14 @@ import {
   addFolder, addSticky, asksIn, askStart, boardSpots, CARD, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
 } from '../nodes-model.js'
 import { branchOf, hangAt, layoutTree } from './map-layout.js'
-import { AddSticky, NameField, StickyList } from './Piles.jsx'
+import { AddSticky, NameField } from './Piles.jsx'
 import { Sticky } from './Sticky.jsx'
 
 const CAMERA_KEY = 'osat.sky.camera.v1'
 const ZOOM = { min: 0.2, max: 1.6 }
 // Further out than this, a card shows its name big and what's inside it faintly.
 const FAR = 0.5
-const READABLE = 0.6 // the smallest an opened node is shown at
+const READABLE = 0.85 // the smallest an opened node is shown at
 const clampZoom = (z) => Math.min(ZOOM.max, Math.max(ZOOM.min, z))
 // What a click on the board itself ignores: the cards and controls on it.
 const ON_CARD = '.board-card, .board-sticky, .board-sticky-draft, .board-naming, .board-zoom, .map-card, .board-focus, .link-hit'
@@ -53,7 +53,7 @@ const cardKey = (key) => (key.startsWith('folder:') ? key.slice(7) : key)
    and what hangs off it comes along; drop it on a node or a branch to give it a home there.
    Double-click a node to focus on it alone (Done comes back). Connections (a dot on each
    card's edge) join any two things; @mentions join nodes. Unsorted waits on the far left. */
-export const Board = forwardRef(function Board({ workspace, actions, open, toggle, sorting, focus, onFocus }, ref) {
+export const Board = forwardRef(function Board({ workspace, actions, open, toggle, sorting, focus, onFocus, onOpenUnsorted }, ref) {
   const view = useRef(null)
   const stored = useRef(readCamera())
   const [camera, setCamera] = useState(() => stored.current || { x: 120, y: 160, z: 1 })
@@ -74,9 +74,6 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const spots = useMemo(() => boardSpots(workspace.folders, sizes), [workspace.folders, sizes])
   const mentions = useMemo(() => mentionedIn(workspace), [workspace])
   const loose = focus ? [] : pileOf(workspace.notes, null).filter((note) => note.at)
-  const unsorted = pileOf(workspace.notes, null).filter((note) => !note.at)
-  // Folded, Unsorted is a pile that shows its first few stickies.
-  const folded = actions.folds.has('unsorted') && unsorted.length > 0
 
   /* The open nodes, laid out as maps (map-layout.js): every card's box, by key. */
   const trees = useMemo(() => {
@@ -90,7 +87,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   }, [workspace, spots, sizes, open, actions.folds, focus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const latest = useRef(null)
-  latest.current = { camera, spots, sizes, trees, folders: workspace.folders, notes: workspace.notes }
+  latest.current = { camera, spots, sizes, trees, visibleRoots: shownRoots.map((folder) => folder.id), loose, folders: workspace.folders, notes: workspace.notes }
 
   /* Each card's size, as laid out (the zoom doesn't change it). */
   const observer = useRef(null)
@@ -122,12 +119,13 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   function boxes() {
     const from = latest.current
     return [
-      ...[...from.spots.keys()].map((id) => boxOf(id)),
+      ...from.visibleRoots.map((id) => boxOf(id)),
       ...from.trees.values(),
-      ...pileOf(from.notes).filter((note) => note.at).map((note) => boxOf(`note:${note.id}`)),
+      ...from.loose.map((note) => boxOf(`note:${note.id}`)),
     ].filter(Boolean)
   }
   const union = (list) => {
+    if (!list.length) return { x: 0, y: 0, w: 0, h: 0 }
     const left = Math.min(...list.map((box) => box.x))
     const top = Math.min(...list.map((box) => box.y))
     return { x: left, y: top, w: Math.max(...list.map((box) => box.x + box.w)) - left, h: Math.max(...list.map((box) => box.y + box.h)) - top }
@@ -232,8 +230,9 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       const key = noteId ? `note:${noteId}` : null
       const box = key && (free || latest.current.trees.has(key)) ? boxOf(key) : null
       if (box) fly(frame(box, 1))
+      else if (home && home !== root && latest.current.trees.has(home)) fly(frameMap(home))
       else if (root) fly(frameMap(root))
-      else fly(frame(boxOf('unsorted'), 1))
+      else onOpenUnsorted?.(noteId)
       const sticky = noteId && view.current.querySelector(`[data-note="${noteId}"]`)
       if (!sticky) return
       sticky.classList.add('is-found')
@@ -261,7 +260,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   useEffect(() => {
     if (focus) {
       before.current.focusHome ??= latest.current.camera
-      requestAnimationFrame(() => requestAnimationFrame(() => { if (view.current && latest.current.trees.has(focus)) fly(frame(treeBounds(focus), 1)) }))
+      requestAnimationFrame(() => requestAnimationFrame(() => { if (view.current && latest.current.trees.has(focus)) fly(frameMap(focus)) }))
     } else if (before.current.focusHome) {
       fly(before.current.focusHome)
       before.current.focusHome = null
@@ -422,7 +421,6 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
 
   /* What is on the board right now, by card key. */
   const visible = new Set([
-    ...(focus ? [] : ['unsorted']),
     ...shownRoots.map((folder) => folder.id),
     ...[...trees.keys()],
     ...loose.map((note) => `note:${note.id}`),
@@ -510,18 +508,6 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
           {drawing && <path className="is-link is-drawing" d={edgePath(drawing, { x: linker.linking.x, y: linker.linking.y, w: 0, h: 0 }).d} />}
         </svg>
 
-        {!focus && (
-          <div ref={measure} className="board-card is-unsorted" data-card="unsorted" style={{ translate: `${spots.get(null).x}px ${spots.get(null).y}px`, '--i': 0 }}>
-            <UnsortedHead actions={actions} count={unsorted.length} folded={folded} />
-            <div className="card-body">
-              {folded
-                ? <FoldedPile notes={unsorted} actions={actions} />
-                : <StickyList id="sky:unsorted" folderId={null} notes={unsorted} actions={actions} empty="Stickies from the desk land here." />}
-            </div>
-            <b className="card-far" aria-hidden="true">Unsorted</b>
-          </div>
-        )}
-
         {shownRoots.map((folder, index) => (
           <RootCard
             key={folder.id}
@@ -584,6 +570,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
         )}
       </div>
 
+      {!roots.length && !loose.length && <div className="sky-empty-canvas"><h2>A little room to think.</h2><p>Start with a sticky. Make a node when a topic takes shape.</p><button type="button" className="is-primary" onClick={() => startSticky(newSpot())}>Write your first sticky</button></div>}
       {focused && (
         <div className="board-focus" role="status">
           <span>Just <strong>{focused.name}</strong></span>
@@ -604,33 +591,6 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     </div>
   )
 })
-
-function UnsortedHead({ actions, count, folded }) {
-  const drop = useDrop('sky:unsorted-head', { accepts: ['note'], onDrop: ({ id }) => actions.moveSticky(id, null, 0) })
-  return (
-    <div className="node-head is-unsorted" data-layers={layersFor(count)} {...drop}>
-      {count > 0
-        ? (
-          <button type="button" className="fold-name" aria-expanded={!folded} title={folded ? 'Open Unsorted' : 'Fold Unsorted into a pile'} onClick={() => actions.fold('unsorted')}>
-            <CaretDown className="fold-caret" weight="bold" /><strong>Unsorted</strong>
-          </button>
-        )
-        : <strong>Unsorted</strong>}
-      <small>Stickies in no node yet</small>
-    </div>
-  )
-}
-
-/* Unsorted, folded: its first few stickies, then "and N more"; a click opens it, and a sticky can still be dropped on it. */
-function FoldedPile({ notes, actions }) {
-  const drop = useDrop('sky:unsorted-fold', { accepts: ['note'], onDrop: ({ id }) => actions.moveSticky(id, null, 0) })
-  return (
-    <button type="button" className="fold-pile" title="Open Unsorted" onClick={() => actions.fold('unsorted', false)} {...drop}>
-      {notes.slice(0, 3).map((note) => <span key={note.id} className="fold-strip" data-paper={note.color || 'canary'}>{note.title}</span>)}
-      {notes.length > 3 && <span className="fold-more">and {notes.length - 3} more</span>}
-    </button>
-  )
-}
 
 /* A sticky or a branch (never one that holds this folder) dropped on a folder goes into it. */
 function useFolderDrop(id, folder, workspace, actions, spring) {
@@ -697,7 +657,9 @@ function RootCard({ folder, index, box, moving, isOpen, workspace, actions, togg
             {branches.length > 3 && <li className="is-more">and {branches.length - 3} more</li>}
           </ul>
         )}
+        <small className="node-summary">{count} {count === 1 ? 'sticky' : 'stickies'} · {branches.length} {branches.length === 1 ? 'branch' : 'branches'}</small>
         <span className="node-tools">
+          <button type="button" aria-label={`Focus on ${folder.name}`} title="Focus on this topic" onClick={() => onFocus(folder.id)}><Crosshair /></button>
           <button type="button" aria-label={`Write a sticky in ${folder.name}`} title="Write a sticky here  Tab" onClick={() => { toggle(folder.id, true); setAdding(folder.id) }}><Plus weight="bold" /></button>
           <button type="button" aria-label={`More for ${folder.name}`} title="More" onClick={(event) => actions.nodeMenu(menuEvent(event), folder)}><DotsThree weight="bold" /></button>
         </span>
@@ -707,7 +669,8 @@ function RootCard({ folder, index, box, moving, isOpen, workspace, actions, togg
           {folder.packed && (
             <div className="packed-bar" role="note">
               <p>{actions.unpacking?.id === folder.id ? actions.unpacking.line : 'Packed: only a summary so far. Unpack it into branches when you’re ready.'}</p>
-              {actions.unpackWithAi && (
+              {actions.unpacking?.id === folder.id && actions.unpacking.proposal && <div className="unpack-proposal"><textarea aria-label="Suggested branches and stickies" value={actions.unpacking.proposal} onChange={(event) => actions.editUnpack(event.target.value)} /><div><button type="button" className="is-primary" onClick={actions.acceptUnpack}>Add these branches and stickies</button><button type="button" onClick={actions.dismissUnpack}>Dismiss</button></div></div>}
+              {actions.unpackWithAi && !actions.unpacking?.proposal && (
                 <button type="button" className="is-primary" disabled={actions.unpacking?.busy} title={`Asks ${actions.answering}`} onClick={() => actions.unpackWithAi(folder)}>
                   <Sparkle weight="bold" /> Unpack with AI
                 </button>

@@ -24,6 +24,7 @@ export function deriveTitle(chat) {
 
 const text = (value, fallback = '') => (typeof value === 'string' ? value : fallback)
 const modelId = (value) => typeof value === 'string' && value.trim() && value.length <= 300 && !/:\/\//.test(value) && !value.startsWith('/') ? value.trim() : null
+const cleanScope = (value) => value && ['workspace', 'focus', 'none'].includes(value.kind) ? { kind: value.kind, ...(value.kind === 'focus' && typeof value.folderId === 'string' ? { folderId: value.folderId } : {}) } : null
 const ids = (value) => (Array.isArray(value) ? value.filter((id) => typeof id === 'string').slice(0, 8) : [])
 const names = (value) => (Array.isArray(value) ? value.filter((name) => typeof name === 'string').slice(0, 3).map((name) => name.slice(0, 200)) : [])
 
@@ -45,7 +46,7 @@ export function normalizeChat(value) {
       ...(typeof message.modelName === 'string' && message.modelName.trim() ? { modelName: message.modelName.slice(0, 300) } : {}),
     }))
   return { id: value.id, title: text(value.title), messages, createdAt: text(value.createdAt), updatedAt: text(value.updatedAt, text(value.createdAt)),
-    ...(modelId(value.modelId) ? { modelId: modelId(value.modelId) } : {}) }
+    ...(modelId(value.modelId) ? { modelId: modelId(value.modelId) } : {}), ...(cleanScope(value.contextScope) ? { contextScope: cleanScope(value.contextScope) } : {}) }
 }
 
 /* Adds the chat or replaces it, stamping the time it changed. */

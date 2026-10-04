@@ -83,13 +83,106 @@ test('closing a window hands over unsent edits synchronously', async () => {
   assert.equal(hub.doc.theme, 'dark')
 })
 
-test('a rejected change reloads the window from the store and says so', async () => {
-  const hub = createHub({ ...createEmptyDoc(), notes: [note('keep')] })
+test('a rejected save preserves writing, stops automatic retries, and saves on explicit retry', async () => {
+  const hub = createHub({ ...createEmptyDoc(), notes: [note('keep', 'Before')] })
   const bridge = memoryBridge(hub)
-  const client = createStoreClient({ ...bridge, commit: async () => { throw new Error('INVALID_OPS: test') } }, { batchMs: 1 })
+  let reject = true
+  let calls = 0
+  const client = createStoreClient({ ...bridge, commit: async (ops) => { calls++; if (reject) throw new Error('INVALID_OPS: test'); return bridge.commit(ops) } }, { batchMs: 1 })
   await client.start()
-  client.commit((state) => ({ ...state, notes: [] }))
+  client.commit((state) => ({ ...state, notes: [note('keep', 'My writing')] }))
   await settle()
-  assert.deepEqual(client.workspace.notes.map((n) => n.id), ['keep'])
+  assert.equal(client.workspace.notes[0].markdown, 'My writing')
+  assert.equal(hub.doc.notes[0].markdown, 'Before')
+  assert.ok(client.pendingCount > 0)
   assert.equal(client.getSnapshot().status.state, 'error')
+  client.commit((state) => ({ ...state, notes: [note('keep', 'More writing')] }))
+  await settle()
+  assert.equal(calls, 1, 'an invalid operation is not retried automatically')
+  reject = false
+  await client.retry()
+  assert.equal(hub.doc.notes[0].markdown, 'More writing')
+  assert.equal(client.pendingCount, 0)
+  assert.equal(client.getSnapshot().status.state, 'saved')
+})
+
+test('a failed in-flight batch and newer typing survive reload together', async () => {
+  const hub = createHub({ ...createEmptyDoc(), notes: [note('draft', 'Before')] })
+  const bridge = memoryBridge(hub)
+  let saved = null
+  const recovery = { read: () => saved, write: (value) => { saved = structuredClone(value) }, clear: () => { saved = null } }
+  let fail
+  const client = createStoreClient({ ...bridge, commit: () => new Promise((_, reject) => { fail = reject }) }, { batchMs: 1, recovery })
+  await client.start()
+  client.commit((state) => ({ ...state, notes: [note('draft', 'First sentence')] }))
+  await settle()
+  client.commit((state) => ({ ...state, notes: [note('draft', 'First sentence. Second sentence.')] }))
+  fail(new Error('disk full'))
+  await settle()
+  client.flushNow()
+  assert.equal(saved.workspace.notes[0].markdown, 'First sentence. Second sentence.')
+  const reopened = createStoreClient(bridge, { recovery, batchMs: 1 })
+  await reopened.start()
+  assert.equal(reopened.workspace.notes[0].markdown, 'First sentence. Second sentence.')
+  assert.equal(reopened.getSnapshot().status.state, 'error')
+  assert.equal(hub.doc.notes[0].markdown, 'Before', 'recovered drafts wait for an explicit retry')
+  await reopened.retry()
+  assert.equal(hub.doc.notes[0].markdown, 'First sentence. Second sentence.')
+  assert.equal(saved, null, 'the recovery copy clears only after confirmation')
+})
+
+test('pending saves are ordered while another window edits an unrelated field', async () => {
+  const hub = createHub({ ...createEmptyDoc(), notes: [note('draft', 'Before')] })
+  const bridge = memoryBridge(hub)
+  const other = createStoreClient(memoryBridge(hub), { batchMs: 1 })
+  let finish
+  let count = 0
+  const client = createStoreClient({ ...bridge, commit: (ops) => { count++; return new Promise((resolve) => { finish = () => resolve(bridge.commitSync(ops)) }) } }, { batchMs: 1 })
+  await Promise.all([client.start(), other.start()])
+  client.commit((state) => ({ ...state, notes: [note('draft', 'First')] }))
+  await settle()
+  client.commit((state) => ({ ...state, notes: [note('draft', 'Second')] }))
+  other.commit((state) => ({ ...state, theme: 'dark' }))
+  await settle()
+  assert.equal(count, 1)
+  finish()
+  await settle()
+  assert.equal(count, 2)
+  finish()
+  await settle()
+  assert.equal(hub.doc.notes[0].markdown, 'Second')
+  assert.equal(client.workspace.theme, 'dark')
+  assert.equal(client.pendingCount, 0)
+})
+
+test('a failed synchronous close save retains a recovery copy', async () => {
+  let saved
+  const bridge = { load: async () => ({ rev: 0, doc: createEmptyDoc() }), commitSync: () => { throw new Error('disk full') } }
+  const recovery = { read: () => null, write: (value) => { saved = value }, clear: () => {} }
+  const client = createStoreClient(bridge, { recovery, timers: { set: () => 1, clear: () => {} } })
+  await client.start()
+  client.commit((state) => ({ ...state, notes: [note('new', 'Keep me')] }))
+  client.flushNow()
+  assert.equal(saved.workspace.notes[0].markdown, 'Keep me')
+  assert.ok(client.pendingCount > 0)
+})
+
+test('a lost acknowledgment followed by retry reconciles without duplicate notes or a stuck Saving state', async () => {
+  const hub = createHub()
+  const bridge = memoryBridge(hub)
+  let first = true
+  const client = createStoreClient({ ...bridge, commit: async (ops) => {
+    const result = await bridge.commit(ops)
+    if (first) { first = false; throw new Error('acknowledgment lost') }
+    return result
+  } }, { batchMs: 1, gapMs: 1 })
+  await client.start()
+  client.commit((state) => ({ ...state, notes: [note('once', 'Once')] }))
+  await settle()
+  await client.retry()
+  await settle()
+  assert.equal(hub.doc.notes.length, 1)
+  assert.equal(client.workspace.notes.length, 1)
+  assert.equal(client.pendingCount, 0)
+  assert.equal(client.getSnapshot().status.state, 'saved')
 })

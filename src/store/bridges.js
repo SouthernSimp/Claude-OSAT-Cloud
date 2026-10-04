@@ -39,21 +39,17 @@ function previewRequest(db, mode, work) {
     const request = work(transaction.objectStore(PREVIEW_STORE))
     transaction.oncomplete = () => resolve(request?.result)
     transaction.onerror = () => reject(transaction.error)
+    transaction.onabort = () => reject(transaction.error || new Error('The preview save was interrupted.'))
   })
 }
 
 export function previewBridge({ fresh = false } = {}) {
   let inner = null
   let db = null
-  let saveTimer = null
   const statusListeners = new Set()
-  const save = () => {
-    clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => {
-      previewRequest(db, 'readwrite', (store) => store.put(hub.doc, 'doc')).catch((error) => {
-        for (const listener of statusListeners) listener({ state: 'error', message: `The preview couldn't save: ${error?.message || error}` })
-      })
-    }, 200)
+  const save = async () => {
+    if (!db) throw new Error('The browser database is unavailable. Keep this preview open or export a copy.')
+    await previewRequest(db, 'readwrite', (store) => store.put(hub.doc, 'doc'))
   }
   let hub = null
   const ready = (async () => {
@@ -67,12 +63,16 @@ export function previewBridge({ fresh = false } = {}) {
     hub = createHub(migrate(saved || createEmptyDoc()))
     inner = memoryBridge(hub)
   })()
-  const persist = (result) => { if (db) save(); return result }
+  const persist = async (result) => { await save(); return result }
   let pendingListener = null
   return {
     load: async () => { await ready; if (pendingListener) inner.onChange(pendingListener); return inner.load() },
     commit: async (ops) => { await ready; return persist(await inner.commit(ops)) },
-    commitSync: (ops) => persist(inner.commitSync(ops)),
+    commitSync: (ops) => {
+      const result = inner.commitSync(ops)
+      save().catch((error) => { for (const listener of statusListeners) listener({ state: 'error', message: error.message }) })
+      return { ...result, durable: false } // keep the recovery copy until a durable asynchronous acknowledgment
+    },
     replace: async (doc) => { await ready; return persist(await inner.replace(doc)) },
     onChange(fn) { pendingListener = fn; inner?.onChange(fn); return () => {} },
     onStatus(fn) { statusListeners.add(fn); return () => statusListeners.delete(fn) },

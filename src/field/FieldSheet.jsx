@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight } from '@phosphor-icons/react'
 
+import { SaveStatus } from '../store/SaveStatus.jsx'
 import { wordCount } from '../notes-model.js'
 import { paperFields, paperWrite } from './field-model.js'
 
@@ -60,7 +61,7 @@ export function FieldSheet({ note, onClose, onCommit, onOpenNotes }) {
 
   return (
     <article className="field-sheet-paper" onPointerDown={(event) => event.stopPropagation()}>
-      <small>{tag ? `#${tag}` : 'A sticky'}</small>
+      <small><SaveStatus /> · {tag ? `#${tag}` : 'A sticky'}</small>
       <textarea
         ref={titleRef}
         rows={1}

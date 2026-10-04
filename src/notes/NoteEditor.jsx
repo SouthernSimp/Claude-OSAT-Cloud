@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  Archive, ArrowCounterClockwise, At, ArrowLeft, ArrowUpRight, CheckSquare, Code, Copy, CopySimple, DotsThree, FolderSimple, Hash, Link as LinkIcon,
+  Archive, ArrowCounterClockwise, ArrowsIn, ArrowsOut, At, ArrowLeft, ArrowUpRight, CheckSquare, Code, Copy, CopySimple, DotsThree, FolderSimple, Hash, Link as LinkIcon,
   LinkSimple, ListBullets, ListNumbers, Minus, PushPin, Quotes, ShareNetwork, Sidebar, TextB, TextHOne, TextItalic, TextStrikethrough, Trash, BracketsSquare, MoonStars } from "@phosphor-icons/react";
 import { Markdown } from "../lib/markdown.jsx";
 import { Menu } from "../lib/Menu.jsx";
+import { SaveStatus } from "../store/SaveStatus.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
 import { nodesMentioned, splitMentions } from "../nodes-model.js";
 import { backlinks, folderPath, folderTree, isActiveNote, outgoingLinks, outline, resolveWikilink, wordCount } from "../notes-model.js";
@@ -17,6 +18,7 @@ const MODES = [["write", "Write"], ["split", "Split"], ["read", "Read"]];
 
 export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
   const textareaRef = useRef(null);
+  const titleRef = useRef(null);
   const titleAtFocus = useRef(null);
   const writingFrom = useRef(null); // the note being written, until writing ends
   const mentions = useMemo(() => (note.markdown.includes("@") ? nodesMentioned(note, workspace.folders) : []), [note, workspace.folders]);
@@ -30,6 +32,12 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
     const lines = note.markdown.split("\n").filter((line) => /^\s*[-*+]\s+\[[ xX]\]\s+\S/.test(line));
     return { total: lines.length, done: lines.filter((line) => /\[[xX]\]/.test(line)).length };
   }, [note.markdown]);
+  useLayoutEffect(() => {
+    const field = titleRef.current;
+    if (!field) return;
+    field.style.height = 'auto';
+    field.style.height = `${field.scrollHeight}px`;
+  }, [note.title, ui.focus]);
 
   /* When writing ends (the field lets go, or the note closes), its @s are linked by id. */
   const doneWriting = useCallback(() => {
@@ -187,6 +195,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
           />
         )}
         <div className="editor-bar-spacer" />
+        <button type="button" className="icon-button" aria-label={ui.focus ? "Leave focused writing" : "Focus on writing"} aria-pressed={Boolean(ui.focus)} title={ui.focus ? "Leave focused writing" : "Focus on writing"} onClick={() => setUi({ focus: !ui.focus })}>{ui.focus ? <ArrowsIn /> : <ArrowsOut />}</button>
         {!trashed && (
           <div className="segmented" role="tablist" aria-label="Editor mode">
             {MODES.map(([id, label]) => (
@@ -213,7 +222,9 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
 
       <div className="editor-body">
         <div className="editor-column">
-          <input
+          <textarea
+            ref={titleRef}
+            rows={1}
             className="note-title"
             aria-label="Note title"
             value={note.title}
@@ -313,6 +324,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
           </div>
 
           <footer className="editor-foot">
+            <SaveStatus />
             <span>{wordCount(note.markdown)} words</span>
             {tasks.total > 0 && <span>{tasks.done}/{tasks.total} steps done</span>}
             <span>Edited {formatRelativeTime(note.updatedAt)}</span>

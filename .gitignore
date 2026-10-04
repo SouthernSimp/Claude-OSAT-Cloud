@@ -17,3 +17,4 @@ ios/OSAT/Info.plist
 ios/OSAT/OSAT.entitlements
 # Worktrees Claude builds in
 .claude/worktrees/
+outputs/core-workflow-20261003/

@@ -18,11 +18,14 @@ const sayStickies = (count) => `${count} ${count === 1 ? 'sticky' : 'stickies'}`
    sticky in Unsorted, one line per place, each with Move and Dismiss. Nothing moves until you click,
    and one Undo takes a move back. With no AI it works from matching words. The answer says where it
    comes from and is kept as a chat ("Keep talking" opens it in Ask). Esc puts the card away. */
-export function SkyAsk({ workspace, commit, models, open, asking, setAsking, navigate, showUndo }) {
+export function SkyAsk({ workspace, commit, models, open, focus, asking, setAsking, navigate, showUndo }) {
   const latest = useRef(workspace)
   latest.current = workspace
   const label = answeringLabel(models)
-  const { answer, ask, stop, close } = useAskHere({ workspace, commit, modelId: models?.[0]?.id, context: { open: [...open], where: 'sky' } })
+  const [scope, setScope] = useState('focus')
+  const focused = workspace.folders.find((folder) => folder.id === focus)
+  const effectiveScope = scope === 'focus' && !focused ? 'workspace' : scope
+  const { answer, ask, stop, close } = useAskHere({ workspace, commit, modelId: models?.[0]?.id, context: { open: [...open], focus, scope: effectiveScope, where: 'sky' } })
   const [draft, setDraft] = useState('')
   const [sort, setSort] = useState(null) // { busy, line, groups, more } while sorting or showing what it found
   const job = useRef(null)
@@ -113,6 +116,7 @@ export function SkyAsk({ workspace, commit, models, open, asking, setAsking, nav
         <strong>Ask about your Sky</strong>
         <button type="button" aria-label="Put it away" onClick={() => setAsking(false)}><X /></button>
       </header>
+      <label className="sky-ask-scope">Use<select aria-label="AI note scope" value={effectiveScope} disabled={answer?.busy} onChange={(event) => setScope(event.target.value)}>{focused && <option value="focus">This topic · {focused.name}</option>}<option value="workspace">Workspace · related notes</option><option value="none">No notes</option></select></label>
 
       {!answer && !sort && (
         <p className="sky-ask-lead">Ask which nodes belong together, what is in a node, or say “sort these”.</p>
@@ -124,6 +128,7 @@ export function SkyAsk({ workspace, commit, models, open, asking, setAsking, nav
             <p className="sky-ask-question">{answer.question}</p>
             {answer.text ? <Markdown text={answer.text} headingOffset={2} /> : answer.busy && <p className="sky-ask-wait">Thinking…</p>}
             {answer.error && <p className="sky-ask-error" role="alert">{answer.error}</p>}
+            {answer.noteIds?.length > 0 && <div className="sky-ask-sources"><small>Notes shared · excerpts may be shortened</small>{answer.noteIds.map((id) => <button type="button" key={id} onClick={() => navigate('Notes', { noteId: id })}>{title(id)}</button>)}{answer.omitted > 0 && <small>{answer.omitted} more notes were not included. This is a partial view.</small>}</div>}
           </>
         )}
         {sort && (

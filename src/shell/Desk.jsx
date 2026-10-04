@@ -18,6 +18,7 @@ import { Sky } from '../sky/Sky.jsx'
 import { importScan } from '../nodes-model.js'
 import { relinkRenamedNote, updateNote } from '../notes-model.js'
 import { storageFrom, useWorkspace } from '../store/useWorkspace.js'
+import { SaveStatus } from '../store/SaveStatus.jsx'
 import { BrowserView } from '../tools/Browser.jsx'
 import { TerminalView } from '../tools/Terminal.jsx'
 import { BudgetView } from '../views/Budget.jsx'
@@ -477,6 +478,7 @@ export function Desk() {
   return (
     <main className={`overlay-surface ${bridge ? '' : 'is-preview'}`} data-sky={sky || undefined}>
       <GlassDefs />
+      <SaveStatus recovery />
       <div className="workspace-content is-filled" inert={welcome || tour || away || undefined}>
         <button type="button" className="sky-entry" aria-label="Open the Sky" onClick={() => goUp()}><TreeStructure aria-hidden="true" /> Sky <kbd>⌘3</kbd></button>
         <FieldDesk

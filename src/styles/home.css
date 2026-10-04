@@ -400,7 +400,8 @@
 .home-greeting,
 .home-composer-wrap,
 .home-answer { transition: translate 560ms var(--spring-soft), opacity 360ms var(--glide); }
-.home.is-raised .home-center { z-index: 11; pointer-events: none; }
+.home.is-raised .home-center { pointer-events: none; }
+.home.is-raised .home-center[data-active] { z-index: 11; }
 .home.is-raised .home-center > :not(.home-greeting) { pointer-events: auto; }
 .home.is-raised .home-greeting { opacity: 0; translate: 0 -24px; }
 .home.is-raised :is(.home-composer-wrap, .home-answer) { translate: 0 calc(var(--rise, 0px) * -1); }

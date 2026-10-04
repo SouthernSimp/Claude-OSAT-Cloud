@@ -135,7 +135,8 @@ async function main() {
       await guide.waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the first visit did not say how the Sky works'))
       await sleep(500)
       await page.screenshot({ path: `${OUT}/sky-guide.png` })
-      await page.getByRole('button', { name: 'Got it' }).click().catch(() => {})
+      if (await page.locator('[data-node-head]').count()) problems.push('sky: the first visit silently added example nodes')
+      await guide.getByRole('button', { name: 'Add the example roadmap' }).click()
     }
     await sleep(300)
     if (await guide.count()) problems.push(`sky: the guide showed again after Got it (${theme})`)
@@ -146,7 +147,9 @@ async function main() {
       await page.getByRole('textbox', { name: 'A new sticky', exact: true }).press('Escape')
       const free = page.locator('.board-sticky', { hasText: 'Freely placed Sky sticky' })
       await free.waitFor({ timeout: 3000 })
-      if (await page.locator('[data-card="unsorted"] .sticky', { hasText: 'Freely placed Sky sticky' }).count()) problems.push('sky: a free sticky was duplicated in the Unsorted pile')
+      await page.locator('.sky-bar').getByRole('button', { name: /^Unsorted/ }).click()
+      if (await page.locator('.sky-unsorted-drawer .sticky', { hasText: 'Freely placed Sky sticky' }).count()) problems.push('sky: a free sticky was duplicated in the Unsorted drawer')
+      await page.getByRole('button', { name: 'Close Unsorted' }).click()
       const before = await free.evaluate((element) => element.style.translate)
       await free.locator('.sticky').focus()
       await page.keyboard.press('ArrowRight')
@@ -163,12 +166,14 @@ async function main() {
       await free.locator('.sticky').click({ button: 'right' })
       await page.getByRole('menuitem', { name: 'Back to Unsorted', exact: true }).click()
       await free.waitFor({ state: 'detached', timeout: 3000 })
-      await page.locator('[data-card="unsorted"] .sticky', { hasText: 'Freely placed Sky sticky' }).waitFor({ timeout: 3000 })
+      await page.locator('.sky-bar').getByRole('button', { name: /^Unsorted/ }).click()
+      await page.locator('.sky-unsorted-drawer .sticky', { hasText: 'Freely placed Sky sticky' }).waitFor({ timeout: 3000 })
+      await page.getByRole('button', { name: 'Close Unsorted' }).click()
       await page.getByRole('button', { name: 'Undo', exact: true }).click()
       await free.waitFor({ timeout: 3000 })
       if (await free.evaluate((element) => element.style.translate) !== placed) problems.push('sky: Undo did not restore the sticky’s exact placement')
-      await page.getByRole('textbox', { name: 'Find a sticky' }).fill('Freely placed Sky sticky')
-      await page.getByRole('textbox', { name: 'Find a sticky' }).press('Enter')
+      await page.getByRole('combobox', { name: 'Find in Sky' }).fill('Freely placed Sky sticky')
+      await page.getByRole('combobox', { name: 'Find in Sky' }).press('Enter')
       await free.locator('.sticky.is-found').waitFor({ timeout: 3000 })
       await sleep(800)
       await page.screenshot({ path: `${OUT}/sky-free-stickies.png` })
@@ -614,9 +619,10 @@ async function main() {
   room = 'sky menus'
   if (await page.locator('.node-number').count()) problems.push('sky: node cards still show numbers')
   // The AI in the Sky: a pill opens a small card; "sort these" suggests homes from matching words (no AI in this test),
-  // Make it and Undo work, and Unsorted and a branch fold.
+  // Make it and Undo work, and Unsorted's drawer and a branch fold.
   room = 'sky ask'
-  const unsortedCard = page.locator('.board-card.is-unsorted')
+  await page.locator('.sky-bar').getByRole('button', { name: /^Unsorted/ }).click()
+  const unsortedCard = page.locator('.sky-unsorted-drawer')
   await unsortedCard.getByRole('button', { name: 'Write a sticky' }).dispatchEvent('click').catch(() => problems.push('sky: Unsorted had no Write a sticky'))
   for (const text of ['Buy cat litter', 'Cat food is running low', 'Vet visit for the cat']) {
     await page.keyboard.type(text)
@@ -640,12 +646,15 @@ async function main() {
   await unsortedCard.locator('.sticky', { hasText: 'Buy cat litter' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Undo did not bring the cat stickies back to Unsorted'))
   await skyCard.getByRole('button', { name: 'Put it away' }).click()
   await skyCard.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the Ask card did not go away'))
-  await unsortedCard.getByRole('button', { name: /^Unsorted/ }).dispatchEvent('click')
-  await unsortedCard.locator('.fold-pile').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: clicking Unsorted did not fold it into a pile'))
+  const cameraBeforeDrawer = await page.locator('.board').getAttribute('style')
+  await page.getByRole('button', { name: 'Close Unsorted' }).click()
+  await unsortedCard.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Unsorted did not close'))
   if (await unsortedCard.locator('.sticky').count()) problems.push('sky: a folded Unsorted still showed every sticky')
   await page.screenshot({ path: `${OUT}/sky-folded.png` })
-  await unsortedCard.locator('.fold-pile').dispatchEvent('click')
+  await page.locator('.sky-bar').getByRole('button', { name: /^Unsorted/ }).click()
+  if (await page.locator('.board').getAttribute('style') !== cameraBeforeDrawer) problems.push('sky: opening the Unsorted drawer moved the camera')
   await unsortedCard.locator('.sticky', { hasText: 'Buy cat litter' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: clicking the pile did not open Unsorted again'))
+  await page.getByRole('button', { name: 'Close Unsorted' }).click()
   // Opening a node shows its top at a size you can read, so scroll the board (as a person does) to reach a branch further down.
   const reveal = async (locator) => {
     const top = await locator.evaluate((element) => element.getBoundingClientRect().top).catch(() => null)
@@ -661,10 +670,11 @@ async function main() {
   await page.locator('.branch-card[aria-label="Branch: Later"][data-layers]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the fold arrow did not fold the branch away'))
   await page.getByRole('button', { name: 'Open Later', exact: true }).click({ force: true }).catch(() => {})
   await page.locator('.branch-card[aria-label="Branch: Later"][data-layers]').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the branch did not open again'))
-  // Focus: double-click a node and only it is left; Done (or Esc) brings the rest back.
-  await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true })
+  // Focus closes the drawer and keeps one topic; Done brings the rest back.
+  await page.locator('.sky-bar').getByRole('button', { name: /^Unsorted/ }).click()
+  await page.getByRole('button', { name: 'Focus on Project Direction', exact: true }).click()
   await page.locator('.board-focus').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: double-clicking a node did not focus on it'))
-  if (await page.locator('.board-card.is-unsorted').count()) problems.push('sky: focus still showed Unsorted')
+  if (await page.locator('.sky-unsorted-drawer').count()) problems.push('sky: focus still showed Unsorted')
   await page.screenshot({ path: `${OUT}/sky-focus.png` })
   await page.locator('.board-focus').getByRole('button', { name: 'Done' }).click().catch(() => {})
   await page.locator('.board-focus').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Done did not end the focus'))
