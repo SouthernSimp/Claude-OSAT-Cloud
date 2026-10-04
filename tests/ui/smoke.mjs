@@ -680,8 +680,10 @@ async function main() {
   await page.locator('.board-focus').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Done did not end the focus'))
   await openNode(page, 'Project Direction')
   room = 'sky menus'
-  await reveal(page.locator('[data-node-head]', { hasText: 'Project Direction' }))
-  await page.locator('[data-node-head]', { hasText: 'Project Direction' }).click({ button: 'right', force: true })
+  await page.getByRole('combobox', { name: 'Find in Sky' }).fill('Project Direction')
+  await page.getByRole('combobox', { name: 'Find in Sky' }).press('Enter')
+  await sleep(900)
+  await page.getByRole('button', { name: 'More for Project Direction', exact: true }).click()
   for (const gone of ['Link to', 'Lay it out', 'Put inside', 'Colour', 'Remove node']) if (await page.getByRole('menuitem', { name: gone }).count()) problems.push(`sky: the node menu still says "${gone}"`)
   for (const kept of ['Color', 'Delete node', 'Help me sort']) if (!await page.getByRole('menuitem', { name: kept }).count()) problems.push(`sky: the node menu has no "${kept}"`)
   await page.getByRole('menuitem', { name: 'Help me sort' }).click().catch(() => {})
