@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ArrowRight, At, CalendarPlus, CaretDown, Crosshair, DotsThree, Minus, Plus, Question, Sparkle } from '@phosphor-icons/react'
+import { ArrowRight, At, CalendarPlus, CaretDown, CornersOut, Crosshair, DotsThree, Minus, Plus, Sparkle } from '@phosphor-icons/react'
 
 import { freeSpot, hashUnit } from '../field/field-model.js'
 import { DraftSticky, LinkDot, STICKY, menuEvent, useLinking } from '../field/DeskStickies.jsx'
@@ -66,8 +66,8 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const [flying, setFlying] = useState(false)
   const [panning, setPanning] = useState(false)
   const flyTimer = useRef(0)
-  const flown = useRef(null)
-  const before = useRef({ open: new Set(open), home: null, focusHome: null })
+  const before = useRef({ focusHome: null })
+  const destination = useRef(null)
 
   const roots = nodesOf(workspace.folders).map(({ folder }) => folder)
   const shownRoots = focus ? roots.filter((folder) => folder.id === focus) : roots
@@ -79,8 +79,9 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const trees = useMemo(() => {
     const all = new Map()
     roots.forEach((folder) => {
-      if (!open.has(folder.id) && focus !== folder.id) return
-      if (focus && focus !== folder.id) return
+      // The overview shows topics and free stickies. Expanding a topic is an
+      // isolated view, so unrelated trees can never overlap it.
+      if (focus !== folder.id) return
       layoutTree(workspace, folder, spots.get(folder.id), { sizes, folds: actions.folds }).forEach((box, key) => all.set(key, box))
     })
     return all
@@ -166,7 +167,6 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     return { x: box.width / 2 - (node.x + node.w / 2) * READABLE, y: box.height / 2 - (node.y + node.h / 2) * READABLE, z: READABLE }
   }
   function fly(next) {
-    flown.current = next
     setFlying(true)
     setCamera(next)
     clearTimeout(flyTimer.current)
@@ -183,9 +183,9 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   }
   const toWorld = (x, y, at = latest.current.camera) => ({ x: (x - at.x) / at.z, y: (y - at.y) / at.z })
 
-  /* The first time, everything in view; after that, where it was left. */
+  /* Enter at an overview of the cards, not a camera left inside an old tree. */
   useEffect(() => {
-    if (!stored.current) requestAnimationFrame(() => { if (view.current) setCamera(frame(bounds())) })
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (view.current && !latest.current.trees.size) setCamera(frame(bounds())) }))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const timer = setTimeout(() => { try { localStorage.setItem(CAMERA_KEY, JSON.stringify(camera)) } catch { /* a convenience only */ } }, 300)
@@ -218,13 +218,14 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     const free = note?.at && !note.folderId
     const home = note?.folderId || folderId
     const root = home ? rootOf(state.folders, home) : null
+    destination.current = root
     if (root) {
       toggle(root, true)
       for (let id = home, guard = 0; id && id !== root && guard < 64; guard += 1) {
         actions.fold(id, false)
         id = state.folders.find((folder) => folder.id === id)?.parentId
       }
-    }
+    } else onFocus(null)
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (!view.current) return
       const key = noteId ? `note:${noteId}` : null
@@ -233,6 +234,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       else if (home && home !== root && latest.current.trees.has(home)) fly(frameMap(home))
       else if (root) fly(frameMap(root))
       else onOpenUnsorted?.(noteId)
+      destination.current = null
       const sticky = noteId && view.current.querySelector(`[data-note="${noteId}"]`)
       if (!sticky) return
       sticky.classList.add('is-found')
@@ -240,27 +242,13 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     }))
   }
 
-  /* Opening a node brings its map into view; closing the last one goes back to where the
-     board was, unless it has been moved since. Nothing else on the board moves. */
-  useEffect(() => {
-    const was = before.current
-    const now = new Set(roots.filter((folder) => open.has(folder.id)).map((folder) => folder.id))
-    before.current = { ...was, open: now }
-    const opened = [...now].filter((id) => !was.open.has(id))
-    if (opened.length) {
-      if (!was.open.size) before.current.home = latest.current.camera
-      goTo({ folderId: opened[opened.length - 1] })
-    } else if (was.open.size && !now.size && was.home) {
-      if (flown.current === latest.current.camera) fly(was.home)
-      before.current.home = null
-    }
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
-
   /* Focus: one node alone, its map framed; Done goes back to where the board was. */
   useEffect(() => {
     if (focus) {
       before.current.focusHome ??= latest.current.camera
-      requestAnimationFrame(() => requestAnimationFrame(() => { if (view.current && latest.current.trees.has(focus)) fly(frameMap(focus)) }))
+      // A search/branch jump owns its destination; don't override it with a
+      // second camera flight to the root of the topic.
+      if (destination.current !== focus) requestAnimationFrame(() => requestAnimationFrame(() => { if (view.current && latest.current.trees.has(focus)) fly(frameMap(focus)) }))
     } else if (before.current.focusHome) {
       fly(before.current.focusHome)
       before.current.focusHome = null
@@ -269,6 +257,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
 
   useImperativeHandle(ref, () => ({
     goTo,
+    sizes: () => latest.current.sizes,
     /* A new node in the middle of what's in view. */
     newNode() {
       const box = view.current.getBoundingClientRect()
@@ -276,6 +265,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       setNaming({ x: middle.x - CARD.w / 2, y: middle.y - 70 })
     },
     newSticky() {
+      if (focus) { setAdding(focus); fly(frame(boxOf(focus))); return }
       startSticky(newSpot())
     },
     placeSticky(noteId) {
@@ -307,7 +297,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   function makeSticky(text) {
     const at = draft
     setDraft(null)
-    if (at) actions.commit((state) => addSticky(state, text, null, { at, source: 'Sky', index: Infinity }).state)
+    if (at) actions.commit((state) => addSticky(state, text, focus || null, { at: focus ? hangAt(boxOf(focus), at) : at, source: 'Sky', index: Infinity }).state)
   }
 
   function makeNode(name) {
@@ -481,7 +471,6 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const far = camera.z < FAR
   // The dots thin out as the board zooms out, so they never turn to haze.
   const dot = 28 * camera.z * 2 ** Math.max(0, Math.ceil(Math.log2(16 / (28 * camera.z))))
-  const focused = focus && roots.find((folder) => folder.id === focus)
   const common = { workspace, actions, measure, liveFor, linker, adding, setAdding }
 
   return (
@@ -571,22 +560,17 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       </div>
 
       {!roots.length && !loose.length && <div className="sky-empty-canvas"><h2>A little room to think.</h2><p>Start with a sticky. Make a node when a topic takes shape.</p><button type="button" className="is-primary" onClick={() => startSticky(newSpot())}>Write your first sticky</button></div>}
-      {focused && (
-        <div className="board-focus" role="status">
-          <span>Just <strong>{focused.name}</strong></span>
-          <button type="button" className="is-primary" onClick={() => onFocus(null)}>Done</button>
-        </div>
-      )}
+      {!focus && roots.length > 0 && <div className="sky-canvas-caption"><strong>See the connections.</strong><span>Open a topic to work with its branches and stickies.</span></div>}
       <p className="board-hint" aria-hidden="true">
         {trees.size
-          ? 'Drag a card to move it and what hangs off it · drop it on a branch to put it there · drag a dot to connect'
-          : 'Double-click the board for a sticky · click a node to open it · drag a dot to connect two things'}
+          ? 'Drag to move · scroll to explore · ⌘ scroll to zoom'
+          : 'Double-click to capture · drag a dot to connect'}
       </p>
       <div className="board-zoom" role="group" aria-label="Zoom">
-        <button type="button" aria-label="How the Sky works" title="How the Sky works" onClick={actions.showGuide}><Question weight="bold" /></button>
         <button type="button" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.25)}><Minus weight="bold" /></button>
-        <button type="button" className="board-zoom-fit" title="See everything" onClick={fit}>{Math.round(camera.z * 100)}%</button>
+        <button type="button" className="board-zoom-fit" title="Actual size" aria-label="Reset zoom to 100%" onClick={() => zoomBy(1 / camera.z)}>{Math.round(camera.z * 100)}%</button>
         <button type="button" aria-label="Zoom in" onClick={() => zoomBy(1.25)}><Plus weight="bold" /></button>
+        <button type="button" aria-label="Fit canvas in view" title="Fit view" onClick={fit}><CornersOut /></button>
       </div>
     </div>
   )
@@ -642,6 +626,7 @@ function RootCard({ folder, index, box, moving, isOpen, workspace, actions, togg
         }}
         onContextMenu={(event) => actions.nodeMenu(event, folder)}
       >
+        <span className="node-kind"><i />{loose ? 'Branch' : 'Topic'}<ArrowRight /></span>
         {actions.renaming === folder.id
           ? <NameField initial={folder.name} placeholder={loose ? 'Name the branch' : 'Name the node'} onDone={(name) => actions.endRename(folder.id, name)} />
           : <strong>{folder.name}</strong>}
@@ -657,12 +642,14 @@ function RootCard({ folder, index, box, moving, isOpen, workspace, actions, togg
             {branches.length > 3 && <li className="is-more">and {branches.length - 3} more</li>}
           </ul>
         )}
-        <small className="node-summary">{count} {count === 1 ? 'sticky' : 'stickies'} · {branches.length} {branches.length === 1 ? 'branch' : 'branches'}</small>
+        {!isOpen && !branches.length && <p className="node-preview">{pileOf(workspace.notes, folder.id).slice(0, 2).map((note) => note.title).join(' · ') || 'A place for related ideas.'}</p>}
+        <div className="node-card-footer"><small className="node-summary">{count} {count === 1 ? 'sticky' : 'stickies'}</small>
         <span className="node-tools">
           <button type="button" aria-label={`Focus on ${folder.name}`} title="Focus on this topic" onClick={() => onFocus(folder.id)}><Crosshair /></button>
           <button type="button" aria-label={`Write a sticky in ${folder.name}`} title="Write a sticky here  Tab" onClick={() => { toggle(folder.id, true); setAdding(folder.id) }}><Plus weight="bold" /></button>
           <button type="button" aria-label={`More for ${folder.name}`} title="More" onClick={(event) => actions.nodeMenu(menuEvent(event), folder)}><DotsThree weight="bold" /></button>
         </span>
+        </div>
       </div>
       {panels && (
         <div className="card-body">
@@ -738,6 +725,7 @@ function BranchCard({ folder, box, moving, workspace, actions, measure, liveFor,
         {renaming
           ? <NameField initial={folder.name} placeholder="Name the branch" onDone={(name) => actions.endRename(folder.id, name)} />
           : <strong>{folder.name}</strong>}
+        {folded && <small className="branch-summary">{inside}</small>}
         <span className="map-tools">
           <button type="button" aria-label={`Write a sticky in ${folder.name}`} title="Write a sticky here  Tab" onClick={() => { actions.fold(folder.id, false); setAdding(folder.id) }}><Plus weight="bold" /></button>
           <button type="button" aria-label={`More for ${folder.name}`} title="More" onClick={(event) => actions.branchMenu(menuEvent(event), folder)}><DotsThree weight="bold" /></button>

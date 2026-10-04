@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsIn, Broom, CornersOut, Crosshair, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, Sparkle, Stack, Trash,
+  ArrowDown, ArrowsIn, Broom, CaretRight, CornersOut, Crosshair, DotsThree, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, SidebarSimple, Sparkle, Stack, Trash,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
@@ -10,7 +10,7 @@ import { PAPERS } from '../note-core.js'
 import { folderChildren, folderSubtree, isBranch, purgeNotes, restoreNotes, trashNotes } from '../notes-model.js'
 import {
   addAskedEvent, addFolder, addSticky, importNode, markOpened, markUnpacked, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, placeSticky, removeFolder, renameFolder,
-  skipAsk, splitMentions, suggestionGroups, tidyBoard,
+  skipAsk, splitMentions, stickiesIn, suggestionGroups,
 } from '../nodes-model.js'
 import { applyOps, diffDocs } from '../../shared/store-core.mjs'
 import { isPacked, readNodeFile } from '../../shared/node-file.mjs'
@@ -23,6 +23,8 @@ import { SkyAsk } from './SkyAsk.jsx'
 import { findSky } from './find.js'
 import { applyUnpackProposal, undoUnpackProposal } from './unpack-proposal.js'
 import { UnsortedDrawer } from './UnsortedDrawer.jsx'
+import { SkyNavigator } from './SkyNavigator.jsx'
+import { arrangeTopics } from './arrange.js'
 import { branchWords, wherePlaces } from './where.js'
 import { tidyTree } from './map-layout.js'
 import { connect, disconnect, folderKey, linksAt, noteKey, recordOf } from '../links-model.js'
@@ -54,6 +56,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   const [query, setQuery] = useState('')
   const [findAt, setFindAt] = useState(0)
   const [unsortedOpen, setUnsortedOpen] = useState(false)
+  const [navigatorOpen, setNavigatorOpen] = useState(() => !window.matchMedia('(max-width: 720px)').matches)
   const [unsortedTarget, setUnsortedTarget] = useState(null)
   const [sorting, setSorting] = useState(null)
   const [renaming, setRenaming] = useState(null)
@@ -124,6 +127,20 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   }
 
   function toggle(id, force) {
+    // Open one topic at a time. This is a view change; board coordinates and the
+    // legacy open preference remain intact.
+    let root = latest.current.folders.find((folder) => folder.id === id)
+    for (let guard = 0; root?.parentId && guard < 64; guard += 1) root = latest.current.folders.find((folder) => folder.id === root.parentId)
+    if (root) {
+      setUnsortedOpen(false)
+      if (force !== false && focus !== root.id && stickiesIn(latest.current, root.id).length > 18) {
+        // A large topic starts with branch summaries. Opening a search result
+        // unfolds its path again below, without changing stored note geometry.
+        const branches = folderChildren(latest.current.folders, root.id)
+        setFolds((current) => new Set([...current, ...branches.map((branch) => branch.id)]))
+      }
+      setFocus((current) => force === false || (force === undefined && current === root.id) ? null : root.id)
+    }
     // A node that arrived is New until it is first opened.
     if ((force === true || (force === undefined && !open.has(id))) && latest.current.folders.some((folder) => folder.id === id && folder.fresh)) {
       commit((state) => markOpened(state, id))
@@ -153,7 +170,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   function focusOn(id) {
     setUnsortedOpen(false)
     toggle(id, true)
-    setFocus(id)
+    if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false)
   }
   // A suggestion goes once its stickies have gone somewhere else; with none left, so does the help.
   const unsuggest = (ids) => setSorting((value) => {
@@ -425,7 +442,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
         { label: 'New sticky here', icon: Plus, onSelect: newSticky },
         { label: 'New node here', icon: Plus, onSelect: newNode },
         { label: 'See everything', icon: CornersOut, onSelect: fit },
-        { label: 'Line them up again', icon: ArrowsIn, onSelect: () => commit(tidyBoard) },
+        { label: 'Arrange topics', icon: ArrowsIn, onSelect: arrangeOverview },
         { divider: true },
         { label: 'How the Sky works', icon: Question, onSelect: () => setGuide(true) },
       ])
@@ -549,6 +566,44 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   /* Finding a sticky: its words, or #tags. Picking one lays out its node. */
   const found = useMemo(() => findSky(workspace, query), [query, workspace.notes, workspace.folders])
   const unsorted = useMemo(() => pileOf(workspace.notes, null).filter((note) => !note.at), [workspace.notes])
+  const focused = nodesList.find(({ folder }) => folder.id === focus)?.folder
+  useEffect(() => { if (focus && !focused) setFocus(null) }, [focus, focused])
+
+  function overview() {
+    setFocus(null)
+    setUnsortedOpen(false)
+    if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false)
+  }
+  function newNode() {
+    overview()
+    requestAnimationFrame(() => requestAnimationFrame(() => board.current?.newNode()))
+  }
+  function arrangeOverview() {
+    let inverse = null
+    commit((state) => {
+      const next = arrangeTopics(state, board.current?.sizes())
+      inverse = applyOps(state, diffDocs(state, next)).inverse
+      return next
+    })
+    if (inverse?.length) showUndo('Arranged the topics', () => commit((state) => applyOps(state, inverse).doc))
+    requestAnimationFrame(() => requestAnimationFrame(() => board.current?.fit()))
+  }
+  function arrangeView() {
+    if (!focused) { arrangeOverview(); return }
+    actions.tidy(focused)
+    requestAnimationFrame(() => requestAnimationFrame(() => board.current?.fit()))
+  }
+  function more(event) {
+    openMenu(event, [
+      { label: 'New node', icon: Plus, onSelect: newNode },
+      focused ? { label: 'New branch', icon: ShareNetwork, onSelect: () => actions.startBranch(focused.id) } : null,
+      focused ? { label: 'Tidy this topic', icon: Broom, onSelect: () => actions.tidy(focused) } : null,
+      { divider: true },
+      { label: 'Import a node file', icon: DownloadSimple, onSelect: () => picker.current?.click() },
+      { label: 'Sort a pile', icon: Stack, onSelect: () => navigate('Pile') },
+      { label: 'How the Sky works', icon: Question, onSelect: () => setGuide(true) },
+    ])
+  }
 
   const toss = useDrop('sky:toss', {
     accepts: ['note'],
@@ -556,13 +611,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   })
 
   return (
-    <div className="sky-layer" role="region" aria-label="Sky">
+    <div className="sky-layer sky-workspace" role="region" aria-label="Sky" data-navigator={navigatorOpen || undefined}>
       <header className="sky-bar">
         <button type="button" className="sky-down" onClick={onClose} title="Back to the desk  Esc · ⌥⌘↓"><ArrowDown weight="bold" /> Desk</button>
-        <button type="button" className="sky-new" onClick={() => board.current?.newSticky()}><Plus weight="bold" /> New sticky</button>
-        <button type="button" className="sky-import sky-unsorted-toggle" aria-expanded={unsortedOpen} aria-controls="sky-unsorted" onClick={() => { setUnsortedTarget(null); setUnsortedOpen(!unsortedOpen) }}><Stack /> Unsorted <span>{unsorted.length}</span></button>
-        <button type="button" className="sky-import" title="Import a node file (.json or .md) as a new node" onClick={() => picker.current?.click()}><DownloadSimple weight="bold" /> Import</button>
-        <button type="button" className="sky-import" title="A table of its own for a pile of stickies, until it's sorted" onClick={() => navigate('Pile')}><Stack weight="bold" /> Sort a pile</button>
+        <span className="sky-wordmark"><ShareNetwork weight="bold" /> Sky</span>
         <input
           ref={picker}
           type="file"
@@ -601,12 +653,26 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
             </div>
           )}
         </div>
+        <button type="button" className="sky-new" onClick={() => board.current?.newSticky()}><Plus weight="bold" /> New sticky</button>
+        <button type="button" className="sky-icon-button" aria-label="Sky actions" aria-haspopup="menu" onClick={more}><DotsThree weight="bold" /></button>
       </header>
 
-      <div className="sky-body">
+      <div className="sky-workbench">
+        {navigatorOpen && <SkyNavigator workspace={workspace} focus={focus} unsortedCount={unsorted.length} unsortedOpen={unsortedOpen} onOverview={overview} onTopic={focusOn} onBranch={(id) => { board.current?.goTo({ folderId: id }); if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false) }} onNew={newNode} onUnsorted={() => { setUnsortedTarget(null); setUnsortedOpen(!unsortedOpen); if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false) }} onGuide={() => setGuide(true)} />}
+        <main className="sky-main">
+          <div className="sky-location">
+            <button type="button" className="sky-icon-button" aria-label={navigatorOpen ? 'Hide Sky navigator' : 'Show Sky navigator'} aria-expanded={navigatorOpen} onClick={() => setNavigatorOpen(!navigatorOpen)}><SidebarSimple /></button>
+            <div className="sky-breadcrumb"><button type="button" onClick={overview} aria-current={!focus ? 'page' : undefined}>All Sky</button>{focused && <><CaretRight /><strong>{focused.name}</strong></>}</div>
+            <span className="sky-view-label">{focused ? 'Topic map' : 'Overview'}</span>
+            <button type="button" className="sky-fit sky-arrange" title="Arrange this view · offers Undo" onClick={arrangeView}><ArrowsIn /> Arrange</button>
+            <button type="button" className="sky-fit" onClick={() => board.current?.fit()}><CornersOut /> Fit view</button>
+          </div>
+          <div className="sky-body">
         <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} focus={focus} onOpenUnsorted={(noteId) => { setUnsortedTarget(noteId); setUnsortedOpen(true) }} onFocus={(id) => (id ? focusOn(id) : setFocus(null))} />
         {unsortedOpen && <div id="sky-unsorted"><UnsortedDrawer notes={unsorted} actions={{ ...actions, openUnsortedNotes: () => navigate('Notes', { list: 'unsorted' }) }} target={unsortedTarget} onClose={() => setUnsortedOpen(false)} /></div>}
         <SkyAsk workspace={workspace} commit={commit} models={models} open={open} focus={focus} asking={asking} setAsking={setAsking} navigate={navigate} showUndo={showUndo} />
+          </div>
+        </main>
       </div>
 
       {carrying?.kind === 'note' && (
@@ -620,7 +686,6 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
 
   function pick(row) {
     setQuery('')
-    setFocus(null)
     findField.current?.blur()
     board.current?.goTo(row.go[1])
   }

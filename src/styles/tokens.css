@@ -167,11 +167,15 @@
   --sky-ground: radial-gradient(130% 90% at 50% -20%, #ffffff 0%, #f0f3f8 48%, #e8ecf3 100%);
   --board-dot: rgb(60 70 90 / 16%);
   --board-glow: rgb(255 255 255 / 85%);
+  --sky-canvas: #f5f6f8;
+  --sky-sticky-tint: 38%;
 }
 :root[data-theme="dark"] {
   --sky-ground: radial-gradient(130% 90% at 50% -20%, #1f2430 0%, #15181f 50%, #0f1115 100%);
   --board-dot: rgb(200 210 230 / 13%);
   --board-glow: rgb(150 170 210 / 10%);
+  --sky-canvas: #181a1e;
+  --sky-sticky-tint: 12%;
 }
 
 /* Stickies: coloured paper, bright in either look like real ones, with dark ink. */

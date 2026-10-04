@@ -38,3 +38,13 @@ Sky, note taking, and how AI works with those records. Review in a browser first
 Laya was mentioned as something to investigate later, not an installation request.
 The isolated review branch is `codex/core-workflow-20261003`, based on the
 AI-controls review branch. Keep installed apps and their data preserved.
+
+## October 4, 2026 — professional Sky workspace
+
+Nate asked to fix Sky's appearance and make it professional and developed for
+working with many notes, and to provide a prioritized list of remaining fixes.
+Favor readable content, clear navigation and predictable capture over decorative
+motion. The review implementation separates the topic overview from focused maps,
+keeps Unsorted optional, and makes arrangement explicit with Undo. Preserve note
+identities, relationships and hand-placed geometry; don't automatically arrange
+the workspace. Continue browser review at 127.0.0.1:5232.

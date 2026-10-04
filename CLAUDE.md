@@ -8,7 +8,23 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 3, 2026
+## Resume checkpoint — October 4, 2026
+
+Sky refinement continues on `codex/core-workflow-20261003` in the same isolated
+checkout and PR #40. A persistent topic/branch navigator and quieter workspace
+frame replace the floating toolbar. The overview keeps topics collapsed; focused
+maps isolate one topic, and large topics start with folded branch summaries.
+Search opens the correct path and centers the result. New sticky respects the
+focused topic. Arrange lays out only topic anchors in a grid, with loss-resistant
+Undo; it preserves nested offsets, notes, relationships and ranks.
+
+Validation: 488 unit checks and production build passed. Browser checks covered
+capture/reload/search, topic and branch navigation, Unsorted filtering without
+camera movement, arrangement, and a narrow window. Light/dark styles were checked;
+the preview's original Auto appearance is restored. Installed apps remain untouched.
+See `docs/SKY-REVIEW-20261004.md` for remaining work and evidence limits.
+
+### Previous checkpoint — October 3, 2026
 
 Core workflow improvements are on `codex/core-workflow-20261003`, based on
 `codex/osat-ai-model-controls` (PR #39), in the isolated checkout

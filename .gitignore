@@ -18,3 +18,4 @@ ios/OSAT/OSAT.entitlements
 # Worktrees Claude builds in
 .claude/worktrees/
 outputs/core-workflow-20261003/
+outputs/sky-refinement-20261004/
