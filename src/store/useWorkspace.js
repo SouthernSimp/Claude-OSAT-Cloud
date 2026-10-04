@@ -3,13 +3,16 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { normalizeWorkspace } from '../osat-data.js'
 import { createStoreClient } from './client.js'
 import { pickBridge } from './bridges.js'
+import { draftJournal } from './recovery.js'
 
 let client = null
 
 export function workspaceClient() {
   if (!client) {
     // The old boards (`sorter`) are no longer shown, so nothing keeps them in step with notes.
-    client = createStoreClient(pickBridge(), { normalize: normalizeWorkspace })
+    const surface = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('surface') || 'desk' : 'desk'
+    const recovery = typeof localStorage !== 'undefined' ? draftJournal(localStorage, `osat.unsaved-changes.v1.${surface}`) : null
+    client = createStoreClient(pickBridge(), { normalize: normalizeWorkspace, recovery })
     client.start()
     if (typeof window !== 'undefined') {
       // Hand over anything still waiting before the window closes or reloads.

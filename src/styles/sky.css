@@ -789,3 +789,62 @@ g:hover > .link-line { stroke-width: 3.5px; opacity: 1; }
 .fold-pile { display: grid; gap: 4px; width: 100%; padding: 0; text-align: left; }
 .fold-strip { display: block; padding: 7px 10px; border-radius: 4px; font-size: var(--t-xs); color: var(--paper-ink); background: var(--paper-bg, var(--paper-canary)); box-shadow: var(--e-1); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fold-more { padding: 2px 4px; font-size: var(--t-xs); color: var(--muted); }
+
+/* Topics are anchors; only thoughts use paper. Unsorted lives outside the camera. */
+.board-card > .node-head:not(.is-naming) {
+  min-height: 110px;
+  padding: 18px 18px 48px;
+  border: 1px solid var(--line-strong);
+  border-top: 3px solid var(--paper-bg, var(--accent));
+  border-radius: 16px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: var(--e-2);
+  animation: none;
+}
+.board-card .node-peek { color: var(--muted); }
+.board-card .node-summary { color: var(--muted); font-size: 12px; padding-right: 0; }
+.board-card .node-tools { opacity: 1; bottom: 10px; right: 10px; }
+.board-card .node-tools button { color: var(--muted); width: 30px; height: 30px; }
+.board-card .node-tools button:hover { color: var(--ink); background: var(--surface-sunken); }
+.board[data-far] .card-far { display: none; }
+.board[data-far] .node-head > strong { font-size: calc(12px / var(--z)); line-height: 1.2; }
+.board[data-far] .node-peek, .board[data-far] .node-tools, .board[data-far] .node-origin { visibility: hidden; }
+.board[data-far] .node-summary { font-size: calc(8px / var(--z)); white-space: normal; }
+.board[data-far] .map-sticky .sticky p { display: none; }
+.sky-unsorted-toggle span { padding: 1px 5px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.sky-unsorted-toggle[aria-expanded="true"] { background: var(--surface-sunken); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.sky-unsorted-drawer {
+  position: absolute; z-index: 12; inset: 14px auto 72px 14px; width: min(330px, calc(100% - 28px));
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto;
+  border: 1px solid var(--line-strong); border-radius: 18px; background: var(--surface-raised); box-shadow: var(--e-3);
+  overflow: hidden;
+}
+.sky-unsorted-drawer > header { padding: 18px 16px 12px; display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.sky-unsorted-drawer h2 { margin: 0; font: 650 17px/1.3 var(--font); }
+.sky-unsorted-drawer h2 span { margin-left: 5px; color: var(--muted); font: 500 13px/1 var(--font); }
+.sky-unsorted-drawer header p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+.sky-unsorted-drawer header button { padding: 6px; border-radius: 8px; }
+.sky-unsorted-drawer button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sky-drawer-search { display: flex; align-items: center; gap: 8px; margin: 0 14px 12px; padding: 8px 10px; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 10px; }
+.sky-drawer-search svg { flex: none; color: var(--muted); width: 16px; }
+.sky-drawer-search input { width: 100%; min-width: 0; border: 0; padding: 0; background: transparent; font-size: 13px; }
+.sky-drawer-scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px 16px 16px; }
+.sky-unsorted-drawer footer { border-top: 1px solid var(--line); padding: 12px 16px; display: grid; gap: 8px; font-size: 12px; color: var(--muted); }
+.sky-unsorted-drawer footer button { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); justify-self: start; }
+.sky-drawer-more { width: 100%; padding: 14px 8px; font-size: 13px; color: var(--muted); }
+.sky-find-empty { margin: 0; padding: 14px; font-size: 13px; color: var(--muted); }
+.sky-found [aria-selected="true"] { background: var(--surface-sunken); }
+.sky-empty-canvas { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 14px; pointer-events: none; text-align: center; padding: 24px; }
+.sky-empty-canvas h2, .sky-empty-canvas p { margin: 0; }
+.sky-empty-canvas p { color: var(--muted); max-width: 340px; }
+.sky-empty-canvas button { pointer-events: auto; padding: 10px 18px; border-radius: 10px; }
+.sky-ask-scope { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.sky-ask-scope select { min-width: 0; flex: 1; padding: 5px 8px; font-size: 12px; background: var(--surface-sunken); }
+.sky-ask-sources { display: flex; flex-wrap: wrap; gap: 5px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sky-ask-sources small { flex-basis: 100%; color: var(--muted); }
+.sky-ask-sources button { padding: 4px 7px; border-radius: 6px; background: var(--surface-sunken); color: var(--ink); font-size: 12px; text-align: left; }
+.unpack-proposal { display: grid; gap: 10px; }
+.unpack-proposal textarea { min-height: 150px; width: 100%; resize: vertical; font: 13px/1.5 var(--font); }
+.unpack-proposal > div { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 660px) { .sky-bar { flex-wrap: wrap; gap: 5px; padding: 8px; } .sky-find { flex-basis: 100%; max-width: none; } .sky-bar .sky-import:not(.sky-unsorted-toggle) { display: none; } .board-hint { display: none; } }

@@ -8,7 +8,45 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 2, 2026
+## Resume checkpoint — October 4, 2026
+
+Sky refinement continues on `codex/core-workflow-20261003` in the same isolated
+checkout and PR #40. A persistent topic/branch navigator and quieter workspace
+frame replace the floating toolbar. The overview keeps topics collapsed; focused
+maps isolate one topic, and large topics start with folded branch summaries.
+Search opens the correct path and centers the result. New sticky respects the
+focused topic. Arrange lays out only topic anchors in a grid, with loss-resistant
+Undo; it preserves nested offsets, notes, relationships and ranks.
+
+Validation: 488 unit checks and production build passed. Browser checks covered
+capture/reload/search, topic and branch navigation, Unsorted filtering without
+camera movement, arrangement, and a narrow window. Light/dark styles were checked;
+the preview's original Auto appearance is restored. Installed apps remain untouched.
+See `docs/SKY-REVIEW-20261004.md` for remaining work and evidence limits.
+
+### Previous checkpoint — October 3, 2026
+
+Core workflow improvements are on `codex/core-workflow-20261003`, based on
+`codex/osat-ai-model-controls` (PR #39), in the isolated checkout
+`/Users/nate/Desktop/Projects/OSAT V2/work/osat-core-improvements`.
+Browser review is running at http://127.0.0.1:5232/ with synthetic preview records.
+Sky has a dismissible/searchable Unsorted drawer, topic/branch/note search,
+readable topic focus, distinct topic surfaces, and explicit example creation.
+Notes have wrapping titles, focused writing, save status, and permanent-trash
+confirmation. Idle capture stays behind open rooms; ⌘K still summons it.
+Rejected saves retain pending edits; a temporary validated journal restores them
+after reload and offers retry/export. Browser acknowledgments wait for IndexedDB.
+AI conversations retain workspace/topic/no-notes scope. Focused context comes
+before the Unsorted summary; AI unpack is an editable proposal with explicit
+acceptance and Undo that keeps subsequently edited notes.
+
+Local validation: 484 unit checks, Vite build, browser writing/checkbox/reload
+recovery, drawer filtering/camera stability, branch search and 600px responsive
+checks. See `docs/CORE-WORKFLOW-20261003.md` for details and acceptance limits.
+No native application tests, installed-app changes, real inference, or Laya
+installation were performed. Merge/install remain for Nate after review.
+
+### Previous checkpoint — October 2, 2026
 
 Continue the AI controls review from `codex/osat-ai-model-controls`. The verified
 continuation checkout is

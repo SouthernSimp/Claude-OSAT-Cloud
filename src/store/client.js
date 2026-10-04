@@ -14,6 +14,7 @@ export function createStoreClient(bridge, {
   normalize = (doc) => doc,
   prepare = (next) => next,
   afterRemote = null,
+  recovery = null,
   batchMs = 120,
   gapMs = 2000,
   timers = { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id) },
@@ -30,8 +31,19 @@ export function createStoreClient(bridge, {
   let sendTimer = null
   let gapTimer = null
   let started = null
+  let sending = null
+  let blocked = false
 
   const emit = () => {
+    if (current && recovery) {
+      try {
+        const ops = compactOps(pending())
+        if (ops.length) recovery.write({ ops, workspace: current })
+        else recovery.clear()
+      } catch {
+        status = { ...status, state: 'error', message: 'The recovery copy could not be saved. Keep this window open and export your writing.' }
+      }
+    }
     snapshot = { workspace: current, status }
     for (const listener of listeners) listener()
   }
@@ -54,8 +66,16 @@ export function createStoreClient(bridge, {
     bridge.onChange?.(onMessage)
     bridge.onStatus?.((next) => setStatus({ state: next.state, message: next.message || '' }))
     started = Promise.resolve(bridge.load()).then(({ rev, doc }) => {
+      let draft = null
+      try { draft = recovery?.read() } catch { /* the confirmed workspace still opens */ }
       adopt(rev, doc)
-      setStatus({ ready: true, state: 'saved', message: '' })
+      if (draft?.ops?.length) {
+        unsent = [...draft.ops, ...unsent]
+        current = applyOps(current, unsent).doc
+        blocked = true
+        if (sendTimer) { timers.clear(sendTimer); sendTimer = null }
+        setStatus({ ready: true, state: 'error', message: 'Recovered unsaved changes. Your writing is here; retry saving or export a copy.' })
+      } else setStatus({ ready: true, state: pending().length ? 'saving' : 'saved', message: '' })
     }, (error) => {
       setStatus({ ready: false, state: 'error', message: error?.message || String(error) })
     })
@@ -71,7 +91,8 @@ export function createStoreClient(bridge, {
     current = next
     if (ops.length) {
       unsent.push(...ops)
-      if (!sendTimer) sendTimer = timers.set(send, batchMs)
+      if (!blocked && !sendTimer) sendTimer = timers.set(send, batchMs)
+      if (!blocked) status = { ...status, state: 'saving', message: 'Saving…' }
     }
     emit()
     return current
@@ -87,24 +108,42 @@ export function createStoreClient(bridge, {
   }
 
   function send() {
+    if (sendTimer) { timers.clear(sendTimer); sendTimer = null }
+    if (sending) return sending
+    if (blocked) return Promise.resolve()
     const batch = takeBatch()
     if (!batch) return Promise.resolve()
-    return Promise.resolve(bridge.commit(batch)).then(
+    sending = Promise.resolve().then(() => bridge.commit(batch)).then(
       ({ rev }) => receive(rev, batch, true),
-      (error) => recover(`That change couldn't be saved (${error?.message || error}). OSAT reloaded your workspace.`),
-    )
+      (error) => {
+        const index = inflight.indexOf(batch)
+        if (index >= 0) inflight.splice(index, 1)
+        unsent = compactOps([...batch, ...unsent])
+        blocked = true
+        if (sendTimer) { timers.clear(sendTimer); sendTimer = null }
+        setStatus({ state: 'error', message: `Couldn't save (${error?.message || error}). Your changes are still here. Retry saving or export a copy.` })
+      },
+    ).finally(() => {
+      sending = null
+      if (!blocked && unsent.length && !sendTimer) sendTimer = timers.set(send, batchMs)
+    })
+    return sending
   }
 
   /* For page unload: hand everything over before the window goes away. */
   function sendNow() {
+    if (blocked || sending) { emit(); return }
     const batch = takeBatch()
     if (!batch) return
-    if (!bridge.commitSync) { bridge.commit(batch); return }
+    if (!bridge.commitSync) { unsent = [...batch, ...unsent]; inflight.pop(); emit(); return }
     try {
-      const { rev } = bridge.commitSync(batch)
-      receive(rev, batch, true)
+      const { rev, durable } = bridge.commitSync(batch)
+      if (durable !== false) receive(rev, batch, true)
     } catch {
-      // The window is closing; the store keeps whatever it already has.
+      // The recovery copy survives even when the window's last save fails.
+      unsent = [...batch, ...unsent]
+      inflight.pop()
+      emit()
     }
   }
 
@@ -141,22 +180,25 @@ export function createStoreClient(bridge, {
       // Everything this window did is confirmed; keep the window's own objects.
       confirmed = current
     }
+    if (!blocked && !waiting.length) status = { ...status, state: 'saved', message: '' }
+    emit()
   }
 
   /* Something went out of step: reload from the store and keep unsent edits. */
   function recover(message) {
     if (gapTimer) { timers.clear(gapTimer); gapTimer = null }
-    const keep = unsent
     return Promise.resolve(bridge.load()).then(({ rev, doc }) => {
+      const acknowledged = new Set([...arrived].filter(([at, entry]) => at <= rev && entry.own).map(([, entry]) => entry.ops))
+      const keep = compactOps([...inflight.filter((batch) => !acknowledged.has(batch)).flat(), ...unsent])
       adopt(rev, doc)
       if (keep.length) {
         current = applyOps(current, keep).doc
         unsent = keep
-        if (!sendTimer) sendTimer = timers.set(send, batchMs)
+        if (!blocked && !sendTimer) sendTimer = timers.set(send, batchMs)
       }
       if (message) setStatus({ state: 'error', message })
-      else emit()
-    })
+      else { if (!keep.length && !blocked) status = { ...status, state: 'saved', message: '' }; emit() }
+    }).catch((error) => { blocked = true; setStatus({ state: 'error', message: `Couldn't refresh the saved workspace (${error?.message || error}). Your changes are still here.` }) })
   }
 
   return {
@@ -164,6 +206,12 @@ export function createStoreClient(bridge, {
     commit,
     flush: send,
     flushNow: sendNow,
+    async retry() {
+      blocked = false
+      setStatus({ state: 'saving', message: 'Saving…' })
+      do { await send() } while (!blocked && unsent.length)
+      if (!blocked && !pending().length) setStatus({ state: 'saved', message: '' })
+    },
     replace: (doc) => bridge.replace(doc),
     subscribe(listener) {
       listeners.add(listener)

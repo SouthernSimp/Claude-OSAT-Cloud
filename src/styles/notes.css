@@ -687,7 +687,7 @@ button.editor-crumb:hover {
   flex-direction: column;
 }
 
-input.note-title {
+textarea.note-title {
   width: 100%;
   min-height: 0;
   margin: var(--s-5) 0 var(--s-1);
@@ -703,7 +703,7 @@ input.note-title {
   color: var(--ink-strong);
 }
 
-input.note-title:focus-visible {
+textarea.note-title:focus-visible {
   box-shadow: none;
 }
 
@@ -1197,7 +1197,7 @@ button.md-mention:hover {
     grid-template-columns: 280px minmax(0, 1fr);
   }
 
-  input.note-title,
+  textarea.note-title,
   .note-tags-row,
   .editor-toolbar,
   .note-source,
@@ -1295,12 +1295,12 @@ button.md-mention:hover {
     display: grid;
   }
 
-  input.note-title {
+  textarea.note-title {
     margin-top: var(--s-3);
     font-size: var(--t-2xl);
   }
 
-  input.note-title,
+  textarea.note-title,
   .note-tags-row,
   .note-source,
   .read-pane,
@@ -1322,3 +1322,22 @@ button.md-mention:hover {
     border-bottom: 1px solid var(--line);
   }
 }
+
+/* A comfortable writing measure, with a title that wraps without losing words. */
+textarea.note-title { flex: none; resize: none; overflow: hidden; max-height: 180px; field-sizing: content; box-sizing: border-box; overflow-wrap: anywhere; }
+.notes-view.is-writing-focus { grid-template-columns: minmax(0, 1fr); }
+.notes-view.is-writing-focus.pane-list .note-editor { display: grid; }
+.notes-view.is-writing-focus > .notes-organizer,
+.notes-view.is-writing-focus > .notes-list,
+.notes-view.is-writing-focus > .organizer-reveal { display: none; }
+.notes-view.is-writing-focus .editor-column { width: min(100%, 800px); margin-inline: auto; }
+.notes-view.is-writing-focus .editor-body { grid-template-columns: minmax(0, 1fr); }
+.notes-view.is-writing-focus .note-inspector { display: none; }
+.writing-save { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; }
+.writing-save svg { width: 12px; height: 12px; }
+.writing-save.is-error { color: var(--danger); }
+.writing-recovery { position: fixed; z-index: 1000; left: 50%; top: 12px; translate: -50% 0; width: min(560px, calc(100% - 24px)); border: 1px solid var(--line-strong); border-radius: 14px; padding: 14px 18px; background: var(--surface-raised); color: var(--ink); box-shadow: var(--e-3); }
+.writing-recovery p { margin: 0 0 10px; font-size: 13px; }
+.writing-recovery > div { display: flex; gap: 16px; }
+.writing-recovery button { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--accent); }
+.writing-recovery svg { width: 14px; height: 14px; }

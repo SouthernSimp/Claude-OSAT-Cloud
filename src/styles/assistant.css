@@ -1018,3 +1018,5 @@ html:has(.quick-chat) body { background: transparent; }
 .ai-retain { display: flex; align-items: center; gap: var(--s-2); font-size: var(--t-sm); }
 .ai-management .ai-progress { width: 100%; }
 .ai-management .ai-progress progress { flex: 1; min-width: 0; }
+.ask-conversation-scope { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; color: var(--muted); font-size: 12px; }
+.ask-conversation-scope select { min-width: 0; max-width: 280px; padding: 5px 8px; font-size: 12px; background: var(--surface-sunken); }

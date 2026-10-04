@@ -6,7 +6,7 @@
 
 import { localDateKey } from '../daily-practice.js'
 import { nextSteps } from '../next-steps.js'
-import { folderChildren, isBranch } from '../notes-model.js'
+import { folderChildren, folderPath, isActiveNote, isBranch } from '../notes-model.js'
 import { nodesOf, pileOf, stickiesIn } from '../nodes-model.js'
 import { linksOf, recordOf } from '../links-model.js'
 import { roadmapPhases } from '../lib/roadmap.js'
@@ -33,7 +33,9 @@ function fit(lines, room, noun) {
   let used = 0
   for (let index = 0; index < lines.length; index += 1) {
     if (used + lines[index].length + 1 > room) {
-      out.push(`…and ${lines.length - index} more ${noun}`)
+      const omitted = () => `…and ${lines.length - out.length} more ${noun}`
+      while (out.length && used + omitted().length > room) used -= out.pop().length + 1
+      if (used + omitted().length <= room) out.push(omitted())
       break
     }
     out.push(lines[index])
@@ -55,12 +57,12 @@ function nodeLines(state, list) {
 }
 
 /* What is open in the Sky: each open node's stickies, branch by branch. */
-function openLines(state, ids, room) {
+function openLines(state, ids, room, allowedNotes = null) {
   const out = []
-  for (const node of ids.map((id) => state.folders.find((folder) => folder.id === id && !folder.parentId)).filter(Boolean)) {
+  for (const node of ids.map((id) => state.folders.find((folder) => folder.id === id)).filter(Boolean)) {
     out.push(`Open in the Sky: ${node.name}`)
     const walk = (folder, label) => {
-      const own = pileOf(state.notes, folder.id)
+      const own = pileOf(state.notes, folder.id).filter((note) => !allowedNotes || allowedNotes.has(note.id))
       if (own.length) out.push(...(label ? [`  ${label}:`] : []), ...own.slice(0, 12).map((note) => `  ${stickyLine(note)}`))
       folderChildren(state.folders, folder.id).forEach((branch) => walk(branch, label ? `${label} / ${branch.name}` : branch.name))
     }
@@ -73,31 +75,21 @@ const WHEN = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short'
 
 /* The map: everything the AI may look at, most useful first, in at most `maxChars`.
    `open` is the ids of the nodes open in the Sky; `where: 'sky'` says they are up there. */
-export function boardMap(state, { open = [], where = 'desk', maxChars = 3200, now = new Date(), stacks = [] } = {}) {
+export function boardMap(state, { open = [], focus = null, noteIds = null, scope = 'workspace', where = 'desk', maxChars = 3200, now = new Date(), stacks = [] } = {}) {
   const parts = [where === 'sky' ? 'THEIR OSAT (they are looking at the Sky right now)' : 'THEIR OSAT']
   const room = () => maxChars - parts.join('\n\n').length - 2
-  const add = (title, lines, noun = 'lines') => {
-    if (lines.length && room() > 120) parts.push([title, ...fit(lines, room() - title.length - 1, noun)].join('\n'))
+  const add = (title, lines, noun = 'lines', limit = Infinity) => {
+    if (lines.length && room() > title.length + 30) parts.push([title, ...fit(lines, Math.min(limit, room() - title.length - 1), noun)].join('\n'))
   }
-
-  const unsorted = pileOf(state.notes, null)
-  add(`Unsorted (${stickies(unsorted.length)}, in no node yet):`, unsorted.map(stickyLine), 'stickies')
-  if (!unsorted.length) parts.push('Unsorted is empty.')
-  const top = nodesOf(state.folders)
-  const nodes = top.filter(({ folder }) => !isBranch(folder))
-  const alone = top.filter(({ folder }) => isBranch(folder))
-  add(`Nodes (${nodes.length}):`, nodeLines(state, nodes), 'nodes')
-  if (!nodes.length) parts.push('They have no nodes yet.')
-  add(`Branches on the Sky on their own (${alone.length}), in no node yet:`, nodeLines(state, alone), 'branches')
-  // Lines between things: only that they relate, by name.
-  const name = (key) => one(recordOf(state, key)?.title || recordOf(state, key)?.name, 40)
-  add('Connected (a line between two things; nothing was filed by it):', linksOf(state).slice(0, 12).map((link) => `- ${name(link.a)} — ${name(link.b)}`), 'connections')
-  // Stacks on the desk (kept on this Mac, so the desk hands them in).
-  add('Stacks on the desk (stickies standing in a column; they only arrange the desk):', stacks.slice(0, 6).map((stack) => `- ${one(stack.name, 40) || 'A stack'}: ${(stack.titles || []).slice(0, 6).map((title) => one(title, 40)).join(' · ')}`), 'stacks')
-  if (open.length) {
-    const lines = openLines(state, open, Math.min(1800, room() - 40))
+  if (scope === 'none') return `${parts[0]}\nNo workspace notes are shared for this question.`.slice(0, maxChars)
+  const shared = state.notes.filter((note) => isActiveNote(note) && noteIds?.includes(note.id))
+  add('Selected stickies (the question is about these):', shared.map((note) => `${stickyLine(note)}${note.folderId ? ` [${folderPath(state.folders, note.folderId).join(' / ')}]` : ''}`), 'stickies', 900)
+  const viewing = focus ? [focus] : open.filter((id) => !state.folders.find((folder) => folder.id === id)?.parentId)
+  if (viewing.length) {
+    const lines = openLines(state, viewing, Math.min(1600, room() - 40), noteIds ? new Set(noteIds) : null)
     if (lines.length) parts.push(lines.join('\n'))
   }
+  if (scope === 'focus') return parts.join('\n\n').slice(0, maxChars)
 
   const today = localDateKey(now)
   const steps = nextSteps(state.notes.filter((note) => note.kind === 'day' && note.date === today && !note.trashedAt)).filter((step) => !step.done)
@@ -109,7 +101,21 @@ export function boardMap(state, { open = [], where = 'desk', maxChars = 3200, no
     .sort((a, b) => a.at - b.at)
   add('Coming up on the Calendar (next 8 days):', soon.slice(0, 5).map(({ event, at }) => `- ${WHEN.format(new Date(at))}: ${one(event.title, 80)}`))
 
-  return parts.join('\n\n')
+  const top = nodesOf(state.folders)
+  const nodes = top.filter(({ folder }) => !isBranch(folder))
+  const alone = top.filter(({ folder }) => isBranch(folder))
+  add(`Nodes (${nodes.length}):`, nodeLines(state, nodes), 'nodes', 650)
+  if (!nodes.length) parts.push('They have no nodes yet.')
+  add(`Branches on the Sky on their own (${alone.length}), in no node yet:`, nodeLines(state, alone), 'branches', 350)
+  // Lines between things: only that they relate, by name.
+  const name = (key) => one(recordOf(state, key)?.title || recordOf(state, key)?.name, 40)
+  add('Connected (a line between two things; nothing was filed by it):', linksOf(state).slice(0, 12).map((link) => `- ${name(link.a)} — ${name(link.b)}`), 'connections')
+  // Stacks on the desk (kept on this Mac, so the desk hands them in).
+  add('Stacks on the desk (stickies standing in a column; they only arrange the desk):', stacks.slice(0, 6).map((stack) => `- ${one(stack.name, 40) || 'A stack'}: ${(stack.titles || []).slice(0, 6).map((title) => one(title, 40)).join(' · ')}`), 'stacks')
+  const unsorted = pileOf(state.notes, null)
+  add(`Unsorted (${stickies(unsorted.length)}, in no node yet):`, unsorted.map(stickyLine), 'stickies', 450)
+  if (!unsorted.length) parts.push('Unsorted is empty.')
+  return parts.join('\n\n').slice(0, maxChars)
 }
 
 /* The plan, one line a phase: the roadmap's Status table, for a question about OSAT itself. */

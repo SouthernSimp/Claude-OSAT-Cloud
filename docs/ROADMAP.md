@@ -39,6 +39,7 @@
 | 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
 | 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | Merged (PR #27) |
 | 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Completed continuation: connectors, stacks, focused mind map, tour and navigation; combine/split operations remain planned |
+| 27b | Professional Sky frame and navigator, isolated topic maps, explicit arrangement with Undo, focused writing, recoverable saving, explicit AI note scope and unpack proposals | In review on `codex/core-workflow-20261003`; 488 unit checks pass |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
@@ -998,6 +999,14 @@ Sort Unsorted and folding are the first pieces; what follows is below.
   which nodes belong together** (a suggestion with Move and Dismiss, like Sort Unsorted).
 - The old star/spiderweb idea stays a question: the whiteboard gets a fair try first.
 
+### Phase 27b: Core workflow refinement (in review)
+
+Sky's Unsorted drawer stays outside the camera, and search includes nodes and
+branches. Notes support focused writing and wrapping titles. Failed saves preserve
+writing with a temporary recovery copy and explicit retry/export. Ask remembers
+topic/workspace/no-notes scope; AI unpack suggestions require acceptance.
+See [validation and how to try it](CORE-WORKFLOW-20261003.md).
+
 ### Phase 28: Tags that do things (planned)
 Nate already writes a language on paper: #N2D (need to do), #W2D, #N2B (need to buy), #W2B, #A2C (add to
 calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
@@ -1054,6 +1063,10 @@ calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
 - Claude watches each PR's CI and fixes failures.
 
 ## Verification
+
+October 3 browser refinement: [core workflow validation](CORE-WORKFLOW-20261003.md).
+Nate's no-more-native-testing instruction applies locally; the existing CI can
+exercise Linux Electron and macOS packaging in isolated hosted runners.
 - **Every PR:**
   - `npm test` (the pure models, plus the new store/overlay/catalog tests)
   - `vite build`

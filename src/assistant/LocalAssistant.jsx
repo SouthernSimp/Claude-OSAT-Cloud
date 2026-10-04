@@ -28,6 +28,7 @@ import { Markdown } from "../lib/markdown.jsx";
 import { isActiveNote, relatedNotes } from "../notes-model.js";
 import { applyAction, describeAction, extractActions, systemPrompt, wantsActions } from "./actions.js";
 import { askContext } from "./ask-context.js";
+import { notesForQuestion } from "./work-scope.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { deriveTitle, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
 import { cleanError, setupLine, useAi } from "./useAi.js";
@@ -198,10 +199,11 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const earlierIds = [...messages].reverse().find((message) => message.role === "user" && message.noteIds?.length)?.noteIds || [];
   const pickNotes = (text) => {
     if (!text.trim()) return [];
-    const found = relatedNotes(workspace.notes, text).map((note) => note.id);
-    return (found.length ? found : earlierIds).filter((id) => !dropped.has(id) && isActiveNote(workspace.notes.find((note) => note.id === id)));
+    if (active?.contextScope?.kind === "none") return [];
+    const found = active?.contextScope?.kind === "focus" ? notesForQuestion(workspace, text, { scope: "focus", focus: active.contextScope.folderId }).slice(0, 8).map((note) => note.id) : relatedNotes(workspace.notes, text).map((note) => note.id);
+    return (found.length || active?.contextScope?.kind === "focus" ? found : earlierIds).filter((id) => !dropped.has(id) && isActiveNote(workspace.notes.find((note) => note.id === id)));
   };
-  const using = useMemo(() => pickNotes(asking), [asking, workspace.notes, dropped, earlierIds.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const using = useMemo(() => pickNotes(asking), [asking, workspace.notes, dropped, earlierIds.join("|"), active?.contextScope?.kind, active?.contextScope?.folderId, workspace.folders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onThreadScroll(event) {
     const node = event.currentTarget;
@@ -289,7 +291,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     try {
       await streamLocalMessage({
         model,
-        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content)), base.messages, content, workspace.notes, noteIds, files),
+        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds })), base.messages, content, workspace.notes, noteIds, files),
         signal: controller.signal,
         onDelta: (delta) => {
           full += delta;
@@ -522,6 +524,11 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
         )}
 
         <div className="composer">
+          <label className="ask-conversation-scope">Notes for this conversation<select aria-label="Conversation note scope" value={active?.contextScope?.kind || "workspace"} disabled={busy} onChange={(event) => {
+            const contextScope = { kind: event.target.value, ...(active?.contextScope?.folderId ? { folderId: active.contextScope.folderId } : {}) };
+            commit((state) => { const chat = active || newChat({ modelId: model }); if (!active) setActiveId(chat.id); return putChat(state, { ...chat, contextScope }); });
+            setDropped(new Set());
+          }}><option value="workspace">Workspace · related notes</option>{active?.contextScope?.folderId && <option value="focus">This topic · {workspace.folders.find((folder) => folder.id === active.contextScope.folderId)?.name || "Removed topic"}</option>}<option value="none">No notes</option></select></label>
           {voiceHint && <div className="voice-hint" role="status"><Microphone /><span><strong>Speak with Mac Dictation</strong>Press Fn twice, then speak. Your words appear here before anything is sent.</span><button type="button" aria-label="Dismiss voice instructions" onClick={() => setVoiceHint(false)}><X /></button></div>}
           {(files.length > 0 || reading) && (
             <div className="ask-notes" aria-label="Files Ask will read">
