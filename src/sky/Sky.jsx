@@ -556,7 +556,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     }
     const { folder, branches } = made
     toggle(folder.id, true)
-    board.current?.goTo({ folderId: folder.id })
+    setFocus(folder.id) // the new topic is not in latest.current until React renders
+    requestAnimationFrame(() => requestAnimationFrame(() => board.current?.goTo({ folderId: folder.id })))
     showUndo(`Imported ${folder.name}${branches ? ` with ${branches} ${branches === 1 ? 'branch' : 'branches'}` : ''}`, () => commit((state) => {
       const ids = folderSubtree(state.folders, folder.id)
       return purgeNotes({ ...state, folders: state.folders.filter((item) => !ids.has(item.id)) }, state.notes.filter((note) => ids.has(note.folderId)).map((note) => note.id))
