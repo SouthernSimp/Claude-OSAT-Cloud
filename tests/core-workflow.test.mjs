@@ -41,6 +41,15 @@ test('no-notes scope contains neither bodies nor workspace titles', () => {
   assert.doesNotMatch(map, /Garden|Client|seeds|Unsorted/)
 })
 
+test('focused board context respects the actual shared sources and removed source chips', () => {
+  const state = workspace()
+  const map = boardMap(state, { scope: 'focus', focus: 'garden', noteIds: ['focused'] })
+  assert.match(map, /Buy seeds/)
+  assert.doesNotMatch(map, /Build the raised beds|Client contract|Unsorted thought/)
+  const withoutSources = boardMap(state, { scope: 'focus', focus: 'garden', noteIds: [] })
+  assert.doesNotMatch(withoutSources, /Buy seeds|Build the raised beds/)
+})
+
 test('Sky finds nodes, nested branches, note content and tags using the desk matching rules', () => {
   const state = workspace()
   state.notes[0].tags = ['garden']

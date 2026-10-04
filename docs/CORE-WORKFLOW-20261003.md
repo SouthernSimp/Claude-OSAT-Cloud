@@ -31,10 +31,10 @@ The older landscape prototype, installed apps, and installed workspace were pres
 
 ## Verified locally
 
-483 unit checks passed. The added cases cover failed saves, reload recovery,
+484 unit checks passed. The added cases cover failed saves, reload recovery,
 serialized writes and concurrent remote changes, missing acknowledgments,
 IndexedDB acknowledgment/abort, 200 unrelated captures, nested topic scope,
-no-notes privacy, chat scope persistence, search, and loss-resistant proposal Undo.
+no-notes privacy, removed source chips, chat scope persistence, search, and loss-resistant proposal Undo.
 
 The Vite production build passed. Its existing large-bundle warning remains
 (about 1.53 MB JS / 444 KB gzip); bundle splitting is separate work.

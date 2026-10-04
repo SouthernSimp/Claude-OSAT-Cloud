@@ -57,12 +57,12 @@ function nodeLines(state, list) {
 }
 
 /* What is open in the Sky: each open node's stickies, branch by branch. */
-function openLines(state, ids, room) {
+function openLines(state, ids, room, allowedNotes = null) {
   const out = []
   for (const node of ids.map((id) => state.folders.find((folder) => folder.id === id)).filter(Boolean)) {
     out.push(`Open in the Sky: ${node.name}`)
     const walk = (folder, label) => {
-      const own = pileOf(state.notes, folder.id)
+      const own = pileOf(state.notes, folder.id).filter((note) => !allowedNotes || allowedNotes.has(note.id))
       if (own.length) out.push(...(label ? [`  ${label}:`] : []), ...own.slice(0, 12).map((note) => `  ${stickyLine(note)}`))
       folderChildren(state.folders, folder.id).forEach((branch) => walk(branch, label ? `${label} / ${branch.name}` : branch.name))
     }
@@ -75,18 +75,18 @@ const WHEN = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short'
 
 /* The map: everything the AI may look at, most useful first, in at most `maxChars`.
    `open` is the ids of the nodes open in the Sky; `where: 'sky'` says they are up there. */
-export function boardMap(state, { open = [], focus = null, noteIds = [], scope = 'workspace', where = 'desk', maxChars = 3200, now = new Date(), stacks = [] } = {}) {
+export function boardMap(state, { open = [], focus = null, noteIds = null, scope = 'workspace', where = 'desk', maxChars = 3200, now = new Date(), stacks = [] } = {}) {
   const parts = [where === 'sky' ? 'THEIR OSAT (they are looking at the Sky right now)' : 'THEIR OSAT']
   const room = () => maxChars - parts.join('\n\n').length - 2
   const add = (title, lines, noun = 'lines', limit = Infinity) => {
     if (lines.length && room() > title.length + 30) parts.push([title, ...fit(lines, Math.min(limit, room() - title.length - 1), noun)].join('\n'))
   }
   if (scope === 'none') return `${parts[0]}\nNo workspace notes are shared for this question.`.slice(0, maxChars)
-  const shared = state.notes.filter((note) => isActiveNote(note) && noteIds.includes(note.id))
+  const shared = state.notes.filter((note) => isActiveNote(note) && noteIds?.includes(note.id))
   add('Selected stickies (the question is about these):', shared.map((note) => `${stickyLine(note)}${note.folderId ? ` [${folderPath(state.folders, note.folderId).join(' / ')}]` : ''}`), 'stickies', 900)
   const viewing = focus ? [focus] : open.filter((id) => !state.folders.find((folder) => folder.id === id)?.parentId)
   if (viewing.length) {
-    const lines = openLines(state, viewing, Math.min(1600, room() - 40))
+    const lines = openLines(state, viewing, Math.min(1600, room() - 40), noteIds ? new Set(noteIds) : null)
     if (lines.length) parts.push(lines.join('\n'))
   }
   if (scope === 'focus') return parts.join('\n\n').slice(0, maxChars)

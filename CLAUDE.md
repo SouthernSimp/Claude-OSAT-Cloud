@@ -24,7 +24,7 @@ AI conversations retain workspace/topic/no-notes scope. Focused context comes
 before the Unsorted summary; AI unpack is an editable proposal with explicit
 acceptance and Undo that keeps subsequently edited notes.
 
-Local validation: 483 unit checks, Vite build, browser writing/checkbox/reload
+Local validation: 484 unit checks, Vite build, browser writing/checkbox/reload
 recovery, drawer filtering/camera stability, branch search and 600px responsive
 checks. See `docs/CORE-WORKFLOW-20261003.md` for details and acceptance limits.
 No native application tests, installed-app changes, real inference, or Laya
