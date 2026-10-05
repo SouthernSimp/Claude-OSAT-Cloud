@@ -258,6 +258,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   useImperativeHandle(ref, () => ({
     goTo,
     sizes: () => latest.current.sizes,
+    freeSpot: newSpot,
     /* A new node in the middle of what's in view. */
     newNode() {
       const box = view.current.getBoundingClientRect()

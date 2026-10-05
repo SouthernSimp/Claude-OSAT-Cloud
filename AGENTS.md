@@ -94,3 +94,17 @@ nearby notes that make the recommendation understandable. Preserve free Sky
 placement as an alternative. The revised combined mockup is
 `outputs/unsorted-concepts-20261004/04-guided-five-sticky.png`; it is a proposal,
 not an implemented flow or live-AI result.
+
+
+## October 4, 2026 — placement and finding your way back
+
+Nate approved implementing the guided five-sticky concept. After an explicit
+placement, animate the sticky into its destination and fold it upward toward the
+node or branch before showing the next sticky. Reduced motion skips the flight.
+Keep a recent-placement trail and a way to reopen the destination without losing
+the current sticky or batch. Trash is a recoverable choice with Undo. Search belongs
+inside an opened topic or branch rather than on every collapsed node. Immediate
+word/tag suggestions and optional explicitly requested local AI should surface
+related destinations; never require browsing the whole topic tree. Keep free Sky
+placement, Later, canonical notes and loss-resistant Undo. The selected annotated
+image is exec-babbbfc9-9e65-4a61-a283-9fc52227da6a.png from this chat.

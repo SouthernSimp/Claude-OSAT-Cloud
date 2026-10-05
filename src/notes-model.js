@@ -294,7 +294,7 @@ const STOP = new Set(('the and but for with from into onto about than then that 
   + 'its our ours out off over under again some any all each more most much many very really also only own same too here now get got make '
   + 'made want need like know think tell give help one two let lets please thing things something anything').split(' '))
 const stem = (word) => (word.length > 3 && word.endsWith('s') && !word.endsWith('ss') ? word.slice(0, -1) : word)
-const wordsOf = (text) => new Set((String(text).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []).filter((word) => !STOP.has(word)).map(stem))
+export const wordsOf = (text) => new Set((String(text).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []).filter((word) => !STOP.has(word)).map(stem))
 const noteWords = new WeakMap()
 function wordsOfNote(note) {
   let cached = noteWords.get(note)

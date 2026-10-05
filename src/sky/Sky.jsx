@@ -7,7 +7,7 @@ import { useCarrying, useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { PAPERS } from '../note-core.js'
-import { folderChildren, folderSubtree, isBranch, purgeNotes, restoreNotes, trashNotes } from '../notes-model.js'
+import { folderChildren, folderPath, folderSubtree, isBranch, purgeNotes, restoreNotes, trashNotes } from '../notes-model.js'
 import {
   addAskedEvent, addFolder, addSticky, importNode, markOpened, markUnpacked, moveFolder, moveSticky, moveToItems, nodesOf, pileOf, placeSticky, removeFolder, renameFolder,
   skipAsk, splitMentions, stickiesIn, suggestionGroups,
@@ -202,14 +202,17 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
 
   const actions = {
     commit,
-    fileUnsorted(ids, folderId, name) {
+    fileUnsorted(ids, folderId, name = '', options = {}) {
       let result
-      commit((state) => { result = fileUnsorted(state, ids, folderId, name); return result.state })
-      if (!result?.moved.length) { setSortNotice('Nothing moved. Check your selection and destination.'); return }
+      const placement = options.sky ? { ...options, at: board.current?.freeSpot() } : options
+      commit((state) => { result = fileUnsorted(state, ids, folderId, name, placement); return result.state })
+      if (!result?.moved.length) { setSortNotice('This sticky or destination changed. Nothing moved.'); return null }
       const restores = result.moved.map((id) => ({ id, restore: onFiled?.(id) })).filter((item) => typeof item.restore === 'function')
-      setSortHistory((value) => [...value, { changes: result.changes, restores }])
+      const label = placement.trash ? 'Trash' : placement.at ? 'On Sky' : folderPath(result.state.folders, result.folderId).join(' / ')
+      setSortHistory((value) => [...value, { changes: result.changes, restores, noteId: result.moved[0], folderId: result.folderId, label, trash: placement.trash }])
       unsuggest(result.moved)
-      setSortNotice(`Moved ${result.moved.length} ${result.moved.length === 1 ? 'sticky' : 'stickies'}. Undo is available below.`)
+      setSortNotice(placement.trash ? 'Moved to Trash.' : placement.at ? 'Placed on Sky.' : `Placed in ${label}.`)
+      return result
     },
     undoUnsorted() {
       const last = sortHistory.at(-1)
@@ -219,7 +222,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       commit((state) => { const result = undoFiling(state, last.changes); restored = result.restored; restoredIds = result.restoredIds; return result.state })
       last.restores.filter((item) => restoredIds.includes(item.id)).forEach((item) => item.restore())
       setSortHistory((value) => value.slice(0, -1))
-      setSortNotice(restored ? 'Undid the move. Later writing is preserved; new topics remain available.' : 'These stickies changed location since the move, so their newer places were kept.')
+      setSortNotice(restored ? 'Undone. Your sticky is back in Unsorted.' : 'This sticky changed since placement. Its newer place was kept.')
+      return restoredIds
     },
     moveSticky(noteId, folderId, index) {
       commit((state) => moveSticky(state, noteId, folderId, index))
@@ -686,13 +690,14 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
           <div className="sky-location">
             <button type="button" className="sky-icon-button" aria-label={navigatorOpen ? 'Hide Sky navigator' : 'Show Sky navigator'} aria-expanded={navigatorOpen} onClick={() => setNavigatorOpen(!navigatorOpen)}><SidebarSimple /></button>
             <div className="sky-breadcrumb"><button type="button" onClick={overview} aria-current={!focus ? 'page' : undefined}>All Sky</button>{focused && <><CaretRight /><strong>{focused.name}</strong></>}</div>
+            {!unsortedOpen && sortHistory.length > 0 && <button type="button" className="sky-fit" onClick={() => { setUnsortedTarget(null); setUnsortedOpen(true) }}><Stack /> Back to sorting</button>}
             <span className="sky-view-label">{focused ? 'Topic map' : 'Overview'}</span>
             <button type="button" className="sky-fit sky-arrange" title="Arrange this view · offers Undo" onClick={arrangeView}><ArrowsIn /> Arrange</button>
             <button type="button" className="sky-fit" onClick={() => board.current?.fit()}><CornersOut /> Fit view</button>
           </div>
           <div className="sky-body">
         <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} focus={focus} onOpenUnsorted={(noteId) => { setUnsortedTarget(noteId); setUnsortedOpen(true) }} onFocus={(id) => (id ? focusOn(id) : setFocus(null))} />
-        {unsortedOpen && <div id="sky-unsorted"><UnsortedDrawer workspace={workspace} history={sortHistory} notice={sortNotice} notes={unsorted} actions={{ ...actions, openUnsortedNotes: () => navigate('Notes', { list: 'unsorted' }) }} target={unsortedTarget} onClose={() => setUnsortedOpen(false)} /></div>}
+        <div id="sky-unsorted" hidden={!unsortedOpen}><UnsortedDrawer active={unsortedOpen} workspace={workspace} history={sortHistory} notice={sortNotice} notes={unsorted} actions={{ ...actions, openUnsortedNotes: () => navigate('Notes', { list: 'unsorted' }), revealPlacement: (detail) => { setUnsortedOpen(false); board.current?.goTo(detail) } }} target={unsortedTarget} onClose={() => setUnsortedOpen(false)} /></div>
         <SkyAsk workspace={workspace} commit={commit} models={models} open={open} focus={focus} asking={asking} setAsking={setAsking} navigate={navigate} showUndo={showUndo} />
           </div>
         </main>

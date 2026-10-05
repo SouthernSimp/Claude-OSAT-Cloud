@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { fileUnsorted, undoFiling, reviewSuggestions } from '../src/sky/sort-review.js'
+import { fileUnsorted, undoFiling, placementSuggestion, placementPlaces, placementMessages, readPlacement } from '../src/sky/sort-review.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import { moveSticky } from '../src/nodes-model.js'
 
@@ -63,7 +63,42 @@ test('shared boilerplate is not enough to suggest unrelated destinations', () =>
   const state = fixture()
   const notes = [{ id: 'a', title: 'Unfiled thought', markdown: 'Review the next step', tags: [] }]
   const topics = { ...state, folders: [{ id: 'topic', name: 'Gardening' }], notes: [{ id: 'existing', title: 'Unfiled thought', markdown: 'Review the next step', folderId: 'topic' }] }
-  assert.deepEqual(reviewSuggestions(topics, notes), [])
   const tagged = [{ ...notes[0], tags: ['gardening'] }]
-  assert.equal(reviewSuggestions(topics, tagged)[0].folderId, 'topic')
+  assert.equal(placementSuggestion(topics, tagged[0]).folderId, 'topic')
+  assert.equal(placementSuggestion(topics, notes[0]), null)
+})
+
+test('single sticky placement finds the related branch across a large workspace and validates local proposals', () => {
+  const state = normalizeWorkspace({ ...fixture(), folders: [...Array.from({ length: 90 }, (_, i) => ({ id: `f${i}`, name: `Unrelated ${i}` })), { id: 'client', name: 'Client work' }, { id: 'launch', name: 'Website launch', parentId: 'client' }], notes: [
+    { id: 'photo', title: 'Book the photographer for the website launch', markdown: 'Confirm launch photos', unsorted: true },
+    { id: 'home', title: 'Homepage draft', markdown: 'Website launch plans', folderId: 'launch' },
+    { id: 'check', title: 'Launch checklist', markdown: 'Photographer and photos', folderId: 'launch' },
+  ] })
+  const note = state.notes[0]
+  assert.equal(placementSuggestion(state, note).folderId, 'launch')
+  const places = placementPlaces(state, note)
+  assert.equal(places[0].id, 'launch')
+  assert.equal(places.length, 92)
+  assert.equal(readPlacement('Client work / Website launch: related launch plans', places).folderId, 'launch')
+  assert.equal(readPlacement('Imaginary place: move it now', places), null)
+  assert.equal(readPlacement('Client workevil: do something else', places), null)
+  assert.equal(readPlacement('NEW:   ', places), null)
+  assert.equal(readPlacement('NONE', places), null)
+  assert.equal(readPlacement('NEW: Photography', places).name, 'Photography')
+  assert.ok(placementMessages(note, places)[1].content.length <= 32000)
+  assert.equal(fileUnsorted(state, ['photo'], 'launch').state.notes[0].id, 'photo')
+})
+
+test('Sky and recoverable Trash share safe placement Undo without overwriting later edits or locations', () => {
+  const state = fixture()
+  const placed = fileUnsorted(state, ['n0'], null, '', { at: { x: 123, y: 456 } })
+  assert.deepEqual(placed.state.notes[0].at, { x: 123, y: 456 })
+  assert.deepEqual(undoFiling(placed.state, placed.changes).state.notes[0], state.notes[0])
+  assert.equal(fileUnsorted(state, ['n0'], null, '', { at: { x: NaN, y: 1 } }).state, state)
+  const trashed = fileUnsorted(state, ['n0'], null, '', { trash: true })
+  assert.ok(trashed.state.notes[0].trashedAt)
+  const edited = { ...trashed.state, notes: trashed.state.notes.map((note) => note.id === 'n0' ? { ...note, markdown: 'Later writing' } : note) }
+  assert.deepEqual(undoFiling(edited, trashed.changes).state.notes[0], { ...state.notes[0], markdown: 'Later writing' })
+  const archived = { ...placed.state, notes: placed.state.notes.map((note) => note.id === 'n0' ? { ...note, archived: true } : note) }
+  assert.equal(undoFiling(archived, placed.changes).restored, 0)
 })
