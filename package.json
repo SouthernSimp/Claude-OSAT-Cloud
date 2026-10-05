@@ -16,6 +16,7 @@
     "test:ui": "node tests/ui/smoke.mjs",
     "install:mac": "npm run dist:mac && node scripts/install-mac.mjs",
     "test:e2e": "node tests/e2e/electron.mjs",
+    "test:ai-models": "node tests/e2e/ai-models.mjs",
     "ios": "node scripts/ios.mjs"
   },
   "dependencies": {

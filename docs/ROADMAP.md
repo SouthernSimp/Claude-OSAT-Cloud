@@ -10,6 +10,7 @@
 | 3a | One place: the desk, glass sheets, one navigation, Settings sections | Merged (PR #3) |
 | 3b | A calm day: Next ≤ 5 + bring forward (in #3), evening invitation, Undo, See in the Sky | Merged (PR #4) |
 | 4 | Local AI that sets itself up, Ask everywhere, chats in the workspace | Merged (PR #5) |
+| 4b | Conversation model selection and AI memory controls | In review |
 | 5 | Your iPhone, step one: capture from the phone, read your notes there | Merged (PR #6) |
 | 6a | Sync: devices stay in step through iCloud (Mac ↔ Mac now, the iPhone app next) | Merged (PR #7) |
 | 6b | The iPhone app | Merged (PR #8) |
@@ -38,6 +39,7 @@
 | 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
 | 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | Merged (PR #27) |
 | 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Completed continuation: connectors, stacks, focused mind map, tour and navigation; combine/split operations remain planned |
+| 27b | Professional Sky frame and navigator, isolated topic maps, explicit arrangement with Undo, focused writing, recoverable saving, explicit AI note scope and unpack proposals | In review on `codex/core-workflow-20261003`; 488 unit checks pass |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
@@ -310,6 +312,14 @@ Nate asked to condense and connect desk → notes → sky → mindmap, make the 
 - **Chats live in the workspace** (schema 2, with a migration and a test), so every window shares them; backups from schema 1 still restore.
 - **Checks:** unit tests for the catalog, resumable/verified downloads and the engine lifecycle (a fake engine); the Electron end-to-end test walks the welcome and asks on the desk with a practice model; `--osat-self-test[=model.gguf]` proves the engine (and a model) work inside the built app, and CI runs it on every Mac build.
 - Fixed on the way: Stop in Ask never worked in the Mac app (an AbortSignal can't cross the preload bridge).
+
+### Phase 4b: Model selection and AI memory controls (in review)
+- **Ask's model menu:** choose Light, Balanced, or Deep per conversation; choosing never loads. The next question uses that model and each reply keeps its producing model. Downloaded models remain selectable after unloading. Existing external models remain available.
+- **Settings → AI:** install models separately or queue all three, choose a default for new chats, explicitly load/unload, keep several loaded for this session, and opt into loading the downloaded default at startup (off initially, works offline).
+- **Memory review:** a combined native confirmation shows system/free memory, estimated model and context memory, combined residency, and reload cost before replacing larger models or keeping multiple models. Unknown estimates are honest; engine allocation safeguards stay enabled.
+- **Release safely:** Free AI memory in Ask, the floating chat, and the menu bar releases idle models after their processes exit and names busy models. Queued/running work wins over unloading, including questions arriving during confirmation. Manual unload blocks background reload until an interactive question or explicit load. Downloads and chats stay on disk.
+- **Data:** schema 11 preserves existing records and adds chat model selection/reply attribution. Device startup/default/download queue preferences remain outside the shared workspace. Session retention ends at quit.
+- **Validation:** unit lifecycle/routing/migration checks; isolated Electron model-interface checks with practice inference; `scripts/ai-memory-check.cjs` verifies actual Metal inference, resource estimates, process exit, preserved downloads, blocked background reload, and interactive reload using an already-downloaded model. Real simultaneous inference with all three models still needs a machine with those downloads. Installed OSAT is unchanged during review.
 
 ### Phase 5: Your iPhone, step one (merged, PR #6; no iPhone app needed)
 Opt-in in **Settings → iPhone**, because it is the first thing that leaves the Mac: it goes through Nate's own iCloud Drive (end-to-end encrypted only with Advanced Data Protection on; OSAT says so plainly). Until it's on, OSAT never touches iCloud Drive (macOS asks first).
@@ -989,6 +999,14 @@ Sort Unsorted and folding are the first pieces; what follows is below.
   which nodes belong together** (a suggestion with Move and Dismiss, like Sort Unsorted).
 - The old star/spiderweb idea stays a question: the whiteboard gets a fair try first.
 
+### Phase 27b: Core workflow refinement (in review)
+
+Sky's Unsorted drawer stays outside the camera, and search includes nodes and
+branches. Notes support focused writing and wrapping titles. Failed saves preserve
+writing with a temporary recovery copy and explicit retry/export. Ask remembers
+topic/workspace/no-notes scope; AI unpack suggestions require acceptance.
+See [validation and how to try it](CORE-WORKFLOW-20261003.md).
+
 ### Phase 28: Tags that do things (planned)
 Nate already writes a language on paper: #N2D (need to do), #W2D, #N2B (need to buy), #W2B, #A2C (add to
 calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
@@ -1045,6 +1063,10 @@ calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
 - Claude watches each PR's CI and fixes failures.
 
 ## Verification
+
+October 3 browser refinement: [core workflow validation](CORE-WORKFLOW-20261003.md).
+Nate's no-more-native-testing instruction applies locally; the existing CI can
+exercise Linux Electron and macOS packaging in isolated hosted runners.
 - **Every PR:**
   - `npm test` (the pure models, plus the new store/overlay/catalog tests)
   - `vite build`

@@ -28,9 +28,11 @@ import { Markdown } from "../lib/markdown.jsx";
 import { isActiveNote, relatedNotes } from "../notes-model.js";
 import { applyAction, describeAction, extractActions, systemPrompt, wantsActions } from "./actions.js";
 import { askContext } from "./ask-context.js";
+import { notesForQuestion } from "./work-scope.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { deriveTitle, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
 import { cleanError, setupLine, useAi } from "./useAi.js";
+import { ModelMenu } from './ModelMenu.jsx';
 import "../styles/assistant.css";
 
 const STARTERS = [
@@ -108,7 +110,7 @@ export function UsedNotes({ ids, notes, onOpen }) {
    { file: { rootId, relative }, at } starts one about that file. `compact` is
    the quick chat's small window. */
 export function LocalAssistant({ workspace, commit, navigate, initialPrompt = null, compact = false }) {
-  const { models, status: ai } = useAi();
+  const { models, status: ai, bridge } = useAi();
   const [toast, showUndo] = useUndoToast();
   const [model, setModel] = useState("");
   const [activeId, setActiveId] = useState(null);
@@ -137,13 +139,24 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const active = chats.find((chat) => chat.id === activeId) || null;
   const messages = active?.messages || [];
   const today = localDateKey();
-  const status = models === null ? "checking" : models.length ? "ready" : "unavailable";
+  const status = models === null ? "checking" : models.some((item) => item.id === model) ? "ready" : "unavailable";
   const setup = setupLine(ai);
 
   useEffect(() => {
     if (!models) return;
-    setModel((current) => (current && models.some((item) => item.id === current) ? current : models[0]?.id || ""));
-  }, [models]);
+    // An explicit unavailable model stays selected, so OSAT cannot silently
+    // route this conversation to a different model (especially a cloud one).
+    setModel(active?.modelId || models[0]?.id || "");
+  }, [activeId, active?.modelId]);
+  useEffect(() => { if (models && !model && !active?.modelId) setModel(models[0]?.id || ""); }, [models, model, active?.modelId]);
+
+  function chooseModel(id) {
+    setModel(id);
+    if (active) commit((state) => {
+      const chat = state.chats.find((item) => item.id === active.id);
+      return chat ? putChat(state, { ...chat, modelId: id }) : state;
+    });
+  }
 
   const handedOff = useRef(null);
   useEffect(() => {
@@ -186,10 +199,11 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const earlierIds = [...messages].reverse().find((message) => message.role === "user" && message.noteIds?.length)?.noteIds || [];
   const pickNotes = (text) => {
     if (!text.trim()) return [];
-    const found = relatedNotes(workspace.notes, text).map((note) => note.id);
-    return (found.length ? found : earlierIds).filter((id) => !dropped.has(id) && isActiveNote(workspace.notes.find((note) => note.id === id)));
+    if (active?.contextScope?.kind === "none") return [];
+    const found = active?.contextScope?.kind === "focus" ? notesForQuestion(workspace, text, { scope: "focus", focus: active.contextScope.folderId }).slice(0, 8).map((note) => note.id) : relatedNotes(workspace.notes, text).map((note) => note.id);
+    return (found.length || active?.contextScope?.kind === "focus" ? found : earlierIds).filter((id) => !dropped.has(id) && isActiveNote(workspace.notes.find((note) => note.id === id)));
   };
-  const using = useMemo(() => pickNotes(asking), [asking, workspace.notes, dropped, earlierIds.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const using = useMemo(() => pickNotes(asking), [asking, workspace.notes, dropped, earlierIds.join("|"), active?.contextScope?.kind, active?.contextScope?.folderId, workspace.folders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onThreadScroll(event) {
     const node = event.currentTarget;
@@ -221,6 +235,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   function startChat() {
     abortRef.current?.abort();
     setActiveId(null);
+    setModel(models?.[0]?.id || "");
     setDraft("");
     setFiles([]);
     setDropped(new Set());
@@ -259,7 +274,8 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     let base = active || newChat();
     if (retry && base.messages.at(-1)?.role === "user") base = { ...base, messages: base.messages.slice(0, -1) };
     const question = newMessage("user", content, { ...(noteIds.length ? { noteIds } : {}), ...(files.length ? { files: files.map((file) => file.name) } : {}) });
-    const chat = { ...base, messages: [...base.messages, question] };
+    const replyingModel = models?.find((item) => item.id === model);
+    const chat = { ...base, modelId: model, messages: [...base.messages, question] };
     commit((state) => putChat(state, chat));
     setActiveId(chat.id);
     setDraft("");
@@ -275,7 +291,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     try {
       await streamLocalMessage({
         model,
-        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content)), base.messages, content, workspace.notes, noteIds, files),
+        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds })), base.messages, content, workspace.notes, noteIds, files),
         signal: controller.signal,
         onDelta: (delta) => {
           full += delta;
@@ -292,7 +308,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     setStreaming("");
     setBusy(false);
     if (!body.trim()) return;
-    const answer = newMessage("assistant", body);
+    const answer = newMessage("assistant", body, { modelId: model, modelName: modelLabel(replyingModel || model) });
     commit((state) => {
       const saved = (state.chats || []).find((item) => item.id === chat.id) || chat;
       return putChat(state, { ...saved, messages: [...saved.messages, answer] });
@@ -399,16 +415,8 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
             </span>
           </div>
           <div className="chat-head-actions">
-            {models?.length > 1 && (
-              <label className="model-select">
-                <span className="visually-hidden">Model</span>
-                <select value={model} disabled={busy} onChange={(event) => setModel(event.target.value)}>
-                  {models.map((item) => (
-                    <option key={item.id} value={item.id}>{modelLabel(item)}</option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <ModelMenu models={models || []} status={ai} value={model} disabled={busy} onChange={chooseModel}
+              bridge={bridge} navigate={navigate} onMessage={showUndo} />
             <button className="outline-button" type="button" onClick={startChat}>
               <Plus /> New
             </button>
@@ -433,7 +441,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                 {status === "unavailable" ? (
                   <>
                     <h3>{setup || "Ask needs its AI."}</h3>
-                    <p>OSAT downloads one model, once, and runs it on this Mac. Choose its size in Settings. LM Studio works too.</p>
+                    <p>Choose the AI that fits this Mac in Settings. Downloaded models load when you ask a question, and you can switch models for each conversation.</p>
                     <button className="primary-button" type="button" onClick={() => navigate?.("Settings", { section: "ai" })}>
                       <Sparkle /> Set up the AI
                     </button>
@@ -459,6 +467,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
               <article className={`bubble ${message.role}`} key={message.id}>
                 {message.role === "assistant" && <span className="bubble-avatar"><Sparkle weight="fill" /></span>}
                 <div className="bubble-body">
+                  {message.role === "assistant" && (message.modelName || message.modelId) && <small className="bubble-model">{message.modelName || message.modelId}</small>}
                   {message.role === "assistant" ? <Markdown text={message.content} headingOffset={2} /> : <p className="user-text">{message.content}</p>}
                   {message.role === "user" && <UsedNotes ids={message.noteIds} notes={workspace.notes} onOpen={openNote} />}
                   {message.role === "user" && message.files?.length > 0 && (
@@ -515,6 +524,11 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
         )}
 
         <div className="composer">
+          <label className="ask-conversation-scope">Notes for this conversation<select aria-label="Conversation note scope" value={active?.contextScope?.kind || "workspace"} disabled={busy} onChange={(event) => {
+            const contextScope = { kind: event.target.value, ...(active?.contextScope?.folderId ? { folderId: active.contextScope.folderId } : {}) };
+            commit((state) => { const chat = active || newChat({ modelId: model }); if (!active) setActiveId(chat.id); return putChat(state, { ...chat, contextScope }); });
+            setDropped(new Set());
+          }}><option value="workspace">Workspace · related notes</option>{active?.contextScope?.folderId && <option value="focus">This topic · {workspace.folders.find((folder) => folder.id === active.contextScope.folderId)?.name || "Removed topic"}</option>}<option value="none">No notes</option></select></label>
           {voiceHint && <div className="voice-hint" role="status"><Microphone /><span><strong>Speak with Mac Dictation</strong>Press Fn twice, then speak. Your words appear here before anything is sent.</span><button type="button" aria-label="Dismiss voice instructions" onClick={() => setVoiceHint(false)}><X /></button></div>}
           {(files.length > 0 || reading) && (
             <div className="ask-notes" aria-label="Files Ask will read">

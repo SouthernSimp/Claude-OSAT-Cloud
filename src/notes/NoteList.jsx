@@ -4,7 +4,7 @@ import {
 } from "@phosphor-icons/react";
 import { Menu } from "../lib/Menu.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
-import { SORTS, excerpt, folderPath, folderTree, isDayNote, notesInList, searchNotes, sortNotes } from "../notes-model.js";
+import { SORTS, notePreview, folderPath, folderTree, isDayNote, notesInList, searchNotes, sortNotes } from "../notes-model.js";
 
 const LIST_TITLES = {
   unsorted: "Unsorted", unfiled: "Unsorted", all: "All notes", pinned: "Pinned", recent: "Recent", daily: "Daily notes", archived: "Archive", trash: "Trash",
@@ -134,7 +134,7 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
                 <strong>{note.title || "Untitled note"}</strong>
                 <time dateTime={note.updatedAt}>{formatRelativeTime(note.updatedAt)}</time>
               </div>
-              <p>{excerpt(note.markdown) || <em>Nothing written yet</em>}</p>
+              <p>{notePreview(note) || <em>Nothing written yet</em>}</p>
               <div className="note-row-meta">
                 {isDayNote(note) && <span className="meta-chip"><CalendarBlank /> Daily</span>}
                 {path.length > 0 && ui.list !== "folder" && <span className="meta-chip"><FolderSimple /> {path.join(" / ")}</span>}

@@ -23,8 +23,7 @@ export function useAi() {
   useEffect(() => (typeof window === 'undefined' ? undefined : window.osatBots?.onStatus?.(refresh)), [refresh])
 
   // A finished download (or a new size) changes what Ask can use.
-  const chosen = status?.tiers.find((tier) => tier.id === status.chosen)
-  const readyKey = `${status?.chosen}:${Boolean(chosen?.ready)}`
+  const readyKey = `${status?.chosen}:${status?.tiers.map((tier) => `${tier.id}:${tier.ready}:${tier.state}`).join(',')}`
   useEffect(() => { if (status) refresh() }, [readyKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { status, models, refresh, bridge }

@@ -328,7 +328,7 @@ export function Line({
   }
 
   return (
-    <div ref={center} className="home-center">
+    <div ref={center} className="home-center" data-active={open || answer ? '' : undefined}>
       <h1 ref={greetingRef} className="home-greeting" aria-hidden={raised || undefined}>{greeting}</h1>
 
       <form

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, DeviceMobile, DownloadSimple, FolderOpen, LockSimple, Printer, UploadSimple } from "@phosphor-icons/react";
 import { setupLine, useAi } from "../../assistant/useAi.js";
+import { memoryResult } from "../../assistant/ModelMenu.jsx";
 import { downloadFile, formatRelativeTime } from "../../lib/ui.js";
 import { localDateKey } from "../../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../../osat-data.js";
@@ -9,7 +10,7 @@ import { workspaceClient } from "../../store/useWorkspace.js";
 import { BotsSettings } from "../Bots.jsx";
 import { ObsidianView } from "../Obsidian.jsx";
 import { DeskKey, useDeskKeys } from "./launcher.jsx";
-import { Group, Legacy, Page, Row } from "./parts.jsx";
+import { Group, Legacy, Page, Row, Switch } from "./parts.jsx";
 
 /* The pages of Settings that are about OSAT itself (Phase 13b): the keys that bring it up, how it looks, the AI, bots,
    where the data lives, scans, the iPhone, About. The cards for the AI, scans and the iPhone are the ones they always
@@ -59,65 +60,81 @@ function AboutYouCard({ workspace, commit }) {
 function AiCard() {
   const { status, models, bridge } = useAi();
   const [message, setMessage] = useState("");
-  const act = (work) => work().catch((error) => setMessage(String(error?.message || error).replace(/^Error invoking remote method '[^']+': (Error: )?/, "")));
+  const [working, setWorking] = useState("");
+  const act = async (key, work) => {
+    setWorking(key); setMessage("");
+    try { await work(); }
+    catch (error) { setMessage(String(error?.message || error).replace(/^Error invoking remote method '[^']+': (Error: )?/, "")); }
+    finally { setWorking(""); }
+  };
   const others = (models || []).filter((model) => model.runtime !== "osat");
 
-  if (!bridge?.status) {
-    return (
-      <section className="content-card">
-        <p className="eyebrow">LOCAL AI</p>
-        <h2>{models?.length ? "A model is ready." : "The AI lives in the Mac app."}</h2>
-        <p>{models?.length ? `${models.map((model) => model.name || model.id).slice(0, 3).join(", ")}, through LM Studio.` : "In the Mac app, OSAT downloads its own AI and runs it on your Mac. Here in the preview, LM Studio's local server works."}</p>
-      </section>
-    );
-  }
+  if (!bridge?.status) return (
+    <section className="content-card">
+      <p className="eyebrow">LOCAL AI</p><h2>The AI lives in the Mac app.</h2>
+      <p>In the Mac app, download models, choose one for each conversation, and free AI memory whenever you need it. This browser preview can use LM Studio.</p>
+    </section>
+  );
   if (!status) return <section className="content-card"><p className="eyebrow">LOCAL AI</p><h2>Looking at this Mac…</h2></section>;
-
-  const chosen = status.tiers.find((tier) => tier.id === status.chosen);
   const download = status.download;
   const percent = download ? Math.floor((download.received / download.total) * 100) : 0;
-  const headline = download?.state === "running" ? `Setting up ${status.tiers.find((tier) => tier.id === download.tier)?.label || "the AI"}…`
-    : download?.state === "failed" ? "The download stopped."
-      : download?.state === "paused" ? `Paused at ${percent}%.`
-        : chosen?.ready ? `${chosen.model} runs on this Mac.`
-          : "Choose how much AI this Mac runs.";
-  const detail = download?.state === "failed" ? download.message
-    : download ? "It downloads once, in the background. OSAT works as usual meanwhile, and a quit or a sleep just pauses it."
-      : status.engine === "error" ? status.message
-        : chosen?.ready ? (status.engine === "ready" ? "Awake now. It rests after ten quiet minutes to give the memory back." : "It wakes on your first question and rests after ten quiet minutes.")
-          : "Everything you ask stays here: the model is one file on your Mac, and nothing is sent anywhere.";
+  const installed = status.tiers.filter((tier) => tier.ready);
+  const missing = status.tiers.filter((tier) => !tier.ready);
+  const rowState = (tier) => tier.state === "loading" ? "Loading…" : tier.state === "unloading" ? "Unloading…" : tier.busy ? "Busy · wait until its work finishes" : tier.state === "ready" ? tier.retained ? "Ready · stays loaded until you unload it or quit" : "Ready · rests after ten idle minutes" : tier.state === "error" ? tier.message : "Downloaded · loads on your next question";
 
   return (
-    <section className="content-card ai-card">
-      <p className="eyebrow">LOCAL AI</p>
-      <h2>{headline}</h2>
-      <p>{detail}</p>
-      {download && (
-        <div className="ai-progress">
-          <progress max="100" value={percent} aria-label={setupLine(status) || "Download"} />
-          <span>{gb(download.received)} of {gb(download.total)}</span>
-          {download.state === "running"
-            ? <button type="button" className="text-button" onClick={() => act(bridge.cancel)}>Pause</button>
-            : <button type="button" className="text-button" onClick={() => act(bridge.resume)}>{download.state === "failed" ? "Try again" : "Resume"}</button>}
-        </div>
-      )}
-      <AiSizes status={status} value={status.chosen} onChoose={(tier) => act(() => bridge.choose(tier))} />
-      {status.tiers.some((tier) => tier.ready && tier.id !== status.chosen) && (
-        <p className="ai-remove">
-          {status.tiers.filter((tier) => tier.ready && tier.id !== status.chosen).map((tier) => (
-            <button key={tier.id} type="button" className="text-button" onClick={() => act(() => bridge.remove(tier.id))}>
-              Delete {tier.label} from this Mac ({gb(tier.size)})
+    <section className="ai-management">
+      <Group title="Your models" note="Downloads use disk space. Loading uses working memory. Every conversation can choose its own model.">
+        {status.tiers.map((tier) => <Row key={tier.id} title={tier.label + (tier.id === status.recommended ? " · Recommended for this Mac" : "")}
+          hint={tier.model + " · " + gb(tier.size) + " on disk. " + (tier.ready ? rowState(tier) : status.queued?.includes(tier.id) ? "Download queued" : tier.blurb)}
+          words={tier.model + " load unload memory download"} stacked>
+          <div className="ai-model-controls">
+            {tier.ready ? <>
+              <button type="button" className="outline-button" disabled={Boolean(working) || tier.busy}
+                onClick={() => act(tier.id, () => tier.state === "ready" ? bridge.unload(tier.id) : bridge.load(tier.id))}>
+                {tier.state === "ready" ? "Unload" : tier.state === "loading" ? "Loading…" : tier.state === "unloading" ? "Unloading…" : "Load"}
+              </button>
+              <label className="ai-retain"><Switch label={"Keep " + tier.label + " loaded"} checked={Boolean(tier.retained)}
+                disabled={Boolean(working) || tier.state === "loading" || tier.state === "unloading"}
+                onChange={(value) => act(tier.id, () => bridge.keepLoaded(tier.id, value))} /> Keep loaded</label>
+              <button type="button" className="text-button" disabled={Boolean(working) || status.chosen === tier.id}
+                onClick={() => act(tier.id, () => bridge.select(tier.id))}>{status.chosen === tier.id ? "Default for new chats" : "Use for new chats"}</button>
+              <button type="button" className="text-button" disabled={Boolean(working) || tier.busy}
+                onClick={() => { if (window.confirm("Delete the " + tier.label + " downloaded model (" + gb(tier.size) + ")? You will need to download it again. Conversations stay here.")) act(tier.id, () => bridge.remove(tier.id)); }}>Delete download</button>
+            </> : <button type="button" className="outline-button" disabled={Boolean(working) || status.queued?.includes(tier.id)}
+              onClick={() => act(tier.id, () => bridge.install(tier.id))}><DownloadSimple /> Download {tier.label}</button>}
+          </div>
+        </Row>)}
+        {missing.length > 1 && <Row title="Install all three" hint={gb(missing.reduce((sum, tier) => sum + tier.size, 0)) + " remaining downloads. Models download one at a time and stay unloaded."} words="all models download disk">
+          <button type="button" className="outline-button" disabled={Boolean(working)} onClick={() => act("install", () => bridge.install(missing.map((tier) => tier.id)))}>Install all three</button>
+        </Row>}
+      </Group>
+      {download && <Group title="Download">
+        <Row title={status.tiers.find((tier) => tier.id === download.tier)?.label || "AI model"} hint={download.state === "failed" ? download.message : gb(download.received) + " of " + gb(download.total)} stacked>
+          <div className="ai-progress"><progress max="100" value={percent} aria-label={setupLine(status) || "Download"} />
+            <button type="button" className="text-button" disabled={Boolean(working)} onClick={() => act("download", download.state === "running" ? bridge.cancel : bridge.resume)}>
+              {download.state === "running" ? "Pause" : download.state === "failed" ? "Try again" : "Resume"}
             </button>
-          ))}
-        </p>
-      )}
-      <p className="ai-note">{others.length ? `LM Studio is running too: ${others.map((model) => model.name).slice(0, 2).join(", ")} ${others.length === 1 ? "appears" : "appear"} in Ask.` : "LM Studio also works: while its local server runs, its models appear in Ask."}</p>
+          </div>
+        </Row>
+      </Group>}
+      <Group title="Memory" note="Keep loaded is for this session. Otherwise models rest after ten idle minutes. Loading several models requires a resource review.">
+        <Row title="Load AI at startup" hint="Load the downloaded default for new chats when OSAT opens. Turning this off keeps loading on demand." words="launch startup">
+          <Switch label="Load AI at startup" checked={Boolean(status.startup)} disabled={Boolean(working)} onChange={(value) => act("startup", () => bridge.startup(value))} />
+        </Row>
+        <Row title="Free AI memory" hint="Unload idle models. Downloaded files and conversations stay here; busy models finish their work." words="unload ram memory">
+          <button type="button" className="outline-button" disabled={Boolean(working) || !installed.some((tier) => tier.state === "ready")} onClick={() => act("free", async () => {
+            const result = await bridge.freeMemory();
+            setMessage(memoryResult(result));
+          })}>Free AI memory</button>
+        </Row>
+      </Group>
+      {others.length > 0 && <p className="ai-note">Other connected models are available in Ask. These controls manage OSAT’s built-in models.</p>}
       {message && <p role="status">{message}</p>}
     </section>
   );
 }
 
-/* Scans: the folder a scanner saves to. Each new scan is read and sorted into a node on this Mac. */
 function ScansCard() {
   const bridge = window.osatScans;
   const [status, setStatus] = useState(null);

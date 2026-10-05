@@ -108,6 +108,18 @@ test('a workspace from before Ask moved in gains an empty list of chats', () => 
   assert.equal(upgraded.notes[0].id, 'a')
 })
 
+test('schema 11 preserves existing notes and chats with their selected and responding models', () => {
+  const chat = { id: 'chat-kept', title: 'A question', modelId: 'osat:balanced', messages: [
+    { id: 'answer-kept', role: 'assistant', content: 'Saved answer', modelId: 'osat:light', modelName: 'Gemma 4 E2B · Light' },
+  ] }
+  const old = { ...createEmptyDoc(), schema: 10, rev: 19, notes: [note('kept')], chats: [chat] }
+  const upgraded = migrate(old)
+  assert.equal(upgraded.schema, SCHEMA)
+  assert.equal(upgraded.rev, 19)
+  assert.deepEqual(upgraded.notes, old.notes)
+  assert.deepEqual(upgraded.chats, old.chats)
+})
+
 test('schema 5: stickies left on the scratch page land in Unsorted, nothing else changes', () => {
   const scratch = { ...note('s'), kind: 'scratch', color: 'sky', unsorted: false }
   const filed = { ...note('f'), kind: 'scratch', folderId: 'x' }

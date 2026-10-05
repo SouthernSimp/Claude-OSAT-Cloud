@@ -51,7 +51,7 @@ const WAITS = [
   [/^desk:launch$/, 'Apps open again when you’re back online.'],
   [/^terminal:start$/, 'A new terminal waits until you’re back online.'],
   // ai:choose is refused in its handler, only for a size that would download.
-  [/^ai:resume$/, 'Downloads wait until you’re back online.'],
+  [/^ai:(resume|install)$/, 'Downloads wait until you’re back online.'],
   [/^phone:enable$/, 'The iPhone link waits until you’re back online.'],
   // Turning it off takes the copy of the notes out of iCloud Drive, which iCloud sends on.
   [/^phone:disable$/, 'Turning the iPhone link off waits until you’re back online.'],

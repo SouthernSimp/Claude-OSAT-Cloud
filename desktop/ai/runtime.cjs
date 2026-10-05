@@ -27,6 +27,15 @@ async function load(modelPath) {
   engine = { chat: new LlamaChat({ contextSequence: context.getSequence(), chatWrapper }) }
 }
 
+async function estimate(modelPath) {
+  const { readGgufFileInfo, GgufInsights } = await import('node-llama-cpp')
+  const insights = await GgufInsights.from(await readGgufFileInfo(modelPath), await llama())
+  const { resolvedValues } = await insights.configurationResolver.resolveAndScoreConfig({ targetContextSize: 8192 })
+  // CPU and Metal tensor allocations are distinct parts of the same Mac memory.
+  // Include context/KV allocations and modest process/graph headroom, not disk size.
+  return { bytes: Math.ceil((resolvedValues.totalRamUsage + resolvedValues.totalVramUsage) * 1.1 + 256 * 1024 ** 2), contextSize: resolvedValues.contextSize }
+}
+
 const toHistory = (messages) => messages.map((message) => (
   message.role === 'assistant'
     ? { type: 'model', response: [message.content] }
@@ -51,7 +60,12 @@ async function chat({ id, messages, maxTokens, schema }, controller) {
 }
 
 port.on('message', ({ data }) => {
-  if (data?.type === 'probe') {
+  if (data?.type === 'estimate') {
+    estimate(data.modelPath).then(
+      (estimate) => port.postMessage({ type: 'estimate', estimate }),
+      () => port.postMessage({ type: 'estimate', estimate: null }),
+    )
+  } else if (data?.type === 'probe') {
     llama().then(
       (engine) => port.postMessage({ type: 'probe', gpu: engine.gpu || 'cpu' }),
       (error) => port.postMessage({ type: 'error', message: String(error?.message || error) }),

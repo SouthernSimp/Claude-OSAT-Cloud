@@ -12,7 +12,7 @@ import { NoteList, useVisibleNotes } from "./NoteList.jsx";
 import { NoteEditor } from "./NoteEditor.jsx";
 
 const UI_KEY = "osat.notes-ui.v2";
-const DEFAULT_UI = { list: "all", folderId: null, tags: [], query: "", sort: "updated", mode: "write", inspector: false, organizer: true };
+const DEFAULT_UI = { list: "all", folderId: null, tags: [], query: "", sort: "updated", mode: "write", inspector: false, organizer: true, focus: false };
 
 function loadUi() {
   try {
@@ -48,7 +48,10 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
   const rootRef = useRef(null);
   const narrow = useNarrowRoom(rootRef);
   const organizerOpen = narrow ? drawer : ui.organizer;
-  const setUi = useCallback((patch) => setUiState((current) => ({ ...current, ...patch })), []);
+  const setUi = useCallback((patch) => {
+    if (patch.focus) setPane("editor");
+    setUiState((current) => ({ ...current, ...patch }));
+  }, []);
   useEffect(() => {
     const { query, tags, ...persisted } = ui;
     localStorage.setItem(UI_KEY, JSON.stringify(persisted));
@@ -66,7 +69,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
     handledTarget.current = target.at;
     if (target.action) { requestAnimationFrame(() => actionsRef.current?.[target.action === "new" ? "createNote" : target.action === "today" ? "openToday" : "startFolder"]?.()); return; }
     if (target.list) {
-      setUi({ list: target.list, folderId: null, query: "", tags: [] });
+      setUi({ list: target.list, folderId: null, query: "", tags: [], focus: false });
       setSelection(new Set());
       setPane("list");
       return;
@@ -137,13 +140,16 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       },
       restoreNotes(ids) { commit((state) => restoreNotes(state, ids)); setSelection(new Set()); },
       purgeNotes(ids) {
-        const gone = workspace.notes.filter((note) => ids.includes(note.id));
+        const gone = workspace.notes.filter((note) => ids.includes(note.id) && note.trashedAt);
+        if (!gone.length || !confirm(`Delete ${gone.length === 1 ? "this note" : `${gone.length} notes`} forever? After Undo expires, this cannot be reversed.`)) return;
+        ids = gone.map((note) => note.id);
         commit((state) => purgeNotes(state, ids));
         setSelection(new Set());
         showUndo(gone.length === 1 ? "Deleted for good" : `${gone.length} notes deleted for good`, () => bringBack(gone));
       },
       emptyTrash() {
         const gone = workspace.notes.filter((note) => note.trashedAt);
+        if (!gone.length || !confirm(`Empty Trash and delete ${gone.length} ${gone.length === 1 ? "note" : "notes"} forever? After Undo expires, this cannot be reversed.`)) return;
         commit((state) => emptyTrash(state));
         if (gone.length) showUndo("Trash emptied", () => bringBack(gone));
       },
@@ -247,7 +253,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
   };
 
   return (
-    <div ref={rootRef} className={`notes-view ${organizerOpen ? "" : "organizer-hidden"} pane-${pane}`}>
+    <div ref={rootRef} className={`notes-view ${organizerOpen ? "" : "organizer-hidden"} ${ui.focus && selected ? "is-writing-focus" : ""} pane-${pane}`} onKeyDown={(event) => { if (event.key === "Escape" && ui.focus && !event.defaultPrevented) { event.stopPropagation(); setUi({ focus: false }); } }}>
       {organizerOpen && (
         <Organizer
           workspace={workspace}
@@ -275,7 +281,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         <button type="button" className="organizer-reveal" aria-label="Show nodes" title="Show nodes" onClick={() => (narrow ? setDrawer(true) : setUi({ organizer: true }))}><FolderSimple /></button>
       )}
       {selected ? (
-        <NoteEditor key={selected.id} workspace={workspace} note={selected} ui={ui} setUi={setUi} actions={actions} onBack={() => setPane("list")} />
+        <NoteEditor key={selected.id} workspace={workspace} note={selected} ui={ui} setUi={setUi} actions={actions} onBack={() => { setUi({ focus: false }); setPane("list"); }} />
       ) : (
         <section className="note-editor is-empty" aria-label="Note editor">
           <div className="empty-panel">

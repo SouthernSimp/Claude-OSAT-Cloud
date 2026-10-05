@@ -378,6 +378,14 @@ export function excerpt(markdown, length = 110) {
   return text.length > length ? `${text.slice(0, length - 1)}…` : text
 }
 
+// Skip the captured title when it also starts the body; show the next useful words.
+export function notePreview(note, length = 110) {
+  const lines = String(note.markdown || '').split('\n')
+  const first = lines.findIndex((line) => line.trim())
+  if (first >= 0 && lines[first].replace(/^#{1,6}\s+/, '').trim().toLowerCase() === String(note.title || '').trim().toLowerCase()) lines.splice(first, 1)
+  return excerpt(lines.join('\n'), length)
+}
+
 /* ---------- mutations ---------- */
 
 export function createNote(state, patch = {}) {

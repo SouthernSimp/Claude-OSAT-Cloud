@@ -18,7 +18,7 @@ const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Hab
 /* Opens a node on the Sky as a map (a click opens or closes one, so only when it isn't open yet). */
 async function openNode(page, name) {
   if (await page.locator('.board-card.is-open [data-node-head]', { hasText: name }).count()) return
-  await page.locator('[data-node-head]', { hasText: name }).click({ force: true })
+  await page.getByRole('navigation', { name: 'Sky topics', exact: true }).getByRole('button', { name, exact: true }).click()
 }
 
 let server
@@ -135,7 +135,8 @@ async function main() {
       await guide.waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the first visit did not say how the Sky works'))
       await sleep(500)
       await page.screenshot({ path: `${OUT}/sky-guide.png` })
-      await page.getByRole('button', { name: 'Got it' }).click().catch(() => {})
+      if (await page.locator('[data-node-head]').count()) problems.push('sky: the first visit silently added example nodes')
+      await guide.getByRole('button', { name: 'Add the example roadmap' }).click()
     }
     await sleep(300)
     if (await guide.count()) problems.push(`sky: the guide showed again after Got it (${theme})`)
@@ -146,7 +147,9 @@ async function main() {
       await page.getByRole('textbox', { name: 'A new sticky', exact: true }).press('Escape')
       const free = page.locator('.board-sticky', { hasText: 'Freely placed Sky sticky' })
       await free.waitFor({ timeout: 3000 })
-      if (await page.locator('[data-card="unsorted"] .sticky', { hasText: 'Freely placed Sky sticky' }).count()) problems.push('sky: a free sticky was duplicated in the Unsorted pile')
+      await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
+      if (await page.locator('.sky-unsorted-drawer .sticky', { hasText: 'Freely placed Sky sticky' }).count()) problems.push('sky: a free sticky was duplicated in the Unsorted drawer')
+      await page.getByRole('button', { name: 'Close Unsorted' }).click()
       const before = await free.evaluate((element) => element.style.translate)
       await free.locator('.sticky').focus()
       await page.keyboard.press('ArrowRight')
@@ -163,12 +166,14 @@ async function main() {
       await free.locator('.sticky').click({ button: 'right' })
       await page.getByRole('menuitem', { name: 'Back to Unsorted', exact: true }).click()
       await free.waitFor({ state: 'detached', timeout: 3000 })
-      await page.locator('[data-card="unsorted"] .sticky', { hasText: 'Freely placed Sky sticky' }).waitFor({ timeout: 3000 })
+      await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
+      await page.locator('.sky-unsorted-drawer .sticky', { hasText: 'Freely placed Sky sticky' }).waitFor({ timeout: 3000 })
+      await page.getByRole('button', { name: 'Close Unsorted' }).click()
       await page.getByRole('button', { name: 'Undo', exact: true }).click()
       await free.waitFor({ timeout: 3000 })
       if (await free.evaluate((element) => element.style.translate) !== placed) problems.push('sky: Undo did not restore the sticky’s exact placement')
-      await page.getByRole('textbox', { name: 'Find a sticky' }).fill('Freely placed Sky sticky')
-      await page.getByRole('textbox', { name: 'Find a sticky' }).press('Enter')
+      await page.getByRole('combobox', { name: 'Find in Sky' }).fill('Freely placed Sky sticky')
+      await page.getByRole('combobox', { name: 'Find in Sky' }).press('Enter')
       await free.locator('.sticky.is-found').waitFor({ timeout: 3000 })
       await sleep(800)
       await page.screenshot({ path: `${OUT}/sky-free-stickies.png` })
@@ -190,6 +195,8 @@ async function main() {
     if (await cardSpots() !== spotsBefore) problems.push(`sky: opening a node moved the other cards (${theme})`)
     await sleep(900)
     await page.screenshot({ path: `${OUT}/${theme}-Sky-node.png` })
+    await page.keyboard.press('Escape') // leave topic focus before leaving Sky
+    await page.locator('.sky-breadcrumb strong').waitFor({ state: 'detached', timeout: 3000 })
     await page.keyboard.press('Escape')
     await page.locator('.sky-layer').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Esc did not bring the desk back'))
     await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => {})
@@ -590,7 +597,8 @@ async function main() {
     await sleep(300)
     await openNode(page, 'Project Direction')
     await page.locator('.map-sticky .sticky', { hasText: 'Left on the desk' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: the sticky dropped on a node was not in it'))
-    await page.keyboard.press('Escape')
+    await page.keyboard.press('Escape') // focused map back to overview
+    await page.keyboard.press('Escape') // overview back to desk
     await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('stickies: Esc did not come back down from the Sky'))
     if (await left.count()) problems.push('stickies: a sticky filed in a node stayed on the desk')
   }
@@ -614,9 +622,11 @@ async function main() {
   room = 'sky menus'
   if (await page.locator('.node-number').count()) problems.push('sky: node cards still show numbers')
   // The AI in the Sky: a pill opens a small card; "sort these" suggests homes from matching words (no AI in this test),
-  // Make it and Undo work, and Unsorted and a branch fold.
+  // Make it and Undo work, and Unsorted's drawer and a branch fold.
   room = 'sky ask'
-  const unsortedCard = page.locator('.board-card.is-unsorted')
+  await page.locator('.sky-breadcrumb').getByRole('button', { name: 'All Sky', exact: true }).click()
+  await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
+  const unsortedCard = page.locator('.sky-unsorted-drawer')
   await unsortedCard.getByRole('button', { name: 'Write a sticky' }).dispatchEvent('click').catch(() => problems.push('sky: Unsorted had no Write a sticky'))
   for (const text of ['Buy cat litter', 'Cat food is running low', 'Vet visit for the cat']) {
     await page.keyboard.type(text)
@@ -640,12 +650,15 @@ async function main() {
   await unsortedCard.locator('.sticky', { hasText: 'Buy cat litter' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Undo did not bring the cat stickies back to Unsorted'))
   await skyCard.getByRole('button', { name: 'Put it away' }).click()
   await skyCard.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the Ask card did not go away'))
-  await unsortedCard.getByRole('button', { name: /^Unsorted/ }).dispatchEvent('click')
-  await unsortedCard.locator('.fold-pile').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: clicking Unsorted did not fold it into a pile'))
+  const cameraBeforeDrawer = await page.locator('.board').getAttribute('style')
+  await page.getByRole('button', { name: 'Close Unsorted' }).click()
+  await unsortedCard.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Unsorted did not close'))
   if (await unsortedCard.locator('.sticky').count()) problems.push('sky: a folded Unsorted still showed every sticky')
   await page.screenshot({ path: `${OUT}/sky-folded.png` })
-  await unsortedCard.locator('.fold-pile').dispatchEvent('click')
+  await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
+  if (await page.locator('.board').getAttribute('style') !== cameraBeforeDrawer) problems.push('sky: opening the Unsorted drawer moved the camera')
   await unsortedCard.locator('.sticky', { hasText: 'Buy cat litter' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: clicking the pile did not open Unsorted again'))
+  await page.getByRole('button', { name: 'Close Unsorted' }).click()
   // Opening a node shows its top at a size you can read, so scroll the board (as a person does) to reach a branch further down.
   const reveal = async (locator) => {
     const top = await locator.evaluate((element) => element.getBoundingClientRect().top).catch(() => null)
@@ -657,21 +670,25 @@ async function main() {
   await openNode(page, 'Project Direction')
   await sleep(900)
   await reveal(page.locator('.branch-card', { hasText: 'Later' }).first())
+  if (await page.getByRole('button', { name: 'Open Later', exact: true }).count()) await page.getByRole('button', { name: 'Open Later', exact: true }).click({ force: true })
   await page.getByRole('button', { name: 'Fold Later', exact: true }).click({ force: true }).catch(() => problems.push('sky: a branch had no fold arrow'))
   await page.locator('.branch-card[aria-label="Branch: Later"][data-layers]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the fold arrow did not fold the branch away'))
   await page.getByRole('button', { name: 'Open Later', exact: true }).click({ force: true }).catch(() => {})
   await page.locator('.branch-card[aria-label="Branch: Later"][data-layers]').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the branch did not open again'))
-  // Focus: double-click a node and only it is left; Done (or Esc) brings the rest back.
-  await page.locator('[data-node-head]', { hasText: 'Project Direction' }).dblclick({ force: true })
-  await page.locator('.board-focus').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: double-clicking a node did not focus on it'))
-  if (await page.locator('.board-card.is-unsorted').count()) problems.push('sky: focus still showed Unsorted')
+  // Focus closes the drawer and keeps one topic; All Sky restores the overview.
+  await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
+  await page.getByRole('button', { name: 'Focus on Project Direction', exact: true }).click()
+  await page.locator('.board.is-focused').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: selecting a topic did not focus on it'))
+  if (await page.locator('.sky-unsorted-drawer').count()) problems.push('sky: focus still showed Unsorted')
   await page.screenshot({ path: `${OUT}/sky-focus.png` })
-  await page.locator('.board-focus').getByRole('button', { name: 'Done' }).click().catch(() => {})
-  await page.locator('.board-focus').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Done did not end the focus'))
+  await page.locator('.sky-breadcrumb').getByRole('button', { name: 'All Sky', exact: true }).click()
+  await page.locator('.board.is-focused').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: All Sky did not end the focus'))
   await openNode(page, 'Project Direction')
   room = 'sky menus'
-  await reveal(page.locator('[data-node-head]', { hasText: 'Project Direction' }))
-  await page.locator('[data-node-head]', { hasText: 'Project Direction' }).click({ button: 'right', force: true })
+  await page.getByRole('combobox', { name: 'Find in Sky' }).fill('Project Direction')
+  await page.getByRole('combobox', { name: 'Find in Sky' }).press('Enter')
+  await sleep(900)
+  await page.getByRole('button', { name: 'More for Project Direction', exact: true }).click()
   for (const gone of ['Link to', 'Lay it out', 'Put inside', 'Colour', 'Remove node']) if (await page.getByRole('menuitem', { name: gone }).count()) problems.push(`sky: the node menu still says "${gone}"`)
   for (const kept of ['Color', 'Delete node', 'Help me sort']) if (!await page.getByRole('menuitem', { name: kept }).count()) problems.push(`sky: the node menu has no "${kept}"`)
   await page.getByRole('menuitem', { name: 'Help me sort' }).click().catch(() => {})
@@ -679,16 +696,19 @@ async function main() {
   await sleep(300)
   await page.screenshot({ path: `${OUT}/sky-sort.png` })
   // A branch's menu: New branch inside puts one inside it, on its own line, and Rename works.
-  await reveal(page.locator('.branch-card', { hasText: 'Later' }).first())
-  await page.locator('.branch-card', { hasText: 'Later' }).first().click({ button: 'right', force: true })
+  await page.getByRole('navigation', { name: 'Sky topics', exact: true }).getByRole('button', { name: 'Later', exact: true }).click()
+  await sleep(900)
+  await page.getByRole('button', { name: 'More for Later', exact: true }).click()
   await page.getByRole('menuitem', { name: 'New branch inside' }).click().catch(() => problems.push('sky: a branch menu has no "New branch inside"'))
-  await page.keyboard.type('Mac apps')
-  await page.keyboard.press('Enter')
+  await page.getByRole('textbox', { name: 'Name the branch inside', exact: true }).fill('Mac apps')
+  await page.getByRole('textbox', { name: 'Name the branch inside', exact: true }).press('Enter')
   await page.locator('.branch-card[aria-label="Branch: Mac apps"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: New branch inside did not make a branch inside'))
-  await page.locator('.branch-card', { hasText: 'Mac apps' }).click({ button: 'right', force: true })
+  await page.getByRole('navigation', { name: 'Sky topics', exact: true }).getByRole('button', { name: 'Mac apps', exact: true }).click()
+  await sleep(900)
+  await page.getByRole('button', { name: 'More for Mac apps', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Rename' }).click().catch(() => {})
-  await page.keyboard.type('Apps')
-  await page.keyboard.press('Enter')
+  await page.getByRole('textbox', { name: 'Name the branch', exact: true }).fill('Apps')
+  await page.getByRole('textbox', { name: 'Name the branch', exact: true }).press('Enter')
   await page.locator('.branch-card[aria-label="Branch: Apps"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Rename in a branch menu did nothing'))
   await sleep(400)
   await page.screenshot({ path: `${OUT}/sky-tree.png` })
@@ -715,6 +735,7 @@ async function main() {
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Undo', exact: true }).click().catch(() => {})
   await page.keyboard.press('Escape')
+  if (await page.locator('.sky-shell').count()) await page.keyboard.press('Escape')
   await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: Esc did not come back down'))
   if (!await mentioned.count()) problems.push('mentions: the sticky with an @ left the desk')
   // The Roadmap room's Timeline: every phase of the Status table, in order, read from the same
