@@ -58,3 +58,26 @@ moves to topics or branches. Local word/tag hints are proposals only. Preserve
 canonical notes, writing, relationships and hand-placed geometry. Sorting Undo
 must remain available during the Sky session and preserve later edits and moves.
 No installed-app update or native Mac testing is authorized by this request.
+
+
+## October 4, 2026 — sorting review rejected
+
+Nate rejected the list-and-filing-panel sorting screen as confusing, cluttered,
+wordy and overwhelming. Twenty visible stickies is too many for this experience.
+The goal is a calm, obvious first step for someone who has let thoughts pile up,
+without requiring them to choose among existing topics immediately. Putting a
+sticky freely onto Sky must be an equal option to filing it. Nate suggested a
+visual sorter with five or ten stickies at a time and explicitly asked for
+questions before another implementation. Clarify the opening view, how loose
+groups become topics, and the amount of optional guidance before rebuilding.
+This supersedes the prior sorting UI direction; preserve all existing records.
+
+
+## October 4, 2026 — single-sticky placement mockups
+
+Nate clarified that sorting should start as soon as Unsorted opens, with attention
+on the first sticky. OSAT should surface a related node or branch using the
+sticky's content and workspace context so the user never has to browse every
+topic. When nothing fits, a proposed new node or a free spot on Sky are equally
+valid destinations. He requested visual mockups before implementation. Show a
+calm first step with few words and small batches; avoid the rejected filing form.
