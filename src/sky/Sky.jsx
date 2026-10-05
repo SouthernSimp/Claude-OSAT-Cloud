@@ -1,11 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsIn, Broom, CaretRight, CornersOut, Crosshair, DotsThree, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, SidebarSimple, Sparkle, Stack, Trash,
+  ArrowCounterClockwise, ArrowClockwise, ArrowDown, ArrowsIn, Broom, CaretRight, CornersOut, Crosshair, DotsThree, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, SidebarSimple, Sparkle, Stack, Trash,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
+import { inputActive } from '../lib/ui.js'
 import { PAPERS } from '../note-core.js'
 import { folderChildren, folderPath, folderSubtree, isBranch, purgeNotes, restoreNotes, trashNotes } from '../notes-model.js'
 import {
@@ -26,6 +27,7 @@ import { UnsortedDrawer } from './UnsortedDrawer.jsx'
 import { SkyNavigator } from './SkyNavigator.jsx'
 import { fileUnsorted, undoFiling } from './sort-review.js'
 import { arrangeTopics } from './arrange.js'
+import { canvasChange, replayCanvas } from './canvas-history.js'
 import { branchWords, wherePlaces } from './where.js'
 import { tidyTree } from './map-layout.js'
 import { connect, disconnect, folderKey, linksAt, noteKey, recordOf } from '../links-model.js'
@@ -49,7 +51,7 @@ function guideSeen() {
    of the screen). Your nodes on one whiteboard (Board). `target` says where to fly on
    arriving ({ folderId } or { noteId }). Esc: a node being named, the search, then back
    down (Desk.jsx asks `back()`). `onFiled` hears when a sticky from the desk went into a node. */
-export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target, onClose, onFiled, onStackSent }, ref) {
+export const Sky = forwardRef(function Sky({ workspace, commit, history, navigate, target, onClose, onFiled, onStackSent }, ref) {
   const board = useRef(null)
   const [open, setOpen] = useState(readOpen)
   const [folds, setFolds] = useState(readFolds)
@@ -81,11 +83,47 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   const [focus, setFocus] = useState(null)
   const [menu, openMenu] = useContextMenu()
   const [toast, showUndo] = useUndoToast()
+  const [, refreshHistory] = useState(0)
   const latest = useRef(workspace)
   latest.current = workspace
   const findField = useRef(null)
   const picker = useRef(null)
   const carrying = useCarrying()
+
+  function canvasCommit(label, updater) {
+    let entry
+    commit((state) => { const next = updater(state); entry = canvasChange(state, next, label); return next })
+    if (!entry) return null
+    // ponytail: last 100 canvas changes in this window; persist checkpoints only
+    // if Undo across reloads is needed. Leaving Sky keeps this session history.
+    history.current.past = [...history.current.past.slice(-99), entry]
+    history.current.future = []
+    refreshHistory((value) => value + 1)
+    showUndo(label, () => { if (history.current.past.at(-1) === entry) stepHistory('undo') })
+    return entry
+  }
+  function stepHistory(direction) {
+    const from = history.current[direction === 'undo' ? 'past' : 'future']
+    const to = history.current[direction === 'undo' ? 'future' : 'past']
+    const entry = from.at(-1)
+    if (!entry) return
+    let result, replayed
+    commit((state) => {
+      result = replayCanvas(state, entry, direction)
+      replayed = direction === 'undo' ? canvasChange(result.state, state, entry.label) : canvasChange(state, result.state, entry.label)
+      return result.state
+    })
+    from.pop()
+    if (replayed) {
+      if (direction === 'undo') {
+        entry.desk?.filter((item) => result.placedNotes.includes(item.id)).forEach((item) => item.restore?.())
+        replayed.desk = entry.desk
+      } else replayed.desk = entry.desk?.filter((item) => result.placedNotes.includes(item.id)).map((item) => ({ id: item.id, restore: onFiled?.(item.id) }))
+      to.push(replayed)
+    }
+    refreshHistory((value) => value + 1)
+    showUndo(replayed ? `${direction === 'undo' ? 'Undid' : 'Redid'}: ${entry.label}${result.skipped ? '. Newer changes were kept.' : ''}` : 'This changed since then. Your newer work was kept.', null)
+  }
 
   // Examples are added only by the person's explicit action in the guide.
 
@@ -202,6 +240,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
 
   const actions = {
     commit,
+    canvasCommit,
     fileUnsorted(ids, folderId, name = '', options = {}) {
       let result
       const placement = options.sky ? { ...options, at: board.current?.freeSpot() } : options
@@ -226,27 +265,18 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       return restoredIds
     },
     moveSticky(noteId, folderId, index) {
-      commit((state) => moveSticky(state, noteId, folderId, index))
+      const entry = canvasCommit('Moved a sticky', (state) => moveSticky(state, noteId, folderId, index))
       unsuggest([noteId])
-      if (folderId) onFiled?.(noteId)
+      if (entry && folderId) entry.desk = [{ id: noteId, restore: onFiled?.(noteId) }]
     },
     placeSticky(noteId, at) {
-      let inverse = null
-      commit((state) => {
-        const next = placeSticky(state, noteId, at)
-        if (next !== state) inverse = applyOps(state, diffDocs(state, next)).inverse
-        return next
-      })
-      if (!inverse?.length) return
+      const entry = canvasCommit(at ? 'Set the sticky on the Sky' : 'Returned the sticky to Unsorted', (state) => placeSticky(state, noteId, at))
+      if (!entry) return
       unsuggest([noteId])
-      const restoreDesk = onFiled?.(noteId)
-      showUndo(at ? 'Set the sticky on the Sky' : 'Returned the sticky to Unsorted', () => {
-        commit((state) => applyOps(state, inverse).doc)
-        restoreDesk?.()
-      })
+      entry.desk = [{ id: noteId, restore: onFiled?.(noteId) }]
     },
     moveFolder(id, parentId, index, options) {
-      commit((state) => moveFolder(state, id, parentId, index, options))
+      canvasCommit('Moved a topic or branch', (state) => moveFolder(state, id, parentId, index, options))
     },
     /* Cards of a map set down where they are, still in their folders: [{ kind, id, at }],
        `at` from the folder's corner. */
@@ -254,7 +284,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       const where = (kind) => new Map(cards.filter((card) => card.kind === kind).map((card) => [card.id, card.at]))
       const notes = where('note')
       const folders = where('folder')
-      commit((state) => ({
+      canvasCommit('Moved cards on the map', (state) => ({
         ...state,
         notes: notes.size ? state.notes.map((item) => (notes.has(item.id) ? { ...item, at: notes.get(item.id) } : item)) : state.notes,
         folders: folders.size ? state.folders.map((item) => (folders.has(item.id) ? { ...item, at: folders.get(item.id) } : item)) : state.folders,
@@ -262,23 +292,14 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     },
     /* Tidy: a node's (or a branch's) map laid out again in order, with Undo. */
     tidy(folder) {
-      let inverse = null
-      commit((state) => {
-        const next = tidyTree(state, folder.id)
-        inverse = applyOps(state, diffDocs(state, next)).inverse
-        return next
-      })
-      if (inverse?.length) showUndo(`Tidied ${folder.name}`, () => commit((state) => applyOps(state, inverse).doc))
+      canvasCommit(`Tidied ${folder.name}`, (state) => tidyTree(state, folder.id))
     },
     /* Connections: a line between two things; removing one offers Undo. */
     link(a, b) {
-      if (a !== b) commit((state) => connect(state, a, b))
+      if (a !== b) canvasCommit('Added a connection', (state) => connect(state, a, b))
     },
     unlink(a, b) {
-      const state = latest.current
-      const drawnFrom = recordOf(state, a)?.links?.includes(b) ? [a, b] : [b, a]
-      commit((current) => disconnect(current, a, b))
-      showUndo(`Removed the connection to “${nameOf(b)}”`, () => commit((current) => connect(current, ...drawnFrom)))
+      canvasCommit(`Removed the connection to “${nameOf(b)}”`, (state) => disconnect(state, a, b))
     },
     lineMenu(event, line) {
       openMenu(event, [{ label: 'Remove the connection', icon: Trash, onSelect: () => actions.unlink(line.a, line.b) }])
@@ -342,9 +363,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       if (!folder || !home || folderSubtree(state.folders, id).has(home.id)) { setPlacing({ id, line: 'That changed while the AI was thinking. Ask again.' }); return }
       placeAsk.current = null
       setPlacing(null)
-      commit((current) => moveFolder(current, id, home.id))
+      canvasCommit(`Moved “${folder.name}” into ${place.name}`, (current) => moveFolder(current, id, home.id))
       board.current?.goTo({ folderId: home.id })
-      showUndo(`Moved “${folder.name}” into ${place.name}`, () => commit((current) => ({ ...current, folders: current.folders.map((item) => (item.id === id ? folder : item)) })))
     },
     dismissPlace() { placeAsk.current = null; setPlacing(null) },
     addNode(name) {
@@ -541,7 +561,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
       })
     },
     acceptGroup(group) {
-      commit((state) => group.noteIds.reduce((next, id) => moveSticky(next, id, group.folderId), state))
+      canvasCommit('Moved stickies into a branch', (state) => group.noteIds.reduce((next, id) => moveSticky(next, id, group.folderId), state))
       unsuggest(group.noteIds)
     },
     dismissGroup(group) {
@@ -606,13 +626,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
     requestAnimationFrame(() => requestAnimationFrame(() => board.current?.newNode()))
   }
   function arrangeOverview() {
-    let inverse = null
-    commit((state) => {
-      const next = arrangeTopics(state, board.current?.sizes())
-      inverse = applyOps(state, diffDocs(state, next)).inverse
-      return next
-    })
-    if (inverse?.length) showUndo('Arranged the topics', () => commit((state) => applyOps(state, inverse).doc))
+    canvasCommit('Arranged the topics', (state) => arrangeTopics(state, board.current?.sizes()))
     requestAnimationFrame(() => requestAnimationFrame(() => board.current?.fit()))
   }
   function arrangeView() {
@@ -638,7 +652,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
   })
 
   return (
-    <div className="sky-layer sky-workspace" role="region" aria-label="Sky" data-navigator={navigatorOpen || undefined}>
+    <div className="sky-layer sky-workspace" role="region" aria-label="Sky" data-navigator={navigatorOpen || undefined} onKeyDown={(event) => {
+      if (unsortedOpen || !(event.metaKey || event.ctrlKey) || event.altKey || event.key.toLowerCase() !== 'z' || inputActive()) return
+      event.preventDefault(); event.stopPropagation(); stepHistory(event.shiftKey ? 'redo' : 'undo')
+    }}>
       <header className="sky-bar">
         <button type="button" className="sky-down" onClick={onClose} title="Back to the desk  Esc · ⌥⌘↓"><ArrowDown weight="bold" /> Desk</button>
         <span className="sky-wordmark"><ShareNetwork weight="bold" /> Sky</span>
@@ -692,6 +709,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, navigate, target
             <div className="sky-breadcrumb"><button type="button" onClick={overview} aria-current={!focus ? 'page' : undefined}>All Sky</button>{focused && <><CaretRight /><strong>{focused.name}</strong></>}</div>
             {!unsortedOpen && sortHistory.length > 0 && <button type="button" className="sky-fit" onClick={() => { setUnsortedTarget(null); setUnsortedOpen(true) }}><Stack /> Back to sorting</button>}
             <span className="sky-view-label">{focused ? 'Topic map' : 'Overview'}</span>
+            <button type="button" className="sky-icon-button" aria-label="Undo Sky change" disabled={!history.current.past.length || unsortedOpen} title={`Undo${history.current.past.length ? `: ${history.current.past.at(-1).label}` : ''} · ⌘Z`} onClick={() => stepHistory('undo')}><ArrowCounterClockwise /></button>
+            <button type="button" className="sky-icon-button" aria-label="Redo Sky change" disabled={!history.current.future.length || unsortedOpen} title={`Redo${history.current.future.length ? `: ${history.current.future.at(-1).label}` : ''} · ⇧⌘Z`} onClick={() => stepHistory('redo')}><ArrowClockwise /></button>
             <button type="button" className="sky-fit sky-arrange" title="Arrange this view · offers Undo" onClick={arrangeView}><ArrowsIn /> Arrange</button>
             <button type="button" className="sky-fit" onClick={() => board.current?.fit()}><CornersOut /> Fit view</button>
           </div>

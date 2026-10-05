@@ -8,18 +8,22 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 5, 2026: guided Unsorted review
+## Resume checkpoint — October 5, 2026: Sky history
 
-PR #39 (AI controls and previous Sky/core workflow work) is merged into main.
-PR #41 replaces the rejected filing screen with the approved guided five-sticky
-flow: one active sticky, destination preview and nearby notes, explicit placement,
-free Sky placement, Later, recoverable Trash, local hints and opt-in local AI.
-Placement animates unless reduced motion is enabled. Recent destinations reopen
-without losing the current sticky. Closing All stickies now unmounts its inactive
-list while preserving the guided batch. 497 unit checks, build and full local
-browser regression pass. See docs/UNSORTED-REVIEW-20261004.md.
-Nate authorized merging ready work, then the next implementation set. Installed
-apps/data and the native-testing pause remain preserved.
+PR #39 (AI controls and earlier core/Sky work) and PR #41 (guided five-sticky
+sorting) are merged into main. The next implementation is on
+codex/sky-history-20261005 in work/osat-core-improvements, preview port 5232.
+Sky has toolbar Undo/Redo and canvas keyboard shortcuts for existing record
+moves, connections, Tidy and Arrange. The last 100 changes survive leaving and
+reopening Sky within the window session. Writing remains untouched; changed
+placements/connections, missing/trashed records and hierarchy cycles are skipped.
+Partial Undo only makes Redo for restored fields. Text inputs retain text Undo.
+Guided sorting retains its own Undo; creation/import/deletion keep their existing
+workflows. History ends on reload/quit. 501 unit checks, build and browser regression
+pass. See docs/SKY-HISTORY-20261005.md for behavior, verification and limits.
+Completed changes are committed/pushed for review. Nate authorized merging the
+ready prior reviews then another implementation set; installation remains for his
+later request. Installed apps/data and the local native-testing pause are preserved.
 
 ### Previous checkpoint — October 4, 2026
 

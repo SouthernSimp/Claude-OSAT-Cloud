@@ -208,7 +208,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Nodes set down somewhere new; everything else keeps its place. */
-  const place = (changes) => actions.commit((state) => placeNodes(state, boardSpots(state.folders, latest.current.sizes), changes))
+  const place = (changes) => actions.canvasCommit('Moved topics on Sky', (state) => placeNodes(state, boardSpots(state.folders, latest.current.sizes), changes))
 
   /* Fly to a node (or a branch's node, or Unsorted), opening it and every folded branch on
      the way down; a sticky in it glows. */
@@ -374,7 +374,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       if (parent) { actions.hang([{ kind: 'folder', id, at: hangAt(parent, at) }, ...stay(folder.parentId, id)]); return }
       if (!folder.parentId) { place(new Map([[id, at]])); return }
       // A branch whose node isn't open: set down on its own.
-      actions.commit((state) => {
+      actions.canvasCommit('Set a branch on Sky', (state) => {
         const moved = moveFolder(state, id, null, Infinity, { loose: true })
         return placeNodes(moved, boardSpots(moved.folders, latest.current.sizes), new Map([[id, at]]))
       })

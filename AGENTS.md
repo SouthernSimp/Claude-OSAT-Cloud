@@ -108,3 +108,11 @@ word/tag suggestions and optional explicitly requested local AI should surface
 related destinations; never require browsing the whole topic tree. Keep free Sky
 placement, Later, canonical notes and loss-resistant Undo. The selected annotated
 image is exec-babbbfc9-9e65-4a61-a283-9fc52227da6a.png from this chat.
+
+## October 5, 2026 — autonomous continuation and installation boundary
+
+Nate authorized merging ready reviews and completing the next core implementation
+set while away. PRs #39 and #41 are merged into main. Sky session Undo/Redo is the
+next review in work/osat-core-improvements on codex/sky-history-20261005, preview
+5232. Keep installed apps/data untouched; Nate will request installation later.
+The native Mac testing pause continues. Preserve the selected guided sorter design.
