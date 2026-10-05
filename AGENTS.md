@@ -48,3 +48,63 @@ motion. The review implementation separates the topic overview from focused maps
 keeps Unsorted optional, and makes arrangement explicit with Undo. Preserve note
 identities, relationships and hand-placed geometry; don't automatically arrange
 the workspace. Continue browser review at 127.0.0.1:5232.
+
+## October 4, 2026 — sorting a large Unsorted pile
+
+Nate authorized merging the previous Sky review and building a practical way to
+sort many Unsorted stickies. Keep the current Sky design. Use an optional review
+queue with small batches, search, full sticky reading, explicit multi-select and
+moves to topics or branches. Local word/tag hints are proposals only. Preserve
+canonical notes, writing, relationships and hand-placed geometry. Sorting Undo
+must remain available during the Sky session and preserve later edits and moves.
+No installed-app update or native Mac testing is authorized by this request.
+
+
+## October 4, 2026 — sorting review rejected
+
+Nate rejected the list-and-filing-panel sorting screen as confusing, cluttered,
+wordy and overwhelming. Twenty visible stickies is too many for this experience.
+The goal is a calm, obvious first step for someone who has let thoughts pile up,
+without requiring them to choose among existing topics immediately. Putting a
+sticky freely onto Sky must be an equal option to filing it. Nate suggested a
+visual sorter with five or ten stickies at a time and explicitly asked for
+questions before another implementation. Clarify the opening view, how loose
+groups become topics, and the amount of optional guidance before rebuilding.
+This supersedes the prior sorting UI direction; preserve all existing records.
+
+
+## October 4, 2026 — single-sticky placement mockups
+
+Nate clarified that sorting should start as soon as Unsorted opens, with attention
+on the first sticky. OSAT should surface a related node or branch using the
+sticky's content and workspace context so the user never has to browse every
+topic. When nothing fits, a proposed new node or a free spot on Sky are equally
+valid destinations. He requested visual mockups before implementation. Show a
+calm first step with few words and small batches; avoid the rejected filing form.
+
+
+## October 4, 2026 — combined guided sorting concept
+
+Nate selected a combination of the first and third mockups: a visual tray of five
+stickies with the first mockup's assisted placement. A tray that only offers free
+placement or making a node is insufficient. For the active sticky, OSAT should
+surface the related node or branch and visually show where it would be filed,
+without making the user search topics. Keep attention on one sticky and show the
+nearby notes that make the recommendation understandable. Preserve free Sky
+placement as an alternative. The revised combined mockup is
+`outputs/unsorted-concepts-20261004/04-guided-five-sticky.png`; it is a proposal,
+not an implemented flow or live-AI result.
+
+
+## October 4, 2026 — placement and finding your way back
+
+Nate approved implementing the guided five-sticky concept. After an explicit
+placement, animate the sticky into its destination and fold it upward toward the
+node or branch before showing the next sticky. Reduced motion skips the flight.
+Keep a recent-placement trail and a way to reopen the destination without losing
+the current sticky or batch. Trash is a recoverable choice with Undo. Search belongs
+inside an opened topic or branch rather than on every collapsed node. Immediate
+word/tag suggestions and optional explicitly requested local AI should surface
+related destinations; never require browsing the whole topic tree. Keep free Sky
+placement, Later, canonical notes and loss-resistant Undo. The selected annotated
+image is exec-babbbfc9-9e65-4a61-a283-9fc52227da6a.png from this chat.

@@ -1,5 +1,12 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 5: guided Unsorted placement
+
+Unsorted starts with one active sticky and five in the tray. Related destinations
+appear with nearby notes; placement, free Sky, new topic, Later and Trash require
+explicit actions. Recent destinations reopen without losing the current sticky.
+See `UNSORTED-REVIEW-20261004.md`. Installed apps and data remain preserved.
+
 ## Status
 
 | Phase | What | State |
@@ -10,7 +17,7 @@
 | 3a | One place: the desk, glass sheets, one navigation, Settings sections | Merged (PR #3) |
 | 3b | A calm day: Next ≤ 5 + bring forward (in #3), evening invitation, Undo, See in the Sky | Merged (PR #4) |
 | 4 | Local AI that sets itself up, Ask everywhere, chats in the workspace | Merged (PR #5) |
-| 4b | Conversation model selection and AI memory controls | In review |
+| 4b | Conversation model selection and AI memory controls | Merged (PR #39) |
 | 5 | Your iPhone, step one: capture from the phone, read your notes there | Merged (PR #6) |
 | 6a | Sync: devices stay in step through iCloud (Mac ↔ Mac now, the iPhone app next) | Merged (PR #7) |
 | 6b | The iPhone app | Merged (PR #8) |
@@ -39,7 +46,7 @@
 | 25 | The Stratosphere: a layer above the Sky for bots and scheduled tasks, with Soul and Memory cards (plain .md files) | Planned |
 | 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | Merged (PR #27) |
 | 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Completed continuation: connectors, stacks, focused mind map, tour and navigation; combine/split operations remain planned |
-| 27b | Professional Sky frame and navigator, isolated topic maps, explicit arrangement with Undo, focused writing, recoverable saving, explicit AI note scope and unpack proposals | In review on `codex/core-workflow-20261003`; 488 unit checks pass |
+| 27b | Professional Sky frame and navigator, isolated topic maps, explicit arrangement with Undo, focused writing, recoverable saving, explicit AI note scope and unpack proposals | Merged (PR #39, including PR #40) |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and

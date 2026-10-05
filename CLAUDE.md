@@ -8,7 +8,20 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 4, 2026
+## Resume checkpoint — October 5, 2026: guided Unsorted review
+
+PR #39 (AI controls and previous Sky/core workflow work) is merged into main.
+PR #41 replaces the rejected filing screen with the approved guided five-sticky
+flow: one active sticky, destination preview and nearby notes, explicit placement,
+free Sky placement, Later, recoverable Trash, local hints and opt-in local AI.
+Placement animates unless reduced motion is enabled. Recent destinations reopen
+without losing the current sticky. Closing All stickies now unmounts its inactive
+list while preserving the guided batch. 497 unit checks, build and full local
+browser regression pass. See docs/UNSORTED-REVIEW-20261004.md.
+Nate authorized merging ready work, then the next implementation set. Installed
+apps/data and the native-testing pause remain preserved.
+
+### Previous checkpoint — October 4, 2026
 
 Sky refinement continues on `codex/core-workflow-20261003` in the same isolated
 checkout and PR #40. A persistent topic/branch navigator and quieter workspace

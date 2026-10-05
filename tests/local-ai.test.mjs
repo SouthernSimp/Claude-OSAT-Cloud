@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isLoopbackOrigin, validateLocalChatPayload } from '../src/local-ai.js'
+import { askLocalModel, isLoopbackOrigin, validateLocalChatPayload } from '../src/local-ai.js'
 
 test('local AI accepts loopback origins and validates chat roles', () => {
   assert.equal(isLoopbackOrigin('http://127.0.0.1:5173'), true)
@@ -28,5 +28,23 @@ test('desktop AI lists models and streams through the native bridge', async () =
     const parts = []
     assert.equal(await streamLocalMessage({ model: 'osat:light', messages: [{ role: 'user', content: 'Hello' }], onDelta: (text) => parts.push(text) }), 'Local: Hello')
     assert.deepEqual(parts, ['Local: ', 'Hello'])
+  } finally { globalThis.window = previous }
+})
+
+test('guided sorting uses a local model even when a cloud bot comes first, and never falls back to cloud', async () => {
+  const previous = globalThis.window
+  const cloud = { id: 'cloud:preferred', offline: false }
+  let models = [cloud, { id: 'osat:light', offline: true }]
+  const used = []
+  globalThis.window = { osatLocalAI: {
+    models: async () => ({ models }),
+    chatStream: ({ model }) => { used.push(model); return { done: Promise.resolve('NONE'), cancel: () => {} } },
+  } }
+  try {
+    assert.equal(await askLocalModel([{ role: 'user', content: 'Where does this go?' }]), 'NONE')
+    assert.deepEqual(used, ['osat:light'])
+    models = [cloud]
+    await assert.rejects(askLocalModel([{ role: 'user', content: 'Try again' }]), /Local AI is unavailable/)
+    assert.deepEqual(used, ['osat:light'])
   } finally { globalThis.window = previous }
 })
