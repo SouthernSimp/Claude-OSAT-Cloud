@@ -25,3 +25,19 @@ No scrolling filing form or topic dropdown is part of the new concept direction.
 The displayed example recommendations are design data, not live local-AI results.
 Wait for Nate's visual selection or refinement before changing the sorting UI.
 Preserve canonical records, installed apps and the native-testing pause.
+
+
+## Refined combined concept
+
+Nate requested the first mockup's assisted destination preview combined with the
+third mockup's five-paper tray. He clarified that an unaided choice of free Sky
+placement or a new node was insufficient. The current refined visual target is
+`outputs/unsorted-concepts-20261004/04-guided-five-sticky.png`.
+
+It shows one active note, an automatically surfaced existing branch, a short
+reason and nearby notes, plus a dashed preview of the future placement. The tray
+keeps five thoughts available while attention stays on the first. Unrelated maps
+and the total backlog count are removed from this sorting frame. The proposed
+Place here action would apply the placement and advance to the next sticky with
+Undo; On Sky and Later remain quiet alternatives. Recommendations in the image
+are illustrative. No sorting UI or inference code changed in this exploration.

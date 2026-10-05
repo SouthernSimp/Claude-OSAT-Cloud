@@ -81,3 +81,16 @@ sticky's content and workspace context so the user never has to browse every
 topic. When nothing fits, a proposed new node or a free spot on Sky are equally
 valid destinations. He requested visual mockups before implementation. Show a
 calm first step with few words and small batches; avoid the rejected filing form.
+
+
+## October 4, 2026 — combined guided sorting concept
+
+Nate selected a combination of the first and third mockups: a visual tray of five
+stickies with the first mockup's assisted placement. A tray that only offers free
+placement or making a node is insufficient. For the active sticky, OSAT should
+surface the related node or branch and visually show where it would be filed,
+without making the user search topics. Keep attention on one sticky and show the
+nearby notes that make the recommendation understandable. Preserve free Sky
+placement as an alternative. The revised combined mockup is
+`outputs/unsorted-concepts-20261004/04-guided-five-sticky.png`; it is a proposal,
+not an implemented flow or live-AI result.
