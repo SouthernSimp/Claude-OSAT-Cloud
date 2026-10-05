@@ -1,47 +1,31 @@
-# Sorting a large Unsorted pile — October 4, 2026
+# Guided Unsorted placement — October 5, 2026
 
-The previous Sky review (PR #40) is merged into `codex/osat-ai-model-controls`.
-This sorting pass is on `codex/unsorted-review-20261004`.
+Opening Unsorted starts with one active sticky and a tray of five. A related topic
+or branch appears beside it, with nearby stickies and a preview of the destination.
+Matching tags and words work offline. Ask local AI is an explicit optional action;
+a suggestion never moves anything until Place here is clicked.
 
-Use Sky → Unsorted → Sort stickies in batches in the isolated browser preview at
-http://127.0.0.1:5232/. The existing sticky drawer, topic navigator, and canvas are
-preserved. Sorting does not move the camera or arrange existing notes.
+On Sky, a new topic, Later and recoverable Trash remain available. After placement,
+the sticky flies into its destination and folds upward; reduced motion skips this.
+Recently placed and Open destination let you revisit and search inside that topic
+or branch without losing the current sticky. All stickies opens the optional list.
+Closing that list removes it from the inactive view while keeping the sorting batch.
 
-## Behavior
-
-- A searchable queue shows twenty stickies at a time, with full Markdown reading.
-- Select individual thoughts or the visible batch. Selection clears when changing
-  batches or searching, so hidden selections cannot accidentally move.
-- Choose an existing topic or any nested branch by its full path. Search destinations,
-  or explicitly create a new topic and move the selected stickies there.
-- Local tags and shared words offer possible groups for the current batch. Reviewing
-  one selects the proposed stickies and destination; it does not create or move records.
-  Generic overlap with existing note text is insufficient to recommend a destination.
-  This flow works offline and does not invoke a model.
-- Moves preserve original note IDs, Markdown and relationships. Commit-time checks
-  skip notes already filed, deleted, archived, trashed, day pages and intentionally
-  placed free stickies. Missing destinations do not move notes back to Unsorted.
-- Undo remains available after closing/reopening the drawer during the Sky session.
-  It restores placement fields while preserving later writing, new notes and newer
-  locations. New topics remain after Undo to preserve any work subsequently put in them.
-  Undo history ends when Sky is unmounted or the page reloads.
+Moves preserve original IDs, Markdown and relationships. Commit-time checks skip
+stale selections and missing destinations. Undo restores placement while preserving
+later writing and newer moves; new topics remain available. Sorting history lasts
+until Sky is unmounted or the page reloads.
 
 ## Verification
 
-494 unit checks and the production build pass. New regression coverage exercises a
-200-sticky move, stale selections, missing destinations, unchanged identities/content/
-links/geometry, safe Undo after edits and later moves, and conservative word hints.
-Browser review exercised a twenty-sticky move into Ideas / Research, Undo, search for
-a sticky near the end of an 81-item synthetic queue, new-topic creation, and pagination.
-Narrow-window review at 600×800 confirms equal panel clientWidth and scrollWidth with
-the navigator collapsed. The queue and reader scroll within the existing Sky frame.
+497 unit checks, production build and the full local browser regression pass.
+The browser regression exercises a proposed new topic without creation, explicit
+placement in Project Direction / Questions, destination search while retaining
+the current sticky, Undo after reopening, and closing the optional list.
+Unit checks cover a 200-sticky move, stale selections, missing destinations,
+free placement, recoverable Trash and loss-resistant Undo after edits/moves.
 
-The complete local browser regression passed, including every existing room and
-the Sky import/branch flows. The browser regression also covers review-before-move, nested destination selection,
-and Undo after closing/reopening Unsorted. The previous review's checks were repaired
-for two-step Escape navigation and visible branch menus. Import now focuses the new
-topic after React has received it, fixing hidden imported branches/packed summaries.
-
-No installed app, personal workspace, native Mac tests or real AI inference changed.
-The existing build warns about the large application bundle; code splitting remains
-separate work. Suggestions are deliberately conservative and are not semantic AI sorting.
+Preview: http://127.0.0.1:5232/. Screenshots: test-results/ui/sky-sorting-review.png.
+Installed apps and personal data are preserved. Native Mac testing and real-model
+inference were not performed locally. Word hints are conservative; browser checks
+cannot establish live model quality. The existing large-bundle warning remains.

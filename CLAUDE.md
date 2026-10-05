@@ -8,18 +8,18 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 4, 2026: Unsorted review
+## Resume checkpoint — October 5, 2026: guided Unsorted review
 
-The previous Sky review (PR #40) is merged into `codex/osat-ai-model-controls`.
-New sorting work is on `codex/unsorted-review-20261004` in the isolated 5232 preview.
-Nate authorized merging that review and beginning a practical
-sorting workflow for a large Unsorted pile. The optional drawer now opens a twenty-
-sticky review queue with search, full reading, multi-select, destination paths,
-explicit new-topic creation and local word/tag hints. Suggestions only select a
-review group; moves require a click. Session Undo persists after closing the drawer,
-preserves later writing/moves, and keeps newly created topics. History ends on Sky
-unmount or reload. See `docs/UNSORTED-REVIEW-20261004.md` for checks and limits.
-Installed apps/data and the native-testing pause remain preserved.
+PR #39 (AI controls and previous Sky/core workflow work) is merged into main.
+PR #41 replaces the rejected filing screen with the approved guided five-sticky
+flow: one active sticky, destination preview and nearby notes, explicit placement,
+free Sky placement, Later, recoverable Trash, local hints and opt-in local AI.
+Placement animates unless reduced motion is enabled. Recent destinations reopen
+without losing the current sticky. Closing All stickies now unmounts its inactive
+list while preserving the guided batch. 497 unit checks, build and full local
+browser regression pass. See docs/UNSORTED-REVIEW-20261004.md.
+Nate authorized merging ready work, then the next implementation set. Installed
+apps/data and the native-testing pause remain preserved.
 
 ### Previous checkpoint — October 4, 2026
 
