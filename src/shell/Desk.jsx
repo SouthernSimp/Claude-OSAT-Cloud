@@ -5,6 +5,7 @@ import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
 import { cleanError } from '../assistant/useAi.js'
 import { localDateKey } from '../daily-practice.js'
 import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
+import { same } from '../../shared/store-core.mjs'
 import { ringItems } from '../../shared/ring-model.mjs'
 import { ClipboardOffer } from '../field/ClipboardOffer.jsx'
 import { FieldDesk } from '../field/FieldDesk.jsx'
@@ -119,6 +120,7 @@ export function Desk() {
   const [arrived, setArrived] = useState([])
   // The Sky, above the desk: null (the desk), 'sky', or 'leaving' while it goes.
   const [sky, setSky] = useState(null)
+  const skyHistory = useRef({ past: [], future: [] })
   const [skyTarget, setSkyTarget] = useState(null)
   const skyRef = useRef(null)
   const on = offline.on === true
@@ -400,7 +402,7 @@ export function Desk() {
     else if (view === 'Today') { if (latest.current.sky === 'sky') goDown(); else setVisit((value) => value + 1) }
     else if (ROOMS[view]) open(view, detail, origin)
   }
-  latest.current = { navigate, pops, welcome, tour, line, offline: on, sky, step, ringOn: ringTools.on !== false, dockSide }
+  latest.current = { navigate, pops, welcome, tour, line, offline: on, sky, step, ringOn: ringTools.on !== false, dockSide, prefs }
 
   async function launcher(action, ...args) {
     try {
@@ -540,6 +542,7 @@ export function Desk() {
             ref={skyRef}
             workspace={workspace}
             commit={commit}
+            history={skyHistory}
             navigate={navigate}
             target={skyTarget}
             onClose={goDown}
@@ -550,7 +553,11 @@ export function Desk() {
               const moved = changes(before, after)
               if (!moved.length) return
               moved.forEach(([key, spot]) => place(key, spot))
-              return () => changes(after, before).forEach(([key, spot]) => place(key, spot))
+              return () => {
+                const undo = changes(after, before)
+                if (undo.some(([key]) => !same(latest.current.prefs.places?.[key], after[key]))) return
+                undo.forEach(([key, spot]) => place(key, spot))
+              }
             }}
             onStackSent={(key) => {
               const spot = prefs.places?.[key]

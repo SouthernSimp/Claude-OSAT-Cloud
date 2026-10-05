@@ -1,11 +1,13 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
-## October 5: guided Unsorted placement
+## October 5: guided sorting and Sky history
 
 Unsorted starts with one active sticky and five in the tray. Related destinations
 appear with nearby notes; placement, free Sky, new topic, Later and Trash require
 explicit actions. Recent destinations reopen without losing the current sticky.
-See `UNSORTED-REVIEW-20261004.md`. Installed apps and data remain preserved.
+See `UNSORTED-REVIEW-20261004.md` (merged in PR #41). Sky now has session Undo/Redo
+for moves, connections and arrangement, including after reopening Sky; see
+`SKY-HISTORY-20261005.md`. Installed apps and data remain preserved.
 
 ## Status
 
@@ -47,6 +49,8 @@ See `UNSORTED-REVIEW-20261004.md`. Installed apps and data remain preserved.
 | 26 | The AI in the Sky: the AI knows OSAT and your board, a line in the Sky to ask or say what to sort, Sort Unsorted with the AI, Unsorted and branches fold away | Merged (PR #27) |
 | 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Completed continuation: connectors, stacks, focused mind map, tour and navigation; combine/split operations remain planned |
 | 27b | Professional Sky frame and navigator, isolated topic maps, explicit arrangement with Undo, focused writing, recoverable saving, explicit AI note scope and unpack proposals | Merged (PR #39, including PR #40) |
+| 27c | Guided five-sticky sorting, destination previews, recent placements and recoverable Trash | Merged (PR #41) |
+| 27d | Sky session Undo/Redo for moves, connections, Tidy and Arrange; safe replay after later edits | In review on `codex/sky-history-20261005` |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
@@ -1006,7 +1010,7 @@ Sort Unsorted and folding are the first pieces; what follows is below.
   which nodes belong together** (a suggestion with Move and Dismiss, like Sort Unsorted).
 - The old star/spiderweb idea stays a question: the whiteboard gets a fair try first.
 
-### Phase 27b: Core workflow refinement (in review)
+### Phase 27b: Core workflow refinement (merged in PR #39)
 
 Sky's Unsorted drawer stays outside the camera, and search includes nodes and
 branches. Notes support focused writing and wrapping titles. Failed saves preserve

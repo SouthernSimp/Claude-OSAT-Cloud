@@ -42,9 +42,9 @@ full accessibility compliance or native/AI acceptance.
 
 ## Prioritized remaining fixes
 
-1. **Persistent canvas Undo/Redo.** Arrangement has the existing six-second Undo
-   toast. A history for moves, links and arrangement would make extensive organizing
-   safer and avoid relying on a short-lived notice.
+1. **Canvas Undo/Redo — implemented October 5, in review.** Toolbar history now
+   covers moves, links and arrangement and survives leaving/reopening Sky within
+   the window session. See `SKY-HISTORY-20261005.md` for limits and verification.
 2. **Bulk organization.** Add multi-select and move/group actions so sorting dozens
    of stickies doesn't require repeated one-at-a-time operations.
 3. **Large-map navigation and performance.** Add a minimap or location history,
