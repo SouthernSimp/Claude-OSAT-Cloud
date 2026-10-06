@@ -16,12 +16,12 @@ const bodyOf = (note) => {
 const sayStickies = (count) => `${count} ${count === 1 ? 'sticky' : 'stickies'}`
 const pathOf = (folders, id) => folderPath(folders, id).join(' › ')
 
-/* Sorting Unsorted: one sticky at a time. The sticky on the left; on the right the homes it
-   could go to, best first, each with why and what is in it; the one picked moves with Return.
-   On the Sky, Later and Delete are always one key away, every placement offers Undo, and the
-   queue below shows what is next and how much is left. "Sort them all" asks the AI (or
-   matching words) about the whole pile at once and shows one line per place, in this same
-   screen. Nothing moves until you say so. */
+/* Sort Unsorted: one sticky at a time, under one question, "Where does this sticky go?". The sticky
+   on the left; on the right the places it could go, best first, each with why and what is in it; the
+   one picked moves with Return (the one blue button). Skip for now, Put it on the Sky and Delete are
+   quiet, one key away; every placement offers Undo; "Sticky 2 of 5" counts the sitting. "Suggest homes
+   for all" asks the AI (or matching words) about the whole pile and shows one sentence per place
+   ("Move 3 stickies to Garden"), saying how many have no clear home. Nothing moves until you say so. */
 export function UnsortedSorter({ workspace, notes, actions, history, ai, navigate, start, hidden, onBrowse, onClose }) {
   const [order, setOrder] = useState([])
   const [chosen, setChosen] = useState(false)
@@ -112,7 +112,7 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
     if (!result) { setSay('This sticky or its place changed. Nothing moved.'); return }
     const title = `“${(note.title || 'Untitled').slice(0, 40)}”`
     const where = result.folderId ? pathOf(result.state.folders, result.folderId) : ''
-    const message = kind === 'trash' ? `Deleted ${title}` : where ? `Moved ${title} to ${where}` : `Left ${title} on the Sky`
+    const message = kind === 'trash' ? `Deleted ${title}` : where ? `Moved ${title} to ${where}` : `Put ${title} on the Sky`
     advanceFrom(note.id)
     setPlaced((value) => value + 1)
     setSay(message)
@@ -125,7 +125,7 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
     const id = current.id
     setOrder([...queue.filter((item) => item !== id), id])
     setCurrentId(queue[index + 1] ?? queue[0])
-    setSay('Later: it waits at the end of the pile.')
+    setSay('Skipped for now: it waits at the end.')
   }
 
   function undo() {
@@ -252,54 +252,69 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
 
   keys.current = onKey
   const left = queue.length
-  const progress = placed + left ? Math.round((placed / (placed + left)) * 100) : 100
+  // Counted across this sitting: placing one moves on to "Sticky 2 of 3", not back to "1 of 2".
+  const position = placed + index + 1
   const nextUp = queue.slice(index + 1, index + 6)
 
   return (
     <section className="sorter" ref={root} tabIndex={-1} hidden={hidden} aria-label="Sort Unsorted stickies" onKeyDown={onKey}>
       <header className="sorter-bar">
-        <h2><Stack aria-hidden="true" /> Unsorted</h2>
-        <div className="sorter-progress" title={`${placed} placed this time`}>
-          <span className="sorter-meter" aria-hidden="true"><i style={{ width: `${progress}%` }} /></span>
-          <small>{placed > 0 && <>{placed} placed · </>}{left ? `${left} left` : 'none left'}</small>
-        </div>
+        <h2><Stack aria-hidden="true" /> Sort Unsorted</h2>
+        <p className="sorter-progress" title={placed ? `${placed} placed this time` : undefined}>
+          {view === 'one' && current
+            ? <>Sticky {position} of {placed + left}{chosen && notes.length > left && <span> · picked from {notes.length}</span>}</>
+            : notes.length ? `${sayStickies(notes.length)} in Unsorted` : 'Nothing in Unsorted'}
+        </p>
         <div className="sorter-bar-actions">
           {view === 'one'
-            ? <button type="button" disabled={!left} onClick={() => sortAll()}><Sparkle /> Sort them all</button>
+            ? <button type="button" disabled={!left} onClick={() => sortAll()}><Sparkle /> Suggest homes for all</button>
             : <button type="button" onClick={() => setView('one')}>One at a time</button>}
-          <button type="button" onClick={onBrowse}>All stickies</button>
+          <button type="button" onClick={onBrowse}>See the list</button>
           <button type="button" className="sorter-close" aria-label="Close Unsorted" onClick={onClose}><X /></button>
         </div>
       </header>
 
       {view === 'all' ? (
-        <div className="sorter-review" aria-label="Sort them all">
-          <h3>Sort them all</h3>
+        <div className="sorter-review" aria-label="Suggested homes">
+          <h3>Suggested homes</h3>
           <AiLine state={bulk.state} onAction={(action) => runAction(bulk, action, () => sortAll())}
             line={review?.busy ? `Asking the AI · part ${Math.min((review.done || 0) + 1, review.total)} of ${review.total}${bulk.state.key === 'waking' ? ` · ${bulk.state.line}` : ''}`
               : review?.from === 'ai' ? 'The AI suggested these. Nothing moves until you say so.' : ''} />
-          <div className="sorter-review-actions">
-            {shown.length > 0 && !review?.busy && <button type="button" className="is-primary" onClick={() => acceptGroups(shown)}>Move them all · {sayStickies(total)} <kbd aria-hidden="true">↵</kbd></button>}
-            <button type="button" onClick={() => setView('one')}>Go through them one at a time</button>
-          </div>
+          {review && !review.busy && shown.length > 0 && (
+            <p className="sorter-summary">
+              {total === 1 ? '1 sticky has' : `${total} stickies have`} a suggested home.
+              {left > total && <> The other {left - total === 1 ? 'one has' : `${left - total} have`} no clear home yet and stay in Unsorted.</>}
+              {' '}Nothing moves until you say so.
+            </p>
+          )}
           {review && !review.busy && (shown.length ? (
             <ul className="sorter-groups">
               {shown.map((group) => (
                 <li key={group.key}>
                   <div>
-                    <strong>{group.kind === 'make' ? <>New node: {group.name}</> : pathOf(workspace.folders, group.folderId)}</strong>
-                    <small>{sayStickies(group.noteIds.length)}: {group.noteIds.slice(0, 4).map((id) => `“${byId.get(id)?.title || 'Untitled'}”`).join(', ')}{group.noteIds.length > 4 ? ` and ${group.noteIds.length - 4} more` : ''}</small>
+                    <strong>{group.kind === 'make'
+                      ? <>Make a node “{group.name}” for {sayStickies(group.noteIds.length)}</>
+                      : <>Move {sayStickies(group.noteIds.length)} to {pathOf(workspace.folders, group.folderId)}</>}</strong>
+                    <span className="sorter-group-stickies">
+                      {group.noteIds.slice(0, 5).map((id) => <span key={id} className="sorter-chip" data-paper={byId.get(id)?.color || 'canary'} title={byId.get(id)?.title}>{byId.get(id)?.title || 'Untitled'}</span>)}
+                      {group.noteIds.length > 5 && <small>and {group.noteIds.length - 5} more</small>}
+                    </span>
                   </div>
-                  <button type="button" className="sorter-group-go" onClick={() => acceptGroups([group])}>{group.kind === 'make' ? 'Make it' : 'Move'}</button>
-                  <button type="button" onClick={() => setReview((value) => ({ ...value, groups: value.groups.filter((item) => item.key !== group.key) }))}>Skip</button>
+                  <button type="button" className="sorter-group-go" onClick={() => acceptGroups([group])}>Do it</button>
+                  <button type="button" onClick={() => setReview((value) => ({ ...value, groups: value.groups.filter((item) => item.key !== group.key) }))}>Not this</button>
                 </li>
               ))}
             </ul>
           ) : <p className="sorter-quiet-line">{left ? 'Nothing in the pile looks like it goes together yet. Go through them one at a time instead.' : 'Everything is sorted.'}</p>)}
+          <div className="sorter-review-actions">
+            {shown.length > 0 && !review?.busy && <button type="button" className="is-primary" onClick={() => acceptGroups(shown)}>Do all of these · {sayStickies(total)} <kbd aria-hidden="true">↵</kbd></button>}
+            <button type="button" onClick={() => setView('one')}>One at a time instead</button>
+          </div>
           {review?.more && !review.busy && <p className="sorter-quiet-line">That was the first {MOST}. Run it again for the rest. Anything not listed stays in Unsorted.</p>}
         </div>
       ) : current ? (
         <div className="sorter-stage">
+          <h3 className="sorter-question">Where does this sticky go?</h3>
           <div className="sorter-sticky">
             <article key={current.id} className="sorter-paper" data-paper={current.color || 'canary'}>
               <h3>{current.title || 'Untitled'}</h3>
@@ -309,16 +324,16 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
               <span>{[current.source && `From ${current.source}`, formatRelativeTime(current.createdAt)].filter(Boolean).join(' · ')}</span>
               <button type="button" onClick={() => actions.openNote(current.id)}>Open in Notes <ArrowUpRight /></button>
             </p>
-            <div className="sorter-quiet">
-              <button type="button" onClick={() => place('sky')}>On the Sky <kbd aria-hidden="true">S</kbd></button>
-              <button type="button" onClick={later}>Later <kbd aria-hidden="true">L</kbd></button>
+            <div className="sorter-quiet" aria-label="Or">
+              <button type="button" onClick={later}>Skip for now <kbd aria-hidden="true">L</kbd></button>
+              <button type="button" title="On the Sky’s canvas, in no node" onClick={() => place('sky')}>Put it on the Sky <kbd aria-hidden="true">S</kbd></button>
               <button type="button" onClick={() => place('trash')}>Delete <kbd aria-hidden="true">⌫</kbd></button>
             </div>
           </div>
 
           <div className="sorter-homes">
-            <h3 id="sorter-homes-title">{query.trim() ? `Places matching “${query.trim()}”` : homes.length ? 'Where it could go' : 'No clear home yet'}</h3>
-            {!query.trim() && !homes.length && <p className="sorter-quiet-line">{aiPick?.sky ? 'The AI thinks it can stay free on the Sky.' : 'Leave it on the Sky, find a place, or start a new node.'}</p>}
+            <h4 id="sorter-homes-title">{query.trim() ? `Places matching “${query.trim()}”` : homes.length ? 'Suggested places' : newNode ? 'Suggested: a new node' : 'No suggestion for this one'}</h4>
+            {!query.trim() && !homes.length && !newNode && <p className="sorter-quiet-line">{aiPick?.sky ? 'The AI thinks it can stay free on the Sky.' : 'Search for a node or branch below, or make a new node.'}</p>}
             <div className="sorter-list" role="listbox" aria-labelledby="sorter-homes-title" aria-activedescendant={row ? `sorter-row-${selected}` : undefined}>
               {rows.map((item, at) => item.kind === 'make' ? (
                 <div key="make" id={`sorter-row-${at}`} role="option" aria-selected={selected === at} className="sorter-row is-new" onClick={() => { setPick(at); nameField.current?.focus() }}>
@@ -344,11 +359,11 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
             </div>
             <label className="sorter-find">
               <MagnifyingGlass aria-hidden="true" />
-              <input ref={findField} value={query} placeholder="Another place…" aria-label="Find another node or branch" onChange={(event) => { setQuery(event.target.value); setPick(null) }} />
+              <input ref={findField} value={query} placeholder="Search for a node or branch…" aria-label="Find another node or branch" onChange={(event) => { setQuery(event.target.value); setPick(null) }} />
               <kbd aria-hidden="true">F</kbd>
             </label>
             <button type="button" className="is-primary sorter-go" disabled={row && !ready} onClick={() => place('home')}>
-              <span>{!row ? 'Leave it on the Sky' : row.kind === 'make' ? (row.name.trim() ? `Make the node “${row.name.trim()}”` : 'Name the new node') : `Move to ${row.path.replaceAll(' / ', ' › ')}`}</span>
+              <span>{!row ? 'Put it on the Sky' : row.kind === 'make' ? (row.name.trim() ? `Make the node “${row.name.trim()}”` : 'Name the new node') : `Move to ${row.path.replaceAll(' / ', ' › ')}`}</span>
               <kbd aria-hidden="true">↵</kbd>
             </button>
             <AiLine state={one.state} onAsk={askAi} onAction={(action) => runAction(one, action, askAi)} />
@@ -376,10 +391,12 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
             {left - index - 1 > nextUp.length && <small>and {left - index - 1 - nextUp.length} more</small>}
           </div>
         )}
-        <p className="sorter-keys" aria-hidden="true">
+        {/* The keys that matter; the rest are in the tooltip. */}
+        <p className="sorter-keys" aria-hidden="true"
+          title={view === 'one' ? `↵ Move · ↑↓${numbered > 0 ? ` or ${numbered > 1 ? `1–${Math.min(9, numbered)}` : '1'}` : ''} Choose · N New node · F Search · L Skip for now · S Put it on the Sky · ⌫ Delete · A Ask the AI · ←→ Look through · ⌘Z Undo · Esc Close` : undefined}>
           {view === 'one'
-            ? <><b>↵</b> Move · <b>↑↓</b>{numbered > 0 && <> or <b>{numbered > 1 ? `1–${Math.min(9, numbered)}` : '1'}</b></>} Choose · <b>N</b> New node · <b>F</b> Find · <b>S</b> On the Sky · <b>L</b> Later · <b>⌫</b> Delete · <b>A</b> Ask the AI · <b>←→</b> Look through · <b>⌘Z</b> Undo · <b>Esc</b> Close</>
-            : <><b>↵</b> Move them all · <b>⌘Z</b> Undo · <b>Esc</b> One at a time</>}
+            ? <><b>↵</b> Move · <b>↑↓</b> Choose · <b>L</b> Skip · <b>⌘Z</b> Undo · <b>Esc</b> Close</>
+            : <><b>↵</b> Do all of these · <b>⌘Z</b> Undo · <b>Esc</b> One at a time</>}
         </p>
         <p className="sorter-say" role="status" aria-live="polite">{say}</p>
       </footer>

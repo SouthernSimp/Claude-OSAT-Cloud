@@ -8,167 +8,21 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 6, 2026: Unsorted sorting redone (in review)
+## Resume checkpoint — October 6, 2026
 
-Branch `claude/unsorted-sorting-redo` (draft PR #49, from main; main with PRs #47 and #48 merged in) rebuilds the Sky's Unsorted sorter:
-one sticky, its likely homes as a ranked list with plain reasons, one Move on Return, keys for
-everything, a Next up strip and honest progress, and "Sort them all" (the old Sort Unsorted from
-the Ask card) inside the same screen with one Undo. It also fixes the AI saying nothing:
-`src/assistant/ai-state.js` speaks every state (not set up, downloading, paused, offline,
-resting, waking, slow, failed) with a way forward, and words answer when the AI can't.
-Checked: unit tests, build, `npm run test:ui`, and `node tests/ui/sorting.mjs` (headless
-screenshots of each faked AI state in test-results/ui/sorting/). Not checked: the real Mac app
-and a real model (all testing stays headless; see the PR's Mac checklist). Awaiting Nate's "merge".
-
-### Also — October 6, 2026: screenshots from the launcher (merged, PR #48)
-
-PR #48 (merged) on `claude/screenshots-and-recording` (Phase 13g): the ring, the quick search, a key each and Settings →
-Launcher → Screenshots drive CleanShot X through its URL commands when it is installed (CleanShot 5.0.1 is on
-Nate's Mac); without it the Mac's own `screencapture` takes area / window / full-screen shots. Recent captures from
-CleanShot's history folder are opt-in. Tested headlessly only (unit tests with a stand-in opener, build, test:ui);
-the live trial is in the PR's Mac checklist for Nate. Recording made in OSAT is researched in docs/BACKLOG.md and
-proposed as Phase 29. Another agent is reworking the launcher into one bar (`claude/phase-13c-one-bar`); this PR
-kept its changes in new files where it could.
-
-### Also — October 7, 2026: Phase 13c, one bar (merged, PR #47)
-
-Branch `claude/phase-13c-one-bar` (from origin/main), merged as PR #47. The quick search and the quick chat are one
-quick bar: ⌘⇧Space opens it, ⌥⇧Space opens it on Ask; Return opens the top hit, ⌘Return asks (the chat streams in
-the same window, `LocalAssistant compact` inside the bar), ⌥Return saves a sticky to Unsorted (source "Quick bar");
-"clipboard" / "sticky" / "ask" and every room or Settings page are commands from `src/lib/find.js` (shared with ⌘K).
-`desktop/quick-chat.cjs` and `src/surfaces/QuickChat.jsx` are gone; `osatChat.show` (Pop out) now opens the bar.
-Clipboard pictures show a capped thumbnail and drag out (`search:drag-clip`); the bar is draggable and remembers
-`barSpot`. Dock bug: every `setVisibleOnAllWorkspaces` passes `skipTransformProcessType` (tests/desk.test.mjs guards it).
-Checked: npm test, build, test:ui (headless); CI green (Linux e2e and the Mac DMG). The e2e's iPhone-copy check
-waits only 2.6 s and any desk save within 2 s pushes the copy later, so the bar's ⌥Return check runs after it. **New rule (Oct 7): all testing headless on Nate's Mac** — no launching Electron or packaged builds,
-no osascript/UI scripting, computer-use, `open`, or global shortcuts; native checks go to CI's Mac job and the PR's
-checklist. The Dock bug could not be reproduced (it needs the Dock set to hide); Nate confirms on the CI DMG.
-Next: docs/BACKLOG.md (Raycast gap section, then #4).
-
-### Previous checkpoint — October 6, 2026: update button shipped
-
-Source of truth: `/Users/nate/Desktop/Projects/OSAT V2/work/osat-core-improvements`
-(the old "OSAT Field copy" folder is stale; ignore it). Merged today: PR #44 (midnight
-test flake, roadmap, docs/BACKLOG.md) and PR #45 (Settings → About → Check for updates;
-every merge to main is published as release `v0.1.<run>` with a zip + checksum; CI no
-longer cancels Mac builds of main). Nate installed build 0.1.139 by hand, then updated with the
-button and his notes were all still there (verified Oct 6). PR #46 (Ask says when it left
-out old messages) is merged; no PRs are open. The app is still ad-hoc signed, so macOS may
-re-ask permissions after an update (Developer ID signing is backlog #6, on hold: it needs
-the paid $99/year Apple program, which Nate does not have).
-Real-model check (Gemma 4 Balanced): Notes AI answers well and ignores injected text.
-Next: follow docs/BACKLOG.md (every new idea gets a rank there the same day): Notes AI
-"you" wording (#4), then Sky → Notes → AI navigation and finding saved AI replies (#7, #8).
-
-### Previous checkpoint — October 5, 2026: Sky history
-
-PR #39 (AI controls and earlier core/Sky work) and PR #41 (guided five-sticky
-sorting) are merged into main. The next implementation is on
-codex/sky-history-20261005 in work/osat-core-improvements, preview port 5232.
-Sky has toolbar Undo/Redo and canvas keyboard shortcuts for existing record
-moves, connections, Tidy and Arrange. The last 100 changes survive leaving and
-reopening Sky within the window session. Writing remains untouched; changed
-placements/connections, missing/trashed records and hierarchy cycles are skipped.
-Partial Undo only makes Redo for restored fields. Text inputs retain text Undo.
-Guided sorting retains its own Undo; creation/import/deletion keep their existing
-workflows. History ends on reload/quit. 501 unit checks, build and browser regression
-pass. See docs/SKY-HISTORY-20261005.md for behavior, verification and limits.
-Completed changes are committed/pushed for review. Nate authorized merging the
-ready prior reviews then another implementation set; installation remains for his
-later request. Installed apps/data and the local native-testing pause are preserved.
-
-### Previous checkpoint — October 4, 2026
-
-Sky refinement continues on `codex/core-workflow-20261003` in the same isolated
-checkout and PR #40. A persistent topic/branch navigator and quieter workspace
-frame replace the floating toolbar. The overview keeps topics collapsed; focused
-maps isolate one topic, and large topics start with folded branch summaries.
-Search opens the correct path and centers the result. New sticky respects the
-focused topic. Arrange lays out only topic anchors in a grid, with loss-resistant
-Undo; it preserves nested offsets, notes, relationships and ranks.
-
-Validation: 488 unit checks and production build passed. Browser checks covered
-capture/reload/search, topic and branch navigation, Unsorted filtering without
-camera movement, arrangement, and a narrow window. Light/dark styles were checked;
-the preview's original Auto appearance is restored. Installed apps remain untouched.
-See `docs/SKY-REVIEW-20261004.md` for remaining work and evidence limits.
-
-### Previous checkpoint — October 3, 2026
-
-Core workflow improvements are on `codex/core-workflow-20261003`, based on
-`codex/osat-ai-model-controls` (PR #39), in the isolated checkout
-`/Users/nate/Desktop/Projects/OSAT V2/work/osat-core-improvements`.
-Browser review is running at http://127.0.0.1:5232/ with synthetic preview records.
-Sky has a dismissible/searchable Unsorted drawer, topic/branch/note search,
-readable topic focus, distinct topic surfaces, and explicit example creation.
-Notes have wrapping titles, focused writing, save status, and permanent-trash
-confirmation. Idle capture stays behind open rooms; ⌘K still summons it.
-Rejected saves retain pending edits; a temporary validated journal restores them
-after reload and offers retry/export. Browser acknowledgments wait for IndexedDB.
-AI conversations retain workspace/topic/no-notes scope. Focused context comes
-before the Unsorted summary; AI unpack is an editable proposal with explicit
-acceptance and Undo that keeps subsequently edited notes.
-
-Local validation: 484 unit checks, Vite build, browser writing/checkbox/reload
-recovery, drawer filtering/camera stability, branch search and 600px responsive
-checks. See `docs/CORE-WORKFLOW-20261003.md` for details and acceptance limits.
-No native application tests, installed-app changes, real inference, or Laya
-installation were performed. Merge/install remain for Nate after review.
-
-### Previous checkpoint — October 2, 2026
-
-Continue the AI controls review from `codex/osat-ai-model-controls`. The verified
-continuation checkout is
-`/Users/nate/Documents/Codex/2026-09-30/referenced-chatgpt-conversation-this-is-an/work/osat-continuation`.
-This is the source corresponding to the current installed OSAT; the old V2 folder
-is a separate prototype. `AGENTS.md` records Nate's accepted model-management decisions.
-
-Phase 4b adds per-chat model choice/reply attribution (schema 11), sequential
-install-all downloads, startup loading off by default, explicit load/unload and
-session retention, native memory/reload-cost review, and Free AI memory in Ask,
-the floating chat, and the menu bar. Manual unload blocks background reload;
-queued/running jobs and questions arriving during confirmation stay protected.
-`npm run test:ai-models` exercises isolated windows with practice inference.
-`npx electron scripts/ai-memory-check.cjs /absolute/path/to/catalog-model.gguf`
-checks real inference/unload/reload without opening notes or downloading a model.
-The installed `/Applications/OSAT.app` and its workspace have not been upgraded.
-Merge and install remain for Nate's instruction after review.
-Validation completed: 468 unit checks and the Vite build passed; the existing
-Electron regression and isolated three-model UI/persistence flow passed; the
-downloaded Balanced model answered, exited on unload, and reloaded on the next
-question through Metal. All-three simultaneous real inference was not tested.
-Nate then requested no more Mac application tests on his computer. Continue with
-code-only checks or CI unless he explicitly asks for native testing again.
-The Apple Silicon DMG is saved locally at
-`/Users/nate/Downloads/OSAT-AI-model-controls-2026-10-02-arm64.dmg`.
-The shared node_modules symlink caused dependency omissions in electron-builder;
-the local package uses complete production dependencies from installed OSAT
-(the unchanged node-llama-cpp 3.21.1) with this branch's desktop/shared/built UI.
-Packaging in the cloud-backed Documents folder added signing-disallowed Finder
-attributes, so the complete bundle was copied without attributes to /private/tmp,
-ad-hoc signed with the existing entitlements, and placed in a DMG with an Applications
-shortcut. Static signature/content and final copy checks passed. This package was
-not launched after Nate's request to stop native tests, and has not been installed.
-
-### Consolidation checkpoint — September 30, 2026
-
-Continue from `codex/finish-claude-osat` in `SouthernSimp/Claude-OSAT-Cloud`.
-The active Claude source is `/Users/nate/Desktop/OSAT Field copy`; the separate
-`Desktop/Projects/OSAT V2` copy is not this repository. Original worktrees and local edits
-were preserved before consolidation, with recovery refs under `recovery/2026-09-30/`.
-
-Combined: PR #34 connectors, desk stacks and focused mind map; its uncommitted first-run
-tour; uncommitted Raycast-style Settings and Phase 13b; PR #35 Desktop tidy; PR #36
-Mac Calendar and Reminders. Finished the top Sky entry, all-tools menu, native emoji picker,
-Desktop shelf/Find tidy entries and Mac privacy usage strings. Quick search cancels pending
-copy-dismiss timers when someone keeps using it. Native calendar writes report failed saves.
-Nate explicitly authorized finishing and merging. Earlier PRs #29, #30, #32 and #33 are merged.
-
-Paused Projects, tags/date words and Stratosphere prototypes remain separately preserved;
-they are not part of this continuation. Later Phase 27 combine/split operations, “Make a folder
-for this node”, and the remaining Mail/Messages connectors remain future roadmap work.
-
-
+Two draft PRs in `SouthernSimp/Claude-OSAT-Cloud`, stacked:
+- [#51](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/51) `claude/ring-paste-ask-fixes` (on main):
+  the quick bar, Ask, clipboard and ring over other apps (`app.show()` while a panel shows, `app.hide()` after),
+  right-click for actions, drag a copy from its preview, Copy text from the screen without CleanShot
+  (`copyText` in `desktop/launcher/capture.cjs`: screencapture to a temp file → `extractText` → clipboard),
+  Ask's model menu solid (its rule lives in assistant.css: Ask's CSS loads after glass.css) and on top.
+- [#52](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/52) `claude/unsorted-sorter-calm` (base: #51):
+  Sort Unsorted made easy to read (`src/sky/UnsortedSorter.jsx`).
+Merge #51 first, then #52 (retarget it to main). Both await Nate's "merge".
+Nate's Mac had 0.1.139 (its updater couldn't clear `updates/previous`, fixed by #50); it was replaced with
+a local build of #52 as 0.1.171 (built in /private/tmp after a fresh `npm ci`: a symlinked node_modules
+leaves the AI engine's dependencies out of app.asar), and every old copy and DMG was moved to the Trash. Next: Phase 27's connectors, selection/bundling,
+focused node editing (see the roadmap).
 
 ## Working with Nate
 

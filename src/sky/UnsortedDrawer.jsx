@@ -4,7 +4,7 @@ import { searchNotes } from '../notes-model.js'
 import { UnsortedSorter } from './UnsortedSorter.jsx'
 import { StickyList } from './Piles.jsx'
 
-/* Unsorted in the Sky: the sorter, and "All stickies", the whole pile as a list to search and
+/* Unsorted in the Sky: the sorter, and "See the list", the whole pile as a list to search and
    pick a few from. `start` asks the sorter to begin somewhere ({ target, mode, at }). */
 export function UnsortedDrawer({ workspace, notes, actions, history, ai, navigate, start, active, onClose }) {
   const [browsing, setBrowsing] = useState(false)

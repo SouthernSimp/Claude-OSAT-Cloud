@@ -16,14 +16,14 @@
 .sorter-bar { display: flex; align-items: center; gap: 18px; min-width: 0; padding: 12px 24px; background: var(--surface-raised); border-bottom: 1px solid var(--line-soft); }
 .sorter-bar h2 { display: flex; align-items: center; gap: 8px; margin: 0; font: 600 var(--t-lg)/1.2 var(--font); }
 .sorter-bar h2 svg { width: 18px; height: 18px; color: var(--accent); }
-.sorter-progress { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--muted); font-size: var(--t-sm); white-space: nowrap; }
-.sorter-meter { flex: none; width: 120px; height: 6px; border-radius: var(--r-full); background: var(--surface-sunken); overflow: hidden; }
-.sorter-meter i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width .3s ease; }
+.sorter-progress { min-width: 0; margin: 0; color: var(--muted); font-size: var(--t-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sorter-bar-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .sorter-bar-actions button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: var(--r-sm); color: var(--muted); font-size: var(--t-sm); white-space: nowrap; }
 .sorter-bar-actions button:hover:not(:disabled) { background: var(--surface-hover); color: var(--ink); }
 
-.sorter-stage { min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 540px); justify-content: center; align-content: start; gap: 40px; padding: clamp(24px, 6vh, 64px) 24px 24px; }
+.sorter-stage { min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 540px); justify-content: center; align-content: start; gap: 22px 40px; padding: clamp(24px, 6vh, 64px) 24px 24px; }
+/* The one question the screen asks. */
+.sorter-question { grid-column: 1 / -1; margin: 0; font: 600 var(--t-xl)/1.3 var(--font); }
 .sorter-sticky { min-width: 0; }
 .sorter-paper { min-height: 200px; max-height: min(52vh, 440px); overflow: auto; padding: 22px 22px 24px; border-radius: var(--r-sm) var(--r-sm) var(--r-xl) var(--r-sm); background: color-mix(in srgb, var(--paper-bg, var(--paper-canary)) 78%, white); color: var(--paper-ink); border: 1px solid var(--paper-edge); box-shadow: var(--lift-rest); animation: sorter-in .22s ease-out; }
 .sorter-paper h3 { margin: 0; color: var(--paper-ink); font: 600 var(--t-xl)/1.35 var(--font); overflow-wrap: anywhere; }
@@ -35,12 +35,14 @@
 .sorter-meta button { display: inline-flex; align-items: center; gap: 4px; flex: none; }
 .sorter-meta button:hover { color: var(--accent); }
 .sorter-meta svg { width: 12px; height: 12px; }
-.sorter-quiet { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; }
-.sorter-quiet button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-raised); font-size: var(--t-sm); }
-.sorter-quiet button:hover { border-color: var(--line-strong); background: var(--surface-hover); }
+/* Skip for now, Put it on the Sky, Delete: quiet words, so the blue button is the one thing that stands out. */
+.sorter-quiet { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 14px; }
+.sorter-quiet button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; color: var(--muted); font-size: var(--t-sm); }
+.sorter-quiet button:hover { color: var(--ink); }
+.sorter-quiet kbd { min-width: 0; padding: 0 4px; border-color: var(--line-soft); background: transparent; }
 
 .sorter-homes { min-width: 0; display: grid; gap: 10px; align-content: start; }
-.sorter-homes h3 { margin: 0; color: var(--muted); font: 600 var(--t-sm)/1.3 var(--font); }
+.sorter-homes h4 { margin: 0; color: var(--muted); font: 600 var(--t-sm)/1.3 var(--font); }
 .sorter-list { display: grid; gap: 6px; }
 .sorter-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-raised); cursor: pointer; }
 .sorter-row:hover { border-color: var(--line-strong); }
@@ -59,20 +61,25 @@
 .sorter-ai { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 4px 0 0; color: var(--muted); font-size: var(--t-xs); line-height: 1.5; }
 .sorter-ai > span { flex: 1 1 220px; min-width: 0; }
 .sorter-ai > svg { color: var(--accent); }
-.sorter-ai button { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--ink); }
-.sorter-ai button:hover { border-color: var(--accent-line); }
+.sorter-ai button { display: inline-flex; align-items: center; gap: 6px; padding: 2px 0; color: var(--accent); font-weight: 600; }
+.sorter-ai button:hover { text-decoration: underline; }
+.sorter-ai kbd { min-width: 0; padding: 0 4px; }
 .sorter-ai[data-state="waking"] > svg, .sorter-ai[data-state="thinking"] > svg { animation: sorter-pulse 1.2s ease-in-out infinite; }
 @keyframes sorter-pulse { 50% { opacity: .35; } }
 
 .sorter-review { min-height: 0; overflow: auto; display: grid; align-content: start; gap: 14px; width: min(780px, 100%); margin: 0 auto; padding: clamp(24px, 6vh, 56px) 24px 24px; }
 .sorter-review h3 { margin: 0; font: 600 var(--t-xl)/1.3 var(--font); }
 .sorter-groups { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sorter-summary { margin: 0; color: var(--ink); font-size: var(--t-sm); line-height: 1.5; }
 .sorter-groups li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-raised); }
 .sorter-groups strong { display: block; font-size: var(--t-md); overflow-wrap: anywhere; }
 .sorter-groups small { display: block; margin-top: 3px; color: var(--muted); font-size: var(--t-xs); line-height: 1.45; overflow-wrap: anywhere; }
 .sorter-groups button { padding: 7px 12px; border-radius: var(--r-sm); color: var(--muted); font-size: var(--t-sm); }
 .sorter-groups button:hover { background: var(--surface-hover); color: var(--ink); }
 .sorter-groups .sorter-group-go { border: 1px solid var(--accent-line); color: var(--accent); }
+.sorter-group-stickies { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.sorter-group-stickies .sorter-chip { display: inline-flex; align-items: center; height: 26px; }
+.sorter-group-stickies small { margin: 0; }
 .sorter-review-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .sorter-review-actions > button:not(.is-primary) { padding: 8px; color: var(--muted); font-size: var(--t-sm); }
 .sorter-review-actions > button:not(.is-primary):hover { color: var(--ink); }
@@ -98,7 +105,7 @@
 }
 @container sorter (max-width: 640px) {
   .sorter-bar { flex-wrap: wrap; gap: 6px 12px; padding: 10px 16px; }
-  .sorter-meter { width: 64px; }
+  .sorter-question { font-size: var(--t-lg); }
   .sorter-stage { grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 16px; }
   .sorter-paper { min-height: 110px; max-height: 200px; padding: 16px 16px 18px; }
   .sorter-paper h3 { font-size: var(--t-lg); }
