@@ -53,7 +53,8 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 13e | A shelf for files on the move (Dropover style): shake or drag to park files, drop them later anywhere | Planned |
 | 13f | Mouse and scrolling (Linear Mouse style): scroll direction per device, smooth scrolling, pointer acceleration. Hard: needs a native helper | Planned |
 | 13g | Screenshots and screen recording from the launcher: CleanShot X when it's on the Mac (every capture, recent captures to drag out), else the Mac's own screenshots | Merged (PR #48) |
-| 13h | Quick bar fixes: the bar, Ask, the clipboard and the ring work over other apps; Paste lands in the right app; right-click for actions; drag from the preview; Copy text from the screen without CleanShot (the Mac's own text recognition); Ask's model menu solid | In review (PR #51) |
+| 13h | Quick bar fixes: the bar, Ask, the clipboard and the ring work over other apps; Paste lands in the right app; right-click for actions; drag from the preview; Copy text from the screen without CleanShot (the Mac's own text recognition); Ask's model menu solid | Merged (PR #51) |
+| 13i | The ring opens with Hyper + middle-click over any app (a small helper on this Mac watches the mouse buttons; Hyper R stays as the backup) | In review (PR #54) |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
@@ -572,10 +573,8 @@ changes the Mac itself.
   the Mac.
 - **Window snapping.** Halves, thirds, two thirds, corners, maximize, centre and Put it back, through the quick
   search and (when turned on) keys that work from any app. It needs Accessibility, asked for once, from a button.
-- **The ring.** Quick tools around the pointer: ⌘ + middle-click inside OSAT, or Hyper R over any app. Not done:
-  ⌘ + middle-click over OTHER apps, because Electron cannot see clicks outside its own windows and a global mouse
-  hook is a native module (a prebuilt binary for Electron, signing and notarizing a third-party file, and a second
-  scary permission). Nate's call whether that is worth it.
+- **The ring.** Quick tools around the pointer: Hyper + middle-click over any app (Phase 13i), Hyper R as the
+  backup, and ⌘ + middle-click inside OSAT.
 - **A movable dock, the Tools menu, resizing widgets.** The dock stands on the left or right edge as well as the
   bottom; Tools shows every tool together with a line saying what it does; widgets grow by their corner.
 - Phase 13b finishes native emoji/symbols, named quicklinks and Settings for the ring's order.
@@ -641,6 +640,26 @@ Nate already owns CleanShot X, so OSAT drives it instead of copying it. Everythi
   OSAT only reads CleanShot's history folder, and only while the switch is on.
 - Code: `shared/capture-model.mjs` (pure: the list, the URLs, names, matching), `desktop/launcher/capture.cjs`,
   `src/views/settings/screenshots.jsx`; tests in `tests/capture.test.mjs`.
+
+### Phase 13i: Hyper + middle-click opens the ring (in review, PR #54)
+Nate's words: open the ring with the Hyper key and the middle mouse button, over any app, instead of a keyboard shortcut.
+- **How it works.** Electron cannot see a click outside its own windows, so OSAT starts one small helper while the ring
+  is on: the Mac's own `osascript` (AppleScript's JavaScript) running AppKit's global mouse monitor for the buttons
+  beyond left and right. It writes a line for each press; OSAT checks the line for the middle button with every Hyper key
+  held (⌃⌥⇧⌘, or ⌃⌥⌘ when Settings says the Hyper key leaves ⇧ out) and then opens the same ring, under the pointer, that
+  Hyper R opens. Nothing new is installed or downloaded, and nothing is added to the app's packaging.
+- **What it can see.** Only mouse button presses and which modifier keys were down. No keys, no text, no screen.
+  A mouse monitor needs no macOS permission, so there is no new permission to grant.
+- **What it can't do.** It only watches: the click still reaches the app under the pointer (in a browser, ⌘ + middle on
+  a link opens that link in a new tab, for instance). Swallowing the click would need a click filter, which needs
+  Input Monitoring and a signed native helper, and was left out on purpose.
+- **Settings → Launcher → The ring.** "Hyper + middle click" has its own switch (on by default) and the ring's key stays
+  there as the backup. If the helper can't listen, the page says "OSAT could not listen for the middle button" and the
+  key still works; turning the switch off and on tries again.
+- **Safe by default.** It starts only on a Mac, only while the ring and its switch are on, and stops with OSAT (and
+  leaves by itself if OSAT dies). Over OSAT's own desk the desk's page opens its own ring (⌘ is part of Hyper), so the
+  helper leaves that click alone and you never get two rings.
+- **Not verified without a Mac with a real middle button:** the click itself (see the pull request's checklist).
 
 ### Phase 29: Recording made in OSAT (proposed)
 Only if CleanShot ever stops being the answer. docs/BACKLOG.md has the research: a small Swift helper using the Mac's

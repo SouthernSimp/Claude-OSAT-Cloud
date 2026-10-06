@@ -47,7 +47,6 @@ next sort, so nothing depends on anyone remembering the chat.
 | UI smoke test flake: "widgets: Esc did not put the tray away" failed once on a pull-request run and passed on rerun (Oct 6). Make the wait explicit so a red check always means a real problem | Oct 6 | Unranked (small, would rank near #2) |
 | Show this ranked list inside OSAT beside the Roadmap (Tools → Roadmap) so Nate reads it in the app | Oct 6 | Unranked |
 | Attach reference images inside a sticky on the desk (Nate's idea): drop a picture onto a sticky, it shows small inside it and opens big | Oct 7 | Unranked (not Phase 13c) |
-| The ring over other apps with ⌘ + middle-click (today only Hyper R works there): needs a global mouse hook, a native helper and Input Monitoring | Oct 7 | Unranked (with 13d's helper) |
 | Settings: Launcher → Quick bar and General both hold the bar's keys; fold them into one place once Nate says which he looks in | Oct 7 | Unranked (small) |
 | The ring's window layouts on the desk's own ring are left out (they move other apps' windows); say so on the ring itself, not only in Settings | Oct 7 | Unranked (small) |
 | A dragged quick bar has no "put it back in the middle"; add one to its ⌘K or the ring's menu if Nate misses it | Oct 7 | Unranked (small) |

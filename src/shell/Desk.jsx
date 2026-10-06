@@ -292,7 +292,8 @@ export function Desk() {
   }, [])
 
   /* ⌘ + middle-click anywhere on the desk opens the ring: quick tools around the pointer. Over other apps the same ring
-     opens with its key (Hyper R, its own small window); Settings → Launcher says which tools it holds. */
+     opens with Hyper + middle-click or its key (Hyper R), in its own small window (desktop/launcher/middle-click.cjs
+     leaves a click on the desk to this page); Settings → Launcher says which tools it holds. */
   useEffect(() => {
     const api = window.osatSearch
     const take = (value) => { if (value?.ring) setRingTools(value.ring) }

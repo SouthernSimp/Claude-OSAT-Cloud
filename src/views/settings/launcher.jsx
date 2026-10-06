@@ -313,8 +313,8 @@ export function WindowLayoutsPage({ page }) {
 
 export function RingPage({ page }) {
   return (
-    <LauncherPage page={page} what="In the Mac app, the ring opens around your pointer from a key, or with ⌘ and a middle-click.">
-      {({ settings, save, status, bridge }) => {
+    <LauncherPage page={page} what="In the Mac app, the ring opens around your pointer with Hyper and a middle-click, or from a key.">
+      {({ settings, save, status, bridge, look }) => {
         const { key } = holders(settings)
         const chosen = ringItems(settings.ring.items).map((item) => item.id)
         const rest = RING_ITEMS.filter((item) => !chosen.includes(item.id))
@@ -326,12 +326,23 @@ export function RingPage({ page }) {
         }
         return (
           <>
-            <Group title="The ring" note="Press its key from any app, or hold ⌘ and middle-click anywhere in OSAT. Over other apps, ⌘ and middle-click would need a helper that watches every click, so the key does that job.">
+            <Group title="The ring" note="Hold Hyper and middle-click anywhere on your Mac, or press its key. Inside OSAT, ⌘ and a middle-click works too.">
               <Row title="Use the ring" hint="Quick tools in a circle around your pointer.">
                 <Switch label="Use the ring" checked={settings.ring.on} onChange={(on) => save({ ring: { on } })} />
               </Row>
               {settings.ring.on && (
-                <Row title="Its key" hint="Works from any app.">
+                <Row
+                  title="Hyper + middle click"
+                  hint={status?.middleClick === 'failed'
+                    ? 'OSAT could not listen for the middle button. Its key below still opens the ring. Turn this off and on to try again.'
+                    : 'Hold Hyper and press the middle button over any app: the ring opens under the pointer. OSAT watches only the mouse buttons, and the click still reaches the app under it.'}
+                  words="middle mouse button click hyper any app"
+                >
+                  <Switch label="Open the ring with Hyper and a middle click" checked={settings.ring.middle !== false} onChange={(middle) => save({ ring: { middle } }).then(() => setTimeout(look, 1500))} />
+                </Row>
+              )}
+              {settings.ring.on && (
+                <Row title="Its key" hint="Another way in, and the backup. Works from any app.">
                   <KeyRecorder value={settings.ring.hotkey} name="the ring" holder={key('ring')} sends={settings.hyper.sends} failed={status?.keysFailed?.includes('ring')} onSet={(hotkey) => save({ ring: { hotkey } })} />
                 </Row>
               )}

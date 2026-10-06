@@ -368,6 +368,15 @@ async function main() {
   await page.getByRole('button', { name: 'Key for Left half' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: turning window keys on did not list the layouts'))
   await page.screenshot({ path: `${OUT}/settings-window-layouts.png` })
   await goTo('The ring')
+  // The ring opens with Hyper + middle click over any app; its switch is on, saves, and the key is still there as the backup.
+  const middleSwitch = page.getByRole('switch', { name: 'Open the ring with Hyper and a middle click' })
+  if (!await middleSwitch.isChecked()) problems.push('settings: the ring’s Hyper + middle click was not on')
+  if (!await page.getByText('Hyper + middle click', { exact: true }).count()) problems.push('settings: the ring did not say Hyper + middle click')
+  await middleSwitch.uncheck()
+  await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.ring.middle === false), null, { timeout: 3000 }).catch(() => problems.push('settings: turning the middle click off was not saved'))
+  await middleSwitch.check()
+  await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.ring.middle === true), null, { timeout: 3000 }).catch(() => problems.push('settings: turning the middle click on was not saved'))
+  if (!await page.getByRole('button', { name: 'Key for The ring' }).count()) problems.push('settings: the ring’s key is gone')
   await page.getByRole('button', { name: 'Move Clipboard earlier' }).click()
   await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.ring.items?.[0] === 'clipboard'), null, { timeout: 3000 }).catch(() => problems.push('settings: the ring’s order was not changed'))
   // With a place free, the ring can take a screenshot tool (CleanShot X is on the stand-in Mac).

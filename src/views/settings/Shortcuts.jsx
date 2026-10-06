@@ -72,7 +72,7 @@ function Table({ launcher }) {
     setKey: (hotkey) => save({ windows: { hotkeys: { [layout.id]: hotkey } } }),
   }))
   const ring = [{
-    id: 'ring', icon: Target, name: 'The ring', hint: 'Quick tools around your pointer', word: null, hotkey: settings.ring.hotkey, on: settings.ring.on, canWord: false,
+    id: 'ring', icon: Target, name: 'The ring', hint: 'Quick tools around your pointer. Hyper + middle click opens it too', word: null, hotkey: settings.ring.hotkey, on: settings.ring.on, canWord: false,
     setKey: (hotkey) => save({ ring: { hotkey } }), setOn: (on) => save({ ring: { on } }),
   }]
   const captures = CAPTURES.filter((item) => shooting?.list.includes(item.id)).map((item) => ({

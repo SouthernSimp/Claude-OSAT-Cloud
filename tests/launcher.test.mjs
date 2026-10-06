@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import os from 'node:os'
@@ -11,7 +12,7 @@ const { createLauncher } = require('../desktop/launcher/index.cjs')
 const repo = fileURLToPath(new URL('..', import.meta.url))
 
 /* Electron's pieces, as stand-ins: enough to run the launcher's wiring end to end. */
-async function setup({ trusted = false, offline = false, taken = () => false, refuse = [], script = null, apps = undefined } = {}) {
+async function setup({ trusted = false, offline = false, taken = () => false, refuse = [], script = null, apps = undefined, helper = null } = {}) {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'osat-launcher-'))
   const calls = { open: [], external: [], showItem: [], sent: [], command: [], exec: [], written: [], notified: [], ring: [] }
   const handlers = new Map()
@@ -29,7 +30,9 @@ async function setup({ trusted = false, offline = false, taken = () => false, re
     setVisibleOnAllWorkspaces() {} setAlwaysOnTop() {} on() {} setBounds() {} getBounds() { return { x: 0, y: 0, width: 700, height: 76 } }
     show() { this.visible = true } hide() { this.visible = false } focus() {} isVisible() { return this.visible } isFocused() { return this.visible } isDestroyed() { return false }
   }
-  const desk = { isDestroyed: () => false, webContents: { send: (...args) => sent.push(['desk', ...args]), id: 'desk' } }
+  // The desk is the window in front only when a test says so (then it fills the screen, and the pointer is on it).
+  const deskFront = { on: false }
+  const desk = { isDestroyed: () => false, isFocused: () => deskFront.on, getBounds: () => ({ x: 0, y: 0, width: 1440, height: 900 }), webContents: { send: (...args) => sent.push(['desk', ...args]), id: 'desk' } }
   const registered = new Map()
   const shortcuts = { register: (key, run) => { if (refuse.includes(key) || registered.has(key)) return false; registered.set(key, run); return true }, unregister: (key) => registered.delete(key) }
   const files = {
@@ -76,11 +79,12 @@ async function setup({ trusted = false, offline = false, taken = () => false, re
     isTaken: (key) => taken(key),
     ...(apps ? { apps } : {}),
     notify: (options) => calls.notified.push(options),
+    ...(helper ? { spawnHelper: helper } : {}),
     ringActions: { sticky: () => calls.ring.push('sticky'), chat: () => calls.ring.push('chat'), desk: () => calls.ring.push('desk'), sky: () => calls.ring.push('sky'), files: () => calls.ring.push('files') },
     exec: async (command, args) => { calls.exec.push([command, ...args]); if (script) return script(command, args); return command === 'lsappinfo' ? 'nothing' : '' },
   })
   const ask = (channel, ...args) => handlers.get(channel).operation(...args)
-  return { dir, launcher, handlers, ask, calls, sent, registered, board, desk, files, done: async () => { launcher.stop(); await rm(dir, { recursive: true, force: true }) } }
+  return { dir, launcher, handlers, ask, calls, sent, registered, board, desk, deskFront, files, done: async () => { launcher.stop(); await rm(dir, { recursive: true, force: true }) } }
 }
 
 test('starting registers a Hyper key for each source and reads what is saved', async () => {
@@ -382,6 +386,100 @@ test('the ring: its key is on by default, its window is made the first time, and
 })
 
 const HYPER = (letter) => `Control+Alt+Shift+Command+${letter}`
+
+/* The middle-click helper, as a process that says what the test tells it to. */
+function fakeHelper() {
+  const made = []
+  const spawn = () => {
+    const child = new EventEmitter()
+    child.stdout = Object.assign(new EventEmitter(), { setEncoding() {} })
+    child.stderr = new EventEmitter()
+    child.kill = () => { child.killed = true }
+    made.push(child)
+    return child
+  }
+  return { spawn, made }
+}
+const FOUR_KEYS = (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20)
+const THREE_KEYS = (1 << 18) | (1 << 19) | (1 << 20)
+
+test('the ring: Hyper + middle-click opens it over other apps, never twice on the desk, and follows Settings', async () => {
+  // Nothing to start it with (a Mac without the helper, or any test): it says so and nothing runs.
+  const bare = await setup()
+  try {
+    await bare.launcher.start()
+    assert.equal((await bare.ask('search:status')).middleClick, 'unavailable')
+  } finally { await bare.done() }
+
+  const helper = fakeHelper()
+  const t = await setup({ helper: helper.spawn })
+  const click = async (flags, button = 2) => { helper.made.at(-1).stdout.emit('data', `click ${button} ${flags}\n`); await wait(120) }
+  try {
+    await t.launcher.start()
+    assert.equal(helper.made.length, 1, 'the ring is on and so is its middle-click: the helper starts with the launcher')
+    assert.equal((await t.ask('search:status')).middleClick, 'starting')
+    helper.made[0].stdout.emit('data', 'ready\n')
+    assert.equal((await t.ask('search:status')).middleClick, 'listening')
+    assert.equal(t.registered.has(HYPER('R')), true, 'Hyper R stays as the backup')
+
+    // Hyper + middle, over another app: the ring, in the same window the key opens.
+    await click(FOUR_KEYS)
+    assert.equal(t.launcher.visible(), true)
+    t.launcher.ring.hide()
+    await click(0)
+    await click(FOUR_KEYS, 3)
+    assert.equal(t.launcher.visible(), false, 'a plain middle click, or another button, does nothing')
+
+    // Over OSAT's own desk the page opens the desk's ring (⌘ is in Hyper): no second one.
+    t.deskFront.on = true
+    await click(FOUR_KEYS)
+    assert.equal(t.launcher.visible(), false)
+    t.deskFront.on = false
+
+    // The Hyper key that leaves ⇧ out: its click is ⌃⌥⌘, read as it is now.
+    await t.ask('search:save-settings', { hyper: { sends: 'three' } })
+    await click(FOUR_KEYS)
+    assert.equal(t.launcher.visible(), false)
+    await click(THREE_KEYS)
+    assert.equal(t.launcher.visible(), true)
+    t.launcher.ring.hide()
+    await t.ask('search:save-settings', { hyper: { sends: 'four' } })
+    assert.equal(helper.made.length, 1, 'no new helper for that')
+
+    // Its own switch, and the ring's: off, the helper goes and a click does nothing; on, a new one starts.
+    const saved = await t.ask('search:save-settings', { ring: { middle: false } })
+    assert.equal(saved.ring.middle, false)
+    assert.equal(helper.made[0].killed, true)
+    assert.equal((await t.ask('search:status')).middleClick, 'off')
+    assert.equal(t.registered.has(HYPER('R')), true, 'the key still works')
+    await t.ask('search:save-settings', { ring: { middle: true } })
+    assert.equal(helper.made.length, 2)
+    await t.ask('search:save-settings', { ring: { on: false } })
+    assert.equal(helper.made[1].killed, true, 'with the ring off there is nothing to open')
+    await t.ask('search:save-settings', { ring: { on: true } })
+    assert.equal(helper.made.length, 3)
+
+    // It can't listen: Settings can say so, and everything else goes on.
+    helper.made[2].emit('exit', 1, null)
+    assert.equal((await t.ask('search:status')).middleClick, 'failed')
+    assert.equal(t.registered.has(HYPER('R')), true)
+    // Off and on is the way to try again; and OSAT quitting stops the helper it has.
+    await t.ask('search:save-settings', { ring: { middle: false } })
+    await t.ask('search:save-settings', { ring: { middle: true } })
+    assert.equal(helper.made.length, 4)
+  } finally {
+    await t.done()
+    assert.equal(helper.made[3].killed, true, 'OSAT quitting stops the helper')
+  }
+})
+
+test('settings from before the middle-click have it on, and a broken value is on too', async () => {
+  const { cleanSettings } = await import('../shared/launcher-model.mjs')
+  assert.equal(cleanSettings({ ring: { on: true, hotkey: null } }).ring.middle, true)
+  assert.equal(cleanSettings({ ring: { middle: 'maybe' } }).ring.middle, true)
+  assert.equal(cleanSettings({ ring: { middle: false } }).ring.middle, false)
+  assert.equal(cleanSettings(undefined).ring.hotkey, 'Control+Alt+Shift+Command+R')
+})
 
 test('an app or a quick link can have a key: it opens the app or the address, or the search with its word waiting', async () => {
   const notes = { name: 'Notes', path: '/Applications/Notes.app' }
