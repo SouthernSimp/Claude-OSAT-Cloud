@@ -108,6 +108,7 @@ export function QuickSearchSurface() {
   }, [bridge])
 
   const said = useCallback((message, ms = 2600) => {
+    setToast((now) => (now?.label ? null : now)) // the "Allow…" note gives way to what is said next
     setNote(message)
     if (ms) window.setTimeout(() => setNote((now) => (now === message ? '' : now)), ms)
   }, [])
