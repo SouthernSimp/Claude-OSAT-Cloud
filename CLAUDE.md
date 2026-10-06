@@ -10,19 +10,17 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 6, 2026
 
-Two draft PRs in `SouthernSimp/Claude-OSAT-Cloud`, stacked:
-- [#51](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/51) `claude/ring-paste-ask-fixes` (on main):
-  the quick bar, Ask, clipboard and ring over other apps (`app.show()` while a panel shows, `app.hide()` after),
-  right-click for actions, drag a copy from its preview, Copy text from the screen without CleanShot
-  (`copyText` in `desktop/launcher/capture.cjs`: screencapture to a temp file → `extractText` → clipboard),
-  Ask's model menu solid (its rule lives in assistant.css: Ask's CSS loads after glass.css) and on top.
-- [#52](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/52) `claude/unsorted-sorter-calm` (base: #51):
-  Sort Unsorted made easy to read (`src/sky/UnsortedSorter.jsx`).
-Merge #51 first, then #52 (retarget it to main). Both await Nate's "merge".
-Nate's Mac had 0.1.139 (its updater couldn't clear `updates/previous`, fixed by #50); it was replaced with
-a local build of #52 as 0.1.171 (built in /private/tmp after a fresh `npm ci`: a symlinked node_modules
-leaves the AI engine's dependencies out of app.asar), and every old copy and DMG was moved to the Trash. Next: Phase 27's connectors, selection/bundling,
-focused node editing (see the roadmap).
+Merged: #51 (the quick bar, Ask, clipboard and ring over other apps, right-click, drag a copy, Copy text from the
+screen) and #52 (Sort Unsorted made easy to read, `src/sky/UnsortedSorter.jsx`).
+One draft PR in `SouthernSimp/Claude-OSAT-Cloud`: `claude/ring-hyper-middle-click` (Phase 13i): Hyper + middle-click opens
+the ring over any app. `desktop/launcher/middle-click.cjs` starts `osascript -l JavaScript` with AppKit's global mouse
+monitor (no permission, no packaging); `shared/ring-click.mjs` holds the rules; `ring.middle` in launcher.json is its switch,
+Hyper R stays as the backup. The click is only observed, never swallowed. It was checked headlessly (the helper starts,
+says ready, stops, and leaves when OSAT is gone) but nobody has pressed a real middle button yet: that is Nate's Mac
+checklist in the PR. Awaits his "merge".
+Nate's Mac has 0.1.171 (a local build of #52, built in /private/tmp after a fresh `npm ci`: a symlinked node_modules leaves
+the AI engine's dependencies out of app.asar); the latest release tag is v0.1.174. Next: Phase 27's connectors,
+selection/bundling, focused node editing (see the roadmap).
 
 ## Working with Nate
 
@@ -170,6 +168,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     a copy came from; `pasteInto` sends ⌘V through System Events, only with Accessibility), `hotkeys.cjs` (the
     launcher's own global keys: a Hyper key per source, window layouts, the ring), `snap.cjs` (window snapping
     through System Events, never OSAT's own windows), `ring-window.cjs` (the ring's panel, made on first use),
+    `middle-click.cjs` (Phase 13i: Hyper + middle-click over other apps; an `osascript` helper running AppKit's global
+    mouse monitor, started only on a Mac while the ring and `ring.middle` are on, stopped at quit; `spawnHelper` comes from
+    main and is injected, so tests never start it; the desk's own page handles a click on the desk; `search:status` reports
+    `middleClick`),
     `capture.cjs` (Phase 13g: screenshots and recording; CleanShot X's `cleanshot://` commands when it is installed,
     else `screencapture`; panels hide first; recent captures read CleanShot's media folder only when turned on; its
     `openExternal` is fenced in tests/under.test.mjs to `CLEANSHOT_URL`, never `upload`).
@@ -209,7 +211,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `files:search` answers `{ rootId, relative, name, kind, size, modifiedAt, match: 'name' | 'inside' }`.
   The Mac CI job runs `scripts/find-check.mjs` against the real Spotlight.
 - `shared/quick-search-model.mjs`, `launcher-model.mjs`, `clipboard-model.mjs`, `clipboard-offer.mjs`, `calc.mjs`,
-  `window-layouts.mjs`, `ring-model.mjs`, `capture-model.mjs` (13g: the captures, CleanShot URLs, file names, which ones
+  `window-layouts.mjs`, `ring-model.mjs`, `ring-click.mjs` (13i: is a click Hyper + middle, what a helper line says), `capture-model.mjs` (13g: the captures, CleanShot URLs, file names, which ones
   this Mac can do, `captures` in launcher.json) — Phase 13's pure rules, shared by main, the panel and the desk: how typed
   words are read (`readTyped`, `readLine`, keywords), how sources become one list of rows (`buildRows`), what Return
   and ⌘K do (`actionsFor`), the clipboard's kinds, limits and groups, "Add to Jordan?" (`offerFor`), the safe
