@@ -45,6 +45,36 @@ next sort, so nothing depends on anyone remembering the chat.
 | Use the DigitalOcean droplet for extra features (Nate, Oct 6, "eventually, idk"). Needs a goal first, e.g. a private sync relay or hosting a bigger model; would have to stay opt-in and keep notes private | Oct 6 | Unranked |
 | UI smoke test flake: "widgets: Esc did not put the tray away" failed once on a pull-request run and passed on rerun (Oct 6). Make the wait explicit so a red check always means a real problem | Oct 6 | Unranked (small, would rank near #2) |
 | Show this ranked list inside OSAT beside the Roadmap (Tools → Roadmap) so Nate reads it in the app | Oct 6 | Unranked |
+| Attach reference images inside a sticky on the desk (Nate's idea): drop a picture onto a sticky, it shows small inside it and opens big | Oct 7 | Unranked (not Phase 13c) |
+| The ring over other apps with ⌘ + middle-click (today only Hyper R works there): needs a global mouse hook, a native helper and Input Monitoring | Oct 7 | Unranked (with 13d's helper) |
+| Settings: Launcher → Quick bar and General both hold the bar's keys; fold them into one place once Nate says which he looks in | Oct 7 | Unranked (small) |
+| The ring's window layouts on the desk's own ring are left out (they move other apps' windows); say so on the ring itself, not only in Settings | Oct 7 | Unranked (small) |
+| A dragged quick bar has no "put it back in the middle"; add one to its ⌘K or the ring's menu if Nate misses it | Oct 7 | Unranked (small) |
+| Old clipboard pictures keep the thumbnail they were saved with (tall ones can be big); new ones are capped. Re-make old ones once at start if it matters | Oct 7 | Unranked (small) |
+
+## Raycast gap (Oct 7)
+
+What Raycast has that OSAT's quick bar doesn't, ranked by how much it would save Nate for how little it costs.
+Researched from Raycast's own pages ([manual](https://manual.raycast.com/llms.txt), [What's new in v2](https://manual.raycast.com/new-in-v2.md),
+[changelog](https://raycast.com/changelog/1-37-0)). "Have" means it already works in OSAT.
+
+| # | Raycast | OSAT today | Cost | Rank |
+|---|---|---|---|---|
+| 1 | Clipboard history: text, links, images, files, colours; pins; search; paste; keep every original format | Have: text, links, emails, phones, numbers, pictures, pins, search, paste, drag out (13c). Missing: copied files and colours, rich text/original formats | Medium (files: read `public.file-url`; formats: keep more pasteboard types) | 1 |
+| 2 | Snippets: a keyword typed in any app expands to saved text ({date}, {clipboard}, {cursor}) | Pinned copies are snippets you paste from the bar; no typing-to-expand | Hard: expanding while typing in other apps needs Input Monitoring and a key-watching helper. Cheap half: a snippet's word in the bar pastes it | 2 (do the cheap half) |
+| 3 | Calculator: sums, units, currency, dates ("days until Christmas"), percentages, natural words | Have: sums and percentages (`2*49`, safe, no eval). Missing: units, currency (needs the internet), dates | Small for units and dates; currency waits while offline | 3 |
+| 4 | Quicklinks with {query}, per-link hotkeys | Have (13b): named quicklinks, {query}, a word and a key each | — | Done |
+| 5 | Window management: halves, thirds, corners, next display, keys | Have: 16 layouts, keys, the bar ("left half"). Missing: move to the next screen, drag-to-edge, gestures | Next display: small. Gestures: Phase 13d | 4 |
+| 6 | Floating notes: one small note that floats over everything | Close: a sticky saved from the bar (⌥Return), stickies on the desk. Missing: a sticky that floats over other apps | Medium: a small always-on-top window per pinned sticky | 5 |
+| 7 | File search with preview and actions | Have: Spotlight, words inside files, filters, big preview, Open / Show in Finder / Copy path / Ask about it / Pin / Delete | — | Done |
+| 8 | Per-command hotkeys and aliases (any command gets a key and a word) | Partly: sources, apps, links, layouts and the ring have words and keys. Missing: rooms and actions (e.g. a key for "Tidy my Desktop") | Small to medium: give lib/find.js actions an optional key in Settings → Shortcuts | 6 |
+| 9 | AI: Quick AI from the bar, AI chat, AI commands | Have (13c): ⌘Return asks from the bar, the chat stays in the same window. Missing: saved prompts as commands ("Summarise what I copied") | Small: a command list of prompts | 7 |
+| 10 | System commands: lock screen, sleep, empty Bin, toggle dark mode, quit apps | Missing | Small each (AppleScript); Empty Bin needs a confirm (calm rule 2) | 8 |
+| 11 | Search menu items of the app you are in; switch windows | Missing | Medium: Accessibility reads menus and windows | 9 |
+| 12 | Extensions store, script commands | Bots (Phase 19) and the connector are OSAT's version | Large | Later |
+
+Done in 13c from this list: the bar asks the AI (⌘Return) and saves a sticky (⌥Return); clipboard pictures show and
+drag out. The calculator already answers sums; nothing new was cheap enough to add without a test of its own.
 
 ## Housekeeping (whenever)
 

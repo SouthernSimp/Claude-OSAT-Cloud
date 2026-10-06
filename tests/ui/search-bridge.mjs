@@ -59,6 +59,7 @@ export function installSearchBridge(defaults) {
     clipboardImage: async (id) => clipboard.find((item) => item.id === id).thumb,
     clipboardText: async (id) => clipboard.find((item) => item.id === id).text,
     mode: async () => true,
+    dragClip: async (id) => { window.__calls.push(['dragClip', id]); return true },
     hide: async () => { window.__calls.push(['hide']); return true },
     // Without Accessibility the Mac app answers that it can't move a window (and touches nothing).
     snap: async (layout) => { window.__calls.push(['snap', layout]); return { ok: false, reason: 'access' } },

@@ -870,7 +870,7 @@
 
 /* ---- Responsive ------------------------------------------------------------- */
 
-/* These follow the room's own size (its pop-out, or the quick chat window), not
+/* These follow the room's own size (its pop-out, or Ask in the quick bar), not
    the screen's. The rail stays beside the chat at Ask's usual 780px. */
 @container room (max-width: 760px) {
   .assistant {
@@ -957,7 +957,7 @@
 }
 .drop-veil svg { width: 28px; height: 28px; }
 
-/* ---- The quick chat: a small window over every app ---------------------------- */
+/* ---- Ask in the quick bar (.qs-chat): a small window over every app ------------ */
 
 html:has(.quick-chat),
 html:has(.quick-chat) body { background: transparent; }

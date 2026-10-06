@@ -47,7 +47,7 @@ test('connections and the desk\'s stacks are named; a line to a sticky in the Bi
 })
 
 test('the guide teaches the mind map, connections, stacks and the Mac tools', () => {
-  for (const words of [/mind map/, /connection/, /never files or moves/, /stack/, /quick search/, /the ring/]) assert.match(OSAT_GUIDE, words)
+  for (const words of [/mind map/, /connection/, /never files or moves/, /stack/, /quick bar/, /the ring/]) assert.match(OSAT_GUIDE, words)
 })
 
 test('an empty workspace says so plainly', () => {

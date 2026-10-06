@@ -39,6 +39,10 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | Merged (PR #19) |
 | 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools menu, a movable dock, resizing | Merged (PR #33) |
 | 13b | Raycast-style Settings sidebar and row search; named quicklinks, app/link shortcuts, three/four-key Hyper, ring ordering, native Emoji & symbols | Completed in continuation |
+| 13c | One bar: the quick search and the quick chat become one quick bar (⌘Return asks, ⌥Return saves a sticky, words are commands); clipboard pictures show and drag out; the bar stays where you drag it; the Mac's Dock stops jumping | In review |
+| 13d | Window gestures beyond the layouts: drag a window to an edge or corner, trackpad swipes (Rectangle / Swish style) | Planned |
+| 13e | A shelf for files on the move (Dropover style): shake or drag to park files, drop them later anywhere | Planned |
+| 13f | Mouse and scrolling (Linear Mouse style): scroll direction per device, smooth scrolling, pointer acceleration. Hard: needs a native helper | Planned |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
@@ -562,6 +566,49 @@ changes the Mac itself.
   bottom; Tools shows every tool together with a line saying what it does; widgets grow by their corner.
 - Phase 13b finishes native emoji/symbols, named quicklinks and Settings for the ring's order.
   The dock at the top remains planned.
+
+### Phase 13c: One bar (in review)
+Spotlight-simple, Raycast-capable: the quick search and the quick chat are now one **quick bar**.
+- **Both old keys open it.** ⌘⇧Space opens the bar; ⌥⇧Space opens it on Ask (the chat you were in). Pop out on
+  the desk and in Ask opens that chat in the bar. The separate quick chat window is gone.
+- **Type, then choose.** Return opens the top hit. ⌘Return asks the AI about what you typed: the answer streams in
+  the same window and is kept as a chat (follow-ups, the model menu and Free AI memory all work there). ⌥Return saves
+  it straight to Unsorted as a sticky (source "Quick bar"). One line at the foot names these keys; the last two rows
+  ("Save as a sticky", "Ask the AI") say the same. Offline, the Ask row says whether it waits (a cloud model) or the
+  AI on this Mac still answers.
+- **Words are commands.** "clipboard" opens the clipboard history, "sticky" or "note" starts a sticky, "ask" starts a
+  question, "left half" moves the window you were in, and every room, Settings page and Offline answer by name.
+  It is the same list as the desk's ⌘K (`src/lib/find.js`), so nothing is defined twice.
+- **Esc backs out one step**: the actions, the sticky or question being written, the words, the tab, Ask, then away.
+- **Polish from Nate's notes.** The bar (and so the clipboard history) can be dragged by its bar, its tabs and its
+  foot, and opens where it was left (`barSpot` in prefs.json). A copied picture shows a small thumbnail in its row
+  (capped to fit 96 × 96, kept in the clipboard's history file). A copy drags out of the history into any app: a
+  picture as its own file, words as a small .txt. Password-manager copies are still never kept, and Pause still works.
+- **The Dock bug.** With the Mac's Dock hiding itself, it slid up and down and the area behind it blinked. Cause:
+  Electron's `setVisibleOnAllWorkspaces` (used by the desk each time it shows, and by the bar and the ring) by default
+  turns OSAT into a Dock-less app and back, and does it by activating the Mac's Dock app for a moment. Every call now
+  passes `skipTransformProcessType`, a test makes sure no new one forgets, and the desk is only re-fitted when its size
+  would really change.
+- **The ring and Settings.** Over other apps the ring's New sticky and Ask stay over that app, in the bar. Its labels
+  and Settings say "Quick bar" and "Ask". Settings → General and Launcher → Quick bar hold both keys.
+
+### Phase 13d: Window gestures (planned)
+Drag a window to a screen edge or corner to snap it, and swipe on the trackpad to move it (Rectangle, Swish).
+**macOS permissions:** Accessibility (already asked for window layouts) to move other apps' windows. Seeing a drag
+of another app's window or a trackpad swipe needs a global event tap: Input Monitoring (System Settings → Privacy &
+Security), which Electron cannot ask for by itself, so a small native helper is needed. Medium-hard.
+
+### Phase 13e: A shelf (planned)
+A Dropover-style shelf: park files while you move between apps (drag them onto a floating shelf, or shake while
+dragging), then drop them all somewhere else. Drag in and out already work in Files (Phase 21), so a shelf panel
+over every app is mostly UI. **macOS permissions:** none new for drag-and-drop; "shake to open" watches drags in
+other apps, which needs Input Monitoring and a native helper (leave it out at first: a key or the ring opens it).
+
+### Phase 13f: Mouse and scrolling (planned, hard)
+Linear Mouse style: reverse scrolling for a mouse but not the trackpad, smooth scrolling, pointer acceleration
+and button remapping. **Hard:** it rewrites every mouse and scroll event system-wide, which needs a native helper
+with a CGEventTap and **Input Monitoring** plus **Accessibility**, signed and running all the time. Electron
+cannot do it; a mistake makes the mouse misbehave everywhere. Only worth it if the free Linear Mouse app falls short.
 
 ### Phase 14: Connectors (step one: your Mac's Calendar and Reminders, in review)
 

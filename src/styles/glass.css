@@ -301,7 +301,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .toast button { padding: 4px 10px; border-radius: 999px; font-weight: 700; color: var(--accent); background: var(--accent-soft); }
 @keyframes toast-in { from { opacity: 0; translate: 0 8px; } }
 
-/* The quick chat and the quick search are their own windows over the Mac's frosting: the same tokens, made see-through. */
+/* The quick bar (and Ask inside it) is its own window over the Mac's frosting: the same tokens, made see-through. */
 .quick-chat,
 .quick-search {
   --page: transparent;

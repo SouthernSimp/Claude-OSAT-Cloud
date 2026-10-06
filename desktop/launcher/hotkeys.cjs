@@ -1,6 +1,6 @@
 /* The launcher's own global shortcuts (Phase 13): a Hyper key for each source, window layouts, the ring.
    Each has an id; `set` gives it a key (or takes it away) and says whether the Mac let it. The desk's,
-   the quick chat's and the quick search's shortcuts stay in main.cjs (`shortcuts`); `isTaken` asks main
+   the quick bar's two shortcuts (⌘⇧Space, and ⌥⇧Space for Ask) stay in main.cjs (`shortcuts`); `isTaken` asks main
    whether a key is one of those, so the two never fight over a key. */
 
 function createHotkeys({ globalShortcut, isTaken = () => false }) {
