@@ -17,9 +17,8 @@ the same window, `LocalAssistant compact` inside the bar), ⌥Return saves a sti
 `desktop/quick-chat.cjs` and `src/surfaces/QuickChat.jsx` are gone; `osatChat.show` (Pop out) now opens the bar.
 Clipboard pictures show a capped thumbnail and drag out (`search:drag-clip`); the bar is draggable and remembers
 `barSpot`. Dock bug: every `setVisibleOnAllWorkspaces` passes `skipTransformProcessType` (tests/desk.test.mjs guards it).
-Checked: npm test, build, test:ui (headless). test:e2e ran twice on Nate's Mac before his new rule (isolated data):
-only "the copy of the notes was not written to iCloud Drive" failed, in the iPhone mirror, not the bar; CI's Linux
-e2e is the judge. **New rule (Oct 7): all testing headless on Nate's Mac** — no launching Electron or packaged builds,
+Checked: npm test, build, test:ui (headless); CI green (Linux e2e and the Mac DMG). The e2e's iPhone-copy check
+waits only 2.6 s and any desk save within 2 s pushes the copy later, so the bar's ⌥Return check runs after it. **New rule (Oct 7): all testing headless on Nate's Mac** — no launching Electron or packaged builds,
 no osascript/UI scripting, computer-use, `open`, or global shortcuts; native checks go to CI's Mac job and the PR's
 checklist. The Dock bug could not be reproduced (it needs the Dock set to hide); Nate confirms on the CI DMG.
 Next: docs/BACKLOG.md (Raycast gap section, then #4).
