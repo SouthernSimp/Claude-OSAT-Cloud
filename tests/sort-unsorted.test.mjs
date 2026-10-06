@@ -52,6 +52,9 @@ test('the question lists the places and the stickies, and stays a few at a time'
   assert.match(words, /new: Cats/)
   const many = space(Array.from({ length: BATCH * 2 + 1 }, (_, index) => sticky(`n${index}`, `Thought ${index}`)), [])
   assert.deepEqual(sortRequests(many).batches.map((batch) => batch.from), [0, BATCH, BATCH * 2])
+  const hundred = space(Array.from({ length: 100 }, (_, index) => sticky(`h${index}`, `Thought ${index}`)), [])
+  assert.equal(unsortedStickies(hundred).length, 100, 'a pile of a hundred is sorted in one go')
+  assert.equal(sortRequests(hundred).batches.length, 5)
   assert.match(sortRequests(many).batches[0].messages.at(-1).content, /\(none yet\)/)
 })
 

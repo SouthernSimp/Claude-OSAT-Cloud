@@ -10,17 +10,18 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 6, 2026
 
-Merged: #51 (the quick bar, Ask, clipboard and ring over other apps, right-click, drag a copy, Copy text from the
-screen) and #52 (Sort Unsorted made easy to read, `src/sky/UnsortedSorter.jsx`).
-One draft PR in `SouthernSimp/Claude-OSAT-Cloud`: [#54](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/54) `claude/ring-hyper-middle-click` (Phase 13i): Hyper + middle-click opens
-the ring over any app. `desktop/launcher/middle-click.cjs` starts `osascript -l JavaScript` with AppKit's global mouse
-monitor (no permission, no packaging); `shared/ring-click.mjs` holds the rules; `ring.middle` in launcher.json is its switch,
-Hyper R stays as the backup. The click is only observed, never swallowed. It was checked headlessly (the helper starts,
-says ready, stops, and leaves when OSAT is gone) but nobody has pressed a real middle button yet: that is Nate's Mac
-checklist in the PR. Awaits his "merge".
+Merged: #51 (quick bar, Ask, clipboard and ring over other apps, right-click, drag a copy, Copy text from the screen),
+#52 (Sort Unsorted made easy to read, `src/sky/UnsortedSorter.jsx`), #53 (edit a sticky in place in the sorter; Settings →
+Shortcuts), #55 (right-click on the desk's Desktop files and shelf icons in `field/FieldDesk.jsx`; Sort them all reads up to
+300 stickies) and #54 (Phase 13i: Hyper + middle-click opens the ring over any app: `desktop/launcher/middle-click.cjs` runs
+`osascript -l JavaScript` with AppKit's global mouse monitor, `shared/ring-click.mjs` holds the rules, `ring.middle` in
+launcher.json is its switch, Hyper R stays as the backup; it was checked headlessly only, a real middle button is on Nate's
+Mac checklist).
 Nate's Mac has 0.1.171 (a local build of #52, built in /private/tmp after a fresh `npm ci`: a symlinked node_modules leaves
-the AI engine's dependencies out of app.asar); the latest release tag is v0.1.174. Next: Phase 27's connectors,
-selection/bundling, focused node editing (see the roadmap).
+the AI engine's dependencies out of app.asar); the latest release tag is v0.1.174.
+Next, in Nate's order: "Ask across everything" (Ask also reads clipboard history, scans and files), then bots and a
+"Record a skill" recorder (record steps in OSAT's own browser, replay as a named button), then Phase 27's connectors
+(first: see both ends of a connection in one view). Nate does not need Mac Calendar polish: Siri covers it.
 
 ## Working with Nate
 
@@ -314,7 +315,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     (`homeOptions` in sort-review.js: the AI's pick, words' matches with a reason and what is in each, places used
     a moment ago, a New node row), "Another place…" (`findPlaces`), one primary Move with Return; S / L / ⌫ / A /
     N / F / ←→ / ⌘Z; the queue is `sortQueue` (Later sends one to the end) with a Next up strip. "Sort them all"
-    shows `sort-unsorted.js`'s groups (`sortRequests` in batches of 20, at most 60, `modelSuggestions` /
+    shows `sort-unsorted.js`'s groups (`sortRequests` in batches of 20, at most 300, one request after another with progress, `modelSuggestions` /
     `wordSuggestions`, `stillToSort`) in the same screen; every move goes through `fileUnsorted` (a node of the
     same name is reused) and one Undo (`undoFiling`, which also removes a node made for it while it is empty;
     Sky's `actions.fileGroups` / `undoUnsorted`, with the log in a ref so a toast's Undo is always the newest).
