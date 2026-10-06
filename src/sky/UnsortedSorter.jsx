@@ -1,220 +1,400 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowCounterClockwise, ArrowUpRight, CaretRight, Check, Folder, MagnifyingGlass, Note, Plus, Sparkle, Stack, Trash, X } from '@phosphor-icons/react'
-import { folderChildren, folderPath, folderSubtree, searchNotes } from '../notes-model.js'
-import { pileOf } from '../nodes-model.js'
-import { edgePath } from '../links-model.js'
+import { ArrowUpRight, Check, MagnifyingGlass, Plus, Sparkle, Stack, X } from '@phosphor-icons/react'
+
+import { actionLabel, localModel } from '../assistant/ai-state.js'
+import { useAiJob } from '../assistant/useAiJob.js'
 import { Markdown } from '../lib/markdown.jsx'
-import { askLocalModel } from '../local-ai.js'
-import { placementMessages, placementPlaces, placementSuggestion, readPlacement } from './sort-review.js'
+import { inputActive, formatRelativeTime } from '../lib/ui.js'
+import { folderPath } from '../notes-model.js'
+import { findPlaces, homeOptions, placementMessages, placementPlaces, readPlacement, sortQueue } from './sort-review.js'
+import { MOST, modelSuggestions, sortRequests, stillToSort, wordSuggestions } from './sort-unsorted.js'
 
-const papers = ['canary', 'mint', 'canary', 'lilac', 'sky']
-const bodyOf = (note) => note.markdown.trim().split('\n')[0] === note.title.trim() ? note.markdown.trim().split('\n').slice(1).join('\n') : note.markdown
+const bodyOf = (note) => {
+  const lines = note.markdown.trim().split('\n')
+  return lines[0] === note.title.trim() ? lines.slice(1).join('\n') : note.markdown
+}
+const sayStickies = (count) => `${count} ${count === 1 ? 'sticky' : 'stickies'}`
+const pathOf = (folders, id) => folderPath(folders, id).join(' › ')
 
-export function UnsortedSorter({ workspace, notes, actions, history, notice, hidden, startIds, onBrowse, onClose }) {
-  const [batchIds, setBatchIds] = useState([])
-  const [activeId, setActiveId] = useState(null)
-  const [later, setLater] = useState(new Set())
-  const [choice, setChoice] = useState(null)
-  const [peek, setPeek] = useState(null)
-  const [findPlace, setFindPlace] = useState(false)
+/* Sorting Unsorted: one sticky at a time. The sticky on the left; on the right the homes it
+   could go to, best first, each with why and what is in it; the one picked moves with Return.
+   On the Sky, Later and Delete are always one key away, every placement offers Undo, and the
+   queue below shows what is next and how much is left. "Sort them all" asks the AI (or
+   matching words) about the whole pile at once and shows one line per place, in this same
+   screen. Nothing moves until you say so. */
+export function UnsortedSorter({ workspace, notes, actions, history, ai, navigate, start, hidden, onBrowse, onClose }) {
+  const [order, setOrder] = useState([])
+  const [chosen, setChosen] = useState(false)
+  const [currentId, setCurrentId] = useState(null)
+  const [pick, setPick] = useState(null)
   const [query, setQuery] = useState('')
-  const [flight, setFlight] = useState(null)
-  const [ai, setAi] = useState(null)
-  const [readNote, setReadNote] = useState(null)
-  const source = useRef(null)
-  const landing = useRef(null)
-  const primary = useRef(null)
-  const request = useRef(null)
-  const motion = useRef(null)
-  const alive = useRef(true)
-  const batch = batchIds.flatMap((id) => notes.find((note) => note.id === id) || [])
-  const remaining = batch.filter((note) => !later.has(note.id))
-  const note = flight?.note || remaining.find((note) => note.id === activeId) || remaining[0]
-  const hint = useMemo(() => placementSuggestion(workspace, note, batch), [workspace, note, batchIds])
-  const selected = flight?.home || (choice && choice.noteId === note?.id ? choice.value : hint)
-  const folder = selected?.kind === 'move' ? workspace.folders.find((item) => item.id === selected.folderId) : null
-  const ancestors = []
-  for (let id = folder?.parentId; id;) { const parent = workspace.folders.find((item) => item.id === id); if (!parent) break; ancestors.unshift(parent); id = parent.parentId }
-  const neighbors = folder ? pileOf(workspace.notes, folder.id).filter((item) => item.id !== note?.id) : []
-  const places = useMemo(() => note ? placementPlaces(workspace, note) : [], [workspace, note])
-  const recent = history.slice(-5).reverse()
-  const scope = peek?.folderId && folderSubtree(workspace.folders, peek.folderId)
-  const inside = scope ? workspace.notes.filter((item) => scope.has(item.folderId) && !item.archived && !item.trashedAt && !item.kind) : []
-  const found = searchNotes(inside, query)
-  const opened = readNote && workspace.notes.find((item) => item.id === readNote)
+  const [names, setNames] = useState({})
+  const [picks, setPicks] = useState({})
+  const [view, setView] = useState('one')
+  const [review, setReview] = useState(null)
+  const [placed, setPlaced] = useState(0)
+  const [say, setSay] = useState('')
+  const root = useRef(null)
+  const findField = useRef(null)
+  const nameField = useRef(null)
+  const latest = useRef(workspace)
+  latest.current = workspace
 
+  const model = localModel(ai?.models)
+  const aiArgs = { status: ai?.status, models: ai?.models, offline: ai?.offline, model }
+  const one = useAiJob(aiArgs)
+  const bulk = useAiJob(aiArgs)
+
+  const queue = useMemo(() => sortQueue(order, notes, { chosen }), [order, notes, chosen])
+  const byId = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes])
+  const current = byId.get(queue.includes(currentId) ? currentId : queue[0]) || null
+  const index = current ? queue.indexOf(current.id) : -1
+  const pile = useMemo(() => queue.map((id) => byId.get(id)), [queue, byId])
+  const recent = useMemo(() => [...new Set(history.slice().reverse().map((entry) => entry.folderId).filter(Boolean))].slice(0, 3), [history])
+  const aiPick = current ? picks[current.id] : null
+  const { homes, newNode } = useMemo(
+    () => homeOptions(workspace, current, { pile, recent, picks: aiPick?.list || [] }),
+    [workspace, current, pile, recent, aiPick],
+  )
+  const found = useMemo(() => (query.trim() ? findPlaces(workspace, query) : []), [workspace, query])
+  const newName = current ? names[current.id] ?? newNode?.name ?? '' : ''
+  const rows = query.trim()
+    ? found.map((place) => ({ kind: 'move', key: `find:${place.folderId}`, folderId: place.folderId, path: place.path, why: '', count: null, peek: [] }))
+    : [...homes.map((home) => ({ kind: 'move', ...home })), { kind: 'make', key: 'make', name: newName, why: newNode?.why || '' }]
+  // What Return does: the row picked, else the first home, else leaving it on the Sky.
+  const defaultPick = query.trim() ? (rows.length ? 0 : null) : homes.length ? 0 : newNode ? rows.length - 1 : null
+  const selected = pick === null ? defaultPick : Math.min(pick, rows.length - 1)
+  const row = selected === null || selected < 0 ? null : rows[selected]
+  const ready = row && !(row.kind === 'make' && !row.name.trim())
+  const numbered = rows.filter((item) => item.kind === 'move').length
+
+  // A new request to sort (a sticky picked on the Sky, the list's chosen few, or "sort them all").
   useEffect(() => {
-    if (!hidden && !batchIds.length && notes.length) setBatchIds(notes.slice(0, 5).map((note) => note.id))
-  }, [hidden, notes, batchIds.length])
+    if (!start) return
+    if (start.ids) { setOrder(start.ids); setChosen(Boolean(start.chosen)) }
+    if (start.ids || start.target) setCurrentId(start.target || start.ids?.[0] || null)
+    if ((start.target || start.mode === 'all') && !start.ids) setChosen(false)
+    setView(start.mode === 'all' ? 'all' : 'one')
+  }, [start?.at]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Sort Unsorted from the Sky's Ask card: the whole pile.
+  useEffect(() => { if (start?.mode === 'all' && !start.ids) sortAll({ whole: true }) }, [start?.at]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Moving to another sticky starts fresh: no half-typed search, no question still out.
+  useEffect(() => { setPick(null); setQuery(''); one.stop() }, [current?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (hidden) one.stop() }, [hidden]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!startIds) return
-    setBatchIds(startIds); setActiveId(null); setLater(new Set()); setChoice(null); setPeek(null); setFindPlace(false); setReadNote(null)
-  }, [startIds])
-  useEffect(() => { request.current?.abort(); setAi(null) }, [note?.id])
+    if (!hidden && !inputActive()) requestAnimationFrame(() => root.current?.focus({ preventScroll: true }))
+  }, [hidden, current?.id, view])
+  // Keys work even when nothing has focus (the button just clicked went away).
+  const keys = useRef(null)
   useEffect(() => {
-    if (hidden) { request.current?.abort(); setAi(null) }
-    else { setPeek(null); setFindPlace(false); setReadNote(null) }
+    if (hidden) return undefined
+    const loose = (event) => { if (document.activeElement === document.body || !document.activeElement) keys.current?.(event) }
+    window.addEventListener('keydown', loose)
+    return () => window.removeEventListener('keydown', loose)
   }, [hidden])
-  useEffect(() => { if (!hidden) requestAnimationFrame(() => primary.current?.focus({ preventScroll: true })) }, [hidden, note?.id])
-  useEffect(() => { alive.current = true; return () => { alive.current = false; request.current?.abort(); motion.current?.cancel() } }, [])
 
-  function nextBatch() {
-    let fresh = notes.filter((item) => !later.has(item.id))
-    if (!fresh.length) { fresh = notes; setLater(new Set()) }
-    setBatchIds(fresh.slice(0, 5).map((item) => item.id)); setActiveId(null); setChoice(null)
-    setPeek(null); setFindPlace(false); setQuery(''); setReadNote(null)
+  function goTo(id) { setCurrentId(id) }
+  function advanceFrom(id) {
+    const at = queue.indexOf(id)
+    setCurrentId(queue[at + 1] ?? queue[at - 1] ?? null)
   }
-  function choose(value) { request.current?.abort(); setAi(null); setChoice({ noteId: note.id, value }); setPeek(null); setFindPlace(false); setQuery(''); setReadNote(null) }
-  function openPlace(folderId, noteId = null) { setPeek({ folderId, noteId }); setQuery(''); setReadNote(noteId); setFindPlace(false) }
-  function defer() {
-    request.current?.abort()
-    setLater((value) => new Set([...value, note.id]))
-    setActiveId(remaining.find((item) => item.id !== note.id)?.id || null)
-    setPeek(null); setFindPlace(false); setReadNote(null)
+
+  function place(kind, chosenRow = row) {
+    if (!current) return
+    const note = current
+    let result
+    if (kind === 'sky') result = actions.fileUnsorted([note.id], null, '', { sky: true })
+    else if (kind === 'trash') result = actions.fileUnsorted([note.id], null, '', { trash: true })
+    else if (!chosenRow) result = actions.fileUnsorted([note.id], null, '', { sky: true })
+    else if (chosenRow.kind === 'make') { if (!chosenRow.name.trim()) return; result = actions.fileUnsorted([note.id], null, chosenRow.name) }
+    else result = actions.fileUnsorted([note.id], chosenRow.folderId)
+    if (!result) { setSay('This sticky or its place changed. Nothing moved.'); return }
+    const title = `“${(note.title || 'Untitled').slice(0, 40)}”`
+    const where = result.folderId ? pathOf(result.state.folders, result.folderId) : ''
+    const message = kind === 'trash' ? `Deleted ${title}` : where ? `Moved ${title} to ${where}` : `Left ${title} on the Sky`
+    advanceFrom(note.id)
+    setPlaced((value) => value + 1)
+    setSay(message)
+    actions.showUndo(message, undo)
   }
-  async function ask() {
-    request.current?.abort()
-    const controller = new AbortController(); request.current = controller
-    setAi({ noteId: note.id, busy: true })
-    // ponytail: bounded local prompt; word ranking puts relevant places first.
-    const candidates = places.slice(0, 60)
-    try {
-      const text = await askLocalModel(placementMessages(note, candidates), { signal: controller.signal })
-      if (controller.signal.aborted) return
-      choose(readPlacement(text, candidates))
-      setAi({ noteId: note.id, message: 'Local AI suggestion. You decide.' })
-    } catch (error) {
-      if (!controller.signal.aborted) setAi({ noteId: note.id, message: String(error.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') })
-    }
+
+  function later() {
+    if (!current) return
+    if (queue.length < 2) { setSay('This is the only one left.'); return }
+    const id = current.id
+    setOrder([...queue.filter((item) => item !== id), id])
+    setCurrentId(queue[index + 1] ?? queue[0])
+    setSay('Later: it waits at the end of the pile.')
   }
-  async function place(kind = 'home') {
-    if (!note || flight) return
-    request.current?.abort()
-    const home = kind === 'home' ? selected : { kind }
-    if (kind === 'home' && (!home || (home.kind === 'make' && !home.name.trim()))) return
-    const from = source.current?.getBoundingClientRect()
-    let to = landing.current?.getBoundingClientRect()
-    if (kind === 'trash') to = source.current?.parentElement.querySelector('[aria-label="Move sticky to Trash"]')?.getBoundingClientRect()
-    const result = actions.fileUnsorted([note.id], home.folderId, home.kind === 'make' ? home.name : '', { sky: kind === 'sky', trash: kind === 'trash' })
-    if (!result) return
-    setFlight({ note, home })
-    setPeek(null); setFindPlace(false); setReadNote(null)
-    if (from && to && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      await new Promise(requestAnimationFrame)
-      if (kind !== 'trash') to = landing.current.getBoundingClientRect()
-      const dx = to.left - from.left, dy = to.top - from.top
-      const scale = Math.min(1, to.width / from.width)
-      try {
-        motion.current = source.current.animate([{ transform: 'translate(0, 0) scale(1)', opacity: 1 }, { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 1 }], { duration: 440, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' })
-        await motion.current.finished
-        motion.current = source.current.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${scale})`, clipPath: 'inset(0 0 0 0)', opacity: 1 }, { transform: `translate(${dx}px, ${dy - (kind === 'home' ? 90 : 0)}px) scale(${scale})`, clipPath: kind === 'home' ? 'inset(0 0 100% 0)' : 'inset(0 0 0 0)', opacity: 0 }], { duration: 320, delay: 160, easing: 'ease-in-out', fill: 'forwards' })
-        await motion.current.finished
-      } catch { /* Closing Sky cancels presentation; the move is already saved. */ }
-    }
-    if (!alive.current) return
-    source.current?.getAnimations().forEach((animation) => animation.cancel())
-    setActiveId(remaining.find((item) => item.id !== note.id)?.id || null)
-    setFlight(null); setChoice(null)
-    requestAnimationFrame(() => primary.current?.focus({ preventScroll: true }))
-  }
+
   function undo() {
     const ids = actions.undoUnsorted() || []
-    if (ids.length) {
-      setBatchIds((value) => [...new Set([ids[0], ...value])].slice(0, 5))
-      setLater((value) => new Set([...value].filter((id) => !ids.includes(id))))
-      setActiveId(ids[0]); setPeek(null); setFindPlace(false); setReadNote(null)
-    }
+    if (!ids.length) { setSay('Nothing to undo here.'); return }
+    setOrder((value) => [...ids, ...value.filter((id) => !ids.includes(id))])
+    setCurrentId(ids[0])
+    setPlaced((value) => Math.max(0, value - ids.length))
+    setView('one')
+    setSay('Undone. It’s back in Unsorted.')
+    actions.showUndo(ids.length > 1 ? `${sayStickies(ids.length)} are back in Unsorted` : 'It’s back in Unsorted', null)
   }
 
-  return <section className="guided-sort" hidden={hidden} aria-label="Sort Unsorted stickies" onKeyDown={(event) => {
-    if (event.key !== 'Escape') return
-    event.stopPropagation()
-    if (peek || findPlace) { setPeek(null); setFindPlace(false); setReadNote(null) } else onClose()
-  }}>
-    <header className="sort-session-bar"><span><Stack /> Unsorted <small>{notes.length} waiting</small></span><div><button type="button" onClick={onBrowse}>All stickies</button><button type="button" aria-label="Close Unsorted" onClick={onClose}><X /></button></div></header>
-    <div className="sort-scene"><div className="sort-stage">
-      {!peek && !findPlace && !flight && note && <SortConnections noteId={note.id} folderId={folder?.id} name={selected?.name} />}
-      {note ? <section className="sort-current" aria-label="Current sticky">
-        <span className="sort-eyebrow">One thought at a time</span>
-        <article className="sort-paper" ref={source} data-sort-box="source" data-paper={note.color || papers[batchIds.indexOf(note.id) % 5] || 'canary'} data-moving={!!flight || undefined}>
-          <h2>{note.title || 'Untitled'}</h2>{bodyOf(note) && <Markdown text={bodyOf(note)} />}
-        </article>
-        <div className="sort-actions">
-          <button ref={primary} type="button" className="is-primary" disabled={!!flight || (!peek && !findPlace && selected?.kind === 'make' && !selected.name.trim())} onClick={() => {
-            if (peek || findPlace) { setPeek(null); setFindPlace(false); setReadNote(null) } else place(selected ? 'home' : 'sky')
-          }}>{peek || findPlace ? 'Back to sorting' : selected ? 'Place here' : 'Place on Sky'}</button>
-          {selected && !peek && !findPlace && <button type="button" disabled={!!flight} onClick={() => place('sky')}>On Sky</button>}
-          <button type="button" disabled={!!flight} onClick={defer}>Later</button>
-          <button type="button" aria-label="Move sticky to Trash" title="Move to Trash · Undo available" disabled={!!flight} onClick={() => place('trash')}><Trash /></button>
-        </div>
-        <div className="sort-current-meta"><span>{batchIds.indexOf(note.id) + 1} of {batchIds.length}</span><button type="button" disabled={!!flight} onClick={() => actions.openNote(note.id)}>Open in Notes <ArrowUpRight /></button></div>
-      </section> : <div className="sort-batch-done"><Check /><h2>{notes.length ? 'A little more space.' : 'All clear.'}</h2><p>{notes.length ? 'Five at a time. The rest can wait.' : 'Every thought has a place.'}</p>{notes.length > 0 && <button type="button" className="is-primary" onClick={nextBatch}>Next five</button>}<button type="button" onClick={onClose}>Back to Sky</button></div>}
+  async function askAi() {
+    if (!current || !one.state.canAsk) return
+    const note = current
+    const candidates = placementPlaces(latest.current, note).slice(0, 60)
+    const out = await one.run((ask) => ask(placementMessages(note, candidates)))
+    if (!out.ok) return
+    const answer = readPlacement(out.result, candidates)
+    if (answer) {
+      setPicks((value) => ({ ...value, [note.id]: { list: [answer] } }))
+      setPick(answer.kind === 'make' ? null : 0)
+      setSay(answer.kind === 'make' ? `The AI suggests a new node, ${answer.name}.` : `The AI suggests ${pathOf(latest.current.folders, answer.folderId)}.`)
+    } else if (/^\W*none\b/i.test(String(out.result).trim())) {
+      setPicks((value) => ({ ...value, [note.id]: { list: [], sky: true } }))
+      setSay('The AI thinks this one can stay free on the Sky.')
+    } else one.fail('The AI’s answer didn’t name a place OSAT knows')
+  }
 
-      <section className="sort-destination" aria-label={peek ? 'Explore placement' : 'Suggested destination'} data-placing={!!flight || undefined}>
-        {peek ? <div className="sort-inspector">
-          <header><div><small>Stored in</small><h3>{folderPath(workspace.folders, peek.folderId).join(' / ')}</h3></div><button type="button" aria-label="Back to current suggestion" onClick={() => { setPeek(null); setReadNote(null) }}><X /></button></header>
-          <label className="sort-search"><MagnifyingGlass /><input aria-label="Search this topic or branch" placeholder="Find a sticky here" value={query} onChange={(event) => { setQuery(event.target.value); setReadNote(null) }} /></label>
-          {!query && <nav aria-label="Branches in this topic">{folderChildren(workspace.folders, peek.folderId).map((child) => <button key={child.id} type="button" onClick={() => openPlace(child.id)}><Folder /> {child.name}<CaretRight /></button>)}</nav>}
-          <div className="sort-inspector-notes">{found.map((item) => <button type="button" key={item.id} aria-pressed={readNote === item.id} onClick={() => setReadNote(item.id)}><Note /><span>{item.title}<small>{folderPath(workspace.folders, item.folderId).join(' / ')}</small></span><CaretRight /></button>)}{!found.length && <p>{query ? 'No stickies match.' : 'No stickies here yet.'}</p>}</div>
-          {opened && <article className="sort-read"><h4>{opened.title}</h4><Markdown text={bodyOf(opened)} /><button type="button" onClick={() => actions.openNote(opened.id)}>Open in Notes <ArrowUpRight /></button></article>}
-          <footer><button type="button" onClick={() => actions.revealPlacement(peek)}>Open on Sky <ArrowUpRight /></button>{note && <button type="button" onClick={() => choose({ kind: 'move', folderId: peek.folderId, why: 'Chosen by you.' })}>Use this place</button>}</footer>
-        </div> : findPlace ? <div className="sort-place-picker">
-          <header><h3>Another place</h3><button type="button" aria-label="Back to current suggestion" onClick={() => setFindPlace(false)}><X /></button></header>
-          <label className="sort-search"><MagnifyingGlass /><input autoFocus aria-label="Find another topic or branch" placeholder="Find a topic or branch" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
-          {places.filter((place) => place.path.toLowerCase().includes(query.toLowerCase())).slice(0, 6).map((place) => <button type="button" key={place.id} onClick={() => choose({ kind: 'move', folderId: place.id, why: 'Chosen by you.' })}><Folder /> {place.path}<CaretRight /></button>)}
-          <button type="button" onClick={() => choose({ kind: 'make', name: (note.tags?.[0] || note.title).slice(0, 80), why: 'A new topic for this thought.' })}><Plus /> New topic</button>
-        </div> : note && <>
-          <div className="sort-match-heading"><span>{flight ? `Placing ${flight.home.kind === 'trash' ? 'in Trash' : flight.home.kind === 'sky' ? 'on Sky' : 'here'}` : selected?.why === 'Chosen by you.' ? 'Your chosen place' : selected ? 'Suggested match' : 'Room for a new thought'}</span><p>{flight?.home.kind === 'trash' ? 'Undo brings it back.' : selected?.why || 'This can stay free on Sky.'}</p></div>
-          <div className="sort-map-preview">
-            {ancestors.length > 0 && <div className="sort-parent-path">{ancestors.map((parent) => <button type="button" disabled={!!flight} data-sort-box="parent" key={parent.id} onClick={() => openPlace(parent.id)}><Folder /><span>{parent.name}</span><CaretRight /></button>)}</div>}
-            <div className="sort-home-column">
-              {folder ? <button type="button" data-sort-box="home" className="sort-home" disabled={!!flight} onClick={() => openPlace(folder.id)}><Folder /><strong>{folder.name}</strong><CaretRight /></button> : selected?.kind === 'make' ? <label data-sort-box="home" className="sort-home is-new"><Plus /><input aria-label="New sorting topic name" maxLength={80} value={selected.name} onChange={(event) => choose({ ...selected, name: event.target.value })} /></label> : <div className="sort-home" data-sort-box="home"><Stack /><strong>{flight?.home.kind === 'trash' ? 'Trash' : 'On Sky'}</strong></div>}
-              <div className="sort-landing" data-sort-box="landing" ref={landing} aria-label="Placement preview"><span>{note.title}</span></div>
-            </div>
-            {folder && <div className="sort-neighbors" aria-label="Nearby stickies">{neighbors.slice(0, 2).map((item) => <button type="button" data-sort-box="neighbor" key={item.id} disabled={!!flight} onClick={() => openPlace(folder.id, item.id)}><Note /><span>{item.title}</span><CaretRight /></button>)}{!neighbors.length && <small>First sticky here</small>}</div>}
+  /* Sort them all: the AI (or matching words) suggests a home for each sticky still to sort,
+     one line per place. */
+  async function sortAll({ whole = false } = {}) {
+    setView('all')
+    const state = latest.current
+    const all = sortQueue(order, notes, { chosen: chosen && !whole })
+    const stickies = all.map((id) => notes.find((note) => note.id === id)).filter(Boolean).slice(0, MOST)
+    const more = all.length > stickies.length
+    if (!stickies.length) { setReview({ groups: [], more: false, from: 'words' }); return }
+    if (!bulk.state.canAsk) { setReview({ groups: wordSuggestions(state, stickies), more, from: 'words' }); return }
+    const { places, batches } = sortRequests(state, stickies)
+    setReview({ groups: [], more, from: 'ai', busy: true, done: 0, total: batches.length })
+    const out = await bulk.run(async (ask) => {
+      const answers = []
+      for (const batch of batches) {
+        answers.push({ from: batch.from, text: await ask(batch.messages) })
+        setReview((value) => (value ? { ...value, done: answers.length } : value))
+      }
+      return answers
+    })
+    if (out.stale) return
+    const groups = out.ok ? modelSuggestions(state, stickies, places, out.result) : wordSuggestions(latest.current, stickies)
+    setReview({ groups, more, from: out.ok ? 'ai' : 'words' })
+  }
+
+  function acceptGroups(groups) {
+    if (!groups.length) return
+    const result = actions.fileGroups(groups)
+    if (!result) { setSay('These stickies changed. Nothing moved.'); return }
+    const [only] = groups
+    const message = groups.length > 1 ? `Sorted ${sayStickies(result.moved.length)}`
+      : only.kind === 'make' ? `Made the node “${only.name}” with ${sayStickies(result.moved.length)}`
+        : `Moved ${sayStickies(result.moved.length)} to ${pathOf(latest.current.folders, only.folderId)}`
+    setPlaced((value) => value + result.moved.length)
+    setReview((value) => (value ? { ...value, groups: value.groups.filter((group) => !groups.includes(group)) } : value))
+    setSay(message)
+    actions.showUndo(message, undo)
+  }
+
+  function runAction(job, action, retry) {
+    if (action === 'setup' || action === 'download') navigate('Settings', { section: 'ai' })
+    else if (action === 'resume') ai?.bridge?.resume?.()
+    else if (action === 'stop') { job.stop(); if (job === bulk) setReview(null); if (job === bulk) setView('one') }
+    else if (action === 'retry') retry()
+  }
+
+  const shown = review ? stillToSort(review.groups, workspace) : []
+  const total = shown.reduce((sum, group) => sum + group.noteIds.length, 0)
+
+  function onKey(event) {
+    const key = event.key
+    const typing = inputActive()
+    if (key === 'Escape') {
+      event.preventDefault(); event.stopPropagation()
+      if (typing) { setQuery(''); root.current?.focus({ preventScroll: true }); return }
+      if (view === 'all') { setView('one'); return }
+      onClose()
+      return
+    }
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && key.toLowerCase() === 'z' && !event.shiftKey && !typing) {
+      event.preventDefault(); event.stopPropagation(); undo(); return
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return
+    if (view === 'all') {
+      if (key === 'Enter' && !typing && !event.target.closest('button') && !review?.busy && shown.length) { event.preventDefault(); acceptGroups(shown) }
+      return
+    }
+    if (!current) return
+    if (key === 'ArrowDown' || key === 'ArrowUp') {
+      if (!rows.length) return
+      event.preventDefault()
+      const from = selected ?? -1
+      setPick(key === 'ArrowDown' ? Math.min(rows.length - 1, from + 1) : Math.max(0, from - 1))
+      return
+    }
+    if (key === 'Enter') {
+      if (event.target.closest('button') && !event.target.classList.contains('sorter-go')) return
+      event.preventDefault()
+      place('home')
+      return
+    }
+    if (typing) return
+    if (key === 'ArrowRight' && queue[index + 1]) { event.preventDefault(); goTo(queue[index + 1]); return }
+    if (key === 'ArrowLeft' && index > 0) { event.preventDefault(); goTo(queue[index - 1]); return }
+    if (/^[1-9]$/.test(key) && Number(key) <= numbered) { event.preventDefault(); setPick(Number(key) - 1); return }
+    const letter = key.toLowerCase()
+    if (letter === 's') { event.preventDefault(); place('sky') }
+    else if (letter === 'l') { event.preventDefault(); later() }
+    else if (key === 'Backspace' || key === 'Delete') { event.preventDefault(); place('trash') }
+    else if (letter === 'a') { event.preventDefault(); askAi() }
+    else if (letter === 'n') { event.preventDefault(); setQuery(''); setPick(homes.length); requestAnimationFrame(() => nameField.current?.focus()) }
+    else if (letter === 'f' || key === '/') { event.preventDefault(); findField.current?.focus() }
+  }
+
+  keys.current = onKey
+  const left = queue.length
+  const progress = placed + left ? Math.round((placed / (placed + left)) * 100) : 100
+  const nextUp = queue.slice(index + 1, index + 6)
+
+  return (
+    <section className="sorter" ref={root} tabIndex={-1} hidden={hidden} aria-label="Sort Unsorted stickies" onKeyDown={onKey}>
+      <header className="sorter-bar">
+        <h2><Stack aria-hidden="true" /> Unsorted</h2>
+        <div className="sorter-progress" title={`${placed} placed this time`}>
+          <span className="sorter-meter" aria-hidden="true"><i style={{ width: `${progress}%` }} /></span>
+          <small>{placed > 0 && <>{placed} placed · </>}{left ? `${left} left` : 'none left'}</small>
+        </div>
+        <div className="sorter-bar-actions">
+          {view === 'one'
+            ? <button type="button" disabled={!left} onClick={() => sortAll()}><Sparkle /> Sort them all</button>
+            : <button type="button" onClick={() => setView('one')}>One at a time</button>}
+          <button type="button" onClick={onBrowse}>All stickies</button>
+          <button type="button" className="sorter-close" aria-label="Close Unsorted" onClick={onClose}><X /></button>
+        </div>
+      </header>
+
+      {view === 'all' ? (
+        <div className="sorter-review" aria-label="Sort them all">
+          <h3>Sort them all</h3>
+          <AiLine state={bulk.state} onAction={(action) => runAction(bulk, action, () => sortAll())}
+            line={review?.busy ? `Asking the AI · part ${Math.min((review.done || 0) + 1, review.total)} of ${review.total}${bulk.state.key === 'waking' ? ` · ${bulk.state.line}` : ''}`
+              : review?.from === 'ai' ? 'The AI suggested these. Nothing moves until you say so.' : ''} />
+          <div className="sorter-review-actions">
+            {shown.length > 0 && !review?.busy && <button type="button" className="is-primary" onClick={() => acceptGroups(shown)}>Move them all · {sayStickies(total)} <kbd aria-hidden="true">↵</kbd></button>}
+            <button type="button" onClick={() => setView('one')}>Go through them one at a time</button>
           </div>
-          <div className="sort-assistance"><button type="button" disabled={!!flight || ai?.busy} onClick={ask}><Sparkle />{ai?.busy ? 'Thinking locally…' : 'Ask local AI'}</button><button type="button" disabled={!!flight} onClick={() => { setFindPlace(true); setQuery('') }}>Another place</button>{selected?.kind !== 'make' && <button type="button" disabled={!!flight} onClick={() => choose({ kind: 'make', name: (note.tags?.[0] || note.title).slice(0, 80), why: 'A new topic for this thought.' })}>New topic</button>}</div>
-          {ai?.message && <p className="sort-ai-message" role="status">{ai.message}</p>}
-        </>}
-      </section>
-    </div></div>
-    <footer className="sort-session-footer">
-      <div className="sort-tray"><span className="sort-eyebrow">Unsorted · five at a time</span><div role="group" aria-label="Five sticky batch">{batchIds.map((id, index) => {
-        const item = notes.find((item) => item.id === id)
-        return item && !later.has(id) ? <button type="button" key={id} className="sort-mini" data-paper={item.color || papers[index]} title={item.title} aria-label={`Sort ${item.title}`} aria-pressed={note?.id === id} disabled={!!flight} onClick={() => { setActiveId(id); setPeek(null); setFindPlace(false); setReadNote(null) }}><span>{item.title}</span></button> : <div key={id} className="sort-mini is-done"><Check /><small>{item ? 'Later' : 'Placed'}</small></div>
-      })}</div></div>
-      <div className="sort-trail"><div className="sort-announcement" role="status">{flight ? `Placing in ${history.at(-1)?.label}…` : notice}</div>{recent.length > 0 && <details><summary>Recently placed <span>{history.length}</span></summary><div>{recent.map((entry, index) => {
-        const item = workspace.notes.find((item) => item.id === entry.noteId)
-        return <button type="button" key={`${entry.noteId}:${index}`} disabled={!!flight || entry.trash || !item || item.trashedAt || item.archived} onClick={() => item.folderId ? openPlace(item.folderId, item.id) : actions.revealPlacement({ noteId: item.id })}><span>{item?.title || 'Sticky no longer available'}<small>{entry.trash ? 'Trash · Undo to restore' : item?.folderId ? folderPath(workspace.folders, item.folderId).join(' / ') : 'On Sky'}</small></span><CaretRight /></button>
-      })}</div></details>}{history.at(-1) && !history.at(-1).trash && <button type="button" disabled={!!flight} className="sort-last-place" onClick={() => {
-        const item = workspace.notes.find((item) => item.id === history.at(-1).noteId)
-        if (!item || item.trashedAt || item.archived) return
-        item.folderId ? openPlace(item.folderId, item.id) : actions.revealPlacement({ noteId: item.id })
-      }}>Open {history.at(-1).label}<CaretRight /></button>}<button type="button" disabled={!history.length || !!flight} onClick={undo}><ArrowCounterClockwise /> Undo last placement</button></div>
-    </footer>
-  </section>
+          {review && !review.busy && (shown.length ? (
+            <ul className="sorter-groups">
+              {shown.map((group) => (
+                <li key={group.key}>
+                  <div>
+                    <strong>{group.kind === 'make' ? <>New node: {group.name}</> : pathOf(workspace.folders, group.folderId)}</strong>
+                    <small>{sayStickies(group.noteIds.length)}: {group.noteIds.slice(0, 4).map((id) => `“${byId.get(id)?.title || 'Untitled'}”`).join(', ')}{group.noteIds.length > 4 ? ` and ${group.noteIds.length - 4} more` : ''}</small>
+                  </div>
+                  <button type="button" className="sorter-group-go" onClick={() => acceptGroups([group])}>{group.kind === 'make' ? 'Make it' : 'Move'}</button>
+                  <button type="button" onClick={() => setReview((value) => ({ ...value, groups: value.groups.filter((item) => item.key !== group.key) }))}>Skip</button>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="sorter-quiet-line">{left ? 'Nothing in the pile looks like it goes together yet. Go through them one at a time instead.' : 'Everything is sorted.'}</p>)}
+          {review?.more && !review.busy && <p className="sorter-quiet-line">That was the first {MOST}. Run it again for the rest. Anything not listed stays in Unsorted.</p>}
+        </div>
+      ) : current ? (
+        <div className="sorter-stage">
+          <div className="sorter-sticky">
+            <article key={current.id} className="sorter-paper" data-paper={current.color || 'canary'}>
+              <h3>{current.title || 'Untitled'}</h3>
+              {bodyOf(current).trim() && <Markdown text={bodyOf(current)} />}
+            </article>
+            <p className="sorter-meta">
+              <span>{[current.source && `From ${current.source}`, formatRelativeTime(current.createdAt)].filter(Boolean).join(' · ')}</span>
+              <button type="button" onClick={() => actions.openNote(current.id)}>Open in Notes <ArrowUpRight /></button>
+            </p>
+            <div className="sorter-quiet">
+              <button type="button" onClick={() => place('sky')}>On the Sky <kbd aria-hidden="true">S</kbd></button>
+              <button type="button" onClick={later}>Later <kbd aria-hidden="true">L</kbd></button>
+              <button type="button" onClick={() => place('trash')}>Delete <kbd aria-hidden="true">⌫</kbd></button>
+            </div>
+          </div>
+
+          <div className="sorter-homes">
+            <h3 id="sorter-homes-title">{query.trim() ? `Places matching “${query.trim()}”` : homes.length ? 'Where it could go' : 'No clear home yet'}</h3>
+            {!query.trim() && !homes.length && <p className="sorter-quiet-line">{aiPick?.sky ? 'The AI thinks it can stay free on the Sky.' : 'Leave it on the Sky, find a place, or start a new node.'}</p>}
+            <div className="sorter-list" role="listbox" aria-labelledby="sorter-homes-title" aria-activedescendant={row ? `sorter-row-${selected}` : undefined}>
+              {rows.map((item, at) => item.kind === 'make' ? (
+                <div key="make" id={`sorter-row-${at}`} role="option" aria-selected={selected === at} className="sorter-row is-new" onClick={() => { setPick(at); nameField.current?.focus() }}>
+                  <kbd aria-hidden="true">N</kbd>
+                  <div>
+                    <label><Plus aria-hidden="true" /> New node <input ref={nameField} value={item.name} maxLength={80} placeholder="Name it" aria-label="New node name" onFocus={() => setPick(at)} onChange={(event) => setNames((value) => ({ ...value, [current.id]: event.target.value }))} /></label>
+                    {item.why && <small>{item.why}</small>}
+                  </div>
+                </div>
+              ) : (
+                <div key={item.key} id={`sorter-row-${at}`} role="option" aria-selected={selected === at} className="sorter-row" data-from={item.from} onClick={() => setPick(at)} onDoubleClick={() => place('home', item)}>
+                  <kbd aria-hidden="true">{at + 1}</kbd>
+                  <div>
+                    <strong>{item.path.replaceAll(' / ', ' › ')}</strong>
+                    <small>
+                      {item.from === 'ai' && <Sparkle weight="fill" aria-label="The AI" />}
+                      {[item.why, item.count === null ? '' : item.count ? `${sayStickies(item.count)}: ${item.peek.map((title) => `“${title}”`).join(', ')}` : 'Nothing in it yet'].filter(Boolean).join(' · ')}
+                    </small>
+                  </div>
+                </div>
+              ))}
+              {query.trim() && !found.length && <p className="sorter-quiet-line">No node or branch is called that. Esc clears the search.</p>}
+            </div>
+            <label className="sorter-find">
+              <MagnifyingGlass aria-hidden="true" />
+              <input ref={findField} value={query} placeholder="Another place…" aria-label="Find another node or branch" onChange={(event) => { setQuery(event.target.value); setPick(null) }} />
+              <kbd aria-hidden="true">F</kbd>
+            </label>
+            <button type="button" className="is-primary sorter-go" disabled={row && !ready} onClick={() => place('home')}>
+              <span>{!row ? 'Leave it on the Sky' : row.kind === 'make' ? (row.name.trim() ? `Make the node “${row.name.trim()}”` : 'Name the new node') : `Move to ${row.path.replaceAll(' / ', ' › ')}`}</span>
+              <kbd aria-hidden="true">↵</kbd>
+            </button>
+            <AiLine state={one.state} onAsk={askAi} onAction={(action) => runAction(one, action, askAi)} />
+          </div>
+        </div>
+      ) : (
+        <div className="sorter-done">
+          <Check aria-hidden="true" />
+          <h3>{notes.length ? 'Those are done.' : 'All sorted.'}</h3>
+          <p>{notes.length ? `${sayStickies(notes.length)} still wait in Unsorted, whenever you like.` : 'Every sticky has a place. New ones will wait here.'}</p>
+          <div>
+            {notes.length > 0 && <button type="button" className="is-primary" onClick={() => { setOrder([]); setChosen(false); setCurrentId(null) }}>Sort the rest</button>}
+            <button type="button" onClick={onClose}>Back to the Sky</button>
+          </div>
+        </div>
+      )}
+
+      <footer className="sorter-foot">
+        {view === 'one' && nextUp.length > 0 && (
+          <div className="sorter-next" aria-label="Next up">
+            <span>Next up</span>
+            {nextUp.map((id) => (
+              <button type="button" key={id} className="sorter-chip" data-paper={byId.get(id).color || 'canary'} title={byId.get(id).title} onClick={() => goTo(id)}>{byId.get(id).title || 'Untitled'}</button>
+            ))}
+            {left - index - 1 > nextUp.length && <small>and {left - index - 1 - nextUp.length} more</small>}
+          </div>
+        )}
+        <p className="sorter-keys" aria-hidden="true">
+          {view === 'one'
+            ? <><b>↵</b> Move · <b>↑↓</b>{numbered > 0 && <> or <b>{numbered > 1 ? `1–${Math.min(9, numbered)}` : '1'}</b></>} Choose · <b>N</b> New node · <b>F</b> Find · <b>S</b> On the Sky · <b>L</b> Later · <b>⌫</b> Delete · <b>A</b> Ask the AI · <b>←→</b> Look through · <b>⌘Z</b> Undo · <b>Esc</b> Close</>
+            : <><b>↵</b> Move them all · <b>⌘Z</b> Undo · <b>Esc</b> One at a time</>}
+        </p>
+        <p className="sorter-say" role="status" aria-live="polite">{say}</p>
+      </footer>
+    </section>
+  )
 }
 
-// The same wire geometry as Sky, measured from the actual responsive cards.
-function SortConnections({ noteId, folderId, name }) {
-  const ref = useRef(null)
-  const [lines, setLines] = useState([])
-  useEffect(() => {
-    const stage = ref.current.parentElement
-    const measure = () => {
-      const origin = stage.getBoundingClientRect()
-      const box = (element) => { const rect = element.getBoundingClientRect(); return { x: rect.left - origin.left, y: rect.top - origin.top, w: rect.width, h: rect.height } }
-      const source = stage.querySelector('[data-sort-box="source"]')
-      const home = stage.querySelector('[data-sort-box="home"]')
-      const parents = [...stage.querySelectorAll('[data-sort-box="parent"]')]
-      if (!source || !home) { setLines([]); return }
-      const edges = [{ from: source, to: parents[0] || home, proposal: true }, ...parents.map((parent, index) => ({ from: parent, to: parents[index + 1] || home })), ...[...stage.querySelectorAll('[data-sort-box="neighbor"], [data-sort-box="landing"]')].map((child) => ({ from: home, to: child }))]
-      setLines(edges.map(({ from, to, proposal }) => ({ d: edgePath(box(from), box(to)).d, proposal })))
-    }
-    const observer = new ResizeObserver(measure)
-    observer.observe(stage); stage.querySelectorAll('[data-sort-box]').forEach((element) => observer.observe(element))
-    measure()
-    return () => observer.disconnect()
-  }, [noteId, folderId, name])
-  return <svg className="sort-wires" ref={ref} aria-hidden="true">{lines.map((line, index) => <path key={index} className={line.proposal ? 'is-proposal' : undefined} d={line.d} />)}</svg>
+/* What the AI can do right now, in one calm line, with its way forward. */
+function AiLine({ state, line = '', onAsk, onAction }) {
+  return (
+    <p className="sorter-ai" data-state={state.key} role="status">
+      <Sparkle weight={state.busy ? 'fill' : 'regular'} aria-hidden="true" />
+      <span>{line || state.line}</span>
+      {onAsk && state.canAsk && !state.busy && state.action !== 'retry' && <button type="button" onClick={onAsk}>Ask the AI <kbd aria-hidden="true">A</kbd></button>}
+      {state.action && <button type="button" onClick={() => onAction(state.action)}>{actionLabel(state.action)}</button>}
+    </p>
+  )
 }

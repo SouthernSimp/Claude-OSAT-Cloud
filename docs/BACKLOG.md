@@ -13,6 +13,7 @@ the same day. Last sorted: October 6, 2026.
 | 2 | Stop the hosted Mac build being cancelled: `ci.yml` had `cancel-in-progress: true`, so any newer run on the same branch killed it | It is why no DMG existed; every future build would fail the same way | Done (PR #45) |
 | 3 | Ask says when it dropped old messages or notes to fit the model's memory | The AI forgets silently today; trust in the AI is the point of the app | Done (PR #46) |
 | 4 | Notes AI speaks to you ("you") instead of "the user" | One-line prompt change; real-model answers read cold | To do |
+| 4b | Sorting Unsorted is a mess, and the AI says nothing when its model isn't loaded | Nate's own words (Oct 6); silence breaks trust in the AI | In review (claude/unsorted-sorting-redo) |
 
 ## Next: save Nate effort
 

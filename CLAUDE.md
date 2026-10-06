@@ -8,7 +8,19 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 6, 2026: update button shipped
+## Resume checkpoint — October 6, 2026: Unsorted sorting redone (in review)
+
+Branch `claude/unsorted-sorting-redo` (draft PR, from main) rebuilds the Sky's Unsorted sorter:
+one sticky, its likely homes as a ranked list with plain reasons, one Move on Return, keys for
+everything, a Next up strip and honest progress, and "Sort them all" (the old Sort Unsorted from
+the Ask card) inside the same screen with one Undo. It also fixes the AI saying nothing:
+`src/assistant/ai-state.js` speaks every state (not set up, downloading, paused, offline,
+resting, waking, slow, failed) with a way forward, and words answer when the AI can't.
+Checked: unit tests, build, `npm run test:ui`, and `node tests/ui/sorting.mjs` (headless
+screenshots of each faked AI state in test-results/ui/sorting/). Not checked: the real Mac app
+and a real model (all testing stays headless; see the PR's Mac checklist). Awaiting Nate's "merge".
+
+### Previous checkpoint — October 6, 2026: update button shipped
 
 Source of truth: `/Users/nate/Desktop/Projects/OSAT V2/work/osat-core-improvements`
 (the old "OSAT Field copy" folder is stale; ignore it). Merged today: PR #44 (midnight
@@ -407,10 +419,19 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     Help me sort: `suggestionGroups`, one line per branch with Move and Dismiss; with a model, it is
     asked about the stickies matching words couldn't place; Unpack with AI / By hand on a packed
     node; `useAi` reads the model list again when Bots changes; Phase 26: `SkyAsk.jsx`, the pill at the bottom
-    and its card: ask about the Sky (`useAskHere` with `context: { open, where: 'sky' }`), or say "sort these"
-    (`asksToSort`) / press Sort Unsorted: `sort-unsorted.js` (pure: `sortRequests` in batches of 20, at most 60
-    stickies, `modelSuggestions` / `wordSuggestions` → groups `move` / `make`, `stillToSort`, `applyGroup`,
-    `undoGroups`), one line per group with Move / Make it and Dismiss, "Move them all", one Undo. Unsorted and each
+    and its card: ask about the Sky (`useAskHere` with `context: { open, where: 'sky' }`); "sort these"
+    (`asksToSort`) / Sort Unsorted only open the sorter on "Sort them all". The sorter (`UnsortedSorter.jsx`,
+    redone Oct 2026) is the one place sorting happens: one sticky on the left, its homes on the right
+    (`homeOptions` in sort-review.js: the AI's pick, words' matches with a reason and what is in each, places used
+    a moment ago, a New node row), "Another place…" (`findPlaces`), one primary Move with Return; S / L / ⌫ / A /
+    N / F / ←→ / ⌘Z; the queue is `sortQueue` (Later sends one to the end) with a Next up strip. "Sort them all"
+    shows `sort-unsorted.js`'s groups (`sortRequests` in batches of 20, at most 60, `modelSuggestions` /
+    `wordSuggestions`, `stillToSort`) in the same screen; every move goes through `fileUnsorted` (a node of the
+    same name is reused) and one Undo (`undoFiling`, which also removes a node made for it while it is empty;
+    Sky's `actions.fileGroups` / `undoUnsorted`, with the log in a ref so a toast's Undo is always the newest).
+    What the AI can do is said by `assistant/ai-state.js` (`aiState`: checking, none, downloading, paused,
+    offline, asleep, waking, thinking, slow, failed… each with a way forward) and run by `useAiJob` (gives up on a
+    model that hasn't woken in 2 minutes; words answer instead). Unsorted and each
     branch fold (`osat.sky.folds.v1`: `'unsorted'` or a branch id; `actions.folds` / `actions.fold`)),
     `Board.jsx` (the infinite whiteboard: the camera `{x, y, z}` in CSS vars `--cx/--cy/--z`,
     registered with `@property` so a flight glides; node cards at `boardSpots`, dragged directly,

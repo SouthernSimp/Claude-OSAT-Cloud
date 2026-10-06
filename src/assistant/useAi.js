@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getLocalModels } from '../local-ai.js'
 
-/* What Ask can use right now: `models` (null while looking) and, in the Mac app,
-   `status` of the built-in AI (its size, download and whether it is awake). */
+/* What Ask can use right now: `models` (null while looking), `offline` (Offline mode) and,
+   in the Mac app, `status` of the built-in AI (its size, download and whether it is awake). */
 export function useAi() {
   const bridge = typeof window === 'undefined' ? null : window.osatLocalAI
   const [status, setStatus] = useState(null)
   const [models, setModels] = useState(null)
+  const [offline, setOffline] = useState(false)
   const refresh = useCallback(() => {
     getLocalModels().then(setModels, () => setModels([]))
   }, [])
@@ -22,11 +23,19 @@ export function useAi() {
   // changes which one answers: the list is read again, so the line asks the new first one.
   useEffect(() => (typeof window === 'undefined' ? undefined : window.osatBots?.onStatus?.(refresh)), [refresh])
 
+  // Offline mode pauses the AI's download, so what the AI can do says so.
+  useEffect(() => {
+    const under = typeof window === 'undefined' ? null : window.osatUnder
+    if (!under) return undefined
+    under.status().then((value) => setOffline(Boolean(value?.on))).catch(() => {})
+    return under.onChange?.((value) => { setOffline(Boolean(value?.on)); refresh() })
+  }, [refresh])
+
   // A finished download (or a new size) changes what Ask can use.
   const readyKey = `${status?.chosen}:${status?.tiers.map((tier) => `${tier.id}:${tier.ready}:${tier.state}`).join(',')}`
   useEffect(() => { if (status) refresh() }, [readyKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { status, models, refresh, bridge }
+  return { status, models, offline, refresh, bridge }
 }
 
 /* One calm line about the built-in AI while it is being set up, or null. */

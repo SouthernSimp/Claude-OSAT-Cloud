@@ -17,6 +17,7 @@ import { applyOps, diffDocs } from '../../shared/store-core.mjs'
 import { isPacked, readNodeFile } from '../../shared/node-file.mjs'
 import { readSortAnswer, readUnpackAnswer, readWhereAnswer, sortMessages, unpackMessages, whereMessages } from '../../shared/ai-tasks.mjs'
 import { answeringLabel, askModel } from '../assistant/ask-model.js'
+import { aiState } from '../assistant/ai-state.js'
 import { cleanError, useAi } from '../assistant/useAi.js'
 import { seedDirection } from '../project-direction.js'
 import { Board } from './Board.jsx'
@@ -58,11 +59,16 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
   const [asking, setAsking] = useState(false)
   const [query, setQuery] = useState('')
   const [findAt, setFindAt] = useState(0)
+  // Sorting's placements this session, newest last; a ref too, so an Undo toast made a moment
+  // ago always takes back what is newest now.
   const [sortHistory, setSortHistory] = useState([])
-  const [sortNotice, setSortNotice] = useState('')
+  const sortLog = useRef([])
+  const logSort = (next) => { sortLog.current = next; setSortHistory(next) }
   const [unsortedOpen, setUnsortedOpen] = useState(false)
   const [navigatorOpen, setNavigatorOpen] = useState(() => !window.matchMedia('(max-width: 720px)').matches)
-  const [unsortedTarget, setUnsortedTarget] = useState(null)
+  // Where sorting begins when Unsorted opens: { target, mode: 'all', at }.
+  const [unsortedStart, setUnsortedStart] = useState(null)
+  const openSorting = (request = {}) => { setUnsortedStart({ ...request, at: Date.now() }); setUnsortedOpen(true) }
   const [sorting, setSorting] = useState(null)
   const [renaming, setRenaming] = useState(null)
   const [unpacking, setUnpacking] = useState(null)
@@ -74,8 +80,11 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
   useEffect(() => () => unpackAsk.current?.abort(), [])
   // The model chosen in Settings → Bots (or the AI on this Mac) does Unpack with AI and
   // helps Help me sort; with none, both work by hand and by matching words.
-  const { models } = useAi()
+  const ai = useAi()
+  const { models } = ai
   const answering = answeringLabel(models)
+  // What the AI can do for Where does this belong? and Help me sort, said plainly.
+  const aiNow = (job = null) => aiState({ status: ai.status, model: models?.[0] || null, models, offline: ai.offline, job, fallback: '' })
   // Where a new branch is being named: a node's id, or a branch's for one inside it.
   const [branching, setBranching] = useState(null)
   const [guide, setGuide] = useState(() => !guideSeen())
@@ -241,27 +250,42 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
   const actions = {
     commit,
     canvasCommit,
+    showUndo,
+    /* Sorting: stickies out of Unsorted into a place, a new node (`name`), the Sky or the Trash.
+       Returns the result, or null when they or the place changed meanwhile. */
     fileUnsorted(ids, folderId, name = '', options = {}) {
       let result
       const placement = options.sky ? { ...options, at: board.current?.freeSpot() } : options
       commit((state) => { result = fileUnsorted(state, ids, folderId, name, placement); return result.state })
-      if (!result?.moved.length) { setSortNotice('This sticky or destination changed. Nothing moved.'); return null }
+      if (!result?.moved.length) return null
       const restores = result.moved.map((id) => ({ id, restore: onFiled?.(id) })).filter((item) => typeof item.restore === 'function')
-      const label = placement.trash ? 'Trash' : placement.at ? 'On Sky' : folderPath(result.state.folders, result.folderId).join(' / ')
-      setSortHistory((value) => [...value, { changes: result.changes, restores, noteId: result.moved[0], folderId: result.folderId, label, trash: placement.trash }])
+      logSort([...sortLog.current, { changes: result.changes, restores, made: result.made ? [result.made] : [], noteId: result.moved[0], folderId: result.folderId }])
       unsuggest(result.moved)
-      setSortNotice(placement.trash ? 'Moved to Trash.' : placement.at ? 'Placed on Sky.' : `Placed in ${label}.`)
       return result
     },
+    /* Sort them all: each group into its place (or a new node), one step to undo. */
+    fileGroups(groups) {
+      const all = { changes: [], moved: [], made: [] }
+      commit((state) => groups.reduce((next, group) => {
+        const result = fileUnsorted(next, group.noteIds, group.kind === 'make' ? null : group.folderId, group.kind === 'make' ? group.name : '')
+        all.changes.push(...result.changes); all.moved.push(...result.moved)
+        if (result.made) all.made.push(result.made)
+        return result.state
+      }, state))
+      if (!all.moved.length) return null
+      const restores = all.moved.map((id) => ({ id, restore: onFiled?.(id) })).filter((item) => typeof item.restore === 'function')
+      logSort([...sortLog.current, { changes: all.changes, restores, made: all.made, noteId: all.moved[0], folderId: null }])
+      unsuggest(all.moved)
+      return all
+    },
+    /* Takes the newest sorting step back; returns the stickies that came back to Unsorted. */
     undoUnsorted() {
-      const last = sortHistory.at(-1)
-      if (!last) return
-      let restored = 0
+      const last = sortLog.current.at(-1)
+      if (!last) return []
       let restoredIds = []
-      commit((state) => { const result = undoFiling(state, last.changes); restored = result.restored; restoredIds = result.restoredIds; return result.state })
+      commit((state) => { const result = undoFiling(state, last.changes, last.made); restoredIds = result.restoredIds; return result.state })
       last.restores.filter((item) => restoredIds.includes(item.id)).forEach((item) => item.restore())
-      setSortHistory((value) => value.slice(0, -1))
-      setSortNotice(restored ? 'Undone. Your sticky is back in Unsorted.' : 'This sticky changed since placement. Its newer place was kept.')
+      logSort(sortLog.current.slice(0, -1))
       return restoredIds
     },
     moveSticky(noteId, folderId, index) {
@@ -334,15 +358,17 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
     },
     /* Where does this belong?: the model reads the branch and picks one place with a reason.
        Nothing moves until Move; Undo puts the branch back where it was. */
-    placing,
-    askWhere: answering ? async (folder) => {
+    placing: placing?.since ? { ...placing, asking: aiNow({ since: placing.since }).line } : placing,
+    async askWhere(folder) {
       const state = latest.current
       const places = wherePlaces(state, folder.id)
       const token = {}
       placeAsk.current = token
       board.current?.goTo({ folderId: folder.id })
       if (!places.length) { setPlacing({ id: folder.id, line: 'There’s nowhere else to put it yet.' }); return }
-      setPlacing({ id: folder.id, asking: `Asking ${answering}…` })
+      const now = aiNow()
+      if (!models?.[0]) { setPlacing({ id: folder.id, line: now.line, ...(now.action === 'setup' || now.action === 'download' ? { action: { label: 'Set up the AI', run: () => { setPlacing(null); navigate('Settings', { section: 'ai' }) } } } : {}) }); return }
+      setPlacing({ id: folder.id, since: Date.now() })
       try {
         const answer = await askModel(whereMessages({ branch: folder.name, peek: branchWords(state, folder.id), places }))
         if (placeAsk.current !== token) return
@@ -351,9 +377,9 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
           ? { id: folder.id, place: { folderId: places[pick.place].id, name: places[pick.place].name, why: pick.why } }
           : { id: folder.id, line: 'Nothing looks like a clear fit yet.' })
       } catch (error) {
-        if (placeAsk.current === token) setPlacing({ id: folder.id, line: cleanError(error) })
+        if (placeAsk.current === token) setPlacing({ id: folder.id, line: `${cleanError(error).replace(/\.?$/, '.')} Nothing moved.` })
       }
-    } : null,
+    },
     acceptPlace() {
       const { id, place } = placing || {}
       const state = latest.current
@@ -541,7 +567,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
       const ask = answering && branches.length > 0 && rest.length > 0
       const token = {}
       sortAsk.current = token
-      setSorting({ id: nodeId, line: ask ? '' : line, groups, asking: ask ? `Asking ${answering} about the rest…` : '' })
+      setSorting({ id: nodeId, line: ask ? '' : line, groups, asking: ask ? `${aiNow({ since: Date.now() }).line.replace(/…$/, '')} about the rest…` : '' })
       if (!ask) return
       const name = state.folders.find((folder) => folder.id === nodeId)?.name || ''
       askModel(sortMessages({ node: name, branches: branches.map((branch) => branch.name), stickies: rest.map((note) => `${note.title}\n${note.markdown}`) })).then((answer) => {
@@ -557,7 +583,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
         })
       }, (error) => {
         if (sortAsk.current !== token) return
-        setSorting((value) => (value?.id === nodeId ? { ...value, asking: '', line: value.groups.length ? '' : cleanError(error) } : value))
+        setSorting((value) => (value?.id === nodeId ? { ...value, asking: '', line: `${cleanError(error).replace(/\.?$/, '.')}${value.groups.length ? ' Matching words found these.' : ''}` } : value))
       })
     },
     acceptGroup(group) {
@@ -702,12 +728,12 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
       </header>
 
       <div className="sky-workbench">
-        {navigatorOpen && <SkyNavigator workspace={workspace} focus={focus} unsortedCount={unsorted.length} unsortedOpen={unsortedOpen} onOverview={overview} onTopic={focusOn} onBranch={(id) => { board.current?.goTo({ folderId: id }); if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false) }} onNew={newNode} onUnsorted={() => { setUnsortedTarget(null); setUnsortedOpen(!unsortedOpen); if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false) }} onGuide={() => setGuide(true)} />}
+        {navigatorOpen && <SkyNavigator workspace={workspace} focus={focus} unsortedCount={unsorted.length} unsortedOpen={unsortedOpen} onOverview={overview} onTopic={focusOn} onBranch={(id) => { board.current?.goTo({ folderId: id }); if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false) }} onNew={newNode} onUnsorted={() => { if (unsortedOpen) setUnsortedOpen(false); else openSorting(); if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false) }} onGuide={() => setGuide(true)} />}
         <main className="sky-main">
           <div className="sky-location">
             <button type="button" className="sky-icon-button" aria-label={navigatorOpen ? 'Hide Sky navigator' : 'Show Sky navigator'} aria-expanded={navigatorOpen} onClick={() => setNavigatorOpen(!navigatorOpen)}><SidebarSimple /></button>
             <div className="sky-breadcrumb"><button type="button" onClick={overview} aria-current={!focus ? 'page' : undefined}>All Sky</button>{focused && <><CaretRight /><strong>{focused.name}</strong></>}</div>
-            {!unsortedOpen && sortHistory.length > 0 && <button type="button" className="sky-fit" onClick={() => { setUnsortedTarget(null); setUnsortedOpen(true) }}><Stack /> Back to sorting</button>}
+            {!unsortedOpen && sortHistory.length > 0 && <button type="button" className="sky-fit" onClick={() => setUnsortedOpen(true)}><Stack /> Back to sorting</button>}
             <span className="sky-view-label">{focused ? 'Topic map' : 'Overview'}</span>
             <button type="button" className="sky-icon-button" aria-label="Undo Sky change" disabled={!history.current.past.length || unsortedOpen} title={`Undo${history.current.past.length ? `: ${history.current.past.at(-1).label}` : ''} · ⌘Z`} onClick={() => stepHistory('undo')}><ArrowCounterClockwise /></button>
             <button type="button" className="sky-icon-button" aria-label="Redo Sky change" disabled={!history.current.future.length || unsortedOpen} title={`Redo${history.current.future.length ? `: ${history.current.future.at(-1).label}` : ''} · ⇧⌘Z`} onClick={() => stepHistory('redo')}><ArrowClockwise /></button>
@@ -715,9 +741,9 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
             <button type="button" className="sky-fit" onClick={() => board.current?.fit()}><CornersOut /> Fit view</button>
           </div>
           <div className="sky-body">
-        <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} focus={focus} onOpenUnsorted={(noteId) => { setUnsortedTarget(noteId); setUnsortedOpen(true) }} onFocus={(id) => (id ? focusOn(id) : setFocus(null))} />
-        <div id="sky-unsorted" hidden={!unsortedOpen}><UnsortedDrawer active={unsortedOpen} workspace={workspace} history={sortHistory} notice={sortNotice} notes={unsorted} actions={{ ...actions, openUnsortedNotes: () => navigate('Notes', { list: 'unsorted' }), revealPlacement: (detail) => { setUnsortedOpen(false); board.current?.goTo(detail) } }} target={unsortedTarget} onClose={() => setUnsortedOpen(false)} /></div>
-        <SkyAsk workspace={workspace} commit={commit} models={models} open={open} focus={focus} asking={asking} setAsking={setAsking} navigate={navigate} showUndo={showUndo} />
+        <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} focus={focus} onOpenUnsorted={(noteId) => openSorting(noteId ? { target: noteId } : {})} onFocus={(id) => (id ? focusOn(id) : setFocus(null))} />
+        <div id="sky-unsorted" hidden={!unsortedOpen}><UnsortedDrawer active={unsortedOpen} workspace={workspace} history={sortHistory} notes={unsorted} ai={ai} navigate={navigate} actions={{ ...actions, openUnsortedNotes: () => navigate('Notes', { list: 'unsorted' }) }} start={unsortedStart} onClose={() => setUnsortedOpen(false)} /></div>
+        <SkyAsk workspace={workspace} commit={commit} models={models} ai={aiNow()} open={open} focus={focus} asking={asking} setAsking={setAsking} navigate={navigate} onSortAll={() => { setAsking(false); openSorting({ mode: 'all' }) }} />
           </div>
         </main>
       </div>

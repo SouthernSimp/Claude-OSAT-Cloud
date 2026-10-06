@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { fileUnsorted, undoFiling, placementSuggestion, placementPlaces, placementMessages, readPlacement } from '../src/sky/sort-review.js'
+import { fileUnsorted, findPlaces, homeOptions, undoFiling, placementSuggestion, placementPlaces, placementMessages, readPlacement, sortQueue } from '../src/sky/sort-review.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import { moveSticky } from '../src/nodes-model.js'
 
@@ -101,4 +101,52 @@ test('Sky and recoverable Trash share safe placement Undo without overwriting la
   assert.deepEqual(undoFiling(edited, trashed.changes).state.notes[0], { ...state.notes[0], markdown: 'Later writing' })
   const archived = { ...placed.state, notes: placed.state.notes.map((note) => note.id === 'n0' ? { ...note, archived: true } : note) }
   assert.equal(undoFiling(archived, placed.changes).restored, 0)
+})
+
+test('the homes for one sticky: best first, each with why and what is in it, then places used a moment ago', () => {
+  const state = normalizeWorkspace({ ...createDefaultWorkspace(), folders: [{ id: 'osat', name: 'OSAT' }, { id: 'polish', name: 'Sky polish', parentId: 'osat' }, { id: 'garden', name: 'Garden' }, { id: 'work', name: 'Work' }], notes: [
+    { id: 'p1', title: 'Sky toolbar spacing', markdown: 'Sky toolbar', folderId: 'polish' },
+    { id: 'g1', title: 'Tomatoes', markdown: 'water', folderId: 'garden' },
+    { id: 'u', title: 'Sky polish for the toolbar icons', markdown: 'Sky polish for the toolbar icons', unsorted: true },
+    { id: 'c1', title: 'Buy cat litter', markdown: 'Buy cat litter', unsorted: true },
+    { id: 'c2', title: 'Cat vet', markdown: 'Cat vet', unsorted: true },
+    { id: 'c3', title: 'Cat toys', markdown: 'Cat toys', unsorted: true },
+  ] })
+  const note = state.notes.find((item) => item.id === 'u')
+  const { homes } = homeOptions(state, note, { recent: ['work'] })
+  assert.equal(homes[0].folderId, 'polish')
+  assert.equal(homes[0].path, 'OSAT / Sky polish')
+  assert.match(homes[0].why, /Shares “sky” and “polish”/)
+  assert.deepEqual([homes[0].count, homes[0].peek], [1, ['Sky toolbar spacing']])
+  assert.ok(homes.some((home) => home.folderId === 'work' && home.from === 'recent' && home.why === 'Used a moment ago'))
+  const ai = homeOptions(state, note, { picks: [{ kind: 'move', folderId: 'garden', why: 'about plants' }] }).homes
+  assert.deepEqual([ai[0].folderId, ai[0].from, ai[0].why], ['garden', 'ai', 'about plants'], 'the AI’s pick goes first')
+  const cats = state.notes.filter((item) => item.id.startsWith('c'))
+  const { newNode } = homeOptions(state, cats[0], { pile: cats })
+  assert.equal(newNode.name, 'Cat')
+  assert.match(newNode.why, /3 stickies here mention “cat”/)
+  assert.equal(homeOptions(state, cats[0], { pile: cats, picks: [{ kind: 'make', name: 'Pets', why: 'x' }] }).newNode.name, 'Pets')
+  assert.deepEqual(homeOptions(state, null), { homes: [], newNode: null })
+  assert.deepEqual(findPlaces(state, 'pol').map((place) => place.path), ['OSAT / Sky polish'])
+  assert.equal(findPlaces(state, 'g')[0].path, 'Garden', 'a name that starts with it comes first')
+})
+
+test('the queue keeps this sitting’s order, adds new arrivals, and a chosen few stays a few', () => {
+  const waiting = ['a', 'b', 'c', 'd'].map((id) => ({ id }))
+  assert.deepEqual(sortQueue([], waiting), ['a', 'b', 'c', 'd'])
+  assert.deepEqual(sortQueue(['b', 'c', 'a', 'b'], waiting), ['b', 'c', 'a', 'd'], 'Later sent a to the end; d arrived since')
+  assert.deepEqual(sortQueue(['c', 'gone', 'a'], waiting, { chosen: true }), ['c', 'a'])
+})
+
+test('a new node uses one of the same name, and Undo takes away a node made for it only while empty', () => {
+  const before = fixture()
+  const made = fileUnsorted(before, ['n0'], null, 'Garden')
+  assert.ok(made.made)
+  const again = fileUnsorted(made.state, ['n1'], null, 'garden')
+  assert.deepEqual([again.made, again.folderId], [null, made.made])
+  const empty = undoFiling(made.state, made.changes, [made.made]).state
+  assert.ok(!empty.folders.some((folder) => folder.id === made.made))
+  const kept = undoFiling(again.state, made.changes, [made.made]).state
+  assert.ok(kept.folders.some((folder) => folder.id === made.made), 'n1 is still in it')
+  assert.equal(readPlacement('**Work / Planning**: about plans\nmore words', [{ id: 'branch', path: 'Work / Planning' }]).folderId, 'branch')
 })

@@ -791,6 +791,7 @@ function PlaceHelp({ placing, actions }) {
     return (
       <div className="sort-help" role="status">
         <p>{placing.asking || placing.line}</p>
+        {placing.action && <button type="button" className="is-primary" onClick={placing.action.run}>{placing.action.label}</button>}
         <button type="button" onClick={actions.dismissPlace}>{placing.asking ? 'Stop' : 'OK'}</button>
       </div>
     )
@@ -830,7 +831,7 @@ function SortHelp({ sorting, workspace, actions }) {
           <button type="button" onClick={() => actions.dismissGroup(group)}>Dismiss</button>
         </div>
       ))}
-      {sorting.asking && <p className="sort-asking">{sorting.asking}</p>}
+      {(sorting.asking || sorting.line) && <p className="sort-asking">{sorting.asking || sorting.line}</p>}
     </div>
   )
 }

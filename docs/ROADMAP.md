@@ -1,5 +1,14 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 6: sorting Unsorted, redone
+
+Nate found the guided sorting screen a mess. It is now one sticky at a time with its likely
+homes in a short ranked list (each says why and what is in it), one Move on Return, keys for
+On the Sky, Later, Delete, Ask the AI and Undo, a Next up strip and a calm "12 placed · 79 left".
+"Sort them all" (the Ask card's Sort Unsorted) lives in the same screen. Whatever state the AI
+is in (not set up, downloading, resting, waking, failed, offline) is said in one line with a way
+forward, and matching words answer when it can't.
+
 ## October 5: guided sorting and Sky history
 
 Unsorted starts with one active sticky and five in the tray. Related destinations
@@ -57,6 +66,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 27c | Guided five-sticky sorting, destination previews, recent placements and recoverable Trash | Merged (PR #41) |
 | 27d | Sky session Undo/Redo for moves, connections, Tidy and Arrange; safe replay after later edits | Merged (PR #42) |
 | 27e | Focused Notes AI, explicit note sharing, review and linked-note save | Merged (PR #43) |
+| 27f | Sorting Unsorted redone: one sticky, ranked homes with reasons, Return moves, keys, Next up, Sort them all in the same screen; the AI always says what it's doing | In review |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
