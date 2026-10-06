@@ -915,7 +915,7 @@ function phoneStatus() {
 const phoneLive = () => prefs.phone && !under.on
 globalThis.__dbg = []
 const mirrorSoon = (message) => {
-  globalThis.__dbg.push(['soon', Date.now(), JSON.stringify(message ?? null).slice(0, 600)])
+  globalThis.__dbg.push(['soon', Date.now(), JSON.stringify((message?.ops || []).map((op) => [op.t, op.c, op.id, op.t === 'patch' && op.c !== 'sorter.boards' ? Object.keys(op.v || {}) : null]))])
   clearTimeout(phoneMirrorTimer)
   if (phoneLive()) phoneMirrorTimer = setTimeout(() => { globalThis.__dbg.push(['fire', Date.now(), phoneLive(), Boolean(phone)]); if (phoneLive()) phone?.mirror().then((n) => globalThis.__dbg.push(['done', n, phone.status()])) }, 2000)
 }
