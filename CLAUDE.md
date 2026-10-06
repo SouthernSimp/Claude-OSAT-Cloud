@@ -10,7 +10,7 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 6, 2026: screenshots from the launcher (in review)
 
-Draft PR on `claude/screenshots-and-recording` (Phase 13d): the ring, the quick search, a key each and Settings →
+Draft PR #48 on `claude/screenshots-and-recording` (Phase 13d): the ring, the quick search, a key each and Settings →
 Launcher → Screenshots drive CleanShot X through its URL commands when it is installed (CleanShot 5.0.1 is on
 Nate's Mac); without it the Mac's own `screencapture` takes area / window / full-screen shots. Recent captures from
 CleanShot's history folder are opt-in. Tested headlessly only (unit tests with a stand-in opener, build, test:ui);

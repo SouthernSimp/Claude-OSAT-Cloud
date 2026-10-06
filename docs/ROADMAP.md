@@ -39,7 +39,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 16 | Clear nodes: an open node is drawn as a tree, only stickies are paper, "How the Sky works", New branch inside | Merged (PR #19) |
 | 13 | Mac powers: quick search that feels like Raycast (files and the clipboard with a big preview, Return and ⌘K actions), the line becomes a launcher (Hyper key, keywords, math, `>` for a bot), a clipboard that files itself, the ring, window snapping, the Tools menu, a movable dock, resizing | Merged (PR #33) |
 | 13b | Raycast-style Settings sidebar and row search; named quicklinks, app/link shortcuts, three/four-key Hyper, ring ordering, native Emoji & symbols | Completed in continuation |
-| 13d | Screenshots and screen recording from the launcher: CleanShot X when it's on the Mac (every capture, recent captures to drag out), else the Mac's own screenshots | In review |
+| 13d | Screenshots and screen recording from the launcher: CleanShot X when it's on the Mac (every capture, recent captures to drag out), else the Mac's own screenshots | In review (PR #48) |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
