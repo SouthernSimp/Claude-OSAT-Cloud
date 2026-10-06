@@ -8,18 +8,20 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 6, 2026: audit after Codex's week
+## Resume checkpoint — October 6, 2026: update button shipped
 
 Source of truth: `/Users/nate/Desktop/Projects/OSAT V2/work/osat-core-improvements`
-(the old "OSAT Field copy" folder is stale; ignore it). Main is at `98a58c1`
-(PRs #39, #41, #42, #43 merged: AI model controls, guided Unsorted, Sky Undo/Redo,
-Notes AI). Real-model check (Gemma 4 Balanced, Oct 6): Summarize / Untangle / Next
-steps answer well in 1-2 s and ignore instructions hidden in a note. Main's CI was red
-only from a midnight-UTC test flake (stand-in clipboard "Today"), fixed on
-`claude/fix-midnight-and-notes`. Still unverified: a packaged Mac DMG with these
-changes (the hosted Mac job was cancelled) and Notes AI in the real app window.
-Next: follow the ranked list in docs/BACKLOG.md (Claude keeps it current; every new
-idea gets a rank there the same day).
+(the old "OSAT Field copy" folder is stale; ignore it). Merged today: PR #44 (midnight
+test flake, roadmap, docs/BACKLOG.md) and PR #45 (Settings → About → Check for updates;
+every merge to main is published as release `v0.1.<run>` with a zip + checksum; CI no
+longer cancels Mac builds of main). Nate installed build 0.1.139 by hand; the next merge
+to main is the first real test of the update button (still unproven end to end: download,
+swap, relaunch, notes intact). Open: PR #46 (Ask says when it left out old messages,
+backlog #3), draft, awaiting Nate's "merge". The app is still ad-hoc signed, so macOS may
+re-ask permissions after an update (Developer ID signing is backlog #6, needs Nate).
+Real-model check (Gemma 4 Balanced): Notes AI answers well and ignores injected text.
+Next: follow docs/BACKLOG.md (every new idea gets a rank there the same day); after #46,
+the update-button test, then Notes AI "you" wording and Sky → Notes → AI navigation.
 
 ### Previous checkpoint — October 5, 2026: Sky history
 
