@@ -24,6 +24,11 @@ and `relatedForAsk` in `work-scope.js`; step two: copied items and files, with s
 model, one switch, a first-time note), then bots and a
 "Record a skill" recorder (record steps in OSAT's own browser, replay as a named button), then Phase 27's connectors
 (first: see both ends of a connection in one view). Nate does not need Mac Calendar polish: Siri covers it.
+Also open (Oct 6, Claude): #58 (the quick bar's "Allow…" when a paste lacks Accessibility), #60 (CI signs every build with
+OSAT's own self-signed certificate, repository secrets `OSAT_SIGN_P12` / `OSAT_SIGN_PASSWORD`, so macOS keeps Accessibility across
+updates: the app's designated requirement is the certificate, not a per-build hash; the old ad-hoc signing was why Return on a
+copy only copied after each update), #62 (Phase 27h: see both ends of a connection). The MCP / local API / webhooks plan
+(roadmap 32–34, MCP server first) is waiting on Nate's three answers: order, read-only vs change keys, webhooks in or not.
 
 ## Working with Nate
 
