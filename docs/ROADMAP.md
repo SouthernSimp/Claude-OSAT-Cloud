@@ -60,6 +60,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
 | 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | Merged (PR #18) |
 | 19 | Hire workers: a Workers place where you hire helpers (a Sorter, a daily briefer, a researcher…), try them for a day, see what they may touch; "Record a skill" teaches one a job by doing it once in OSAT's browser | Planned |
+| 19a | Record a skill: in the Browser room, do something once and OSAT writes each step in plain words and saves it under a name; Run does it again, `>pay rent` on the line runs it, a password is never kept (you type it, then Continue), a step that can't be found stops calmly. First piece of Phase 19; kept on this Mac, never synced | In review |
 | 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
 | 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidy and drag-to-move merged in PR #24; dragging in from Finder and out to other apps merged in PR #25; the desk's shelf and the Notes room on the same drag can wait) |
 | 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | In review |
@@ -803,7 +804,7 @@ own bots, as a small, friendly place anyone understands.
   Sorter (files Unsorted with your OK), daily briefer (the morning page), researcher (a cited
   note), inbox triager (drafts, never sends), meeting scribe, page or price watcher, bookkeeper
   (reads receipts and scans), librarian (finds duplicates, tidies old stickies).
-- **Record a skill.** Teach a worker a job by doing it once in OSAT's own browser: OSAT writes each
+- **Record a skill** (built first, Oct 6 as 19a: `desktop/skills.cjs`, `shared/skill-model.mjs`, `src/tools/Skills.jsx`; it watches the page with a script in an isolated world and replays with the same, no playwright-core; "the AI offers a fix when a site changes" is still to do). Teach a worker a job by doing it once in OSAT's own browser: OSAT writes each
   step in plain words ("Click Sign in", "Type the date") and saves it under a name. Replay is
   `playwright-core` (no downloaded browsers) attached to the browser OSAT already has over the Chrome
   DevTools Protocol; Electron's `webContents.debugger` is the fallback. When a step breaks because a

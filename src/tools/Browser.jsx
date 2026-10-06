@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowClockwise, ArrowLeft, ArrowRight, Check, Globe, MagnifyingGlass, Plus, Scissors, X } from '@phosphor-icons/react'
+import { ArrowClockwise, ArrowLeft, ArrowRight, Check, Globe, ListChecks, MagnifyingGlass, Plus, Record, Scissors, X } from '@phosphor-icons/react'
 
 import { createNote, excerpt, isActiveNote } from '../notes-model.js'
 import { clipMarkdown, toAddress } from './address.js'
+import { SkillBar, SkillList, useSkills } from './Skills.jsx'
 
 /* The page itself is a native Chromium view the Mac app lays over .browser-page.
    This room draws the tabs, the address bar and the clipper around it. */
@@ -13,6 +14,7 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
   const [editing, setEditing] = useState(false)
   const [toast, setToast] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const skills = useSkills((text) => setToast({ tone: 'bad', text }))
   const page = useRef(null)
   const field = useRef(null)
   const tab = state.tabs.find((item) => item.id === state.active) || null
@@ -165,12 +167,22 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
           <button type="button" className="browser-clip" disabled={blank} onClick={clip} title="Save the selection, or this page, as a note">
             <Scissors /> <span>Clip to OSAT</span>
           </button>
+          {skills.available && (
+            <button type="button" className="browser-skill" disabled={blank || Boolean(skills.state.recording || skills.state.running)} onClick={skills.record} title="Do something once on this page; OSAT writes it down so you can run it again">
+              <Record weight="fill" /> <span>Record a skill</span>
+            </button>
+          )}
+          {skills.available && (
+            <button type="button" className="browser-skill is-quiet" aria-label="Your skills" title="Your skills" onClick={newTab}><ListChecks /></button>
+          )}
         </div>
+        <SkillBar skills={skills} />
         {toast && (
           <p className={`browser-toast is-${toast.tone}`} role="status">
             {toast.tone === 'good' && <Check weight="bold" />}
             {toast.text}
             {toast.noteId && <button type="button" onClick={() => navigate('Notes', { noteId: toast.noteId })}>Open</button>}
+            {toast.undo && <button type="button" onClick={toast.undo}>Undo</button>}
           </p>
         )}
       </header>
@@ -181,6 +193,7 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
             <Globe weight="duotone" />
             <h2>Where to?</h2>
             <p>Search or type an address above. Pages open in their own private session, and nothing here reaches your notes unless you clip it.</p>
+            <SkillList skills={skills} onRemoved={(gone) => setToast({ tone: 'good', text: `Deleted “${gone.name}”`, undo: () => { skills.restore(gone); setToast(null) } })} />
             {clips.length > 0 && (
               <div className="browser-clips">
                 <h3>Clipped lately</h3>

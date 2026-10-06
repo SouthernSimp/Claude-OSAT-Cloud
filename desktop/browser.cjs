@@ -21,6 +21,8 @@ function createBrowser({ window, emit }) {
   part.setPermissionCheckHandler((_wc, permission) => permission === 'fullscreen' || permission === 'clipboard-sanitized-write')
 
   const tabs = new Map()
+  // Skills (desktop/skills.cjs) watch tabs: what the page says on its console, a page ready, a tab closed.
+  const watchers = new Set()
   let order = []
   let active = null
   let rect = null
@@ -72,6 +74,8 @@ function createBrowser({ window, emit }) {
       if (entry) entry.favicon = icons.find((icon) => WEB.test(icon)) || ''
       push()
     })
+    wc.on('console-message', (event, _level, message) => { for (const watcher of watchers) watcher.console?.(id, typeof event?.message === 'string' ? event.message : message) })
+    wc.on('dom-ready', () => { for (const watcher of watchers) watcher.ready?.(id) })
     for (const name of ['did-navigate', 'did-navigate-in-page', 'page-title-updated', 'did-start-loading', 'did-stop-loading', 'did-fail-load']) wc.on(name, push)
     active = id
     if (url !== 'about:blank') wc.loadURL(url)
@@ -95,6 +99,7 @@ function createBrowser({ window, emit }) {
     if (!window.isDestroyed()) window.contentView.removeChildView(entry.view)
     entry.view.webContents.close()
     tabs.delete(id)
+    for (const watcher of watchers) watcher.closed?.(id)
     const index = order.indexOf(id)
     order = order.filter((item) => item !== id)
     if (active === id) active = order[Math.min(index, order.length - 1)] || null
@@ -107,6 +112,17 @@ function createBrowser({ window, emit }) {
 
   return {
     state,
+    // For skills: the page in front, a tab opened and brought forward (its id), one script run in an isolated world, loading.
+    activeId: () => active,
+    url: () => current()?.getURL() || '',
+    openTab: (url) => open(url),
+    exec: (id, code) => {
+      const entry = tabs.get(id)
+      if (!entry) return Promise.reject(new Error('That tab was closed.'))
+      return entry.view.webContents.executeJavaScriptInIsolatedWorld(1002, [{ code }])
+    },
+    loading: (id) => Boolean(tabs.get(id)?.view.webContents.isLoading()),
+    watch(watcher) { watchers.add(watcher); return () => watchers.delete(watcher) },
     open: (url) => { open(url); return state() },
     activate,
     close,

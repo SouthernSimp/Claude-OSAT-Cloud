@@ -38,6 +38,7 @@ const { createBots } = require('./bots/index.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
+const { createSkills } = require('./skills.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
 const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = require('./desk.cjs')
@@ -378,6 +379,18 @@ function browserFor(sender) {
 }
 
 
+/* Skills: recording and replaying in the same window's browser (desktop/skills.cjs). */
+const skillStore = createSkills({ dataDir: app.getPath('userData'), sharedModule, fail })
+const skillControllers = new Map()
+function skillsFor(sender) {
+  let controller = skillControllers.get(sender.id)
+  if (controller) return controller
+  controller = skillStore.controller({ browser: browserFor(sender), emit: (channel, ...args) => { if (!sender.isDestroyed()) sender.send(channel, ...args) } })
+  skillControllers.set(sender.id, controller)
+  BrowserWindow.fromWebContents(sender).once('closed', () => { controller.destroy(); skillControllers.delete(sender.id) })
+  return controller
+}
+
 function registerBrowserAndTerminal() {
   // Settings → Data and About.
   handleApp('app:about', () => ({ version: app.getVersion(), dataFolder: app.getPath('userData') }))
@@ -400,6 +413,16 @@ function registerBrowserAndTerminal() {
   handleApp('browser:stop', (sender) => browserFor(sender).stop())
   handleApp('browser:clip', (sender) => browserFor(sender).clip())
   onTrusted('browser:place', (sender, rect) => browserFor(sender).place(rect))
+  handleApp('skills:list', () => skillStore.list())
+  handleApp('skills:state', (sender) => skillsFor(sender).state())
+  handleApp('skills:record-start', (sender) => skillsFor(sender).recordStart())
+  handleApp('skills:record-stop', (sender, name) => skillsFor(sender).recordStop(name))
+  handleApp('skills:record-cancel', (sender) => skillsFor(sender).recordCancel())
+  handleApp('skills:run', (sender, id, from) => skillsFor(sender).run(String(id), from))
+  handleApp('skills:stop', (sender) => skillsFor(sender).stop())
+  handleApp('skills:clear', (sender) => skillsFor(sender).clear())
+  handleApp('skills:remove', (_sender, id) => skillStore.remove(String(id)))
+  handleApp('skills:put', (_sender, skill) => skillStore.put(skill))
 
   terminals = process.mas ? { available: false, destroy() {} } : createTerminals({ emit: send })
   handleApp('terminal:available', () => terminals.available)
