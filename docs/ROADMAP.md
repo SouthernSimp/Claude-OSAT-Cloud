@@ -54,7 +54,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 13f | Mouse and scrolling (Linear Mouse style): scroll direction per device, smooth scrolling, pointer acceleration. Hard: needs a native helper | Planned |
 | 13g | Screenshots and screen recording from the launcher: CleanShot X when it's on the Mac (every capture, recent captures to drag out), else the Mac's own screenshots | Merged (PR #48) |
 | 13h | Quick bar fixes: the bar, Ask, the clipboard and the ring work over other apps; Paste lands in the right app; right-click for actions; drag from the preview; Copy text from the screen without CleanShot (the Mac's own text recognition); Ask's model menu solid | Merged (PR #51) |
-| 13i | The ring opens with Hyper + middle-click over any app (a small helper on this Mac watches the mouse buttons; Hyper R stays as the backup) | In review |
+| 13i | The ring opens with Hyper + middle-click over any app (a small helper on this Mac watches the mouse buttons; Hyper R stays as the backup) | In review (PR #54) |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
@@ -641,7 +641,7 @@ Nate already owns CleanShot X, so OSAT drives it instead of copying it. Everythi
 - Code: `shared/capture-model.mjs` (pure: the list, the URLs, names, matching), `desktop/launcher/capture.cjs`,
   `src/views/settings/screenshots.jsx`; tests in `tests/capture.test.mjs`.
 
-### Phase 13i: Hyper + middle-click opens the ring (in review)
+### Phase 13i: Hyper + middle-click opens the ring (in review, PR #54)
 Nate's words: open the ring with the Hyper key and the middle mouse button, over any app, instead of a keyboard shortcut.
 - **How it works.** Electron cannot see a click outside its own windows, so OSAT starts one small helper while the ring
   is on: the Mac's own `osascript` (AppleScript's JavaScript) running AppKit's global mouse monitor for the buttons

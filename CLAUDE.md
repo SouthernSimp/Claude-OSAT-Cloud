@@ -12,7 +12,7 @@ Read it before any substantial change and keep it current when a phase lands.
 
 Merged: #51 (the quick bar, Ask, clipboard and ring over other apps, right-click, drag a copy, Copy text from the
 screen) and #52 (Sort Unsorted made easy to read, `src/sky/UnsortedSorter.jsx`).
-One draft PR in `SouthernSimp/Claude-OSAT-Cloud`: `claude/ring-hyper-middle-click` (Phase 13i): Hyper + middle-click opens
+One draft PR in `SouthernSimp/Claude-OSAT-Cloud`: [#54](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/54) `claude/ring-hyper-middle-click` (Phase 13i): Hyper + middle-click opens
 the ring over any app. `desktop/launcher/middle-click.cjs` starts `osascript -l JavaScript` with AppKit's global mouse
 monitor (no permission, no packaging); `shared/ring-click.mjs` holds the rules; `ring.middle` in launcher.json is its switch,
 Hyper R stays as the backup. The click is only observed, never swallowed. It was checked headlessly (the helper starts,
