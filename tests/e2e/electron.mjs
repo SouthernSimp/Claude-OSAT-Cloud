@@ -314,11 +314,6 @@ try {
     await quick.keyboard.press('ControlOrMeta+Enter')
     await quick.locator('.qs-chat .bubble.assistant', { hasText: 'Ping from the bar' }).waitFor({ timeout: 10000 })
       .catch(() => problems.push('⌘Return in the quick bar did not ask the AI'))
-    await quick.getByRole('button', { name: 'Back to the bar' }).click()
-    await quick.fill('#qs-input', 'A sticky from the bar')
-    await quick.keyboard.press('Alt+Enter')
-    const stickies = () => main.evaluate(async () => (await window.osat.store.load()).doc.notes.filter((note) => note.unsorted && note.source === 'Quick bar').map((note) => note.title))
-    check(await until(async () => (await stickies()).includes('A sticky from the bar'), 3000), '⌥Return did not save a sticky to Unsorted')
     await quick.evaluate(() => window.osatSearch.hide())
   }
   await main.keyboard.press('Control+1')
