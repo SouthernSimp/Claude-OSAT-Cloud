@@ -20,7 +20,8 @@ Two draft PRs in `SouthernSimp/Claude-OSAT-Cloud`, stacked:
   Sort Unsorted made easy to read (`src/sky/UnsortedSorter.jsx`).
 Merge #51 first, then #52 (retarget it to main). Both await Nate's "merge".
 Nate's Mac had 0.1.139 (its updater couldn't clear `updates/previous`, fixed by #50); it was replaced with
-#52's CI build and the old copies were moved to the Trash. Next: Phase 27's connectors, selection/bundling,
+a local build of #52 as 0.1.171 (built in /private/tmp after a fresh `npm ci`: a symlinked node_modules
+leaves the AI engine's dependencies out of app.asar), and every old copy and DMG was moved to the Trash. Next: Phase 27's connectors, selection/bundling,
 focused node editing (see the roadmap).
 
 ## Working with Nate
