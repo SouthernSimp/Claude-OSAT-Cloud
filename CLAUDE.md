@@ -10,7 +10,7 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 6, 2026: Unsorted sorting redone (in review)
 
-Branch `claude/unsorted-sorting-redo` (draft PR #49, from main; main with PR #47 merged in) rebuilds the Sky's Unsorted sorter:
+Branch `claude/unsorted-sorting-redo` (draft PR #49, from main; main with PRs #47 and #48 merged in) rebuilds the Sky's Unsorted sorter:
 one sticky, its likely homes as a ranked list with plain reasons, one Move on Return, keys for
 everything, a Next up strip and honest progress, and "Sort them all" (the old Sort Unsorted from
 the Ask card) inside the same screen with one Undo. It also fixes the AI saying nothing:
@@ -19,6 +19,16 @@ resting, waking, slow, failed) with a way forward, and words answer when the AI 
 Checked: unit tests, build, `npm run test:ui`, and `node tests/ui/sorting.mjs` (headless
 screenshots of each faked AI state in test-results/ui/sorting/). Not checked: the real Mac app
 and a real model (all testing stays headless; see the PR's Mac checklist). Awaiting Nate's "merge".
+
+### Also — October 6, 2026: screenshots from the launcher (merged, PR #48)
+
+PR #48 (merged) on `claude/screenshots-and-recording` (Phase 13g): the ring, the quick search, a key each and Settings →
+Launcher → Screenshots drive CleanShot X through its URL commands when it is installed (CleanShot 5.0.1 is on
+Nate's Mac); without it the Mac's own `screencapture` takes area / window / full-screen shots. Recent captures from
+CleanShot's history folder are opt-in. Tested headlessly only (unit tests with a stand-in opener, build, test:ui);
+the live trial is in the PR's Mac checklist for Nate. Recording made in OSAT is researched in docs/BACKLOG.md and
+proposed as Phase 29. Another agent is reworking the launcher into one bar (`claude/phase-13c-one-bar`); this PR
+kept its changes in new files where it could.
 
 ### Also — October 7, 2026: Phase 13c, one bar (merged, PR #47)
 
@@ -305,7 +315,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     .txt in `clipboard/drag/` for `search:drag-clip`, which calls `startDrag`), `apps.cjs`, `recent-files.cjs` (Spotlight's last-used dates), `front.cjs` (`lsappinfo` for which app
     a copy came from; `pasteInto` sends ⌘V through System Events, only with Accessibility), `hotkeys.cjs` (the
     launcher's own global keys: a Hyper key per source, window layouts, the ring), `snap.cjs` (window snapping
-    through System Events, never OSAT's own windows), `ring-window.cjs` (the ring's panel, made on first use).
+    through System Events, never OSAT's own windows), `ring-window.cjs` (the ring's panel, made on first use),
+    `capture.cjs` (Phase 13g: screenshots and recording; CleanShot X's `cleanshot://` commands when it is installed,
+    else `screencapture`; panels hide first; recent captures read CleanShot's media folder only when turned on; its
+    `openExternal` is fenced in tests/under.test.mjs to `CLEANSHOT_URL`, never `upload`).
     Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
     one way out of the Mac it adds is opening a web address in Nate's own browser (fenced in tests/under.test.mjs,
     refused offline). ⌘⇧Space is the third shortcut in main's `shortcuts` (`search`).
@@ -342,7 +355,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `files:search` answers `{ rootId, relative, name, kind, size, modifiedAt, match: 'name' | 'inside' }`.
   The Mac CI job runs `scripts/find-check.mjs` against the real Spotlight.
 - `shared/quick-search-model.mjs`, `launcher-model.mjs`, `clipboard-model.mjs`, `clipboard-offer.mjs`, `calc.mjs`,
-  `window-layouts.mjs`, `ring-model.mjs` — Phase 13's pure rules, shared by main, the panel and the desk: how typed
+  `window-layouts.mjs`, `ring-model.mjs`, `capture-model.mjs` (13g: the captures, CleanShot URLs, file names, which ones
+  this Mac can do, `captures` in launcher.json) — Phase 13's pure rules, shared by main, the panel and the desk: how typed
   words are read (`readTyped`, `readLine`, keywords), how sources become one list of rows (`buildRows`), what Return
   and ⌘K do (`actionsFor`), the clipboard's kinds, limits and groups, "Add to Jordan?" (`offerFor`), the safe
   calculator (never eval), where each layout puts a window, and the ring's tools.

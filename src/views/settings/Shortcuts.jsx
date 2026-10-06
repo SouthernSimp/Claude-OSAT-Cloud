@@ -3,7 +3,10 @@ import { AppWindow, CaretDown, CaretRight, Calculator, ClipboardText, Files, Lin
 
 import { SOURCES, holderOf } from '../../../shared/launcher-model.mjs'
 import { LAYOUTS } from '../../../shared/window-layouts.mjs'
+import { CAPTURES } from '../../../shared/capture-model.mjs'
+import { CAPTURE_ICONS } from '../../search/icons.jsx'
 import { LauncherPage } from './launcher.jsx'
+import { useCaptureStatus } from './screenshots.jsx'
 import { Choice, KeyRecorder, QueryContext, Switch, WordField } from './parts.jsx'
 
 /* Settings → Shortcuts (Phase 13b): every word and every key, in one table, the way Raycast's Shortcuts tab does it:
@@ -29,6 +32,7 @@ function Table({ launcher }) {
   const [folded, setFolded] = useState(() => new Set(['windows']))
   const [installed, setInstalled] = useState([])
   const [pending, setPending] = useState(null)
+  const [shooting] = useCaptureStatus(bridge)
   useEffect(() => { bridge.apps().then((list) => setInstalled(Array.isArray(list) ? list : []), () => {}) }, [bridge])
   const sends = settings.hyper.sends
   const failed = (id) => status?.keysFailed?.includes(id)
@@ -71,12 +75,17 @@ function Table({ launcher }) {
     id: 'ring', icon: Target, name: 'The ring', hint: 'Quick tools around your pointer', word: null, hotkey: settings.ring.hotkey, on: settings.ring.on, canWord: false,
     setKey: (hotkey) => save({ ring: { hotkey } }), setOn: (on) => save({ ring: { on } }),
   }]
+  const captures = CAPTURES.filter((item) => shooting?.list.includes(item.id)).map((item) => ({
+    id: `capture:${item.id}`, icon: CAPTURE_ICONS[item.id], name: item.label, hint: shooting.cleanshot ? 'With CleanShot X' : 'With the Mac’s own screenshot', word: null, hotkey: settings.captures.hotkeys[item.id], on: true, canWord: false,
+    setKey: (hotkey) => save({ captures: { hotkeys: { [item.id]: hotkey } } }),
+  }))
   const groups = [
     { id: 'places', title: 'Places', rows: places },
     { id: 'apps', title: 'Apps', rows: apps, add: true },
     { id: 'links', title: 'Quick links', rows: links },
     { id: 'windows', title: 'Window layouts', rows: layouts, master: { label: 'Use keys to move the window I’m in, from any app', checked: settings.windows.on, onChange: (on) => save({ windows: { on } }) } },
     { id: 'ring', title: 'The ring', rows: ring },
+    { id: 'captures', title: 'Screenshots', rows: captures },
   ]
 
   const looking = query.length > 0 || filter !== 'all'

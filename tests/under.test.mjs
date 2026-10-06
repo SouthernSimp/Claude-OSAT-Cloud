@@ -132,6 +132,11 @@ const ALLOWED = {
     // browser. Refused offline on the same line (and search:open-link answers "the web waits").
     'if (!offline() && /^https?:\\/\\//i.test(url)) await shell.openExternal(url)',
   ],
+  'desktop/launcher/capture.cjs': [
+    // A screenshot or recording by CleanShot X, an app on this Mac: only cleanshot:// commands OSAT builds itself, and
+    // never CleanShot's `upload` (shared/capture-model.mjs CLEANSHOT_URL, tested in tests/capture.test.mjs).
+    'if (model.CLEANSHOT_URL.test(url)) await shell.openExternal(url)',
+  ],
   'desktop/bots/connector.cjs': [
     // The OSAT connector: a server that only listens on 127.0.0.1 and never reaches out
     // (tests/connector.test.mjs checks it refuses other hosts and web pages).

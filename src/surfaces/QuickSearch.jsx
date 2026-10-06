@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CaretLeft, MagnifyingGlass, NotePencil, PushPin, Sparkle, X } from '@phosphor-icons/react'
 
+import { findCaptures, recentRows, wantsRecent } from '../../shared/capture-model.mjs'
 import { offerFor } from '../../shared/clipboard-offer.mjs'
 import { KIND_FILTERS } from '../../shared/clipboard-model.mjs'
 import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
@@ -68,9 +69,17 @@ export function QuickSearchSurface() {
   const looked = useMemo(() => (wantsFind ? findAll(workspace, read.query, { limit: 30, bar: true }) : []), [wantsFind, workspace, read.query])
   const commands = useMemo(() => (read.scope === 'all' ? rankCommands(looked.filter((item) => item.kind === 'room' || item.kind === 'action'), read.query) : []), [looked, read.scope, read.query])
   const notes = useMemo(() => (!settings.sources.notes.on ? [] : read.scope === 'notes' ? looked : looked.filter((item) => item.kind === 'note' || item.kind === 'folder').slice(0, 6)), [looked, read.scope, settings])
+  // Screenshots and recording: what this Mac can do (CleanShot X, or the Mac's own), and CleanShot's recent captures.
+  const [shooting, setShooting] = useState(null)
+  const [shotList, setShotList] = useState([])
+  useEffect(() => { bridge?.captureStatus?.().then(setShooting, () => {}) }, [bridge, visit])
+  const askedRecent = Boolean(settings.captures?.recent && shooting?.cleanshot) && read.scope === 'all' && wantsRecent(read.query)
+  useEffect(() => { if (askedRecent) bridge.captureRecent().then((list) => setShotList(Array.isArray(list) ? list : []), () => {}) }, [bridge, askedRecent, visit])
+  const captures = useMemo(() => (shooting && read.scope === 'all' ? findCaptures(read.query, shooting.list || [], { cleanshot: shooting.cleanshot }) : []), [shooting, read.scope, read.query])
+  const shots = useMemo(() => (askedRecent ? recentRows(shotList) : []), [askedRecent, shotList])
   const rows = useMemo(
-    () => buildRows(read, { ...found, commands, notes }, settings, { fileFilter, clipFilter, ai }).filter((row) => !gone.has(row.key)),
-    [read, found, commands, notes, settings, fileFilter, clipFilter, gone, ai.state, ai.label, ai.offline], // eslint-disable-line react-hooks/exhaustive-deps
+    () => buildRows(read, { ...found, commands, notes, captures, shots }, settings, { fileFilter, clipFilter, ai }).filter((row) => !gone.has(row.key)),
+    [read, found, commands, notes, captures, shots, settings, fileFilter, clipFilter, gone, ai.state, ai.label, ai.offline], // eslint-disable-line react-hooks/exhaustive-deps
   )
   const active = Math.min(cursor, Math.max(0, rows.length - 1))
   const row = rows[active] || null
@@ -240,6 +249,15 @@ export function QuickSearchSurface() {
           else if (target.key === 'act:clipboard') { setText(''); setScope('clipboard'); setCursor(0) }
           else toOSAT(...d.go)
           break
+        case 'capture': {
+          const result = await bridge.capture(d.capture)
+          if (!result.ok && result.reason === 'cleanshot') said(`${target.title} needs CleanShot X.`)
+          else if (!result.ok && result.reason === 'mac') said('Screenshots work in the Mac app.')
+          break
+        }
+        case 'shot-open': await bridge.captureOpen(d.id); away(); break
+        case 'shot-reveal': await bridge.captureReveal(d.id); away(); break
+        case 'shot-copy': await bridge.captureCopy(d.id); said('Copied'); hideLater(500); break
         default: break
       }
     } catch (error) {
@@ -418,9 +436,10 @@ export function QuickSearchSurface() {
                         data-kind={item.kind}
                         onClick={() => { setCursor(index); input.current?.focus() }}
                         onDoubleClick={() => run(actionsFor(item)[0]?.id, item)}
-                        // A copy drags out into other apps: a picture as itself, words as a .txt (main starts the Mac's drag).
-                        draggable={item.source === 'clipboard' && Boolean(bridge?.dragClip)}
-                        onDragStart={item.source === 'clipboard' ? (event) => { event.preventDefault(); bridge?.dragClip?.(item.data.id).catch((error) => said(cleanError(error), 4000)) } : undefined}
+                        // A copy or a recent capture drags out into other apps (main starts the Mac's drag).
+                        draggable={(item.source === 'clipboard' && Boolean(bridge?.dragClip)) || item.kind === 'shot'}
+                        onDragStart={item.source === 'clipboard' ? (event) => { event.preventDefault(); bridge?.dragClip?.(item.data.id).catch((error) => said(cleanError(error), 4000)) }
+                          : item.kind === 'shot' ? (event) => { event.preventDefault(); bridge.captureDrag(item.data.id).catch(() => {}) } : undefined}
                       >
                         {item.kind === 'app' ? <AppIcon bridge={bridge} row={item} />
                           : item.kind === 'image' && item.data.thumb ? <img className="qs-row-icon qs-thumb" src={item.data.thumb} alt="" draggable={false} />
