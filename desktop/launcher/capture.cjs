@@ -2,7 +2,9 @@
    - With CleanShot X on this Mac, each capture is CleanShot's own URL command (cleanshot://capture-area…),
      opened like a link. It is looked for once, when the launcher starts (and again when Settings asks).
    - Without it, the Mac's own `screencapture` takes the three plain screenshots, to the clipboard or to an
-     "OSAT Captures" folder, never over another file. macOS asks once before OSAT may see other apps'
+     "OSAT Captures" folder, never over another file. "Copy text from the screen" takes an area to a private
+     temporary file, reads its words with the Mac's text recognition (`extractText`, as scans are read), puts
+     them on the clipboard and removes the picture. macOS asks once before OSAT may see other apps'
      windows (Screen Recording); until then a screenshot shows only the desktop, and OSAT says so once.
    The quick search and the ring are put away first, so they are never in the picture.
    Recent captures (opt-in in Settings → Launcher → Screenshots) are read from CleanShot's own history folder,
@@ -11,10 +13,10 @@ const fs = require('node:fs')
 const fsp = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
-const { run } = require('../mac-files.cjs')
+const { extractText, run } = require('../mac-files.cjs')
 
 function createCapture({
-  model, shell, clipboard, nativeImage, systemPreferences, exec = run, platform = process.platform, home = os.homedir(), appPath = model.CLEANSHOT_APP,
+  model, shell, clipboard, nativeImage, systemPreferences, exec = run, readText = extractText, platform = process.platform, home = os.homedir(), appPath = model.CLEANSHOT_APP,
   settings, hidePanels = async () => {}, notify = () => {}, thumbnail = async () => null, panel = () => null, on, from = {}, fail = (message) => { throw new Error(message) },
 }) {
   const mac = platform === 'darwin'
@@ -58,6 +60,7 @@ function createCapture({
       toldScreen = true
       notify({ title: 'OSAT', body: 'Screenshots will show only your desktop until OSAT is allowed in System Settings → Privacy & Security → Screen Recording.' })
     }
+    if (id === 'text') return copyText()
     let file = null
     if (settings().saveTo !== 'clipboard') {
       const dir = folderFor(settings().saveTo)
@@ -72,6 +75,29 @@ function createCapture({
     }
     if (file && !fs.existsSync(file)) return { ok: false, reason: 'cancelled' }
     return { ok: true, ...(file ? { file: path.basename(file) } : {}) }
+  }
+
+  /* Copy text from the screen without CleanShot: pick an area, its words go on the clipboard. The panel is already
+     away, so a notification says what happened. → { ok, words } or { ok: false, reason: 'cancelled' | 'empty' | 'failed' }. */
+  async function copyText() {
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'osat-text-'))
+    const file = path.join(dir, 'area.png')
+    try {
+      // Esc stops picking: no picture, nothing to say (screencapture may or may not call that an error).
+      await exec('screencapture', model.macArgs('text', { file }), { timeout: 10 * 60000 }).catch(() => {})
+      if (!fs.existsSync(file)) return { ok: false, reason: 'cancelled' }
+      const { text } = await readText(file)
+      clipboard.writeText(text)
+      const words = text.split(/\s+/).filter(Boolean).length
+      notify({ title: 'OSAT', body: `Copied ${words === 1 ? '1 word' : `${words} words`} from the screen. ⌘V pastes them.` })
+      return { ok: true, words }
+    } catch (error) {
+      const empty = error?.message === 'EMPTY'
+      notify({ title: 'OSAT', body: empty ? 'No words were found in that part of the screen.' : 'OSAT couldn’t read the words in that part of the screen.' })
+      return { ok: false, reason: empty ? 'empty' : 'failed' }
+    } finally {
+      await fsp.rm(dir, { recursive: true, force: true }).catch(() => {})
+    }
   }
 
   /* ---- Recent captures: CleanShot's history folder, read only ---- */

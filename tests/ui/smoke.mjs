@@ -994,6 +994,10 @@ async function main() {
   if (await bar.locator('.qs-row[draggable="true"]').count() < 4) problems.push(`${room}: the copies could not be dragged out`)
   await bar.locator('.qs-row', { hasText: 'Image' }).dispatchEvent('dragstart')
   if (!(await bar.evaluate(() => window.__calls)).some(([name, id]) => name === 'dragClip' && id === 'c4')) problems.push(`${room}: dragging a picture did not hand it to the Mac's drag`)
+  // The big preview drags out too.
+  const dragsBefore = (await bar.evaluate(() => window.__calls)).filter(([name]) => name === 'dragClip').length
+  await bar.locator('.qs-stage[draggable="true"]').dispatchEvent('dragstart').catch(() => problems.push(`${room}: the preview of a copy could not be dragged out`))
+  if ((await bar.evaluate(() => window.__calls)).filter(([name]) => name === 'dragClip').length !== dragsBefore + 1) problems.push(`${room}: dragging the preview did not hand the copy to the Mac's drag`)
   await bar.screenshot({ path: `${OUT}/QuickBar-clipboard.png` })
   // ⌘Return: Ask, in the same window, with the question; Esc comes back to the bar, then away.
   await bar.getByRole('tab', { name: 'Everything' }).click()

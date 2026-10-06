@@ -111,6 +111,10 @@ export function QuickSearchSurface() {
     setNote(message)
     if (ms) window.setTimeout(() => setNote((now) => (now === message ? '' : now)), ms)
   }, [])
+  // A copy or a recent capture drags out into other apps, from its row or its preview (main starts the Mac's drag).
+  const dragOut = (item) => (item?.source === 'clipboard' && bridge?.dragClip
+    ? (event) => { event.preventDefault(); bridge.dragClip(item.data.id).catch((error) => said(cleanError(error), 4000)) }
+    : item?.kind === 'shot' ? (event) => { event.preventDefault(); bridge.captureDrag(item.data.id).catch(() => {}) } : undefined)
   const cancelHide = useCallback(() => window.clearTimeout(hideTimer.current), [])
   const away = useCallback(() => { cancelHide(); bridge?.hide() }, [bridge, cancelHide])
   const hideLater = useCallback((ms) => { cancelHide(); hideTimer.current = window.setTimeout(away, ms) }, [away, cancelHide])
@@ -438,10 +442,8 @@ export function QuickSearchSurface() {
                         onDoubleClick={() => run(actionsFor(item)[0]?.id, item)}
                         // Right-click opens the same actions ⌘K lists.
                         onContextMenu={(event) => { event.preventDefault(); setCursor(index); setMenu({ at: 0 }); input.current?.focus() }}
-                        // A copy or a recent capture drags out into other apps (main starts the Mac's drag).
-                        draggable={(item.source === 'clipboard' && Boolean(bridge?.dragClip)) || item.kind === 'shot'}
-                        onDragStart={item.source === 'clipboard' ? (event) => { event.preventDefault(); bridge?.dragClip?.(item.data.id).catch((error) => said(cleanError(error), 4000)) }
-                          : item.kind === 'shot' ? (event) => { event.preventDefault(); bridge.captureDrag(item.data.id).catch(() => {}) } : undefined}
+                        draggable={Boolean(dragOut(item))}
+                        onDragStart={dragOut(item)}
                       >
                         {item.kind === 'app' ? <AppIcon bridge={bridge} row={item} />
                           : item.kind === 'image' && item.data.thumb ? <img className="qs-row-icon qs-thumb" src={item.data.thumb} alt="" draggable={false} />
@@ -454,7 +456,7 @@ export function QuickSearchSurface() {
                   ))}
                 </ul>
               )}
-            <Preview row={picker ? picker.row : row} bridge={bridge} workspace={workspace} offer={picker ? null : offer} now={new Date()} />
+            <Preview row={picker ? picker.row : row} bridge={bridge} workspace={workspace} offer={picker ? null : offer} now={new Date()} onDragStart={picker ? undefined : dragOut(row)} />
             {menu && row && (
               <div className="qs-actions" role="menu" aria-label="Actions">
                 {actions.map((action, index) => (

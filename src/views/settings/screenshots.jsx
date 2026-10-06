@@ -50,7 +50,7 @@ function Screenshots() {
           title={status.cleanshot ? 'With CleanShot X' : 'With the Mac’s own screenshots'}
           hint={status.cleanshot
             ? 'CleanShot X is on this Mac, so OSAT asks it for every screenshot and recording. Where they are saved, and what happens after, is set in CleanShot.'
-            : 'CleanShot X isn’t on this Mac, so OSAT takes an area, a window or the whole screen with the Mac’s own tool. Recording, scrolling screenshots and copying text from the screen need CleanShot X.'}
+            : 'CleanShot X isn’t on this Mac, so OSAT takes an area, a window or the whole screen with the Mac’s own tool, and copies the text in an area with the Mac’s own text reading. Recording and scrolling screenshots need CleanShot X.'}
           words="cleanshot screenshot record installed"
         >
           <button className="outline-button" type="button" onClick={() => look(true)}>Look again</button>

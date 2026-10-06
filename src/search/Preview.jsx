@@ -9,7 +9,7 @@ const COPIED_WORDS = new Set(['text', 'link', 'email', 'phone', 'number'])
 /* The big preview beside the results: the file (the words of a text file, or the page Quick Look draws),
    the copied picture or text, the app's icon, the note; and, under it, the details: where, what kind, how
    big; for a copy, which app it came from and when. Whatever is loading shows what the list already knew. */
-export function Preview({ row, bridge, workspace, offer = null, now }) {
+export function Preview({ row, bridge, workspace, offer = null, now, onDragStart }) {
   const [loaded, setLoaded] = useState({ key: null })
   useEffect(() => {
     if (!row || !bridge) return undefined
@@ -46,7 +46,8 @@ export function Preview({ row, bridge, workspace, offer = null, now }) {
 
   return (
     <section className="qs-preview" aria-label="Preview">
-      <div className="qs-stage" data-kind={row.kind}>{body}</div>
+      {/* A copy or a capture drags out from here too (`onDragStart` starts the Mac's own drag). */}
+      <div className="qs-stage" data-kind={row.kind} draggable={Boolean(onDragStart)} onDragStart={onDragStart}>{body}</div>
       <footer className="qs-facts">
         <h2>{row.kind === 'calc' ? row.subtitle : row.title}</h2>
         {details.length > 0 && (

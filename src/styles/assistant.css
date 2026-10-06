@@ -191,7 +191,10 @@
   grid-template-rows: auto minmax(0, 1fr) auto auto auto;
 }
 
+/* Above the conversation, so its model menu opens over what follows, never under it. */
 .chat-head {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: var(--s-3);
@@ -998,6 +1001,9 @@ html:has(.quick-chat) body { background: transparent; }
   background: var(--surface-raised); color: var(--ink);
   border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--e-3);
 }
+/* In the quick bar the surfaces are see-through; a menu over the chat is solid, or the words under it read through.
+   Here, not in glass.css: this file loads with Ask, after glass.css. */
+.quick-chat .ai-model-options { background: var(--surface-solid); }
 .ai-menu-caption { margin: var(--s-1) var(--s-2) var(--s-2); color: var(--muted); font-size: var(--t-xs); }
 .ai-model-options > button {
   width: 100%; display: flex; align-items: center; justify-content: space-between;
