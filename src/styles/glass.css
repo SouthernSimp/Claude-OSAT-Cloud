@@ -333,6 +333,9 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   --day-page: rgb(255 255 255 / 4%);
 }
 
+/* A menu over the chat is solid: see-through, the words under it read through it. */
+.quick-chat .ai-model-options { background: var(--surface-solid); }
+
 /* ---- The Sky follows a lantern --------------------------------------------- */
 
 .sky-viewport::after {

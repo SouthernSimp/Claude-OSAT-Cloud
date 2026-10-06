@@ -31,7 +31,7 @@ function searchBounds(mode, displays, point, spot = null) {
   return fitAt(mode, area, { x: area.x + area.width / 2, y: area.y + area.height * 0.18 })
 }
 
-function createQuickSearch({ BrowserWindow, screen, platform, preload, load, hideOnBlur = false, onHide = () => {}, view = () => 'bar', spot = null, onMoved = () => {} }) {
+function createQuickSearch({ BrowserWindow, screen, platform, preload, load, hideOnBlur = false, onShow = () => {}, onHide = () => {}, view = () => 'bar', spot = null, onMoved = () => {} }) {
   const mac = platform === 'darwin'
   const window = new BrowserWindow({
     show: false,
@@ -77,6 +77,7 @@ function createQuickSearch({ BrowserWindow, screen, platform, preload, load, hid
      for Ask (`chat`: { chatId } or { prompt } to open) or 'sticky' to write a sticky. */
   function show({ scope = 'all', expanded = view() === 'full', text = '', view: page = 'search', chat = null } = {}) {
     mode = page === 'chat' ? 'chat' : page === 'sticky' ? 'bar' : expanded || scope !== 'all' ? 'full' : 'bar'
+    onShow()
     if (!window.isVisible()) place(searchBounds(mode, screen.getAllDisplays(), screen.getCursorScreenPoint(), placed))
     else resize(mode)
     shownAt = Date.now()
