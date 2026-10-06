@@ -215,7 +215,7 @@ contextBridge.exposeInMainWorld('osatMacCalendar', Object.freeze({
 contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   hide: () => ipcRenderer.send('desk:hide'),
   prefs: () => ipcRenderer.invoke('desk:prefs'),
-  // which: 'layer' (⌥Space, the desk) or 'chat' (⌥⇧Space).
+  // which: 'layer' (⌥Space, the desk), 'search' (⌘⇧Space, the quick bar) or 'chat' (⌥⇧Space, the bar on Ask).
   setHotkey: (value, which = 'layer') => ipcRenderer.invoke('desk:set-hotkey', value, which),
   addLauncher: () => ipcRenderer.invoke('desk:add-launcher'),
   removeLauncher: (appPath) => ipcRenderer.invoke('desk:remove-launcher', appPath),
@@ -230,7 +230,7 @@ contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   onShown: (listener) => listen('desk:shown', listener),
 }))
 
-/* The quick search (⌘⇧Space, desktop/launcher): what its panel and the desk ask of it. Files, the
+/* The quick bar (⌘⇧Space, desktop/launcher): what its panel and the desk ask of it. Files, the
    clipboard history and apps come from main; Return and ⌘K do their work through the calls below
    (each checks what it is given). Only the panel and the desk may ask. */
 const search = (channel) => (...args) => ipcRenderer.invoke(`search:${channel}`, ...args)
@@ -247,6 +247,8 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   clipboard: search('clipboard'),
   clipboardImage: search('clipboard-image'),
   clipboardText: search('clipboard-text'),
+  // Called on dragstart: the copy goes on as the Mac's own drag (a picture's file, or the words as a .txt).
+  dragClip: search('drag-clip'),
   pauseClipboard: search('clipboard-pause'),
   clearClipboard: search('clipboard-clear'),
   openFile: search('open-file'),
@@ -277,7 +279,7 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   captureReveal: search('capture-reveal'),
   captureCopy: search('capture-copy'),
   captureDrag: search('capture-drag'),
-  // The desk's own ring (⌘ + middle-click) opens the quick search over it, on a tab.
+  // The desk's own ring (⌘ + middle-click) opens the quick bar over it, on a tab.
   show: search('show'),
   hide: search('hide'),
   mode: search('mode'),
@@ -309,12 +311,7 @@ contextBridge.exposeInMainWorld('osatUnder', Object.freeze({
   onChange: (listener) => listen('under:changed', listener),
 }))
 
-/* The quick chat: pop a chat out of any window, and, inside it, put it away or move it
-   to the main window. */
+/* Pop a chat out of the desk or Ask: it opens in the quick bar, on Ask ({ chatId } or { prompt }). */
 contextBridge.exposeInMainWorld('osatChat', Object.freeze({
   show: (detail) => ipcRenderer.invoke('chat:show', detail),
-  hide: () => ipcRenderer.send('chat:hide'),
-  openInWindow: (view, detail) => ipcRenderer.send('chat:open-in-window', view, detail),
-  onShown: (listener) => listen('chat:shown', listener),
-  onEscape: (listener) => listen('chat:escape', listener),
 }))

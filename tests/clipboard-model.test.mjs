@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
-  MAX_ITEMS, addItem, classify, cleanItems, clipboardScope, dayGroup, expire, groupItems, isConcealed, removeItem, searchItems, setPinned, titleOf, whenCopied,
+  MAX_ITEMS, MAX_THUMB_CHARS, addItem, classify, cleanItems, clipboardScope, dayGroup, dragName, expire, groupItems, isConcealed, removeItem, searchItems, setPinned, thumbSize, titleOf, whenCopied,
 } from '../shared/clipboard-model.mjs'
 
 test('a copy is a link, an email, a phone number, a number or text', () => {
@@ -163,4 +163,21 @@ test('pins come first in the groups, and a search can be narrowed to text, links
 test('a saved list keeps only what fits the limit and never a pin', () => {
   const list = ['a', 'b', 'c', 'd'].map((name) => ({ id: name, kind: 'text', at: '2026-09-29T10:00:00Z', text: name, ...(name === 'd' ? { pinned: true } : {}) }))
   assert.deepEqual(cleanItems(list, { max: 2 }).map((item) => item.id), ['a', 'b', 'd'])
+})
+
+test('a copied picture keeps a small thumbnail that fits a square, and one too big is not saved', () => {
+  assert.deepEqual(thumbSize(1600, 1000), { width: 96, height: 60 })
+  assert.deepEqual(thumbSize(400, 3000), { width: 13, height: 96 }, 'a tall screenshot stays small too')
+  assert.deepEqual(thumbSize(40, 30), { width: 40, height: 30 }, 'a small one is not blown up')
+  assert.deepEqual(thumbSize(0, NaN), { width: 1, height: 1 })
+  const picture = (thumb) => ({ id: 'i', kind: 'image', at: '2026-09-29T08:00:00Z', hash: 'h', image: { w: 1, h: 1, bytes: 1 }, thumb })
+  assert.equal(cleanItems([picture('data:image/png;base64,AAAA')])[0].thumb, 'data:image/png;base64,AAAA')
+  assert.equal(cleanItems([picture(`data:image/png;base64,${'A'.repeat(MAX_THUMB_CHARS)}`)])[0].thumb, '')
+})
+
+test('a copied text dragged out is a .txt named after its first words, safe for any folder', () => {
+  assert.equal(dragName('Quote for Jordan\nmore'), 'Quote for Jordan.txt')
+  assert.equal(dragName('\n\n  ../../etc/passwd: a/b'), 'etc passwd a b.txt')
+  assert.equal(dragName('   '), 'Copied text.txt')
+  assert.equal(dragName('x'.repeat(90)).length, 44)
 })

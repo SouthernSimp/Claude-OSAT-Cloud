@@ -301,8 +301,8 @@ async function main() {
   await page.keyboard.press('Control+,')
   const rail = page.getByRole('navigation', { name: 'Settings sections' })
   const goTo = async (name) => { await rail.getByRole('button', { name, exact: true }).click(); await sleep(350) }
-  await rail.getByRole('button', { name: 'Quick search', exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: the sidebar had no Quick search page'))
-  await goTo('Quick search')
+  await rail.getByRole('button', { name: 'Quick bar', exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: the sidebar had no Quick bar page'))
+  await goTo('Quick bar')
   const names = (await page.locator('.setting-group', { hasText: 'Where it looks' }).locator('.setting-text b').allInnerTexts().catch(() => [])).join(', ')
   if (names !== 'Files, Clipboard, Apps, Notes and nodes, Calculator, Window layouts') problems.push(`settings: the places were ${names}`)
   await page.getByRole('switch', { name: 'Look in Clipboard' }).uncheck()
@@ -357,7 +357,7 @@ async function main() {
   await page.getByRole('button', { name: 'Take off github.com' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: Undo did not bring a quick link back'))
   await page.screenshot({ path: `${OUT}/settings-quick-links.png` })
   await goTo('Keyboard')
-  for (const said of ['Make Caps Lock a Hyper key', 'Use ⌘Space for the quick search', 'Another app makes my Hyper key']) {
+  for (const said of ['Make Caps Lock a Hyper key', 'Use ⌘Space for the quick bar', 'Another app makes my Hyper key']) {
     if (!await page.getByText(said, { exact: false }).count()) problems.push(`settings: missing "${said}"`)
   }
   await page.getByLabel('What the Hyper key sends').selectOption('three')
@@ -419,7 +419,7 @@ async function main() {
   await page.keyboard.up('Meta')
   await ring.waitFor({ timeout: 3000 }).catch(() => problems.push('ring: ⌘ + middle-click did not open the ring'))
   const tools = (await ring.locator('.ring-item span').allInnerTexts().catch(() => [])).join(', ')
-  if (tools !== 'Quick search, Clipboard, New sticky, Quick chat, The desk') problems.push(`ring: the desk's ring held ${tools}`)
+  if (tools !== 'Quick bar, Clipboard, New sticky, Ask, The desk') problems.push(`ring: the desk's ring held ${tools}`)
   await sleep(500)
   await page.screenshot({ path: `${OUT}/desk-ring.png` })
   await page.keyboard.press('Escape')
@@ -965,14 +965,59 @@ async function main() {
   await page.locator('[data-node-head]', { hasText: 'Kitchen table' }).waitFor({ timeout: 5000 }).catch(() => problems.push('pile: the node was not in the Sky'))
   if (await page.locator('.pile-room').count()) problems.push('pile: the table stayed open over the Sky')
 
-  const chat = await browser.newPage({ viewport: { width: 420, height: 600 } })
-  chat.on('pageerror', (error) => problems.push(`quick chat: ${error.message}`))
-  await chat.goto(`${url}?surface=chat`)
-  await chat.locator('.quick-chat .composer textarea').waitFor({ timeout: 8000 })
-    .catch(() => problems.push('quick chat: the chat did not appear'))
-  await sleep(400)
-  await chat.screenshot({ path: `${OUT}/quick-chat.png` })
-  await chat.close()
+  // One bar (Phase 13c): Ask, a sticky and commands in the quick bar, with a stand-in for the Mac app (no AI here).
+  room = 'quick bar'
+  const bar = await browser.newPage({ viewport: { width: 1000, height: 620 } })
+  bar.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
+  await bar.addInitScript(installSearchBridge, DEFAULT_SETTINGS)
+  await bar.goto(`${url}?surface=search&fresh=1`)
+  await bar.locator('.quick-search[data-mode="bar"]').waitFor({ timeout: 8000 }).catch(() => problems.push(`${room}: the bar did not open`))
+  // Words typed: the last rows say they can be kept or asked; the one-line hint names the keys.
+  await bar.fill('#qs-input', 'pack the tent')
+  await bar.locator('.qs-row', { hasText: 'Save as a sticky' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: typed words did not offer Save as a sticky`))
+  if (!await bar.locator('.qs-row', { hasText: 'Ask the AI' }).count()) problems.push(`${room}: typed words did not offer Ask the AI`)
+  const hint = await bar.locator('.qs-keys').innerText().catch(() => '')
+  if (!/⌘↵\s*Ask/.test(hint) || !/⌥↵\s*Save as a sticky/.test(hint)) problems.push(`${room}: the hint did not name ⌘↵ and ⌥↵ (${hint})`)
+  await bar.screenshot({ path: `${OUT}/QuickBar-words.png` })
+  // ⌥Return: straight to Unsorted.
+  await bar.keyboard.press('Alt+Enter')
+  await bar.locator('.qs-said', { hasText: 'Saved to Unsorted' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: ⌥Return did not save a sticky`))
+  const kept = await bar.evaluate(async () => (await window.osat?.store?.load?.())?.doc?.notes?.map((note) => [note.title, note.source, note.unsorted]) ?? null)
+  if (kept && !kept.some(([title, source, unsorted]) => title === 'pack the tent' && source === 'Quick bar' && unsorted)) problems.push(`${room}: the sticky was not in Unsorted (${JSON.stringify(kept)})`)
+  // Commands by word: "sticky" starts one, "clipboard" opens the history.
+  await bar.fill('#qs-input', 'sticky')
+  await bar.locator('.qs-row', { hasText: 'Write a sticky' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "sticky" did not find Write a sticky`))
+  await bar.keyboard.press('Enter')
+  await bar.locator('.qs-chip', { hasText: 'Sticky' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "sticky" did not start a sticky`))
+  await bar.keyboard.press('Escape')
+  if (await bar.locator('.qs-chip', { hasText: 'Sticky' }).count()) problems.push(`${room}: Esc did not leave the sticky first`)
+  await bar.fill('#qs-input', 'clipboard')
+  await bar.locator('.qs-row', { hasText: 'Clipboard history' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "clipboard" did not find the clipboard history`))
+  await bar.keyboard.press('Enter')
+  await bar.locator('[role="tab"][aria-selected="true"]', { hasText: 'Clipboard' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "clipboard" did not open the clipboard history`))
+  // A copied picture shows itself in its row, and a copy drags out into other apps.
+  await bar.locator('.qs-row .qs-thumb').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a copied picture had no thumbnail in its row`))
+  if (await bar.locator('.qs-row[draggable="true"]').count() < 4) problems.push(`${room}: the copies could not be dragged out`)
+  await bar.locator('.qs-row', { hasText: 'Image' }).dispatchEvent('dragstart')
+  if (!(await bar.evaluate(() => window.__calls)).some(([name, id]) => name === 'dragClip' && id === 'c4')) problems.push(`${room}: dragging a picture did not hand it to the Mac's drag`)
+  await bar.screenshot({ path: `${OUT}/QuickBar-clipboard.png` })
+  // ⌘Return: Ask, in the same window, with the question; Esc comes back to the bar, then away.
+  await bar.getByRole('tab', { name: 'Everything' }).click()
+  await bar.fill('#qs-input', 'What should I pack?')
+  await bar.keyboard.press('Control+Enter')
+  await bar.locator('.qs-chat .composer textarea').waitFor({ timeout: 5000 }).catch(() => problems.push(`${room}: ⌘Return did not open Ask`))
+  if ((await bar.locator('.qs-chat .composer textarea').inputValue().catch(() => '')) !== 'What should I pack?') problems.push(`${room}: Ask did not have the question (no AI here, so it waits)`)
+  if (await bar.locator('.quick-search').isVisible()) problems.push(`${room}: the search stayed under Ask`)
+  await sleep(300)
+  await bar.screenshot({ path: `${OUT}/QuickBar-ask.png` })
+  await bar.locator('.qs-chat .composer textarea').press('Escape')
+  await bar.locator('#qs-input').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push(`${room}: Esc did not come back from Ask to the bar`))
+  // ⌥⇧Space (the Ask key) opens it on Ask; ring "sticky" opens it to write bar.
+  await bar.evaluate(() => window.__shown({ view: 'chat' }))
+  await bar.locator('.qs-chat .composer textarea').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push(`${room}: the Ask key did not open Ask`))
+  await bar.evaluate(() => window.__shown({ view: 'sticky' }))
+  await bar.locator('.qs-chip', { hasText: 'Sticky' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the ring's sticky did not open the bar to write one`))
+  await bar.close()
 
   // The quick search (⌘⇧Space in the Mac app), with a stand-in for what the Mac app gives it: a bar; typing opens
   // the full view with a big preview; Return, ⌘K and Esc; the clipboard and a sum. Light, then dark.

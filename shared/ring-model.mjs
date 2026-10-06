@@ -7,10 +7,10 @@ import { CAPTURES } from './capture-model.mjs'
 /* Every tool the ring can hold. `layout` ones move the window you were in (they need Accessibility, and only make sense
    over another app); `inDesk: false` is left out of the ring on the desk. */
 export const RING_ITEMS = [
-  { id: 'search', label: 'Quick search' },
+  { id: 'search', label: 'Quick bar' },
   { id: 'clipboard', label: 'Clipboard' },
   { id: 'sticky', label: 'New sticky' },
-  { id: 'chat', label: 'Quick chat' },
+  { id: 'chat', label: 'Ask' },
   { id: 'desk', label: 'The desk' },
   { id: 'sky', label: 'The Sky' },
   { id: 'files', label: 'Files' },

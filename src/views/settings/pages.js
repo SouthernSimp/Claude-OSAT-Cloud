@@ -13,7 +13,7 @@ export const SETTINGS_GROUPS = [
 ]
 
 export const SETTINGS_PAGES = [
-  { id: 'general', group: 'osat', label: 'General', icon: GearSix, blurb: 'The keys that bring OSAT up from any app, and the keys inside it.', words: 'shortcut hotkey desk quick chat keys esc' },
+  { id: 'general', group: 'osat', label: 'General', icon: GearSix, blurb: 'The keys that bring OSAT up from any app, and the keys inside it.', words: 'shortcut hotkey desk quick bar ask chat keys esc' },
   { id: 'appearance', group: 'osat', label: 'Appearance', icon: Palette, blurb: 'Light or dark, the backdrop, and how much your desktop blurs behind OSAT.', words: 'theme light dark auto backdrop blur wallpaper look' },
   { id: 'ai', group: 'osat', label: 'AI', icon: Sparkle, blurb: 'How big an AI runs on this Mac, and what it should know about you.', words: 'model local lm studio about you download size light balanced deep gemma' },
   { id: 'bots', group: 'osat', label: 'Bots', icon: Robot, blurb: 'Muse, Grok Bot, Claude and cloud models: what reaches OSAT, and what leaves your Mac.', words: 'drop folder cloud model key connector mcp deepseek openai provider nodes' },
@@ -22,7 +22,7 @@ export const SETTINGS_PAGES = [
   { id: 'iphone', group: 'osat', label: 'iPhone', icon: DeviceMobile, blurb: 'Send a thought from your iPhone, and read your notes there.', words: 'icloud drive phone shortcuts sync inbox' },
   { id: 'about', group: 'osat', label: 'About', icon: Info, blurb: 'Which OSAT this is, and where it keeps things.', words: 'version privacy data folder' },
 
-  { id: 'quick-search', group: 'launcher', label: 'Quick search', icon: MagnifyingGlass, blurb: 'A small bar over every app: find a file, something you copied, an app or a note, and go straight to it.', words: 'spotlight search bar full view places files apps notes calculator' },
+  { id: 'quick-search', group: 'launcher', label: 'Quick bar', icon: MagnifyingGlass, blurb: 'One bar over every app: find a file, something you copied, an app or a note, ask the AI, or save a sticky.', words: 'spotlight search quick search bar full view places files apps notes calculator ask chat sticky raycast' },
   { id: 'shortcuts', group: 'launcher', label: 'Shortcuts', icon: Keyboard, blurb: 'Every word and every key, in one table.', words: 'word alias hotkey key hyper table keyword' },
   { id: 'keyboard', group: 'launcher', label: 'Keyboard', icon: Command, blurb: 'The Hyper key, and the two things only you can change on your Mac.', words: 'hyper caps lock karabiner hyperkey spotlight command space shift' },
   { id: 'clipboard', group: 'launcher', label: 'Clipboard', icon: ClipboardText, blurb: 'Everything you copy, kept only on this Mac, searchable, with pins for the things you paste often.', words: 'history copies paste pin pause clear limits password privacy' },

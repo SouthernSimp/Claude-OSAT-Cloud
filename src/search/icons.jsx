@@ -16,7 +16,7 @@ const FILE_ICONS = [
 ]
 const BY_KIND = {
   folder: FolderSimple, text: Clipboard, link: Link, email: EnvelopeSimple, phone: Phone, number: Hash, image: Image, app: AppWindow,
-  note: NotePencil, node: TreeStructure, room: Sparkle, calc: Calculator, 'keyword-app': AppWindow, 'keyword-link': Globe, layout: Layout,
+  note: NotePencil, sticky: NotePencil, ask: Sparkle, node: TreeStructure, room: Sparkle, calc: Calculator, 'keyword-app': AppWindow, 'keyword-link': Globe, layout: Layout,
 }
 
 export function RowIcon({ row, weight = 'regular' }) {

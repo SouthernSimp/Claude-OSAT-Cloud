@@ -38,6 +38,8 @@ export function Preview({ row, bridge, workspace, offer = null, now }) {
   else if (row.kind === 'calc') body = <p className="qs-big">{row.title}</p>
   else if (row.kind === 'layout') body = <LayoutPreview id={d.layout} />
   else if (COPIED_WORDS.has(row.kind)) body = <pre className={`qs-text ${row.kind === 'link' ? 'is-link' : ''}`}>{own.text ?? d.text}</pre>
+  // Save as a sticky / Ask the AI: the words that would go.
+  else if (row.kind === 'sticky' || row.kind === 'ask') body = <pre className="qs-text">{d.text}</pre>
   else if (row.kind === 'note') body = <NotePreview workspace={workspace} id={d.go?.[1]?.noteId} />
   else if (row.kind === 'node') body = <NodePreview workspace={workspace} id={d.go?.[1]?.folderId} />
   else body = <div className="qs-glyph"><RowIcon row={row} weight="light" /></div>

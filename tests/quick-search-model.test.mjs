@@ -4,7 +4,7 @@ import test from 'node:test'
 
 import { cleanSettings } from '../shared/launcher-model.mjs'
 import {
-  actionsFor, buildRows, detailsFor, fileKind, fileWords, isPicture, rankApps, readTyped, scopesOn, sizeText, wants,
+  actionsFor, buildRows, detailsFor, fileKind, fileWords, isPicture, rankApps, rankCommands, readTyped, scopesOn, sizeText, wants, wordRows,
 } from '../shared/quick-search-model.mjs'
 
 const { validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
@@ -171,4 +171,48 @@ test('window layouts: a tab of their own, and "left half" finds one from Everyth
     assert.equal(actionsFor(row)[0].id, 'emoji')
   }
   assert.equal(buildRows(readTyped('emoji', settings, 'files'), {}, settings).some((row) => row.kind === 'emoji'), false)
+})
+
+test('one bar: commands come right after an app named by the words, and the words can always be asked or kept', () => {
+  const commands = [
+    { key: 'room:Notes', label: 'Notes', kind: 'room', go: ['Notes'] },
+    { key: 'act:new-note', label: 'New note', also: 'write page', kind: 'action', go: ['Notes', { action: 'new' }] },
+    { key: 'act:sticky', label: 'Write a sticky', also: 'sticky note jot', kind: 'action', go: ['Capture'] },
+  ]
+  // "note" is a whole word of New note and of Write a sticky (actions first, in their order), then the Notes room.
+  assert.deepEqual(rankCommands(commands, 'note').map((item) => item.key), ['act:new-note', 'act:sticky', 'room:Notes'])
+  assert.deepEqual(rankCommands(commands, 'sticky').map((item) => item.key)[0], 'act:sticky')
+  assert.deepEqual(rankCommands(commands, 'no').map((item) => item.key), ['act:new-note', 'act:sticky', 'room:Notes'], 'a start of a word keeps the order')
+
+  const apps = [{ name: 'Notion', path: '/Applications/Notion.app' }, { name: 'Sticky Notes', path: '/Applications/Sticky Notes.app' }]
+  const ready = { state: 'ready', label: 'Balanced, on this Mac' }
+  const rows = buildRows(readTyped('no', settings), { apps, commands }, settings, { now, ai: ready })
+  assert.deepEqual(rows.map((row) => [row.section, row.kind, row.title]), [
+    ['Apps', 'app', 'Notion'],
+    ['Commands', 'room', 'Notes'],
+    ['Commands', 'room', 'New note'],
+    ['Commands', 'room', 'Write a sticky'],
+    ['Apps', 'app', 'Sticky Notes'],
+    ['With these words', 'sticky', 'Save as a sticky'],
+    ['With these words', 'ask', 'Ask the AI'],
+  ])
+  assert.equal(rows.at(-1).subtitle, 'Balanced, on this Mac')
+  assert.deepEqual(actionsFor(rows.at(-1)).map((action) => [action.id, action.keys]), [['ask-ai', '↵']])
+  assert.deepEqual(actionsFor(rows.at(-2)).map((action) => [action.id, action.keys]), [['sticky', '↵']])
+  assert.equal(rows.at(-2).data.text, 'no')
+
+  // Offline, Ask says whether it waits; nothing typed, or another tab, has no such rows.
+  const said = (ai) => wordRows(readTyped('plan the trip', settings), ai)[1].subtitle
+  assert.match(said({ state: 'waits' }), /waits until you’re back online/)
+  assert.match(said({ state: 'ready', label: 'Light', offline: true }), /^Offline, the AI on this Mac still answers · Light$/)
+  assert.match(said({ state: 'none' }), /Set up the AI/)
+  assert.deepEqual(wordRows(readTyped('', settings), ready), [])
+  assert.deepEqual(wordRows(readTyped('x', settings, 'clipboard'), ready), [])
+  assert.deepEqual(buildRows(readTyped('no', settings), { apps }, settings, { now }).filter((row) => row.source === 'do'), [], 'only the bar asks for them')
+
+  // ⌘↵ asks and ⌥↵ keeps, whatever the row: the second action moved to ⇧↵.
+  for (const row of [{ kind: 'file', data: {} }, { kind: 'text', data: clip('a', 'x') }, { kind: 'image', data: { id: 'i' } }, { kind: 'app', data: {} }, { kind: 'calc', data: {} }]) {
+    assert.equal(actionsFor(row).some((action) => action.keys === '⌘↵' || action.keys === '⌥↵'), false, row.kind)
+    assert.equal(actionsFor(row)[1].keys, '⇧↵', row.kind)
+  }
 })

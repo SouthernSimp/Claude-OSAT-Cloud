@@ -65,7 +65,7 @@ const holders = (settings) => ({
   word: (id) => (word) => holderOf(settings, { word }, id),
 })
 
-/* The keys that show the desk and the quick search from anywhere. Recorded here, checked by main (`validHotkey`), and
+/* The keys that show the desk and the quick bar from anywhere. Recorded here, checked by main (`validHotkey`), and
    the Mac says if another app already has one. */
 export function useDeskKeys() {
   const bridge = typeof window === 'undefined' ? null : window.osatDesk
@@ -94,22 +94,29 @@ export function DeskKey({ which, name, keys }) {
   )
 }
 
-/* ---- Quick search ------------------------------------------------------------------------------------------------- */
+/* ---- Quick bar --------------------------------------------------------------------------------------------------- */
+
+const taken = (one, otherwise) => (one?.failed ? `${one.label} is already used by another app, so OSAT can’t listen for it. Choose a different shortcut.` : otherwise)
 
 export function QuickSearchPage({ page }) {
   const keys = useDeskKeys()
   return (
-    <LauncherPage page={page} what="In the Mac app, a small bar opens over your other apps to find a file, something you copied, an app or a note, and go straight to it.">
+    <LauncherPage page={page} what="In the Mac app, one bar opens over your other apps to find a file, something you copied, an app or a note, ask the AI, or save a sticky.">
       {({ settings, save }) => (
         <>
-          <Group title="Open it">
+          <Group title="Open it" note="In the bar: Return opens what is picked, ⌘Return asks the AI about what you typed, ⌥Return saves it to Unsorted as a sticky, ⌘K lists every action, Esc backs out a step. Drag it by its edge and it opens there next time.">
             {keys.bridge && (
-              <Row title="Shortcut" hint={keys.info?.search?.failed ? `${keys.info.search.label} is already used by another app, so OSAT can’t listen for it. Choose a different shortcut.` : 'Brings it up over any app. Press it again, or Esc, to put it away.'} words="hotkey key open">
-                <DeskKey which="search" name="the quick search" keys={keys} />
-              </Row>
+              <>
+                <Row title="Shortcut" hint={taken(keys.info?.search, 'Brings it up over any app. Press it again, or Esc, to put it away.')} words="hotkey key open">
+                  <DeskKey which="search" name="the quick bar" keys={keys} />
+                </Row>
+                <Row title="Ask" hint={taken(keys.info?.chat, 'Opens the bar on Ask, with the chat you were in.')} words="hotkey key ask chat ai">
+                  <DeskKey which="chat" name="Ask in the quick bar" keys={keys} />
+                </Row>
+              </>
             )}
             <Row title="How it opens" hint="A small bar first, growing as you type, or the full view straight away." words="bar full view">
-              <Choice label="How the quick search opens" value={settings.view} onChange={(view) => save({ view })} options={[['bar', 'A small bar'], ['full', 'The full view']]} />
+              <Choice label="How the quick bar opens" value={settings.view} onChange={(view) => save({ view })} options={[['bar', 'A small bar'], ['full', 'The full view']]} />
             </Row>
           </Group>
           <Group title="Where it looks" note="Each place can have its own word (type it first, in the search or in the line) and a Hyper key that opens the search right there. They are in Shortcuts.">
@@ -139,7 +146,7 @@ export function KeyboardPage({ page }) {
             </Row>
           </Group>
           <Group title="Spotlight">
-            <Row title="Use ⌘Space for the quick search" hint="In System Settings → Keyboard → Keyboard Shortcuts → Spotlight, untick “Show Spotlight search”. Then pick ⌘Space for the quick search in Quick search." words="command space spotlight replace" />
+            <Row title="Use ⌘Space for the quick bar" hint="In System Settings → Keyboard → Keyboard Shortcuts → Spotlight, untick “Show Spotlight search”. Then pick ⌘Space for the quick bar in Quick bar." words="command space spotlight replace" />
           </Group>
         </>
       )}
@@ -185,7 +192,7 @@ export function ClipboardPage({ page }) {
               <Switch label="Pause the clipboard history" checked={board?.paused === true} onChange={(paused) => bridge.pauseClipboard(paused).then((now) => setBoard({ paused: now }), (error) => setMessage(explain(error)))} />
             </Row>
           </Group>
-          <Group title="Privacy" note="Search it with v, or the Clipboard tab of the quick search, and paste from it.">
+          <Group title="Privacy" note="Search it with v (or type “clipboard”) in the quick bar, paste from it, or drag a copy into another app.">
             <Row title="Password managers" hint="Copies from password managers are never kept, and neither is anything OSAT copies for itself." words="1password bitwarden concealed secret" />
             <Row title="Add to a node" hint="Offer to add a copied email address or phone number to its node, once, when that node already exists." words="offer jordan customer contact">
               <Switch label="Offer to add a copied email address or phone number to its node" checked={settings.clipboard.offers !== false} onChange={(offers) => save({ clipboard: { offers } })} />
@@ -212,7 +219,7 @@ export function ClipboardPage({ page }) {
 
 export function QuickLinksPage({ page }) {
   return (
-    <LauncherPage page={page} what="In the Mac app, a quick link opens in your own browser from the quick search, the line or a key.">
+    <LauncherPage page={page} what="In the Mac app, a quick link opens in your own browser from the quick bar, the line or a key.">
       {({ settings, save, showUndo }) => <QuickLinks settings={settings} save={save} showUndo={showUndo} />}
     </LauncherPage>
   )
@@ -280,7 +287,7 @@ export function WindowLayoutsPage({ page }) {
         const { key } = holders(settings)
         return (
           <>
-            <Group title="Keys" note="Or type “left half” in the quick search (or w and a word), and the window you were in moves there.">
+            <Group title="Keys" note="Or type “left half” in the quick bar (or w and a word), and the window you were in moves there.">
               <Row title="Move the window I’m in with keys" hint="Keys that work from any app are off until you turn them on." words="hotkeys global any app">
                 <Switch label="Use keys to move the window I’m in, from any app" checked={settings.windows.on} onChange={(on) => save({ windows: { on } })} />
               </Row>
@@ -348,7 +355,7 @@ export function RingPage({ page }) {
                   {rest.length > 0 && chosen.length < MAX_RING && <AddRingTool bridge={bridge} rest={rest} onAdd={(id) => put([...chosen, id])} />}
                 </Group>
                 <Group>
-                  <Row title="Back to the usual tools" hint="Quick search, Clipboard, New sticky, Quick chat, The desk, and three window layouts.">
+                  <Row title="Back to the usual tools" hint="Quick bar, Clipboard, New sticky, Ask, The desk, and three window layouts.">
                     <button className="outline-button" type="button" onClick={() => put(null)}>Reset the ring</button>
                   </Row>
                 </Group>

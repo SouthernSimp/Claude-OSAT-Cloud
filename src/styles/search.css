@@ -1,6 +1,7 @@
-/* The quick search (⌘⇧Space): a bar over every app that opens into results and a big preview. It is a
-   panel over the Mac's frosting, so it wears the quick chat's see-through tokens (glass.css); anything
-   that sits over other content (the actions) is solid. */
+/* The quick bar (⌘⇧Space): a bar over every app that opens into results and a big preview, and into Ask (the
+   `.quick-chat` styles in assistant.css). It is a panel over the Mac's frosting, so it wears the see-through tokens
+   (glass.css); anything that sits over other content (the actions) is solid. It is dragged by its bar, its tabs and
+   its foot (`-webkit-app-region`), and opens where it was left. */
 
 html:has(.quick-search),
 html:has(.quick-search) body { background: transparent; }
@@ -16,6 +17,8 @@ html:has(.quick-search) body { background: transparent; }
   background: var(--sheet-glass);
 }
 .quick-search[data-mode="full"] { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.quick-search[hidden],
+.qs-chat[hidden] { display: none; }
 
 .qs-bar { display: flex; align-items: center; gap: 12px; height: 76px; padding: 0 22px; -webkit-app-region: drag; }
 .qs-bar svg { width: 22px; height: 22px; color: var(--muted); }
@@ -34,9 +37,12 @@ html:has(.quick-search) body { background: transparent; }
 .quick-search .qs-input,
 .quick-search .qs-input:focus-visible { padding: 0; border: 0; border-radius: 0; box-shadow: none; }
 .qs-input::placeholder { color: var(--faint); }
+.qs-said { flex: none; font: 560 var(--t-xs)/1 var(--font); color: var(--muted); }
 .qs-chip { flex: none; padding: 4px 10px; border-radius: var(--r-full); font: 600 var(--t-xs)/1 var(--font); color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
 
-.qs-tabs { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px 8px; border-top: 1px solid var(--line); }
+.qs-tabs { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px 8px; border-top: 1px solid var(--line); -webkit-app-region: drag; }
+.qs-tabs button,
+.qs-foot button { -webkit-app-region: no-drag; }
 .qs-tabs [role="tablist"],
 .qs-filters { display: flex; flex-wrap: wrap; gap: 4px; }
 .qs-tabs button { padding: 5px 11px; border-radius: var(--r-full); font: 560 var(--t-xs)/1 var(--font); color: var(--muted); }
@@ -64,6 +70,8 @@ html:has(.quick-search) body { background: transparent; }
 .qs-row[aria-selected="true"] > svg { color: var(--accent); }
 .qs-row kbd { flex: none; padding: 2px 6px; border-radius: 6px; font: 560 var(--t-2xs)/1.3 var(--font); color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .qs-row > .qs-pin { width: 13px; height: 13px; color: var(--faint); }
+/* A copied picture shows itself in its row (a capped thumbnail main keeps); a copy drags out into other apps. */
+.qs-row-icon.qs-thumb { border-radius: 5px; object-fit: cover; background: color-mix(in srgb, var(--ink) 6%, transparent); box-shadow: 0 0 0 0.5px var(--line-strong); }
 
 .qs-preview { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px; min-height: 0; padding: 16px 20px 14px; }
 .qs-preview.is-empty { place-items: center; font-size: var(--t-sm); color: var(--faint); }
@@ -87,7 +95,7 @@ html:has(.quick-search) body { background: transparent; }
 .qs-details dt { color: var(--faint); }
 .qs-details dd { margin: 0; overflow-wrap: anywhere; color: var(--ink); }
 
-.qs-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 0 18px; border-top: 1px solid var(--line); font: var(--t-xs)/1.3 var(--font); color: var(--muted); }
+.qs-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 0 18px; border-top: 1px solid var(--line); font: var(--t-xs)/1.3 var(--font); color: var(--muted); -webkit-app-region: drag; }
 .qs-foot p { margin: 0; }
 .qs-keys { display: flex; gap: 16px; }
 .qs-keys kbd { padding: 2px 6px; border-radius: 6px; color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); }

@@ -10,13 +10,28 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 6, 2026: screenshots from the launcher (in review)
 
-Draft PR #48 on `claude/screenshots-and-recording` (Phase 13d): the ring, the quick search, a key each and Settings →
+Draft PR #48 on `claude/screenshots-and-recording` (Phase 13g): the ring, the quick search, a key each and Settings →
 Launcher → Screenshots drive CleanShot X through its URL commands when it is installed (CleanShot 5.0.1 is on
 Nate's Mac); without it the Mac's own `screencapture` takes area / window / full-screen shots. Recent captures from
 CleanShot's history folder are opt-in. Tested headlessly only (unit tests with a stand-in opener, build, test:ui);
 the live trial is in the PR's Mac checklist for Nate. Recording made in OSAT is researched in docs/BACKLOG.md and
 proposed as Phase 29. Another agent is reworking the launcher into one bar (`claude/phase-13c-one-bar`); this PR
 kept its changes in new files where it could.
+
+### Previous checkpoint — October 7, 2026: Phase 13c, one bar
+
+Branch `claude/phase-13c-one-bar` (from origin/main), one draft PR. The quick search and the quick chat are one
+quick bar: ⌘⇧Space opens it, ⌥⇧Space opens it on Ask; Return opens the top hit, ⌘Return asks (the chat streams in
+the same window, `LocalAssistant compact` inside the bar), ⌥Return saves a sticky to Unsorted (source "Quick bar");
+"clipboard" / "sticky" / "ask" and every room or Settings page are commands from `src/lib/find.js` (shared with ⌘K).
+`desktop/quick-chat.cjs` and `src/surfaces/QuickChat.jsx` are gone; `osatChat.show` (Pop out) now opens the bar.
+Clipboard pictures show a capped thumbnail and drag out (`search:drag-clip`); the bar is draggable and remembers
+`barSpot`. Dock bug: every `setVisibleOnAllWorkspaces` passes `skipTransformProcessType` (tests/desk.test.mjs guards it).
+Checked: npm test, build, test:ui (headless); CI green (Linux e2e and the Mac DMG). The e2e's iPhone-copy check
+waits only 2.6 s and any desk save within 2 s pushes the copy later, so the bar's ⌥Return check runs after it. **New rule (Oct 7): all testing headless on Nate's Mac** — no launching Electron or packaged builds,
+no osascript/UI scripting, computer-use, `open`, or global shortcuts; native checks go to CI's Mac job and the PR's
+checklist. The Dock bug could not be reproduced (it needs the Dock set to hide); Nate confirms on the CI DMG.
+Next: docs/BACKLOG.md (Raycast gap section, then #4).
 
 ### Previous checkpoint — October 6, 2026: update button shipped
 
@@ -203,9 +218,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     Model files live in `<data folder>/models`. LM Studio still works through `local-ai.cjs`.
   - `main.cjs`: windows, menu, IPC for the store / local AI / browser / terminal (`handle`, `fail`
     and the trusted-sender checks live here and are passed to the modules that register handlers),
-    the desk and the ⌥⇧Space quick chat (two shortcuts in `shortcuts`: `layer` is the desk's ⌥Space;
-    menu-bar icon, app launchers, Esc routing: a panel swallows Esc, so OSAT takes it while the
-    chat has focus), single-instance lock. The desk is the one main window: frameless,
+    the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌘⇧Space,
+    `chat` the bar on Ask, ⌥⇧Space; `chat:show` is Pop out, into the bar); menu-bar icon, app launchers, Esc
+    routing (a panel swallows Esc, so OSAT takes it while the bar or the ring has focus), single-instance lock.
+    Every `setVisibleOnAllWorkspaces` passes `skipTransformProcessType: true`: without it Electron activates the
+    Mac's Dock app and flips OSAT's Dock icon on each call (the Dock bug, Phase 13c). The desk is the one main window: frameless,
     see-through with vibrancy, it fills the work area of the display under the cursor each time
     it shows (`showDesk`), comes to the current Space, and closing it only hides it (`hideDesk`
     gives focus back to the previous app); only ⌘Q quits. IPC answers the desk (`from: 'app'` is
@@ -246,8 +263,6 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `webUtils.getPathForFile`; pass an array, not a `FileList`, which the bridge empties) and `cleanDropped`
     refuses a disk, the home folder, a place or granted root, and hidden names; `files:drag-out` hands
     files to `webContents.startDrag` (icon: the cached Quick Look thumbnail) while the mouse is still down.
-  - `quick-chat.cjs`: the quick chat window, a floating panel on every Space that stays where
-    it's left (`chatBounds` in `prefs.json`).
   - `scans.cjs`: Paper in (Phase 15). Watches the folder chosen in Settings → Data → Scans (the Brother's
     Google Drive `From_BrotherDevice`; the iPhone's Scan Documents saves there too). Each new scan is read
     (`extractText`: Vision for scans and pictures), sorted by the built-in AI into a node file (`SCAN_SCHEMA`,
@@ -280,14 +295,16 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     the fence in tests/under.test.mjs.
   - `launcher/` (Phase 13; `index.cjs` wires it, main only calls `createLauncher` and gives it `handle`, `fail`, the
     desk window and Electron's pieces; every `search:*` / `ring:*` channel is checked against the window that may ask,
-    `handle`'s `from` can be a function). `search-window.cjs` (the quick search panel, ⌘⇧Space: a floating panel on
-    every Space, a bar that grows to the full view; the app you were in keeps focus), `clipboard-history.cjs` (copies
+    `handle`'s `from` can be a function). `search-window.cjs` (the quick bar, ⌘⇧Space: a floating panel on every
+    Space, a bar that grows to the full view or to Ask (`mode` bar / full / chat); the app you were in keeps focus;
+    dragged, it opens where it was left: `barSpot` in prefs.json, only a move after `will-move` counts), `clipboard-history.cjs` (copies
     kept in `<data folder>/clipboard/`, skipping concealed types; pins, limits, Undo; OSAT's own writes go through
-    `quiet()`), `apps.cjs`, `recent-files.cjs` (Spotlight's last-used dates), `front.cjs` (`lsappinfo` for which app
+    `quiet()`; pictures keep a thumbnail capped by `thumbSize`; `dragFile` gives a picture's file or the words as a
+    .txt in `clipboard/drag/` for `search:drag-clip`, which calls `startDrag`), `apps.cjs`, `recent-files.cjs` (Spotlight's last-used dates), `front.cjs` (`lsappinfo` for which app
     a copy came from; `pasteInto` sends ⌘V through System Events, only with Accessibility), `hotkeys.cjs` (the
     launcher's own global keys: a Hyper key per source, window layouts, the ring), `snap.cjs` (window snapping
     through System Events, never OSAT's own windows), `ring-window.cjs` (the ring's panel, made on first use),
-    `capture.cjs` (Phase 13d: screenshots and recording; CleanShot X's `cleanshot://` commands when it is installed,
+    `capture.cjs` (Phase 13g: screenshots and recording; CleanShot X's `cleanshot://` commands when it is installed,
     else `screencapture`; panels hide first; recent captures read CleanShot's media folder only when turned on; its
     `openExternal` is fenced in tests/under.test.mjs to `CLEANSHOT_URL`, never `upload`).
     Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
@@ -326,7 +343,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `files:search` answers `{ rootId, relative, name, kind, size, modifiedAt, match: 'name' | 'inside' }`.
   The Mac CI job runs `scripts/find-check.mjs` against the real Spotlight.
 - `shared/quick-search-model.mjs`, `launcher-model.mjs`, `clipboard-model.mjs`, `clipboard-offer.mjs`, `calc.mjs`,
-  `window-layouts.mjs`, `ring-model.mjs`, `capture-model.mjs` (13d: the captures, CleanShot URLs, file names, which ones
+  `window-layouts.mjs`, `ring-model.mjs`, `capture-model.mjs` (13g: the captures, CleanShot URLs, file names, which ones
   this Mac can do, `captures` in launcher.json) — Phase 13's pure rules, shared by main, the panel and the desk: how typed
   words are read (`readTyped`, `readLine`, keywords), how sources become one list of rows (`buildRows`), what Return
   and ⌘K do (`actionsFor`), the clipboard's kinds, limits and groups, "Add to Jordan?" (`offerFor`), the safe
@@ -375,8 +392,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     batched operations, confirmed vs pending so edits never bounce back), `bridges.js`
     (the Mac app's `window.osat.store`, or an IndexedDB-backed hub for the browser preview;
     `?fresh=1` starts the preview empty).
-  - `App.jsx`: picks the surface: the desk (`shell/Desk.jsx`), `?surface=phone` the iPhone app (`surfaces/Phone.jsx`: Today, Notes, iCloud), `?surface=chat`
-    the quick chat (`surfaces/QuickChat.jsx`: the Ask room with `compact`).
+  - `App.jsx`: picks the surface: the desk (`shell/Desk.jsx`), `?surface=phone` the iPhone app (`surfaces/Phone.jsx`:
+    Today, Notes, iCloud), `?surface=search` the quick bar (with Ask inside it), `?surface=ring` the ring.
   - `lib/spaces.js`: the one list of spaces (Desk, Notes, Sky (id `Mindmap`), Ask, Files), tools and
     Settings. The dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
   - `views/Roadmap.jsx`: Tools → Roadmap (also ⌘K and the Go menu) shows docs/ROADMAP.md, built in
@@ -387,8 +404,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - `views/Bots.jsx`: Settings → Bots, the one place for bots, models and what leaves the Mac:
     the drop folder, which model answers, cloud models (keys never reach the page), the
     connector (its key only ever goes to the clipboard). Scans stay in Settings → Data (Phase 15).
-  - `surfaces/QuickSearch.jsx` (+ `search/`: `useSources`, `Preview`, `Ring`, icons): the quick search panel and the
-    ring; `?surface=search` and `?surface=ring`. In the browser preview they run on a stand-in bridge
+  - `surfaces/QuickSearch.jsx` (+ `search/`: `useSources`, `Preview`, `Ring`, icons): the quick bar (Phase 13c: one
+    bar; ⌘↵ asks into `LocalAssistant compact`, kept mounted so the chat you were in stays; ⌥↵ `captureThought` with
+    source 'Quick bar'; `mode` 'sticky' / 'ask' for a sticky or a question being written; commands from
+    `findAll(…, { bar: true })` ranked by `rankCommands`; the last rows from `wordRows`) and the ring. In the browser preview they run on a stand-in bridge
     (`tests/ui/search-bridge.mjs`). `views/Launcher.jsx` is Settings → Launcher; `field/ClipboardOffer.jsx` is the
     desk's "Add to Jordan?"; the line (`field/Line.jsx`) reads `readLine` and adds launcher rows under "Save as a
     sticky"; `lib/bot-jobs.js` is where bots that can take a `>` job will register. `shell/dock-model.js` and
@@ -463,7 +482,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     switched to OSAT, the notes and folders.
   - Styles: `src/styles/`, tokens in `tokens.css`.
   - `lib/UndoToast.jsx`: `useUndoToast()`, the one Undo toast (Notes, Money, Calendar); remove at once, offer Undo. `glass.css` loads last: the glass kit, the dock,
-    transitions, and the token overrides that make the quick chat see-through.
+    transitions, and the token overrides that make the quick bar see-through.
 - Words (Phase 12): one word per thing everywhere: sticky, note, node, branch, Unsorted,
   Delete, Move to, New node / New branch, Write a sticky, Color. Never thought (for a card),
   folder (for a node), Unfiled, To sort, Toss, Clear, Put inside, Make it a node. Nodes show
@@ -525,7 +544,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `relatedNotes()` picks (shown as removable chips, kept on the message as `noteIds`), and any
   attached files (dropped, chosen, or "Ask about it" in Files; only their names are kept, as
   `files`). Asking on the desk answers in a card under the line and saves the
-  chat; Pop out moves it to the quick chat. Action cards (add a step, a note, an event) only
+  chat; Pop out moves it to the quick bar's Ask. Action cards (add a step, a note, an event) only
   appear when the question asks for something to be added.
 
 ## Layout traps worth remembering
@@ -552,7 +571,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Rooms lay themselves out for their pop-out: `.popout-body` (and `.quick-chat`) is a
   `container: room / size`, and room styles use `@container room (max-width: 960px | 760px |
   560px)`. Only the desk itself uses `@media`.
-- In the quick chat `--page` is transparent: never use it as a text colour; use `--on-solid-ink`.
+- In the quick bar (and Ask in it) `--page` is transparent: never use it as a text colour; use `--on-solid-ink`.
 - `.glass` draws its rim and cursor light with `::before`/`::after`; don't give glass elements
   other pseudo-elements.
 - Every token lives in `tokens.css` (Mindmap's `--paper-*` and `--desk` too); app-wide layers use

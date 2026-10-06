@@ -1,8 +1,9 @@
 /* The launcher (Phase 13): quick search, the clipboard history, and the keys that open them. main.cjs
    only calls `createLauncher` (as it calls `createFiles` and `createBots`); everything below is wired
    here. main passes in what it owns: IPC's `handle` and `fail`, the desk window, Electron's pieces.
-   - `search`: the quick search panel (search-window.cjs). Its page (src/surfaces/QuickSearch.jsx) asks
-     for everything through the `search:*` channels below, which answer only the panel and the desk.
+   - `search`: the quick bar (search-window.cjs), the one bar for finding, Ask and a quick sticky. Its page
+     (src/surfaces/QuickSearch.jsx) asks for everything through the `search:*` channels below, which answer only the
+     bar and the desk.
    - `history`: the clipboard history (clipboard-history.cjs), kept in `<data folder>/clipboard/`.
    - settings: `launcher.json` in the data folder (shared/launcher-model.mjs): which sources are on,
      each one's word and Hyper key, apps and quick links with a word or a key, how much the clipboard keeps, pins.
@@ -28,8 +29,10 @@ async function createLauncher({
   app, BrowserWindow, screen, clipboard, nativeImage, shell, systemPreferences, globalShortcut, platform = process.platform,
   dataDir, preload, load, files, handle, fail, sharedModule, mainWindow, command, sendToAllWindows,
   offline = () => false, hideOnBlur = false, isTaken = () => false, onHide = () => {}, exec, notify = () => {},
-  // What the ring does that only main can: the desk, the quick chat, a new sticky, the Sky, Files.
+  // What the ring does that only main can: the desk, the Sky, Files.
   ringActions = {},
+  // Where the bar was dragged to (its top middle), and how main keeps a new spot.
+  barSpot = null, onBarMoved = () => {},
   // The apps on this Mac (tests hand in a short list).
   apps = createApps(),
 }) {
@@ -65,7 +68,7 @@ async function createLauncher({
 
   let search = null
   const startSearch = () => {
-    search = createQuickSearch({ BrowserWindow, screen, platform, preload, load: (window) => load(window, 'search'), hideOnBlur, onHide, view: () => settings.view })
+    search = createQuickSearch({ BrowserWindow, screen, platform, preload, load: (window) => load(window, 'search'), hideOnBlur, onHide, view: () => settings.view, spot: barSpot, onMoved: onBarMoved })
     // The page says when it is listening, so a key pressed while it loads still opens it on the right tab.
     let ready = false
     let waiting = null
@@ -200,6 +203,17 @@ async function createLauncher({
   on('search:clipboard-pause', (paused) => history.setPaused(paused === true), ofDesk)
   on('search:clipboard-clear', () => history.clear(), ofDesk)
   on('search:clipboard-text', (id) => history.textOf(id))
+  /* A copy dragged out of the bar into another app: the Mac's own drag, with the picture's file or the words as a .txt.
+     Called while the mouse is still down. */
+  const DRAG_ICON = path.join(__dirname, '..', 'assets', 'trayTemplate@2x.png')
+  on('search:drag-clip', async (id) => {
+    const out = await history.dragFile(id)
+    if (!out) fail('That copy is gone.')
+    const picture = out.image ? nativeImage.createFromPath(out.file) : null
+    const icon = picture && !picture.isEmpty() ? picture.resize(clipModel.thumbSize(picture.getSize().width, picture.getSize().height, 64)) : nativeImage.createFromPath(DRAG_ICON)
+    search.window.webContents.startDrag({ file: out.file, icon })
+    return true
+  }, (sender) => Boolean(search?.owns(sender)))
 
   /* ---- What Return and ⌘K do ---- */
 
@@ -283,8 +297,9 @@ async function createLauncher({
   const ringDoes = {
     search: () => search.show(),
     clipboard: () => search.show({ scope: 'clipboard' }),
-    sticky: () => ringActions.sticky?.(),
-    chat: () => ringActions.chat?.(),
+    // Over another app, a sticky and Ask stay over it, in the bar.
+    sticky: () => search.show({ view: 'sticky' }),
+    chat: () => search.show({ view: 'chat' }),
     desk: () => ringActions.desk?.(),
     sky: () => ringActions.sky?.(),
     files: () => ringActions.files?.(),
@@ -302,7 +317,7 @@ async function createLauncher({
     else ringDoes[item.id]?.()
     return true
   }, { from: ofRing })
-  // From the desk's own ring (⌘ + middle-click on the desk): the quick search over it, on a tab.
+  // From the desk's own ring (⌘ + middle-click on the desk): the quick bar over it, on a tab.
   on('search:show', (scope) => { search.show({ scope: ['files', 'clipboard', 'apps', 'notes', 'windows'].includes(scope) ? scope : 'all' }); return true }, ofDesk)
 
   on('search:hide', () => { search.hide(); return true })

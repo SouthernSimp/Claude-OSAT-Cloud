@@ -65,6 +65,7 @@ export function installSearchBridge(defaults) {
     captureRecent: async () => [{ id: 'media_a/CleanShot 1.png', name: 'CleanShot 1.png', at: Date.now() - 60000 }, { id: 'media_b/CleanShot 2.mp4', name: 'CleanShot 2.mp4', at: Date.now() - 7200000 }],
     captureThumb: async () => picture('d7e8c6', 'A screenshot'),
     capture: async (id) => { window.__calls.push(['capture', id]); return { ok: true } },
+    dragClip: async (id) => { window.__calls.push(['dragClip', id]); return true },
     hide: async () => { window.__calls.push(['hide']); return true },
     // Without Accessibility the Mac app answers that it can't move a window (and touches nothing).
     snap: async (layout) => { window.__calls.push(['snap', layout]); return { ok: false, reason: 'access' } },
