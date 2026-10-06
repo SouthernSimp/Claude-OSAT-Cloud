@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { DOCK_BAND, cleanSide, deskArea, fullBox, nearestSide } from '../src/shell/dock-model.js'
-import { covers, placeRoom, shrinkTo } from '../src/shell/placement.js'
+import { covers, fitRoom, placeRoom, shrinkTo } from '../src/shell/placement.js'
 
 const wide = { width: 3440, height: 1410 }
 const laptop = { width: 1440, height: 900 }
@@ -116,4 +116,18 @@ test('a room that fills the screen, and the stickies\' area, leave the dock\'s s
   assert.deepEqual(deskArea(box), { left: 12, top: 12, right: 1428, bottom: 804 })
   assert.deepEqual(deskArea(box, 'left'), { left: 96, top: 12, right: 1428, bottom: 888 })
   assert.deepEqual(deskArea(box, 'right'), { left: 12, top: 12, right: 1344, bottom: 888 })
+})
+
+test('open rooms remain reachable when the viewport shrinks, without changing their content', () => {
+  const pop = { key: 'Notes', x: 383, y: 170, w: 1100, h: 720, detail: { noteId: 'source' } }
+  for (const dock of ['bottom', 'left', 'right']) {
+    const view = { width: 660, height: 850 }
+    const box = fullBox(view, dock)
+    const fitted = fitRoom(pop, view, dock)
+    assert.ok(fitted.x >= box.left && fitted.x + fitted.w <= box.left + box.width)
+    assert.ok(fitted.y >= box.top && fitted.y + fitted.h <= box.top + box.height)
+    assert.strictEqual(fitted.detail, pop.detail)
+  }
+  const full = { ...pop, full: true }
+  assert.strictEqual(fitRoom(full, { width: 660, height: 850 }, 'bottom'), full)
 })

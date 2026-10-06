@@ -10,6 +10,7 @@ import { useUndoToast } from "../lib/UndoToast.jsx";
 import { Organizer } from "./Organizer.jsx";
 import { NoteList, useVisibleNotes } from "./NoteList.jsx";
 import { NoteEditor } from "./NoteEditor.jsx";
+import { saveNoteAiResponse } from "./note-ai.js";
 
 const UI_KEY = "osat.notes-ui.v2";
 const DEFAULT_UI = { list: "all", folderId: null, tags: [], query: "", sort: "updated", mode: "write", inspector: false, organizer: true, focus: false };
@@ -123,6 +124,15 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         pendingFocus.current = "title";
       },
       updateNote: (id, patch) => commit((state) => updateNote(state, id, patch)),
+      saveAiResponse(id, proposal) {
+        let saved = false;
+        commit((state) => {
+          const next = saveNoteAiResponse(state, id, proposal);
+          saved = next.notes.some((note) => note.id === proposal.id);
+          return next;
+        });
+        return saved;
+      },
       relinkTitle: (oldTitle, newTitle) => commit((state) => relinkRenamedNote(state, oldTitle, newTitle)),
       keepNotes: (ids) => commit((state) => keepNotes(state, ids)),
       moveNotes: (ids, folderId) => commit((state) => moveNotes(state, ids, folderId)),

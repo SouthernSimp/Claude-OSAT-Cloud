@@ -9,6 +9,7 @@ import { formatRelativeTime } from "../lib/ui.js";
 import { nodesMentioned, splitMentions } from "../nodes-model.js";
 import { backlinks, folderPath, folderTree, isActiveNote, outgoingLinks, outline, resolveWikilink, wordCount } from "../notes-model.js";
 import { caretPosition } from "./caret.js";
+import { NoteAi } from "./NoteAi.jsx";
 import {
   applyAutocomplete, autocompleteContext, continueList, indentLines, insertAtCaret, setHeading, toggleLinePrefix, toggleTaskAt,
   toggleTaskAtCaret, wrapSelection,
@@ -24,6 +25,8 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
   const mentions = useMemo(() => (note.markdown.includes("@") ? nodesMentioned(note, workspace.folders) : []), [note, workspace.folders]);
   const [complete, setComplete] = useState(null); // { context, items, cursor, top, left }
   const [pendingSelection, setPendingSelection] = useState(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const aiButton = useRef(null);
   const trashed = Boolean(note.trashedAt);
   const mode = trashed ? "read" : ui.mode;
   const path = folderPath(workspace.folders, note.folderId);
@@ -195,6 +198,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
           />
         )}
         <div className="editor-bar-spacer" />
+        {isActiveNote(note) && <button ref={aiButton} type="button" className="text-button" aria-expanded={aiOpen} onClick={() => setAiOpen((value) => !value)}>Note AI</button>}
         <button type="button" className="icon-button" aria-label={ui.focus ? "Leave focused writing" : "Focus on writing"} aria-pressed={Boolean(ui.focus)} title={ui.focus ? "Leave focused writing" : "Focus on writing"} onClick={() => setUi({ focus: !ui.focus })}>{ui.focus ? <ArrowsIn /> : <ArrowsOut />}</button>
         {!trashed && (
           <div className="segmented" role="tablist" aria-label="Editor mode">
@@ -275,6 +279,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             </div>
           )}
 
+          {aiOpen && isActiveNote(note) && <NoteAi workspace={workspace} note={note} actions={actions} onClose={() => { setAiOpen(false); aiButton.current?.focus(); }} />}
           <div className={`editor-panes mode-${mode}`}>
             {writing && (
               <div className="write-pane">

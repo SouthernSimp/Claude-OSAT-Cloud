@@ -34,7 +34,7 @@ import { RoadmapView } from '../views/Roadmap.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
 import { DOCK_KEY, cleanSide, fullBox } from './dock-model.js'
-import { covers, grow, placeRoom } from './placement.js'
+import { covers, fitRoom, grow, placeRoom } from './placement.js'
 import { Dock } from './Shell.jsx'
 import { Welcome } from './Welcome.jsx'
 import { needsTour, Tour } from './Tour.jsx'
@@ -97,6 +97,11 @@ export function Desk() {
   const storage = storageFrom(status, hydrated)
   const bridge = window.osatDesk
   const [pops, setPops] = useState([])
+  useEffect(() => {
+    const resize = () => setPops((list) => list.map((pop) => fitRoom(pop, { width: innerWidth, height: innerHeight }, latest.current.dockSide)))
+    addEventListener('resize', resize)
+    return () => removeEventListener('resize', resize)
+  }, [])
   const [visit, setVisit] = useState(0)
   const [prefs, setPrefs] = useState(() => ({ launchers: [], places: bridge ? {} : readPlaces(), widgets: bridge ? null : readWidgets() }))
   const [welcome, setWelcome] = useState(false)

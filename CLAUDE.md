@@ -8,7 +8,21 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 5, 2026: Sky history
+## Resume checkpoint — October 5, 2026: focused Notes AI
+
+Notes has an inline Note AI panel: Summarize, Untangle, Next steps. Each action
+shares a snapshot of the current note with a local model; extra notes are manually
+selected and long-note limits are disclosed. Responses stream, can be stopped,
+reviewed and edited, and only an explicit Save creates a separate linked note.
+Original writing and concurrent edits are never overwritten. Saved responses use
+the existing Notes store; no extra chat/database architecture or cloud fallback.
+Open rooms now fit the viewport when it shrinks, preserving content and Sky data.
+Work is in work/osat-core-improvements on codex/notes-ai-20261005, based on the
+Sky history review at a380a7e. Preview remains 5232. See docs/NOTES-AI-20261005.md
+for verification and runtime limits. Installed apps/data remain untouched and the
+native Mac testing pause continues. Merge and installation remain separate.
+
+### Previous checkpoint — October 5, 2026: Sky history
 
 PR #39 (AI controls and earlier core/Sky work) and PR #41 (guided five-sticky
 sorting) are merged into main. The next implementation is on
