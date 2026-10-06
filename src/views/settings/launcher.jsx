@@ -167,7 +167,7 @@ function Permission() {
         title={granted ? 'OSAT can paste and move windows for you' : 'Allow OSAT to paste and move windows'}
         hint={granted
           ? 'Return on a copy puts it into the app you were in, and a layout moves the window you were in.'
-          : 'Without this, Return on a copy puts it on the clipboard and OSAT says “Press ⌘V”, and a layout says what is waiting; nothing else changes. To turn it on, macOS wants you to allow OSAT under Accessibility. OSAT asks only when you press the button.'}
+          : 'Without this, Return on a copy puts it on the clipboard and OSAT says “Press ⌘V”, and a layout says what is waiting; nothing else changes. To turn it on, macOS wants you to allow OSAT under Accessibility. OSAT asks only when you press the button. After an OSAT update macOS can forget the permission even though OSAT still shows in the list: select it there, press −, then press the button again.'}
         words="accessibility allow paste move windows"
       >
         {!granted && <button className="outline-button" type="button" onClick={() => bridge.askAccess().then(() => setTimeout(look, 1500), () => {})}><LockSimple /> Allow in Accessibility…</button>}

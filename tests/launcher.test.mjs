@@ -108,7 +108,10 @@ test('only the panel and the desk may ask; the settings are the desk’s alone',
     assert.equal(clipboardRule({ id: 'quick chat' }), false)
     assert.equal(settingsRule(t.desk.webContents), true)
     assert.equal(settingsRule(t.launcher.search.window.webContents), false)
-    for (const channel of ['search:clipboard-clear', 'search:clipboard-pause', 'search:ask-access', 'search:status']) assert.equal(t.handlers.get(channel).from(t.launcher.search.window.webContents), false, channel)
+    for (const channel of ['search:clipboard-clear', 'search:clipboard-pause', 'search:status']) assert.equal(t.handlers.get(channel).from(t.launcher.search.window.webContents), false, channel)
+    // The bar's "Allow…" button asks for Accessibility itself after a paste that couldn't happen.
+    assert.equal(t.handlers.get('search:ask-access').from(t.launcher.search.window.webContents), true)
+    assert.equal(t.handlers.get('search:ask-access').from({ id: 'quick chat' }), false)
   } finally { await t.done() }
 })
 

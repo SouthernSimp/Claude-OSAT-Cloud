@@ -221,8 +221,12 @@ export function QuickSearchSurface() {
           break
         case 'paste': {
           const result = await bridge.pasteClip(d.id)
-          if (!result.pasted) {
-            said(result.reason === 'access' ? 'Copied. Press ⌘V to paste. To paste for you, allow OSAT in Accessibility: Settings → Launcher.' : 'Copied. Press ⌘V to paste.', 0)
+          if (result.reason === 'access') {
+            // One press asks macOS (which opens its own prompt); a build that macOS has forgotten needs OSAT removed and added again.
+            setToast({ message: 'Copied. Press ⌘V to paste. To paste for you, OSAT needs Accessibility.', label: 'Allow…', undo: () => bridge.askAccess().catch(() => {}), at: Date.now() })
+            hideLater(9000)
+          } else if (!result.pasted) {
+            said('Copied. Press ⌘V to paste.', 0)
             hideLater(2400)
           }
           break
@@ -478,7 +482,7 @@ export function QuickSearchSurface() {
 
           <footer className="qs-foot">
             {toast ? (
-              <p role="status" className="qs-toast">{toast.message}<button type="button" onClick={() => { const undo = toast.undo; setToast(null); undo() }}>Undo</button></p>
+              <p role="status" className="qs-toast">{toast.message}<button type="button" onClick={() => { const undo = toast.undo; setToast(null); undo() }}>{toast.label || 'Undo'}</button></p>
             ) : note ? <p role="status">{note}</p> : (
               <p className="qs-keys">
                 {actions[0] && !['sticky', 'ask-ai'].includes(actions[0].id) && <span><kbd>↵</kbd> {actions[0].label}</span>}
