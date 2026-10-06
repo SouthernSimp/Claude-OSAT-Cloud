@@ -42,6 +42,7 @@ function guardFetch(fetch, isUnder) {
 /* What each refused channel says while offline. Everything else works as always. */
 const WAITS = [
   [/^browser:(open|navigate)$/, 'The web waits until you’re back online.'],
+  [/^skills:(record-start|run)$/, 'Skills use the web, which waits until you’re back online.'],
   // Files on this Mac still show; only handing one to another app waits.
   [/^(files:open|search:open-file)$/, 'Opening it in another app waits until you’re back online.'],
   // The quick search opens an app or a web address for you; a web address needs the internet.

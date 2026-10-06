@@ -103,6 +103,21 @@ contextBridge.exposeInMainWorld('osatBrowser', Object.freeze({
   onState: (listener) => listen('browser:state', listener),
 }))
 
+/* Skills: record something once in the browser, replay it by name (desktop/skills.cjs). */
+contextBridge.exposeInMainWorld('osatSkills', Object.freeze({
+  list: () => ipcRenderer.invoke('skills:list'),
+  state: () => ipcRenderer.invoke('skills:state'),
+  recordStart: () => ipcRenderer.invoke('skills:record-start'),
+  recordStop: (name) => ipcRenderer.invoke('skills:record-stop', name),
+  recordCancel: () => ipcRenderer.invoke('skills:record-cancel'),
+  run: (id, from = 0) => ipcRenderer.invoke('skills:run', id, from),
+  stop: () => ipcRenderer.invoke('skills:stop'),
+  clear: () => ipcRenderer.invoke('skills:clear'),
+  remove: (id) => ipcRenderer.invoke('skills:remove', id),
+  put: (skill) => ipcRenderer.invoke('skills:put', skill),
+  onState: (listener) => listen('skills:state', listener),
+}))
+
 contextBridge.exposeInMainWorld('osatTerminal', Object.freeze({
   available: () => ipcRenderer.invoke('terminal:available'),
   list: () => ipcRenderer.invoke('terminal:list'),

@@ -113,7 +113,7 @@ export function Line({
     ...(line.keyword && bridge ? [line.keyword.keyword.app
       ? { key: `kw:${line.keyword.keyword.id}`, label: `Open ${line.keyword.keyword.label}`, hint: line.keyword.keyword.keyword, icon: AppWindow, run: () => { reset(); attempt(() => bridge.openAppNamed(line.keyword.keyword.app)) } }
       : { key: `kw:${line.keyword.keyword.id}`, label: line.keyword.keyword.url.includes('{query}') ? `Search ${line.keyword.keyword.label} for “${line.keyword.query}”` : `Open ${line.keyword.keyword.label}`, tag: 'Web', icon: Globe, run: () => { reset(); attempt(() => bridge.openLink(keywordAddress(line.keyword.keyword, line.keyword.query))) } }] : []),
-    ...(line.bot ? [{ key: 'bot', label: 'Hand this to a bot', hint: botTakers().length ? line.bot.job : 'No bot takes jobs yet', tag: 'Bots', icon: Robot, run: () => { const sent = handOff(line.bot.job, botTakers()); if (sent.ok) { sent.run(); reset() } else say(sent.message) } }] : []),
+    ...(line.bot ? [{ key: 'bot', label: 'Hand this to a bot', hint: botTakers({ navigate }).length ? line.bot.job : 'No bot takes jobs yet', tag: 'Bots', icon: Robot, run: () => { const sent = handOff(line.bot.job, botTakers({ navigate })); if (sent.ok) { sent.run(); reset() } else say(sent.message) } }] : []),
   ]
   const named = open && bridge && !clipboardScope && text.length >= 2
     ? rankApps(apps, text).filter((app) => app.name.toLowerCase().startsWith(text.toLowerCase())).slice(0, 2)

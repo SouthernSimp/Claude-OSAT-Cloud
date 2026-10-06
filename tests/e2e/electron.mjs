@@ -566,6 +566,7 @@ try {
   // 9. Offline, through window.osatUnder. A page on this Mac (loopback) stands in for
   //    the web, so no internet is needed; example.com is never actually reached.
   const local = http.createServer((request, response) => {
+    if (request.url === '/rent') return response.end('<title>Rent</title><label for="a">Amount</label><input id="a"><button id="pay" onclick="document.title = \'Paid \' + a.value">Pay now</button>')
     if (request.url !== '/big') return response.end('<title>A page on this Mac</title>Hello')
     // A file that takes its time, like a real download.
     response.writeHead(200, { 'content-type': 'application/octet-stream', 'content-disposition': 'attachment; filename="big.bin"' })
@@ -596,6 +597,34 @@ try {
     check((await main.evaluate(() => window.osatUnder.status())).on === false, 'OSAT started under before anyone went under')
     await main.evaluate((url) => window.osatBrowser.open(url), page)
     check(await until(async () => (await tabUrls()).includes(page), 5000), 'the browser did not open the page on this Mac')
+    // 14. Skills: record a click and some typing once in the browser, name it, and run it again in a new tab.
+    const clickIn = (selector) => app.evaluate(async ({ webContents }, selector) => {
+      const view = webContents.getAllWebContents().filter((item) => item.getURL().endsWith('/rent')).at(-1)
+      const spot = await view.executeJavaScript(`(() => { const b = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) } })()`)
+      for (const type of ['mouseDown', 'mouseUp']) view.sendInputEvent({ type, x: spot.x, y: spot.y, button: 'left', clickCount: 1 })
+    }, selector)
+    const typeIn = (text) => app.evaluate(({ webContents }, text) => webContents.getAllWebContents().filter((item) => item.getURL().endsWith('/rent')).at(-1).insertText(text), text)
+    await main.evaluate((url) => window.osatBrowser.open(url), `${page}rent`)
+    await main.evaluate(() => window.osatBrowser.place({ x: 0, y: 0, width: 900, height: 700 }))
+    check(await until(async () => (await tabUrls()).includes(`${page}rent`), 5000), 'skills: the page to record did not open')
+    await sleep(500)
+    await main.evaluate(() => window.osatSkills.recordStart())
+    await sleep(300)
+    await clickIn('#a')
+    await typeIn('45')
+    await clickIn('#pay')
+    check(await until(async () => (await main.evaluate(() => window.osatSkills.state())).recording?.count >= 2, 5000), 'skills: what was done on the page was not written down')
+    const said = (await main.evaluate(() => window.osatSkills.state())).recording?.steps || []
+    check(said.some((words) => words === 'Type “45” in “Amount”') && said.some((words) => words === 'Click “Pay now”'), `skills: the steps were not in plain words (${said.join(' | ')})`)
+    const saved = await main.evaluate(() => window.osatSkills.recordStop('Pay rent')).catch((error) => { problems.push(`skills: saving failed: ${error.message}`); return null })
+    check((await readFile(path.join(home, 'OSAT Test', 'skills.json'), 'utf8').catch(() => '')).includes('Pay rent'), 'skills: the skill was not kept on disk')
+    if (saved) {
+      const outcome = await main.evaluate((id) => window.osatSkills.run(id), saved.id)
+      check(outcome.ok === true, `skills: running it again stopped (${outcome.message})`)
+      check(await until(async () => (await main.evaluate(() => window.osatBrowser.state())).tabs.some((tab) => tab.title === 'Paid 45'), 5000), 'skills: running it again did not do the steps')
+    }
+    for (const tab of (await main.evaluate(() => window.osatBrowser.state())).tabs.filter((item) => item.url.endsWith('/rent'))) await main.evaluate((id) => window.osatBrowser.close(id), tab.id)
+    await main.evaluate(() => window.osatBrowser.place(null))
     // A blank tab too, and a file the browser is still fetching.
     await main.evaluate(() => window.osatBrowser.open())
     await app.evaluate(({ session }, { url, saveTo }) => {

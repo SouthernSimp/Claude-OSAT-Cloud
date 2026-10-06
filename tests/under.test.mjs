@@ -56,11 +56,11 @@ test('under, a loopback answer can’t send the main process fetch anywhere else
 })
 
 test('what reaches out answers in plain words while offline; the rest works', () => {
-  for (const channel of ['browser:open', 'browser:navigate', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'ai:install', 'phone:enable', 'phone:disable']) {
+  for (const channel of ['browser:open', 'browser:navigate', 'skills:record-start', 'skills:run', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'ai:install', 'phone:enable', 'phone:disable']) {
     assert.match(refusal(channel), /when you’re back online|until you’re back online/, channel)
   }
   // Files on this Mac still list, show and search; the desk shows the Desktop while offline.
-  for (const channel of ['files:list', 'files:thumb', 'files:search', 'files:quick-look', 'browser:state', 'browser:close', 'terminal:list', 'terminal:attach', 'ai:status', 'ai:cancel', 'ai:choose', 'phone:status', 'desk:prefs', 'store:load', 'under:set', 'local-ai:models', 'search:files', 'search:clipboard', 'search:apps', 'search:reveal-file', 'search:paste-clip', 'search:trash-file']) {
+  for (const channel of ['skills:list', 'skills:state', 'skills:stop', 'files:list', 'files:thumb', 'files:search', 'files:quick-look', 'browser:state', 'browser:close', 'terminal:list', 'terminal:attach', 'ai:status', 'ai:cancel', 'ai:choose', 'phone:status', 'desk:prefs', 'store:load', 'under:set', 'local-ai:models', 'search:files', 'search:clipboard', 'search:apps', 'search:reveal-file', 'search:paste-clip', 'search:trash-file']) {
     assert.equal(refusal(channel), null, channel)
   }
 })

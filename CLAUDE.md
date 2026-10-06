@@ -22,8 +22,7 @@ the AI engine's dependencies out of app.asar); the latest release tag is v0.1.17
 In progress, in Nate's order: "Ask across everything" in two stacked PRs (step one: the notes side, `src/assistant/ask-sources.js`
 and `relatedForAsk` in `work-scope.js`; step two, stacked on it: copied items and files, `shared/ask-find.mjs` picks them and
 leaves secret-looking text out, `ask:find` in `desktop/launcher/index.cjs`, never to a cloud model, the switch `ask.sources` in
-launcher.json, a first-time note, chips in `assistant/UsedSources.jsx`; a message keeps only pointers), then bots and a
-"Record a skill" recorder (record steps in OSAT's own browser, replay as a named button), then Phase 27's connectors
+launcher.json, a first-time note, chips in `assistant/UsedSources.jsx`; a message keeps only pointers), then bots: "Record a skill" is built (Phase 19a, in review: `desktop/skills.cjs`, `desktop/skill-pages.cjs`, `shared/skill-model.mjs`, `src/tools/Skills.jsx`), the workers place is next, then Phase 27's connectors
 (first: see both ends of a connection in one view). Nate does not need Mac Calendar polish: Siri covers it.
 
 ## Working with Nate
@@ -253,6 +252,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     fetch and every session's requests refuse all but this Mac (loopback, so LM Studio works),
     `refusal(channel)` answers what waits in plain words, browser tabs sleep, downloads (the
     AI's too) pause and resume, the iPhone link pauses. The renderer talks to it as `osatUnder`.
+  - `skills.cjs` + `skill-pages.cjs` (Phase 19a, "Record a skill"): `skills.json` in the data folder (this Mac only, never synced, 0600),
+    one controller per window on that window's `browser.cjs` (`watch`, `exec` in isolated world 1002, `openTab`). Recording injects
+    `recorder` into the tab; each step comes back as a console line whose prefix holds a per-recording secret (a page can't forge
+    steps); a password field is a `secret` step with no words. Replay (`replay`) finds each target by selector, else by its words,
+    waits up to 8 s, and stops calmly (`Stopped at step 2: …`); a secret step pauses with Continue. Steps are `shared/skill-model.mjs`.
+    The line's `>job` runs a skill by name (`src/lib/bot-jobs.js`). `osatSkills` in the preload; `skills:record-start` and `skills:run` wait offline.
   - `browser.cjs`, `terminal.cjs`, `local-ai.cjs` (LM Studio on 127.0.0.1:1234),
     `path-guard.cjs`, `text-files.cjs`.
 - `ios/` — the iPhone app: a SwiftUI shell (XcodeGen `project.yml`) showing the web app with
