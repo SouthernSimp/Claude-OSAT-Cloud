@@ -914,8 +914,8 @@ function phoneStatus() {
 // Both do nothing while the link is off, or paused while offline.
 const phoneLive = () => prefs.phone && !under.on
 globalThis.__dbg = []
-const mirrorSoon = () => {
-  globalThis.__dbg.push(['soon', Date.now(), prefs.phone, under.on])
+const mirrorSoon = (message) => {
+  globalThis.__dbg.push(['soon', Date.now(), JSON.stringify(message ?? null).slice(0, 600)])
   clearTimeout(phoneMirrorTimer)
   if (phoneLive()) phoneMirrorTimer = setTimeout(() => { globalThis.__dbg.push(['fire', Date.now(), phoneLive(), Boolean(phone)]); if (phoneLive()) phone?.mirror().then((n) => globalThis.__dbg.push(['done', n, phone.status()])) }, 2000)
 }
