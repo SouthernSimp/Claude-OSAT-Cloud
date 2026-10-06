@@ -434,8 +434,10 @@ export function QuickSearchSurface() {
                         role="option"
                         aria-selected={index === active}
                         data-kind={item.kind}
-                        onClick={() => { setCursor(index); input.current?.focus() }}
+                        onClick={() => { setCursor(index); setMenu(null); input.current?.focus() }}
                         onDoubleClick={() => run(actionsFor(item)[0]?.id, item)}
+                        // Right-click opens the same actions ⌘K lists.
+                        onContextMenu={(event) => { event.preventDefault(); setCursor(index); setMenu({ at: 0 }); input.current?.focus() }}
                         // A copy or a recent capture drags out into other apps (main starts the Mac's drag).
                         draggable={(item.source === 'clipboard' && Boolean(bridge?.dragClip)) || item.kind === 'shot'}
                         onDragStart={item.source === 'clipboard' ? (event) => { event.preventDefault(); bridge?.dragClip?.(item.data.id).catch((error) => said(cleanError(error), 4000)) }
