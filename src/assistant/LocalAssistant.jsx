@@ -30,7 +30,7 @@ import { applyAction, describeAction, extractActions, systemPrompt, wantsActions
 import { askContext } from "./ask-context.js";
 import { notesForQuestion } from "./work-scope.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
-import { deriveTitle, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
+import { deriveTitle, fitToMemory, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
 import { cleanError, setupLine, useAi } from "./useAi.js";
 import { ModelMenu } from './ModelMenu.jsx';
 import "../styles/assistant.css";
@@ -288,10 +288,11 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     const controller = new AbortController();
     abortRef.current = controller;
     let full = "";
+    const fit = fitToMemory(outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds })), base.messages, content, workspace.notes, noteIds, files));
     try {
       await streamLocalMessage({
         model,
-        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds })), base.messages, content, workspace.notes, noteIds, files),
+        messages: fit.messages,
         signal: controller.signal,
         onDelta: (delta) => {
           full += delta;
@@ -308,7 +309,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     setStreaming("");
     setBusy(false);
     if (!body.trim()) return;
-    const answer = newMessage("assistant", body, { modelId: model, modelName: modelLabel(replyingModel || model) });
+    const answer = newMessage("assistant", body, { modelId: model, modelName: modelLabel(replyingModel || model), ...(fit.leftOut ? { leftOut: fit.leftOut } : {}) });
     commit((state) => {
       const saved = (state.chats || []).find((item) => item.id === chat.id) || chat;
       return putChat(state, { ...saved, messages: [...saved.messages, answer] });
@@ -469,6 +470,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                 <div className="bubble-body">
                   {message.role === "assistant" && (message.modelName || message.modelId) && <small className="bubble-model">{message.modelName || message.modelId}</small>}
                   {message.role === "assistant" ? <Markdown text={message.content} headingOffset={2} /> : <p className="user-text">{message.content}</p>}
+                  {message.leftOut > 0 && <small className="bubble-model">To fit the AI’s memory, it didn’t read the {message.leftOut === 1 ? "oldest message" : `${message.leftOut} oldest messages`} in this chat. Start a new chat for a fresh page.</small>}
                   {message.role === "user" && <UsedNotes ids={message.noteIds} notes={workspace.notes} onOpen={openNote} />}
                   {message.role === "user" && message.files?.length > 0 && (
                     <p className="bubble-notes">
