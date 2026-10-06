@@ -18,6 +18,8 @@ Two draft PRs in `SouthernSimp/Claude-OSAT-Cloud`, stacked:
   Ask's model menu solid (its rule lives in assistant.css: Ask's CSS loads after glass.css) and on top.
 - [#52](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/52) `claude/unsorted-sorter-calm` (base: #51):
   Sort Unsorted made easy to read (`src/sky/UnsortedSorter.jsx`).
+Also open: #53 (sort edit in place), #54 (ring), #55 `claude/sort-all-desk-rightclick` (right-click on the desk's files and shelf icons;
+Sort them all up to 300 stickies; base: #53). Next after those: Ask across everything, then a bot / "Record a skill" recorder.
 Merge #51 first, then #52 (retarget it to main). Both await Nate's "merge".
 Nate's Mac had 0.1.139 (its updater couldn't clear `updates/previous`, fixed by #50); it was replaced with
 a local build of #52 as 0.1.171 (built in /private/tmp after a fresh `npm ci`: a symlinked node_modules
@@ -312,7 +314,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     (`homeOptions` in sort-review.js: the AI's pick, words' matches with a reason and what is in each, places used
     a moment ago, a New node row), "Another place…" (`findPlaces`), one primary Move with Return; S / L / ⌫ / A /
     N / F / ←→ / ⌘Z; the queue is `sortQueue` (Later sends one to the end) with a Next up strip. "Sort them all"
-    shows `sort-unsorted.js`'s groups (`sortRequests` in batches of 20, at most 60, `modelSuggestions` /
+    shows `sort-unsorted.js`'s groups (`sortRequests` in batches of 20, at most 300, one request after another with progress, `modelSuggestions` /
     `wordSuggestions`, `stillToSort`) in the same screen; every move goes through `fileUnsorted` (a node of the
     same name is reused) and one Undo (`undoFiling`, which also removes a node made for it while it is empty;
     Sky's `actions.fileGroups` / `undoUnsorted`, with the log in a ref so a toast's Undo is always the newest).
