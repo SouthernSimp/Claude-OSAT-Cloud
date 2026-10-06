@@ -19,7 +19,9 @@ launcher.json is its switch, Hyper R stays as the backup; it was checked headles
 Mac checklist).
 Nate's Mac has 0.1.171 (a local build of #52, built in /private/tmp after a fresh `npm ci`: a symlinked node_modules leaves
 the AI engine's dependencies out of app.asar); the latest release tag is v0.1.174.
-Next, in Nate's order: "Ask across everything" (Ask also reads clipboard history, scans and files), then bots and a
+In progress, in Nate's order: "Ask across everything" in two stacked PRs (step one: the notes side, `src/assistant/ask-sources.js`
+and `relatedForAsk` in `work-scope.js`; step two: copied items and files, with secret-looking text left out, never to a cloud
+model, one switch, a first-time note), then bots and a
 "Record a skill" recorder (record steps in OSAT's own browser, replay as a named button), then Phase 27's connectors
 (first: see both ends of a connection in one view). Nate does not need Mac Calendar polish: Siri covers it.
 
@@ -345,7 +347,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - Rooms: `field/` (home desk, widgets), `notes/`, `assistant/` (Ask:
     `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`; Phase 26:
     `board-context.js` (`boardMap`: the words-only map of nodes, Unsorted, open nodes, Next and the Calendar
-    every question carries, `OSAT_GUIDE`, `planLines` for a question about the roadmap), `ask-context.js`
+    every question carries, `OSAT_GUIDE`, `planLines` for a question about the roadmap), `ask-sources.js` (what each source
+    is, a sticky, a scan or a journal day, and where it lives: the label the model reads and the chips under an answer;
+    `relatedForAsk` in `work-scope.js` picks the notes: the question's words, a node it names, a time like "last month"
+    read by `parseFileQuery`), `ask-context.js`
     (the windows' side: adds the bundled roadmap) and `useAskHere.js` (the streaming answer the desk's line and
     the Sky's card share)),
     `views/` (Calendar, Journal (with Reflection as its tab, Reflection's one home), Habits,

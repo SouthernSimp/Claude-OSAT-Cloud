@@ -1,6 +1,8 @@
 /* Ask's conversations. They live in the workspace (`workspace.chats`), so every
    window sees the same history and it travels with backups. Pure helpers only. */
 
+import { noteHeading } from './ask-sources.js'
+
 const MAX_MESSAGES = 200
 
 export const newChat = (overrides = {}) => {
@@ -68,10 +70,11 @@ export function searchChats(chats, query) {
     || chat.messages.some((message) => message.content.toLowerCase().includes(needle)))
 }
 
-/* What the model reads: the notes Ask picked for this question, trimmed to fit. */
-export function notesContext(notes, noteIds) {
+/* What the model reads: the notes Ask picked for this question, trimmed to fit. With `folders`, each
+   says what it is and where it lives ("SCAN: Lease (in Home, edited Sep 28, 2026)") so the answer can too. */
+export function notesContext(notes, noteIds, folders = null) {
   const chosen = noteIds.map((id) => notes.find((note) => note.id === id)).filter(Boolean)
-  return chosen.map((note) => `NOTE: ${note.title || 'Untitled'}\n${String(note.markdown || '').slice(0, 1600)}`).join('\n\n').slice(0, 12000)
+  return chosen.map((note) => `${folders ? noteHeading(note, folders) : `NOTE: ${note.title || 'Untitled'}`}\n${String(note.markdown || '').slice(0, 1600)}`).join('\n\n').slice(0, 12000)
 }
 
 /* Files attached to a question, sharing one allowance so they fit beside the notes.
@@ -88,8 +91,8 @@ export function filesContext(files) {
 
 /* The messages sent to the model: the system prompt, the conversation so far,
    and the new question with the chosen notes and any attached files. */
-export function outbound(system, history, question, notes, noteIds, files = []) {
-  const fromNotes = noteIds.length ? notesContext(notes, noteIds) : ''
+export function outbound(system, history, question, notes, noteIds, files = [], folders = null) {
+  const fromNotes = noteIds.length ? notesContext(notes, noteIds, folders) : ''
   const context = [
     fromNotes && `[FROM MY NOTES — use them if they help]\n${fromNotes}`,
     files.length && filesContext(files),

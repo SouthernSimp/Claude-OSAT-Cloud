@@ -844,6 +844,8 @@ g:hover > .link-line { stroke-width: 3.5px; opacity: 1; }
 .sky-ask-sources { display: flex; flex-wrap: wrap; gap: 5px; padding-top: 14px; border-top: 1px solid var(--line); }
 .sky-ask-sources small { flex-basis: 100%; color: var(--muted); }
 .sky-ask-sources button { padding: 4px 7px; border-radius: 6px; background: var(--surface-sunken); color: var(--ink); font-size: 12px; text-align: left; }
+.sky-ask-sources em { color: var(--muted); font-style: normal; margin-right: 3px; }
+.sky-ask-gone { padding: 4px 7px; color: var(--muted); font-size: 12px; }
 .unpack-proposal { display: grid; gap: 10px; }
 .unpack-proposal textarea { min-height: 150px; width: 100%; resize: vertical; font: 13px/1.5 var(--font); }
 .unpack-proposal > div { display: flex; flex-wrap: wrap; gap: 8px; }
