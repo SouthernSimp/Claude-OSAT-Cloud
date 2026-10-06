@@ -10,7 +10,7 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 6, 2026: Unsorted sorting redone (in review)
 
-Branch `claude/unsorted-sorting-redo` (draft PR, from main) rebuilds the Sky's Unsorted sorter:
+Branch `claude/unsorted-sorting-redo` (draft PR #49, from main) rebuilds the Sky's Unsorted sorter:
 one sticky, its likely homes as a ranked list with plain reasons, one Move on Return, keys for
 everything, a Next up strip and honest progress, and "Sort them all" (the old Sort Unsorted from
 the Ask card) inside the same screen with one Undo. It also fixes the AI saying nothing:

@@ -66,7 +66,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 27c | Guided five-sticky sorting, destination previews, recent placements and recoverable Trash | Merged (PR #41) |
 | 27d | Sky session Undo/Redo for moves, connections, Tidy and Arrange; safe replay after later edits | Merged (PR #42) |
 | 27e | Focused Notes AI, explicit note sharing, review and linked-note save | Merged (PR #43) |
-| 27f | Sorting Unsorted redone: one sticky, ranked homes with reasons, Return moves, keys, Next up, Sort them all in the same screen; the AI always says what it's doing | In review |
+| 27f | Sorting Unsorted redone: one sticky, ranked homes with reasons, Return moves, keys, Next up, Sort them all in the same screen; the AI always says what it's doing | In review (PR #49) |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
