@@ -59,7 +59,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
 | 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | Merged (PR #18) |
-| 19 | OSAT's own bots: a Bots room in the dock (a customer manager, a follow-up bot, an Inbox sorter, a research bot), people cards, a morning page | Planned |
+| 19 | Hire workers: a Workers place where you hire helpers (a Sorter, a daily briefer, a researcher…), try them for a day, see what they may touch; "Record a skill" teaches one a job by doing it once in OSAT's browser | Planned |
 | 20 | Capture anywhere: the clipper works in every app and remembers where things came from; hold a key and talk | Planned |
 | 21 | Find and tidy your files: search inside files, move / rename / new folder / Bin with Undo, one drag system (files too, in and out of OSAT) | In progress (Find merged in PR #22; tidy and drag-to-move merged in PR #24; dragging in from Finder and out to other apps merged in PR #25; the desk's shelf and the Notes room on the same drag can wait) |
 | 21b | A tidy desk and folders: Tidy my Desktop (AI proposes, Nate ticks), an optional folder layout | In review |
@@ -76,7 +76,10 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 27f | Sorting Unsorted redone: one sticky, ranked homes with reasons, Return moves, keys, Next up, Sort them all in the same screen; the AI always says what it's doing | Merged (PR #49) |
 | 27g | Sort Unsorted made easy to read: one question ("Where does this sticky go?"), one blue button, quiet Skip / Put it on the Sky / Delete, "Sticky 2 of 3", Suggest homes for all in plain sentences | In review (PR #52) |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
+| 27h | Connections you can always see: click a line to frame both ends, "Show connected", an edge label for a line that runs off screen | Planned |
 | 29 | Recording made in OSAT (proposed): record an area, a window or the screen without CleanShot, trim, save as a GIF. Waits for Developer ID signing (backlog #6) | Planned |
+| 30 | Ask across everything: Ask also reads copied items and files and understands "last month"; every answer shows its sources | In progress |
+| 31 | Your own roadmap: edit it inside OSAT, drag phases around, add your own notes (kept in your workspace, not in the app's bundled copy) | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -782,15 +785,35 @@ clearly labelled place, ready for Phase 13c's switchboard to show what leaves th
   - The line's row still says "Ask the AI on this Mac" when a cloud model answers. The line belongs
     to the Phase 13 work: its models carry `offline: false` and `where` for it to say so.
 
-### Phase 19: OSAT's own bots (planned)
-OSAT becomes Muse too, and leans toward business and customer management over time.
-- **A Bots room in the dock**, like Muse's list: each bot with a face, its last message, and groups.
-- **The first bots:** a customer manager, a follow-up bot, an Inbox sorter (files Unsorted, with
-  Nate's OK) and a research bot.
-- **What they can do:** read and write notes (through the same store and Undo as the connector), run
-  on a schedule, draft email and messages (always asking before anything is sent), and use the web
-  and Mac apps. They use the model chosen in Settings → Bots; what leaves the Mac says so there.
-- **People cards** and **a morning page** (from The wow below) grow out of the same bots.
+### Phase 19: Hire workers (planned)
+Nate, Oct 6: "Let's make it fun so whoever is using OSAT gets to hire workers to assist them." OSAT's
+own bots, as a small, friendly place anyone understands.
+- **A Workers place in the dock.** Worker cards (name, face, one-line job) sit at little desks. Hire
+  puts one to work; Let go removes one, and Undo brings it back.
+- **Try for a day.** A new worker only shows what it would do until you say go.
+- **A job description you can read.** "Can read: Unsorted. Can write: new stickies. Can't: send
+  anything." Anything that leaves the Mac or can't be undone shows a preview first; what leaves the
+  Mac says so (Settings → Bots, same as today).
+- **Not sure who to hire?** A button asks what your day looks like and suggests two or three
+  workers. Starter jobs people commonly give AI helpers (check what is popular before building):
+  Sorter (files Unsorted with your OK), daily briefer (the morning page), researcher (a cited
+  note), inbox triager (drafts, never sends), meeting scribe, page or price watcher, bookkeeper
+  (reads receipts and scans), librarian (finds duplicates, tidies old stickies).
+- **Record a skill.** Teach a worker a job by doing it once in OSAT's own browser: OSAT writes each
+  step in plain words ("Click Sign in", "Type the date") and saves it under a name. Replay is
+  `playwright-core` (no downloaded browsers) attached to the browser OSAT already has over the Chrome
+  DevTools Protocol; Electron's `webContents.debugger` is the fallback. When a step breaks because a
+  site changed, the AI looks at the page and offers a one-click fix. Browser first; recording other
+  Mac apps needs Accessibility and comes later.
+- They use the same store and Undo as the connector, run on a schedule, and draft email and messages
+  (always asking before anything is sent). People cards and a morning page grow out of the same
+  workers.
+
+### Phase 31: Your own roadmap (planned)
+Nate, Oct 6: users should be able to edit and move things around, and add notes, in the roadmap
+inside OSAT. Today the Roadmap room draws the bundled docs/ROADMAP.md read-only (`?raw`). The edits
+and notes would live in the workspace (so they sync and have Undo), layered over the bundled
+phases; the Status table stays the source of the Timeline.
 
 ### The wow (Sep 28): what makes OSAT stand out
 Raycast launches things, Notion and Mem keep notes, Rewind remembers. OSAT is all of it in one
