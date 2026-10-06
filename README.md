@@ -16,6 +16,12 @@ Every pull request builds a Mac app you can try before anything is merged.
    check the app. Click **Done**, open **System Settings → Privacy & Security**, scroll
    down and click **Open Anyway** next to OSAT. You only need to do this once per build.
 
+**After that first install, you don't reinstall.** Each merge to `main` is published as a
+GitHub release (the newest one is at the repo's Releases page). In OSAT, open **Settings →
+About → Check for updates**: it downloads the newest build, swaps the app and restarts it.
+Your notes aren't touched and the old app is kept in `~/Library/Application
+Support/OSAT/updates/previous`.
+
 Your notes live in `~/Library/Application Support/OSAT`. If an older app already used a
 folder with that name, OSAT renames the old folder to `OSAT (before <date>)` and leaves
 it untouched. An older `/Applications/OSAT.app` is renamed to `OSAT (old).app`, never

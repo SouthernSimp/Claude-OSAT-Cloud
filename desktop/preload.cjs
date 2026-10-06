@@ -147,6 +147,13 @@ contextBridge.exposeInMainWorld('osatApp', Object.freeze({
   },
 }))
 
+/* Settings → About: check for a newer OSAT and install it. */
+contextBridge.exposeInMainWorld('osatUpdate', Object.freeze({
+  check: () => ipcRenderer.invoke('update:check'),
+  install: () => ipcRenderer.invoke('update:install'),
+  onProgress: (listener) => listen('update:progress', listener),
+}))
+
 /* Your iPhone, through an OSAT folder in iCloud Drive: an Inbox and a copy of your notes. */
 contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
   status: () => ipcRenderer.invoke('phone:status'),

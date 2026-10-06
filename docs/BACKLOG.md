@@ -10,7 +10,7 @@ the same day. Last sorted: October 6, 2026.
 | # | What | Why it ranks here | State |
 |---|---|---|---|
 | 1 | Build the Mac app (DMG) from main and try it with isolated data | Nothing from Codex's week has run as a real Mac app; Notes AI, Stop and offline use are unproven there | Building (run 37400300566) |
-| 2 | Stop the hosted Mac build being cancelled: `ci.yml` has `cancel-in-progress: true`, so any newer run on the same branch kills it | It is why no DMG existed; every future build would fail the same way | To do |
+| 2 | Stop the hosted Mac build being cancelled: `ci.yml` had `cancel-in-progress: true`, so any newer run on the same branch killed it | It is why no DMG existed; every future build would fail the same way | In review (with #5: only pull-request runs are cancelled now) |
 | 3 | Ask says when it dropped old messages or notes to fit the model's memory | The AI forgets silently today; trust in the AI is the point of the app | To do |
 | 4 | Notes AI speaks to you ("you") instead of "the user" | One-line prompt change; real-model answers read cold | To do |
 
@@ -18,7 +18,7 @@ the same day. Last sorted: October 6, 2026.
 
 | # | What | Why it ranks here | State |
 |---|---|---|---|
-| 5 | Update button (Settings → Check for updates): finds the newest build on GitHub, downloads it, swaps `/Applications/OSAT.app`, relaunches; notes untouched | Ends the manual reinstall every time | Proposed; waiting for Nate's go |
+| 5 | Update button (Settings → Check for updates): finds the newest build on GitHub, downloads it, swaps `/Applications/OSAT.app`, relaunches; notes untouched | Ends the manual reinstall every time | In review (draft PR: Check for updates in Settings → About) |
 | 6 | Real background auto-update with Apple Developer ID signing and notarization | No "Open Anyway", updates quietly like any Mac app; replaces #5. Needs Nate to make a Developer ID certificate and an app-specific password and add them as GitHub secrets (Claude walks through it) | Planned, needs Nate |
 
 ## Then: smoother thinking
@@ -42,6 +42,7 @@ next sort, so nothing depends on anyone remembering the chat.
 
 | Idea | Suggested | Rank |
 |---|---|---|
+| Use the DigitalOcean droplet for extra features (Nate, Oct 6, "eventually, idk"). Needs a goal first, e.g. a private sync relay or hosting a bigger model; would have to stay opt-in and keep notes private | Oct 6 | Unranked |
 | Show this ranked list inside OSAT beside the Roadmap (Tools → Roadmap) so Nate reads it in the app | Oct 6 | Unranked |
 
 ## Housekeeping (whenever)
