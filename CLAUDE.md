@@ -14,14 +14,14 @@ Source of truth: `/Users/nate/Desktop/Projects/OSAT V2/work/osat-core-improvemen
 (the old "OSAT Field copy" folder is stale; ignore it). Merged today: PR #44 (midnight
 test flake, roadmap, docs/BACKLOG.md) and PR #45 (Settings → About → Check for updates;
 every merge to main is published as release `v0.1.<run>` with a zip + checksum; CI no
-longer cancels Mac builds of main). Nate installed build 0.1.139 by hand; the next merge
-to main is the first real test of the update button (still unproven end to end: download,
-swap, relaunch, notes intact). Open: PR #46 (Ask says when it left out old messages,
-backlog #3), draft, awaiting Nate's "merge". The app is still ad-hoc signed, so macOS may
-re-ask permissions after an update (Developer ID signing is backlog #6, on hold: it needs the paid $99/year Apple program, which Nate does not have).
+longer cancels Mac builds of main). Nate installed build 0.1.139 by hand, then updated with the
+button and his notes were all still there (verified Oct 6). PR #46 (Ask says when it left
+out old messages) is merged; no PRs are open. The app is still ad-hoc signed, so macOS may
+re-ask permissions after an update (Developer ID signing is backlog #6, on hold: it needs
+the paid $99/year Apple program, which Nate does not have).
 Real-model check (Gemma 4 Balanced): Notes AI answers well and ignores injected text.
-Next: follow docs/BACKLOG.md (every new idea gets a rank there the same day); after #46,
-the update-button test, then Notes AI "you" wording and Sky → Notes → AI navigation.
+Next: follow docs/BACKLOG.md (every new idea gets a rank there the same day): Notes AI
+"you" wording (#4), then Sky → Notes → AI navigation and finding saved AI replies (#7, #8).
 
 ### Previous checkpoint — October 5, 2026: Sky history
 

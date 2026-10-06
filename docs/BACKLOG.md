@@ -9,16 +9,16 @@ the same day. Last sorted: October 6, 2026.
 
 | # | What | Why it ranks here | State |
 |---|---|---|---|
-| 1 | Build the Mac app (DMG) from main and try it with isolated data | Nothing from Codex's week has run as a real Mac app; Notes AI, Stop and offline use are unproven there | Building (run 37400300566) |
-| 2 | Stop the hosted Mac build being cancelled: `ci.yml` had `cancel-in-progress: true`, so any newer run on the same branch killed it | It is why no DMG existed; every future build would fail the same way | In review (with #5: only pull-request runs are cancelled now) |
-| 3 | Ask says when it dropped old messages or notes to fit the model's memory | The AI forgets silently today; trust in the AI is the point of the app | In review (Ask drops the oldest messages itself and says how many) |
+| 1 | Build the Mac app (DMG) from main and try it with isolated data | Nothing from Codex's week has run as a real Mac app; Notes AI, Stop and offline use are unproven there | Done: main's Mac build passed and is a release |
+| 2 | Stop the hosted Mac build being cancelled: `ci.yml` had `cancel-in-progress: true`, so any newer run on the same branch killed it | It is why no DMG existed; every future build would fail the same way | Done (PR #45) |
+| 3 | Ask says when it dropped old messages or notes to fit the model's memory | The AI forgets silently today; trust in the AI is the point of the app | Done (PR #46) |
 | 4 | Notes AI speaks to you ("you") instead of "the user" | One-line prompt change; real-model answers read cold | To do |
 
 ## Next: save Nate effort
 
 | # | What | Why it ranks here | State |
 |---|---|---|---|
-| 5 | Update button (Settings → Check for updates): finds the newest build on GitHub, downloads it, swaps `/Applications/OSAT.app`, relaunches; notes untouched | Ends the manual reinstall every time | In review (draft PR: Check for updates in Settings → About) |
+| 5 | Update button (Settings → Check for updates): finds the newest build on GitHub, downloads it, swaps `/Applications/OSAT.app`, relaunches; notes untouched | Ends the manual reinstall every time | Done (PR #45, verified on Nate's Mac Oct 6) |
 | 6 | Real background auto-update with Apple Developer ID signing and notarization | Would end "Open Anyway" and the permission re-asks after updates. **On hold: it needs the paid Apple Developer Program ($99/year) and Nate does not pay for it (Oct 6).** The update button (#5) already works without it. Revisit only if OSAT goes to the App Store or other people install it | On hold (cost) |
 
 ## Then: smoother thinking
