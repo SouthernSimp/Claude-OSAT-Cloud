@@ -87,7 +87,8 @@ function createUpdater({ app, dataDir, quit, fetchImpl = (...args) => fetch(...a
       const update = found
       const sha = (await (await fetchImpl(update.shaUrl, { signal: AbortSignal.timeout(15000) })).text()).trim().split(/\s+/)[0].toLowerCase()
       if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error('The update’s checksum was unreadable, so nothing was changed.')
-      await fsp.rm(dir, { recursive: true, force: true })
+      // ponytail: macOS can still be writing into the old folder (indexing), so retry before giving up
+      await fsp.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
       const zip = path.join(dir, update.name)
       await downloadFile({ url: update.url, dest: zip, size: update.size, sha256: sha, onProgress: (have, size) => onProgress({ state: 'downloading', done: have, size }), fetchImpl })
       onProgress({ state: 'checking' })
