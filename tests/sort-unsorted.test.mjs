@@ -5,8 +5,12 @@ import { readSortUnsortedAnswer, sortUnsortedMessages } from '../shared/ai-tasks
 import { pileOf } from '../src/nodes-model.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import {
-  applyGroup, asksToSort, BATCH, modelSuggestions, sortGroups, sortPlaces, sortRequests, stillToSort, undoGroups, unsortedStickies, wordNodes, wordSuggestions,
+  asksToSort, BATCH, modelSuggestions, sortGroups, sortPlaces, sortRequests, stillToSort, unsortedStickies, wordNodes, wordSuggestions,
 } from '../src/sky/sort-unsorted.js'
+import { fileUnsorted, undoFiling } from '../src/sky/sort-review.js'
+
+// What Unsorted's sorter does with a group: the same filing as one sticky.
+const applyGroup = (state, group) => fileUnsorted(state, group.noteIds, group.kind === 'make' ? null : group.folderId, group.kind === 'make' ? group.name : '')
 
 const at = (minute) => new Date(Date.UTC(2026, 8, 29, 9, minute)).toISOString()
 const sticky = (id, text, extra = {}) => ({ id, title: text, markdown: text, tags: [], createdAt: at(1), updatedAt: at(1), ...extra })
@@ -34,6 +38,8 @@ test('the places are the nodes and then the branches in them, each with a couple
   assert.deepEqual(places.map((place) => place.name), ['Features', 'Features / Ideas', 'Garden'])
   assert.deepEqual(places[0].peek, ['Sync between two Macs'])
   assert.deepEqual(unsortedStickies(state).map((note) => note.id), ['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+  const free = { ...state, notes: state.notes.map((note) => (note.id === 'g' ? { ...note, at: { x: 1, y: 2 } } : note)) }
+  assert.ok(!unsortedStickies(free).some((note) => note.id === 'g'), 'a sticky set free on the Sky is not sorted again')
 })
 
 test('the question lists the places and the stickies, and stays a few at a time', () => {
@@ -97,7 +103,7 @@ test('a suggestion moves its stickies to the end of the place, and one Undo take
   assert.deepEqual(pileOf(done.state.notes, 'ideas').map((note) => note.id), ['in-ideas', 'a', 'b'])
   assert.equal(done.made, null)
   assert.equal(done.state.notes.find((note) => note.id === 'a').unsorted, false)
-  const back = undoGroups(state, ['a', 'b'])(done.state)
+  const back = undoFiling(done.state, done.changes, []).state
   assert.deepEqual(pileOf(back.notes, null).map((note) => note.id), ['a', 'b', 'c', 'd', 'e', 'f', 'g'])
   assert.deepEqual(pileOf(back.notes, 'ideas').map((note) => note.id), ['in-ideas'])
 })
@@ -109,9 +115,10 @@ test('Make it makes the node and moves the stickies into it; Undo removes the no
   const node = done.state.folders.find((item) => item.id === done.made)
   assert.deepEqual([node.name, node.parentId], ['Cats', null])
   assert.deepEqual(pileOf(done.state.notes, done.made).map((note) => note.id).sort(), ['c', 'd', 'e'])
-  const again = applyGroup(done.state, { ...make, noteIds: ['c'] })
+  const again = applyGroup(done.state, { ...make, name: 'cats', noteIds: ['g'] })
   assert.equal(again.made, null, 'a node of that name is used, not made twice')
-  const back = undoGroups(state, ['c', 'd', 'e'], [done.made])(done.state)
+  assert.equal(again.folderId, done.made)
+  const back = undoFiling(done.state, done.changes, [done.made]).state
   assert.equal(back.folders.length, state.folders.length)
   assert.deepEqual(pileOf(back.notes, null).map((note) => note.id), ['a', 'b', 'c', 'd', 'e', 'f', 'g'])
 })

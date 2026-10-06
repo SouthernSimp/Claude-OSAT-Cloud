@@ -3,11 +3,12 @@
    couldn't place, matching words and #tags do. Both end as the same groups:
      { key, kind: 'move', folderId, noteIds }   these stickies look like they belong in it
      { key, kind: 'make', name, noteIds }       these could be a new node
-   A single leftover never becomes a node of its own. Pure. */
+   A single leftover never becomes a node of its own. Unsorted's sorter shows them under
+   "Sort them all". Pure. */
 
 import { readSortUnsortedAnswer, sortUnsortedMessages } from '../../shared/ai-tasks.mjs'
 import { folderChildren, folderPath, relatedNotes } from '../notes-model.js'
-import { addFolder, moveSticky, nodesOf, pileOf } from '../nodes-model.js'
+import { nodesOf, pileOf } from '../nodes-model.js'
 
 /* One request reads this many stickies, at most this many in a go (the built-in model reads
    about 8,000 tokens); the rest wait for the next time. */
@@ -25,8 +26,10 @@ export const asksToSort = (text) => /^(?:(?:please|can you|could you|would you|h
   String(text || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim(),
 )
 
-/* The stickies waiting in Unsorted, oldest rank first, as many as one sort reads. */
-export const unsortedStickies = (state) => pileOf(state.notes, null).slice(0, MOST)
+/* The stickies waiting in Unsorted (not those set free on the Sky), oldest rank first, as many
+   as one sort reads. */
+const waitingIn = (state) => pileOf(state.notes, null).filter((note) => !note.at)
+export const unsortedStickies = (state) => waitingIn(state).slice(0, MOST)
 
 /* Every place a sticky can go: each node, then the branches in it, depth first. */
 function allPlaces(state, skip = () => false) {
@@ -162,44 +165,10 @@ export function sortRequests(state, stickies = unsortedStickies(state)) {
 /* Only what can still be done: stickies that are still in Unsorted, and groups still with two
    or more (a new node) or one (a place). */
 export function stillToSort(groups, state) {
-  const waiting = new Set(pileOf(state.notes, null).map((note) => note.id))
+  const waiting = new Set(waitingIn(state).map((note) => note.id))
   return groups
     .map((group) => ({ ...group, noteIds: group.noteIds.filter((id) => waiting.has(id)) }))
     .filter((group) => group.noteIds.length > (group.kind === 'make' ? 1 : 0))
 }
 
-/* ---------- doing it ---------- */
-
-/* A group done: its stickies at the end of the place's pile (a new node is made first, or
-   an existing node of that name is used). Returns { state, folderId, made } where `made` is
-   the id of a node that was made. */
-export function applyGroup(state, group) {
-  let next = state
-  let folderId = group.folderId
-  let made = null
-  if (group.kind === 'make') {
-    folderId = nodesOf(state.folders).find(({ folder }) => plainKey(folder.name) === plainKey(group.name))?.folder.id
-    if (!folderId) {
-      const result = addFolder(state, group.name)
-      if (!result.folder) return { state, folderId: null, made: null }
-      next = result.state
-      folderId = made = result.folder.id
-    }
-  }
-  if (!next.folders.some((folder) => folder.id === folderId)) return { state, folderId: null, made: null }
-  const waiting = new Set(pileOf(next.notes, null).map((note) => note.id))
-  for (const id of group.noteIds) if (waiting.has(id)) next = moveSticky(next, id, folderId)
-  return { state: next, folderId, made }
-}
-
-/* Takes moves back: the stickies to where and how they were (from `before`), and the nodes
-   that were made for them removed. */
-export function undoGroups(before, noteIds, madeIds = []) {
-  const old = new Map(before.notes.filter((note) => noteIds.includes(note.id)).map((note) => [note.id, note]))
-  const gone = new Set(madeIds)
-  return (state) => ({
-    ...state,
-    folders: gone.size ? state.folders.filter((folder) => !gone.has(folder.id)) : state.folders,
-    notes: state.notes.map((note) => (old.has(note.id) ? { ...note, folderId: old.get(note.id).folderId ?? null, unsorted: Boolean(old.get(note.id).unsorted), rank: old.get(note.id).rank } : note)),
-  })
-}
+/* Doing it is sort-review.js's fileUnsorted (one group or many, one Undo with undoFiling). */
