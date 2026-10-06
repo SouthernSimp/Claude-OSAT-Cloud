@@ -4,7 +4,7 @@ export function installSearchBridge(defaults) {
   const at = (hours) => new Date(Date.now() - hours * 3600000).toISOString()
   const picture = (color, words) => `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="%23${color}"/><text x="30" y="60" font-size="28">${words}</text></svg>`
   const clipboard = [
-    { id: 'c1', kind: 'text', at: at(0.1), text: 'Jordan asked for the revised quote by Friday, and wants the delivery date in writing.', chars: 84, app: 'Mail' },
+    { id: 'c1', kind: 'text', at: at(0), text: 'Jordan asked for the revised quote by Friday, and wants the delivery date in writing.', chars: 84, app: 'Mail' },
     { id: 'c2', kind: 'link', at: at(2), text: 'https://osat.example/pricing', chars: 28, app: 'Safari' },
     { id: 'c3', kind: 'email', at: at(30), text: 'jordan@acme.com', chars: 15, app: 'Mail', pinned: true },
     { id: 'c4', kind: 'image', at: at(5), image: { w: 300, h: 400, bytes: 1000 }, thumb: picture('bfe0f7', 'A copied picture') },
