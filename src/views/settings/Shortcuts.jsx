@@ -29,17 +29,16 @@ function Table({ launcher }) {
   const { bridge, settings, status, save } = launcher
   const query = useContext(QueryContext)
   const [filter, setFilter] = useState('all')
-  const [folded, setFolded] = useState(() => new Set(['windows']))
+  const [folded, setFolded] = useState(() => new Set(['windows', 'apps']))
   const [installed, setInstalled] = useState([])
-  const [pending, setPending] = useState(null)
-  const [shooting] = useCaptureStatus(bridge)
+    const [shooting] = useCaptureStatus(bridge)
   useEffect(() => { bridge.apps().then((list) => setInstalled(Array.isArray(list) ? list : []), () => {}) }, [bridge])
   const sends = settings.hyper.sends
   const failed = (id) => status?.keysFailed?.includes(id)
   const wordHolder = (id) => (word) => holderOf(settings, { word }, id)
   const keyHolder = (id) => (combo) => holderOf(settings, { key: combo }, id)
   const editLink = (id, patch) => save({ links: settings.links.map((link) => (link.id === id ? { ...link, ...patch } : link)) })
-  const setApp = (name, patch) => { save({ apps: { [name]: patch } }); if (pending === name) setPending(null) }
+  const setApp = (name, patch) => save({ apps: { [name]: patch } })
 
   const places = SOURCES.map((source) => {
     const own = settings.sources[source.id]
@@ -51,14 +50,15 @@ function Table({ launcher }) {
       setOn: (on) => save({ sources: { [source.id]: { on } } }),
     }
   })
-  const appNames = [...Object.keys(settings.apps), ...(pending && !settings.apps[pending] ? [pending] : [])]
+  // Every app on this Mac is a row (Raycast's Applications list); the ones with a word or a key come first.
+  const appNames = [...new Set([...Object.keys(settings.apps), ...installed.map((app) => app.name)])].sort((a, b) => (Boolean(settings.apps[b]) - Boolean(settings.apps[a])) || a.localeCompare(b))
   const apps = appNames.map((name) => {
     const own = settings.apps[name] || {}
     return {
       id: `app:${name}`, icon: AppWindow, name, hint: 'Opens it', word: own.keyword || null, hotkey: own.hotkey || null, on: true,
       setWord: (keyword) => setApp(name, { keyword }),
       setKey: (hotkey) => setApp(name, { hotkey }),
-      remove: () => { save({ apps: { [name]: null } }); if (pending === name) setPending(null) },
+      remove: settings.apps[name] ? () => save({ apps: { [name]: null } }) : null,
     }
   })
   const links = settings.links.map((link) => ({
@@ -81,7 +81,7 @@ function Table({ launcher }) {
   }))
   const groups = [
     { id: 'places', title: 'Places', rows: places },
-    { id: 'apps', title: 'Apps', rows: apps, add: true },
+    { id: 'apps', title: 'Apps', rows: apps },
     { id: 'links', title: 'Quick links', rows: links },
     { id: 'windows', title: 'Window layouts', rows: layouts, master: { label: 'Use keys to move the window I’m in, from any app', checked: settings.windows.on, onChange: (on) => save({ windows: { on } }) } },
     { id: 'ring', title: 'The ring', rows: ring },
@@ -112,15 +112,6 @@ function Table({ launcher }) {
                 {group.master && <Switch label={group.master.label} checked={group.master.checked} onChange={group.master.onChange} />}
               </div>
               {open && rows.map((row) => <ShortRow key={row.id} row={row} sends={sends} failed={failed(row.id)} wordHolder={wordHolder(row.id)} keyHolder={keyHolder(row.id)} />)}
-              {open && group.add && !looking && (
-                <div className="short-add">
-                  <select className="setting-select" aria-label="Add an app" value="" onChange={(event) => { if (event.target.value) setPending(event.target.value) }}>
-                    <option value="">Add an app…</option>
-                    {installed.filter((app) => !settings.apps[app.name] && app.name !== pending).map((app) => <option key={app.path} value={app.name}>{app.name}</option>)}
-                  </select>
-                  <small>Give it a word or a key, and it opens the app.</small>
-                </div>
-              )}
             </div>
           )
         })}
