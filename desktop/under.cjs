@@ -47,6 +47,7 @@ const WAITS = [
   // The quick search opens an app or a web address for you; a web address needs the internet.
   [/^search:open-app(-named)?$/, 'Apps open again when you’re back online.'],
   [/^search:open-link$/, 'The web waits until you’re back online.'],
+  [/^update:/, 'Updates wait until you’re back online.'],
   [/^media:/, 'Music waits until you’re back online.'],
   [/^desk:launch$/, 'Apps open again when you’re back online.'],
   [/^terminal:start$/, 'A new terminal waits until you’re back online.'],

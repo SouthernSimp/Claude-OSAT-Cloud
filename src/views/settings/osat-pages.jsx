@@ -404,12 +404,48 @@ export function PhonePage({ page }) {
   return <Page page={page}><Legacy words="icloud drive inbox shortcut"><PhoneCards /></Legacy></Page>;
 }
 
+const plainError = (error) => String(error?.message || error || "That didn’t work.").replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+
+/* Check for updates: one calm line and one button. The Mac app fetches the newest build from GitHub and swaps itself;
+   notes are never touched. */
+function UpdateRow() {
+  const bridge = window.osatUpdate;
+  const [status, setStatus] = useState({ state: "idle" });
+  useEffect(() => bridge?.onProgress?.((progress) => setStatus((now) => (now.state === "restarting" ? now : progress))), [bridge]);
+  if (!bridge) return null;
+  const run = async (action) => {
+    try { setStatus(await action()); } catch (error) { setStatus({ state: "error", message: plainError(error) }); }
+  };
+  const busy = ["checking-for-update", "downloading", "checking", "restarting"].includes(status.state);
+  const mb = (bytes) => `${Math.round(bytes / 1e6)} MB`;
+  const line = {
+    idle: "Look for a newer OSAT. Your notes stay exactly where they are.",
+    "checking-for-update": "Looking…",
+    current: "OSAT is up to date.",
+    available: `A newer OSAT is ready (${mb(status.size)}). OSAT will restart; your notes aren’t touched, and the old app is kept.`,
+    downloading: `Downloading… ${status.size ? Math.round((status.done / status.size) * 100) : 0}%`,
+    checking: "Making sure the download is the real OSAT…",
+    restarting: "Restarting OSAT…",
+    unavailable: status.message,
+    error: status.message,
+  }[status.state];
+  return (
+    <Row title="Updates" hint={line} words="update version new build check">
+      {status.state === "available"
+        ? <button type="button" className="outline-button" onClick={() => run(() => bridge.install())}>Update and restart</button>
+        : <button type="button" className="outline-button" disabled={busy || status.state === "unavailable"}
+            onClick={() => { setStatus({ state: "checking-for-update" }); run(() => bridge.check()); }}>Check for updates</button>}
+    </Row>
+  );
+}
+
 export function AboutPage({ page }) {
   const about = useAbout();
   return (
     <Page page={page}>
       <Group>
         <Row title={`OSAT${about?.version ? ` ${about.version}` : ""}`} hint="A calm layer over your Mac. Everything, the AI included, stays on this Mac unless you pick a cloud model in Settings → Bots. Cloud accounts, provider calendars and automatic filing are off by design." words="version privacy" />
+        <UpdateRow />
         {about?.dataFolder && <Row title="Data folder" hint={about.dataFolder} words="path where" />}
       </Group>
     </Page>

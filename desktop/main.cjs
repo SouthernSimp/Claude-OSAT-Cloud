@@ -47,6 +47,7 @@ const { extractText } = require('./mac-files.cjs')
 const { TidyError } = require('./file-ops.cjs')
 const { NOT_ALLOWED, createFiles } = require('./files.cjs')
 const { createMedia } = require('./media.cjs')
+const { createUpdater } = require('./updater.cjs')
 const { createMacCalendar } = require('./mac-calendar.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
@@ -377,6 +378,10 @@ function browserFor(sender) {
 function registerBrowserAndTerminal() {
   // Settings → Data and About.
   handleApp('app:about', () => ({ version: app.getVersion(), dataFolder: app.getPath('userData') }))
+  // Settings → About: look for a newer build on GitHub, then fetch it and swap the app (desktop/updater.cjs).
+  const updater = createUpdater({ app, dataDir: app.getPath('userData'), quit: () => app.quit() })
+  handleApp('update:check', () => updater.check())
+  handleApp('update:install', (sender) => updater.install((progress) => { if (!sender.isDestroyed()) sender.send('update:progress', progress) }))
   handleApp('app:show-data-folder', async () => {
     if (await shell.openPath(app.getPath('userData'))) fail('Finder could not open the data folder.')
     return true

@@ -8,7 +8,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push cancels an older pull-request run, never a build of main (that is the Mac app people update to).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -51,9 +52,13 @@ jobs:
     name: Mac app (DMG to try)
     needs: test
     runs-on: macos-latest
+    permissions:
+      contents: write # to publish the build of main as a release (Settings → About → Check for updates)
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       NODE_LLAMA_CPP_SKIP_DOWNLOAD: "true"
+      # Every build is numbered 0.1.<run>, so the app can tell a newer one from the one it is.
+      OSAT_BUILD_VERSION: 0.1.${{ github.run_number }}
       # Optional. When these repository secrets exist the app is signed with the
       # Developer ID and notarized, so it opens with no warning. Without them the
       # build is ad-hoc signed and needs one "Open Anyway" in System Settings.
@@ -95,10 +100,10 @@ jobs:
               printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
               export APPLE_API_KEY="$RUNNER_TEMP/AuthKey.p8"
             fi
-            npx electron-builder --mac dmg --arm64 --publish never
+            npx electron-builder --mac dmg zip --arm64 --publish never -c.extraMetadata.version="$OSAT_BUILD_VERSION"
           else
             unset CSC_LINK CSC_KEY_PASSWORD
-            CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --arm64 --publish never -c.mac.identity=-
+            CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg zip --arm64 --publish never -c.mac.identity=- -c.extraMetadata.version="$OSAT_BUILD_VERSION"
           fi
       - name: Check the app starts
         run: |
@@ -122,6 +127,16 @@ jobs:
           name: OSAT-mac-dmg
           path: release/*.dmg
           retention-days: 14
+      # A build of main becomes the newest release; the app's own update button looks here.
+      - name: Publish this build for Check for updates
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ZIP="$(ls release/OSAT-*-arm64-mac.zip)"
+          shasum -a 256 "$ZIP" | cut -d' ' -f1 > "$ZIP.sha256"
+          gh release create "v$OSAT_BUILD_VERSION" "$ZIP" "$ZIP.sha256" release/*.dmg \
+            --title "OSAT build ${GITHUB_RUN_NUMBER}" --notes "Built from ${GITHUB_SHA}. Install it with Settings → About → Check for updates." --latest
 
   iphone:
     name: iPhone app (simulator)
