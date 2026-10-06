@@ -9,6 +9,11 @@ See `UNSORTED-REVIEW-20261004.md` (merged in PR #41). Sky now has session Undo/R
 for moves, connections and arrangement, including after reopening Sky; see
 `SKY-HISTORY-20261005.md`. Installed apps and data remain preserved.
 
+Focused Notes AI adds Summarize, Untangle and Next steps with explicit current-note
+sharing, optional selected context, review and a separate linked-note save. See
+`NOTES-AI-20261005.md`. The local browser runtime is unavailable; simulated UI
+checks do not establish real-model quality or packaged/offline acceptance.
+
 ## Status
 
 | Phase | What | State |
@@ -51,6 +56,7 @@ for moves, connections and arrangement, including after reopening Sky; see
 | 27b | Professional Sky frame and navigator, isolated topic maps, explicit arrangement with Undo, focused writing, recoverable saving, explicit AI note scope and unpack proposals | Merged (PR #39, including PR #40) |
 | 27c | Guided five-sticky sorting, destination previews, recent placements and recoverable Trash | Merged (PR #41) |
 | 27d | Sky session Undo/Redo for moves, connections, Tidy and Arrange; safe replay after later edits | In review on `codex/sky-history-20261005` |
+| 27e | Focused Notes AI, explicit note sharing, review and linked-note save | In review on `codex/notes-ai-20261005` |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and

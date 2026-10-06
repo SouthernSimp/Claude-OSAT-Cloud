@@ -116,3 +116,14 @@ set while away. PRs #39 and #41 are merged into main. Sky session Undo/Redo is t
 next review in work/osat-core-improvements on codex/sky-history-20261005, preview
 5232. Keep installed apps/data untouched; Nate will request installation later.
 The native Mac testing pause continues. Preserve the selected guided sorter design.
+
+## October 5, 2026 — focused Notes AI
+
+Nate authorized focused local AI in Notes: Summarize, Untangle, and Next steps.
+Each request explicitly shares the current note; additional notes are selected
+opt-in. Review and edit the answer before explicitly saving a separate linked
+note. Preserve original writing, later edits, canonical records and Sky geometry.
+Use the existing local runtime only, with Stop and honest unavailable/error states.
+Keep browser verification in the background when a visible tab is unnecessary.
+Installed apps, native testing, networking, merging and deployment remain outside
+this implementation. See docs/NOTES-AI-20261005.md.

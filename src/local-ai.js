@@ -58,11 +58,11 @@ export async function getLocalModels({ signal } = {}) {
 }
 
 // Sorting's explicit request stays local even when Ask prefers a cloud bot.
-export async function askLocalModel(messages, { signal } = {}) {
+export async function askLocalModel(messages, { signal, onDelta, unavailableMessage } = {}) {
   const models = await getLocalModels({ signal })
   const model = models.find((item) => item.offline === true && !item.id.startsWith('cloud:'))
-  if (!model) throw new Error('Local AI is unavailable. You can still use the suggestion or place this on Sky.')
-  return streamLocalMessage({ model: model.id, messages, signal })
+  if (!model) throw new Error(unavailableMessage || 'Local AI is unavailable. You can still use the suggestion or place this on Sky.')
+  return streamLocalMessage({ model: model.id, messages, signal, onDelta })
 }
 
 /* Streams a reply, calling onDelta with each text fragment as it arrives.

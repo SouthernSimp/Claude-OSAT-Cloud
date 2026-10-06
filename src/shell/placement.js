@@ -6,6 +6,8 @@
    widget `prefer`s the widget's side ('left' or 'right'): that side, or else the middle. The dock (`dock`: 'bottom' by
    default, or 'left' or 'right') keeps its strip clear. */
 
+import { fullBox } from './dock-model.js'
+
 const EDGE = 16
 const DOCK = 96 // the dock's band at the foot of the desk
 const RAISED = 170 // the band at the top the line rises into
@@ -44,6 +46,17 @@ export function placeRoom(view, [w, h], line, pops = [], { prefer, dock = 'botto
     h: height,
     x: Math.round(Math.min((from + to - width) / 2 + step, to - width)),
     y: Math.round(Math.min(RAISED + step, bottom - height)),
+  }
+}
+
+/* Keep an already-open room reachable after the window or dock changes size. */
+export function fitRoom(pop, view, dock) {
+  if (pop.full) return pop
+  const box = fullBox(view, dock)
+  const w = Math.min(pop.w, box.width), h = Math.min(pop.h, box.height)
+  return { ...pop, w, h,
+    x: Math.max(box.left, Math.min(pop.x, box.left + box.width - w)),
+    y: Math.max(box.top, Math.min(pop.y, box.top + box.height - h)),
   }
 }
 

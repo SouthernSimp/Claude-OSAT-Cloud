@@ -38,13 +38,16 @@ test('guided sorting uses a local model even when a cloud bot comes first, and n
   const used = []
   globalThis.window = { osatLocalAI: {
     models: async () => ({ models }),
-    chatStream: ({ model }) => { used.push(model); return { done: Promise.resolve('NONE'), cancel: () => {} } },
+    chatStream: ({ model }, onDelta) => { used.push(model); onDelta('NONE'); return { done: Promise.resolve('NONE'), cancel: () => {} } },
   } }
   try {
     assert.equal(await askLocalModel([{ role: 'user', content: 'Where does this go?' }]), 'NONE')
     assert.deepEqual(used, ['osat:light'])
+    const deltas = []
+    await askLocalModel([{ role: 'user', content: 'Summarize' }], { onDelta: (text) => deltas.push(text) })
+    assert.deepEqual(deltas, ['NONE'])
     models = [cloud]
-    await assert.rejects(askLocalModel([{ role: 'user', content: 'Try again' }]), /Local AI is unavailable/)
-    assert.deepEqual(used, ['osat:light'])
+    await assert.rejects(askLocalModel([{ role: 'user', content: 'Try again' }], { unavailableMessage: 'Set up local AI' }), /Set up local AI/)
+    assert.deepEqual(used, ['osat:light', 'osat:light'])
   } finally { globalThis.window = previous }
 })

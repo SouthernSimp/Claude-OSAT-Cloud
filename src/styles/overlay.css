@@ -19,8 +19,8 @@ html:has(.overlay-surface) body,
 .popouts { position: absolute; inset: 0; pointer-events: none; }
 .popout {
   position: absolute;
-  min-width: 360px;
-  min-height: 260px;
+  min-width: min(360px, 100%);
+  min-height: min(260px, 100%);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
