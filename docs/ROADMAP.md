@@ -80,6 +80,9 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 29 | Recording made in OSAT (proposed): record an area, a window or the screen without CleanShot, trim, save as a GIF. Waits for Developer ID signing (backlog #6) | Planned |
 | 30 | Ask across everything: Ask also reads copied items and files and understands "last month"; every answer shows its sources | In progress |
 | 31 | Your own roadmap: edit it inside OSAT, drag phases around, add your own notes (kept in your workspace, not in the app's bundled copy) | Planned |
+| 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Planned |
+| 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
+| 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -808,6 +811,13 @@ own bots, as a small, friendly place anyone understands.
 - They use the same store and Undo as the connector, run on a schedule, and draft email and messages
   (always asking before anything is sent). People cards and a morning page grow out of the same
   workers.
+
+### Phases 32–34: MCP and API (planned; plan first, no code yet)
+Nate, Oct 6: make OSAT an MCP client (remote servers), then a fuller MCP server, then its own local API
+and webhooks. The plan was shown to Nate before any code. Today's connector (Phase 18) is already a
+small MCP server on 127.0.0.1 with four tools; 33 grows it, 32 and 34 are new. Anything that talks to
+a server off this Mac is something the person turned on, names what leaves, is blocked by Offline and
+is added on purpose to the fence in tests/under.test.mjs.
 
 ### Phase 31: Your own roadmap (planned)
 Nate, Oct 6: users should be able to edit and move things around, and add notes, in the roadmap
