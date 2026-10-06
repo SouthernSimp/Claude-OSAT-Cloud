@@ -18,6 +18,8 @@ Two draft PRs in `SouthernSimp/Claude-OSAT-Cloud`, stacked:
   Ask's model menu solid (its rule lives in assistant.css: Ask's CSS loads after glass.css) and on top.
 - [#52](https://github.com/SouthernSimp/Claude-OSAT-Cloud/pull/52) `claude/unsorted-sorter-calm` (base: #51):
   Sort Unsorted made easy to read (`src/sky/UnsortedSorter.jsx`).
+Also open: #53 (sort edit in place), #54 (ring), #55 `claude/sort-all-desk-rightclick` (right-click on the desk's files and shelf icons;
+Sort them all up to 300 stickies; base: #53). Next after those: Ask across everything, then a bot / "Record a skill" recorder.
 Merge #51 first, then #52 (retarget it to main). Both await Nate's "merge".
 Nate's Mac had 0.1.139 (its updater couldn't clear `updates/previous`, fixed by #50); it was replaced with
 a local build of #52 as 0.1.171 (built in /private/tmp after a fresh `npm ci`: a symlinked node_modules
