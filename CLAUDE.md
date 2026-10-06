@@ -8,19 +8,19 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 5, 2026: focused Notes AI
+## Resume checkpoint — October 6, 2026: audit after Codex's week
 
-Notes has an inline Note AI panel: Summarize, Untangle, Next steps. Each action
-shares a snapshot of the current note with a local model; extra notes are manually
-selected and long-note limits are disclosed. Responses stream, can be stopped,
-reviewed and edited, and only an explicit Save creates a separate linked note.
-Original writing and concurrent edits are never overwritten. Saved responses use
-the existing Notes store; no extra chat/database architecture or cloud fallback.
-Open rooms now fit the viewport when it shrinks, preserving content and Sky data.
-Work is in work/osat-core-improvements on codex/notes-ai-20261005, based on the
-Sky history review at a380a7e. Preview remains 5232. See docs/NOTES-AI-20261005.md
-for verification and runtime limits. Installed apps/data remain untouched and the
-native Mac testing pause continues. Merge and installation remain separate.
+Source of truth: `/Users/nate/Desktop/Projects/OSAT V2/work/osat-core-improvements`
+(the old "OSAT Field copy" folder is stale; ignore it). Main is at `98a58c1`
+(PRs #39, #41, #42, #43 merged: AI model controls, guided Unsorted, Sky Undo/Redo,
+Notes AI). Real-model check (Gemma 4 Balanced, Oct 6): Summarize / Untangle / Next
+steps answer well in 1-2 s and ignore instructions hidden in a note. Main's CI was red
+only from a midnight-UTC test flake (stand-in clipboard "Today"), fixed on
+`claude/fix-midnight-and-notes`. Still unverified: a packaged Mac DMG with these
+changes (the hosted Mac job was cancelled) and Notes AI in the real app window.
+Next, in order: DMG + Mac checklist, tell the user when Ask drops old messages or
+notes to fit the model's memory, then Sky → Notes → AI navigation and finding saved
+AI replies.
 
 ### Previous checkpoint — October 5, 2026: Sky history
 

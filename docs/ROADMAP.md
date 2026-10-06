@@ -55,8 +55,8 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 27 | One Sky (organization is earned): focus on one node, free stickies, stacks that become branches, combine nodes, merge and split stickies, Sort a pile folded in | Completed continuation: connectors, stacks, focused mind map, tour and navigation; combine/split operations remain planned |
 | 27b | Professional Sky frame and navigator, isolated topic maps, explicit arrangement with Undo, focused writing, recoverable saving, explicit AI note scope and unpack proposals | Merged (PR #39, including PR #40) |
 | 27c | Guided five-sticky sorting, destination previews, recent placements and recoverable Trash | Merged (PR #41) |
-| 27d | Sky session Undo/Redo for moves, connections, Tidy and Arrange; safe replay after later edits | In review on `codex/sky-history-20261005` |
-| 27e | Focused Notes AI, explicit note sharing, review and linked-note save | In review on `codex/notes-ai-20261005` |
+| 27d | Sky session Undo/Redo for moves, connections, Tidy and Arrange; safe replay after later edits | Merged (PR #42) |
+| 27e | Focused Notes AI, explicit note sharing, review and linked-note save | Merged (PR #43) |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
