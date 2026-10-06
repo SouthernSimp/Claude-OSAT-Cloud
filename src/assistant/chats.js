@@ -41,6 +41,7 @@ export function normalizeChat(value) {
       at: text(message.at),
       ...(ids(message.noteIds).length ? { noteIds: ids(message.noteIds) } : {}),
       ...(names(message.files).length ? { files: names(message.files) } : {}),
+      ...(Number.isInteger(message.leftOut) && message.leftOut > 0 ? { leftOut: message.leftOut } : {}),
       ...(typeof message.savedNoteId === 'string' ? { savedNoteId: message.savedNoteId } : {}),
       ...(modelId(message.modelId) ? { modelId: modelId(message.modelId) } : {}),
       ...(typeof message.modelName === 'string' && message.modelName.trim() ? { modelName: message.modelName.slice(0, 300) } : {}),
@@ -98,4 +99,19 @@ export function outbound(system, history, question, notes, noteIds, files = []) 
     ...history.filter((message) => message.content.trim()).slice(-20).map(({ role, content }) => ({ role, content })),
     { role: 'user', content: context ? `${question}\n\n${context}` : question },
   ]
+}
+
+/* The AI reads about 8k tokens at once and 2k are kept for its answer. Past that the engine would quietly forget the
+   oldest messages, so OSAT does it first, oldest first, and says how many (`leftOut`) so the answer isn't trusted
+   to remember what it never read. ponytail: ~3 characters a token is a safe guess, not a count. */
+export const ASK_MEMORY_CHARS = 18000
+export function fitToMemory(messages, budget = ASK_MEMORY_CHARS) {
+  const size = (list) => list.reduce((sum, message) => sum + message.content.length, 0)
+  const kept = [...messages]
+  let leftOut = 0
+  while (size(kept) > budget && kept.length > 2) {
+    kept.splice(1, 1)
+    leftOut += 1
+  }
+  return { messages: kept, leftOut, tooMuch: size(kept) > budget }
 }

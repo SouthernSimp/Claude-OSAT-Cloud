@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { parseStreamFrame } from '../src/local-ai.js'
 import { applyAction, describeAction, extractActions, systemPrompt, wantsActions } from '../src/assistant/actions.js'
-import { FILE_CHARS, deriveTitle, newChat as newConversation, normalizeChat, outbound, searchChats as searchConversations } from '../src/assistant/chats.js'
+import { FILE_CHARS, deriveTitle, fitToMemory, newChat as newConversation, normalizeChat, outbound, searchChats as searchConversations } from '../src/assistant/chats.js'
 import { createDefaultWorkspace } from '../src/osat-data.js'
 
 test('stream frames yield deltas, ignore keep-alives, and end on [DONE]', () => {
@@ -152,4 +152,17 @@ test('conversation model choices and response attribution survive normalization 
   assert.deepEqual(normalizeChat(chat), chat)
   assert.equal(normalizeChat({ ...chat, modelId: 'https://example.com' }).modelId, undefined)
   assert.equal(normalizeChat({ ...chat, modelId: 42 }).modelId, undefined)
+})
+
+test('Ask leaves out the oldest messages itself, and says how many', () => {
+  const say = (role, n) => ({ role, content: `${role[0]}${n}`.padEnd(2000, '.') })
+  const long = [{ role: 'system', content: 'system' }, ...Array.from({ length: 20 }, (_, i) => say(i % 2 ? 'assistant' : 'user', i)), { role: 'user', content: 'now?' }]
+  const fit = fitToMemory(long)
+  assert.equal(fit.messages[0].content, 'system', 'the system prompt stays')
+  assert.equal(fit.messages.at(-1).content, 'now?', 'the new question stays')
+  assert.ok(fit.leftOut > 0 && fit.messages.length === long.length - fit.leftOut)
+  assert.equal(fit.messages[1].content.match(/\d+/)[0], String(fit.leftOut), 'oldest went first')
+  assert.deepEqual(fitToMemory(long.slice(0, 4)), { messages: long.slice(0, 4), leftOut: 0, tooMuch: false })
+  assert.equal(fitToMemory([{ role: 'system', content: 'x'.repeat(30000) }, { role: 'user', content: 'q' }]).tooMuch, true)
+  assert.equal(normalizeChat({ id: 'c', messages: [{ id: 'm', role: 'assistant', content: 'hi', leftOut: 3 }] }).messages[0].leftOut, 3)
 })
