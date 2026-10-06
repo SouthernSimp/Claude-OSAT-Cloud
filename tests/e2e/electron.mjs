@@ -440,16 +440,18 @@ try {
   check(arrived, 'a thought dropped in the iCloud Inbox did not arrive in Unsorted')
   await sleep(2600)
   const copy = path.join(icloud, 'Notes', 'Unsorted', 'From the phone.md')
-  if (!(await access(copy).then(() => true, () => false))) {
-    const { readdir } = await import('node:fs/promises')
-    const tree = await readdir(path.join(icloud, 'Notes'), { recursive: true }).catch((error) => `none: ${error.message}`)
-    const status = await main.evaluate(() => window.osatPhone.status()).catch((error) => error.message)
-    const before = await main.evaluate(async () => (await window.osat.store.load()).doc)
-    await sleep(3000)
-    const after = await main.evaluate(async () => (await window.osat.store.load()).doc)
-    const changed = Object.keys(after).filter((key) => JSON.stringify(after[key]) !== JSON.stringify(before[key]))
-    const detail = changed.map((key) => `${key}: ${JSON.stringify(after[key]).slice(0, 300)}`)
-    problems.push(`the copy of the notes was not written to iCloud Drive: ${JSON.stringify(tree)} ${JSON.stringify(status)} dbg ${JSON.stringify(await app.evaluate(() => globalThis.__dbg))} rev ${before.rev}->${after.rev} changed ${JSON.stringify(detail)}`)
+  check(await access(copy).then(() => true, () => false), 'the copy of the notes was not written to iCloud Drive')
+  // ⌥Return in the quick bar saves a sticky to Unsorted. Checked here, after the iPhone copy: a new Unsorted sticky
+  // makes the desk save a little later, which would push the copy past that check's short wait.
+  {
+    const bar = app.windows().find((page) => page.url().includes('surface=search'))
+    await main.evaluate(() => window.osatSearch.show('all'))
+    await bar.locator('#qs-input').waitFor({ state: 'visible', timeout: 5000 })
+    await bar.fill('#qs-input', 'A sticky from the bar')
+    await bar.keyboard.press('Alt+Enter')
+    const stickies = () => main.evaluate(async () => (await window.osat.store.load()).doc.notes.filter((note) => note.unsorted && note.source === 'Quick bar').map((note) => note.title))
+    check(await until(async () => (await stickies()).includes('A sticky from the bar'), 3000), '⌥Return did not save a sticky to Unsorted')
+    await bar.evaluate(() => window.osatSearch.hide())
   }
   check(await access(path.join(icloud, 'Inbox', 'Added', 'Text.txt')).then(() => true, () => false), 'the dropped file did not move to Inbox/Added')
   await main.evaluate(() => window.osatPhone.disable())
