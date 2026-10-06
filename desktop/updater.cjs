@@ -87,8 +87,9 @@ function createUpdater({ app, dataDir, quit, fetchImpl = (...args) => fetch(...a
       const update = found
       const sha = (await (await fetchImpl(update.shaUrl, { signal: AbortSignal.timeout(15000) })).text()).trim().split(/\s+/)[0].toLowerCase()
       if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error('The update’s checksum was unreadable, so nothing was changed.')
-      // ponytail: macOS can still be writing into the old folder (indexing), so retry before giving up
-      await fsp.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
+      // Electron's fs treats any app.asar as an archive and can't delete it, so the kept old app (which has one)
+      // made every second update fail with ENOTEMPTY. The system rm doesn't know about asar.
+      await run('rm', ['-rf', dir])
       const zip = path.join(dir, update.name)
       await downloadFile({ url: update.url, dest: zip, size: update.size, sha256: sha, onProgress: (have, size) => onProgress({ state: 'downloading', done: have, size }), fetchImpl })
       onProgress({ state: 'checking' })
