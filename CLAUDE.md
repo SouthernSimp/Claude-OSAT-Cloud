@@ -18,9 +18,8 @@ steps answer well in 1-2 s and ignore instructions hidden in a note. Main's CI w
 only from a midnight-UTC test flake (stand-in clipboard "Today"), fixed on
 `claude/fix-midnight-and-notes`. Still unverified: a packaged Mac DMG with these
 changes (the hosted Mac job was cancelled) and Notes AI in the real app window.
-Next, in order: DMG + Mac checklist, tell the user when Ask drops old messages or
-notes to fit the model's memory, then Sky → Notes → AI navigation and finding saved
-AI replies.
+Next: follow the ranked list in docs/BACKLOG.md (Claude keeps it current; every new
+idea gets a rank there the same day).
 
 ### Previous checkpoint — October 5, 2026: Sky history
 

@@ -1,0 +1,41 @@
+# What to do next, ranked
+
+One list for every idea, so none gets lost. Ranked by how much it protects trust in
+OSAT first, then how much it saves Nate effort, then "wow". Claude keeps it current:
+when something lands it moves to Done; when a new idea comes up it gets a rank here
+the same day. Last sorted: October 6, 2026.
+
+## Now: make sure what exists is real
+
+| # | What | Why it ranks here | State |
+|---|---|---|---|
+| 1 | Build the Mac app (DMG) from main and try it with isolated data | Nothing from Codex's week has run as a real Mac app; Notes AI, Stop and offline use are unproven there | Building (run 37400300566) |
+| 2 | Stop the hosted Mac build being cancelled: `ci.yml` has `cancel-in-progress: true`, so any newer run on the same branch kills it | It is why no DMG existed; every future build would fail the same way | To do |
+| 3 | Ask says when it dropped old messages or notes to fit the model's memory | The AI forgets silently today; trust in the AI is the point of the app | To do |
+| 4 | Notes AI speaks to you ("you") instead of "the user" | One-line prompt change; real-model answers read cold | To do |
+
+## Next: save Nate effort
+
+| # | What | Why it ranks here | State |
+|---|---|---|---|
+| 5 | Update button (Settings → Check for updates): finds the newest build on GitHub, downloads it, swaps `/Applications/OSAT.app`, relaunches; notes untouched | Ends the manual reinstall every time | Proposed; waiting for Nate's go |
+| 6 | Real background auto-update with Apple Developer ID signing and notarization | No "Open Anyway", updates quietly like any Mac app; replaces #5. Needs Nate to make a Developer ID certificate and an app-specific password and add them as GitHub secrets (Claude walks through it) | Planned, needs Nate |
+
+## Then: smoother thinking
+
+| # | What | Why it ranks here | State |
+|---|---|---|---|
+| 7 | Sky → Notes → AI navigation that doesn't lose your place | Codex's own top follow-up | Planned |
+| 8 | Find saved AI replies again (they are linked notes today, easy to lose) | Pairs with #7 | Planned |
+| 9 | Phase 27 leftovers: combine and split stickies | Real but not blocking | Planned |
+
+## Later: bigger bets (Roadmap phases)
+
+14 Connectors (Calendar and Reminders in review) · 21b Tidy my Desktop · 19 OSAT's own bots ·
+20 Capture anywhere · 22 Files in the Sky · 23 Nodes become projects · 25 The Stratosphere ·
+28 Tags that do things. The iPhone app stays parked.
+
+## Housekeeping (whenever)
+
+- The old `OSAT Field copy` folder is stale and full of stray "…2" duplicate files; archive it once Nate agrees.
+- GitHub warns that the Node 20 actions (`checkout`, `setup-node`, `upload-artifact`) are being forced to Node 24; bump them before it breaks.
