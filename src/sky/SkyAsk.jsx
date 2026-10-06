@@ -3,6 +3,9 @@ import { ArrowUp, ChatCircle, Sparkle, Stop, X } from '@phosphor-icons/react'
 
 import { answeringLabel } from '../assistant/ask-model.js'
 import { noteKind, noteWhere } from '../assistant/ask-sources.js'
+import { isLocalModel } from '../assistant/ask-find.js'
+import { AskSourcesNotice } from '../assistant/AskSourcesNotice.jsx'
+import { UsedSources } from '../assistant/UsedSources.jsx'
 import { useAskHere } from '../assistant/useAskHere.js'
 import { Markdown } from '../lib/markdown.jsx'
 import { isActiveNote } from '../notes-model.js'
@@ -18,7 +21,7 @@ export function SkyAsk({ workspace, commit, models, ai, open, focus, asking, set
   const [scope, setScope] = useState('focus')
   const focused = workspace.folders.find((folder) => folder.id === focus)
   const effectiveScope = scope === 'focus' && !focused ? 'workspace' : scope
-  const { answer, ask, stop, close } = useAskHere({ workspace, commit, modelId: models?.[0]?.id, context: { open: [...open], focus, scope: effectiveScope, where: 'sky' } })
+  const { answer, ask, stop, close } = useAskHere({ workspace, commit, modelId: models?.[0]?.id, local: isLocalModel(models?.[0]), context: { open: [...open], focus, scope: effectiveScope, where: 'sky' } })
   const [draft, setDraft] = useState('')
   const [unanswered, setUnanswered] = useState('')
   const field = useRef(null)
@@ -61,6 +64,8 @@ export function SkyAsk({ workspace, commit, models, ai, open, focus, asking, set
             <p className="sky-ask-question">{answer.question}</p>
             {answer.text ? <Markdown text={answer.text} headingOffset={2} /> : answer.busy && <p className="sky-ask-wait">{['asleep', 'waking'].includes(ai.key) ? 'Waking the AI…' : 'Thinking…'}</p>}
             {answer.error && <p className="sky-ask-error" role="alert">{answer.error}</p>}
+            <AskSourcesNotice />
+            <UsedSources copies={answer.copies} files={answer.files} navigate={navigate} className="sky-ask-sources" />
             {answer.noteIds?.length > 0 && <div className="sky-ask-sources"><small>Notes shared · excerpts may be shortened</small>{answer.noteIds.map((id) => {
               const note = source(id)
               if (!isActiveNote(note)) return <span className="sky-ask-gone" key={id}>No longer saved</span>

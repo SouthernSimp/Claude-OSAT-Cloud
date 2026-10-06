@@ -247,6 +247,9 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   clipboard: search('clipboard'),
   clipboardImage: search('clipboard-image'),
   clipboardText: search('clipboard-text'),
+  // Ask across everything: the copies and files a question is about (read-only); the switch is Settings' too.
+  askFind: (question) => ipcRenderer.invoke('ask:find', question),
+  askSwitch: (on) => ipcRenderer.invoke('ask:switch', on === true),
   // Called on dragstart: the copy goes on as the Mac's own drag (a picture's file, or the words as a .txt).
   dragClip: search('drag-clip'),
   pauseClipboard: search('clipboard-pause'),

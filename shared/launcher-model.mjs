@@ -55,6 +55,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   apps: DEFAULT_APPS,
   links: DEFAULT_LINKS,
   clipboard: { items: 200, days: 30, offers: true },
+  // Ask can look at what you copied and at files in your approved places (never when a cloud model answers).
+  ask: { sources: true },
   pins: [],
   // Window keys (Control+Option+Arrow…) are off until turned on: they are global, and moving windows needs Accessibility.
   windows: { on: false, hotkeys: cleanWindowKeys(undefined) },
@@ -118,6 +120,7 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     links,
     clipboard: { items: [50, 100, 200, 500].includes(clip.items) ? clip.items : 200, days: [0, 7, 30, 90].includes(clip.days) ? clip.days : 30, offers: clip.offers !== false },
     pins,
+    ask: { sources: from.ask?.sources !== false },
     windows: { on: from.windows?.on === true, hotkeys: cleanWindowKeys(from.windows?.hotkeys, validHotkey) },
     ring: {
       on: from.ring?.on !== false,
@@ -149,6 +152,7 @@ export function applyPatch(settings, patch) {
     sources: Object.fromEntries(Object.entries(settings.sources).map(([id, own]) => [id, { ...own, ...(from.sources?.[id] || {}) }])),
     apps,
     clipboard: { ...settings.clipboard, ...(from.clipboard || {}) },
+    ask: { ...settings.ask, ...(from.ask || {}) },
     windows: { ...settings.windows, ...(from.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(from.windows?.hotkeys || {}) } },
     ring: { ...settings.ring, ...(from.ring || {}) },
     hyper: { ...(settings.hyper || {}), ...(from.hyper || {}) },

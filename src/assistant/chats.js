@@ -28,6 +28,7 @@ const text = (value, fallback = '') => (typeof value === 'string' ? value : fall
 const modelId = (value) => typeof value === 'string' && value.trim() && value.length <= 300 && !/:\/\//.test(value) && !value.startsWith('/') ? value.trim() : null
 const cleanScope = (value) => value && ['workspace', 'focus', 'none'].includes(value.kind) ? { kind: value.kind, ...(value.kind === 'focus' && typeof value.folderId === 'string' ? { folderId: value.folderId } : {}) } : null
 const ids = (value) => (Array.isArray(value) ? value.filter((id) => typeof id === 'string').slice(0, 8) : [])
+const pointers = (value, keys) => (Array.isArray(value) ? value.filter((item) => item && keys.every((key) => typeof item[key] === 'string')).slice(0, 3).map((item) => Object.fromEntries(keys.map((key) => [key, item[key].slice(0, 500)]))) : [])
 const names = (value) => (Array.isArray(value) ? value.filter((name) => typeof name === 'string').slice(0, 3).map((name) => name.slice(0, 200)) : [])
 
 /* Deterministic, so loading a workspace never rewrites chats that were fine. */
@@ -43,6 +44,9 @@ export function normalizeChat(value) {
       at: text(message.at),
       ...(ids(message.noteIds).length ? { noteIds: ids(message.noteIds) } : {}),
       ...(names(message.files).length ? { files: names(message.files) } : {}),
+      // Only pointers to what was read (a copy's id and date, a file's place and name), never their words.
+      ...(pointers(message.copies, ['id', 'at']).length ? { copies: pointers(message.copies, ['id', 'at']) } : {}),
+      ...(pointers(message.fileRefs, ['rootId', 'relative', 'name']).length ? { fileRefs: pointers(message.fileRefs, ['rootId', 'relative', 'name']) } : {}),
       ...(Number.isInteger(message.leftOut) && message.leftOut > 0 ? { leftOut: message.leftOut } : {}),
       ...(typeof message.savedNoteId === 'string' ? { savedNoteId: message.savedNoteId } : {}),
       ...(modelId(message.modelId) ? { modelId: modelId(message.modelId) } : {}),
@@ -91,11 +95,13 @@ export function filesContext(files) {
 
 /* The messages sent to the model: the system prompt, the conversation so far,
    and the new question with the chosen notes and any attached files. */
-export function outbound(system, history, question, notes, noteIds, files = [], folders = null) {
+/* `found` is the copies and files Ask looked at (ask-find.js), already shortened and cleaned of anything secret. */
+export function outbound(system, history, question, notes, noteIds, files = [], folders = null, found = '') {
   const fromNotes = noteIds.length ? notesContext(notes, noteIds, folders) : ''
   const context = [
     fromNotes && `[FROM MY NOTES — use them if they help]\n${fromNotes}`,
     files.length && filesContext(files),
+    found && `[FROM WHAT I COPIED AND MY FILES — numbered; say which one you used]\n${found}`,
   ].filter(Boolean).join('\n\n')
   return [
     { role: 'system', content: system },

@@ -1035,3 +1035,31 @@ html:has(.quick-chat) body { background: transparent; }
 .ai-management .ai-progress progress { flex: 1; min-width: 0; }
 .ask-conversation-scope { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; color: var(--muted); font-size: 12px; }
 .ask-conversation-scope select { min-width: 0; max-width: 280px; padding: 5px 8px; font-size: 12px; background: var(--surface-sunken); }
+
+.bubble-copy {
+  margin: var(--s-1) 0 0;
+  padding: var(--s-1) var(--s-2);
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: var(--t-2xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.ask-sources-notice {
+  margin: var(--s-1) 0;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-md, 8px);
+  background: var(--surface-sunken);
+  color: var(--muted);
+  font-size: var(--t-2xs);
+  line-height: 1.45;
+}
+
+.ask-sources-notice button {
+  margin-left: 4px;
+  color: var(--accent);
+  font-size: inherit;
+  text-decoration: underline;
+}

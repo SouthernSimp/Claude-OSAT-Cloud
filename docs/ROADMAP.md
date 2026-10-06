@@ -79,7 +79,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 27h | Connections you can always see: click a line to frame both ends, "Show connected", an edge label for a line that runs off screen | Planned |
 | 29 | Recording made in OSAT (proposed): record an area, a window or the screen without CleanShot, trim, save as a GIF. Waits for Developer ID signing (backlog #6) | Planned |
 | 30 | Ask across everything, step one: Ask understands "last month" and a node's name ("my notes about Jordan"), tells a scan from a sticky, and the sources under each answer say what each is, where it lives, and "No longer saved" when it's gone | In review |
-| 30b | Ask across everything, step two: what you copied and your files, with anything that looks like a password left out, never sent to a cloud model, one switch to turn it off, a calm first-time note | Planned |
+| 30b | Ask across everything, step two: what you copied and your files, with anything that looks like a password left out, never sent to a cloud model, one switch to turn it off, a calm first-time note | In review |
 | 31 | Your own roadmap: edit it inside OSAT, drag phases around, add your own notes (kept in your workspace, not in the app's bundled copy) | Planned |
 | 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Planned |
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
