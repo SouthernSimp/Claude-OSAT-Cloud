@@ -25,10 +25,11 @@ import { streamLocalMessage } from "../local-ai.js";
 import { normalizeNote } from "../osat-data.js";
 import { localDateKey } from "../daily-practice.js";
 import { Markdown } from "../lib/markdown.jsx";
-import { isActiveNote, relatedNotes } from "../notes-model.js";
+import { isActiveNote } from "../notes-model.js";
 import { applyAction, describeAction, extractActions, systemPrompt, wantsActions } from "./actions.js";
 import { askContext } from "./ask-context.js";
-import { notesForQuestion } from "./work-scope.js";
+import { noteKind, noteWhere } from "./ask-sources.js";
+import { notesForQuestion, relatedForAsk } from "./work-scope.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { deriveTitle, fitToMemory, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
 import { cleanError, setupLine, useAi } from "./useAi.js";
@@ -87,18 +88,22 @@ export function ActionCards({ actions, onAdd, onDiscard }) {
   );
 }
 
-/* The notes a question used, as small links back to them. */
-export function UsedNotes({ ids, notes, onOpen }) {
-  const used = (ids || []).map((id) => notes.find((note) => note.id === id)).filter(Boolean);
-  if (!used.length) return null;
+/* What a question read, as small links back to it: each says what it is (a sticky, a scan, a journal day)
+   and, held over it, where it lives. A sticky that has since been deleted says so instead of vanishing. */
+export function UsedNotes({ ids, notes, folders = [], onOpen }) {
+  if (!ids?.length) return null;
   return (
     <p className="bubble-notes">
-      <span>From your notes</span>
-      {used.map((note) => (
-        <button key={note.id} type="button" onClick={() => onOpen(note.id)}>
-          <NotePencil /> {note.title || "Untitled"}
-        </button>
-      ))}
+      <span>From</span>
+      {ids.map((id) => {
+        const note = notes.find((item) => item.id === id);
+        if (!isActiveNote(note)) return <span key={id} className="bubble-gone">No longer saved</span>;
+        return (
+          <button key={id} type="button" title={[noteKind(note), noteWhere(note, folders)].filter(Boolean).join(" · ")} onClick={() => onOpen(id)}>
+            <NotePencil /> <em>{noteKind(note)}</em> {note.title || "Untitled"}
+          </button>
+        );
+      })}
     </p>
   );
 }
@@ -209,7 +214,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const pickNotes = (text) => {
     if (!text.trim()) return [];
     if (active?.contextScope?.kind === "none") return [];
-    const found = active?.contextScope?.kind === "focus" ? notesForQuestion(workspace, text, { scope: "focus", focus: active.contextScope.folderId }).slice(0, 8).map((note) => note.id) : relatedNotes(workspace.notes, text).map((note) => note.id);
+    const found = active?.contextScope?.kind === "focus" ? notesForQuestion(workspace, text, { scope: "focus", focus: active.contextScope.folderId }).slice(0, 8).map((note) => note.id) : relatedForAsk(workspace, text).map((note) => note.id);
     return (found.length || active?.contextScope?.kind === "focus" ? found : earlierIds).filter((id) => !dropped.has(id) && isActiveNote(workspace.notes.find((note) => note.id === id)));
   };
   const using = useMemo(() => pickNotes(asking), [asking, workspace.notes, dropped, earlierIds.join("|"), active?.contextScope?.kind, active?.contextScope?.folderId, workspace.folders]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -298,7 +303,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     const controller = new AbortController();
     abortRef.current = controller;
     let full = "";
-    const fit = fitToMemory(outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds })), base.messages, content, workspace.notes, noteIds, files));
+    const fit = fitToMemory(outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds })), base.messages, content, workspace.notes, noteIds, files, workspace.folders));
     try {
       await streamLocalMessage({
         model,
@@ -481,7 +486,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                   {message.role === "assistant" && (message.modelName || message.modelId) && <small className="bubble-model">{message.modelName || message.modelId}</small>}
                   {message.role === "assistant" ? <Markdown text={message.content} headingOffset={2} /> : <p className="user-text">{message.content}</p>}
                   {message.leftOut > 0 && <small className="bubble-model">To fit the AI’s memory, it didn’t read the {message.leftOut === 1 ? "oldest message" : `${message.leftOut} oldest messages`} in this chat. Start a new chat for a fresh page.</small>}
-                  {message.role === "user" && <UsedNotes ids={message.noteIds} notes={workspace.notes} onOpen={openNote} />}
+                  {message.role === "user" && <UsedNotes ids={message.noteIds} notes={workspace.notes} folders={workspace.folders} onOpen={openNote} />}
                   {message.role === "user" && message.files?.length > 0 && (
                     <p className="bubble-notes">
                       <span>Read</span>

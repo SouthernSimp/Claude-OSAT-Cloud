@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, ChatCircle, Sparkle, Stop, X } from '@phosphor-icons/react'
 
 import { answeringLabel } from '../assistant/ask-model.js'
+import { noteKind, noteWhere } from '../assistant/ask-sources.js'
 import { useAskHere } from '../assistant/useAskHere.js'
 import { Markdown } from '../lib/markdown.jsx'
+import { isActiveNote } from '../notes-model.js'
 import { asksToSort } from './sort-unsorted.js'
 
 /* The AI, in the Sky: a pill at the bottom that opens a small card. Ask about your Sky ("which nodes
@@ -22,7 +24,7 @@ export function SkyAsk({ workspace, commit, models, ai, open, focus, asking, set
   const field = useRef(null)
   useEffect(() => { if (asking) field.current?.focus() }, [asking])
 
-  const title = (id) => workspace.notes.find((note) => note.id === id)?.title || 'a sticky'
+  const source = (id) => workspace.notes.find((note) => note.id === id)
 
   function submit(event) {
     event.preventDefault()
@@ -59,7 +61,11 @@ export function SkyAsk({ workspace, commit, models, ai, open, focus, asking, set
             <p className="sky-ask-question">{answer.question}</p>
             {answer.text ? <Markdown text={answer.text} headingOffset={2} /> : answer.busy && <p className="sky-ask-wait">{['asleep', 'waking'].includes(ai.key) ? 'Waking the AI…' : 'Thinking…'}</p>}
             {answer.error && <p className="sky-ask-error" role="alert">{answer.error}</p>}
-            {answer.noteIds?.length > 0 && <div className="sky-ask-sources"><small>Notes shared · excerpts may be shortened</small>{answer.noteIds.map((id) => <button type="button" key={id} onClick={() => navigate('Notes', { noteId: id })}>{title(id)}</button>)}{answer.omitted > 0 && <small>{answer.omitted} more notes were not included. This is a partial view.</small>}</div>}
+            {answer.noteIds?.length > 0 && <div className="sky-ask-sources"><small>Notes shared · excerpts may be shortened</small>{answer.noteIds.map((id) => {
+              const note = source(id)
+              if (!isActiveNote(note)) return <span className="sky-ask-gone" key={id}>No longer saved</span>
+              return <button type="button" key={id} title={[noteKind(note), noteWhere(note, workspace.folders)].filter(Boolean).join(' · ')} onClick={() => navigate('Notes', { noteId: id })}><em>{noteKind(note)}</em> {note.title || 'Untitled'}</button>
+            })}{answer.omitted > 0 && <small>{answer.omitted} more notes were not included. This is a partial view.</small>}</div>}
           </>
         )}
       </div>

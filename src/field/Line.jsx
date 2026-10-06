@@ -420,7 +420,7 @@ export function Line({
             {answer.text ? <Markdown text={answer.text} headingOffset={2} /> : answer.busy && <p className="home-answer-wait">Thinking on this Mac…</p>}
             {answer.error && <p className="home-answer-error" role="alert">{answer.error}</p>}
           </div>
-          <UsedNotes ids={answer.noteIds} notes={notes} onOpen={(noteId) => onOpenNote?.(noteId)} />
+          <UsedNotes ids={answer.noteIds} notes={notes} folders={workspace.folders} onOpen={(noteId) => onOpenNote?.(noteId)} />
           <ActionCards
             actions={answer.actions}
             onAdd={(action) => { commit((state) => applyAction(state, action, localDateKey())); setAnswer((value) => ({ ...value, actions: value.actions.filter((item) => item.id !== action.id) })) }}
