@@ -27,7 +27,7 @@ test('CleanShot URLs are its documented commands; an after-action only where Cle
 
 test('with CleanShot everything is there; without it, the three plain screenshots; elsewhere nothing', () => {
   assert.equal(model.available({ cleanshot: true, mac: true }).length, model.CAPTURES.length)
-  assert.deepEqual(model.available({ mac: true }), ['area', 'window', 'fullscreen'])
+  assert.deepEqual(model.available({ mac: true }), ['area', 'window', 'fullscreen', 'text'])
   assert.deepEqual(model.available({}), [])
   assert.deepEqual(model.macArgs('area'), ['-i', '-c'])
   assert.deepEqual(model.macArgs('window', { file: '/x/a.png' }), ['-i', '-w', '/x/a.png'])
@@ -87,7 +87,7 @@ test('capture keys live with the launcher’s: saved, cleaned, named, and refuse
 })
 
 /* capture.cjs with stand-ins for Electron and the Mac. */
-async function setup({ cleanshot = true, settings = {}, screen = 'granted', platform = 'darwin', writes = true } = {}) {
+async function setup({ cleanshot = true, settings = {}, screen = 'granted', platform = 'darwin', writes = true, readText = async () => ({ text: 'Hello there' }) } = {}) {
   const home = await mkdtemp(path.join(os.tmpdir(), 'osat-capture-'))
   const calls = { opened: [], exec: [], hid: 0, notified: [], dragged: [], copied: [] }
   const handlers = new Map()
@@ -98,7 +98,8 @@ async function setup({ cleanshot = true, settings = {}, screen = 'granted', plat
     home,
     appPath: path.join(home, 'no CleanShot here.app'),
     shell: { openExternal: async (url) => calls.opened.push(url), openPath: async (file) => { calls.opened.push(file); return '' }, showItemInFolder: (file) => calls.opened.push(['reveal', file]) },
-    clipboard: { writeImage: (image) => calls.copied.push(image) },
+    clipboard: { writeImage: (image) => calls.copied.push(image), writeText: (text) => calls.copied.push(text) },
+    readText,
     nativeImage: { createFromPath: (file) => ({ file, isEmpty: () => !file.endsWith('.png') }), createFromDataURL: () => ({ resize: () => 'icon' }) },
     systemPreferences: { getMediaAccessStatus: () => screen },
     exec: async (command, args) => {
@@ -191,4 +192,28 @@ test('off the Mac nothing is offered and nothing runs', async () => {
   assert.deepEqual(await capture.take('area'), { ok: false, reason: 'mac' })
   assert.deepEqual(calls.exec, [])
   await done()
+})
+
+test('without CleanShot: Copy text from the screen reads an area with the Mac and copies the words; the picture goes', async () => {
+  let read = null
+  const { capture, calls, home, done } = await setup({ cleanshot: false, readText: async (file) => { read = file; return { text: 'Hello there\nfriend' } } })
+  assert.deepEqual(await capture.take('text'), { ok: true, words: 3 })
+  assert.deepEqual(calls.copied, ['Hello there\nfriend'])
+  assert.match(calls.notified[0], /Copied 3 words/)
+  assert.deepEqual(calls.exec.find(([command]) => command === 'screencapture').slice(0, 2), ['screencapture', '-i'])
+  assert.ok(read && !existsSync(read), 'the picture was read, then removed')
+  assert.ok(!existsSync(path.join(home, 'Desktop', 'OSAT Captures')), 'nothing saved to the captures folder')
+  await done()
+})
+
+test('Copy text: Esc says nothing; a picture with no words says so calmly', async () => {
+  const quiet = await setup({ cleanshot: false, writes: false })
+  assert.deepEqual(await quiet.capture.take('text'), { ok: false, reason: 'cancelled' })
+  assert.deepEqual(quiet.calls.notified, [])
+  await quiet.done()
+  const blank = await setup({ cleanshot: false, readText: async () => { throw new Error('EMPTY') } })
+  assert.deepEqual(await blank.capture.take('text'), { ok: false, reason: 'empty' })
+  assert.match(blank.calls.notified[0], /No words/)
+  assert.deepEqual(blank.calls.copied, [])
+  await blank.done()
 })

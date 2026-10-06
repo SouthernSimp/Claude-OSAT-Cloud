@@ -16,7 +16,7 @@ function ringBounds(point, area, size = SIZE) {
   }
 }
 
-function createRing({ BrowserWindow, screen, platform, preload, load, hideOnBlur = false, onHide = () => {} }) {
+function createRing({ BrowserWindow, screen, platform, preload, load, hideOnBlur = false, onShow = () => {}, onHide = () => {} }) {
   const window = new BrowserWindow({
     show: false,
     width: SIZE,
@@ -45,6 +45,7 @@ function createRing({ BrowserWindow, screen, platform, preload, load, hideOnBlur
   const send = (channel, ...args) => { if (!window.isDestroyed()) window.webContents.send(channel, ...args) }
 
   function show() {
+    onShow()
     const point = screen.getCursorScreenPoint()
     window.setBounds(ringBounds(point, displayAt(screen.getAllDisplays(), point).workArea))
     shownAt = Date.now()

@@ -625,6 +625,21 @@ function registerDesk() {
 
 /* ---- The launcher (⌘⇧Space): the quick bar, the clipboard history, Hyper keys (desktop/launcher) ---- */
 
+/* Putting the desk away hides OSAT (app.hide), and a hidden app's panels never appear: the quick bar, Ask, the
+   clipboard and the ring then only worked once OSAT was opened. A panel unhides OSAT first, and when the last one
+   goes OSAT hides again, so focus (and Paste, and a window layout) goes back to the app you were in. */
+let unhidForPanel = false
+function unhideForPanel() {
+  if (process.platform !== 'darwin' || !app.isHidden()) return
+  unhidForPanel = true
+  app.show()
+}
+function hideAfterPanel() {
+  if (!unhidForPanel || launcher?.visible() || mainWindow?.isVisible()) return
+  unhidForPanel = false
+  app.hide()
+}
+
 let barSaveTimer
 async function registerLauncher() {
   launcher = await createLauncher({
@@ -669,7 +684,8 @@ async function registerLauncher() {
     hideOnBlur: process.platform === 'darwin' && (app.isPackaged || !process.env.OSAT_DATA_DIR),
     isTaken: (accelerator) => Object.values(shortcuts).some((shortcut) => shortcut.value === accelerator),
     notify: (options) => { if (Notification.isSupported()) new Notification(options).show() },
-    onHide: releaseEscape,
+    onShow: unhideForPanel,
+    onHide: () => { releaseEscape(); hideAfterPanel() },
   })
   launcher.onFocus(claimEscape, releaseEscape)
 }

@@ -1,7 +1,8 @@
 /* Screenshots and screen recording from the launcher (the ring, the quick search, a key of their own).
    When CleanShot X is on this Mac, OSAT asks it through CleanShot's own URL commands
    (https://cleanshot.com/docs-api): every capture below works. Without it, the Mac's own `screencapture`
-   does the three plain screenshots; recording, scrolling and text need CleanShot (see docs/BACKLOG.md for
+   does the three plain screenshots, and "Copy text from the screen" reads an area with the Mac's own text
+   recognition (Vision, as scans are read); recording and scrolling need CleanShot (see docs/BACKLOG.md for
    what building recording ourselves would take). Nothing here leaves the Mac: CleanShot's `upload` action
    is never built. Pure. */
 
@@ -17,7 +18,7 @@ export const CAPTURES = [
   { id: 'scrolling', label: 'Scrolling screenshot', words: 'screenshot capture scrolling scroll long page', cleanshot: 'scrolling-capture' },
   { id: 'all-in-one', label: 'Screenshot or record', words: 'screenshot record capture all in one choose', cleanshot: 'all-in-one' },
   { id: 'record', label: 'Record screen', words: 'record recording video screen movie gif', cleanshot: 'record-screen' },
-  { id: 'text', label: 'Copy text from the screen', words: 'text ocr copy read words recognize screenshot', cleanshot: 'capture-text' },
+  { id: 'text', label: 'Copy text from the screen', words: 'text ocr copy read words recognize screenshot', cleanshot: 'capture-text', mac: ['-i'] },
   { id: 'history', label: 'Past screenshots', words: 'screenshot history recent past captures recordings', cleanshot: 'open-history' },
 ]
 
@@ -36,7 +37,7 @@ export function cleanshotUrl(id, { action = null } = {}) {
 /* main opens only a URL that looks exactly like one cleanshotUrl makes (capture.cjs checks it on the line that opens it). */
 export const CLEANSHOT_URL = /^cleanshot:\/\/[a-z-]+(\?action=(copy|save|annotate|pin))?$/
 
-/* What can be done here: everything with CleanShot, the three screenshots with the Mac alone, nothing elsewhere. */
+/* What can be done here: everything with CleanShot, the three screenshots and text with the Mac alone, nothing elsewhere. */
 export function available({ cleanshot = false, mac = false } = {}) {
   if (cleanshot) return CAPTURES.map((item) => item.id)
   return mac ? CAPTURES.filter((item) => item.mac).map((item) => item.id) : []

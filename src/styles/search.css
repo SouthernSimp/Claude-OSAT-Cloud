@@ -76,6 +76,7 @@ html:has(.quick-search) body { background: transparent; }
 .qs-preview { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px; min-height: 0; padding: 16px 20px 14px; }
 .qs-preview.is-empty { place-items: center; font-size: var(--t-sm); color: var(--faint); }
 .qs-stage { min-height: 0; display: grid; place-items: center; overflow: hidden; border-radius: var(--r-lg); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.qs-stage[draggable="true"] { cursor: grab; }
 .qs-picture { max-width: 100%; max-height: 100%; object-fit: contain; }
 .qs-app-icon { width: 120px; height: 120px; object-fit: contain; }
 .qs-glyph svg { width: 72px; height: 72px; color: var(--faint); }

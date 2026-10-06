@@ -28,7 +28,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 async function createLauncher({
   app, BrowserWindow, screen, clipboard, nativeImage, shell, systemPreferences, globalShortcut, platform = process.platform,
   dataDir, preload, load, files, handle, fail, sharedModule, mainWindow, command, sendToAllWindows,
-  offline = () => false, hideOnBlur = false, isTaken = () => false, onHide = () => {}, exec, notify = () => {},
+  offline = () => false, hideOnBlur = false, isTaken = () => false, onShow = () => {}, onHide = () => {}, exec, notify = () => {},
   // What the ring does that only main can: the desk, the Sky, Files.
   ringActions = {},
   // Where the bar was dragged to (its top middle), and how main keeps a new spot.
@@ -68,7 +68,7 @@ async function createLauncher({
 
   let search = null
   const startSearch = () => {
-    search = createQuickSearch({ BrowserWindow, screen, platform, preload, load: (window) => load(window, 'search'), hideOnBlur, onHide, view: () => settings.view, spot: barSpot, onMoved: onBarMoved })
+    search = createQuickSearch({ BrowserWindow, screen, platform, preload, load: (window) => load(window, 'search'), hideOnBlur, onShow, onHide, view: () => settings.view, spot: barSpot, onMoved: onBarMoved })
     // The page says when it is listening, so a key pressed while it loads still opens it on the right tab.
     let ready = false
     let waiting = null
@@ -83,7 +83,7 @@ async function createLauncher({
   let hooks = null
   const ensureRing = () => {
     if (!ring) {
-      ring = createRing({ BrowserWindow, screen, platform, preload, load: (window) => load(window, 'ring'), hideOnBlur, onHide })
+      ring = createRing({ BrowserWindow, screen, platform, preload, load: (window) => load(window, 'ring'), hideOnBlur, onShow, onHide })
       if (hooks) { ring.window.on('focus', hooks.focus); ring.window.on('blur', hooks.blur) }
     }
     return ring
@@ -339,6 +339,7 @@ async function createLauncher({
       else if (ring?.window.isFocused()) ring.send('ring:escape')
     },
     focused: () => Boolean(search.window.isFocused() || ring?.window.isFocused()),
+    visible: () => Boolean(search.window.isVisible() || ring?.window.isVisible()),
     onFocus(focus, blur) {
       hooks = { focus, blur }
       search.window.on('focus', focus)
