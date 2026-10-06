@@ -436,6 +436,30 @@ html[data-carry-edge="up"] body::after {
   background: var(--surface-raised);
   box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-2);
 }
+.board-edge-label {
+  position: absolute;
+  z-index: 3;
+  max-width: 180px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--ink);
+  box-shadow: var(--e-1);
+  font: 600 var(--t-xs)/1 var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-edge-label.is-left { transform: translate(0, -50%); }
+.board-edge-label.is-right { transform: translate(-100%, -50%); }
+.board-edge-label.is-top { transform: translate(-50%, 0); }
+.board-edge-label.is-bottom { transform: translate(-50%, -100%); }
+.board-edge-label:hover { background: var(--surface-hover); }
+.board-edge-label.is-left::before { content: '← '; }
+.board-edge-label.is-right::after { content: ' →'; }
+.board-edge-label.is-top::before { content: '↑ '; }
+.board-edge-label.is-bottom::before { content: '↓ '; }
 .board-zoom button { min-width: 30px; height: 28px; display: grid; place-items: center; padding: 0 6px; border-radius: 9px; font: 650 var(--t-xs)/1 var(--font); font-variant-numeric: tabular-nums; color: var(--muted); }
 .board-zoom button:hover { color: var(--ink); background: var(--surface-hover); }
 .board-zoom svg { width: 12px; height: 12px; }

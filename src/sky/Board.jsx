@@ -4,11 +4,12 @@ import { ArrowRight, At, CalendarPlus, CaretDown, CornersOut, Crosshair, DotsThr
 import { freeSpot, hashUnit } from '../field/field-model.js'
 import { DraftSticky, LinkDot, STICKY, menuEvent, useLinking } from '../field/DeskStickies.jsx'
 import { carryable, useDrop } from '../lib/carry.js'
-import { edgePath, linksOf, partsOf } from '../links-model.js'
+import { edgePath, linksAt, linksOf, partsOf, recordOf } from '../links-model.js'
 import { folderChildren, folderSubtree, isBranch } from '../notes-model.js'
 import {
   addFolder, addSticky, asksIn, askStart, boardSpots, CARD, mentionedIn, moveFolder, nodesOf, pileOf, placeNodes, stickiesIn,
 } from '../nodes-model.js'
+import { edgeSpot, offscreen, sideOf, unionBoxes } from './connect-view.js'
 import { branchOf, hangAt, layoutTree } from './map-layout.js'
 import { AddSticky, NameField } from './Piles.jsx'
 import { Sticky } from './Sticky.jsx'
@@ -17,10 +18,11 @@ const CAMERA_KEY = 'osat.sky.camera.v1'
 const ZOOM = { min: 0.2, max: 1.6 }
 // Further out than this, a card shows its name big and what's inside it faintly.
 const FAR = 0.5
+const EDGE = 14 // how far in from the edge of the view a label sits
 const READABLE = 0.85 // the smallest an opened node is shown at
 const clampZoom = (z) => Math.min(ZOOM.max, Math.max(ZOOM.min, z))
 // What a click on the board itself ignores: the cards and controls on it.
-const ON_CARD = '.board-card, .board-sticky, .board-sticky-draft, .board-naming, .board-zoom, .map-card, .board-focus, .link-hit'
+const ON_CARD = '.board-card, .board-sticky, .board-sticky-draft, .board-naming, .board-zoom, .map-card, .board-focus, .link-hit, .board-edge-label'
 
 /* How thick a pile looks: a layer of paper for every few stickies, never a number. */
 const layersFor = (count) => Math.min(4, Math.ceil(count / 3))
@@ -66,7 +68,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   const [flying, setFlying] = useState(false)
   const [panning, setPanning] = useState(false)
   const flyTimer = useRef(0)
-  const before = useRef({ focusHome: null })
+  const before = useRef({ focusHome: null, connectHome: null })
   const destination = useRef(null)
 
   const roots = nodesOf(workspace.folders).map(({ folder }) => folder)
@@ -173,6 +175,25 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     flyTimer.current = setTimeout(() => setFlying(false), 760)
   }
   const fit = () => fly(frame(bounds()))
+  /* Only the camera moves: it shows these cards (keys of cards on the board) together, and Esc goes back. */
+  function showEnds(keys) {
+    const boxes = keys.filter(Boolean).map((key) => shown(key)).filter(Boolean)
+    const rect = unionBoxes(boxes)
+    if (!rect) return false
+    const view_ = view.current.getBoundingClientRect()
+    const pad = Math.min(96, view_.width * 0.08)
+    const together = Math.min((view_.width - pad * 2) / Math.max(rect.w, 1), (view_.height - pad * 2) / Math.max(rect.h, 1))
+    // Too far apart to fit even when zoomed all the way out: go to the end that is off the screen instead.
+    const lost = boxes.find((box) => offscreen(box, latest.current.camera, { w: view_.width, h: view_.height })) || boxes.at(-1)
+    before.current.connectHome ??= latest.current.camera
+    fly(frame(together >= ZOOM.min ? rect : lost))
+    return true
+  }
+  /* A card and everything it is connected to, in one view. */
+  function showConnected(key) {
+    const others = linksAt(workspace, key).map(endOf)
+    return showEnds([endOf(key), ...others])
+  }
   function zoomBy(factor, at) {
     const box = view.current.getBoundingClientRect()
     const point = at || { x: box.width / 2, y: box.height / 2 }
@@ -213,6 +234,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   /* Fly to a node (or a branch's node, or Unsorted), opening it and every folded branch on
      the way down; a sticky in it glows. */
   function goTo({ folderId = null, noteId = null } = {}) {
+    before.current.connectHome = null
     const state = latest.current
     const note = noteId && state.notes.find((item) => item.id === noteId)
     const free = note?.at && !note.folderId
@@ -283,10 +305,13 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     back() {
       if (draft) { setDraft(null); return true }
       if (adding) { setAdding(null); return true }
-      if (!naming) return false
-      setNaming(null)
-      return true
+      if (naming) { setNaming(null); return true }
+      // Esc after "Show connected" (or a click on a line) goes back to the view you were in.
+      if (before.current.connectHome) { fly(before.current.connectHome); before.current.connectHome = null; return true }
+      return false
     },
+    showConnected,
+    frameLink: (link) => showEnds([endOf(link.a), endOf(link.b)]),
     fit,
   }))
 
@@ -315,6 +340,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   function onPointerDown(event) {
     if (event.button !== 0 || event.target.closest(ON_CARD)) return
     const start = { x: event.clientX, y: event.clientY, camera: latest.current.camera }
+    before.current.connectHome = null
     let moved = false
     const move = (next) => {
       if (!moved && Math.hypot(next.clientX - start.x, next.clientY - start.y) < 3) return
@@ -451,7 +477,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     drawn.add(pair)
     const from = shown(a)
     const to = shown(b)
-    if (from && to) lines.push({ key: `link:${link.key}`, kind: 'link', d: edgePath(from, to).d, link })
+    if (from && to) lines.push({ key: `link:${link.key}`, kind: 'link', d: edgePath(from, to).d, link, ends: [a, b] })
   })
   if (!focus) {
     const pairs = new Set()
@@ -468,6 +494,24 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     }))
   }
   const drawing = linker.linking && shown(cardKey(linker.linking.from))
+  /* A connection with one end off the screen says where it goes: a label at the edge, on the way there. Clicking it
+     shows both ends. Both ends off the screen: nothing to hang a label on. */
+  const size = view.current ? { w: view.current.clientWidth, h: view.current.clientHeight } : null
+  const centre = (box) => ({ x: (box.x + box.w / 2) * camera.z + camera.x, y: (box.y + box.h / 2) * camera.z + camera.y })
+  const nameOfCard = (key) => {
+    if (key === 'unsorted') return 'Unsorted'
+    const record = key.startsWith('note:') ? recordOf(workspace, key) : workspace.folders.find((folder) => folder.id === key)
+    return record?.name || record?.title || 'Another card'
+  }
+  const edgeLabels = size && !drag ? lines.filter((line) => line.kind === 'link').flatMap((line) => {
+    const [a, b] = line.ends.map((key) => shown(key))
+    if (!a || !b) return []
+    const outA = offscreen(a, camera, size)
+    if (outA === offscreen(b, camera, size)) return []
+    const [near, far, farKey] = outA ? [b, a, line.ends[0]] : [a, b, line.ends[1]]
+    const spot = edgeSpot(centre(near), centre(far), size, EDGE)
+    return [{ key: line.key, spot, side: sideOf(spot, size, EDGE), name: nameOfCard(farKey), ends: line.ends }]
+  }) : []
 
   const far = camera.z < FAR
   // The dots thin out as the board zooms out, so they never turn to haze.
@@ -491,7 +535,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
             ? (
               <g key={line.key}>
                 <path className="is-link" d={line.d} />
-                <path className="link-hit" d={line.d} onClick={(event) => actions.lineMenu(event, line.link)} onContextMenu={(event) => actions.lineMenu(event, line.link)} />
+                <path className="link-hit" d={line.d} onClick={() => showEnds(line.ends)} onContextMenu={(event) => actions.lineMenu(event, line.link)} />
               </g>
             )
             : <path key={line.key} className={`is-${line.kind}`} d={line.d} />))}
@@ -567,6 +611,18 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
           ? 'Drag to move · scroll to explore · ⌘ scroll to zoom'
           : 'Double-click to capture · drag a dot to connect'}
       </p>
+      {edgeLabels.map((label) => (
+        <button
+          key={label.key}
+          type="button"
+          className={`board-edge-label is-${label.side}`}
+          style={{ left: label.spot.x, top: label.spot.y }}
+          title={`Connected to ${label.name}. Show both.`}
+          onClick={() => showEnds(label.ends)}
+        >
+          {label.name}
+        </button>
+      ))}
       <div className="board-zoom" role="group" aria-label="Zoom">
         <button type="button" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.25)}><Minus weight="bold" /></button>
         <button type="button" className="board-zoom-fit" title="Actual size" aria-label="Reset zoom to 100%" onClick={() => zoomBy(1 / camera.z)}>{Math.round(camera.z * 100)}%</button>

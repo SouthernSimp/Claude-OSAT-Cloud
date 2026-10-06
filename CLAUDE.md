@@ -338,6 +338,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     New branch / New branch inside are named in place (`actions.branching`); Rename for a branch
     goes through `actions.renaming` like a node's.
     Cards drift forever, so Playwright clicks on them need `{ force: true }`.
+    Phase 27h (`sky/connect-view.js`, pure): connections you can always see. Clicking a connection's line, "Show
+    what it's connected to" (a card's menu) and a line's "Show both ends" only move the camera (`showEnds` in Board.jsx; Esc
+    flies back via `before.connectHome`); when both ends can't fit at the smallest zoom it goes to the end that is off
+    screen. A line with one end off screen gets an edge label naming the other end (`edgeSpot`); nothing is ever rearranged.
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
     `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, `moveToItems` (every
     Move to menu), @mentions, `importNode`, the board's spots, sorting suggestions), `project-direction.js` (the

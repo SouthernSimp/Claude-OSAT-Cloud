@@ -76,7 +76,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 27f | Sorting Unsorted redone: one sticky, ranked homes with reasons, Return moves, keys, Next up, Sort them all in the same screen; the AI always says what it's doing | Merged (PR #49) |
 | 27g | Sort Unsorted made easy to read: one question ("Where does this sticky go?"), one blue button, quiet Skip / Put it on the Sky / Delete, "Sticky 2 of 3", Suggest homes for all in plain sentences | In review (PR #52) |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
-| 27h | Connections you can always see: click a line to frame both ends, "Show connected", an edge label for a line that runs off screen | Planned |
+| 27h | Connections you can always see: click a line to frame both ends, "Show connected", an edge label for a line that runs off screen | In review (PR #62) |
 | 29 | Recording made in OSAT (proposed): record an area, a window or the screen without CleanShot, trim, save as a GIF. Waits for Developer ID signing (backlog #6) | Planned |
 | 30 | Ask across everything, step one: Ask understands "last month" and a node's name ("my notes about Jordan"), tells a scan from a sticky, and the sources under each answer say what each is, where it lives, and "No longer saved" when it's gone | In review |
 | 30b | Ask across everything, step two: what you copied and your files, with anything that looks like a password left out, never sent to a cloud model, one switch to turn it off, a calm first-time note | Planned |
