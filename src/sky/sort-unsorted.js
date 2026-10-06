@@ -10,10 +10,11 @@ import { readSortUnsortedAnswer, sortUnsortedMessages } from '../../shared/ai-ta
 import { folderChildren, folderPath, relatedNotes } from '../notes-model.js'
 import { nodesOf, pileOf } from '../nodes-model.js'
 
-/* One request reads this many stickies, at most this many in a go (the built-in model reads
-   about 8,000 tokens); the rest wait for the next time. */
+/* One request reads this many stickies (the built-in model reads about 8,000 tokens); a sort goes
+   through up to MOST of them, one request after another with progress shown, so a pile of a hundred
+   or more is sorted in one go. The rest wait for the next time. */
 export const BATCH = 20
-export const MOST = 60
+export const MOST = 300
 const MOST_PLACES = 40
 
 const plainKey = (name) => String(name || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')

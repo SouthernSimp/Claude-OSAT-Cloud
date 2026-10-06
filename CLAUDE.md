@@ -312,7 +312,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     (`homeOptions` in sort-review.js: the AI's pick, words' matches with a reason and what is in each, places used
     a moment ago, a New node row), "Another place…" (`findPlaces`), one primary Move with Return; S / L / ⌫ / A /
     N / F / ←→ / ⌘Z; the queue is `sortQueue` (Later sends one to the end) with a Next up strip. "Sort them all"
-    shows `sort-unsorted.js`'s groups (`sortRequests` in batches of 20, at most 60, `modelSuggestions` /
+    shows `sort-unsorted.js`'s groups (`sortRequests` in batches of 20, at most 300, one request after another with progress, `modelSuggestions` /
     `wordSuggestions`, `stillToSort`) in the same screen; every move goes through `fileUnsorted` (a node of the
     same name is reused) and one Undo (`undoFiling`, which also removes a node made for it while it is empty;
     Sky's `actions.fileGroups` / `undoUnsorted`, with the log in a ref so a toast's Undo is always the newest).

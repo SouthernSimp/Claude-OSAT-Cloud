@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowsOut, Broom, CaretDown, CaretUp, LineSegment, NotePencil, PaintBucket, PencilSimple, PushPin, ShareNetwork, SquaresFour, Stack, Trash, TreeStructure,
+  ArrowBendUpRight, ArrowSquareOut, ArrowsOut, Broom, CaretDown, CaretUp, Eye, FolderOpen, FolderSimple, LineSegment, NotePencil, PaintBucket, PencilSimple, PushPin, ShareNetwork, Sparkle, SquaresFour, Stack, Trash, TreeStructure,
 } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
@@ -15,7 +15,7 @@ import { excerpt, isActiveNote, restoreNotes, trashNotes, uid, wikilinkPairs } f
 import { addFolder, addSticky, moveSticky, moveToItems, splitMentions } from '../nodes-model.js'
 import { connect, disconnect, linksAt, linksOf, noteKey, recordOf } from '../links-model.js'
 import { NameField } from '../sky/Piles.jsx'
-import { FileThumb, filesBridge, openEntry, useFolder, useFreshness } from '../views/Files.jsx'
+import { FileThumb, canAsk, filesBridge, openEntry, useFolder, useFreshness } from '../views/Files.jsx'
 import { GRID, STICKY, StickyLayer, menuEvent, spotOn, useLinking, useStickySurface } from './DeskStickies.jsx'
 import { addToStack, changes, isStack, setDown, stackOf, stackUp, unstack } from './stacks.js'
 import { useReducedMotion } from './FieldChrome.jsx'
@@ -255,6 +255,56 @@ export function FieldDesk({
     }
   }
 
+  /* Right-click on a Desktop file: the Files room's menu, trimmed to what fits an icon. Each change says so
+     in the Undo toast (calm rule 2). */
+  function fileMenu(event, entry) {
+    const api = filesBridge()
+    if (!api) return
+    setPicked(entry.relative)
+    const fail = (reason) => setFileNote(cleanError(reason))
+    const moveTo = async (rootId) => {
+      try {
+        const result = await api.move([{ rootId: 'desktop', relative: entry.relative }], rootId, '', false)
+        if (result.failed) setFileNote(result.failed)
+        if (result.moved.length) showUndo(`Moved “${entry.name}”`, () => api.undo(result.undo).catch(fail))
+      } catch (reason) { fail(reason) }
+    }
+    const toBin = async () => {
+      try {
+        const result = await api.trash([{ rootId: 'desktop', relative: entry.relative }])
+        if (result.failed) setFileNote(result.failed)
+        if (result.count) showUndo(`Moved “${entry.name}” to the Bin`, () => api.undo(result.undo).catch(fail))
+      } catch (reason) { fail(reason) }
+    }
+    openMenu(event, [
+      { label: 'Open', icon: ArrowSquareOut, onSelect: () => openFile(entry) },
+      entry.kind === 'file' ? { label: 'Quick Look', icon: Eye, hint: 'space', onSelect: () => api.quickLook('desktop', entry.relative).catch(fail) } : null,
+      canAsk(entry) ? { label: 'Ask about it', icon: Sparkle, onSelect: () => navigate('Assistant', { file: { rootId: 'desktop', relative: entry.relative, name: entry.name } }) } : null,
+      { label: 'Move to', icon: ArrowBendUpRight, items: [['documents', 'Documents'], ['downloads', 'Downloads']].map(([id, label]) => ({ label, icon: FolderSimple, onSelect: () => moveTo(id) })) },
+      { divider: true },
+      { label: 'Move to Bin', icon: Trash, danger: true, onSelect: toBin },
+      { label: 'Show in Finder', icon: FolderOpen, onSelect: () => api.reveal('desktop', entry.relative).catch(fail) },
+    ])
+  }
+
+  /* Right-click on an icon of the OSAT shelf: a sticky, a node or Unsorted. */
+  function iconMenu(event, item) {
+    if (item.kind === 'note') {
+      const { note } = item
+      openMenu(event, [
+        { label: 'Open as a page', icon: NotePencil, onSelect: () => openNote(note.id) },
+        { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => fileSticky(note.id, folderId), { skip: note.folderId || null }) },
+        { label: 'Send up to the Sky', icon: CaretUp, onSelect: () => navigate('Mindmap', { action: 'place-sticky', noteId: note.id }) },
+        { divider: true },
+        { label: 'Delete', icon: Trash, danger: true, onSelect: () => toss(note) },
+      ])
+    } else if (item.kind === 'folder') {
+      openMenu(event, [{ label: 'Open in the Sky', icon: TreeStructure, onSelect: () => openItem(item) }])
+    } else if (item.kind === 'pile') {
+      openMenu(event, [{ label: 'Open Unsorted', icon: NotePencil, onSelect: () => openItem(item) }])
+    }
+  }
+
   /* The desk's own rectangle, and what's already on it, for finding a free spot. */
   function deskBoxes() {
     const box = home.current.getBoundingClientRect()
@@ -397,6 +447,7 @@ export function FieldDesk({
         title={entry.name}
         onClick={() => setPicked(entry.relative)}
         onDoubleClick={() => openFile(entry)}
+        onContextMenu={(event) => fileMenu(event, entry)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') { event.preventDefault(); openFile(entry) }
           if (event.key === ' ' && entry.kind === 'file') { event.preventDefault(); filesBridge()?.quickLook('desktop', entry.relative).catch(() => {}) }
@@ -472,6 +523,7 @@ export function FieldDesk({
         onOpen={() => openItem(item)}
         onHover={item.kind === 'note' ? (on) => setHoverId((id) => (on ? item.id : id === item.id ? null : id)) : undefined}
         onFile={fileSticky}
+        onMenu={(event) => iconMenu(event, item)}
         move={item.kind === 'more' || item.kind === 'note' ? {} : movable(key)}
       />
     )
@@ -596,7 +648,7 @@ const bareDesk = (target) => !target.closest('button, a, input, textarea, select
 /* One icon on the desk's right side. A note can be carried out onto the desk (it becomes a
    sticky there) or into a node; a node takes stickies dropped on it, and the Unsorted pile
    takes them back. */
-function DeskIcon({ item, fresh, lit, onOpen, onHover, onFile, move }) {
+function DeskIcon({ item, fresh, lit, onOpen, onHover, onFile, onMenu, move }) {
   const drop = useDrop(`desk:icon:${item.kind}:${item.id}`, {
     accepts: item.kind === 'folder' || item.kind === 'pile' ? ['note'] : [],
     onDrop: ({ id }) => onFile(id, item.kind === 'folder' ? item.id : null),
@@ -609,6 +661,7 @@ function DeskIcon({ item, fresh, lit, onOpen, onHover, onFile, move }) {
       aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open node ${item.folder.name}` : item.kind === 'pile' ? `Unsorted, ${item.count} ${item.count === 1 ? 'sticky' : 'stickies'}` : `See ${item.count} more notes`}
       title={item.kind === 'note' ? 'Drag it onto the desk, or into a node' : undefined}
       onClick={onOpen}
+      onContextMenu={item.kind === 'more' ? undefined : onMenu}
       onPointerEnter={onHover ? () => onHover(true) : undefined}
       onPointerLeave={onHover ? () => onHover(false) : undefined}
       {...(item.kind === 'folder' || item.kind === 'pile' ? drop : {})}
