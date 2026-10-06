@@ -431,7 +431,7 @@ export function Line({
               ? <button type="button" onClick={stop}><Stop weight="fill" /> Stop</button>
               : <button type="button" onClick={() => { const chatId = answer.chatId; setAnswer(null); navigate('Assistant', { chatId }) }}><ChatCircle /> Keep talking</button>}
             {!answer.busy && window.osatChat && (
-              <button type="button" title="Keep talking in a small window over your other apps" onClick={() => { const chatId = answer.chatId; setAnswer(null); window.osatChat.show({ chatId }) }}><PictureInPicture /> Pop out</button>
+              <button type="button" title="Keep talking in the quick bar, over your other apps" onClick={() => { const chatId = answer.chatId; setAnswer(null); window.osatChat.show({ chatId }) }}><PictureInPicture /> Pop out</button>
             )}
             {!answer.busy && answer.text.trim() && (
               answer.savedId

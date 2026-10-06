@@ -11,7 +11,8 @@
 //   7. the Mac's Desktop on the desk (a stand-in folder): a folder opens in Files, Find looks inside
 //      files, tidying (a new folder, drag to move or ⌥-drag to copy, the Bin, rename, each with Undo; a drop
 //      from Finder is heard), and Ask reads a file
-//   8. the quick chat: its own window answers, and Esc puts it away
+//   8. Ask in the quick bar (one bar since Phase 13c): it answers, Esc backs out to the bar and then away, Pop out
+//      opens the desk's chat there, ⌘Return asks about what was typed, ⌥Return saves a sticky to Unsorted
 //   9. Offline: going offline closes the browser's tabs and shuts every way out (the
 //      desk's and the browser's requests, main's fetch, downloads, opening files in other
 //      apps); back online brings the tabs back; a relaunch stays offline (driven through
@@ -47,7 +48,7 @@ const check = (ok, message) => { if (!ok) problems.push(message) }
 async function launch(withEnv = env) {
   const app = await electron.launch({ cwd: root, args: [root, '--no-sandbox'], env: withEnv })
   currentApp = app
-  // The quick chat is a window too; the desk is the one without a surface.
+  // The quick bar and the ring are windows too; the desk is the one without a surface.
   let main
   while (!main) {
     main = app.windows().find((page) => !page.url().includes('surface='))
@@ -285,25 +286,35 @@ try {
   check(await until(async () => (await asked())?.messages[0].files?.[0] === 'packing.txt', 3000),
     `the question did not remember the file it read: ${JSON.stringify((await asked())?.messages[0])}`)
 
-  // 8. The quick chat, in its own window.
-  const quick = app.windows().find((page) => page.url().includes('surface=chat'))
-  check(Boolean(quick), 'the quick chat window was not created at launch')
-  const chatShown = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((window) => window.webContents.getURL().includes('surface=chat') && window.isVisible()))
+  // 8. Ask, in the quick bar: there is no separate quick chat window any more.
+  check(!app.windows().some((page) => page.url().includes('surface=chat')), 'a quick chat window was still made')
+  const quick = app.windows().find((page) => page.url().includes('surface=search'))
+  check(Boolean(quick), 'the quick bar window was not created at launch')
+  const chatShown = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((window) => window.webContents.getURL().includes('surface=search') && window.isVisible()))
   if (quick) {
     await main.evaluate(() => window.osatChat.show())
-    check(await until(chatShown, 3000), 'the quick chat did not show')
-    await quick.locator('.composer textarea').fill('Hello from the quick chat')
-    await quick.keyboard.press('Enter')
-    await quick.locator('.bubble.assistant', { hasText: 'Hello from the quick chat' }).waitFor({ timeout: 10000 })
-      .catch(() => problems.push('the quick chat did not answer'))
+    check(await until(chatShown, 3000), 'Ask did not show the quick bar')
+    const composer = quick.locator('.qs-chat .composer textarea')
+    await composer.fill('Hello from the quick bar')
+    await composer.press('Enter')
+    await quick.locator('.qs-chat .bubble.assistant', { hasText: 'Hello from the quick bar' }).waitFor({ timeout: 10000 })
+      .catch(() => problems.push('Ask in the quick bar did not answer'))
     await quick.keyboard.press('Escape')
-    check(await until(async () => !(await chatShown()), 3000), 'Esc did not put the quick chat away')
-    // Pop out: the desk's chat moves into the quick chat.
+    await quick.locator('#qs-input').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push('Esc did not come back from Ask to the bar'))
+    await quick.keyboard.press('Escape')
+    check(await until(async () => !(await chatShown()), 3000), 'Esc did not put the quick bar away')
+    // Pop out: the desk's chat opens in the quick bar.
     const deskChat = (await asked()).id
     await main.evaluate((chatId) => window.osatChat.show({ chatId }), deskChat)
-    await quick.locator('.chat-title h2', { hasText: 'What should I pack?' }).waitFor({ timeout: 5000 })
-      .catch(() => problems.push('Pop out did not open that chat in the quick chat'))
-    await quick.keyboard.press('Escape')
+    await quick.locator('.qs-chat .chat-title h2', { hasText: 'What should I pack?' }).waitFor({ timeout: 5000 })
+      .catch(() => problems.push('Pop out did not open that chat in the quick bar'))
+    // ⌘Return asks about what was typed, right there; ⌥Return saves it to Unsorted as a sticky.
+    await quick.getByRole('button', { name: 'Back to the bar' }).click()
+    await quick.fill('#qs-input', 'Ping from the bar')
+    await quick.keyboard.press('ControlOrMeta+Enter')
+    await quick.locator('.qs-chat .bubble.assistant', { hasText: 'Ping from the bar' }).waitFor({ timeout: 10000 })
+      .catch(() => problems.push('⌘Return in the quick bar did not ask the AI'))
+    await quick.evaluate(() => window.osatSearch.hide())
   }
   await main.keyboard.press('Control+1')
 
@@ -317,7 +328,7 @@ try {
   const fileMenu = (label) => app.evaluate(({ Menu }, name) => Menu.getApplicationMenu().items.find((item) => item.label === 'File').submenu.items.find((item) => item.label === name).click(), label)
   const clipboardNow = () => app.evaluate(({ clipboard }) => clipboard.readText())
   if (searchPage) {
-    await fileMenu('Quick Search')
+    await fileMenu('Quick Bar')
     check(await until(() => searchWindow('shown'), 3000), 'Quick Search in the File menu did not show the bar')
     await searchPage.locator('#qs-input').waitFor({ timeout: 5000 })
     check((await searchWindow('bounds')).height < 140, 'the quick search did not open as a small bar')
@@ -379,14 +390,14 @@ try {
     // What OSAT itself puts on the clipboard (the connector's key, later) is never kept; only what was copied is.
     check(!(await kept()).some((words) => /Bearer/.test(words)), 'something OSAT copied itself was kept in the history')
     // Esc backs out a step at a time: the words, then the bar.
-    if (!(await searchWindow('shown'))) await fileMenu('Quick Search')
+    if (!(await searchWindow('shown'))) await fileMenu('Quick Bar')
     await searchPage.fill('#qs-input', 'restart')
     await searchPage.keyboard.press('Escape')
     check((await searchPage.inputValue('#qs-input')) === '', 'Esc did not clear the words first')
     await searchPage.keyboard.press('Escape')
     check(await until(async () => !(await searchWindow('shown')), 3000), 'Esc did not put the quick search away')
     // Return on a note opens it on the desk.
-    await fileMenu('Quick Search')
+    await fileMenu('Quick Bar')
     await searchPage.fill('#qs-input', 'restart')
     await searchPage.locator('.qs-row', { hasText: 'Saved across a restart' }).waitFor({ timeout: 5000 })
     await searchPage.keyboard.press('Enter')
@@ -430,6 +441,18 @@ try {
   await sleep(2600)
   const copy = path.join(icloud, 'Notes', 'Unsorted', 'From the phone.md')
   check(await access(copy).then(() => true, () => false), 'the copy of the notes was not written to iCloud Drive')
+  // ⌥Return in the quick bar saves a sticky to Unsorted. Checked here, after the iPhone copy: a new Unsorted sticky
+  // makes the desk save a little later, which would push the copy past that check's short wait.
+  {
+    const bar = app.windows().find((page) => page.url().includes('surface=search'))
+    await main.evaluate(() => window.osatSearch.show('all'))
+    await bar.locator('#qs-input').waitFor({ state: 'visible', timeout: 5000 })
+    await bar.fill('#qs-input', 'A sticky from the bar')
+    await bar.keyboard.press('Alt+Enter')
+    const stickies = () => main.evaluate(async () => (await window.osat.store.load()).doc.notes.filter((note) => note.unsorted && note.source === 'Quick bar').map((note) => note.title))
+    check(await until(async () => (await stickies()).includes('A sticky from the bar'), 3000), '⌥Return did not save a sticky to Unsorted')
+    await bar.evaluate(() => window.osatSearch.hide())
+  }
   check(await access(path.join(icloud, 'Inbox', 'Added', 'Text.txt')).then(() => true, () => false), 'the dropped file did not move to Inbox/Added')
   await main.evaluate(() => window.osatPhone.disable())
   check(!(await access(copy).then(() => true, () => false)), 'turning the iPhone link off left the copy of the notes behind')
@@ -583,11 +606,11 @@ try {
     const downloadState = () => app.evaluate(() => globalThis.e2eDownload?.getState())
     check(await until(async () => await downloadState() === 'progressing', 5000), 'the browser did not start the download')
     await main.evaluate(() => { window.underHeard = []; window.osatUnder.onChange((status) => window.underHeard.push(status.on)) })
-    await until(async () => app.windows().some((win) => win.url().includes('surface=chat')), 5000)
-    const quick = app.windows().find((win) => win.url().includes('surface=chat'))
+    await until(async () => app.windows().some((win) => win.url().includes('surface=search')), 5000)
+    const quick = app.windows().find((win) => win.url().includes('surface=search'))
     await quick.waitForFunction(() => Boolean(window.osatUnder))
     check(/Only the main OSAT window/.test(await quick.evaluate(() => window.osatUnder.set(true).then(() => 'went under', (error) => error.message))),
-      'the quick chat was allowed to take OSAT under')
+      'the quick bar was allowed to take OSAT under')
 
     // Going under.
     const down = await main.evaluate(() => window.osatUnder.set(true))

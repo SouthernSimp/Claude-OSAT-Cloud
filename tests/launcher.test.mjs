@@ -350,12 +350,15 @@ test('the ring: its key is on by default, its window is made the first time, and
     await assert.rejects(t.ask('ring:pick', 'sticky'), /reading 'hide'|undefined/, 'no ring window yet, nothing to pick from')
     t.registered.get('Control+Alt+Shift+Command+R')()
     await wait(120)
+    // Over another app, a sticky and Ask stay over it: the quick bar opens to write one or to ask.
     await t.ask('ring:pick', 'sticky')
+    assert.equal(t.sent.filter(([channel]) => channel === 'search:shown').at(-1)[1].view, 'sticky')
     await t.ask('ring:pick', 'chat')
+    assert.equal(t.sent.filter(([channel]) => channel === 'search:shown').at(-1)[1].view, 'chat')
     await t.ask('ring:pick', 'sky')
     await t.ask('ring:pick', 'search')
-    assert.deepEqual(t.calls.ring, ['sticky', 'chat', 'sky'])
-    assert.equal(t.launcher.search.window.isVisible(), true, 'the quick search tool opens the panel')
+    assert.deepEqual(t.calls.ring, ['sky'])
+    assert.equal(t.launcher.search.window.isVisible(), true, 'the quick bar tool opens the panel')
     await t.ask('ring:pick', 'left')
     assert.deepEqual(moves, [[0, 0, 720, 900]], 'a layout tool moves the window you were in')
     await assert.rejects(t.ask('ring:pick', 'launch-missiles'), /isn’t a tool the ring holds/)
@@ -401,7 +404,7 @@ test('an app or a quick link can have a key: it opens the app or the address, or
     assert.deepEqual(t.calls.external, ['https://jira.example.com/board'])
     t.registered.get(HYPER('H'))()
     await wait(140)
-    assert.deepEqual(t.sent.filter(([channel]) => channel === 'search:shown').at(-1)[1], { scope: 'all', mode: 'bar', text: 'gh ' }, 'a link that wants words opens the search with its word typed')
+    assert.deepEqual(t.sent.filter(([channel]) => channel === 'search:shown').at(-1)[1], { scope: 'all', mode: 'bar', text: 'gh ', view: 'search', chat: null }, 'a link that wants words opens the search with its word typed')
     assert.equal(t.calls.external.length, 1, 'and opens nothing yet')
     // Taking a link off takes its key off.
     await t.ask('search:save-settings', { links: [] })
@@ -432,5 +435,25 @@ test('emoji picker hides quick search and opens the native panel', async () => {
     assert.deepEqual(await t.ask('search:emoji'), { ok: true })
     assert.equal(t.launcher.search.window.isVisible(), false)
     assert.ok(t.calls.exec.includes('emoji'))
+  } finally { await t.done() }
+})
+
+test('a copy drags out of the bar into another app: a picture as its file, words as a .txt; only the bar may start it', async () => {
+  const t = await setup()
+  try {
+    await t.launcher.start()
+    const drags = []
+    t.launcher.search.window.webContents.startDrag = (item) => drags.push(item)
+    t.board.text = 'Quote for Jordan: 12 units\nby Friday'
+    await t.launcher.history.poll()
+    const [copy] = (await t.ask('search:clipboard')).items
+    assert.equal(await t.ask('search:drag-clip', copy.id), true)
+    assert.equal(path.basename(drags[0].file), 'Quote for Jordan 12 units.txt')
+    assert.equal(await readFile(drags[0].file, 'utf8'), 'Quote for Jordan: 12 units\nby Friday')
+    assert.ok(drags[0].icon, 'the Mac needs a picture to drag')
+    await assert.rejects(t.ask('search:drag-clip', 'gone'), /That copy is gone/)
+    const rule = t.handlers.get('search:drag-clip').from
+    assert.equal(rule(t.launcher.search.window.webContents), true)
+    assert.equal(rule(t.desk.webContents), false)
   } finally { await t.done() }
 })

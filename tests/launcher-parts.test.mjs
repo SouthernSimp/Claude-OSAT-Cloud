@@ -7,7 +7,7 @@ const { appsIn, createApps } = require('../desktop/launcher/apps.cjs')
 const { recentPaths, usedDates } = require('../desktop/launcher/recent-files.cjs')
 const { frontApp, pasteInto } = require('../desktop/launcher/front.cjs')
 const { createHotkeys } = require('../desktop/launcher/hotkeys.cjs')
-const { BAR, FULL, createQuickSearch, searchBounds } = require('../desktop/launcher/search-window.cjs')
+const { BAR, CHAT, FULL, createQuickSearch, fitAt, searchBounds } = require('../desktop/launcher/search-window.cjs')
 
 const dirent = (name, dir = false) => ({ name, isDirectory: () => dir })
 const readdirOf = (tree) => async (dir) => {
@@ -145,6 +145,22 @@ test('the bar sits in the upper part of the screen under the cursor, and the ful
   assert.ok(tiny.width <= 668 && tiny.height <= 452, 'a small screen still holds it')
 })
 
+test('dragged somewhere, the bar opens there while that spot is on a screen; the full view stays on it', () => {
+  const displays = [
+    { bounds: { x: 0, y: 0, width: 1440, height: 900 }, workArea: { x: 0, y: 25, width: 1440, height: 875 } },
+    { bounds: { x: 1440, y: 0, width: 1920, height: 1080 }, workArea: { x: 1440, y: 0, width: 1920, height: 1080 } },
+  ]
+  // Its top middle is kept: it opens there, even with the cursor on the other screen.
+  assert.deepEqual(searchBounds('bar', displays, { x: 2000, y: 500 }, { x: 400, y: 600 }), { x: 400 - BAR.width / 2, y: 600, width: BAR.width, height: BAR.height })
+  // Near the bottom, the full view is pulled up so it fits; near the edge, it stays on the screen.
+  const low = searchBounds('full', displays, { x: 0, y: 0 }, { x: 100, y: 850 })
+  assert.deepEqual([low.x, low.y + low.height <= 900], [0, true])
+  // A spot on a screen that went away: back under the cursor.
+  assert.deepEqual(searchBounds('bar', displays, { x: 2000, y: 500 }, { x: 9000, y: 10 }), searchBounds('bar', displays, { x: 2000, y: 500 }))
+  assert.deepEqual(searchBounds('bar', displays, { x: 10, y: 10 }, { x: NaN, y: 1 }), searchBounds('bar', displays, { x: 10, y: 10 }))
+  assert.equal(fitAt('chat', displays[1].workArea, { x: 2400, y: 100 }).height, CHAT.height)
+})
+
 function fakeWindowClass(log) {
   return class FakeWindow {
     constructor(options) {
@@ -177,7 +193,7 @@ test('the panel opens as a bar, or full on a source; the shortcut again puts it 
   assert.equal(search.window.options.type, 'panel', 'a panel, so the app you were in keeps focus')
   search.show()
   assert.equal(search.window.getBounds().height, BAR.height)
-  assert.deepEqual(log.at(-1), ['send', 'search:shown', { scope: 'all', mode: 'bar', text: '' }])
+  assert.deepEqual(log.at(-1), ['send', 'search:shown', { scope: 'all', mode: 'bar', text: '', view: 'search', chat: null }])
   search.setMode('full')
   assert.equal(search.window.getBounds().height, FULL.height)
   assert.equal(search.window.getBounds().x, Math.round((1440 - FULL.width) / 2), 'it grows from the middle')
@@ -185,7 +201,7 @@ test('the panel opens as a bar, or full on a source; the shortcut again puts it 
   assert.equal(search.window.isVisible(), false, 'pressed again, it goes')
   assert.equal(hidden.length, 1)
   search.toggle({ scope: 'clipboard' })
-  assert.deepEqual(log.at(-1), ['send', 'search:shown', { scope: 'clipboard', mode: 'full', text: '' }])
+  assert.deepEqual(log.at(-1), ['send', 'search:shown', { scope: 'clipboard', mode: 'full', text: '', view: 'search', chat: null }])
   assert.equal(search.window.getBounds().height, FULL.height, 'a Hyper key opens the full view straight away')
   search.hide()
   search.show({ expanded: true })
@@ -198,6 +214,43 @@ test('the panel opens as a bar, or full on a source; the shortcut again puts it 
   assert.equal(search.window.isVisible(), true, 'a blur in the first moments is not a click away')
   assert.equal(search.owns(search.window.webContents), true)
   assert.equal(search.owns({}), false)
+})
+
+test('Ask opens the same bar as a chat; its key over the search switches to Ask, and again puts it away', () => {
+  const log = []
+  const search = createQuickSearch({ BrowserWindow: fakeWindowClass(log), screen, platform: 'darwin', preload: 'p', load: () => {} })
+  search.show()
+  search.toggle({ view: 'chat' })
+  assert.equal(search.window.isVisible(), true, 'the Ask key over the search does not put it away')
+  assert.equal(search.window.getBounds().height, CHAT.height)
+  assert.deepEqual(log.at(-1), ['send', 'search:shown', { scope: 'all', mode: 'chat', text: '', view: 'chat', chat: null }])
+  search.toggle({ view: 'chat' })
+  assert.equal(search.window.isVisible(), false, 'pressed again on Ask, it goes')
+  search.show({ view: 'chat', chat: { chatId: 'c1' } })
+  assert.deepEqual(log.at(-1)[2].chat, { chatId: 'c1' }, 'a chat popped out of the desk')
+  search.hide()
+  search.show({ view: 'sticky' })
+  assert.deepEqual([log.at(-1)[2].view, search.window.getBounds().height], ['sticky', BAR.height], 'a sticky is written in the small bar')
+})
+
+test('a move Nate makes is remembered; OSAT placing the bar is not', async () => {
+  const log = []
+  const spots = []
+  const search = createQuickSearch({ BrowserWindow: fakeWindowClass(log), screen, platform: 'darwin', preload: 'p', load: () => {}, onMoved: (spot) => spots.push(spot) })
+  search.show()
+  search.window.handlers['will-move']()
+  search.window.handlers.moved()
+  assert.deepEqual(spots, [], 'the bar placing itself a moment ago is not a drag')
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  search.window.handlers['will-move']()
+  search.window.setBounds({ x: 100, y: 640 })
+  search.window.handlers.moved()
+  assert.deepEqual(spots, [{ x: 100 + BAR.width / 2, y: 640 }])
+  search.hide()
+  search.show()
+  assert.deepEqual([search.window.getBounds().x, search.window.getBounds().y], [100, 640], 'it opens where it was left')
+  search.window.handlers.moved()
+  assert.equal(spots.length, 1, 'a move without a drag is not kept')
 })
 
 test('the panel does not hide itself on a blur when it is not asked to (the tests, Linux)', async () => {

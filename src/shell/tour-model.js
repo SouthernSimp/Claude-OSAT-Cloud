@@ -32,7 +32,7 @@ export const TOUR = [
     id: 'anywhere',
     target: null,
     title: 'And from any app',
-    body: '{desk} brings the desk up, and {search} opens quick search for files, what you copied, apps and notes. Everything, the AI too, stays on this Mac.',
+    body: '{desk} brings the desk up, and {search} opens the quick bar: find files, what you copied, apps and notes, ask the AI, or save a sticky. Everything, the AI too, stays on this Mac.',
   },
 ]
 

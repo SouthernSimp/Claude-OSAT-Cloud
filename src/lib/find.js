@@ -10,8 +10,13 @@ import { EVERYWHERE, SPACES } from './spaces.js'
 const LIMIT = 5
 const PLACE = { desktop: 'Desktop', documents: 'Documents', downloads: 'Downloads' }
 
-// Other words each action answers to, so ⌘K finds it the way Nate would say it.
+// Other words each action answers to, so ⌘K finds it the way Nate would say it. The one list of commands: the desk's
+// line and ⌘K, and the quick bar (which does the first three right where it is: a sticky, a question, the clipboard).
+// `bar`: only the quick bar lists it (the line's own first rows already save a sticky and ask).
 const ACTIONS = [
+  { key: 'act:sticky', label: 'Write a sticky', hint: 'Straight to Unsorted', also: 'sticky note jot capture thought idea', go: ['Capture'], bar: true },
+  { key: 'act:ask', label: 'Ask the AI', hint: 'On this Mac', also: 'ask ai chat question assistant', go: ['Assistant'], bar: true },
+  { key: 'act:clipboard', label: 'Clipboard history', hint: 'Everything you copied', also: 'clipboard copies copied paste history', go: ['Clipboard'] },
   { key: 'act:tidy-desktop', label: 'Tidy my Desktop', hint: 'Review a plan before moving files', also: 'clean organize files', go: ['Files', { rootId: 'desktop', tidy: true }] },
   { key: 'act:new-note', label: 'New note', also: 'write page', go: ['Notes', { action: 'new' }] },
   { key: 'act:today', label: 'Today’s note', also: 'journal day page', go: ['Notes', { action: 'today' }] },
@@ -51,8 +56,8 @@ function fileRow(item) {
   }
 }
 
-/* `limit` is how many rows (the desk's line shows five; the quick search asks for more). */
-export function findAll(workspace, query, { files = [], limit = LIMIT } = {}) {
+/* `limit` is how many rows (the desk's line shows five; the quick bar asks for more, and `bar` for its own commands). */
+export function findAll(workspace, query, { files = [], limit = LIMIT, bar = false } = {}) {
   const notes = workspace.notes.filter(isActiveNote)
   const q = String(query || '').trim().toLowerCase()
   if (!q) {
@@ -71,8 +76,8 @@ export function findAll(workspace, query, { files = [], limit = LIMIT } = {}) {
   const places = [
     ...EVERYWHERE.filter((route) => route.id !== 'Today' && startsWords(route.label, words))
       .map((route) => ({ key: `room:${route.id}`, label: route.label, hint: route.hint, kind: 'room', go: [route.id] })),
-    ...ACTIONS.filter((action) => startsWords(`${action.label} ${action.also}`, words))
-      .map(({ key, label, hint = '', go }) => ({ key, label, hint, kind: 'action', go })),
+    ...ACTIONS.filter((action) => (bar || !action.bar) && startsWords(`${action.label} ${action.also}`, words))
+      .map(({ key, label, hint = '', also, go }) => ({ key, label, hint, kind: 'action', also, go })),
   ]
   const macFiles = files.map(fileRow)
   // Nodes and branches (by their name, every word of it) open laid out in the Sky. They come

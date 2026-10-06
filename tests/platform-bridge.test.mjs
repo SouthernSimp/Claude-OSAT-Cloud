@@ -153,10 +153,11 @@ test('platform metadata uses the OSAT identity and its own data folder in both m
   assert.match(entitlements, /com\.apple\.security\.files\.user-selected\.read-write/)
   assert.match(main, /globalShortcut\.register\(value, run\)/)
   assert.match(main, /layer: \{ value: null, failed: false, run: \(\) => toggleDesk\(\) \}/)
-  assert.match(main, /chat: \{ value: null, failed: false, run: \(\) => quickChat\?\.toggle\(\) \}/)
+  // One bar (Phase 13c): the Ask key opens the quick bar on Ask; there is no quick chat window any more.
+  assert.match(main, /chat: \{ value: null, failed: false, run: \(\) => launcher\?\.search\.toggle\(\{ view: 'chat' \}\) \}/)
   // One desk: no separate layer window any more.
   assert.doesNotMatch(main, /surface: 'overlay'/)
-  assert.match(main, /surface: 'chat'/)
+  assert.doesNotMatch(main, /surface: 'chat'|quickChat|quick-chat\.cjs/)
   // A dropped file's path comes from the preload, never from the page.
   assert.match(preload, /webUtils\.getPathForFile\(file\)/)
   assert.doesNotMatch(main, /quick-capture|surface: 'assistant'/)
