@@ -35,6 +35,15 @@ the same day. Last sorted: October 6, 2026.
 20 Capture anywhere · 22 Files in the Sky · 23 Nodes become projects · 25 The Stratosphere ·
 28 Tags that do things. The iPhone app stays parked.
 
+## New ideas land here first
+
+Anything Claude suggests in conversation goes in this table the same day, ranked on the
+next sort, so nothing depends on anyone remembering the chat.
+
+| Idea | Suggested | Rank |
+|---|---|---|
+| Show this ranked list inside OSAT beside the Roadmap (Tools → Roadmap) so Nate reads it in the app | Oct 6 | Unranked |
+
 ## Housekeeping (whenever)
 
 - The old `OSAT Field copy` folder is stale and full of stray "…2" duplicate files; archive it once Nate agrees.
