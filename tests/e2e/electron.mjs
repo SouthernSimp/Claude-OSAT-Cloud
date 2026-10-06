@@ -454,7 +454,7 @@ try {
     const after = await main.evaluate(async () => (await window.osat.store.load()).doc)
     const changed = Object.keys(after).filter((key) => JSON.stringify(after[key]) !== JSON.stringify(before[key]))
     const detail = changed.map((key) => `${key}: ${JSON.stringify(after[key]).slice(0, 300)}`)
-    problems.push(`the copy of the notes was not written to iCloud Drive: ${JSON.stringify(tree)} ${JSON.stringify(status)} rev ${before.rev}->${after.rev} changed ${JSON.stringify(detail)}`)
+    problems.push(`the copy of the notes was not written to iCloud Drive: ${JSON.stringify(tree)} ${JSON.stringify(status)} dbg ${JSON.stringify(await app.evaluate(() => globalThis.__dbg))} rev ${before.rev}->${after.rev} changed ${JSON.stringify(detail)}`)
   }
   check(await access(path.join(icloud, 'Inbox', 'Added', 'Text.txt')).then(() => true, () => false), 'the dropped file did not move to Inbox/Added')
   await main.evaluate(() => window.osatPhone.disable())
