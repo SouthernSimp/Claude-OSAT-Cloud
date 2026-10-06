@@ -6,6 +6,7 @@ import { AboutPage, AiPage, AppearancePage, BotsPage, DataPage, GeneralPage, Pho
 import { SETTINGS_GROUPS, SETTINGS_PAGES, pageById, sectionFor } from "./settings/pages.js";
 import { QueryContext } from "./settings/parts.jsx";
 import { ShortcutsPage } from "./settings/Shortcuts.jsx";
+import { ScreenshotsPage } from "./settings/screenshots.jsx";
 import "../styles/settings.css";
 
 /* Settings (Phase 13b), in Raycast's shape: a sidebar with a search box and one page for each thing, and on the right
@@ -32,6 +33,7 @@ const PAGES = {
   "quick-links": QuickLinksPage,
   windows: WindowLayoutsPage,
   ring: RingPage,
+  screenshots: ScreenshotsPage,
 };
 
 export function SettingsView({ workspace, commit, storage, target }) {

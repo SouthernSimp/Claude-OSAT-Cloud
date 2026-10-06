@@ -5,6 +5,7 @@ import { DAY_CHOICES, ITEM_CHOICES } from '../../../shared/clipboard-model.mjs'
 import { SOURCES, hostOf, holderOf, validAddress, validKeyword } from '../../../shared/launcher-model.mjs'
 import { MAX_RING, RING_ITEMS, ringItems } from '../../../shared/ring-model.mjs'
 import { LAYOUTS } from '../../../shared/window-layouts.mjs'
+import { AddRingTool } from './screenshots.jsx'
 import { Choice, Group, KeyRecorder, OnlyInTheMacApp, Page, Row, Select, Switch, WordField } from './parts.jsx'
 
 /* Settings' launcher pages (Phase 13b). One provider gives every page the same picture of the launcher: its settings
@@ -306,7 +307,7 @@ export function WindowLayoutsPage({ page }) {
 export function RingPage({ page }) {
   return (
     <LauncherPage page={page} what="In the Mac app, the ring opens around your pointer from a key, or with ⌘ and a middle-click.">
-      {({ settings, save, status }) => {
+      {({ settings, save, status, bridge }) => {
         const { key } = holders(settings)
         const chosen = ringItems(settings.ring.items).map((item) => item.id)
         const rest = RING_ITEMS.filter((item) => !chosen.includes(item.id))
@@ -344,11 +345,7 @@ export function RingPage({ page }) {
                     )
                   })}
                   {chosen.length === 0 && <Row title="Nothing on the ring" hint="Add a tool below." />}
-                  {rest.length > 0 && chosen.length < MAX_RING && (
-                    <Row title="Add a tool" hint="It goes last.">
-                      <Select label="Add a tool to the ring" value="" onChange={(id) => id && put([...chosen, id])} options={[['', 'Choose…'], ...rest.map((item) => [item.id, item.label])]} />
-                    </Row>
-                  )}
+                  {rest.length > 0 && chosen.length < MAX_RING && <AddRingTool bridge={bridge} rest={rest} onAdd={(id) => put([...chosen, id])} />}
                 </Group>
                 <Group>
                   <Row title="Back to the usual tools" hint="Quick search, Clipboard, New sticky, Quick chat, The desk, and three window layouts.">

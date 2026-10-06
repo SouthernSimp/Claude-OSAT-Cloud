@@ -268,6 +268,15 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   openLink: search('open-link'),
   snap: search('snap'),
   emoji: search('emoji'),
+  // Screenshots and recording (desktop/launcher/capture.cjs): CleanShot X when it's here, else the Mac's own.
+  capture: search('capture'),
+  captureStatus: search('capture-status'),
+  captureRecent: search('capture-recent'),
+  captureThumb: search('capture-thumb'),
+  captureOpen: search('capture-open'),
+  captureReveal: search('capture-reveal'),
+  captureCopy: search('capture-copy'),
+  captureDrag: search('capture-drag'),
   // The desk's own ring (⌘ + middle-click) opens the quick search over it, on a tab.
   show: search('show'),
   hide: search('hide'),

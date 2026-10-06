@@ -8,7 +8,17 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 6, 2026: update button shipped
+## Resume checkpoint — October 6, 2026: screenshots from the launcher (in review)
+
+Draft PR on `claude/screenshots-and-recording` (Phase 13d): the ring, the quick search, a key each and Settings →
+Launcher → Screenshots drive CleanShot X through its URL commands when it is installed (CleanShot 5.0.1 is on
+Nate's Mac); without it the Mac's own `screencapture` takes area / window / full-screen shots. Recent captures from
+CleanShot's history folder are opt-in. Tested headlessly only (unit tests with a stand-in opener, build, test:ui);
+the live trial is in the PR's Mac checklist for Nate. Recording made in OSAT is researched in docs/BACKLOG.md and
+proposed as Phase 29. Another agent is reworking the launcher into one bar (`claude/phase-13c-one-bar`); this PR
+kept its changes in new files where it could.
+
+### Previous checkpoint — October 6, 2026: update button shipped
 
 Source of truth: `/Users/nate/Desktop/Projects/OSAT V2/work/osat-core-improvements`
 (the old "OSAT Field copy" folder is stale; ignore it). Merged today: PR #44 (midnight
@@ -276,7 +286,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `quiet()`), `apps.cjs`, `recent-files.cjs` (Spotlight's last-used dates), `front.cjs` (`lsappinfo` for which app
     a copy came from; `pasteInto` sends ⌘V through System Events, only with Accessibility), `hotkeys.cjs` (the
     launcher's own global keys: a Hyper key per source, window layouts, the ring), `snap.cjs` (window snapping
-    through System Events, never OSAT's own windows), `ring-window.cjs` (the ring's panel, made on first use).
+    through System Events, never OSAT's own windows), `ring-window.cjs` (the ring's panel, made on first use),
+    `capture.cjs` (Phase 13d: screenshots and recording; CleanShot X's `cleanshot://` commands when it is installed,
+    else `screencapture`; panels hide first; recent captures read CleanShot's media folder only when turned on; its
+    `openExternal` is fenced in tests/under.test.mjs to `CLEANSHOT_URL`, never `upload`).
     Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
     one way out of the Mac it adds is opening a web address in Nate's own browser (fenced in tests/under.test.mjs,
     refused offline). ⌘⇧Space is the third shortcut in main's `shortcuts` (`search`).
@@ -313,7 +326,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `files:search` answers `{ rootId, relative, name, kind, size, modifiedAt, match: 'name' | 'inside' }`.
   The Mac CI job runs `scripts/find-check.mjs` against the real Spotlight.
 - `shared/quick-search-model.mjs`, `launcher-model.mjs`, `clipboard-model.mjs`, `clipboard-offer.mjs`, `calc.mjs`,
-  `window-layouts.mjs`, `ring-model.mjs` — Phase 13's pure rules, shared by main, the panel and the desk: how typed
+  `window-layouts.mjs`, `ring-model.mjs`, `capture-model.mjs` (13d: the captures, CleanShot URLs, file names, which ones
+  this Mac can do, `captures` in launcher.json) — Phase 13's pure rules, shared by main, the panel and the desk: how typed
   words are read (`readTyped`, `readLine`, keywords), how sources become one list of rows (`buildRows`), what Return
   and ⌘K do (`actionsFor`), the clipboard's kinds, limits and groups, "Add to Jordan?" (`offerFor`), the safe
   calculator (never eval), where each layout puts a window, and the ring's tools.

@@ -370,8 +370,21 @@ async function main() {
   await goTo('The ring')
   await page.getByRole('button', { name: 'Move Clipboard earlier' }).click()
   await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.ring.items?.[0] === 'clipboard'), null, { timeout: 3000 }).catch(() => problems.push('settings: the ring’s order was not changed'))
+  // With a place free, the ring can take a screenshot tool (CleanShot X is on the stand-in Mac).
+  await page.getByRole('button', { name: 'Take Maximize off the ring' }).click()
+  await page.getByLabel('Add a tool to the ring').locator('option', { hasText: 'Record screen' }).waitFor({ state: 'attached', timeout: 3000 }).catch(() => problems.push('settings: the ring could not take Record screen'))
   await page.getByRole('button', { name: 'Reset the ring' }).click()
   await page.screenshot({ path: `${OUT}/settings-ring.png` })
+  // Screenshots: CleanShot X is on the stand-in Mac; recent captures are off until turned on; each capture can have a key.
+  await goTo('Screenshots')
+  await page.getByText('With CleanShot X', { exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: Screenshots did not say CleanShot X takes them'))
+  const recentSwitch = page.getByRole('switch', { name: 'Show recent captures in the quick search' })
+  await recentSwitch.check()
+  await sleep(400)
+  if (!await recentSwitch.isChecked()) problems.push('settings: the recent captures switch went back off')
+  if (!(await page.evaluate(() => window.osatSearch.settings())).captures?.recent) problems.push('settings: recent captures were not turned on')
+  if (!await page.getByRole('button', { name: 'Key for Record screen' }).count()) problems.push('settings: Record screen had no key to set')
+  await page.screenshot({ path: `${OUT}/settings-screenshots.png` })
   // Every other page opens without a fault, and the search finds a row by its words on any page.
   for (const name of ['General', 'Appearance', 'AI', 'Bots', 'Data', 'Scans', 'iPhone', 'About']) {
     await goTo(name)
@@ -995,6 +1008,22 @@ async function main() {
     await search.keyboard.press('Enter')
     await sleep(200)
     if (!(await search.evaluate(() => window.__calls)).some(([name, root, relative]) => name === 'openFile' && root === 'documents' && relative === 'Taxes/Taxes 2025.pdf')) problems.push(`${room}: Return did not open the file`)
+    // Screenshots and recording by plain words; Return starts one (CleanShot X on the stand-in Mac).
+    await search.fill('#qs-input', 'record')
+    await search.locator('.qs-row', { hasText: 'Record screen' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "record" did not offer Record screen`))
+    await search.locator('.qs-row', { hasText: 'Record screen' }).click()
+    await search.keyboard.press('Enter')
+    await sleep(200)
+    if (!(await search.evaluate(() => window.__calls)).some(([name, id]) => name === 'capture' && id === 'record')) problems.push(`${room}: Return did not start the recording`)
+    // Recent captures (once turned on): "screenshots" lists CleanShot's newest, with a picture in the preview.
+    await search.evaluate(() => window.osatSearch.saveSettings({ captures: { recent: true } }))
+    await search.fill('#qs-input', 'screenshots')
+    await search.locator('.qs-head', { hasText: 'Recent captures' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "screenshots" did not list the recent captures`))
+    await search.locator('.qs-row', { hasText: 'CleanShot 1.png' }).click().catch(() => {})
+    await search.locator('.qs-picture').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a recent capture showed no picture`))
+    if (await search.locator('.qs-row[draggable="true"]').count() !== 2) problems.push(`${room}: the recent captures could not be dragged out`)
+    if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-captures.png` })
+    await search.evaluate(() => window.osatSearch.saveSettings({ captures: { recent: false } }))
     // v is the clipboard: pins first, then the day; Return pastes (the stand-in says it needs Accessibility, so it says so).
     await search.fill('#qs-input', 'v')
     await search.locator('.qs-head', { hasText: 'Pinned' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "v" did not show the clipboard with its pins first`))

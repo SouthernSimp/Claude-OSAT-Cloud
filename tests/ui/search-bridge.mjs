@@ -36,6 +36,7 @@ export function installSearchBridge(defaults) {
       clipboard: one('clipboard'),
       ring: one('ring'),
       hyper: one('hyper'),
+      captures: { ...settings.captures, ...(patch.captures || {}), hotkeys: { ...settings.captures?.hotkeys, ...(patch.captures?.hotkeys || {}) } },
       windows: { ...settings.windows, ...(patch.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(patch.windows?.hotkeys || {}) } },
     }
   }
@@ -59,6 +60,11 @@ export function installSearchBridge(defaults) {
     clipboardImage: async (id) => clipboard.find((item) => item.id === id).thumb,
     clipboardText: async (id) => clipboard.find((item) => item.id === id).text,
     mode: async () => true,
+    // CleanShot X is on this stand-in Mac, with two recent captures (Settings → Screenshots turns them on).
+    captureStatus: async () => ({ cleanshot: true, mac: true, list: ['area', 'window', 'fullscreen', 'scrolling', 'all-in-one', 'record', 'text', 'history'], recent: settings.captures?.recent === true, saveTo: 'desktop', screen: null }),
+    captureRecent: async () => [{ id: 'media_a/CleanShot 1.png', name: 'CleanShot 1.png', at: Date.now() - 60000 }, { id: 'media_b/CleanShot 2.mp4', name: 'CleanShot 2.mp4', at: Date.now() - 7200000 }],
+    captureThumb: async () => picture('d7e8c6', 'A screenshot'),
+    capture: async (id) => { window.__calls.push(['capture', id]); return { ok: true } },
     hide: async () => { window.__calls.push(['hide']); return true },
     // Without Accessibility the Mac app answers that it can't move a window (and touches nothing).
     snap: async (layout) => { window.__calls.push(['snap', layout]); return { ok: false, reason: 'access' } },

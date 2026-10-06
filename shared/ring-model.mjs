@@ -2,6 +2,7 @@
    with ⌘ + middle-click inside OSAT's own windows. Which tools, in what order, and where each one sits on the
    circle. (⌘ + middle-click over other apps would need a global mouse hook, which OSAT doesn't have: see the roadmap.)
    Pure. */
+import { CAPTURES } from './capture-model.mjs'
 
 /* Every tool the ring can hold. `layout` ones move the window you were in (they need Accessibility, and only make sense
    over another app); `inDesk: false` is left out of the ring on the desk. */
@@ -16,6 +17,8 @@ export const RING_ITEMS = [
   { id: 'left', label: 'Left half', layout: 'left-half', inDesk: false },
   { id: 'right', label: 'Right half', layout: 'right-half', inDesk: false },
   { id: 'maximize', label: 'Maximize', layout: 'maximize', inDesk: false },
+  // Screenshots and recording (shared/capture-model.mjs); Settings offers only the ones this Mac can do.
+  ...CAPTURES.map((item) => ({ id: `capture-${item.id}`, label: item.label, capture: item.id })),
 ]
 export const DEFAULT_RING = ['search', 'clipboard', 'sticky', 'chat', 'desk', 'left', 'right', 'maximize']
 export const MAX_RING = 8

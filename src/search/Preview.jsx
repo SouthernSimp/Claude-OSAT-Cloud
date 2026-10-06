@@ -20,6 +20,7 @@ export function Preview({ row, bridge, workspace, offer = null, now }) {
     else if (row.kind === 'image') bridge.clipboardImage(d.id).then((image) => done({ image }), () => done({}))
     else if (COPIED_WORDS.has(row.kind)) bridge.clipboardText(d.id).then((text) => done({ text }), () => done({}))
     else if (row.kind === 'app') bridge.appIcon(d.path).then((thumb) => done({ thumb }), () => done({}))
+    else if (row.kind === 'shot') bridge.captureThumb(d.id).then((thumb) => done({ thumb }), () => done({}))
     return () => { live = false }
   }, [row?.key, bridge]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -32,6 +33,7 @@ export function Preview({ row, bridge, workspace, offer = null, now }) {
   if (row.kind === 'file' && own.text) body = <pre className="qs-text">{own.text}</pre>
   else if (row.kind === 'file' && own.thumb) body = <img className="qs-picture" src={own.thumb} alt="" draggable={false} />
   else if (row.kind === 'image') body = <img className="qs-picture" src={own.image || d.thumb} alt="A copied picture" draggable={false} />
+  else if (row.kind === 'shot' && own.thumb) body = <img className="qs-picture" src={own.thumb} alt="" draggable={false} />
   else if (row.kind === 'app' && own.thumb) body = <img className="qs-app-icon" src={own.thumb} alt="" draggable={false} />
   else if (row.kind === 'calc') body = <p className="qs-big">{row.title}</p>
   else if (row.kind === 'layout') body = <LayoutPreview id={d.layout} />

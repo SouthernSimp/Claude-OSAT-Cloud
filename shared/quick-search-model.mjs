@@ -151,6 +151,8 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     else rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-link', title: keyword.url.includes('{query}') ? `Search ${keyword.label} for “${query}”` : `Open ${keyword.label}`, subtitle: `${keyword.keyword} · web address`, section: 'Quick links', data: { url: keywordAddress(keyword, query) } })
   }
 
+  // Screenshots and recording, and CleanShot's recent captures (shared/capture-model.mjs), only under Everything.
+  if (read.scope === 'all') rows.push(...(found.captures || []), ...(found.shots || []))
   if (read.scope === 'all' && /^(emoji|emojis|symbols?|characters?)$/i.test(read.query)) rows.push({ key: 'emoji', source: 'tools', kind: 'emoji', title: 'Emoji & symbols', subtitle: 'Open the Mac’s character picker', section: 'Tools', data: {} })
 
   const has = read.query.length > 0
@@ -226,6 +228,12 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
         { id: 'delete', label: 'Delete', hint: 'Forgets this copy', keys: '⌘⌫', danger: true },
       ]
     case 'emoji': return [{ id: 'emoji', label: 'Open', keys: '↵' }]
+    case 'capture': return [{ id: 'capture', label: row.data?.capture === 'history' ? 'Open' : 'Start', keys: '↵' }]
+    case 'shot': return [
+      { id: 'shot-open', label: 'Open', keys: '↵' },
+      { id: 'shot-reveal', label: 'Show in Finder', keys: '⌘↵' },
+      ...(/\.(mp4|mov|gif)$/i.test(row.title) ? [] : [{ id: 'shot-copy', label: 'Copy', keys: '⇧⌘C' }]),
+    ]
     case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⌘↵' }]
     case 'note': return [{ id: 'go', label: 'Open', keys: '↵' }]
     case 'node': return [{ id: 'go', label: 'Open in the Sky', keys: '↵' }]
@@ -255,6 +263,8 @@ export function detailsFor(row, { now = new Date() } = {}) {
       return [['Kind', { text: 'Text', link: 'Link', email: 'Email address', phone: 'Phone number', number: 'Number' }[row.kind]], ...(d.app ? [['From', d.app]] : []), ['Copied', whenCopied(d.at, now)], ...(d.chars > 1 ? [['Length', `${d.chars.toLocaleString('en-US')} characters`]] : [])]
     case 'layout': return [['Moves', 'the window you were in'], ...(d.key ? [['Key', d.key.split('+').map((part) => ({ Control: '⌃', Alt: '⌥', Shift: '⇧', Command: '⌘' }[part] || part)).join('')]] : [])]
     case 'app': return [['Kind', 'Application'], ['Where', d.path]]
+    case 'capture': return [['With', row.subtitle.replace(/^With /, '')]]
+    case 'shot': return [['Kind', /\.(mp4|mov|gif)$/i.test(d.name) ? 'Recording' : 'Screenshot'], ['Taken', DAY.format(new Date(d.at))], ['Kept by', 'CleanShot X']]
     case 'note': return [['Kind', 'Note'], ['Where', row.subtitle]]
     case 'node': return [['Kind', 'Node'], ['Where', row.subtitle]]
     default: return []

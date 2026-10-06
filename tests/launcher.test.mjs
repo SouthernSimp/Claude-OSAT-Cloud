@@ -434,3 +434,24 @@ test('emoji picker hides quick search and opens the native panel', async () => {
     assert.ok(t.calls.exec.includes('emoji'))
   } finally { await t.done() }
 })
+
+test('screenshots: a key of their own and a ring tool ask CleanShot, with the panels put away first', async () => {
+  const t = await setup({ script: (command) => (command === 'mdfind' ? '/Applications/CleanShot X.app\n' : '') })
+  try {
+    await t.launcher.start()
+    await t.ask('search:save-settings', { captures: { hotkeys: { area: HYPER('4') } } })
+    assert.equal((await t.ask('search:settings')).captures.hotkeys.area, HYPER('4'))
+    t.registered.get(HYPER('4'))()
+    await wait(400)
+    assert.deepEqual(t.calls.external, ['cleanshot://capture-area'])
+    t.launcher.search.show()
+    t.launcher.ring.show()
+    await t.ask('ring:pick', 'capture-record')
+    assert.equal(t.launcher.search.window.isVisible(), false, 'the quick search is not in the picture')
+    assert.deepEqual(t.calls.external, ['cleanshot://capture-area', 'cleanshot://record-screen'])
+    assert.equal((await t.ask('search:capture-status')).cleanshot, true)
+    // Taking its key off takes it off the Mac.
+    await t.ask('search:save-settings', { captures: { hotkeys: { area: null } } })
+    assert.equal(t.registered.has(HYPER('4')), false)
+  } finally { await t.done() }
+})

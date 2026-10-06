@@ -318,6 +318,7 @@ export function Desk() {
     else if (item.id === 'chat') window.osatChat?.show()
     else if (item.id === 'sky') navigate('Mindmap')
     else if (item.id === 'files') navigate('Files')
+    else if (item.capture) api?.capture(item.capture)
   }
 
   /* Up to the Sky, or back down to the desk. */
