@@ -6,6 +6,7 @@
    Settings say who already holds one. Pure. */
 
 import { calculate } from './calc.mjs'
+import { CAPTURES, cleanCaptureSettings } from './capture-model.mjs'
 import { RING_ITEMS } from './ring-model.mjs'
 import { LAYOUTS, cleanWindowKeys } from './window-layouts.mjs'
 
@@ -61,6 +62,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   ring: { on: true, hotkey: hyper('R'), items: null },
   // What a Hyper key made by another app sends: all four (⌃⌥⇧⌘), or ⌃⌥⌘ (Raycast's, unless "Include Shift").
   hyper: { sends: 'four' },
+  // Screenshots and recording (shared/capture-model.mjs): a key for each, off until given one.
+  captures: cleanCaptureSettings(undefined),
 })
 
 /* What a saved file may hold: only the fields OSAT writes; anything broken falls back to the default.
@@ -121,6 +124,7 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
       items: Array.isArray(from.ring?.items) ? [...new Set(from.ring.items.filter((id) => RING_ITEMS.some((item) => item.id === id)))].slice(0, 8) : null,
     },
     hyper: { sends: from.hyper?.sends === 'three' ? 'three' : 'four' },
+    captures: cleanCaptureSettings(from.captures, { validHotkey }),
   }
 }
 
@@ -146,6 +150,7 @@ export function applyPatch(settings, patch) {
     windows: { ...settings.windows, ...(from.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(from.windows?.hotkeys || {}) } },
     ring: { ...settings.ring, ...(from.ring || {}) },
     hyper: { ...(settings.hyper || {}), ...(from.hyper || {}) },
+    captures: { ...settings.captures, ...(from.captures || {}), hotkeys: { ...settings.captures?.hotkeys, ...(from.captures?.hotkeys || {}) } },
   }
 }
 
@@ -162,6 +167,7 @@ export function keysOf(settings, { all = false } = {}) {
   if (all || settings.windows?.on) for (const [id, hotkey] of Object.entries(settings.windows?.hotkeys || {})) if (hotkey) keys[`snap:${id}`] = hotkey
   for (const [name, own] of Object.entries(settings.apps || {})) if (own.hotkey) keys[`app:${name}`] = own.hotkey
   for (const link of settings.links || []) if (link.hotkey && (all || link.on !== false)) keys[`link:${link.id}`] = link.hotkey
+  for (const [id, hotkey] of Object.entries(settings.captures?.hotkeys || {})) if (hotkey) keys[`capture:${id}`] = hotkey
   return keys
 }
 
@@ -181,6 +187,7 @@ export function nameOf(settings, id) {
   if (kind === 'ring') return 'The ring'
   if (kind === 'snap') return LAYOUTS.find((layout) => layout.id === rest)?.label || rest
   if (kind === 'link') return (settings.links || []).find((link) => link.id === rest)?.name || 'A quick link'
+  if (kind === 'capture') return CAPTURES.find((item) => item.id === rest)?.label || rest
   return rest || id
 }
 
@@ -202,6 +209,7 @@ export function withKey(settings, id, hotkey) {
     case 'snap': return { ...settings, windows: { ...settings.windows, hotkeys: { ...settings.windows.hotkeys, [rest]: hotkey } } }
     case 'app': return { ...settings, apps: { ...settings.apps, [rest]: { keyword: null, ...(settings.apps?.[rest] || {}), hotkey } } }
     case 'link': return { ...settings, links: (settings.links || []).map((link) => (link.id === rest ? { ...link, hotkey } : link)) }
+    case 'capture': return { ...settings, captures: { ...settings.captures, hotkeys: { ...settings.captures.hotkeys, [rest]: hotkey } } }
     default: return settings
   }
 }

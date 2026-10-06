@@ -15,6 +15,7 @@ const path = require('node:path')
 const { hotkeyLabel, validHotkey } = require('../desk.cjs')
 const { isSafeTextPreviewName, readTextFile } = require('../text-files.cjs')
 const { createApps } = require('./apps.cjs')
+const { createCapture } = require('./capture.cjs')
 const { createClipboardHistory } = require('./clipboard-history.cjs')
 const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
@@ -92,6 +93,13 @@ async function createLauncher({
   const ofDesk = (sender) => sender === desk()
   const on = (channel, operation, from = ofSearchOrDesk) => handle(channel, operation, { from })
 
+  // Screenshots and recording (capture.cjs): the panels go away first, so they are never in the picture.
+  const capture = createCapture({
+    model: await sharedModule('capture-model.mjs'), shell, clipboard, nativeImage, systemPreferences, exec, platform, notify, fail, on,
+    settings: () => settings.captures, thumbnail: files.thumbnail, panel: () => search?.window, from: { panel: (sender) => Boolean(search?.owns(sender)) },
+    hidePanels: async () => { search?.hide(); ring?.hide(); await wait(150) },
+  })
+
   /* ---- Settings ---- */
 
   async function readSettings() {
@@ -121,6 +129,7 @@ async function createLauncher({
     if (kind === 'snap') return () => snapFromKey(rest)
     if (kind === 'app') return () => openAppByName(rest).catch(() => {})
     if (kind === 'link') return () => openLinkKey(rest).catch(() => {})
+    if (kind === 'capture') return () => capture.take(rest, { tell: true }).catch(() => {})
     return () => {}
   }
   /* A key on an app opens it. A key on a link opens it, or, when it wants words, opens the search with its word waiting. */
@@ -304,6 +313,7 @@ async function createLauncher({
     ring.hide()
     await wait(80)
     if (item.layout) await snapFromKey(item.layout)
+    else if (item.capture) await capture.take(item.capture, { tell: true })
     else ringDoes[item.id]?.()
     return true
   }, { from: ofRing })
@@ -343,6 +353,7 @@ async function createLauncher({
     hotkeyLabel: (accelerator) => launcherModel.hyperLabel(accelerator, hotkeyLabel),
     async start() {
       await readSettings()
+      capture.detect()
       await history.start()
       history.watch(settings.sources.clipboard.on)
       applyHotkeys()

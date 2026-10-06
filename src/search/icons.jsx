@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react'
 import {
   AppWindow, Calculator, Clipboard, EnvelopeSimple, File, FileAudio, FileDoc, FileImage, FilePdf, FileText, FileVideo, FileXls, FileZip,
   FolderSimple, Globe, Hash, Image, Layout, Link, NotePencil, Phone, Sparkle, TreeStructure,
+  Aperture, ClockCounterClockwise, Monitor, Record, Scroll, Selection, TextAa,
 } from '@phosphor-icons/react'
+
+/* Screenshots and recording (shared/capture-model.mjs), on the ring and in the quick search. */
+export const CAPTURE_ICONS = { area: Selection, window: AppWindow, fullscreen: Monitor, scrolling: Scroll, 'all-in-one': Aperture, record: Record, text: TextAa, history: ClockCounterClockwise }
 
 /* One small picture for each kind of row; a file's is drawn from its name. */
 const FILE_ICONS = [
@@ -20,7 +24,8 @@ export function RowIcon({ row, weight = 'regular' }) {
     const Icon = FILE_ICONS.find(([pattern]) => pattern.test(row.title))?.[1] || File
     return <Icon weight={weight} aria-hidden="true" />
   }
-  const Icon = BY_KIND[row.kind] || Sparkle
+  if (row.kind === 'shot') { const Shot = /\.(mp4|mov|gif)$/i.test(row.title) ? FileVideo : FileImage; return <Shot weight={weight} aria-hidden="true" /> }
+  const Icon = (row.kind === 'capture' && CAPTURE_ICONS[row.data?.capture]) || BY_KIND[row.kind] || Sparkle
   return <Icon weight={weight} aria-hidden="true" />
 }
 

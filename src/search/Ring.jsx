@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { ArrowsOut, Clipboard, Files, House, MagnifyingGlass, NotePencil, Sparkle, SquareHalf, TreeStructure, X } from '@phosphor-icons/react'
 
 import { ringPositions } from '../../shared/ring-model.mjs'
+import { CAPTURE_ICONS } from './icons.jsx'
 
 const ICONS = { search: MagnifyingGlass, clipboard: Clipboard, sticky: NotePencil, chat: Sparkle, desk: House, sky: TreeStructure, files: Files, left: SquareHalf, right: SquareHalf, maximize: ArrowsOut }
 const RADIUS = 108
@@ -27,7 +28,7 @@ export function Ring({ items, onPick, onClose }) {
     <div className="ring" role="menu" aria-label="Quick tools">
       <button type="button" className="ring-middle" aria-label="Close the ring" title="Close  esc" onClick={onClose}><X weight="bold" /></button>
       {items.map((item, index) => {
-        const Icon = ICONS[item.id] || Sparkle
+        const Icon = ICONS[item.id] || CAPTURE_ICONS[item.capture] || Sparkle
         return (
           <button
             key={item.id}

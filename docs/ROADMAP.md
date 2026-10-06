@@ -43,6 +43,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 13d | Window gestures beyond the layouts: drag a window to an edge or corner, trackpad swipes (Rectangle / Swish style) | Planned |
 | 13e | A shelf for files on the move (Dropover style): shake or drag to park files, drop them later anywhere | Planned |
 | 13f | Mouse and scrolling (Linear Mouse style): scroll direction per device, smooth scrolling, pointer acceleration. Hard: needs a native helper | Planned |
+| 13g | Screenshots and screen recording from the launcher: CleanShot X when it's on the Mac (every capture, recent captures to drag out), else the Mac's own screenshots | In review (PR #48) |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
@@ -62,6 +63,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 27d | Sky session Undo/Redo for moves, connections, Tidy and Arrange; safe replay after later edits | Merged (PR #42) |
 | 27e | Focused Notes AI, explicit note sharing, review and linked-note save | Merged (PR #43) |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
+| 29 | Recording made in OSAT (proposed): record an area, a window or the screen without CleanShot, trim, save as a GIF. Waits for Developer ID signing (backlog #6) | Planned |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -609,6 +611,31 @@ Linear Mouse style: reverse scrolling for a mouse but not the trackpad, smooth s
 and button remapping. **Hard:** it rewrites every mouse and scroll event system-wide, which needs a native helper
 with a CGEventTap and **Input Monitoring** plus **Accessibility**, signed and running all the time. Electron
 cannot do it; a mistake makes the mouse misbehave everywhere. Only worth it if the free Linear Mouse app falls short.
+
+### Phase 13g: Screenshots and recording from the launcher (in review)
+Nate already owns CleanShot X, so OSAT drives it instead of copying it. Everything stays on this Mac; CleanShot's
+`upload` is never used.
+- **With CleanShot X** (found once by its id, `pl.maketheweb.cleanshotx`): Screenshot an area, a window or the whole
+  screen, Scrolling screenshot, Screenshot or record (CleanShot's all-in-one), Record screen, Copy text from the
+  screen, Past screenshots. Each is CleanShot's own URL command (cleanshot.com/docs-api), opened like a link.
+- **Without it**, the Mac's own `screencapture` takes an area, a window or the whole screen, to an "OSAT Captures"
+  folder (Desktop or Pictures, never over another file) or the clipboard. macOS asks once before OSAT may see
+  other apps' windows (Screen Recording).
+- **Where they are:** the ring's "Add a tool", the quick search ("screenshot", "record", "text"), and a key for each in
+  Settings → Launcher → Screenshots and in Shortcuts. The quick search and the ring go away first, so they are never
+  in the picture.
+- **Recent captures (off until turned on):** "screenshots" in the quick search lists CleanShot's newest captures with
+  a preview; Return opens one, ⇧↵ shows it in Finder, ⇧⌘C copies a picture, and any of them drags into another app.
+  OSAT only reads CleanShot's history folder, and only while the switch is on.
+- Code: `shared/capture-model.mjs` (pure: the list, the URLs, names, matching), `desktop/launcher/capture.cjs`,
+  `src/views/settings/screenshots.jsx`; tests in `tests/capture.test.mjs`.
+
+### Phase 29: Recording made in OSAT (proposed)
+Only if CleanShot ever stops being the answer. docs/BACKLOG.md has the research: a small Swift helper using the Mac's
+ScreenCaptureKit (records straight to an MP4 with the Mac's own encoder, leaves OSAT's windows out, system sound and
+the microphone), an area picker, a stop button in the menu bar, then Trim and Save as GIF. About a week of work, plus 3–5 days for drawing on screenshots.
+It should wait for Developer ID signing: with ad-hoc signing macOS asks for Screen Recording again after every
+update.
 
 ### Phase 14: Connectors (step one: your Mac's Calendar and Reminders, in review)
 
