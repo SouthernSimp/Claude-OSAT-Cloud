@@ -18,7 +18,7 @@ longer cancels Mac builds of main). Nate installed build 0.1.139 by hand; the ne
 to main is the first real test of the update button (still unproven end to end: download,
 swap, relaunch, notes intact). Open: PR #46 (Ask says when it left out old messages,
 backlog #3), draft, awaiting Nate's "merge". The app is still ad-hoc signed, so macOS may
-re-ask permissions after an update (Developer ID signing is backlog #6, needs Nate).
+re-ask permissions after an update (Developer ID signing is backlog #6, on hold: it needs the paid $99/year Apple program, which Nate does not have).
 Real-model check (Gemma 4 Balanced): Notes AI answers well and ignores injected text.
 Next: follow docs/BACKLOG.md (every new idea gets a rank there the same day); after #46,
 the update-button test, then Notes AI "you" wording and Sky → Notes → AI navigation.

@@ -19,7 +19,7 @@ the same day. Last sorted: October 6, 2026.
 | # | What | Why it ranks here | State |
 |---|---|---|---|
 | 5 | Update button (Settings → Check for updates): finds the newest build on GitHub, downloads it, swaps `/Applications/OSAT.app`, relaunches; notes untouched | Ends the manual reinstall every time | In review (draft PR: Check for updates in Settings → About) |
-| 6 | Real background auto-update with Apple Developer ID signing and notarization | No "Open Anyway", updates quietly like any Mac app; replaces #5. Needs Nate to make a Developer ID certificate and an app-specific password and add them as GitHub secrets (Claude walks through it) | Planned, needs Nate |
+| 6 | Real background auto-update with Apple Developer ID signing and notarization | Would end "Open Anyway" and the permission re-asks after updates. **On hold: it needs the paid Apple Developer Program ($99/year) and Nate does not pay for it (Oct 6).** The update button (#5) already works without it. Revisit only if OSAT goes to the App Store or other people install it | On hold (cost) |
 
 ## Then: smoother thinking
 
