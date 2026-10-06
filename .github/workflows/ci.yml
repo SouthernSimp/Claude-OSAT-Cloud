@@ -117,12 +117,15 @@ jobs:
             printf '%s' "$OSAT_SIGN_P12" | base64 --decode > "$RUNNER_TEMP/osat.p12"
             security import "$RUNNER_TEMP/osat.p12" -k "$KC" -P "$OSAT_SIGN_PASSWORD" -T /usr/bin/codesign
             security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPW" "$KC" > /dev/null
+            # codesign only looks in the keychains on the search list.
+            security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
             rm -f "$RUNNER_TEMP/osat.p12"
             # A self-signed certificate is "not trusted" to macOS, so it is picked by its hash, not by `-v`.
             HASH="$(security find-identity -p codesigning "$KC" | awk '/OSAT Local Signing/ {print $2; exit}')"
             test -n "$HASH"
             codesign --force --deep --options runtime --entitlements build/entitlements.mac.plist --keychain "$KC" --sign "$HASH" release/mac-arm64/OSAT.app
             security delete-keychain "$KC"
+            codesign --verify --deep --strict release/mac-arm64/OSAT.app
             codesign -d -r- release/mac-arm64/OSAT.app
             npx electron-builder --prepackaged release/mac-arm64/OSAT.app --mac dmg zip --arm64 --publish never -c.mac.identity=null -c.extraMetadata.version="$OSAT_BUILD_VERSION"
           else
