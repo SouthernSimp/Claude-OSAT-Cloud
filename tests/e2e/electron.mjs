@@ -445,7 +445,12 @@ try {
   check(arrived, 'a thought dropped in the iCloud Inbox did not arrive in Unsorted')
   await sleep(2600)
   const copy = path.join(icloud, 'Notes', 'Unsorted', 'From the phone.md')
-  check(await access(copy).then(() => true, () => false), 'the copy of the notes was not written to iCloud Drive')
+  if (!(await access(copy).then(() => true, () => false))) {
+    const { readdir } = await import('node:fs/promises')
+    const tree = await readdir(path.join(icloud, 'Notes'), { recursive: true }).catch((error) => `none: ${error.message}`)
+    const status = await main.evaluate(() => window.osatPhone.status()).catch((error) => error.message)
+    problems.push(`the copy of the notes was not written to iCloud Drive: ${JSON.stringify(tree)} ${JSON.stringify(status)}`)
+  }
   check(await access(path.join(icloud, 'Inbox', 'Added', 'Text.txt')).then(() => true, () => false), 'the dropped file did not move to Inbox/Added')
   await main.evaluate(() => window.osatPhone.disable())
   check(!(await access(copy).then(() => true, () => false)), 'turning the iPhone link off left the copy of the notes behind')
