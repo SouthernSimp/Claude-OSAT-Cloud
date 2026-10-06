@@ -106,9 +106,10 @@ export function UsedNotes({ ids, notes, onOpen }) {
 /* Ask: conversations with the AI on this Mac. Each question reads the notes it
    matches, shown as chips you can remove before sending, and any files you drop
    on it or attach. `initialPrompt` is a hand-off from elsewhere: { prompt, at }
-   opens a new chat with the text waiting, { chatId, at } opens that chat,
-   { file: { rootId, relative }, at } starts one about that file. `compact` is
-   the quick chat's small window. */
+   opens a new chat with the text waiting ({ prompt, send: true, at } asks it
+   as soon as a model is there: ⌘Return in the quick bar), { chatId, at } opens
+   that chat, { file: { rootId, relative }, at } starts one about that file.
+   `compact` is Ask inside the quick bar. */
 export function LocalAssistant({ workspace, commit, navigate, initialPrompt = null, compact = false }) {
   const { models, status: ai, bridge } = useAi();
   const [toast, showUndo] = useUndoToast();
@@ -159,6 +160,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   }
 
   const handedOff = useRef(null);
+  const [autoSend, setAutoSend] = useState(null);
   useEffect(() => {
     if (!initialPrompt || handedOff.current === initialPrompt.at) return;
     handedOff.current = initialPrompt.at;
@@ -175,8 +177,15 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     } else {
       setActiveId(null);
       setDraft(String(initialPrompt.prompt || "").slice(0, 8000));
+      setAutoSend(initialPrompt.send ? String(initialPrompt.prompt || "").slice(0, 8000) : null);
     }
   }, [initialPrompt?.at]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Sent once a model is known; without one the question waits in the box, nothing lost.
+  useEffect(() => {
+    if (!autoSend || !model || busy) return;
+    setAutoSend(null);
+    ask(autoSend);
+  }, [autoSend, model, busy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => abortRef.current?.abort(), []);
   // The box is disabled until a model is known, so focus it again once it is.
@@ -234,6 +243,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
 
   function startChat() {
     abortRef.current?.abort();
+    setAutoSend(null);
     setActiveId(null);
     setModel(models?.[0]?.id || "");
     setDraft("");
@@ -422,7 +432,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
               <Plus /> New
             </button>
             {popOut && (
-              <button className="outline-button" type="button" title="Keep talking in a small window over your other apps" onClick={() => popOut.show(active ? { chatId: active.id } : null)}>
+              <button className="outline-button" type="button" title="Keep talking in the quick bar, over your other apps" onClick={() => popOut.show(active ? { chatId: active.id } : null)}>
                 <PictureInPicture /> Pop out
               </button>
             )}

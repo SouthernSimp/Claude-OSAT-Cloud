@@ -34,7 +34,7 @@ function createRing({ BrowserWindow, screen, platform, preload, load, hideOnBlur
     ...(platform === 'darwin' ? { type: 'panel' } : {}),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload },
   })
-  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
   window.setAlwaysOnTop(true, 'floating')
   load(window)
 

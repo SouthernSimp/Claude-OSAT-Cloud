@@ -14,6 +14,24 @@ export const PREVIEW_CHARS = 6000
 // What Settings → Launcher offers for "how much to keep": how many copies, and for how many days (0: no age limit).
 export const ITEM_CHOICES = [50, 100, 200, 500]
 export const DAY_CHOICES = [7, 30, 90, 0]
+// A copied picture's row shows a small thumbnail that fits a THUMB × THUMB square (a tall screenshot stays small too);
+// it is kept in history.json, so one that is somehow bigger is dropped rather than saved.
+export const THUMB = 96
+export const MAX_THUMB_CHARS = 60000
+
+export function thumbSize(width, height, max = THUMB) {
+  const w = Math.max(1, Number(width) || 1)
+  const h = Math.max(1, Number(height) || 1)
+  const scale = Math.min(1, max / Math.max(w, h))
+  return { width: Math.max(1, Math.round(w * scale)), height: Math.max(1, Math.round(h * scale)) }
+}
+
+/* A copied text dragged into another app goes as a small .txt file named after its first words. */
+export function dragName(text) {
+  const first = String(text || '').split('\n').map((line) => line.trim()).find(Boolean) || ''
+  const name = first.replace(/[/\\:*?"<>|\u0000-\u001f]/g, ' ').replace(/^[.\s]+/, '').replace(/\s+/g, ' ').slice(0, 40).trim()
+  return `${name || 'Copied text'}.txt`
+}
 
 /* Password managers and the Mac mark a copy they don't want kept (nspasteboard.org): concealed,
    transient (a one-time code) or generated on the spot. OSAT never keeps these. */
@@ -119,7 +137,7 @@ export function cleanItems(value, { max = MAX_ITEMS } = {}) {
     seen.add(item.id)
     const extra = { ...(item.pinned === true ? { pinned: true } : {}), ...(typeof item.app === 'string' && item.app ? { app: item.app.slice(0, 60) } : {}) }
     if (item.kind === 'image') {
-      if (typeof item.hash === 'string' && Number.isFinite(item.image?.bytes)) items.push({ id: item.id, kind: 'image', at: item.at, hash: item.hash, image: { w: Number(item.image.w) || 0, h: Number(item.image.h) || 0, bytes: item.image.bytes }, thumb: typeof item.thumb === 'string' ? item.thumb : '', ...extra })
+      if (typeof item.hash === 'string' && Number.isFinite(item.image?.bytes)) items.push({ id: item.id, kind: 'image', at: item.at, hash: item.hash, image: { w: Number(item.image.w) || 0, h: Number(item.image.h) || 0, bytes: item.image.bytes }, thumb: typeof item.thumb === 'string' && item.thumb.length <= MAX_THUMB_CHARS ? item.thumb : '', ...extra })
     } else if (typeof item.text === 'string' && item.text && item.kind in KIND_LABEL && item.kind !== 'image') {
       items.push({ id: item.id, kind: item.kind, at: item.at, text: item.text.slice(0, MAX_TEXT), ...(item.more ? { more: true } : {}), ...extra })
     }

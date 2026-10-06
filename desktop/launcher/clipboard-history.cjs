@@ -35,6 +35,8 @@ function createClipboardHistory({
   let lookedAtAge = 0
 
   const pictureFile = (id) => path.join(pictures, `${id}.png`)
+  // A copied text dragged out goes as a .txt file in here; it is emptied when OSAT starts and quits.
+  const drags = path.join(dir, 'drag')
   // Only a name this history made can name a file: a page can't reach anywhere else.
   const find = (id) => items.find((item) => item.id === String(id))
   const max = () => limits().items || model.MAX_ITEMS
@@ -121,7 +123,8 @@ function createClipboardHistory({
     await fsp.mkdir(pictures, { recursive: true, mode: 0o700 })
     await fsp.writeFile(pictureFile(id), png, { mode: 0o600 })
     const { width, height } = image.getSize()
-    return add({ kind: 'image', key, image: { w: width, h: height, bytes: png.length }, thumb: image.resize({ width: Math.min(width, 96) }).toDataURL(), app }, id)
+    const thumb = image.resize(model.thumbSize(width, height)).toDataURL()
+    return add({ kind: 'image', key, image: { w: width, h: height, bytes: png.length }, thumb: thumb.length <= model.MAX_THUMB_CHARS ? thumb : '', app }, id)
   }
 
   /* Old copies go once an hour (and at start): the age limit. */
@@ -181,6 +184,7 @@ function createClipboardHistory({
       // A picture no copy points to (a crash between the two writes) goes.
       const kept = new Set(items.filter((item) => item.kind === 'image').map((item) => `${item.id}.png`))
       for (const name of await fsp.readdir(pictures).catch(() => [])) if (!kept.has(name)) await fsp.rm(path.join(pictures, name), { force: true }).catch(() => {})
+      await fsp.rm(drags, { recursive: true, force: true }).catch(() => {})
       begin()
     },
     stop() {
@@ -192,6 +196,7 @@ function createClipboardHistory({
         held = null
       }
       if (saveTimer) { try { saveNow() } catch { /* nothing more to do at quit */ } }
+      fs.rmSync(drags, { recursive: true, force: true })
     },
     /* Turns the watching off (the Clipboard source is off in Settings → Launcher) or back on. What was
        copied meanwhile is never kept, as with a pause. */
@@ -214,6 +219,18 @@ function createClipboardHistory({
       const item = find(id)
       if (item?.kind !== 'image') return null
       return fsp.readFile(pictureFile(item.id)).then((data) => `data:image/png;base64,${data.toString('base64')}`, () => null)
+    },
+    /* A copy as a file another app can take (a drag out of the history): a picture is its own file; words go into
+       a .txt named after their first words. → { file, image } (`image` says the file is a picture), or null. */
+    async dragFile(id) {
+      const item = find(id)
+      if (!item) return null
+      if (item.kind === 'image') return { file: pictureFile(item.id), image: true }
+      const folder = path.join(drags, item.id)
+      await fsp.mkdir(folder, { recursive: true, mode: 0o700 })
+      const file = path.join(folder, model.dragName(item.text))
+      await fsp.writeFile(file, item.text, { mode: 0o600 })
+      return { file, image: false }
     },
     /* Puts a copy back on the clipboard (so ⌘V pastes it), and moves it to the top. */
     use(id) {

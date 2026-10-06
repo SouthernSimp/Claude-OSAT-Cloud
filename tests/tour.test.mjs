@@ -18,7 +18,7 @@ test('the tour has a few short cards in plain words, and every target is a real 
 
 test('the shortcuts are filled in as they are set now, with a plain fallback', () => {
   const step = TOUR.find((item) => item.id === 'anywhere')
-  assert.match(tourWords(step, { desk: '⌥Space', search: '⌘⇧Space' }).body, /^⌥Space brings the desk up, and ⌘⇧Space opens quick search/)
+  assert.match(tourWords(step, { desk: '⌥Space', search: '⌘⇧Space' }).body, /^⌥Space brings the desk up, and ⌘⇧Space opens the quick bar/)
   assert.match(tourWords(step).body, /^Your shortcut brings the desk up, and the search shortcut opens/)
   assert.equal(tourWords(TOUR[0]).title, TOUR[0].title, 'a card with no shortcut is unchanged')
 })

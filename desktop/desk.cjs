@@ -4,7 +4,7 @@
    pieces; main.cjs owns the window. */
 
 const DEFAULT_HOTKEY = 'Alt+Space'
-// The quick search (Phase 13). ⌥Space is the desk and ⌥⇧Space the quick chat; ⌘⇧Space is free on a Mac.
+// The quick bar (Phase 13, one bar since 13c). ⌥Space is the desk and ⌥⇧Space opens the bar on Ask; ⌘⇧Space is free on a Mac.
 const DEFAULT_SEARCH_HOTKEY = 'Command+Shift+Space'
 const MODIFIERS = new Set(['Command', 'Control', 'Alt', 'Shift'])
 
@@ -14,6 +14,10 @@ function displayAt(displays, point) {
     && point.y >= d.bounds.y && point.y < d.bounds.y + d.bounds.height
   return displays.find(inside) || displays[0]
 }
+
+/* The same rectangle: the desk is fitted only when it would change, so showing it never moves a window that
+   is already where it belongs. */
+const sameBounds = (a, b) => Boolean(a && b) && ['x', 'y', 'width', 'height'].every((key) => a[key] === b[key])
 
 /* A hotkey is one or more modifiers plus one key, e.g. "Alt+Space" or "Control+Shift+O". */
 function validHotkey(value) {
@@ -98,4 +102,4 @@ function deskAction({ visible, focused }) {
   return focused ? 'hide' : 'show'
 }
 
-module.exports = { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, accentCss, addLauncher, placeItem, pickWidgets, deskAction, displayAt, hotkeyLabel, validHotkey }
+module.exports = { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, accentCss, addLauncher, placeItem, pickWidgets, deskAction, displayAt, hotkeyLabel, sameBounds, validHotkey }

@@ -12,6 +12,7 @@ export function Welcome({ onDone }) {
   const [ai, setAi] = useState(null)
   const [tier, setTier] = useState(null)
   const [hotkey, setHotkey] = useState('⌥Space')
+  const [bar, setBar] = useState('⌘⇧Space')
 
   const done = useRef(onDone)
   done.current = onDone
@@ -28,7 +29,10 @@ export function Welcome({ onDone }) {
       setAi(status)
       setTier(status.chosen || status.recommended)
     }).catch(() => {})
-    window.osatDesk?.prefs?.().then((prefs) => { if (prefs?.label) setHotkey(prefs.label) }).catch(() => {})
+    window.osatDesk?.prefs?.().then((prefs) => {
+      if (prefs?.label) setHotkey(prefs.label)
+      if (prefs?.search?.label) setBar(prefs.search.label)
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -55,7 +59,7 @@ export function Welcome({ onDone }) {
           <>
             <span className="welcome-icon"><Keyboard weight="fill" /></span>
             <h2 id="welcome-title">{hotkey}, from anywhere.</h2>
-            <p>Press it in any app to write a sticky, find something or ask. Esc puts it away. Try it now if you like; this will wait.</p>
+            <p>Press it in any app to bring up your desk. {bar} opens the quick bar over whatever you are doing: type to find anything, ⌘Return to ask the AI, ⌥Return to save a sticky. Esc puts either away. Try it now if you like; this will wait.</p>
             <div className="welcome-actions">{next}</div>
           </>
         )}

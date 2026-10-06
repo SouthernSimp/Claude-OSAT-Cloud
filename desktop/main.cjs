@@ -8,7 +8,7 @@ const { createUnder, guardFetch, isLocal, refusal } = require('./under.cjs')
 
 /* Offline (see "Offline" below). Two locks, set before any of OSAT's own modules load:
    the main process's own fetch (the model download, Spotify's covers, LM Studio),
-   and every session's requests (the desk's, the quick chat's and the browser's).
+   and every session's requests (the desk's, the quick bar's and the browser's).
    While offline, only this Mac answers. */
 const under = createUnder({ save: saveUnder, down: goingUnder, up: comingUp, changed: underChanged })
 globalThis.fetch = guardFetch(globalThis.fetch, () => under.on)
@@ -40,8 +40,7 @@ const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = require('./desk.cjs')
-const { createQuickChat } = require('./quick-chat.cjs')
+const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = require('./desk.cjs')
 const { createLauncher } = require('./launcher/index.cjs')
 const { extractText } = require('./mac-files.cjs')
 const { TidyError } = require('./file-ops.cjs')
@@ -53,22 +52,22 @@ const { createMacCalendar } = require('./mac-calendar.cjs')
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
 
+// Ask: the quick bar opened on Ask (it was the quick chat's key before the one bar, Phase 13c).
 const CHAT_HOTKEY = 'Alt+Shift+Space'
 
 let mainWindow
 let quitting = false
-let quickChat
 let tray
-let prefs = { hotkey: DEFAULT_HOTKEY, chatHotkey: CHAT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, chatBounds: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
-// The three shortcuts: the desk, the quick chat and the quick search. `value` is null when another app has it.
+let prefs = { hotkey: DEFAULT_HOTKEY, chatHotkey: CHAT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, barSpot: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
+// The three shortcuts: the desk, the quick bar on Ask, and the quick bar. `value` is null when another app has it.
 const shortcuts = {
   layer: { value: null, failed: false, run: () => toggleDesk() },
-  chat: { value: null, failed: false, run: () => quickChat?.toggle() },
+  chat: { value: null, failed: false, run: () => launcher?.search.toggle({ view: 'chat' }) },
   search: { value: null, failed: false, run: () => launcher?.search.toggle() },
 }
 // Which prefs.json key keeps each shortcut, and what it opens (for words like "already opens…").
 const HOTKEY_PREF = { layer: 'hotkey', chat: 'chatHotkey', search: 'searchHotkey' }
-const HOTKEY_OPENS = { layer: 'OSAT', chat: 'the quick chat', search: 'the quick search' }
+const HOTKEY_OPENS = { layer: 'OSAT', chat: 'Ask in the quick bar', search: 'the quick bar' }
 let ai
 let launcher
 let trayAiLine = ''
@@ -120,11 +119,11 @@ function refuseUnder(channel) {
 }
 
 /* from: 'main' (the default), 'app' (any window that shows rooms), 'any', or a function that says
-   whether a window's contents may ask (the quick search answers the desk and its own panel). */
+   whether a window's contents may ask (the quick bar answers the desk and its own panel). */
 function handle(channel, operation, { from = 'main' } = {}) {
   ipcMain.handle(channel, async (event, ...args) => {
     assertTrustedSender(event)
-    if (typeof from === 'function' && !from(event.sender)) fail('Only the desk and the quick search can do that.')
+    if (typeof from === 'function' && !from(event.sender)) fail('Only the desk and the quick bar can do that.')
     if (from === 'main') assertMainWindow(event)
     if (from === 'app') assertAppWindow(event)
     refuseUnder(channel)
@@ -217,25 +216,28 @@ function showDesk() {
   const window = mainWindow
   const mac = process.platform === 'darwin'
   if (window.isMinimized()) window.restore()
-  window.setBounds(displayAt(screen.getAllDisplays(), screen.getCursorScreenPoint()).workArea)
+  const area = displayAt(screen.getAllDisplays(), screen.getCursorScreenPoint()).workArea
+  if (!sameBounds(window.getBounds(), area)) window.setBounds(area)
   // Shown on every Space for a moment, so it comes to the Space you are on instead of
-  // taking you back to the one it was last on.
-  if (mac) window.setVisibleOnAllWorkspaces(true)
+  // taking you back to the one it was last on. skipTransformProcessType: without it each
+  // call made Electron activate the Mac's Dock and flip OSAT's Dock icon, so an auto-hiding
+  // Dock slid up and down and the desk blinked behind it (Phase 13c).
+  if (mac) window.setVisibleOnAllWorkspaces(true, { skipTransformProcessType: true })
   window.show()
   if (mac) {
     app.focus({ steal: true })
-    window.setVisibleOnAllWorkspaces(false)
+    window.setVisibleOnAllWorkspaces(false, { skipTransformProcessType: true })
   }
   window.focus()
   window.webContents.send('desk:shown')
   return undefined
 }
 
-/* Put away, and the app you were in has focus again (unless the quick chat is up). */
+/* Put away, and the app you were in has focus again (unless the quick bar is up). */
 function hideDesk() {
   if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return
   mainWindow.hide()
-  if (process.platform === 'darwin' && !quickChat?.window.isVisible()) app.hide()
+  if (process.platform === 'darwin' && !launcher?.search.window.isVisible()) app.hide()
 }
 
 function toggleDesk() {
@@ -285,8 +287,8 @@ function buildMenu() {
         { label: 'New Sticky', accelerator: 'CmdOrCtrl+Shift+N', click: () => command({ view: 'Capture' }) },
         { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => command({ view: 'Notes', detail: { action: 'new' } }) },
         { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
-        { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
-        { label: 'Quick Search', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
+        { label: 'Quick Bar', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
+        { label: 'Ask', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => launcher?.search.show({ view: 'chat' }) },
         { type: 'separator' },
         { label: 'New Browser Tab', accelerator: 'CmdOrCtrl+T', click: () => command({ view: 'Browser', action: 'new-tab' }) },
         ...(terminals?.available ? [{ label: 'New Terminal', accelerator: 'CmdOrCtrl+Shift+T', click: () => command({ view: 'Terminal', action: 'new-terminal' }) }] : []),
@@ -332,7 +334,8 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   app.dock?.setMenu(Menu.buildFromTemplate([
     { label: 'Show OSAT', click: () => showDesk() },
-    { label: 'Quick Chat', click: () => quickChat?.show() },
+    { label: 'Quick Bar', click: () => launcher?.search.show() },
+    { label: 'Ask', click: () => launcher?.search.show({ view: 'chat' }) },
     { label: 'New Browser Tab', click: () => command({ view: 'Browser', action: 'new-tab' }) },
   ]))
 }
@@ -471,8 +474,8 @@ async function loadPrefs() {
       hotkey: validHotkey(saved.hotkey) ? saved.hotkey : DEFAULT_HOTKEY,
       chatHotkey: validHotkey(saved.chatHotkey) ? saved.chatHotkey : CHAT_HOTKEY,
       searchHotkey: validHotkey(saved.searchHotkey) ? saved.searchHotkey : DEFAULT_SEARCH_HOTKEY,
-      chatBounds: ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(saved.chatBounds?.[key]))
-        ? { x: saved.chatBounds.x, y: saved.chatBounds.y, width: saved.chatBounds.width, height: saved.chatBounds.height } : null,
+      // Where the quick bar was dragged to (its top middle); the old quick chat's chatBounds is left behind.
+      barSpot: Number.isFinite(saved.barSpot?.x) && Number.isFinite(saved.barSpot?.y) ? { x: saved.barSpot.x, y: saved.barSpot.y } : null,
       launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
       places: Object.entries(saved.places || {}).reduce((places, [id, spot]) => placeItem(places, id, spot), {}),
       widgets: pickWidgets(saved.widgets),
@@ -527,17 +530,16 @@ const shortcutInfo = (which) => {
   return { hotkey: shortcut.value, label: hotkeyLabel(shortcut.value || prefs[HOTKEY_PREF[which]]), failed: shortcut.failed }
 }
 
-/* A macOS panel swallows Esc before the page sees it, so while the quick chat has
-   focus, OSAT takes Esc itself and hands it to the chat. */
+/* A macOS panel swallows Esc before the page sees it, so while the quick bar or the ring
+   has focus, OSAT takes Esc itself and hands it to them. */
 function routeEscape() {
-  if (quickChat?.window.isFocused()) quickChat.window.webContents.send('chat:escape')
-  else launcher?.escape()
+  launcher?.escape()
 }
 function claimEscape() {
   if (process.platform === 'darwin' && !globalShortcut.isRegistered('Escape')) globalShortcut.register('Escape', routeEscape)
 }
 function releaseEscape() {
-  if (!quickChat?.window.isFocused() && !launcher?.focused()) globalShortcut.unregister('Escape')
+  if (!launcher?.focused()) globalShortcut.unregister('Escape')
 }
 
 const launcherIcons = new Map()
@@ -621,8 +623,9 @@ function registerDesk() {
   })
 }
 
-/* ---- The launcher (⌘⇧Space): quick search, the clipboard history, Hyper keys (desktop/launcher) ---- */
+/* ---- The launcher (⌘⇧Space): the quick bar, the clipboard history, Hyper keys (desktop/launcher) ---- */
 
+let barSaveTimer
 async function registerLauncher() {
   launcher = await createLauncher({
     app,
@@ -645,10 +648,14 @@ async function registerLauncher() {
     // What the ring does that only main can.
     ringActions: {
       desk: () => showDesk(),
-      chat: () => quickChat?.show(),
-      sticky: () => command({ view: 'Capture' }),
       sky: () => command({ view: 'Mindmap' }),
       files: () => command({ view: 'Files' }),
+    },
+    barSpot: prefs.barSpot,
+    onBarMoved: (spot) => {
+      prefs = { ...prefs, barSpot: spot }
+      clearTimeout(barSaveTimer)
+      barSaveTimer = setTimeout(() => savePrefs().catch(() => {}), 800)
     },
     files,
     handle,
@@ -667,49 +674,12 @@ async function registerLauncher() {
   launcher.onFocus(claimEscape, releaseEscape)
 }
 
-/* ---- The quick chat (⌥⇧Space): Ask in a small window over every app ---- */
+/* ---- Ask (⌥⇧Space): the quick bar, opened on Ask ---- */
 
-let chatSaveTimer
-function registerQuickChat() {
-  quickChat = createQuickChat({
-    BrowserWindow,
-    screen,
-    platform: process.platform,
-    preload: path.join(__dirname, 'preload.cjs'),
-    saved: prefs.chatBounds,
-    load: (window) => {
-      window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-      window.webContents.on('will-navigate', (event, url) => {
-        if (url !== window.webContents.getURL()) event.preventDefault()
-      })
-      window.loadFile(APP_ENTRY, { query: { surface: 'chat' } })
-    },
-    onMoved: (bounds) => {
-      prefs = { ...prefs, chatBounds: bounds }
-      clearTimeout(chatSaveTimer)
-      chatSaveTimer = setTimeout(() => savePrefs().catch(() => {}), 800)
-    },
-  })
-  quickChat.window.on('focus', claimEscape)
-  quickChat.window.on('blur', releaseEscape)
-  quickChat.window.on('hide', releaseEscape)
-
-  const fromChat = (event) => {
-    assertTrustedSender(event)
-    if (event.sender !== quickChat.window.webContents) fail('Only the quick chat can do that.')
-  }
-  ipcMain.on('chat:hide', (event) => { try { fromChat(event); quickChat.hide() } catch { /* ignored */ } })
-  // "Open in OSAT": the chat moves to the Ask room in the main window.
-  ipcMain.on('chat:open-in-window', (event, view, detail) => {
-    try { fromChat(event) } catch { return }
-    if (typeof view !== 'string') return
-    quickChat.hide()
-    if (process.platform === 'darwin') app.focus({ steal: true })
-    command({ view, detail: detail && typeof detail === 'object' ? detail : null })
-  })
-  // Pop a chat out of the desk: { chatId } or { prompt }, or nothing for the last one.
+function registerAsk() {
+  // Pop a chat out of the desk or Ask: { chatId } or { prompt }, or nothing for the last one. It opens in the quick bar.
   handle('chat:show', (detail) => {
-    quickChat.show(detail && typeof detail === 'object' ? { chatId: typeof detail.chatId === 'string' ? detail.chatId : undefined, prompt: typeof detail.prompt === 'string' ? detail.prompt.slice(0, 8000) : undefined } : null)
+    launcher.search.show({ view: 'chat', chat: detail && typeof detail === 'object' ? { chatId: typeof detail.chatId === 'string' ? detail.chatId : undefined, prompt: typeof detail.prompt === 'string' ? detail.prompt.slice(0, 8000) : undefined } : null })
     return true
   }, { from: 'app' })
 }
@@ -744,8 +714,8 @@ function updateTray() {
   tray.setToolTip(under.on ? 'OSAT · Offline' : 'OSAT')
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
-    { label: 'Quick Chat', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => quickChat?.show() },
-    { label: 'Quick Search', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
+    { label: 'Quick Bar', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
+    { label: 'Ask', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => launcher?.search.show({ view: 'chat' }) },
     { label: 'Offline', type: 'checkbox', checked: under.on, accelerator: 'CmdOrCtrl+Shift+U', registerAccelerator: false, click: () => toggleUnder() },
     { type: 'separator' },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
@@ -860,7 +830,7 @@ function registerAi() {
   handle('ai:install', plain((tiers) => ai.install(tiers)), { from: 'app' })
   handle('ai:load', plain((tier) => ai.load(tier, { interactive: true })), { from: 'app' })
   handle('ai:unload', plain((tier) => ai.unload(tier)), { from: 'app' })
-  handle('ai:free-memory', plain(() => ai.unloadAll()), { from: (sender) => sender === mainWindow?.webContents || sender === quickChat?.window?.webContents })
+  handle('ai:free-memory', plain(() => ai.unloadAll()), { from: (sender) => sender === mainWindow?.webContents || sender === launcher?.search.window.webContents })
   handle('ai:retain', plain((tier, value) => ai.setRetained(tier, value)), { from: 'app' })
   handle('ai:startup', plain((value) => ai.setStartup(value)), { from: 'app' })
   handle('ai:choose', plain((tier) => {
@@ -1308,12 +1278,12 @@ app.whenReady().then(async () => {
   await registerBots()
   createMacCalendar({ handle, fail })
   registerDesk()
-  registerQuickChat()
+  registerAsk()
   createWindow()
   createTray()
   launcher.start().catch((error) => console.error('The launcher could not start:', error))
   // If the desk's shortcut is taken by another app, open Settings so a new one can be picked.
-  // The quick chat's is quieter: Settings says so when you look.
+  // The quick bar's are quieter: Settings says so when you look.
   useHotkey('chat', prefs.chatHotkey)
   useHotkey('search', prefs.searchHotkey)
   if (!useHotkey('layer', prefs.hotkey)) command({ view: 'Settings', detail: { section: 'general' } })

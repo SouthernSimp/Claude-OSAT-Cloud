@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import test from 'node:test'
 
-const { accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
+const { accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
 
 test('the desk opens on the display under the cursor', () => {
   const left = { id: 1, bounds: { x: 0, y: 0, width: 1440, height: 900 } }
@@ -10,6 +10,33 @@ test('the desk opens on the display under the cursor', () => {
   assert.equal(displayAt([left, right], { x: 2000, y: 100 }).id, 2)
   assert.equal(displayAt([left, right], { x: 10, y: 10 }).id, 1)
   assert.equal(displayAt([left, right], { x: -50, y: 5000 }).id, 1)
+})
+
+test('the desk is fitted only when it would move: showing it never nudges a window already in place', () => {
+  const area = { x: 0, y: 25, width: 1440, height: 875 }
+  assert.equal(sameBounds({ ...area }, area), true)
+  assert.equal(sameBounds({ ...area, height: 871 }, area), false, 'the Dock now hidden or shown: one fit')
+  assert.equal(sameBounds(null, area), false)
+})
+
+/* The Dock bug (Phase 13c): Electron's setVisibleOnAllWorkspaces, unless told to skip it, turns OSAT into a Dock-less
+   app and back, activating the Mac's Dock app each time; with an auto-hiding Dock it slid up and down and the desk
+   blinked behind it. Every call in desktop/ must pass skipTransformProcessType. */
+test('no window makes the Mac’s Dock jump: every setVisibleOnAllWorkspaces skips the process transform', async () => {
+  const { readdir, readFile } = await import('node:fs/promises')
+  const { fileURLToPath } = await import('node:url')
+  const dir = fileURLToPath(new URL('../desktop/', import.meta.url))
+  const sources = []
+  const walk = async (folder) => {
+    for (const entry of await readdir(folder, { withFileTypes: true })) {
+      if (entry.isDirectory()) await walk(`${folder}${entry.name}/`)
+      else if (/^[^ ]+\.cjs$/.test(entry.name)) sources.push(await readFile(`${folder}${entry.name}`, 'utf8'))
+    }
+  }
+  await walk(dir)
+  const calls = sources.flatMap((source) => source.match(/setVisibleOnAllWorkspaces\([^)]*\)/g) || [])
+  assert.ok(calls.length >= 4, `found ${calls.length}`)
+  for (const call of calls) assert.match(call, /skipTransformProcessType: true/, call)
 })
 
 test('a hotkey needs a modifier and one key', () => {

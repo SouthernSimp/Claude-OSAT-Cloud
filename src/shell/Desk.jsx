@@ -303,9 +303,11 @@ export function Desk() {
       event.preventDefault()
       if (latest.current?.ringOn) setRing({ x: event.clientX, y: event.clientY })
     }
+    // A middle-click would otherwise start the page's autoscroll under the ring.
+    const noScroll = (event) => { if (event.button === 1 && event.metaKey) event.preventDefault() }
     window.addEventListener('pointerdown', onDown, true)
-    window.addEventListener('mousedown', (event) => { if (event.button === 1 && event.metaKey) event.preventDefault() }, true)
-    return () => { stop?.(); window.removeEventListener('pointerdown', onDown, true) }
+    window.addEventListener('mousedown', noScroll, true)
+    return () => { stop?.(); window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('mousedown', noScroll, true) }
   }, [])
 
   /* What a tool on the desk's ring does; the layouts are for windows of other apps, so they are not on this ring. */
@@ -396,6 +398,8 @@ export function Desk() {
     // The Map is the Sky now: the layer above the desk.
     else if (view === 'Mindmap' || view === 'Sky') goUp(detail)
     else if (view === 'Focus') setFocusAt(Date.now())
+    // The clipboard history lives in the quick bar (⌘K's "Clipboard history").
+    else if (view === 'Clipboard') { if (window.osatSearch) window.osatSearch.show('clipboard'); else setNotice('The clipboard history is in the Mac app.') }
     else if (view === 'Widgets') setTrayAt(Date.now())
     // The Obsidian export lives in Settings → Data.
     else if (view === 'Obsidian') open('Settings', { section: 'data' })

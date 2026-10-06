@@ -107,3 +107,13 @@ test('an empty line jumps: the four latest notes, then the spaces', () => {
   assert.deepEqual(rows.slice(4).map((row) => row.go[0]), ['Notes', 'Mindmap', 'Assistant', 'Files'])
 })
 
+
+test('the quick bar’s own commands: a sticky, a question, the clipboard; the line keeps its own rows instead', () => {
+  const bar = (word) => findAll(workspace, word, { bar: true, limit: 30 }).filter((row) => row.kind === 'action').map((row) => row.key)
+  assert.ok(bar('sticky').includes('act:sticky'))
+  assert.ok(bar('ask').includes('act:ask'))
+  assert.ok(bar('clipboard').includes('act:clipboard'))
+  assert.ok(!findAll(workspace, 'sticky').some((row) => row.key === 'act:sticky'), 'the line already saves a sticky with Return')
+  assert.ok(!findAll(workspace, 'ask').some((row) => row.key === 'act:ask'))
+  assert.deepEqual(findAll(workspace, 'clipboard').find((row) => row.key === 'act:clipboard')?.go, ['Clipboard'], '⌘K on the desk opens the bar on the clipboard')
+})
