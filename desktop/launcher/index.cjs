@@ -39,7 +39,7 @@ async function createLauncher({
   // The apps on this Mac (tests hand in a short list).
   apps = createApps(),
 }) {
-  const [clipModel, launcherModel, layoutModel, ringModel, clickModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs')])
+  const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs')])
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -209,6 +209,34 @@ async function createLauncher({
   on('search:clipboard-pause', (paused) => history.setPaused(paused === true), ofDesk)
   on('search:clipboard-clear', () => history.clear(), ofDesk)
   on('search:clipboard-text', (id) => history.textOf(id))
+  /* Ask across everything, step two: the few copies and files a question is about, as one numbered block of short passages
+     (shared/ask-find.mjs leaves out anything that looks like a secret). Read-only. The window asks only when the answering
+     model is on this Mac; `ask:switch` is Settings' "Ask can look at copies and files". */
+  on('ask:find', async (question) => {
+    const none = { off: true, copies: [], files: [], text: '' }
+    if (!settings.ask.sources || typeof question !== 'string') return none
+    const text = question.slice(0, 2000)
+    const { words } = askFind.questionTerms(text)
+    const copies = []
+    if (settings.sources.clipboard.on) {
+      const picked = askFind.pickCopies(history.list().items.map((item) => ({ ...item, text: item.text ?? '' })), text)
+      for (const item of picked) {
+        const whole = history.textOf(item.id)
+        if (whole && !askFind.looksSecret(whole)) copies.push({ id: item.id, at: item.at, ...(item.app ? { app: item.app } : {}), text: askFind.passage(whole, words) })
+      }
+    }
+    const found = []
+    const query = askFind.fileQuestion(text)
+    if (settings.sources.files.on && query.length >= 2) {
+      for (const item of (await files.find(query, { limit: 8 }).catch(() => [])).filter((entry) => entry.kind === 'file')) {
+        const read = await files.read(item.rootId, item.relative).catch(() => null)
+        if (read?.text) found.push({ rootId: item.rootId, relative: item.relative, name: item.name, where: item.where, text: read.text })
+        if (found.length >= 2) break
+      }
+    }
+    return { off: false, copies, files: found.map(({ text: _text, ...rest }) => rest), text: askFind.evidenceBlock({ copies, files: found }, { words }) }
+  })
+  on('ask:switch', async (on_) => { await save({ ask: { sources: on_ === true } }); return settings.ask.sources })
   /* A copy dragged out of the bar into another app: the Mac's own drag, with the picture's file or the words as a .txt.
      Called while the mouse is still down. */
   const DRAG_ICON = path.join(__dirname, '..', 'assets', 'trayTemplate@2x.png')

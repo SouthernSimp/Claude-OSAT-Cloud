@@ -28,7 +28,10 @@ import { Markdown } from "../lib/markdown.jsx";
 import { isActiveNote } from "../notes-model.js";
 import { applyAction, describeAction, extractActions, systemPrompt, wantsActions } from "./actions.js";
 import { askContext } from "./ask-context.js";
+import { findForAsk, isLocalModel, sourceRefs } from "./ask-find.js";
 import { noteKind, noteWhere } from "./ask-sources.js";
+import { AskSourcesNotice } from "./AskSourcesNotice.jsx";
+import { UsedSources } from "./UsedSources.jsx";
 import { notesForQuestion, relatedForAsk } from "./work-scope.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { deriveTitle, fitToMemory, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
@@ -47,7 +50,7 @@ export const modelLabel = (model) =>
   typeof model === "string" ? model : model?.name || model?.id || "Local model";
 
 /* Where the answer comes from, said plainly: this Mac, or the cloud provider it goes to. */
-export const whereLine = (model) => (model?.offline === false ? `Sent to ${model.where} · ${modelLabel(model).replace(` · ${model.where}`, "")}` : `${modelLabel(model)} · on this Mac`);
+export const whereLine = (model) => (model?.offline === false ? `Sent to ${model.where} · ${modelLabel(model).replace(` · ${model.where}`, "")} · copies and files stay on this Mac` : `${modelLabel(model)} · on this Mac`);
 
 const dayLabel = (iso) => {
   const date = new Date(iso);
@@ -286,10 +289,12 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     const content = text.trim();
     if (!content || busy || !model || content.length > 8000) return;
     const noteIds = text === asking ? using : pickNotes(content);
+    setBusy(true);
+    const replyingModel = models?.find((item) => item.id === model);
+    const found = await findForAsk(content, isLocalModel(replyingModel) && active?.contextScope?.kind !== "none");
     let base = active || newChat();
     if (retry && base.messages.at(-1)?.role === "user") base = { ...base, messages: base.messages.slice(0, -1) };
-    const question = newMessage("user", content, { ...(noteIds.length ? { noteIds } : {}), ...(files.length ? { files: files.map((file) => file.name) } : {}) });
-    const replyingModel = models?.find((item) => item.id === model);
+    const question = newMessage("user", content, { ...(noteIds.length ? { noteIds } : {}), ...(files.length ? { files: files.map((file) => file.name) } : {}), ...sourceRefs(found) });
     const chat = { ...base, modelId: model, messages: [...base.messages, question] };
     commit((state) => putChat(state, chat));
     setActiveId(chat.id);
@@ -303,7 +308,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     const controller = new AbortController();
     abortRef.current = controller;
     let full = "";
-    const fit = fitToMemory(outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds })), base.messages, content, workspace.notes, noteIds, files, workspace.folders));
+    const fit = fitToMemory(outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds })), base.messages, content, workspace.notes, noteIds, files, workspace.folders, found.text));
     try {
       await streamLocalMessage({
         model,
@@ -487,6 +492,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                   {message.role === "assistant" ? <Markdown text={message.content} headingOffset={2} /> : <p className="user-text">{message.content}</p>}
                   {message.leftOut > 0 && <small className="bubble-model">To fit the AI’s memory, it didn’t read the {message.leftOut === 1 ? "oldest message" : `${message.leftOut} oldest messages`} in this chat. Start a new chat for a fresh page.</small>}
                   {message.role === "user" && <UsedNotes ids={message.noteIds} notes={workspace.notes} folders={workspace.folders} onOpen={openNote} />}
+                  {message.role === "user" && <UsedSources copies={message.copies} files={message.fileRefs} navigate={navigate} />}
                   {message.role === "user" && message.files?.length > 0 && (
                     <p className="bubble-notes">
                       <span>Read</span>
@@ -546,6 +552,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
             commit((state) => { const chat = active || newChat({ modelId: model }); if (!active) setActiveId(chat.id); return putChat(state, { ...chat, contextScope }); });
             setDropped(new Set());
           }}><option value="workspace">Workspace · related notes</option>{active?.contextScope?.folderId && <option value="focus">This topic · {workspace.folders.find((folder) => folder.id === active.contextScope.folderId)?.name || "Removed topic"}</option>}<option value="none">No notes</option></select></label>
+          {isLocalModel(models?.find((item) => item.id === model)) && <AskSourcesNotice />}
           {voiceHint && <div className="voice-hint" role="status"><Microphone /><span><strong>Speak with Mac Dictation</strong>Press Fn twice, then speak. Your words appear here before anything is sent.</span><button type="button" aria-label="Dismiss voice instructions" onClick={() => setVoiceHint(false)}><X /></button></div>}
           {(files.length > 0 || reading) && (
             <div className="ask-notes" aria-label="Files Ask will read">

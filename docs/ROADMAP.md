@@ -78,7 +78,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 | 29 | Recording made in OSAT (proposed): record an area, a window or the screen without CleanShot, trim, save as a GIF. Waits for Developer ID signing (backlog #6) | Planned |
 | 30 | Ask across everything, step one: Ask understands "last month" and a node's name ("my notes about Jordan"), tells a scan from a sticky, and the sources under each answer say what each is, where it lives, and "No longer saved" when it's gone | In review |
-| 30b | Ask across everything, step two: what you copied and your files, with anything that looks like a password left out, never sent to a cloud model, one switch to turn it off, a calm first-time note | Planned |
+| 30b | Ask across everything, step two: what you copied and your files, with anything that looks like a password left out, never sent to a cloud model, one switch to turn it off, a calm first-time note | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

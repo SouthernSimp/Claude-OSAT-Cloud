@@ -4,7 +4,8 @@
    - Skips what password managers and the Mac mark as concealed or one-time.
    - Can be paused, cleared (Undo brings it back for a few minutes) and limited (how many, how old).
    - Pins keep a copy as a snippet: no limit touches it.
-   - Never logs, sends or hands to the AI what was copied. Files are private to this Mac user.
+   - Never logs or sends what was copied. Only Ask may read a few copies (switch on, a model on this Mac, never one
+     that looks like a secret: shared/ask-find.mjs). Files are private to this Mac user.
    The rules that need no clipboard (kinds, repeats, limits, groups) are shared/clipboard-model.mjs.
    Electron's `clipboard` and `nativeImage` are passed in, so the tests use stand-ins. */
 const crypto = require('node:crypto')

@@ -10,6 +10,9 @@ import { rankApps } from '../../shared/quick-search-model.mjs'
 import { applyAction } from '../assistant/actions.js'
 import { ActionCards, UsedNotes, modelLabel } from '../assistant/LocalAssistant.jsx'
 import { cleanError, setupLine, useAi } from '../assistant/useAi.js'
+import { isLocalModel } from '../assistant/ask-find.js'
+import { AskSourcesNotice } from '../assistant/AskSourcesNotice.jsx'
+import { UsedSources } from '../assistant/UsedSources.jsx'
 import { useAskHere } from '../assistant/useAskHere.js'
 import { localDateKey } from '../daily-practice.js'
 import { botTakers } from '../lib/bot-jobs.js'
@@ -73,7 +76,7 @@ export function Line({
 
   /* Ask talks to the model chosen in Settings (the AI on this Mac unless a cloud one was picked). */
   const ai = models === null ? { state: 'checking', label: '' } : models.length ? { state: 'ready', label: modelLabel(models[0]), id: models[0].id } : { state: 'none', label: '' }
-  const { answer, setAnswer, ask: askHere, stop, close } = useAskHere({ workspace, commit, modelId: ai.id, context: { stacks } })
+  const { answer, setAnswer, ask: askHere, stop, close } = useAskHere({ workspace, commit, modelId: ai.id, local: isLocalModel(models?.[0]), context: { stacks } })
 
   /* The launcher (Settings → Launcher): a sum, Nate's keywords, what he copied, an app by name, a job for a bot. In the
      line only `v` and his own keywords are special: a sentence that starts with "a" or "f" is only a sentence. */
@@ -421,6 +424,8 @@ export function Line({
             {answer.error && <p className="home-answer-error" role="alert">{answer.error}</p>}
           </div>
           <UsedNotes ids={answer.noteIds} notes={notes} folders={workspace.folders} onOpen={(noteId) => onOpenNote?.(noteId)} />
+          <AskSourcesNotice />
+          <UsedSources copies={answer.copies} files={answer.files} navigate={navigate} />
           <ActionCards
             actions={answer.actions}
             onAdd={(action) => { commit((state) => applyAction(state, action, localDateKey())); setAnswer((value) => ({ ...value, actions: value.actions.filter((item) => item.id !== action.id) })) }}

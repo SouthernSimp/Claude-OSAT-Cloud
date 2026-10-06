@@ -42,6 +42,7 @@ async function setup({ trusted = false, offline = false, taken = () => false, re
       if (relative.includes('..')) throw new Error('Invalid relative file path.')
       return path.join(dir, 'files', rootId, relative)
     },
+    read: async () => ({ text: 'Total due 1450\npassword: hunter2\nFiled Oct 1' }),
     whereOf: (item) => `Where ${item.rootId}`,
     open: async (rootId, relative) => { calls.open.push([rootId, relative]); return 'opened' },
     reveal: async (rootId, relative) => { calls.showItem.push([rootId, relative]); return true },
@@ -574,5 +575,26 @@ test('a copy drags out of the bar into another app: a picture as its file, words
     const rule = t.handlers.get('search:drag-clip').from
     assert.equal(rule(t.launcher.search.window.webContents), true)
     assert.equal(rule(t.desk.webContents), false)
+  } finally { await t.done() }
+})
+
+test('Ask finds copies and files for a question: secrets stay out, and the switch turns it off', async () => {
+  const t = await setup()
+  try {
+    await t.launcher.start()
+    for (const words of ['The taxes are due April 15', 'API key: sk-abcdefghijklmnop1234567890 for taxes']) {
+      t.board.text = words
+      await t.launcher.history.poll()
+    }
+    const found = await t.ask('ask:find', 'what did I copy about taxes?')
+    assert.equal(found.copies.length, 1, 'the copy with a key in it is never offered')
+    assert.equal(found.files[0].name, 'Taxes 2025.pdf')
+    assert.match(found.text, /COPIED ITEM 1/)
+    assert.match(found.text, /FILE 1: Taxes 2025\.pdf/)
+    assert.doesNotMatch(found.text, /hunter2|sk-abc/)
+    assert.ok(!('text' in found.files[0]), 'the window gets a pointer, not the file’s words')
+    assert.equal(await t.ask('ask:switch', false), false)
+    assert.deepEqual(await t.ask('ask:find', 'taxes'), { off: true, copies: [], files: [], text: '' })
+    assert.equal(t.handlers.get('ask:find').from({ id: 'x' }), false, 'only the panel and the desk may ask')
   } finally { await t.done() }
 })

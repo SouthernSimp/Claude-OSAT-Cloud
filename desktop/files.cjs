@@ -515,6 +515,8 @@ async function createFiles({ app, BrowserWindow, dialog, nativeImage, shell, mai
     find: async (query, options) => (await findFiles(query, options)).map((item) => ({ ...item, where: whereOf(item) })),
     recent: async (limit) => (await recentFiles(limit)).map((item) => ({ ...item, where: whereOf(item) })),
     resolve: (rootId, relative = '') => approvedPath(getGrant(rootId), relative),
+    // The words Ask reads from a file in an approved place (text, PDF, Word), or throws.
+    read: async (rootId, relative = '') => readForAsk(await approvedPath(getGrant(rootId), relative)),
     whereOf,
     open: openIt,
     reveal: revealIt,
