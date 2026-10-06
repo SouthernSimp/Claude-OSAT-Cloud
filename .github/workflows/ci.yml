@@ -67,6 +67,11 @@ jobs:
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+      # OSAT's own steady signing identity (a self-signed certificate, not an Apple one). Every build carries the
+      # same signature, so macOS keeps the permissions given to OSAT (Accessibility, to paste and move windows)
+      # across updates instead of forgetting them with each new ad-hoc build. Still needs one "Open Anyway".
+      OSAT_SIGN_P12: ${{ secrets.OSAT_SIGN_P12 }}
+      OSAT_SIGN_PASSWORD: ${{ secrets.OSAT_SIGN_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -101,6 +106,25 @@ jobs:
               export APPLE_API_KEY="$RUNNER_TEMP/AuthKey.p8"
             fi
             npx electron-builder --mac dmg zip --arm64 --publish never -c.extraMetadata.version="$OSAT_BUILD_VERSION"
+          elif [ -n "$OSAT_SIGN_P12" ]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            # Pack the app, sign it with the steady identity, then make the DMG and zip from that signed app.
+            CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dir --arm64 --publish never -c.mac.identity=- -c.extraMetadata.version="$OSAT_BUILD_VERSION"
+            KC="$RUNNER_TEMP/osat.keychain-db"; KCPW="$(uuidgen)"
+            security create-keychain -p "$KCPW" "$KC"
+            security set-keychain-settings -lut 21600 "$KC"
+            security unlock-keychain -p "$KCPW" "$KC"
+            printf '%s' "$OSAT_SIGN_P12" | base64 --decode > "$RUNNER_TEMP/osat.p12"
+            security import "$RUNNER_TEMP/osat.p12" -k "$KC" -P "$OSAT_SIGN_PASSWORD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPW" "$KC" > /dev/null
+            rm -f "$RUNNER_TEMP/osat.p12"
+            # A self-signed certificate is "not trusted" to macOS, so it is picked by its hash, not by `-v`.
+            HASH="$(security find-identity -p codesigning "$KC" | awk '/OSAT Local Signing/ {print $2; exit}')"
+            test -n "$HASH"
+            codesign --force --deep --options runtime --entitlements build/entitlements.mac.plist --keychain "$KC" --sign "$HASH" release/mac-arm64/OSAT.app
+            security delete-keychain "$KC"
+            codesign -d -r- release/mac-arm64/OSAT.app
+            npx electron-builder --prepackaged release/mac-arm64/OSAT.app --mac dmg zip --arm64 --publish never -c.mac.identity=null -c.extraMetadata.version="$OSAT_BUILD_VERSION"
           else
             unset CSC_LINK CSC_KEY_PASSWORD
             CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg zip --arm64 --publish never -c.mac.identity=- -c.extraMetadata.version="$OSAT_BUILD_VERSION"
