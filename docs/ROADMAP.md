@@ -53,6 +53,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 13e | A shelf for files on the move (Dropover style): shake or drag to park files, drop them later anywhere | Planned |
 | 13f | Mouse and scrolling (Linear Mouse style): scroll direction per device, smooth scrolling, pointer acceleration. Hard: needs a native helper | Planned |
 | 13g | Screenshots and screen recording from the launcher: CleanShot X when it's on the Mac (every capture, recent captures to drag out), else the Mac's own screenshots | Merged (PR #48) |
+| 13h | Quick bar fixes: the bar, Ask, the clipboard and the ring work over other apps; Paste lands in the right app; right-click for actions; drag from the preview; Copy text from the screen without CleanShot (the Mac's own text recognition); Ask's model menu solid | In review (PR #51) |
 | 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
@@ -71,7 +72,8 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 27c | Guided five-sticky sorting, destination previews, recent placements and recoverable Trash | Merged (PR #41) |
 | 27d | Sky session Undo/Redo for moves, connections, Tidy and Arrange; safe replay after later edits | Merged (PR #42) |
 | 27e | Focused Notes AI, explicit note sharing, review and linked-note save | Merged (PR #43) |
-| 27f | Sorting Unsorted redone: one sticky, ranked homes with reasons, Return moves, keys, Next up, Sort them all in the same screen; the AI always says what it's doing | In review (PR #49) |
+| 27f | Sorting Unsorted redone: one sticky, ranked homes with reasons, Return moves, keys, Next up, Sort them all in the same screen; the AI always says what it's doing | Merged (PR #49) |
+| 27g | Sort Unsorted made easy to read: one question ("Where does this sticky go?"), one blue button, quiet Skip / Put it on the Sky / Delete, "Sticky 2 of 3", Suggest homes for all in plain sentences | In review (PR #52) |
 | 28 | Tags that do things: #A2C to the Calendar, #N2D / #W2D / #N2B / #W2B lists, a starter set of nodes, dates in stickies show as coming up, ⌘9 quick sticky, "This reminded me" | Planned |
 | 29 | Recording made in OSAT (proposed): record an area, a window or the screen without CleanShot, trim, save as a GIF. Waits for Developer ID signing (backlog #6) | Planned |
 
