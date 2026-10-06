@@ -3,6 +3,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
+globalThis.__dbg = []
 const { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell, systemPreferences, utilityProcess } = require('electron')
 const { createUnder, guardFetch, isLocal, refusal } = require('./under.cjs')
 
@@ -439,6 +440,7 @@ function registerStore() {
   })
   ipcMain.handle('store:commit', (event, ops) => {
     assertTrustedSender(event)
+    globalThis.__dbg?.push(['commit', Date.now(), event.sender.getURL().split('?')[1] || 'desk', JSON.stringify((ops || []).map((op) => [op.t, op.c, op.id])).slice(0, 300), new Error().stack.split('\n').length])
     return store.commit(storeClient(event.sender), ops)
   })
   // Only used as a window closes, so its last keystrokes are never lost.
@@ -913,7 +915,6 @@ function phoneStatus() {
 
 // Both do nothing while the link is off, or paused while offline.
 const phoneLive = () => prefs.phone && !under.on
-globalThis.__dbg = []
 const mirrorSoon = (message) => {
   globalThis.__dbg.push(['soon', Date.now(), JSON.stringify((message?.ops || []).map((op) => [op.t, op.c, op.id, op.t === 'patch' && op.c !== 'sorter.boards' ? Object.keys(op.v || {}) : null]))])
   clearTimeout(phoneMirrorTimer)
