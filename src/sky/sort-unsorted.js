@@ -4,7 +4,7 @@
      { key, kind: 'move', folderId, noteIds }   these stickies look like they belong in it
      { key, kind: 'make', name, noteIds }       these could be a new node
    A single leftover never becomes a node of its own. Unsorted's sorter shows them under
-   "Sort them all". Pure. */
+   "Suggest homes for all". Pure. */
 
 import { readSortUnsortedAnswer, sortUnsortedMessages } from '../../shared/ai-tasks.mjs'
 import { folderChildren, folderPath, relatedNotes } from '../notes-model.js'

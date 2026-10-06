@@ -8,7 +8,7 @@ import { asksToSort } from './sort-unsorted.js'
 
 /* The AI, in the Sky: a pill at the bottom that opens a small card. Ask about your Sky ("which nodes
    belong together?"). Saying "sort these" (or pressing Sort Unsorted) opens Unsorted's sorter on
-   "Sort them all", the one place sorting happens. The answer says where it comes from and is kept
+   "Suggest homes for all", the one place sorting happens. The answer says where it comes from and is kept
    as a chat ("Keep talking" opens it in Ask). With no AI, the card says why and how to set it up.
    Esc puts the card away. */
 export function SkyAsk({ workspace, commit, models, ai, open, focus, asking, setAsking, navigate, onSortAll }) {

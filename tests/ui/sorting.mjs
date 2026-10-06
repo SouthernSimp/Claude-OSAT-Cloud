@@ -130,9 +130,9 @@ async function main() {
       if (!words.test(line)) problems.push(`${scenario}@${width}: the AI line said “${line}”`)
       await page.screenshot({ path: `${OUT}/${scenario}-${width}.png` })
       if (width === 1100 && scenario === 'ready') {
-        // Sort them all: one line per place, Move them all, one Undo.
-        await sorter.getByRole('button', { name: 'Sort them all' }).click()
-        await sorter.locator('.sorter-groups li').first().waitFor({ timeout: 5000 }).catch(() => problems.push('ready: Sort them all showed no groups'))
+        // Suggest homes for all: one line per place, Do all of these, one Undo.
+        await sorter.getByRole('button', { name: 'Suggest homes for all' }).click()
+        await sorter.locator('.sorter-groups li').first().waitFor({ timeout: 5000 }).catch(() => problems.push('ready: Suggest homes for all showed no groups'))
         await page.screenshot({ path: `${OUT}/sort-all-${width}.png` })
       }
       if (width === 1100 && scenario === 'none') {

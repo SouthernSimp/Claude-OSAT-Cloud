@@ -263,7 +263,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
       unsuggest(result.moved)
       return result
     },
-    /* Sort them all: each group into its place (or a new node), one step to undo. */
+    /* Suggest homes for all: each group into its place (or a new node), one step to undo. */
     fileGroups(groups) {
       const all = { changes: [], moved: [], made: [] }
       commit((state) => groups.reduce((next, group) => {
