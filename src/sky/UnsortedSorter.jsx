@@ -3,16 +3,12 @@ import { ArrowUpRight, Check, MagnifyingGlass, Plus, Sparkle, Stack, X } from '@
 
 import { actionLabel, localModel } from '../assistant/ai-state.js'
 import { useAiJob } from '../assistant/useAiJob.js'
-import { Markdown } from '../lib/markdown.jsx'
 import { inputActive, formatRelativeTime } from '../lib/ui.js'
 import { folderPath } from '../notes-model.js'
+import { writeSticky } from './Sticky.jsx'
 import { findPlaces, homeOptions, placementMessages, placementPlaces, readPlacement, sortQueue } from './sort-review.js'
 import { MOST, modelSuggestions, sortRequests, stillToSort, wordSuggestions } from './sort-unsorted.js'
 
-const bodyOf = (note) => {
-  const lines = note.markdown.trim().split('\n')
-  return lines[0] === note.title.trim() ? lines.slice(1).join('\n') : note.markdown
-}
 const sayStickies = (count) => `${count} ${count === 1 ? 'sticky' : 'stickies'}`
 const pathOf = (folders, id) => folderPath(folders, id).join(' › ')
 
@@ -317,8 +313,14 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
           <h3 className="sorter-question">Where does this sticky go?</h3>
           <div className="sorter-sticky">
             <article key={current.id} className="sorter-paper" data-paper={current.color || 'canary'}>
-              <h3>{current.title || 'Untitled'}</h3>
-              {bodyOf(current).trim() && <Markdown text={bodyOf(current)} />}
+              <textarea
+                key={`${current.id}:${current.markdown}`}
+                className="sorter-edit"
+                aria-label="Edit this sticky"
+                defaultValue={current.markdown}
+                spellCheck
+                onBlur={(event) => { if (event.target.value.trim()) writeSticky(actions.commit, current, event.target.value) }}
+              />
             </article>
             <p className="sorter-meta">
               <span>{[current.source && `From ${current.source}`, formatRelativeTime(current.createdAt)].filter(Boolean).join(' · ')}</span>
