@@ -24,6 +24,11 @@ and `relatedForAsk` in `work-scope.js`; step two: copied items and files, with s
 model, one switch, a first-time note), then bots and a
 "Record a skill" recorder (record steps in OSAT's own browser, replay as a named button), then Phase 27's connectors
 (first: see both ends of a connection in one view). Nate does not need Mac Calendar polish: Siri covers it.
+Also open (Oct 6, Claude): #58 (the quick bar's "Allow…" when a paste lacks Accessibility), #60 (CI signs every build with
+OSAT's own self-signed certificate, repository secrets `OSAT_SIGN_P12` / `OSAT_SIGN_PASSWORD`, so macOS keeps Accessibility across
+updates: the app's designated requirement is the certificate, not a per-build hash; the old ad-hoc signing was why Return on a
+copy only copied after each update), #62 (Phase 27h: see both ends of a connection). The MCP / local API / webhooks plan
+(roadmap 32–34, MCP server first) is waiting on Nate's three answers: order, read-only vs change keys, webhooks in or not.
 
 ## Working with Nate
 
@@ -338,6 +343,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     New branch / New branch inside are named in place (`actions.branching`); Rename for a branch
     goes through `actions.renaming` like a node's.
     Cards drift forever, so Playwright clicks on them need `{ force: true }`.
+    Phase 27h (`sky/connect-view.js`, pure): connections you can always see. Clicking a connection's line, "Show
+    what it's connected to" (a card's menu) and a line's "Show both ends" only move the camera (`showEnds` in Board.jsx; Esc
+    flies back via `before.connectHome`); when both ends can't fit at the smallest zoom it goes to the end that is off
+    screen. A line with one end off screen gets an edge label naming the other end (`edgeSpot`); nothing is ever rearranged.
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
     `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, `moveToItems` (every
     Move to menu), @mentions, `importNode`, the board's spots, sorting suggestions), `project-direction.js` (the

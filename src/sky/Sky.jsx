@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowCounterClockwise, ArrowClockwise, ArrowDown, ArrowsIn, Broom, CaretRight, CornersOut, Crosshair, DotsThree, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, SidebarSimple, Sparkle, Stack, Trash,
+  ArrowCounterClockwise, ArrowClockwise, ArrowDown, ArrowsIn, ArrowsOut, Broom, CaretRight, CornersOut, Crosshair, DotsThree, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, SidebarSimple, Sparkle, Stack, Trash,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
@@ -243,6 +243,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
     const targets = items[0]?.note ? items : items.filter((item, index) => key !== folderKey(ids[index]) && !already.includes(folderKey(ids[index])))
     return [
       targets.length ? { label: 'Connect to', icon: LineSegment, items: targets } : null,
+      already.length ? { label: 'Show what it’s connected to', icon: ArrowsOut, onSelect: () => board.current?.showConnected(key) } : null,
       already.length ? { label: 'Remove a connection', icon: Trash, items: already.map((other) => ({ label: nameOf(other), onSelect: () => actions.unlink(key, other) })) } : null,
     ]
   }
@@ -326,7 +327,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
       canvasCommit(`Removed the connection to “${nameOf(b)}”`, (state) => disconnect(state, a, b))
     },
     lineMenu(event, line) {
-      openMenu(event, [{ label: 'Remove the connection', icon: Trash, onSelect: () => actions.unlink(line.a, line.b) }])
+      openMenu(event, [
+        { label: 'Show both ends', icon: ArrowsOut, onSelect: () => board.current?.frameLink(line) },
+        { label: 'Remove the connection', icon: Trash, onSelect: () => actions.unlink(line.a, line.b) },
+      ])
     },
     /* Connect to (a node or branch; drag the dot for anything else) and Remove a connection. */
     connectMenu(event, key) {
