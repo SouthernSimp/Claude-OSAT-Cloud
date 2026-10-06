@@ -58,8 +58,9 @@ export const DEFAULT_SETTINGS = Object.freeze({
   pins: [],
   // Window keys (Control+Option+Arrow…) are off until turned on: they are global, and moving windows needs Accessibility.
   windows: { on: false, hotkeys: cleanWindowKeys(undefined) },
-  // The ring opens from Hyper R over any app (and with ⌘ + middle-click inside OSAT); null items means the usual eight.
-  ring: { on: true, hotkey: hyper('R'), items: null },
+  // The ring opens with Hyper + middle-click over any app (`middle`, a small helper: desktop/launcher/middle-click.cjs) or
+  // from Hyper R, and with ⌘ + middle-click inside OSAT; null items means the usual eight.
+  ring: { on: true, hotkey: hyper('R'), middle: true, items: null },
   // What a Hyper key made by another app sends: all four (⌃⌥⇧⌘), or ⌃⌥⌘ (Raycast's, unless "Include Shift").
   hyper: { sends: 'four' },
   // Screenshots and recording (shared/capture-model.mjs): a key for each, off until given one.
@@ -121,6 +122,7 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     ring: {
       on: from.ring?.on !== false,
       hotkey: key(from.ring?.hotkey, hyper('R')),
+      middle: from.ring?.middle !== false,
       items: Array.isArray(from.ring?.items) ? [...new Set(from.ring.items.filter((id) => RING_ITEMS.some((item) => item.id === id)))].slice(0, 8) : null,
     },
     hyper: { sends: from.hyper?.sends === 'three' ? 'three' : 'four' },

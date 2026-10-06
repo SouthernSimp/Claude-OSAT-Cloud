@@ -1,7 +1,6 @@
-/* The ring (Phase 13): quick tools in a circle around the pointer. It opens from a key over any app (Hyper R), and
-   with ⌘ + middle-click inside OSAT's own windows. Which tools, in what order, and where each one sits on the
-   circle. (⌘ + middle-click over other apps would need a global mouse hook, which OSAT doesn't have: see the roadmap.)
-   Pure. */
+/* The ring (Phase 13): quick tools in a circle around the pointer. It opens with Hyper + middle-click over any app
+   (a small helper watches the mouse: shared/ring-click.mjs), from a key (Hyper R), and with ⌘ + middle-click inside OSAT's
+   own windows. Which tools, in what order, and where each one sits on the circle. Pure. */
 import { CAPTURES } from './capture-model.mjs'
 
 /* Every tool the ring can hold. `layout` ones move the window you were in (they need Accessibility, and only make sense

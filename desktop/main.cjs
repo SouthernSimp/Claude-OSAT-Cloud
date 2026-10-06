@@ -666,6 +666,8 @@ async function registerLauncher() {
       sky: () => command({ view: 'Mindmap' }),
       files: () => command({ view: 'Files' }),
     },
+    // Hyper + middle-click over other apps: the launcher starts a small helper with this.
+    spawnHelper: require('node:child_process').spawn,
     barSpot: prefs.barSpot,
     onBarMoved: (spot) => {
       prefs = { ...prefs, barSpot: spot }

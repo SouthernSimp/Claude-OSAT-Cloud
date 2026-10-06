@@ -19,6 +19,7 @@ const { createCapture } = require('./capture.cjs')
 const { createClipboardHistory } = require('./clipboard-history.cjs')
 const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
+const { createMiddleClick } = require('./middle-click.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
@@ -31,12 +32,14 @@ async function createLauncher({
   offline = () => false, hideOnBlur = false, isTaken = () => false, onShow = () => {}, onHide = () => {}, exec, notify = () => {},
   // What the ring does that only main can: the desk, the Sky, Files.
   ringActions = {},
+  // What starts the middle-click helper (child_process's spawn, from main); the tests give none, so no process starts.
+  spawnHelper = null,
   // Where the bar was dragged to (its top middle), and how main keeps a new spot.
   barSpot = null, onBarMoved = () => {},
   // The apps on this Mac (tests hand in a short list).
   apps = createApps(),
 }) {
-  const [clipModel, launcherModel, layoutModel, ringModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs')])
+  const [clipModel, launcherModel, layoutModel, ringModel, clickModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs')])
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -163,6 +166,7 @@ async function createLauncher({
     for (const id of failed) next = clean(launcherModel.withKey(next, id, before[id] ?? null))
     settings = next
     applyHotkeys()
+    listenForMiddle()
     await writeSettings()
     history.limitsChanged()
     history.watch(settings.sources.clipboard.on)
@@ -179,6 +183,8 @@ async function createLauncher({
   on('search:status', () => ({
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
     keysFailed: hotkeys.failed(),
+    // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
+    middleClick: middleClick.state(),
   }), ofDesk)
   // The one place OSAT asks macOS for Accessibility: a button in Settings → Launcher, never by itself.
   on('search:ask-access', () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(true), ofDesk)
@@ -305,6 +311,23 @@ async function createLauncher({
     files: () => ringActions.files?.(),
   }
   const showRing = () => { if (settings.ring.on) ensureRing().show() }
+
+  /* Hyper + middle-click over any app (middle-click.cjs): the same ring, opened the way the key opens it (a moment later:
+     a panel shown while the keys are still down can lose focus). OSAT's own desk is left to its page, which opens the
+     desk's ring for ⌘ + middle-click (and so for Hyper's ⌘ too); two rings would be one too many. */
+  const onDesk = () => {
+    const window = mainWindow()
+    if (!window || window.isDestroyed() || !window.isFocused()) return false
+    const point = screen.getCursorScreenPoint()
+    const box = window.getBounds()
+    return point.x >= box.x && point.x < box.x + box.width && point.y >= box.y && point.y < box.y + box.height
+  }
+  const middleClick = createMiddleClick({
+    spawn: spawnHelper, platform, model: clickModel, sends: () => settings.hyper.sends,
+    onClick: () => { if (!onDesk()) setTimeout(showRing, 60) },
+    log: (text) => console.error('The ring’s middle-click helper:', text),
+  })
+  const listenForMiddle = () => middleClick.sync(settings.ring.on && settings.ring.middle)
   handle('ring:ready', () => { ring?.ready(); return true }, { from: ofRing })
   handle('ring:hide', () => { ring?.hide(); return true }, { from: ofRing })
   handle('ring:pick', async (id) => {
@@ -358,10 +381,12 @@ async function createLauncher({
       await history.start()
       history.watch(settings.sources.clipboard.on)
       applyHotkeys()
+      listenForMiddle()
     },
     stop() {
       history.stop()
       hotkeys.stop()
+      middleClick.stop()
     },
   }
 }
