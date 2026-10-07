@@ -5,8 +5,9 @@
 Settings → AI now says which model is best for this Mac (the most capable one its memory holds
 comfortably; on Nate's 64 GB M5 Pro, Qwen 3.6 35B), lists the ones already downloaded, and
 compares all nine side by side: what each is good at, speed, smarts, download size and the memory
-it needs. One that needs a bigger Mac says so instead of offering a download. Each was run through
-OSAT's own engine with OSAT's real sorting and "In short" questions before it was listed.
+it needs. One that needs a bigger Mac says so instead of offering a download. One of each family (Qwen
+3.5 4B, Ministral 3 3B, Qwen 3.6 35B) was run through OSAT's own engine with OSAT's real sorting
+and "In short" questions; the others share those families' engines.
 
 ## October 6: sorting Unsorted, redone
 
