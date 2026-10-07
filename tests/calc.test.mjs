@@ -49,3 +49,36 @@ test('anything that is not a sum answers nothing', () => {
   assert.equal(calculate(12), null)
   assert.equal(calculate(undefined), null)
 })
+
+test('units: lengths, weights, cooking, temperature, time, data and speed, offline', () => {
+  const said = (words) => calculate(words)?.text ?? null
+  assert.equal(said('5 km in miles'), '3.107 mi')
+  assert.equal(said('72 f to c'), '22.22 °C')
+  assert.equal(said('100 c to f'), '212 °F')
+  assert.equal(said('3 cups in ml'), '709.8 ml')
+  assert.equal(said('4 fl oz in ml'), '118.3 ml')
+  assert.equal(said('10 lb to kg'), '4.536 kg')
+  assert.equal(said('1 gb in mb'), '1,000 MB')
+  assert.equal(said('60 mph in km/h'), '96.56 km/h')
+  assert.equal(said('90 minutes in hours'), '1.5 h')
+  assert.equal(said('2*3 ft in cm'), '182.9 cm', 'the amount can be a sum')
+  assert.equal(said('5 km in kg'), null, 'kinds that don’t match are not a conversion')
+  assert.equal(said('the tent in the car'), null)
+})
+
+test('dates: days until a holiday or a day, days since, a day plus some time', () => {
+  const now = new Date(2026, 9, 6, 15) // Tuesday, October 6, 2026
+  const ask = (words) => calculate(words, { now })
+  assert.deepEqual([ask('days until christmas').text, ask('days until christmas').note], ['80 days', 'Until Friday, December 25, 2026'])
+  assert.equal(ask('how many days until thanksgiving?').text, '51 days')
+  assert.equal(ask('days until friday').text, '3 days')
+  assert.equal(ask('days until 12/25').text, '80 days')
+  assert.equal(ask('days until jan 1').note, 'Until Friday, January 1, 2027', 'a day already gone this year is next year’s')
+  assert.equal(ask('days since march 3').text, '217 days')
+  assert.equal(ask('days between dec 1 and jan 15').text, '45 days')
+  assert.equal(ask('weeks until new year').text, '12.4 weeks')
+  assert.deepEqual([ask('today + 30 days').text, ask('today + 30 days').note], ['Thursday, November 5, 2026', 'In 30 days'])
+  assert.equal(ask('today - 1 week').note, '7 days ago')
+  assert.equal(ask('days until someday'), null)
+  assert.equal(ask('2026-10-05'), null, 'a date alone is not a sum')
+})

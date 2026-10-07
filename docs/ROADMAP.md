@@ -26,6 +26,12 @@ topic's list has **List | Canvas** to see the same topic spread out. The Sky is 
 open board to think on, without a sidebar of its own or sorting screens (Notes' Unsorted has
 "Sort by hand", and the canvas's ⋯ menu too). Everything Nate reads says **topic** instead of
 node, and **canvas** instead of Sky.
+## October 6 (night): a smarter calculator
+
+The bar's calculator answers more than sums, all on this Mac: units ("5 km in miles", "72 f to c", "3 cups in ml",
+"10 lb to kg", "1 gb in mb", "60 mph in km/h") and dates ("days until christmas", "days until friday", "days since
+march 3", "days between dec 1 and jan 15", "today + 30 days"). Currency waits: it needs today's rates from the
+internet, which OSAT doesn't fetch on its own yet.
 
 ## October 6: sorting Unsorted, redone
 
@@ -117,6 +123,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 36 | One bar, one list: no tabs; Ask AI first, then apps, files, copies and notes with See all; Tab asks; ↓ shows the latest copies | In review |
 | 37 | Choose your AI: best for this Mac, your models, and nine local models compared (Gemma 4, Qwen 3.5/3.6, Ministral 3) | In review |
 | 38 | Notes is home, the Sky becomes Canvas: one sidebar, List \| Canvas per topic, "topic" instead of node everywhere | In review |
+| 40 | A smarter calculator: units and dates, offline (currency later: it needs the internet) | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

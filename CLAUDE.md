@@ -227,7 +227,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   this Mac can do, `captures` in launcher.json) — Phase 13's pure rules, shared by main, the panel and the desk: how typed
   words are read (`readTyped`, `readLine`, keywords), how sources become one list of rows (`buildRows`), what Return
   and ⌘K do (`actionsFor`), the clipboard's kinds, limits and groups, "Add to Jordan?" (`offerFor`), the safe
-  calculator (never eval), where each layout puts a window, and the ring's tools.
+  calculator (never eval; since Phase 40 also units, "5 km in miles", and dates, "days until christmas", worked out offline), where each layout puts a window, and the ring's tools.
 - `shared/note-core.mjs` — the note record (`normalizeNote`, `parseTags`), shared so the main
   process makes notes exactly like the windows (`src/note-core.js` re-exports it).
 - `shared/node-file.mjs` — node files, read one way everywhere (drop folder, the Sky's Import, the
