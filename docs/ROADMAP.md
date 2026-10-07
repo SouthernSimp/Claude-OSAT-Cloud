@@ -32,6 +32,12 @@ The bar's calculator answers more than sums, all on this Mac: units ("5 km in mi
 "10 lb to kg", "1 gb in mb", "60 mph in km/h") and dates ("days until christmas", "days until friday", "days since
 march 3", "days between dec 1 and jan 15", "today + 30 days"). Currency waits: it needs today's rates from the
 internet, which OSAT doesn't fetch on its own yet.
+## October 6 (late night): Ask, tidier and honest about the cloud
+
+Ask said "Nothing leaves this Mac" even with a cloud model chosen; now the line under the box says where the
+question goes ("On this Mac", or "To DeepSeek"). The last answer has **Try again**, and your last question **Edit**
+(both with Undo). Which notes a conversation reads is a small menu in the box, Attach and Speak are icons, and the
+second privacy footer and the duplicate New button are gone.
 
 ## October 6: sorting Unsorted, redone
 
@@ -125,6 +131,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 37 | Choose your AI: best for this Mac, your models, and nine local models compared (Gemma 4, Qwen 3.5/3.6, Ministral 3) | In review |
 | 38 | Notes is home, the Sky becomes Canvas: one sidebar, List \| Canvas per topic, "topic" instead of node everywhere | In review |
 | 40 | A smarter calculator: units and dates, offline (currency later: it needs the internet) | In review |
+| 42 | Ask, tidier and honest: where a question goes, Try again, Edit your last question, a calmer box | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
