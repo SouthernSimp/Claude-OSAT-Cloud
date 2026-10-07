@@ -44,7 +44,7 @@ next sort, so nothing depends on anyone remembering the chat.
 | Idea | Suggested | Rank |
 |---|---|---|
 | Use the DigitalOcean droplet for extra features (Nate, Oct 6, "eventually, idk"). Needs a goal first, e.g. a private sync relay or hosting a bigger model; would have to stay opt-in and keep notes private | Oct 6 | Unranked |
-| UI smoke test flake: "widgets: Esc did not put the tray away" failed once on a pull-request run and passed on rerun (Oct 6). Make the wait explicit so a red check always means a real problem | Oct 6 | Unranked (small, would rank near #2) |
+| UI smoke test flake: "widgets: Esc did not put the tray away" failed once on a pull-request run and passed on rerun (Oct 6). Make the wait explicit so a red check always means a real problem | Oct 6 | Done (PR #67): the tray's Esc listener now attaches before its first paint |
 | Show this ranked list inside OSAT beside the Roadmap (Tools → Roadmap) so Nate reads it in the app | Oct 6 | Unranked |
 | Attach reference images inside a sticky on the desk (Nate's idea): drop a picture onto a sticky, it shows small inside it and opens big | Oct 7 | Unranked (not Phase 13c) |
 | Settings: Launcher → Quick bar and General both hold the bar's keys; fold them into one place once Nate says which he looks in | Oct 7 | Unranked (small) |
