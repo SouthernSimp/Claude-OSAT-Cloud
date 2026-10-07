@@ -1,5 +1,12 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 6 (late night): Ask, tidier and honest about the cloud
+
+Ask said "Nothing leaves this Mac" even with a cloud model chosen; now the line under the box says where the
+question goes ("On this Mac", or "To DeepSeek"). The last answer has **Try again**, and your last question **Edit**
+(both with Undo). Which notes a conversation reads is a small menu in the box, Attach and Speak are icons, and the
+second privacy footer and the duplicate New button are gone.
+
 ## October 6: sorting Unsorted, redone
 
 Nate found the guided sorting screen a mess. It is now one sticky at a time with its likely
@@ -85,6 +92,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Planned |
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
+| 42 | Ask, tidier and honest: where a question goes, Try again, Edit your last question, a calmer box | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

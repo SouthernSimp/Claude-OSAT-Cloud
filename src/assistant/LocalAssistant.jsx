@@ -1,6 +1,8 @@
 import {
   ArrowClockwise,
   ArrowUp,
+  Cloud,
+  PencilSimple,
   ChatsCircle,
   Check,
   ArrowsOut,
@@ -50,7 +52,7 @@ export const modelLabel = (model) =>
   typeof model === "string" ? model : model?.name || model?.id || "Local model";
 
 /* Where the answer comes from, said plainly: this Mac, or the cloud provider it goes to. */
-export const whereLine = (model) => (model?.offline === false ? `Sent to ${model.where} · ${modelLabel(model).replace(` · ${model.where}`, "")} · copies and files stay on this Mac` : `${modelLabel(model)} · on this Mac`);
+export const whereLine = (model) => (model?.offline === false ? `Sent to ${model.where} · copies and files stay on this Mac` : `${modelLabel(model)} · on this Mac`);
 
 const dayLabel = (iso) => {
   const date = new Date(iso);
@@ -137,6 +139,8 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const [files, setFiles] = useState([]);
   const [reading, setReading] = useState(false);
   const [dropping, setDropping] = useState(false);
+  // Edit on your last question: it waits in the box, and asking replaces that question and its answer.
+  const [editing, setEditing] = useState(false);
   const fileApi = typeof window === "undefined" ? null : window.nateOSFiles;
 
   const abortRef = useRef(null);
@@ -285,15 +289,25 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     abortRef.current = null;
   }
 
-  async function ask(text = draft, { retry = false } = {}) {
+  async function ask(text = draft, { retry = false, redo = editing } = {}) {
     const content = text.trim();
     if (!content || busy || !model || content.length > 8000) return;
+    setEditing(false);
     const noteIds = text === asking ? using : pickNotes(content);
     setBusy(true);
     const replyingModel = models?.find((item) => item.id === model);
     const found = await findForAsk(content, isLocalModel(replyingModel) && active?.contextScope?.kind !== "none");
     let base = active || newChat();
     if (retry && base.messages.at(-1)?.role === "user") base = { ...base, messages: base.messages.slice(0, -1) };
+    // Try again, or an edited question: the last question and its answer make way (Undo puts them back).
+    if (redo && !retry) {
+      const at = base.messages.map((message) => message.role).lastIndexOf("user");
+      if (at >= 0) {
+        const before = base;
+        base = { ...base, messages: base.messages.slice(0, at) };
+        showUndo("Asked again", () => commit((state) => putChat(state, before)));
+      }
+    }
     const question = newMessage("user", content, { ...(noteIds.length ? { noteIds } : {}), ...(files.length ? { files: files.map((file) => file.name) } : {}), ...sourceRefs(found) });
     const chat = { ...base, modelId: model, messages: [...base.messages, question] };
     commit((state) => putChat(state, chat));
@@ -374,6 +388,9 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const openNote = (noteId) => navigate?.("Notes", { noteId });
   const visible = useMemo(() => searchChats(chats, search), [chats, search]);
   const lastPrompt = messages.at(-1)?.role === "user" ? messages.at(-1).content : "";
+  const lastQuestion = [...messages].reverse().find((message) => message.role === "user") || null;
+  const lastQuestionId = lastQuestion?.id;
+  const replying = models?.find((item) => item.id === model) || null;
   const noteTitle = (id) => workspace.notes.find((note) => note.id === id)?.title || "Untitled";
 
   const popOut = !compact && typeof window !== "undefined" && window.osatChat;
@@ -438,7 +455,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
           <div className="chat-head-actions">
             <ModelMenu models={models || []} status={ai} value={model} disabled={busy} onChange={chooseModel}
               bridge={bridge} navigate={navigate} onMessage={showUndo} />
-            <button className="outline-button" type="button" onClick={startChat}>
+            <button className="outline-button chat-new" type="button" onClick={startChat}>
               <Plus /> New
             </button>
             {popOut && (
@@ -500,8 +517,16 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                     </p>
                   )}
                   <ActionCards actions={pending[message.id]} onAdd={(action) => approve(message.id, action)} onDiscard={(action) => discard(message.id, action)} />
+                  {message.role === "user" && message.id === lastQuestionId && !busy && (
+                    <div className="bubble-actions is-question">
+                      <button type="button" onClick={() => { setDraft(message.content); setEditing(true); requestAnimationFrame(() => inputRef.current?.focus()); }}><PencilSimple /> Edit</button>
+                    </div>
+                  )}
                   {message.role === "assistant" && (
                     <div className="bubble-actions">
+                      {message.id === messages.at(-1)?.id && !busy && lastQuestion && (
+                        <button type="button" title="Ask the same question again" onClick={() => ask(lastQuestion.content, { redo: true })}><ArrowClockwise /> Try again</button>
+                      )}
                       <button type="button" disabled={!!message.savedNoteId} onClick={() => saveToNotes(message)}>
                         {message.savedNoteId ? <Check /> : <NotePencil />}
                         {message.savedNoteId ? "Saved" : "Save to Notes"}
@@ -547,11 +572,9 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
         )}
 
         <div className="composer">
-          <label className="ask-conversation-scope">Notes for this conversation<select aria-label="Conversation note scope" value={active?.contextScope?.kind || "workspace"} disabled={busy} onChange={(event) => {
-            const contextScope = { kind: event.target.value, ...(active?.contextScope?.folderId ? { folderId: active.contextScope.folderId } : {}) };
-            commit((state) => { const chat = active || newChat({ modelId: model }); if (!active) setActiveId(chat.id); return putChat(state, { ...chat, contextScope }); });
-            setDropped(new Set());
-          }}><option value="workspace">Workspace · related notes</option>{active?.contextScope?.folderId && <option value="focus">This topic · {workspace.folders.find((folder) => folder.id === active.contextScope.folderId)?.name || "Removed topic"}</option>}<option value="none">No notes</option></select></label>
+          {editing && (
+            <div className="ask-editing" role="status"><PencilSimple /> Editing your last question. Asking replaces it and its answer. <button type="button" onClick={() => { setEditing(false); setDraft(""); }}>Cancel</button></div>
+          )}
           {isLocalModel(models?.find((item) => item.id === model)) && <AskSourcesNotice />}
           {voiceHint && <div className="voice-hint" role="status"><Microphone /><span><strong>Speak with Mac Dictation</strong>Press Fn twice, then speak. Your words appear here before anything is sent.</span><button type="button" aria-label="Dismiss voice instructions" onClick={() => setVoiceHint(false)}><X /></button></div>}
           {(files.length > 0 || reading) && (
@@ -593,12 +616,24 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
             }}
           />
           <div className="composer-foot">
-            <span className="composer-note"><LockKey /> Nothing leaves this Mac</span>
+            {/* Which notes it reads, and where the question goes: said plainly, and true for the model chosen. */}
+            <select className="ask-scope-pill" aria-label="Notes this conversation reads" value={active?.contextScope?.kind || "workspace"} disabled={busy} onChange={(event) => {
+              const contextScope = { kind: event.target.value, ...(active?.contextScope?.folderId ? { folderId: active.contextScope.folderId } : {}) };
+              commit((state) => { const chat = active || newChat({ modelId: model }); if (!active) setActiveId(chat.id); return putChat(state, { ...chat, contextScope }); });
+              setDropped(new Set());
+            }}>
+              <option value="workspace">Reads related notes</option>
+              {active?.contextScope?.folderId && <option value="focus">Reads this topic</option>}
+              <option value="none">Reads no notes</option>
+            </select>
+            {replying && !isLocalModel(replying)
+              ? <span className="composer-note is-cloud" title={whereLine(replying)}><Cloud /> To {replying.where || "the cloud"}</span>
+              : <span className="composer-note" title="Nothing leaves this Mac"><LockKey /> On this Mac</span>}
             <span className="composer-spacer" />
             {fileApi?.attachChosen && (
-              <button className="voice-button" type="button" aria-label="Attach a file" title="Attach a file, or drop one here" disabled={busy || reading} onClick={() => attach(() => fileApi.attachChosen())}><Paperclip /> File</button>
+              <button className="voice-button is-icon" type="button" aria-label="Attach a file" title="Attach a file, or drop one here" disabled={busy || reading} onClick={() => attach(() => fileApi.attachChosen())}><Paperclip /></button>
             )}
-            <button className="voice-button" type="button" aria-label="Speak with Mac Dictation" title="Speak with Mac Dictation" disabled={busy || !model} onClick={() => { setVoiceHint(true); inputRef.current?.focus(); }}><Microphone /> Speak</button>
+            <button className="voice-button is-icon" type="button" aria-label="Speak with Mac Dictation" title="Speak with Mac Dictation" disabled={busy || !model} onClick={() => { setVoiceHint(true); inputRef.current?.focus(); }}><Microphone /></button>
             {busy ? (
               <button className="primary-button send" type="button" onClick={cancel}>
                 <Stop weight="fill" /> Stop
@@ -611,12 +646,6 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
           </div>
         </div>
 
-        {!compact && (
-          <footer className="chat-foot">
-            <span><LockKey /> Runs on this Mac · no cloud</span>
-            <button type="button" onClick={() => navigate?.("Settings", { section: "ai" })}>AI settings</button>
-          </footer>
-        )}
       </div>
 
       {railOpen && <div className="rail-scrim" onClick={() => setRailOpen(false)} />}

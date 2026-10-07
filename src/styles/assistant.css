@@ -680,7 +680,7 @@
 .composer {
   max-width: 760px;
   width: calc(100% - var(--gutter) * 2);
-  margin: var(--s-2) auto 0;
+  margin: var(--s-2) auto var(--s-4);
   padding: var(--s-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-xl);
@@ -851,34 +851,9 @@
   font-size: var(--t-xs);
 }
 
-.chat-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-4);
-  max-width: 760px;
-  width: 100%;
-  margin-inline: auto;
-  padding: var(--s-2) var(--gutter) var(--s-3);
-  color: var(--faint);
-  font-size: var(--t-2xs);
-}
 
-.chat-foot span {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-}
 
-.chat-foot svg {
-  width: 12px;
-  height: 12px;
-}
 
-.chat-foot button {
-  color: var(--accent);
-  font-size: var(--t-2xs);
-}
 
 /* ---- Responsive ------------------------------------------------------------- */
 
@@ -940,9 +915,6 @@
     max-width: 90%;
   }
 
-  .chat-foot span {
-    max-width: 62%;
-  }
 }
 
 /* ---- Files in Ask ----------------------------------------------------------- */
@@ -1063,3 +1035,26 @@ html:has(.quick-chat) body { background: transparent; }
   font-size: inherit;
   text-decoration: underline;
 }
+
+/* The rail's New chat is the one to use while the rail shows; the header's New only when it is tucked away. */
+.chat-head .chat-new { display: none; }
+@container room (max-width: 760px) { .chat-head .chat-new { display: inline-flex; } }
+
+/* Which notes a conversation reads: a small menu in the composer's foot. */
+.ask-scope-pill { flex: 0 1 auto; width: auto; min-width: 0; max-width: 190px; text-overflow: ellipsis; padding: 4px 24px 4px 10px; border-radius: var(--r-full); border: 1px solid var(--line); background-color: transparent; color: var(--muted); font-size: var(--t-xs); }
+.ask-scope-pill:hover { color: var(--ink); border-color: var(--line-strong); }
+/* A cloud model: where the question goes, said where it is written. */
+.composer-note { white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.composer-foot .send { flex: none; }
+.composer-note.is-cloud { color: var(--accent); }
+
+/* Editing the last question. */
+.ask-editing { display: flex; align-items: center; gap: var(--s-2); padding: 6px 10px; margin-bottom: var(--s-2); border-radius: var(--r-md); background: var(--accent-soft); color: var(--ink); font-size: var(--t-xs); }
+.ask-editing svg { color: var(--accent); }
+.ask-editing button { margin-left: auto; color: var(--accent); font-weight: 600; }
+.bubble-actions.is-question { justify-content: flex-end; opacity: 0; transition: opacity .15s; }
+.bubble.user:hover .bubble-actions.is-question, .bubble-actions.is-question:focus-within { opacity: 1; }
+
+/* Attach and Speak as icons, so where the question goes and which notes it reads have room. */
+.voice-button.is-icon { width: 32px; height: 32px; padding: 0; justify-content: center; flex: none; }
+.voice-button.is-icon svg { width: 17px; height: 17px; }
