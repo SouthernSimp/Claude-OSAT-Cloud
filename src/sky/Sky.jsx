@@ -477,7 +477,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
       const before = latest.current
       const moved = new Set(before.notes.filter((note) => folderSubtree(before.folders, folder.id).has(note.folderId)).map((note) => note.id))
       commit((state) => removeFolder(state, folder.id))
-      showUndo(`Deleted ${isBranch(folder) ? 'branch' : 'node'} “${folder.name}”. ${folder.parentId ? 'Its stickies moved up a level.' : 'Its stickies are in Unsorted.'}`, () => commit((state) => {
+      showUndo(`Deleted ${isBranch(folder) ? 'branch' : 'topic'} “${folder.name}”. ${folder.parentId ? 'Its stickies moved up a level.' : 'Its stickies are in Unsorted.'}`, () => commit((state) => {
         const old = new Map(before.notes.filter((note) => moved.has(note.id)).map((note) => [note.id, note]))
         return { ...state, folders: before.folders, notes: state.notes.map((note) => (old.has(note.id) ? { ...note, folderId: old.get(note.id).folderId, unsorted: old.get(note.id).unsorted, rank: old.get(note.id).rank } : note)) }
       }))
