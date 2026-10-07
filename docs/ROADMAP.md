@@ -1,5 +1,14 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 6 (night): Notes is home, the Sky becomes Canvas
+
+Notes and the Sky were two places for the same stickies, with two sidebars and two words
+("nodes" and "topics"). Now Notes is home: its sidebar is Unsorted, Filed for you, your topics; a
+topic's list has **List | Canvas** to see the same topic spread out. The Sky is now **Canvas**: an
+open board to think on, without a sidebar of its own or sorting screens (Notes' Unsorted has
+"Sort by hand", and the canvas's ⋯ menu too). Everything Nate reads says **topic** instead of
+node, and **canvas** instead of Sky.
+
 ## October 6: sorting Unsorted, redone
 
 Nate found the guided sorting screen a mess. It is now one sticky at a time with its likely
@@ -85,6 +94,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Planned |
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
+| 38 | Notes is home, the Sky becomes Canvas: one sidebar, List \| Canvas per topic, "topic" instead of node everywhere | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

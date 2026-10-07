@@ -62,7 +62,7 @@ function createDropFolder({ dir, core, take, fs = nodeFs, now = () => Date.now()
     let count = 0
     for (const { name, file, tooBig } of files) {
       if (tooBig) {
-        await setAside(file, name, 'It’s bigger than a node file can be (2 MB).')
+        await setAside(file, name, 'It’s bigger than a topic file can be (2 MB).')
         continue
       }
       let body

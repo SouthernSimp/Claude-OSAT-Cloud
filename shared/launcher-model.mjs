@@ -18,7 +18,7 @@ export const SOURCES = [
   { id: 'files', label: 'Files', blurb: 'Documents, pictures and folders on this Mac, the ones you used lately first', keyword: 'f', letter: 'S' },
   { id: 'clipboard', label: 'Clipboard', blurb: 'Everything you copy, kept only on this Mac', keyword: 'v', letter: 'V' },
   { id: 'apps', label: 'Apps', blurb: 'Open any app on this Mac', keyword: 'a', letter: 'A' },
-  { id: 'notes', label: 'Notes and nodes', blurb: 'Your own notes, nodes and rooms', keyword: 'n', letter: 'N' },
+  { id: 'notes', label: 'Notes and topics', blurb: 'Your own notes, topics and rooms', keyword: 'n', letter: 'N' },
   { id: 'calc', label: 'Calculator', blurb: 'Type a sum and the answer is right there', keyword: null, letter: null },
   { id: 'windows', label: 'Window layouts', blurb: 'Snap the window you were in to a half, a third or a corner', keyword: 'w', letter: 'W' },
 ]

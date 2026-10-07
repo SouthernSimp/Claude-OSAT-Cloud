@@ -271,7 +271,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `?fresh=1` starts the preview empty).
   - `App.jsx`: picks the surface: the desk (`shell/Desk.jsx`), `?surface=phone` the iPhone app (`surfaces/Phone.jsx`:
     Today, Notes, iCloud), `?surface=search` the quick bar (with Ask inside it), `?surface=ring` the ring.
-  - `lib/spaces.js`: the one list of spaces (Desk, Notes, Sky (id `Mindmap`), Ask, Files), tools and
+  - `lib/spaces.js`: the one list of spaces (Desk, Notes, Canvas (id `Mindmap`, once the Sky), Ask, Files), tools and
     Settings. The dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
   - `views/Roadmap.jsx`: Tools → Roadmap (also ⌘K and the Go menu) shows docs/ROADMAP.md, built in
     with `?raw` and drawn by `lib/markdown.jsx`. Nate reads it there: keep it in plain words, the
@@ -372,6 +372,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - Styles: `src/styles/`, tokens in `tokens.css`.
   - `lib/UndoToast.jsx`: `useUndoToast()`, the one Undo toast (Notes, Money, Calendar); remove at once, offer Undo. `glass.css` loads last: the glass kit, the dock,
     transitions, and the token overrides that make the quick bar see-through.
+- Words (Phase 38, Oct 2026): what Nate reads says **topic** (never node) and **canvas** (never Sky): "New topic",
+  "Delete topic", "a topic file", "See it on the canvas", the dock's Canvas. The code keeps its names (`nodes-model.js`,
+  `folder`, the room id `Mindmap`, `src/sky/`, the drop folder `OSAT Nodes`, the connector's `add_node`). Where the
+  older notes below say node or Sky, read topic and canvas on screen.
 - Words (Phase 12): one word per thing everywhere: sticky, note, node, branch, Unsorted,
   Delete, Move to, New node / New branch, Write a sticky, Color. Never thought (for a card),
   folder (for a node), Unfiled, To sort, Toss, Clear, Put inside, Make it a node. Nodes show

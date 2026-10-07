@@ -123,7 +123,7 @@ test('Return does the obvious thing, and ⌘K lists the rest', () => {
   assert.deepEqual(actionsFor({ kind: 'link', data: clip('l', 'https://x.example', { kind: 'link' }) }).map((action) => action.id), ['paste', 'copy', 'open-link', 'add', 'pin', 'delete'])
   assert.deepEqual(actionsFor({ kind: 'image', data: { id: 'i', kind: 'image', pinned: true } }).map((action) => action.label), ['Paste', 'Copy', 'Unpin', 'Delete'])
   assert.equal(actionsFor({ kind: 'app', data: {} })[0].id, 'open-app')
-  assert.equal(actionsFor({ kind: 'node', data: {} })[0].label, 'Open in the Sky')
+  assert.equal(actionsFor({ kind: 'node', data: {} })[0].label, 'Open on the canvas')
   assert.equal(actionsFor({ kind: 'calc', data: {} })[0].label, 'Copy the answer')
   assert.deepEqual(actionsFor(null), [])
   assert.deepEqual(actionsFor({ kind: 'mystery' }), [])

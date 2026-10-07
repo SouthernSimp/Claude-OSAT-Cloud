@@ -493,7 +493,7 @@ export function Desk() {
       <GlassDefs />
       <SaveStatus recovery />
       <div className="workspace-content is-filled" inert={welcome || tour || away || undefined}>
-        <button type="button" className="sky-entry" aria-label="Open the Sky" onClick={() => goUp()}><TreeStructure aria-hidden="true" /> Sky <kbd>⌘3</kbd></button>
+        <button type="button" className="sky-entry" aria-label="Open the canvas" onClick={() => goUp()}><TreeStructure aria-hidden="true" /> Canvas <kbd>⌘3</kbd></button>
         <FieldDesk
           {...common}
           visit={visit}

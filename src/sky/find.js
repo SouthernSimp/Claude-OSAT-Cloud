@@ -9,6 +9,6 @@ export function findSky(workspace, query) {
     .slice(0, 8)
     .map((row) => {
       const folder = row.kind === 'folder' && workspace.folders.find((item) => item.id === row.go[1].folderId)
-      return { ...row, type: folder ? (folder.parentId || isBranch(folder) ? 'Branch' : 'Node') : 'Sticky' }
+      return { ...row, type: folder ? (folder.parentId || isBranch(folder) ? 'Branch' : 'Topic') : 'Sticky' }
     })
 }

@@ -61,7 +61,7 @@ export async function getLocalModels({ signal } = {}) {
 export async function askLocalModel(messages, { signal, onDelta, unavailableMessage } = {}) {
   const models = await getLocalModels({ signal })
   const model = models.find((item) => item.offline === true && !item.id.startsWith('cloud:'))
-  if (!model) throw new Error(unavailableMessage || 'Local AI is unavailable. You can still use the suggestion or place this on Sky.')
+  if (!model) throw new Error(unavailableMessage || 'Local AI is unavailable. You can still use the suggestion or place this on the canvas.')
   return streamLocalMessage({ model: model.id, messages, signal, onDelta })
 }
 

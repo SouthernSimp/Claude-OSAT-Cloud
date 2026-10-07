@@ -18,7 +18,7 @@ export function inline(text, handlers = {}, keyPrefix = "i") {
       const plain = { ...handlers, mentions: null };
       return parts.flatMap((part, index) => (typeof part === "string"
         ? [].concat(inline(part, plain, `${keyPrefix}-m${index}`))
-        : [<button type="button" key={`${keyPrefix}-m${index}`} className="md-mention" title="See it in the Sky" onClick={() => handlers.onMention(part.folderId)}>{part.text}</button>]));
+        : [<button type="button" key={`${keyPrefix}-m${index}`} className="md-mention" title="See it on the canvas" onClick={() => handlers.onMention(part.folderId)}>{part.text}</button>]));
     }
   }
   const nodes = [];

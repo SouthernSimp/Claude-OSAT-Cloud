@@ -9,9 +9,10 @@ import {
 
 export const SPACES = [
   { id: 'Today', label: 'Desk', icon: House, hint: 'The desk and your day' },
-  { id: 'Notes', label: 'Notes', icon: NotePencil, hint: 'Every page, sorted or not' },
-  // The Sky, the layer above the desk: your nodes (it was the Map).
-  { id: 'Mindmap', label: 'Sky', icon: TreeStructure, hint: 'Your nodes, on one whiteboard  ⌥⌘↑' },
+  // Notes is home: your topics and stickies (Oct 2026).
+  { id: 'Notes', label: 'Notes', icon: NotePencil, hint: 'Your topics and stickies' },
+  // The canvas, the layer above the desk (it was the Sky, and before that the Map): room to think.
+  { id: 'Mindmap', label: 'Canvas', icon: TreeStructure, hint: 'An open board to think on  ⌥⌘↑' },
   // Ask lives in the desk's line; its room (every chat) is under Tools and ⌘4.
   { id: 'Assistant', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac', dock: false },
   { id: 'Files', label: 'Files', icon: Files, hint: 'Your Desktop, Documents and Downloads' },
@@ -19,7 +20,7 @@ export const SPACES = [
 
 export const TOOLS = [
   // A table of its own for a pile of paper stickies, until it's sorted and goes to the Sky.
-  { id: 'Pile', label: 'Sort a pile', icon: Stack, hint: 'Toss a pile of stickies down, group them, send it to the Sky' },
+  { id: 'Pile', label: 'Sort a pile', icon: Stack, hint: 'Toss a pile of stickies down, group them, send it to the canvas' },
   { id: 'Journal', label: 'Journal', icon: BookOpenText, hint: 'A page for every day' },
   { id: 'Calendar', label: 'Calendar', icon: CalendarBlank, hint: 'The month, and the day in it' },
   { id: 'Habits', label: 'Habits', icon: ListChecks, hint: 'Small things, kept daily' },
@@ -37,8 +38,8 @@ export const HIDDEN = [
 
 const ALL = [...SPACES, ...TOOLS, SETTINGS, ...HIDDEN]
 
-/* The Sky is the room once called the Map. */
-const ALIASES = { Sky: 'Mindmap' }
+/* The canvas is the room once called the Map, then the Sky. */
+const ALIASES = { Sky: 'Mindmap', Canvas: 'Mindmap' }
 
 export function spaceFor(view) {
   const id = ALIASES[view] || view

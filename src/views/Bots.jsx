@@ -33,7 +33,7 @@ export function BotsSettings() {
       <section className="content-card">
         <p className="eyebrow">BOTS</p>
         <h2>Bots reach OSAT in the Mac app.</h2>
-        <p>In the Mac app, a bot like Muse saves a node file in a folder on your Mac, and it appears in your Sky. Cloud models connect there too.</p>
+        <p>In the Mac app, a bot like Muse saves a topic file in a folder on your Mac, and it appears on your canvas. Cloud models connect there too.</p>
       </section>
     )
   }
@@ -55,8 +55,8 @@ function DropFolderCard({ bridge, nodes }) {
   return (
     <section className="content-card bots-card">
       <p className="eyebrow">NODES FROM BOTS</p>
-      <h2>Bots save nodes in one folder.</h2>
-      <p>A node file saved here appears in your Sky, marked New, a few seconds later. The file then moves to Added in the same folder. Nothing is deleted, and it works offline.</p>
+      <h2>Bots save topics in one folder.</h2>
+      <p>A topic file saved here appears on your canvas, marked New, a few seconds later. The file then moves to Added in the same folder. Nothing is deleted, and it works offline.</p>
       {nodes?.dir && <p className="settings-path">{nodes.dir}</p>}
       {nodes?.error && <p className="bots-warning" role="status">{nodes.error}</p>}
       <div className="button-row">
@@ -88,7 +88,7 @@ function DropFolderCard({ bridge, nodes }) {
           ))}
         </ul>
       )}
-      {!last && !nodes?.setAside?.length && <p className="ai-note">Nothing has arrived yet. Copy the instructions into a bot, and ask it to save a node here.</p>}
+      {!last && !nodes?.setAside?.length && <p className="ai-note">Nothing has arrived yet. Copy the instructions into a bot, and ask it to save a topic here.</p>}
     </section>
   )
 }
@@ -244,7 +244,7 @@ function ConnectorCard({ bridge, connector }) {
     <section className="content-card bots-card">
       <p className="eyebrow">CONNECTOR</p>
       <h2>{on ? 'Apps on this Mac can reach OSAT.' : 'Let apps on this Mac reach OSAT.'}</h2>
-      <p>The OSAT connector lets Claude Code, Claude Desktop, Grok Bot and other apps that speak MCP list, read and add nodes and stickies. It only listens on this Mac, never on the network, and every app needs its key.</p>
+      <p>The OSAT connector lets Claude Code, Claude Desktop, Grok Bot and other apps that speak MCP list, read and add topics and stickies. It only listens on this Mac, never on the network, and every app needs its key.</p>
       {connector?.error && <p className="bots-warning" role="status">{connector.error}</p>}
       <div className="button-row">
         {on
@@ -276,7 +276,7 @@ function ConnectorCard({ bridge, connector }) {
           ))}
         </ul>
       )}
-      <p className="ai-note">Muse’s custom connectors run in Meta’s cloud, so they can’t reach this Mac. Muse saves nodes through the folder above instead.</p>
+      <p className="ai-note">Muse’s custom connectors run in Meta’s cloud, so they can’t reach this Mac. Muse saves topics through the folder above instead.</p>
     </section>
   )
 }

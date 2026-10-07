@@ -143,42 +143,6 @@
 .sky-icon-button:hover:not(:disabled) { background: var(--surface-hover); color: var(--ink); }
 .sky-workspace button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sky-workbench { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; min-height: 0; }
-.sky-workspace[data-navigator] .sky-workbench { grid-template-columns: 228px minmax(0, 1fr); }
-.sky-navigator { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--surface); border-right: 1px solid var(--line); }
-.sky-nav-intro { padding: 26px 20px 22px; }
-.sky-nav-intro strong { font-size: var(--t-sm); font-weight: 600; }
-.sky-nav-intro p { margin: 7px 0 0; color: var(--muted); font-size: var(--t-xs); }
-.sky-nav-views { display: grid; gap: 4px; padding: 0 12px 20px; border-bottom: 1px solid var(--line-soft); }
-.sky-nav-views button, .sky-topic-link { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 8px 10px; border-radius: var(--r-sm); text-align: left; font-size: var(--t-sm); color: var(--muted); }
-.sky-nav-views button > svg { width: 17px; height: 17px; flex: none; }
-.sky-nav-views button > span, .sky-topic-link > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sky-nav-views small { font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
-.sky-nav-views button:hover, .sky-topic-link:hover, .sky-nav-branch:hover { background: var(--surface-hover); color: var(--ink); }
-.sky-nav-views [aria-current], .sky-nav-views [aria-expanded="true"], .sky-topic-link[aria-current] { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
-.sky-nav-views [aria-current] > svg { color: var(--accent); }
-.sky-nav-heading { display: flex; align-items: center; justify-content: space-between; padding: 20px 18px 8px 22px; }
-.sky-nav-heading h2 { margin: 0; font-size: var(--t-2xs); text-transform: uppercase; letter-spacing: var(--tr-wide); color: var(--muted); font-weight: 600; }
-.sky-nav-heading button { width: 26px; height: 26px; display: grid; place-items: center; border-radius: var(--r-xs); color: var(--muted); }
-.sky-nav-heading button:hover { background: var(--surface-hover); color: var(--ink); }
-.sky-nav-heading svg { width: 15px; height: 15px; }
-.sky-topic-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 12px 18px; }
-.sky-topic { margin-bottom: 4px; }
-.sky-topic-link { color: var(--ink); }
-.sky-topic-link > i { flex: none; width: 8px; height: 8px; border-radius: 3px; background: var(--paper-bg); box-shadow: inset 0 0 0 1px var(--line); }
-.sky-topic-link > svg { width: 14px; height: 14px; color: var(--muted); opacity: 0; }
-.sky-topic-link:hover > svg, .sky-topic-link[aria-current] > svg { opacity: 1; }
-.sky-branch-list, .sky-branch-list ul { list-style: none; margin: 6px 0 10px 13px; padding: 0 0 0 10px; border-left: 1px solid var(--line); }
-.sky-branch-list ul { margin: 0 0 4px 7px; }
-.sky-nav-branch { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; min-height: 32px; padding: 6px 8px; text-align: left; border-radius: var(--r-xs); font-size: var(--t-xs); color: var(--muted); }
-.sky-nav-branch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sky-nav-branch svg { flex: none; width: 12px; height: 12px; opacity: 0; }
-.sky-nav-branch:hover svg, .sky-nav-branch:focus-visible svg { opacity: 1; }
-.sky-nav-empty { padding: 0 10px; font-size: var(--t-xs); line-height: var(--lh-normal); color: var(--muted); }
-.sky-navigator footer { padding: 14px 20px 18px; border-top: 1px solid var(--line-soft); }
-.sky-navigator footer button { display: flex; align-items: center; gap: 8px; width: 100%; font-size: var(--t-xs); color: var(--muted); }
-.sky-navigator footer button svg { width: 16px; height: 16px; }
-.sky-navigator footer button span { margin-left: auto; font-size: var(--t-2xs); }
-.sky-navigator footer p { margin: 12px 0 0; font-size: var(--t-2xs); color: var(--muted); }
 .sky-main { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; }
 .sky-location { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 10px 20px; background: var(--surface-raised); border-bottom: 1px solid var(--line-soft); }
 .sky-breadcrumb { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: var(--t-sm); }
@@ -237,15 +201,12 @@
 .sky-workspace .sky-ask { grid-template-columns: minmax(0, 1fr); border-radius: var(--r-lg); }
 
 @media (max-width: 1100px) {
-  .sky-workspace[data-navigator] .sky-workbench { grid-template-columns: 204px minmax(0, 1fr); }
   .sky-workspace .board-hint { display: none; }
 }
 @media (max-width: 720px) {
   .sky-workspace .sky-bar { gap: 8px; padding: 10px 12px; flex-wrap: wrap; }
   .sky-workspace .sky-find { order: 5; flex-basis: 100%; width: 100%; }
   .sky-workspace .sky-new { margin-left: auto; }
-  .sky-workspace[data-navigator] .sky-workbench { grid-template-columns: minmax(0, 1fr); position: relative; }
-  .sky-navigator { position: absolute; z-index: 14; left: 0; top: 54px; bottom: 0; width: min(260px, 80%); box-shadow: var(--e-4); }
   .sky-location { padding: 10px 12px; gap: 8px; }
   .sky-view-label { display: none; }
   .sky-arrange { margin-left: auto; }

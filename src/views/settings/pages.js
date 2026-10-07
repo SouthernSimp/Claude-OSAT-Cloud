@@ -16,9 +16,9 @@ export const SETTINGS_PAGES = [
   { id: 'general', group: 'osat', label: 'General', icon: GearSix, blurb: 'The keys that bring OSAT up from any app, and the keys inside it.', words: 'shortcut hotkey desk quick bar ask chat keys esc' },
   { id: 'appearance', group: 'osat', label: 'Appearance', icon: Palette, blurb: 'Light or dark, the backdrop, and how much your desktop blurs behind OSAT.', words: 'theme light dark auto backdrop blur wallpaper look' },
   { id: 'ai', group: 'osat', label: 'AI', icon: Sparkle, blurb: 'How big an AI runs on this Mac, and what it should know about you.', words: 'model local lm studio about you download size light balanced deep gemma' },
-  { id: 'bots', group: 'osat', label: 'Bots', icon: Robot, blurb: 'Muse, Grok Bot, Claude and cloud models: what reaches OSAT, and what leaves your Mac.', words: 'drop folder cloud model key connector mcp deepseek openai provider nodes' },
+  { id: 'bots', group: 'osat', label: 'Bots', icon: Robot, blurb: 'Muse, Grok Bot, Claude and cloud models: what reaches OSAT, and what leaves your Mac.', words: 'drop folder cloud model key connector mcp deepseek openai provider topics' },
   { id: 'data', group: 'osat', label: 'Data', icon: Database, blurb: 'Where your workspace lives, backups, and the Obsidian export.', words: 'backup restore folder obsidian saved storage vault download' },
-  { id: 'scans', group: 'osat', label: 'Scans', icon: Printer, blurb: 'Paper in: a scan becomes a sorted node, waiting in the Sky.', words: 'scanner brother paper folder ocr document' },
+  { id: 'scans', group: 'osat', label: 'Scans', icon: Printer, blurb: 'Paper in: a scan becomes a sorted topic, waiting on the canvas.', words: 'scanner brother paper folder ocr document' },
   { id: 'iphone', group: 'osat', label: 'iPhone', icon: DeviceMobile, blurb: 'Send a thought from your iPhone, and read your notes there.', words: 'icloud drive phone shortcuts sync inbox' },
   { id: 'about', group: 'osat', label: 'About', icon: Info, blurb: 'Which OSAT this is, and where it keeps things.', words: 'version privacy data folder' },
 

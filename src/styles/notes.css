@@ -379,6 +379,30 @@
   font-size: var(--t-xs);
 }
 
+/* List | Canvas: a topic as this list, or spread out on the canvas. */
+.list-view-switch {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+
+.list-view-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-size: var(--t-xs);
+  font-weight: 560;
+}
+
+.list-view-switch button svg { width: 13px; height: 13px; }
+.list-view-switch button:hover { color: var(--ink); }
+.list-view-switch [aria-pressed="true"] { background: var(--surface-raised); color: var(--ink); box-shadow: var(--e-1); }
+
 .text-button.danger {
   color: var(--critical);
 }

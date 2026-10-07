@@ -11,27 +11,27 @@ const folder = (id, extra = {}) => ({ id, name: id, createdAt: at, ...extra })
 const space = (notes = [], folders = [], extra = {}) => normalizeWorkspace({ ...createDefaultWorkspace(), notes, folders, ...extra })
 const NOW = new Date(2026, 8, 29, 9, 0)
 
-test('the map names the nodes, their branches, and what waits in Unsorted', () => {
+test('the map names the topics, their branches, and what waits in Unsorted', () => {
   const state = space(
     [note('Call mom', { unsorted: true }), note('Buy stamps', { folderId: 'wed' }), note('Cake tasting', { folderId: 'cake' }), note('Deleted one', { unsorted: true, trashedAt: at })],
     [folder('wed', { name: 'Wedding' }), folder('cake', { name: 'Cake', parentId: 'wed' })],
   )
   const map = boardMap(state, { now: NOW })
-  assert.match(map, /Unsorted \(1 sticky, in no node yet\):\n- Call mom/)
+  assert.match(map, /Unsorted \(1 sticky, in no topic yet\):\n- Call mom/)
   assert.doesNotMatch(map, /Deleted one/, 'the Trash stays out of it')
   assert.match(map, /- Wedding \(2 stickies\), branches: Cake \(1\); 1 sticky in no branch yet/)
   assert.match(map, /^THEIR OSAT\n/)
 })
 
-test('in the Sky it says so, and lists what is open there, branch by branch', () => {
+test('on the canvas it says so, and lists what is open there, branch by branch', () => {
   const state = space(
     [note('Buy stamps', { folderId: 'wed' }), note('Cake tasting', { folderId: 'cake' })],
     [folder('wed', { name: 'Wedding' }), folder('cake', { name: 'Cake', parentId: 'wed' })],
   )
   const map = boardMap(state, { open: ['wed', 'cake', 'missing'], where: 'sky', now: NOW })
-  assert.match(map, /looking at the Sky right now/)
-  assert.match(map, /Open in the Sky: Wedding\n {2}- Buy stamps\n {2}Cake:\n {2}- Cake tasting/)
-  assert.doesNotMatch(map, /Open in the Sky: Cake/, 'a branch is not a node: only nodes open')
+  assert.match(map, /looking at the canvas right now/)
+  assert.match(map, /Open on the canvas: Wedding\n {2}- Buy stamps\n {2}Cake:\n {2}- Cake tasting/)
+  assert.doesNotMatch(map, /Open on the canvas: Cake/, 'a branch is not a topic: only topics open')
 })
 
 test('connections and the desk\'s stacks are named; a line to a sticky in the Bin is not', () => {
@@ -53,7 +53,7 @@ test('the guide teaches the mind map, connections, stacks and the Mac tools', ()
 test('an empty workspace says so plainly', () => {
   const map = boardMap(space(), { now: NOW })
   assert.match(map, /Unsorted is empty\./)
-  assert.match(map, /no nodes yet/)
+  assert.match(map, /no topics yet/)
 })
 
 test('Next and the Calendar come in only when there is something today or soon', () => {
@@ -72,7 +72,7 @@ test('Next and the Calendar come in only when there is something today or soon',
 
 test('the map stays small however much there is, and says how much it left out', () => {
   const notes = Array.from({ length: 200 }, (_, i) => note(`sticky-${i}`, { title: `A thought number ${i} that goes on and on for a while`, unsorted: true }))
-  const folders = Array.from({ length: 60 }, (_, i) => folder(`f${i}`, { name: `Node number ${i}` }))
+  const folders = Array.from({ length: 60 }, (_, i) => folder(`f${i}`, { name: `Topic number ${i}` }))
   const map = boardMap(space(notes, folders), { now: NOW, maxChars: 2000 })
   assert.ok(map.length <= 2000, `${map.length} characters`)
   assert.match(map, /…and \d+ more stickies/)
