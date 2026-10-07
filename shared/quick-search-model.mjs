@@ -160,11 +160,14 @@ export const looksLikeQuestion = (typed) => {
   return words.endsWith('?') || (ASKING.test(words) && words.split(/\s+/).length >= 3)
 }
 
-/* Where the highlight starts: on Ask when the words are a question or nothing else was found, else on the first
-   thing found (Ask stays one ⌘↵ away). */
+/* Where the highlight starts: on a sum's answer if there is one; on Ask when the words are a question or nothing else
+   was found; else on the first thing found (Ask stays one ⌘↵ away). */
 export function startRow(rows, read) {
   const ask = rows.findIndex((row) => row.kind === 'ask')
   if (ask < 0) return 0
+  // A worked-out answer ("2*49", "days until christmas?") beats asking, however it is worded.
+  const calc = rows.findIndex((row) => row.kind === 'calc')
+  if (calc >= 0) return calc
   if (looksLikeQuestion(read.typed)) return ask
   const found = rows.findIndex((row) => row.source !== 'do')
   return found < 0 ? ask : found
