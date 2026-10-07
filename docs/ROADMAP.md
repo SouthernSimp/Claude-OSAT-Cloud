@@ -1,5 +1,12 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 6 (night): a smarter calculator
+
+The bar's calculator answers more than sums, all on this Mac: units ("5 km in miles", "72 f to c", "3 cups in ml",
+"10 lb to kg", "1 gb in mb", "60 mph in km/h") and dates ("days until christmas", "days until friday", "days since
+march 3", "days between dec 1 and jan 15", "today + 30 days"). Currency waits: it needs today's rates from the
+internet, which OSAT doesn't fetch on its own yet.
+
 ## October 6: sorting Unsorted, redone
 
 Nate found the guided sorting screen a mess. It is now one sticky at a time with its likely
@@ -85,6 +92,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Planned |
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
+| 40 | A smarter calculator: units and dates, offline (currency later: it needs the internet) | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

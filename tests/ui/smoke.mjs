@@ -1098,6 +1098,12 @@ async function main() {
     await search.getByRole('tab', { name: 'Everything' }).click()
     await search.fill('#qs-input', '2*49')
     await search.locator('.qs-row', { hasText: '= 98' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a sum did not answer`))
+    // Units and dates answer too, offline.
+    await search.fill('#qs-input', '5 km in miles')
+    await search.locator('.qs-row', { hasText: '= 3.107 mi' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a unit did not convert`))
+    await search.fill('#qs-input', 'days until christmas')
+    await search.locator('.qs-row[data-kind="calc"]', { hasText: /= \d+ days/ }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "days until christmas" did not answer`))
+    if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-dates.png` })
     // A window layout: "left half" finds one with a picture of where the window will go; without Accessibility the panel
     // says what is waiting (the Mac app touches nothing); w is the Windows tab with every layout.
     await search.fill('#qs-input', 'left half')

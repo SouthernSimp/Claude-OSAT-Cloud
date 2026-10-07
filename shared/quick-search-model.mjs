@@ -175,7 +175,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   const isPinned = (item) => pins.some((pin) => pin.rootId === item.rootId && pin.relative === item.relative)
   const files = (list, section) => list.map((item) => ({ ...fileRow(item, section), pinned: isPinned(item) }))
 
-  if (read.math) rows.push({ key: 'calc', source: 'calc', kind: 'calc', title: `= ${read.math.text}`, subtitle: read.typed, section: 'Calculator', data: read.math })
+  if (read.math) rows.push({ key: 'calc', source: 'calc', kind: 'calc', title: `= ${read.math.text}`, subtitle: read.math.note || read.typed, section: 'Calculator', data: read.math })
   if (read.keyword) {
     const { keyword, query } = read.keyword
     if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Apps', data: { app: keyword.app } })
