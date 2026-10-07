@@ -4,7 +4,7 @@ import test from 'node:test'
 
 import { cleanSettings } from '../shared/launcher-model.mjs'
 import {
-  actionsFor, buildRows, detailsFor, fileKind, fileWords, isPicture, rankApps, rankCommands, readTyped, scopesOn, sizeText, wants, wordRows,
+  actionsFor, buildRows, detailsFor, fileKind, fileWords, isPicture, looksLikeQuestion, rankApps, rankCommands, readTyped, scopesOn, sizeText, startRow, wants, wordRows,
 } from '../shared/quick-search-model.mjs'
 
 const { validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
@@ -93,9 +93,12 @@ test('one tab shows one source at more length: the clipboard by day, files recen
   assert.deepEqual(searched.map((row) => row.section), ['Files', 'Files'], 'words search; recents step aside')
   const kindOnly = buildRows(readTyped('', pinned, 'files'), { files: recent }, pinned, { now, fileFilter: 'pdf' })
   assert.deepEqual(kindOnly.map((row) => row.title), ['New.pdf', 'Old.pdf'])
-  assert.equal(buildRows(readTyped('', pinned, 'all'), { recentFiles: recent, clipboard: { items } }, pinned, { now })[0].section, 'Pinned', 'opened with nothing typed: pins, recent files, then the latest copies')
   const start = buildRows(readTyped('', pinned, 'all'), { recentFiles: recent, clipboard: { items } }, pinned, { now })
-  assert.deepEqual([...new Set(start.map((row) => row.section))], ['Pinned', 'Recent files', 'Clipboard'])
+  assert.deepEqual([...new Set(start.map((row) => row.section))], ['Clipboard', 'Pinned', 'Recent files'], 'opened with nothing typed: the latest copies, then pins and recent files')
+  const many = Array.from({ length: 9 }, (_, index) => clip(`m${index}`, `copy ${index}`))
+  const seeAll = buildRows(readTyped('', settings, 'all'), { clipboard: { items: many } }, settings, { now })
+  assert.deepEqual(seeAll.filter((row) => row.kind !== 'more').length, 6)
+  assert.deepEqual([seeAll[6].title, seeAll[6].data.scope, actionsFor(seeAll[6])[0].id], ['See all 9 copies', 'clipboard', 'scope'])
 })
 
 test('apps: names that start with the words come first', () => {
@@ -188,21 +191,30 @@ test('one bar: commands come right after an app named by the words, and the word
   const ready = { state: 'ready', label: 'Balanced, on this Mac' }
   const rows = buildRows(readTyped('no', settings), { apps, commands }, settings, { now, ai: ready })
   assert.deepEqual(rows.map((row) => [row.section, row.kind, row.title]), [
+    ['Ask', 'ask', 'Ask AI “no”'],
     ['Apps', 'app', 'Notion'],
     ['Commands', 'room', 'Notes'],
     ['Commands', 'room', 'New note'],
     ['Commands', 'room', 'Write a sticky'],
     ['Apps', 'app', 'Sticky Notes'],
-    ['With these words', 'sticky', 'Save as a sticky'],
-    ['With these words', 'ask', 'Ask the AI'],
+    ['Write it down', 'sticky', 'Save as a sticky'],
   ])
-  assert.equal(rows.at(-1).subtitle, 'Balanced, on this Mac')
-  assert.deepEqual(actionsFor(rows.at(-1)).map((action) => [action.id, action.keys]), [['ask-ai', '↵']])
-  assert.deepEqual(actionsFor(rows.at(-2)).map((action) => [action.id, action.keys]), [['sticky', '↵']])
-  assert.equal(rows.at(-2).data.text, 'no')
+  assert.equal(rows[0].subtitle, 'Balanced, on this Mac')
+  assert.deepEqual(actionsFor(rows[0]).map((action) => [action.id, action.keys]), [['ask-ai', '↵']])
+  assert.deepEqual(actionsFor(rows.at(-1)).map((action) => [action.id, action.keys]), [['sticky', '↵']])
+  assert.equal(rows.at(-1).data.text, 'no')
+  // The highlight starts on the first thing found; on Ask for a question, or when nothing else was found.
+  assert.equal(startRow(rows, readTyped('no', settings)), 1)
+  const question = readTyped('how do I export a node?', settings)
+  assert.equal(startRow(buildRows(question, { apps }, settings, { now, ai: ready }), question), 0)
+  const nothing = readTyped('zebra plans', settings)
+  assert.equal(startRow(buildRows(nothing, {}, settings, { now, ai: ready }), nothing), 0)
+  assert.equal(looksLikeQuestion('summarize what I copied today'), true)
+  assert.equal(looksLikeQuestion('what'), false, 'one word is a search')
+  assert.equal(looksLikeQuestion('notion'), false)
 
-  // Offline, Ask says whether it waits; nothing typed, or another tab, has no such rows.
-  const said = (ai) => wordRows(readTyped('plan the trip', settings), ai)[1].subtitle
+  // Offline, Ask says whether it waits; nothing typed, or another source, has no such rows.
+  const said = (ai) => wordRows(readTyped('plan the trip', settings), ai)[0].subtitle
   assert.match(said({ state: 'waits' }), /waits until you’re back online/)
   assert.match(said({ state: 'ready', label: 'Light', offline: true }), /^Offline, the AI on this Mac still answers · Light$/)
   assert.match(said({ state: 'none' }), /Set up the AI/)

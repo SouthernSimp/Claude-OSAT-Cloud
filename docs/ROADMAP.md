@@ -85,6 +85,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Planned |
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
+| 36 | One bar, one list: no tabs; Ask AI first, then apps, files, copies and notes with See all; Tab asks; ↓ shows the latest copies | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
