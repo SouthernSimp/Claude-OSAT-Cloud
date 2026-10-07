@@ -113,6 +113,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
 | 35 | The AI files stickies for you (like Mem): write a pile, it files each one once you stop, long ones get a short version, Filed for you in Notes, Undo for the whole run | In review |
+| 39 | Change it from the bar: favorites, keys and words from ⌘K; the Mac's own commands; Next screen | In review |
 | 36 | One bar, one list: no tabs; Ask AI first, then apps, files, copies and notes with See all; Tab asks; ↓ shows the latest copies | In review |
 | 37 | Choose your AI: best for this Mac, your models, and nine local models compared (Gemma 4, Qwen 3.5/3.6, Ministral 3) | In review |
 | 38 | Notes is home, the Sky becomes Canvas: one sidebar, List \| Canvas per topic, "topic" instead of node everywhere | In review |

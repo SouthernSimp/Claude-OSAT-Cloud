@@ -66,7 +66,7 @@ function LayoutPreview({ id }) {
   const box = layoutById(id)?.box
   return (
     <div className="qs-screen" aria-hidden="true">
-      <i className={box ? '' : 'is-back'} style={box ? { left: `${box[0] * 100}%`, top: `${box[1] * 100}%`, width: `${box[2] * 100}%`, height: `${box[3] * 100}%` } : undefined} />
+      <i className={box ? '' : id === 'next-display' ? 'is-next' : 'is-back'} style={box ? { left: `${box[0] * 100}%`, top: `${box[1] * 100}%`, width: `${box[2] * 100}%`, height: `${box[3] * 100}%` } : undefined} />
     </div>
   )
 }

@@ -109,6 +109,15 @@ test('only the panel and the desk may ask; the settings are the desk’s alone',
     assert.equal(clipboardRule({ id: 'quick chat' }), false)
     assert.equal(settingsRule(t.desk.webContents), true)
     assert.equal(settingsRule(t.launcher.search.window.webContents), false)
+    // The bar may only give one row a favorite, a key or a word.
+    assert.equal(t.handlers.get('search:customize').from(t.launcher.search.window.webContents), true)
+    assert.equal(t.handlers.get('search:customize').from({ id: 'quick chat' }), false)
+    const room = { key: 'room:Notes', kind: 'room', title: 'Notes', data: { go: ['Notes', null] } }
+    await assert.rejects(t.ask('search:customize', room, { favorite: true, hotkey: 'Control+Alt+N' }), /can’t be changed from the bar/)
+    await assert.rejects(t.ask('search:customize', { key: 'clip:1', kind: 'text', title: 'x' }, { favorite: true }), /can’t be changed from the bar/)
+    await assert.rejects(t.ask('search:customize', room, { keyword: 'g' }), /already the word for Google/)
+    const saved = await t.ask('search:customize', room, { favorite: true })
+    assert.deepEqual(saved.custom.map((entry) => [entry.key, entry.favorite]), [['room:Notes', true]])
     for (const channel of ['search:clipboard-clear', 'search:clipboard-pause', 'search:status']) assert.equal(t.handlers.get(channel).from(t.launcher.search.window.webContents), false, channel)
     // The bar's "Allow…" button asks for Accessibility itself after a paste that couldn't happen.
     assert.equal(t.handlers.get('search:ask-access').from(t.launcher.search.window.webContents), true)
@@ -296,7 +305,7 @@ test('window keys are off until turned on; then each layout has its key, and a p
     const saved = await t.ask('search:save-settings', { windows: { on: true } })
     assert.equal(saved.windows.on, true)
     assert.equal(t.registered.has('Control+Alt+Left'), true)
-    assert.equal(t.registered.size, 6 + 16, 'a key for each layout, beside the Hyper keys and the ring’s')
+    assert.equal(t.registered.size, 6 + 17, 'a key for each layout, beside the Hyper keys and the ring’s')
     t.registered.get('Control+Alt+Left')()
     await wait(120)
     assert.deepEqual(moves, [[0, 0, 720, 900]])

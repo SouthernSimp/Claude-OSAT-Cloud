@@ -19,6 +19,8 @@ export const LAYOUTS = [
   { id: 'right-two-thirds', label: 'Right two thirds', key: 'Control+Alt+T', box: [1 / 3, 0, 2 / 3, 1] },
   { id: 'maximize', label: 'Maximize', key: 'Control+Alt+Return', box: [0, 0, 1, 1], words: 'full screen fill' },
   { id: 'center', label: 'Center', key: 'Control+Alt+C', box: [0.19, 0.14, 0.62, 0.72], words: 'middle centre' },
+  // The window as it is, on the next screen (with one screen, nothing moves).
+  { id: 'next-display', label: 'Next screen', key: 'Control+Alt+Command+Right', box: null, words: 'display monitor screen other move' },
   { id: 'restore', label: 'Put it back', key: 'Control+Alt+Z', box: null, words: 'restore undo previous size' },
 ]
 
@@ -45,6 +47,25 @@ export function screenFor(rect, screens) {
     return width > 0 && height > 0 ? width * height : 0
   }
   return screens.reduce((best, screen) => (overlap(screen) > overlap(best) ? screen : best), screens[0])
+}
+
+/* Where a window goes on the next screen (`screens` in the Mac's order, wrapping round): the same size if it fits,
+   and the same place in proportion (a window at the left edge stays at the left edge). Null with one screen. */
+export function nextScreenFrame(rect, screens) {
+  if (!Array.isArray(screens) || screens.length < 2) return null
+  const area = (screen) => screen.workArea || screen
+  const from = screenFor(rect, screens)
+  const a = area(from)
+  const to = area(screens[(screens.indexOf(from) + 1) % screens.length])
+  const width = Math.min(rect.width, to.width)
+  const height = Math.min(rect.height, to.height)
+  const share = (offset, room) => (room > 0 ? Math.min(1, Math.max(0, offset / room)) : 0)
+  return {
+    x: Math.round(to.x + share(rect.x - a.x, a.width - rect.width) * (to.width - width)),
+    y: Math.round(to.y + share(rect.y - a.y, a.height - rect.height) * (to.height - height)),
+    width: Math.round(width),
+    height: Math.round(height),
+  }
 }
 
 /* "left half", "max", "top r": the layouts every word of the query starts a word of. */

@@ -4,7 +4,9 @@ import { CaretLeft, MagnifyingGlass, NotePencil, PushPin, Sparkle, X } from '@ph
 import { findCaptures, recentRows, wantsRecent } from '../../shared/capture-model.mjs'
 import { offerFor } from '../../shared/clipboard-offer.mjs'
 import { KIND_FILTERS } from '../../shared/clipboard-model.mjs'
-import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
+import { DEFAULT_SETTINGS, canonicalKey, customizable, ownKeyOf, ownWordOf, validKeyword } from '../../shared/launcher-model.mjs'
+import { systemCommand } from '../../shared/system-commands.mjs'
+import { comboFrom, labelOf } from '../lib/hotkey.js'
 import { FILE_FILTERS, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
 import { LocalAssistant, modelLabel } from '../assistant/LocalAssistant.jsx'
 import { cleanError, useAi } from '../assistant/useAi.js'
@@ -62,6 +64,10 @@ export function QuickSearchSurface() {
   const [chatKept, setChatKept] = useState(false)
   const [handoff, setHandoff] = useState(null)
   const [offline, setOffline] = useState(false)
+  // ⌘K's Set a key… / Set a word… for one row: { row, what: 'key' | 'word', value }.
+  const [editing, setEditing] = useState(null)
+  // A command that can't be undone (Empty the Bin) waits for a second Return: its row's key.
+  const [armed, setArmed] = useState(null)
   const { models } = useAi()
   const ai = models === null ? { state: 'checking' } : models.length ? { state: 'ready', label: modelLabel(models[0]), offline } : { state: offline ? 'waits' : 'none' }
 
@@ -94,6 +100,8 @@ export function QuickSearchSurface() {
   const tabs = scopesOn(settings)
 
   useEffect(() => { bridge?.mode(size) }, [bridge, size])
+  // A second Return arms only the row it was asked on.
+  useEffect(() => { setArmed(null) }, [row?.key])
   // Offline, Ask says whether it waits (a cloud model does; the AI on this Mac still answers).
   useEffect(() => {
     const api = window.osatUnder
@@ -253,6 +261,24 @@ export function QuickSearchSurface() {
           break
         }
         case 'scope': setScope(d.scope); setCursor(null); input.current?.focus(); break
+        case 'system': {
+          const command = systemCommand(d.id)
+          if (command?.confirm && live.current.armed !== target.key) { setArmed(target.key); said(command.confirm, 0); break }
+          setArmed(null)
+          const result = await bridge.system(d.id)
+          if (result.reason === 'access') {
+            setToast({ message: `To ${target.title.toLowerCase()}, OSAT needs Accessibility.`, label: 'Allow…', undo: () => bridge.askAccess().catch(() => {}), at: Date.now() })
+          } else if (result.reason === 'mac') said('That works in the Mac app.')
+          else if (!result.ok) said('The Mac didn’t do it. Try again, or check System Settings → Privacy & Security → Automation.', 5000)
+          break
+        }
+        case 'favorite': {
+          await bridge.customize(target, { favorite: !target.favorite })
+          said(target.favorite ? `Took “${target.title}” off your favorites` : `“${target.title}” is in your favorites`)
+          break
+        }
+        case 'set-key': setMenu(null); setEditing({ row: target, what: 'key' }); break
+        case 'set-word': setMenu(null); setEditing({ row: target, what: 'word', value: ownWordOf(settings, target) || '' }); break
         case 'sticky': saveSticky(d.text); break
         case 'ask-ai': askAi(d.text); break
         case 'go':
@@ -279,7 +305,26 @@ export function QuickSearchSurface() {
   }, [bridge, said, away, hideLater, toOSAT, reloadClipboard, addTo, saveSticky, askAi])
 
   /* The keys. One listener that reads the latest state, so nothing is stale. */
-  live.current = { rows, active, row, actions, menu, picker, text, scope, tabs, toast, full, offer, mode, chatOn }
+  live.current = { rows, active, row, actions, menu, picker, text, scope, tabs, toast, full, offer, mode, chatOn, editing, armed, settings }
+
+  /* Set a key… / Set a word…: given to that one row from here (main takes nothing else from the bar). */
+  const giveKey = useCallback(async (target, hotkey) => {
+    try {
+      await bridge.customize(target, { hotkey })
+      said(hotkey ? `${labelOf(hotkey)} now does “${target.title}”, from any app` : `“${target.title}” has no key now`, 3200)
+      setEditing(null)
+    } catch (error) { said(cleanError(error), 5000) }
+  }, [bridge, said])
+  const giveWord = useCallback(async (target, value) => {
+    const keyword = String(value || '').trim().toLowerCase() || null
+    if (keyword && !validKeyword(keyword)) { said('A word is one to twelve letters or numbers, like “nn”.', 4000); return }
+    try {
+      await bridge.customize(target, { keyword })
+      said(keyword ? `Type “${keyword}” for “${target.title}”` : `“${target.title}” has no word now`, 3200)
+      setEditing(null)
+      requestAnimationFrame(() => input.current?.focus())
+    } catch (error) { said(cleanError(error), 5000) }
+  }, [bridge, said])
 
   /* Esc backs out one step at a time. In Ask the chat has it first (a menu, the list of chats), then the bar does. */
   const back = useCallback(() => {
@@ -287,7 +332,8 @@ export function QuickSearchSurface() {
     if (now.chatOn) {
       const target = document.activeElement || document.body
       target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }))
-    } else if (now.picker) setPicker(null)
+    } else if (now.editing) { setEditing(null); requestAnimationFrame(() => input.current?.focus()) }
+    else if (now.picker) setPicker(null)
     else if (now.menu) setMenu(null)
     else if (now.mode) setMode(null)
     else if (now.text) { setText(''); setCursor(null) }
@@ -309,6 +355,16 @@ export function QuickSearchSurface() {
       if (now.chatOn) return
       const cmd = event.metaKey || event.ctrlKey
       if (event.key === 'Escape') { event.preventDefault(); back(); return }
+      // Set a key…: the next keys pressed are the key (⌫ takes it away); Set a word… types in its own field.
+      if (now.editing?.what === 'key') {
+        event.preventDefault()
+        if (event.key === 'Backspace' && !event.metaKey && !event.ctrlKey && !event.altKey) { giveKey(now.editing.row, null); return }
+        const got = comboFrom(event)
+        if (got?.error) said(got.error, 2600)
+        else if (got?.combo) giveKey(now.editing.row, canonicalKey(got.combo, now.settings.hyper?.sends))
+        return
+      }
+      if (now.editing) return
       if (now.picker) return
       // ⌘Return asks, ⌥Return saves a sticky, whatever row is picked.
       if (event.key === 'Enter' && cmd && !event.altKey && !event.shiftKey) { event.preventDefault(); askAi(now.text); return }
@@ -355,7 +411,7 @@ export function QuickSearchSurface() {
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [back, run, askAi, saveSticky])
+  }, [back, run, askAi, saveSticky, giveKey, said])
 
   // A toast lasts a while, then goes; its Undo goes with it.
   useEffect(() => {
@@ -459,7 +515,8 @@ export function QuickSearchSurface() {
                             : <RowIcon row={item} />}
                         <span className="qs-row-text"><b>{item.title}</b><small>{item.subtitle}</small></span>
                         {(item.pinned || item.data?.pinned) && <PushPin weight="fill" className="qs-pin" aria-label="Pinned" />}
-                        {index === active ? <kbd>↵</kbd> : item.kind === 'ask' ? <kbd className="is-quiet">⌘↵</kbd> : item.kind === 'sticky' ? <kbd className="is-quiet">⌥↵</kbd> : null}
+                        {index === active ? <kbd>↵</kbd> : item.kind === 'ask' ? <kbd className="is-quiet">⌘↵</kbd> : item.kind === 'sticky' ? <kbd className="is-quiet">⌥↵</kbd>
+                          : customizable(item) && ownKeyOf(settings, item) ? <kbd className="is-quiet" title="Its key, from any app">{labelOf(ownKeyOf(settings, item))}</kbd> : null}
                       </div>
                     </li>
                   ))}
@@ -486,7 +543,23 @@ export function QuickSearchSurface() {
           </div>
 
           <footer className="qs-foot">
-            {toast ? (
+            {editing ? (
+              editing.what === 'key' ? (
+                <p role="status" className="qs-editor">
+                  <span>Press the keys for <b>{editing.row.title}</b>{ownKeyOf(settings, editing.row) ? <> (now <kbd>{labelOf(ownKeyOf(settings, editing.row))}</kbd>)</> : null}</span>
+                  {ownKeyOf(settings, editing.row) && <button type="button" onClick={() => giveKey(editing.row, null)}>Take its key away</button>}
+                  <button type="button" onClick={() => { setEditing(null); input.current?.focus() }}>Cancel</button>
+                </p>
+              ) : (
+                <form className="qs-editor" onSubmit={(event) => { event.preventDefault(); giveWord(editing.row, editing.value) }}>
+                  <label>A word for <b>{editing.row.title}</b>
+                    <input autoFocus value={editing.value} maxLength={12} placeholder="like nn" aria-label={`A word for ${editing.row.title}`} onChange={(event) => setEditing({ ...editing, value: event.target.value })} />
+                  </label>
+                  <button type="submit">Save</button>
+                  <button type="button" onClick={() => { setEditing(null); input.current?.focus() }}>Cancel</button>
+                </form>
+              )
+            ) : toast ? (
               <p role="status" className="qs-toast">{toast.message}<button type="button" onClick={() => { const undo = toast.undo; setToast(null); undo() }}>{toast.label || 'Undo'}</button></p>
             ) : note ? <p role="status">{note}</p> : (
               <p className="qs-keys">

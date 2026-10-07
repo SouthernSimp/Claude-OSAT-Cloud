@@ -5,7 +5,8 @@
    desk's line use the same rules. Pure. */
 import { calculate } from './calc.mjs'
 import { groupItems, searchItems, titleOf, whenCopied } from './clipboard-model.mjs'
-import { keywordAddress, matchKeyword } from './launcher-model.mjs'
+import { customizable, favoriteRows, keywordAddress, matchKeyword } from './launcher-model.mjs'
+import { findSystem, systemRow } from './system-commands.mjs'
 import { findLayouts } from './window-layouts.mjs'
 
 /* One source at a time ("See all", a keyword like "v", or a source's Hyper key). Only the sources that are on. */
@@ -32,7 +33,7 @@ export function readTyped(text, settings, scope = 'all') {
   let query = typed
   let keyword = null
   // A keyword picks its tab; on that tab already (clicked, or Tab), it is still not part of the words.
-  const hit = matchKeyword(settings, typed)
+  const hit = matchKeyword(settings, typed, { rows: true })
   if (hit?.source && (scope === 'all' || SCOPE_OF_SOURCE[hit.source] === scope)) { where = SCOPE_OF_SOURCE[hit.source] || scope; query = hit.query }
   else if (hit?.keyword && scope === 'all') keyword = hit
   const math = where === 'all' && settings.sources.calc?.on ? calculate(typed) : null
@@ -199,7 +200,9 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   if (read.math) rows.push({ key: 'calc', source: 'calc', kind: 'calc', title: `= ${read.math.text}`, subtitle: read.typed, section: 'Calculator', data: read.math })
   if (read.keyword) {
     const { keyword, query } = read.keyword
-    if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Apps', data: { app: keyword.app } })
+    // Your own word for something (set from ⌘K): that thing, first.
+    if (keyword.row) rows.push({ ...favoriteRows({ custom: [{ ...keyword.row, favorite: true }] })[0], section: `Your word “${keyword.keyword}”`, favorite: keyword.row.favorite })
+    else if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Apps', data: { app: keyword.app } })
     else rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-link', title: keyword.url.includes('{query}') ? `Search ${keyword.label} for “${query}”` : `Open ${keyword.label}`, subtitle: `${keyword.keyword} · web address`, section: 'Quick links', data: { url: keywordAddress(keyword, query) } })
   }
 
@@ -234,6 +237,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     const named = apps.filter((item) => item.name.toLowerCase().startsWith(read.query.toLowerCase()))
     rows.push(...named.map((item) => appRow(item, 'Apps')))
     rows.push(...(found.commands || []).slice(0, 3).map((item) => noteRow(item, 'Commands')))
+    rows.push(...findSystem(read.query).slice(0, 3).map((item) => systemRow(item)))
     rows.push(...apps.filter((item) => !named.includes(item)).map((item) => appRow(item, 'Apps')))
     rows.push(...files(found.files || [], 'Files').slice(0, 6))
     if ((found.files || []).length > 6) rows.push(more('files', 'files', 'Files'))
@@ -244,13 +248,20 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     if (settings.sources.windows?.on && read.query.length >= 3) rows.push(...findLayouts(read.query).slice(0, 2).map((layout) => layoutRow(layout, keys)))
     if (sticky) rows.push(sticky)
   } else {
-    // Nothing typed: what you copied last comes first, then your pinned and recent files.
+    // Nothing typed: your favorites, then what you copied last, then your pinned and recent files.
+    rows.push(...favoriteRows(settings))
     rows.push(...clipboard.slice(0, 6).map((item) => clipRow(item, now, 'Clipboard')))
     if (clipboard.length > 6) rows.push(more('clipboard', `${clipboard.length} copies`, 'Clipboard'))
     rows.push(...files(pins, 'Pinned'))
     rows.push(...files(found.recentFiles || [], 'Recent files').slice(0, 5))
   }
-  return dedupe(rows)
+  return markFavorites(dedupe(rows), settings)
+}
+
+// A row that is one of your favorites says so (⌘K offers to take it off).
+function markFavorites(rows, settings) {
+  const favorite = new Set((settings.custom || []).filter((entry) => entry.favorite).map((entry) => entry.key))
+  return favorite.size ? rows.map((row) => (favorite.has(row.key) && !row.favorite ? { ...row, favorite: true } : row)) : rows
 }
 
 function dedupe(rows) {
@@ -260,7 +271,13 @@ function dedupe(rows) {
 
 /* What ⌘K lists for a row; the first is what Return does (⇧↵ the second; ⌘↵ always asks and ⌥↵ always saves a
    sticky, whatever the row). `offer` is a customer the copy could be added to ({ folderId, folderName }). */
-export function actionsFor(row, { offer = null, canAsk = false } = {}) {
+export function actionsFor(row, options = {}) {
+  const own = ownActions(row, options)
+  // Anything that can be a favorite, or have its own key or word, offers it here, so it is done without Settings.
+  return customizable(row) ? [...own, { id: 'favorite', label: row.favorite ? 'Remove from favorites' : 'Add to favorites', keys: '⇧⌘F' }, { id: 'set-key', label: 'Set a key…' }, { id: 'set-word', label: 'Set a word…' }] : own
+}
+
+function ownActions(row, { offer = null, canAsk = false } = {}) {
   if (!row) return []
   const pin = (on) => ({ id: 'pin', label: on ? 'Unpin' : 'Pin', keys: '⌘P' })
   switch (row.kind) {
@@ -307,6 +324,7 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
     case 'sticky': return [{ id: 'sticky', label: 'Save as a sticky', keys: '↵' }]
     case 'ask': return [{ id: 'ask-ai', label: 'Ask', keys: '↵' }]
     case 'more': return [{ id: 'scope', label: 'Show all', keys: '↵' }]
+    case 'system': return [{ id: 'system', label: row.title, keys: '↵' }]
     case 'keyword-app': return [{ id: 'open-app-named', label: 'Open', keys: '↵' }]
     case 'keyword-link': return [{ id: 'open-link', label: 'Open in your browser', keys: '↵' }]
     case 'layout': return [{ id: 'snap', label: row.data?.layout === 'restore' ? 'Put the window back' : 'Move the window', keys: '↵' }]
@@ -335,6 +353,7 @@ export function detailsFor(row, { now = new Date() } = {}) {
     case 'shot': return [['Kind', /\.(mp4|mov|gif)$/i.test(d.name) ? 'Recording' : 'Screenshot'], ['Taken', DAY.format(new Date(d.at))], ['Kept by', 'CleanShot X']]
     case 'note': return [['Kind', 'Note'], ['Where', row.subtitle]]
     case 'node': return [['Kind', 'Topic'], ['Where', row.subtitle]]
+    case 'system': return [['Does', row.title], ['Undo', row.subtitle === 'Can’t be undone' ? 'Can’t be undone' : 'Do it again to switch back']]
     default: return []
   }
 }
