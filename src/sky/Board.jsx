@@ -615,7 +615,7 @@ function RootCard({ folder, index, box, moving, isOpen, workspace, actions, togg
         role="button"
         tabIndex={0}
         aria-expanded={isOpen}
-        aria-label={`${loose ? 'Branch' : 'Node'}: ${folder.name}`}
+        aria-label={`${loose ? 'Branch' : 'Topic'}: ${folder.name}`}
         {...head}
         {...carryable({ kind: 'folder', id: folder.id, data: { parentId: null, loose } }, { live: liveFor(folder.id) })}
         onClick={(event) => { if (event.detail < 2 && !event.target.closest('button, input, textarea')) toggle(folder.id) }}

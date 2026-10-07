@@ -354,7 +354,7 @@ export function PileView({ workspace, commit, navigate, onClose }) {
     setSending(null)
     setHelp(null)
     if (!made?.nodes.length && !made?.notes.length) return
-    const label = mode === 'one' ? (name.trim() || pileName(before)) : `${made.nodes.length} ${made.nodes.length === 1 ? 'node' : 'nodes'}`
+    const label = mode === 'one' ? (name.trim() || pileName(before)) : `${made.nodes.length} ${made.nodes.length === 1 ? 'topic' : 'topics'}`
     setSent({ label, nodeId: made.nodes[0] || null })
     setCurrentId(null)
     keepCurrent(null)

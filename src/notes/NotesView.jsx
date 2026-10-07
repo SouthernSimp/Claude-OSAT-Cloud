@@ -217,7 +217,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         const folders = workspace.folders.filter((item) => removed.has(item.id));
         const homes = new Map(workspace.notes.filter((note) => removed.has(note.folderId)).map((note) => [note.id, note.folderId]));
         commit((state) => deleteFolder(state, id));
-        showUndo(`Deleted ${isBranch(folder) ? "branch" : "node"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Unsorted."}`, () => commit((state) => ({
+        showUndo(`Deleted ${isBranch(folder) ? "branch" : "topic"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Unsorted."}`, () => commit((state) => ({
           ...state,
           folders: [...state.folders.filter((item) => !removed.has(item.id)), ...folders],
           notes: state.notes.map((note) => homes.has(note.id) ? { ...note, folderId: homes.get(note.id) } : note),
