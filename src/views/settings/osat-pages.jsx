@@ -323,7 +323,7 @@ export function AiPage({ page, workspace, commit }) {
   return (
     <Page page={page}>
       <Group title="Sorting" note="Only the AI's own picks move. What it isn't sure of stays in Unsorted for you, and Notes → Filed for you shows where everything went.">
-        <Row title="File new stickies for me" hint="Write as many as you like. Once you stop for a moment, the AI puts each one in its node and gives long ones a short version. Undo takes a whole run back." words="auto sort file organize unsorted summarize shorten">
+        <Row title="File new stickies for me" hint="Write as many as you like. Once you stop for a moment, the AI puts each one in its topic and gives long ones a short version. Undo takes a whole run back." words="auto sort file organize unsorted summarize shorten">
           <Switch label="File new stickies for me" checked={filing.on} onChange={setFiling} />
         </Row>
       </Group>
