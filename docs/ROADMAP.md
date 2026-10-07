@@ -1,5 +1,13 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 6 (late): choose your AI
+
+Settings → AI now says which model is best for this Mac (the most capable one its memory holds
+comfortably; on Nate's 64 GB M5 Pro, Qwen 3.6 35B), lists the ones already downloaded, and
+compares all nine side by side: what each is good at, speed, smarts, download size and the memory
+it needs. One that needs a bigger Mac says so instead of offering a download. Each was run through
+OSAT's own engine with OSAT's real sorting and "In short" questions before it was listed.
+
 ## October 6: sorting Unsorted, redone
 
 Nate found the guided sorting screen a mess. It is now one sticky at a time with its likely
@@ -85,6 +93,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Planned |
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
+| 37 | Choose your AI: best for this Mac, your models, and nine local models compared (Gemma 4, Qwen 3.5/3.6, Ministral 3) | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

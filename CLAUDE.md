@@ -77,8 +77,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 ## Architecture today
 
 - `desktop/` — Electron main process (CommonJS).
-  - `ai/`: the AI that sets itself up. `catalog.cjs` (Light / Balanced / Deep: Gemma 4, pinned
-    URL + size + SHA-256, `pickTier(memory)`), `download.cjs` (resumable `.part`, checksum, free
+  - `ai/`: the AI that sets itself up. `catalog.cjs` (pinned URL + size + SHA-256 each; the three `starter` sizes
+    Light / Balanced / Deep are Gemma 4 and what the welcome offers, `pickTier(memory)`; Phase 37 adds Qwen 3.5 4B/9B,
+    Qwen 3.6 35B, Ministral 3 3B/8B and Gemma 4 12B with `speed`/`smarts`/`best` for Settings → AI's comparison, and
+    `recommendFor(memory)` = status `best`; each was run through the engine before it was listed), `download.cjs` (resumable `.part`, checksum, free
     disk), `runtime.cjs` (node-llama-cpp in a `utilityProcess`, one chat at a time, Gemma's
     thinking turned off), `index.cjs` (`createAi`: the chosen size in `prefs.json`, background
     download, engine starts on the first question and stops after 10 idle minutes; `mock`).
