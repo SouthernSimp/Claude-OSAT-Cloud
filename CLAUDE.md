@@ -8,22 +8,21 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 6, 2026
+## Resume checkpoint — October 6, 2026 (night)
 
-Merged: #51 (quick bar, Ask, clipboard and ring over other apps, right-click, drag a copy, Copy text from the screen),
-#52 (Sort Unsorted made easy to read, `src/sky/UnsortedSorter.jsx`), #53 (edit a sticky in place in the sorter; Settings →
-Shortcuts), #55 (right-click on the desk's Desktop files and shelf icons in `field/FieldDesk.jsx`; Sort them all reads up to
-300 stickies) and #54 (Phase 13i: Hyper + middle-click opens the ring over any app: `desktop/launcher/middle-click.cjs` runs
-`osascript -l JavaScript` with AppKit's global mouse monitor, `shared/ring-click.mjs` holds the rules, `ring.middle` in
-launcher.json is its switch, Hyper R stays as the backup; it was checked headlessly only, a real middle button is on Nate's
-Mac checklist).
-Nate's Mac has 0.1.171 (a local build of #52, built in /private/tmp after a fresh `npm ci`: a symlinked node_modules leaves
-the AI engine's dependencies out of app.asar); the latest release tag is v0.1.174.
-Merged since: #57 and #61 ("Ask across everything": the notes side, then copied items and files, `shared/ask-find.mjs`,
-`ask:find`, the `ask.sources` switch, `assistant/UsedSources.jsx`) and #63 ("Record a skill", Phase 19a: `desktop/skills.cjs`,
-`desktop/skill-pages.cjs`, `shared/skill-model.mjs`, `src/tools/Skills.jsx`). Still on Nate's Mac checklist: Ask over real copies
-and files. Next, in Nate's order: the workers place (bots), then Phase 27's connectors (#62, see both ends of a connection, is a
-draft). Synced calendars matter to Nate (keep Phase 14 alive); Mac Calendar polish does not: Siri covers it.
+Nate's answers that steer everything now (Oct 6): the AI files his stickies for him like Mem, with sorting by hand still
+there; Notes (sidebar + list) is home and the Sky becomes **Canvas**, an open board to think on; **topic** replaces node
+on screen; the quick bar, clipboard and quick chat are **one list**; Settings → AI recommends the best local model for the
+Mac and compares them; Raycast-style customizing from the bar. Merged that night: #58 and #60 (Return pastes; builds are
+signed with one steady identity so Accessibility survives updates) and #64.
+
+Open, all green, built that night: #65 the AI files stickies (Phase 35), #66 one bar (36), #67 choose your AI (37, plus the
+widget-tray flake fix), #68 Notes is home / Canvas / topic (38), #69 favorites, keys and words from the bar + Mac commands +
+Next screen (39, on #66), #70 smarter calculator (40), #71 snippets (41, on #69), #72 Ask honest about the cloud, Try
+again, Edit (42), and **#73, all eight in one branch (`claude/everything`) for one DMG**: if Nate likes it, merge #73 and
+close the eight as included. Not done, on purpose: drag a window to an edge (macOS already tiles windows), trackpad
+gestures, currency in the calculator (needs the internet; offer it opt-in). On Nate's Mac checklist: typed snippets in
+other apps, Mac commands, keys set from the bar, Qwen 3.6 35B (Settings → AI's pick for his 64 GB M5 Pro).
 
 ## Working with Nate
 

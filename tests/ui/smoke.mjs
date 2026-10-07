@@ -1201,7 +1201,7 @@ async function main() {
     await search.locator('.qs-chip.is-scope').click()
     await search.fill('#qs-input', 'canvas')
     await search.locator('.qs-row', { hasText: 'Canvas' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a room was not found`))
-    if (!(await search.locator('.qs-row[aria-selected="true"]').innerText().catch(() => '')).includes('Canvas')) problems.push(`${room}: the highlight did not start on the first thing found`)
+    if (!/canvas/i.test(await search.locator('.qs-row[aria-selected="true"]').innerText().catch(() => ''))) problems.push(`${room}: the highlight did not start on the first thing found`)
     // Tab asks the AI about the words (as in Raycast); Esc comes back to the bar.
     await search.keyboard.press('Tab')
     await search.locator('.qs-chat .composer textarea').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push(`${room}: Tab did not ask the AI`))
