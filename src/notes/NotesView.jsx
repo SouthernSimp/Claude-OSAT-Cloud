@@ -226,6 +226,14 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       },
       startFolder() { setUi({ organizer: true }); setDrawer(true); setFolderDraftAt(Date.now()); },
       /* A node in Notes is the same node in the Sky: this opens it there. */
+      // List | Canvas: the same topic (or everything) spread out on the canvas.
+      openCanvas(folderId = null) {
+        navigate("Mindmap", folderId ? { folderId, open: true } : {});
+      },
+      // Unsorted's "Sort by hand": the sorter, one sticky at a time.
+      sortByHand() {
+        navigate("Mindmap", { action: "sort" });
+      },
       openFolderBoard(folderId) {
         navigate("Mindmap", { folderId });
       },
@@ -276,7 +284,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         />
       )}
       {narrow && organizerOpen && (
-        <button type="button" className="organizer-scrim" aria-label="Close the list of nodes" onClick={() => setDrawer(false)}><X /></button>
+        <button type="button" className="organizer-scrim" aria-label="Close the list of topics" onClick={() => setDrawer(false)}><X /></button>
       )}
       <NoteList
         workspace={workspace}
@@ -290,7 +298,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         actions={actions}
       />
       {!organizerOpen && (
-        <button type="button" className="organizer-reveal" aria-label="Show nodes" title="Show nodes" onClick={() => (narrow ? setDrawer(true) : setUi({ organizer: true }))}><FolderSimple /></button>
+        <button type="button" className="organizer-reveal" aria-label="Show topics" title="Show topics" onClick={() => (narrow ? setDrawer(true) : setUi({ organizer: true }))}><FolderSimple /></button>
       )}
       {selected ? (
         <NoteEditor key={selected.id} workspace={workspace} note={selected} ui={ui} setUi={setUi} actions={actions} onBack={() => { setUi({ focus: false }); setPane("list"); }} />
@@ -299,7 +307,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
           <div className="empty-panel">
             <NotePencil />
             <h2>{workspace.notes.filter(isActiveNote).length ? "Pick a note, or start a new one." : "Your first note is a blank page."}</h2>
-            <p>Write @ and a node’s name to link to it. #tags cut across, [[links]] connect ideas. Everything stays on this Mac.</p>
+            <p>Write @ and a topic’s name to link to it. #tags cut across, [[links]] connect ideas. Everything stays on this Mac.</p>
             <button className="primary-button" type="button" onClick={() => actions.createNote(ui.list === "folder" ? ui.folderId : null)}><Plus /> New note</button>
           </div>
         </section>

@@ -72,10 +72,10 @@ test('JSON: the Sky’s Import format, plus a source; strings and objects as lea
 test('bad files say what is wrong, and never make a node', () => {
   assert.throws(() => readNodeFile('', 'x.md'), (error) => error instanceof NodeFileError && /empty/.test(error.message))
   assert.throws(() => readNodeFile('{ "title": "Half', 'x.json'), /valid JSON/)
-  assert.throws(() => readNodeFile('{"summary": "no title"}', 'x.json'), /isn’t a node file/)
-  assert.throws(() => readNodeFile('{"title": "X", "branches": "no"}', 'x.json'), /isn’t a node file/)
-  assert.throws(() => readNodeFile('[1, 2]', 'x.json'), /isn’t a node file/)
-  assert.throws(() => markdownTree('\n\n   \n'), /isn’t a node file/)
+  assert.throws(() => readNodeFile('{"summary": "no title"}', 'x.json'), /isn’t a topic file/)
+  assert.throws(() => readNodeFile('{"title": "X", "branches": "no"}', 'x.json'), /isn’t a topic file/)
+  assert.throws(() => readNodeFile('[1, 2]', 'x.json'), /isn’t a topic file/)
+  assert.throws(() => markdownTree('\n\n   \n'), /isn’t a topic file/)
 })
 
 test('records: one new node at the end of the Sky, a taken name gets 2, summary first then leaves, in order', () => {

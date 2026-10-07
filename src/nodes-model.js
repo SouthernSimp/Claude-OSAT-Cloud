@@ -169,7 +169,7 @@ export function moveToItems(folders, onPick, { skip, unsorted = true } = {}) {
       ...folderChildren(folders, folder.id).filter((branch) => branch.id !== skip).map((branch) => ({ label: `↳ ${branch.name}`, onSelect: () => onPick(branch.id) })),
     ]),
   ].filter(Boolean)
-  return items.length ? items : [{ note: 'No nodes yet.' }]
+  return items.length ? items : [{ note: 'No topics yet.' }]
 }
 
 /* ---------- sorting help ---------- */

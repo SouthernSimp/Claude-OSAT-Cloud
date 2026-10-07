@@ -197,8 +197,8 @@ export function ClipboardPage({ page }) {
             <Row title="Ask" hint="Ask can look at what you copied, and at files in the places OSAT may see, to answer you. It happens only when the AI answering is on this Mac; a cloud model never gets copies or files. Anything that looks like a password or a key is left out." words="ask ai copies files look private">
               <Switch label="Ask can look at copies and files" checked={settings.ask?.sources !== false} onChange={(sources) => save({ ask: { sources } })} />
             </Row>
-            <Row title="Add to a node" hint="Offer to add a copied email address or phone number to its node, once, when that node already exists." words="offer jordan customer contact">
-              <Switch label="Offer to add a copied email address or phone number to its node" checked={settings.clipboard.offers !== false} onChange={(offers) => save({ clipboard: { offers } })} />
+            <Row title="Add to a topic" hint="Offer to add a copied email address or phone number to its topic, once, when that topic already exists." words="offer jordan customer contact">
+              <Switch label="Offer to add a copied email address or phone number to its topic" checked={settings.clipboard.offers !== false} onChange={(offers) => save({ clipboard: { offers } })} />
             </Row>
           </Group>
           <Group title="Clear">

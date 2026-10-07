@@ -18,7 +18,7 @@ const workspace = () => normalizeWorkspace({ ...createDefaultWorkspace(),
 
 test('200 unrelated captures cannot crowd the focused topic out of the AI map', () => {
   const map = boardMap(workspace(), { where: 'sky', focus: 'garden', open: ['business'], maxChars: 2000 })
-  assert.match(map, /Open in the Sky: Garden/)
+  assert.match(map, /Open on the canvas: Garden/)
   assert.match(map, /Buy seeds/)
   assert.match(map, /Raised beds/)
   assert.ok(map.indexOf('Garden') < map.indexOf('Unsorted thought'))
@@ -50,10 +50,10 @@ test('focused board context respects the actual shared sources and removed sourc
   assert.doesNotMatch(withoutSources, /Buy seeds|Build the raised beds/)
 })
 
-test('Sky finds nodes, nested branches, note content and tags using the desk matching rules', () => {
+test('Canvas finds topics, nested branches, note content and tags using the desk matching rules', () => {
   const state = workspace()
   state.notes[0].tags = ['garden']
-  assert.equal(findSky(state, 'Garden')[0].type, 'Node')
+  assert.equal(findSky(state, 'Garden')[0].type, 'Topic')
   const branch = findSky(state, 'Raised beds').find((row) => row.type === 'Branch')
   assert.equal(branch.go[1].folderId, 'beds')
   assert.match(branch.hint, /Garden/)

@@ -16,7 +16,7 @@ const GAP = 1024
 const LIMITS = { depth: 8, branches: 300, stickies: 1000, text: 8000, name: 80, title: 72, summary: 8000, source: 40 }
 
 export class NodeFileError extends Error {
-  constructor(message = 'That file isn’t a node file.') {
+  constructor(message = 'That file isn’t a topic file.') {
     super(message)
     this.name = 'NodeFileError'
   }
@@ -228,15 +228,15 @@ export function arrivalOps(doc, tree, { hash, file, source, now, makeId }) {
 
 /* What a bot needs to know to write a node file OSAT can read, in plain words. */
 export function botInstructions(folder) {
-  return `Saving a node for OSAT
+  return `Saving a topic for OSAT
 
-Save one file per node in this folder:
+Save one file per topic in this folder:
 ${folder}
 
-OSAT turns each file into a node in its Sky within a few seconds, then moves the file to
+OSAT turns each file into a topic on its canvas within a few seconds, then moves the file to
 "Added" in the same folder. Nothing is ever deleted. A file OSAT can't read moves to
 "Set aside" instead. Use a new file name each time; saving the exact same file twice makes
-only one node.
+only one topic.
 
 Markdown (.md) is easiest:
 
@@ -244,7 +244,7 @@ Markdown (.md) is easiest:
 source: Muse
 ---
 # Garden plan
-One or two sentences on what this node is about.
+One or two sentences on what this topic is about.
 
 ## Beds
 - Tomatoes along the fence
@@ -253,18 +253,18 @@ One or two sentences on what this node is about.
 ## Herbs
 - Basil by the kitchen door
 
-"# " is the node's name. The words under it are its summary. "## " starts a branch
+"# " is the topic's name. The words under it are its summary. "## " starts a branch
 ("### " a branch inside it). Each list item is a sticky; "- [x]" is a finished one.
 The source line (between the "---" lines) says who sent it; OSAT shows it quietly.
 
-A packed node: just the "# " name and a summary, no branches or list items. It arrives
+A packed topic: just the "# " name and a summary, no branches or list items. It arrives
 marked New, and Nate unpacks it in OSAT when he's ready (by hand, or with the AI):
 
 ---
 source: Muse
 ---
 # Ideas for the spring launch
-A short paragraph with everything worth keeping. OSAT keeps it as the node's first
+A short paragraph with everything worth keeping. OSAT keeps it as the topic's first
 sticky and can unpack it into branches later.
 
 JSON (.json) works too:
@@ -272,7 +272,7 @@ JSON (.json) works too:
 {
   "title": "Garden plan",
   "source": "Muse",
-  "summary": "One or two sentences on what this node is about.",
+  "summary": "One or two sentences on what this topic is about.",
   "branches": [
     { "title": "Beds", "leaves": [{ "text": "Tomatoes along the fence" }, { "text": "Dig the first bed", "done": true }] },
     { "title": "Herbs", "leaves": ["Basil by the kitchen door"] }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import {
-  Archive, ArrowCounterClockwise, CalendarBlank, FolderSimple, MagnifyingGlass, Plus, PushPin, SortAscending, Trash, X,
+  Archive, ArrowCounterClockwise, CalendarBlank, FolderSimple, ListBullets, MagnifyingGlass, Plus, PushPin, SortAscending, Stack, Trash, TreeStructure, X,
 } from "@phosphor-icons/react";
 import { Menu } from "../lib/Menu.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
@@ -72,6 +72,15 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
         )}
         {ui.list === "daily" && (
           <button type="button" className="text-button" onClick={actions.openToday}><CalendarBlank /> Today</button>
+        )}
+        {ui.list === "unsorted" && notes.length > 0 && (
+          <button type="button" className="text-button" onClick={actions.sortByHand}><Stack /> Sort by hand</button>
+        )}
+        {(folder || ui.list === "all") && (
+          <div className="list-view-switch" role="group" aria-label="Show as">
+            <button type="button" aria-pressed="true"><ListBullets /> List</button>
+            <button type="button" aria-pressed="false" title={folder ? `${folder.name} on the canvas` : "Everything on the canvas"} onClick={() => actions.openCanvas(folder?.id || null)}><TreeStructure /> Canvas</button>
+          </div>
         )}
       </div>
 

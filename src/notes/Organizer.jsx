@@ -56,7 +56,7 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
     <aside className="notes-organizer" aria-label="Notes organizer">
       <div className="organizer-head">
         <h2>Notes</h2>
-        <button className="icon-button" type="button" title="New node" aria-label="New node" onClick={() => setDraft({ parentId: null, name: "" })}>
+        <button className="icon-button" type="button" title="New topic" aria-label="New topic" onClick={() => setDraft({ parentId: null, name: "" })}>
           <FolderPlus />
         </button>
       </div>
@@ -82,10 +82,10 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
       </nav>
 
       <div className="organizer-label">
-        <span>Nodes</span>
+        <span>Topics</span>
         <button type="button" className="text-button" onClick={() => setDraft({ parentId: null, name: "" })}>New</button>
       </div>
-      <nav className="organizer-section" aria-label="Nodes">
+      <nav className="organizer-section" aria-label="Topics">
         {draft && draft.parentId === null && (
           <FolderNameInput
             depth={0}
@@ -138,9 +138,9 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
                       { label: "New note here", icon: Notebook, onSelect: () => actions.createNote(folder.id) },
                       { label: "New branch", icon: FolderPlus, onSelect: () => { if (folder.collapsed) actions.toggleFolder(folder.id); setDraft({ parentId: folder.id, name: "" }); } },
                       { label: "Rename", onSelect: () => setRenaming({ id: folder.id, name: folder.name }) },
-                      { label: "Open it in the Sky", icon: ShareNetwork, onSelect: () => actions.openFolderBoard(folder.id) },
+                      { label: "Open it on the canvas", icon: ShareNetwork, onSelect: () => actions.openFolderBoard(folder.id) },
                       { divider: true },
-                      { label: depth ? "Delete branch" : "Delete node", hint: "keeps notes", danger: true, onSelect: () => actions.deleteFolder(folder.id) },
+                      { label: depth ? "Delete branch" : "Delete topic", hint: "keeps notes", danger: true, onSelect: () => actions.deleteFolder(folder.id) },
                     ]}
                   />
                 </div>
@@ -159,7 +159,7 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
         })}
         {!tree.length && !draft && (
           <button type="button" className="organizer-empty" onClick={() => setDraft({ parentId: null, name: "" })}>
-            <FolderPlus /> New node
+            <FolderPlus /> New topic
           </button>
         )}
       </nav>
@@ -193,7 +193,7 @@ function FolderNameInput({ depth, value, onChange, onCommit, onCancel }) {
         ref={ref}
         aria-label="Name"
         value={value}
-        placeholder={depth ? "Branch name" : "Node name"}
+        placeholder={depth ? "Branch name" : "Topic name"}
         maxLength={80}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onCommit(); } if (event.key === "Escape") { event.preventDefault(); onCancel(); } }}

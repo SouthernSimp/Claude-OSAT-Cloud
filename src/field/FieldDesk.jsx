@@ -184,7 +184,7 @@ export function FieldDesk({
     openMenu(event, [
       { label: 'Rename', icon: PencilSimple, onSelect: () => setRenamingStack(stack.key) },
       { label: stack.folded ? 'Open the stack' : 'Fold the stack', icon: CaretDown, onSelect: () => foldStack(stack.key) },
-      onSendStack ? { label: 'Send up to the Sky', icon: CaretUp, hint: 'as a branch', onSelect: () => onSendStack(stack) } : null,
+      onSendStack ? { label: 'Send to the canvas', icon: CaretUp, hint: 'as a branch', onSelect: () => onSendStack(stack) } : null,
       { divider: true },
       { label: 'Unstack', icon: ArrowsOut, onSelect: () => rearrange(unstack(places, stack.key), `Unstacked ${name}`) },
     ])
@@ -294,12 +294,12 @@ export function FieldDesk({
       openMenu(event, [
         { label: 'Open as a page', icon: NotePencil, onSelect: () => openNote(note.id) },
         { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => fileSticky(note.id, folderId), { skip: note.folderId || null }) },
-        { label: 'Send up to the Sky', icon: CaretUp, onSelect: () => navigate('Mindmap', { action: 'place-sticky', noteId: note.id }) },
+        { label: 'Send to the canvas', icon: CaretUp, onSelect: () => navigate('Mindmap', { action: 'place-sticky', noteId: note.id }) },
         { divider: true },
         { label: 'Delete', icon: Trash, danger: true, onSelect: () => toss(note) },
       ])
     } else if (item.kind === 'folder') {
-      openMenu(event, [{ label: 'Open in the Sky', icon: TreeStructure, onSelect: () => openItem(item) }])
+      openMenu(event, [{ label: 'Open on the canvas', icon: TreeStructure, onSelect: () => openItem(item) }])
     } else if (item.kind === 'pile') {
       openMenu(event, [{ label: 'Open Unsorted', icon: NotePencil, onSelect: () => openItem(item) }])
     }
@@ -392,7 +392,7 @@ export function FieldDesk({
     const at = { x: event.clientX - box.left, y: event.clientY - box.top }
     openMenu(event, [
       { label: 'New sticky', icon: NotePencil, hint: 'Double-click', onSelect: () => setDraft(at) },
-      { label: 'New node', icon: TreeStructure, onSelect: () => setNodeDraft(at) },
+      { label: 'New topic', icon: TreeStructure, onSelect: () => setNodeDraft(at) },
       { divider: true },
       stickies.length ? { label: 'Clean up stickies', icon: Broom, onSelect: cleanUp } : null,
       {
@@ -415,7 +415,7 @@ export function FieldDesk({
       stacked ? { label: 'Take out of the stack', icon: Stack, onSelect: () => rearrange(setDown(places, note.id, { x: Math.min(0.9, places[stacked].x + 0.16), y: places[stacked].y }), null) } : null,
       { label: 'Color', icon: PaintBucket, items: [{ swatches: PAPERS, picked: note.color || 'canary', onPick: (paper) => commit((state) => ({ ...state, notes: state.notes.map((item) => (item.id === note.id ? { ...item, color: paper } : item)) })) }] },
       { label: 'Move to', icon: ShareNetwork, items: moveToItems(workspace.folders, (folderId) => fileSticky(note.id, folderId), { skip: note.folderId || null }) },
-      { label: 'Send up to the Sky', icon: CaretUp, onSelect: () => navigate('Mindmap', { action: 'place-sticky', noteId: note.id }) },
+      { label: 'Send to the canvas', icon: CaretUp, onSelect: () => navigate('Mindmap', { action: 'place-sticky', noteId: note.id }) },
       { divider: true },
       { label: 'Delete', icon: Trash, danger: true, onSelect: () => toss(note) },
     ])
@@ -591,7 +591,7 @@ export function FieldDesk({
                 : <div className="icons-empty"><p>{desktop.error || 'Your Desktop is empty.'}</p></div>)
               : items.map(renderIcon)}
             {!onDesktop && items.length === 0 && placedItems.length === 0 && (
-              <div className="icons-empty"><p>Your nodes and notes will appear here.</p></div>
+              <div className="icons-empty"><p>Your topics and notes will appear here.</p></div>
             )}
           </div>
         )}
@@ -622,7 +622,7 @@ export function FieldDesk({
       />
       {nodeDraft && (
         <div className="node-draft" style={{ left: nodeDraft.x, top: nodeDraft.y }}>
-          <NameField placeholder="Name the node" onDone={makeNode} />
+          <NameField placeholder="Name the topic" onDone={makeNode} />
         </div>
       )}
 
@@ -658,8 +658,8 @@ function DeskIcon({ item, fresh, lit, onOpen, onHover, onFile, onMenu, move }) {
     <button
       type="button"
       className={`icon is-${item.kind} ${fresh ? 'is-fresh' : ''} ${lit ? 'is-linked' : ''}`}
-      aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open node ${item.folder.name}` : item.kind === 'pile' ? `Unsorted, ${item.count} ${item.count === 1 ? 'sticky' : 'stickies'}` : `See ${item.count} more notes`}
-      title={item.kind === 'note' ? 'Drag it onto the desk, or into a node' : undefined}
+      aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open topic ${item.folder.name}` : item.kind === 'pile' ? `Unsorted, ${item.count} ${item.count === 1 ? 'sticky' : 'stickies'}` : `See ${item.count} more notes`}
+      title={item.kind === 'note' ? 'Drag it onto the desk, or into a topic' : undefined}
       onClick={onOpen}
       onContextMenu={item.kind === 'more' ? undefined : onMenu}
       onPointerEnter={onHover ? () => onHover(true) : undefined}

@@ -37,7 +37,7 @@ function Words({ text, note, mentions }) {
   if (!mentions) return text
   return mentions.parts(text, note).map((part, index) => (typeof part === 'string'
     ? part
-    : <button key={index} type="button" className="sticky-mention" title="Go to this node" onClick={() => mentions.open(part.folderId)}>{part.text}</button>))
+    : <button key={index} type="button" className="sticky-mention" title="Go to this topic" onClick={() => mentions.open(part.folderId)}>{part.text}</button>))
 }
 
 /* One sticky: a note on colored paper. Click it to write on it; Esc, ⌘Return or clicking

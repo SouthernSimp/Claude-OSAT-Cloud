@@ -18,6 +18,14 @@ compares all nine side by side: what each is good at, speed, smarts, download si
 it needs. One that needs a bigger Mac says so instead of offering a download. One of each family (Qwen
 3.5 4B, Ministral 3 3B, Qwen 3.6 35B) was run through OSAT's own engine with OSAT's real sorting
 and "In short" questions; the others share those families' engines.
+## October 6 (night): Notes is home, the Sky becomes Canvas
+
+Notes and the Sky were two places for the same stickies, with two sidebars and two words
+("nodes" and "topics"). Now Notes is home: its sidebar is Unsorted, Filed for you, your topics; a
+topic's list has **List | Canvas** to see the same topic spread out. The Sky is now **Canvas**: an
+open board to think on, without a sidebar of its own or sorting screens (Notes' Unsorted has
+"Sort by hand", and the canvas's ⋯ menu too). Everything Nate reads says **topic** instead of
+node, and **canvas** instead of Sky.
 
 ## October 6: sorting Unsorted, redone
 
@@ -107,6 +115,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 35 | The AI files stickies for you (like Mem): write a pile, it files each one once you stop, long ones get a short version, Filed for you in Notes, Undo for the whole run | In review |
 | 36 | One bar, one list: no tabs; Ask AI first, then apps, files, copies and notes with See all; Tab asks; ↓ shows the latest copies | In review |
 | 37 | Choose your AI: best for this Mac, your models, and nine local models compared (Gemma 4, Qwen 3.5/3.6, Ministral 3) | In review |
+| 38 | Notes is home, the Sky becomes Canvas: one sidebar, List \| Canvas per topic, "topic" instead of node everywhere | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

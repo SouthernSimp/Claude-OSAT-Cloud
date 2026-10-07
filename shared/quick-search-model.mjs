@@ -118,7 +118,7 @@ const noteRow = (item, section) => ({
   source: 'notes',
   kind: item.kind === 'note' ? 'note' : item.kind === 'folder' ? 'node' : 'room',
   title: item.label,
-  subtitle: item.hint || (item.kind === 'note' ? 'Note' : item.kind === 'folder' ? 'Node' : 'Open'),
+  subtitle: item.hint || (item.kind === 'note' ? 'Note' : item.kind === 'folder' ? 'Topic' : 'Open'),
   section,
   data: { go: item.go },
 })
@@ -271,7 +271,7 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
         { id: 'reveal', label: 'Show in Finder', keys: '⇧↵' },
         { id: 'copy-path', label: 'Copy path', keys: '⇧⌘C' },
         ...(canAsk && row.kind === 'file' ? [{ id: 'ask', label: 'Ask about it', keys: '⇧⌘A' }] : []),
-        ...(row.kind === 'file' ? [{ id: 'add', label: 'Add to a node…', keys: '⇧⌘N' }] : []),
+        ...(row.kind === 'file' ? [{ id: 'add', label: 'Add to a topic…', keys: '⇧⌘N' }] : []),
         pin(row.pinned),
         { id: 'delete', label: 'Delete', hint: 'Moves it to the Bin', keys: '⌘⌫', danger: true },
       ]
@@ -287,8 +287,8 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
         { id: 'paste', label: 'Paste', keys: '↵' },
         { id: 'copy', label: 'Copy', keys: '⇧↵' },
         ...(row.kind === 'link' ? [{ id: 'open-link', label: 'Open the link', keys: '⌘O' }] : []),
-        ...(offer ? [{ id: 'offer', label: `Add to ${offer.folderName}`, hint: 'As a sticky in that node', keys: '⇧⌘N' }] : []),
-        { id: 'add', label: 'Add to a node…', ...(offer ? {} : { keys: '⇧⌘N' }) },
+        ...(offer ? [{ id: 'offer', label: `Add to ${offer.folderName}`, hint: 'As a sticky in that topic', keys: '⇧⌘N' }] : []),
+        { id: 'add', label: 'Add to a topic…', ...(offer ? {} : { keys: '⇧⌘N' }) },
         pin(row.data.pinned),
         { id: 'delete', label: 'Delete', hint: 'Forgets this copy', keys: '⌘⌫', danger: true },
       ]
@@ -301,7 +301,7 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
     ]
     case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⇧↵' }]
     case 'note': return [{ id: 'go', label: 'Open', keys: '↵' }]
-    case 'node': return [{ id: 'go', label: 'Open in the Sky', keys: '↵' }]
+    case 'node': return [{ id: 'go', label: 'Open on the canvas', keys: '↵' }]
     case 'room': return [{ id: 'go', label: 'Open', keys: '↵' }]
     case 'calc': return [{ id: 'copy-text', label: 'Copy the answer', keys: '↵' }, { id: 'paste-text', label: 'Paste the answer', keys: '⇧↵' }]
     case 'sticky': return [{ id: 'sticky', label: 'Save as a sticky', keys: '↵' }]
@@ -334,7 +334,7 @@ export function detailsFor(row, { now = new Date() } = {}) {
     case 'capture': return [['With', row.subtitle.replace(/^With /, '')]]
     case 'shot': return [['Kind', /\.(mp4|mov|gif)$/i.test(d.name) ? 'Recording' : 'Screenshot'], ['Taken', DAY.format(new Date(d.at))], ['Kept by', 'CleanShot X']]
     case 'note': return [['Kind', 'Note'], ['Where', row.subtitle]]
-    case 'node': return [['Kind', 'Node'], ['Where', row.subtitle]]
+    case 'node': return [['Kind', 'Topic'], ['Where', row.subtitle]]
     default: return []
   }
 }

@@ -306,7 +306,7 @@ function buildMenu() {
         // The same spaces and tools as the dock (src/lib/spaces.js).
         room('Desk', 'Today', 'CmdOrCtrl+1'),
         room('Notes', 'Notes', 'CmdOrCtrl+2'),
-        room('Sky', 'Mindmap', 'CmdOrCtrl+3'),
+        room('Canvas', 'Mindmap', 'CmdOrCtrl+3'),
         room('Ask', 'Assistant', 'CmdOrCtrl+4'),
         room('Files', 'Files', 'CmdOrCtrl+5'),
         { type: 'separator' },

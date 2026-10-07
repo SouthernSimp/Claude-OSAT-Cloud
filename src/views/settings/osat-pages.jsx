@@ -169,13 +169,13 @@ function ScansCard() {
       <p className="eyebrow">SCANS</p>
       {status?.dir ? (
         <>
-          <h2>Scans become nodes.</h2>
+          <h2>Scans become topics.</h2>
           <p>
             {status.error || (status.waiting
               ? "A scan is being sorted now."
               : status.last
                 ? `Watching ${folder}. The last scan came in ${formatRelativeTime(status.last)}.`
-                : `Watching ${folder}. Scan something and it appears in the Sky in a minute or two.`)}
+                : `Watching ${folder}. Scan something and it appears on the canvas in a minute or two.`)}
           </p>
           <div className="button-row">
             <button className="outline-button" type="button" onClick={() => bridge.show().catch(() => {})}><FolderOpen /> Show the folder</button>
@@ -185,8 +185,8 @@ function ScansCard() {
         </>
       ) : (
         <>
-          <h2>Turn paper into a node.</h2>
-          <p>Choose the folder your scanner saves to. Each new scan is read on this Mac, and the AI sorts it into a node with branches, waiting for you in the Sky. A single sticky comes in as one sticky. A date becomes a question: add it to your Calendar? Scans already in the folder are left alone.</p>
+          <h2>Turn paper into a topic.</h2>
+          <p>Choose the folder your scanner saves to. Each new scan is read on this Mac, and the AI sorts it into a topic with branches, waiting for you on the canvas. A single sticky comes in as one sticky. A date becomes a question: add it to your Calendar? Scans already in the folder are left alone.</p>
           <button className="primary-button" type="button" onClick={() => act(bridge.choose)}><Printer /> Choose the scans folder</button>
         </>
       )}
@@ -276,7 +276,7 @@ function PhoneCards() {
       <section className="content-card">
         <p className="eyebrow">READ YOUR NOTES</p>
         <h2>Files → iCloud Drive → OSAT → Notes.</h2>
-        <p>A copy that follows your notes as you write, in the same nodes. Write in OSAT; changes made to the copy aren’t read back.</p>
+        <p>A copy that follows your notes as you write, in the same topics. Write in OSAT; changes made to the copy aren’t read back.</p>
       </section>
     </>
   );
@@ -284,7 +284,7 @@ function PhoneCards() {
 
 /* ---- The pages ----------------------------------------------------------------------------------------------------- */
 
-const KEYS_INSIDE = [["⌘1 – ⌘5", "Desk, Notes, Sky, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new sticky"], ["⌘,", "Settings"], ["⌘F", "Search these settings"], ["esc", "Back out, one step at a time"]];
+const KEYS_INSIDE = [["⌘1 – ⌘5", "Desk, Notes, Canvas, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new sticky"], ["⌘,", "Settings"], ["⌘F", "Search these settings"], ["esc", "Back out, one step at a time"]];
 
 export function GeneralPage({ page }) {
   const keys = useDeskKeys();
@@ -422,7 +422,7 @@ export function DataPage({ page, workspace, commit, storage, showUndo }) {
         </Row>
       </Group>
       <Group title="Backup">
-        <Row title="Download a backup" hint="One file with every note and node." words="export save file json">
+        <Row title="Download a backup" hint="One file with every note and topic." words="export save file json">
           <button className="primary-button" type="button" onClick={backup}><DownloadSimple /> Download a backup</button>
         </Row>
         <Row title="Restore a backup" hint="Restoring keeps a copy of what it replaces, so it can be undone." words="import load file json">
@@ -446,7 +446,7 @@ export function ScansPage({ page }) {
     <Page page={page}>
       {window.osatScans
         ? <Legacy words="scanner folder brother paper"><ScansCard /></Legacy>
-        : <Group><Row title="Scans live in the Mac app" hint="In the Mac app, choose the folder your scanner saves to, and each new scan is read on this Mac and sorted into a node." /></Group>}
+        : <Group><Row title="Scans live in the Mac app" hint="In the Mac app, choose the folder your scanner saves to, and each new scan is read on this Mac and sorted into a topic." /></Group>}
     </Page>
   );
 }

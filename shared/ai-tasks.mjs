@@ -43,7 +43,7 @@ export function readUnpackAnswer(text, title = 'Node') {
 export function sortMessages({ node, branches, stickies }) {
   return [SYSTEM, {
     role: 'user',
-    content: `The node "${clip(node, 80)}" has these branches:
+    content: `The topic "${clip(node, 80)}" has these branches:
 ${branches.map((name, index) => `${index + 1}. ${clip(name, 80)}`).join('\n')}
 
 These stickies in it still need a branch:
@@ -79,7 +79,7 @@ const plain = (value) => String(value || '').toLowerCase().replace(/[^\p{L}\p{N}
 export function sortUnsortedMessages({ places, stickies }) {
   return [SYSTEM, {
     role: 'user',
-    content: `These are someone's notes. A sticky is one thought. A node is a topic, and a branch is a group inside a node.
+    content: `These are someone's notes. A sticky is one thought. A topic gathers stickies about one thing, and a branch is a group inside a topic.
 
 Places a sticky can go:
 ${places.map(({ name, peek = [] }, index) => `${index + 1}. ${clip(name, 80)}${peek.length ? ` (has: ${peek.slice(0, 2).map((words) => clip(words, 30).replace(/\s+/g, ' ')).join('; ')})` : ''}`).join('\n') || '(none yet)'}
@@ -114,11 +114,11 @@ export function readSortUnsortedAnswer(text, placeNames, stickyCount) {
     const value = match[2].replace(/[*_`]/g, '').trim()
     if (/^(none|n\/a|unsure|unknown|skip|no place|-+)(\s|$|[.,])/i.test(value)) { seen.add(sticky); continue }
     const number = /^(?:place\s*)?#?(\d+)\b/i.exec(value)
-    const named = /^(?:a\s+)?(?:new|make|create)\b\s*(?:node|place|branch)?\s*[:\-–—]?\s*(.+)$/i.exec(value)
+    const named = /^(?:a\s+)?(?:new|make|create)\b\s*(?:node|topic|place|branch)?\s*[:\-–—]?\s*(.+)$/i.exec(value)
     let place = -1
     let name = ''
     if (number) place = Number(number[1]) - 1
-    else if (named) name = named[1].replace(/^["“'‘]+|["”'’.]+$/g, '').replace(/^(?:node|place)\s*[:\-–—]?\s*/i, '').trim().slice(0, 60)
+    else if (named) name = named[1].replace(/^["“'‘]+|["”'’.]+$/g, '').replace(/^(?:node|topic|place)\s*[:\-–—]?\s*/i, '').trim().slice(0, 60)
     else place = byName.get(plain(value)) ?? -1
     if (name && byName.has(plain(name))) { place = byName.get(plain(name)); name = '' }
     if (place >= 0 && place < placeNames.length) homes.push({ sticky, place })
@@ -167,7 +167,7 @@ export function readGistAnswer(text) {
 export function whereMessages({ branch, peek = [], places }) {
   return [SYSTEM, {
     role: 'user',
-    content: `These are someone's notes. A sticky is one thought. A node is a topic, and a branch is a group inside a node.
+    content: `These are someone's notes. A sticky is one thought. A topic gathers stickies about one thing, and a branch is a group inside a topic.
 
 The branch "${clip(branch, 80)}" is a group of stickies${peek.length ? ` about: ${peek.slice(0, 5).map((words) => clip(words, 40).replace(/\s+/g, ' ')).join('; ')}` : ''}.
 

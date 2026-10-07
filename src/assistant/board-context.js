@@ -61,7 +61,7 @@ function nodeLines(state, list) {
 function openLines(state, ids, room, allowedNotes = null) {
   const out = []
   for (const node of ids.map((id) => state.folders.find((folder) => folder.id === id)).filter(Boolean)) {
-    out.push(`Open in the Sky: ${node.name}`)
+    out.push(`Open on the canvas: ${node.name}`)
     const walk = (folder, label) => {
       const own = pileOf(state.notes, folder.id).filter((note) => !allowedNotes || allowedNotes.has(note.id))
       if (own.length) out.push(...(label ? [`  ${label}:`] : []), ...own.slice(0, 12).map((note) => `  ${stickyLine(note)}`))
@@ -77,7 +77,7 @@ const WHEN = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short'
 /* The map: everything the AI may look at, most useful first, in at most `maxChars`.
    `open` is the ids of the nodes open in the Sky; `where: 'sky'` says they are up there. */
 export function boardMap(state, { open = [], focus = null, noteIds = null, scope = 'workspace', where = 'desk', maxChars = 3200, now = new Date(), stacks = [] } = {}) {
-  const parts = [where === 'sky' ? 'THEIR OSAT (they are looking at the Sky right now)' : 'THEIR OSAT']
+  const parts = [where === 'sky' ? 'THEIR OSAT (they are looking at the canvas right now)' : 'THEIR OSAT']
   const room = () => maxChars - parts.join('\n\n').length - 2
   const add = (title, lines, noun = 'lines', limit = Infinity) => {
     if (lines.length && room() > title.length + 30) parts.push([title, ...fit(lines, Math.min(limit, room() - title.length - 1), noun)].join('\n'))
@@ -105,16 +105,16 @@ export function boardMap(state, { open = [], focus = null, noteIds = null, scope
   const top = nodesOf(state.folders)
   const nodes = top.filter(({ folder }) => !isBranch(folder))
   const alone = top.filter(({ folder }) => isBranch(folder))
-  add(`Nodes (${nodes.length}):`, nodeLines(state, nodes), 'nodes', 650)
-  if (!nodes.length) parts.push('They have no nodes yet.')
-  add(`Branches on the Sky on their own (${alone.length}), in no node yet:`, nodeLines(state, alone), 'branches', 350)
+  add(`Topics (${nodes.length}):`, nodeLines(state, nodes), 'nodes', 650)
+  if (!nodes.length) parts.push('They have no topics yet.')
+  add(`Branches on the canvas on their own (${alone.length}), in no topic yet:`, nodeLines(state, alone), 'branches', 350)
   // Lines between things: only that they relate, by name.
   const name = (key) => one(recordOf(state, key)?.title || recordOf(state, key)?.name, 40)
   add('Connected (a line between two things; nothing was filed by it):', linksOf(state).slice(0, 12).map((link) => `- ${name(link.a)} — ${name(link.b)}`), 'connections')
   // Stacks on the desk (kept on this Mac, so the desk hands them in).
   add('Stacks on the desk (stickies standing in a column; they only arrange the desk):', stacks.slice(0, 6).map((stack) => `- ${one(stack.name, 40) || 'A stack'}: ${(stack.titles || []).slice(0, 6).map((title) => one(title, 40)).join(' · ')}`), 'stacks')
   const unsorted = pileOf(state.notes, null)
-  add(`Unsorted (${stickies(unsorted.length)}, in no node yet):`, unsorted.map(stickyLine), 'stickies', 450)
+  add(`Unsorted (${stickies(unsorted.length)}, in no topic yet):`, unsorted.map(stickyLine), 'stickies', 450)
   if (!unsorted.length) parts.push('Unsorted is empty.')
   return parts.join('\n\n').slice(0, maxChars)
 }

@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowCounterClockwise, ArrowClockwise, ArrowDown, ArrowsIn, Broom, CaretRight, CornersOut, Crosshair, DotsThree, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, SidebarSimple, Sparkle, Stack, Trash,
+  ArrowCounterClockwise, ArrowClockwise, ArrowDown, ArrowsIn, Broom, CaretRight, CornersOut, Crosshair, DotsThree, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, Sparkle, Stack, Trash,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
@@ -25,7 +25,6 @@ import { SkyAsk } from './SkyAsk.jsx'
 import { findSky } from './find.js'
 import { applyUnpackProposal, undoUnpackProposal } from './unpack-proposal.js'
 import { UnsortedDrawer } from './UnsortedDrawer.jsx'
-import { SkyNavigator } from './SkyNavigator.jsx'
 import { fileUnsorted, undoFiling } from './sort-review.js'
 import { arrangeTopics } from './arrange.js'
 import { canvasChange, replayCanvas } from './canvas-history.js'
@@ -65,7 +64,6 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
   const sortLog = useRef([])
   const logSort = (next) => { sortLog.current = next; setSortHistory(next) }
   const [unsortedOpen, setUnsortedOpen] = useState(false)
-  const [navigatorOpen, setNavigatorOpen] = useState(() => !window.matchMedia('(max-width: 720px)').matches)
   // Where sorting begins when Unsorted opens: { target, mode: 'all', at }.
   const [unsortedStart, setUnsortedStart] = useState(null)
   const openSorting = (request = {}) => { setUnsortedStart({ ...request, at: Date.now() }); setUnsortedOpen(true) }
@@ -146,6 +144,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
     if (target.action === 'new-sticky') { board.current?.newSticky(); return }
     if (target.action === 'place-sticky') { board.current?.placeSticky(target.noteId); return }
     if (target.action === 'place-stack') { board.current?.placeStack(target); return }
+    // Notes' "Sort by hand": the sorter opens here, over the canvas.
+    if (target.action === 'sort') { openSorting(target.mode ? { mode: target.mode } : {}); return }
     const noteId = target.noteId || target.focusNoteId
     const folderId = target.folderId || (noteId && workspace.notes.find((note) => note.id === noteId)?.folderId)
     if (target.open && folderId) toggle(folderId, true)
@@ -220,7 +220,6 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
   function focusOn(id) {
     setUnsortedOpen(false)
     toggle(id, true)
-    if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false)
   }
   // A suggestion goes once its stickies have gone somewhere else; with none left, so does the help.
   const unsuggest = (ids) => setSorting((value) => {
@@ -294,7 +293,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
       if (entry && folderId) entry.desk = [{ id: noteId, restore: onFiled?.(noteId) }]
     },
     placeSticky(noteId, at) {
-      const entry = canvasCommit(at ? 'Set the sticky on the Sky' : 'Returned the sticky to Unsorted', (state) => placeSticky(state, noteId, at))
+      const entry = canvasCommit(at ? 'Set the sticky on the canvas' : 'Returned the sticky to Unsorted', (state) => placeSticky(state, noteId, at))
       if (!entry) return
       unsuggest([noteId])
       entry.desk = [{ id: noteId, restore: onFiled?.(noteId) }]
@@ -505,18 +504,18 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
           items: others.map(({ folder: other }) => ({ label: other.name, onSelect: () => actions.moveFolder(folder.id, other.id) })),
         } : null,
         { divider: true },
-        { label: 'Delete node', icon: Trash, danger: true, onSelect: () => actions.remove(folder) },
+        { label: 'Delete topic', icon: Trash, danger: true, onSelect: () => actions.remove(folder) },
       ])
     },
     /* Right-click the open board. */
     boardMenu(event, { fit, newNode, newSticky }) {
       openMenu(event, [
         { label: 'New sticky here', icon: Plus, onSelect: newSticky },
-        { label: 'New node here', icon: Plus, onSelect: newNode },
+        { label: 'New topic here', icon: Plus, onSelect: newNode },
         { label: 'See everything', icon: CornersOut, onSelect: fit },
         { label: 'Arrange topics', icon: ArrowsIn, onSelect: arrangeOverview },
         { divider: true },
-        { label: 'How the Sky works', icon: Question, onSelect: () => setGuide(true) },
+        { label: 'How the canvas works', icon: Question, onSelect: () => setGuide(true) },
       ])
     },
     branchMenu(event, branch) {
@@ -530,8 +529,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
         ...connectItems(folderKey(branch.id)),
         {
           label: 'Move to', icon: ShareNetwork, items: [
-            ...(branch.parentId ? [{ label: 'On the Sky, as a branch', onSelect: () => actions.moveFolder(branch.id, null, Infinity, { loose: true }) }] : []),
-            { label: 'Its own node', onSelect: () => actions.moveFolder(branch.id, null) },
+            ...(branch.parentId ? [{ label: 'On the canvas, as a branch', onSelect: () => actions.moveFolder(branch.id, null, Infinity, { loose: true }) }] : []),
+            { label: 'Its own topic', onSelect: () => actions.moveFolder(branch.id, null) },
             ...nodesList.filter(({ folder }) => !folderSubtree(workspace.folders, branch.id).has(folder.id) && folder.id !== branch.parentId).map(({ folder }) => ({ label: folder.name, onSelect: () => actions.moveFolder(branch.id, folder.id) })),
           ],
         },
@@ -620,10 +619,10 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
       commit((state) => { const result = importNode(state, tree, { node: isPacked(tree) ? { packed: true } : undefined }); made = result; return result.state })
     } catch (error) {
       made = null
-      why = error?.name === 'NodeFileError' && error.message !== 'That file isn’t a node file.' ? ` ${error.message}` : ''
+      why = error?.name === 'NodeFileError' && error.message !== 'That file isn’t a topic file.' ? ` ${error.message}` : ''
     }
     if (!made?.folder) {
-      showUndo(`“${file.name}” isn’t a node file.${why} Nothing changed.`, null)
+      showUndo(`“${file.name}” isn’t a topic file.${why} Nothing changed.`, null)
       return
     }
     const { folder, branches } = made
@@ -645,7 +644,6 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
   function overview() {
     setFocus(null)
     setUnsortedOpen(false)
-    if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false)
   }
   function newNode() {
     overview()
@@ -662,13 +660,14 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
   }
   function more(event) {
     openMenu(event, [
-      { label: 'New node', icon: Plus, onSelect: newNode },
+      { label: 'New topic', icon: Plus, onSelect: newNode },
       focused ? { label: 'New branch', icon: ShareNetwork, onSelect: () => actions.startBranch(focused.id) } : null,
       focused ? { label: 'Tidy this topic', icon: Broom, onSelect: () => actions.tidy(focused) } : null,
       { divider: true },
-      { label: 'Import a node file', icon: DownloadSimple, onSelect: () => picker.current?.click() },
+      { label: 'Import a topic file', icon: DownloadSimple, onSelect: () => picker.current?.click() },
+      { label: 'Sort Unsorted by hand', icon: Stack, onSelect: () => openSorting() },
       { label: 'Sort a pile', icon: Stack, onSelect: () => navigate('Pile') },
-      { label: 'How the Sky works', icon: Question, onSelect: () => setGuide(true) },
+      { label: 'How the canvas works', icon: Question, onSelect: () => setGuide(true) },
     ])
   }
 
@@ -678,13 +677,13 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
   })
 
   return (
-    <div className="sky-layer sky-workspace" role="region" aria-label="Sky" data-navigator={navigatorOpen || undefined} onKeyDown={(event) => {
+    <div className="sky-layer sky-workspace" role="region" aria-label="Canvas" onKeyDown={(event) => {
       if (unsortedOpen || !(event.metaKey || event.ctrlKey) || event.altKey || event.key.toLowerCase() !== 'z' || inputActive()) return
       event.preventDefault(); event.stopPropagation(); stepHistory(event.shiftKey ? 'redo' : 'undo')
     }}>
       <header className="sky-bar">
         <button type="button" className="sky-down" onClick={onClose} title="Back to the desk  Esc · ⌥⌘↓"><ArrowDown weight="bold" /> Desk</button>
-        <span className="sky-wordmark"><ShareNetwork weight="bold" /> Sky</span>
+        <span className="sky-wordmark"><ShareNetwork weight="bold" /> Canvas</span>
         <input
           ref={picker}
           type="file"
@@ -697,8 +696,8 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
           <input
             ref={findField}
             value={query}
-            placeholder="Find a node, branch or sticky"
-            aria-label="Find in Sky"
+            placeholder="Find a topic, branch or sticky"
+            aria-label="Find on the canvas"
             role="combobox"
             aria-expanded={Boolean(query.trim())}
             aria-controls="sky-search-results"
@@ -712,7 +711,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
             }}
           />
           {query.trim() && (
-            <div id="sky-search-results" className="sky-found" role="listbox" aria-label="Sky results">
+            <div id="sky-search-results" className="sky-found" role="listbox" aria-label="Canvas results">
               {!found.length && <p className="sky-find-empty" role="status">No nodes, branches or stickies match “{query}”.</p>}
               {found.map((row, index) => (
                 <button id={`sky-found-${index}`} key={row.key} type="button" role="option" aria-selected={index === findAt} onMouseDown={(event) => event.preventDefault()} onClick={() => pick(row)}>
@@ -724,19 +723,17 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
           )}
         </div>
         <button type="button" className="sky-new" onClick={() => board.current?.newSticky()}><Plus weight="bold" /> New sticky</button>
-        <button type="button" className="sky-icon-button" aria-label="Sky actions" aria-haspopup="menu" onClick={more}><DotsThree weight="bold" /></button>
+        <button type="button" className="sky-icon-button" aria-label="Canvas actions" aria-haspopup="menu" onClick={more}><DotsThree weight="bold" /></button>
       </header>
 
       <div className="sky-workbench">
-        {navigatorOpen && <SkyNavigator workspace={workspace} focus={focus} unsortedCount={unsorted.length} unsortedOpen={unsortedOpen} onOverview={overview} onTopic={focusOn} onBranch={(id) => { board.current?.goTo({ folderId: id }); if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false) }} onNew={newNode} onUnsorted={() => { if (unsortedOpen) setUnsortedOpen(false); else openSorting(); if (window.matchMedia('(max-width: 720px)').matches) setNavigatorOpen(false) }} onGuide={() => setGuide(true)} />}
         <main className="sky-main">
           <div className="sky-location">
-            <button type="button" className="sky-icon-button" aria-label={navigatorOpen ? 'Hide Sky navigator' : 'Show Sky navigator'} aria-expanded={navigatorOpen} onClick={() => setNavigatorOpen(!navigatorOpen)}><SidebarSimple /></button>
-            <div className="sky-breadcrumb"><button type="button" onClick={overview} aria-current={!focus ? 'page' : undefined}>All Sky</button>{focused && <><CaretRight /><strong>{focused.name}</strong></>}</div>
+            <div className="sky-breadcrumb"><button type="button" onClick={overview} aria-current={!focus ? 'page' : undefined}>Everything</button>{focused && <><CaretRight /><strong>{focused.name}</strong></>}</div>
             {!unsortedOpen && sortHistory.length > 0 && <button type="button" className="sky-fit" onClick={() => setUnsortedOpen(true)}><Stack /> Back to sorting</button>}
             <span className="sky-view-label">{focused ? 'Topic map' : 'Overview'}</span>
-            <button type="button" className="sky-icon-button" aria-label="Undo Sky change" disabled={!history.current.past.length || unsortedOpen} title={`Undo${history.current.past.length ? `: ${history.current.past.at(-1).label}` : ''} · ⌘Z`} onClick={() => stepHistory('undo')}><ArrowCounterClockwise /></button>
-            <button type="button" className="sky-icon-button" aria-label="Redo Sky change" disabled={!history.current.future.length || unsortedOpen} title={`Redo${history.current.future.length ? `: ${history.current.future.at(-1).label}` : ''} · ⇧⌘Z`} onClick={() => stepHistory('redo')}><ArrowClockwise /></button>
+            <button type="button" className="sky-icon-button" aria-label="Undo canvas change" disabled={!history.current.past.length || unsortedOpen} title={`Undo${history.current.past.length ? `: ${history.current.past.at(-1).label}` : ''} · ⌘Z`} onClick={() => stepHistory('undo')}><ArrowCounterClockwise /></button>
+            <button type="button" className="sky-icon-button" aria-label="Redo canvas change" disabled={!history.current.future.length || unsortedOpen} title={`Redo${history.current.future.length ? `: ${history.current.future.at(-1).label}` : ''} · ⇧⌘Z`} onClick={() => stepHistory('redo')}><ArrowClockwise /></button>
             <button type="button" className="sky-fit sky-arrange" title="Arrange this view · offers Undo" onClick={arrangeView}><ArrowsIn /> Arrange</button>
             <button type="button" className="sky-fit" onClick={() => board.current?.fit()}><CornersOut /> Fit view</button>
           </div>
@@ -768,23 +765,23 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
    first time the Sky opens on this Mac, and again from ? or the board's menu. */
 function SkyGuide({ onDone, onExample }) {
   return (
-    <section className="sky-guide" role="dialog" aria-label="How the Sky works">
-      <h2>How the Sky works</h2>
+    <section className="sky-guide" role="dialog" aria-label="How the canvas works">
+      <h2>How the canvas works</h2>
       <ol>
         <li>
           <span className="guide-pic is-sticky" data-paper="canary" aria-hidden="true">Call mom</span>
-          <p><strong>A sticky is one thought.</strong> Write one on the desk or here, or scan paper.</p>
+          <p><strong>A sticky is one thought.</strong> Write one on the desk or here, or scan paper. The AI files it into its topic for you.</p>
         </li>
         <li>
           <span className="guide-pic is-node" data-paper="sky" aria-hidden="true">Trip</span>
-          <p><strong>A node is a topic,</strong> like a trip, a project or a person. Drag stickies onto it to keep them there.</p>
+          <p><strong>A topic gathers stickies,</strong> like a trip, a project or a person. Notes lists them; here you see them spread out.</p>
         </li>
         <li>
           <span className="guide-pic is-branch" aria-hidden="true"><i data-paper="mint">Packing</i><i data-paper="rose">Hotels</i></span>
-          <p><strong>Branches group stickies.</strong> They can sit on their own or inside a node, and hold smaller branches.</p>
+          <p><strong>Branches group stickies.</strong> They can sit on their own or inside a topic, and hold smaller branches.</p>
         </li>
       </ol>
-      <p className="sky-guide-foot">Click a node to open it as a map: its branches and stickies spread out around it. Double-click the Sky to write a sticky anywhere, and drag the dot on any card to connect it to another. Drop a sticky on a node or branch when you want to give it a home. Other captures wait in <strong>Unsorted</strong>.</p>
+      <p className="sky-guide-foot">Click a topic to open it as a map: its branches and stickies spread out around it. Double-click the canvas to write a sticky anywhere, and drag the dot on any card to connect it to another. Nothing here needs sorting: think freely, and drop a sticky on a topic only when you want to.</p>
       <button type="button" className="is-primary" onClick={onDone}>Got it</button>
       <button type="button" onClick={onExample}>Add the example roadmap</button>
     </section>

@@ -42,7 +42,7 @@ test('ranks: first, last, between, and a fresh spacing when there is no room lef
   assert.equal(spaced.rank, 2048)
 })
 
-test('stickies move into a node at a place, and back to Unsorted', () => {
+test('stickies move into a topic at a place, and back to Unsorted', () => {
   let state = space([note('one', { unsorted: true }), note('two'), note('three')], [folder('rnd')])
   state = moveSticky(state, 'two', 'rnd')
   state = moveSticky(state, 'three', 'rnd')
@@ -61,7 +61,7 @@ test('day pages are in no pile and never move', () => {
   assert.equal(moveSticky(state, 'day-2026-09-28', 'rnd'), state)
 })
 
-test('nodes rank left to right and become branches when dropped into another', () => {
+test('topics rank left to right and become branches when dropped into another', () => {
   let state = space([], [folder('n1', { createdAt: at(1) }), folder('n2', { createdAt: at(2) }), folder('rnd', { createdAt: at(3) })])
   assert.deepEqual(nodesOf(state.folders).map(({ folder: item }) => item.name), ['n1', 'n2', 'rnd'])
   state = moveFolder(state, 'rnd', null, 1)
@@ -69,10 +69,10 @@ test('nodes rank left to right and become branches when dropped into another', (
   state = moveFolder(state, 'n2', 'rnd')
   assert.deepEqual(nodesOf(state.folders).map(({ folder: item }) => item.name), ['n1', 'rnd'])
   assert.equal(state.folders.find((item) => item.id === 'n2').parentId, 'rnd')
-  assert.equal(moveFolder(state, 'rnd', 'n2'), state, 'a node can’t go inside its own branch')
+  assert.equal(moveFolder(state, 'rnd', 'n2'), state, 'a topic can’t go inside its own branch')
 })
 
-test('new nodes, branches and stickies take their place', () => {
+test('new topics, branches and stickies take their place', () => {
   let state = space([], [folder('a')])
   let made = addFolder(state, 'First', null, 0)
   state = made.state
@@ -91,7 +91,7 @@ test('new nodes, branches and stickies take their place', () => {
   assert.equal(addSticky(state, '   ').note, null)
 })
 
-test('removing a node keeps its stickies in Unsorted and drops its links', () => {
+test('removing a topic keeps its stickies in Unsorted and drops its links', () => {
   let state = space([note('in-node', { folderId: 'rnd' }), note('in-branch', { folderId: 'ideas' })], [folder('rnd'), folder('ideas', { parentId: 'rnd' }), folder('other', { links: ['rnd'] })])
   state = removeFolder(state, 'rnd')
   assert.deepEqual(state.folders.map((item) => item.id), ['other'])
@@ -99,7 +99,7 @@ test('removing a node keeps its stickies in Unsorted and drops its links', () =>
   assert.deepEqual(state.notes.map((item) => [item.id, item.folderId, item.unsorted]), [['in-node', null, true], ['in-branch', null, true]])
 })
 
-test('Move to: Unsorted, then each node with its branches, leaving out where it is', () => {
+test('Move to: Unsorted, then each topic with its branches, leaving out where it is', () => {
   const folders = space([], [folder('g', { name: 'Garden', rank: 1 }), folder('i', { name: 'Ideas', parentId: 'g' }), folder('w', { name: 'Work', rank: 2 })]).folders
   const picked = []
   const items = moveToItems(folders, (id) => picked.push(id), { skip: 'w' })
@@ -107,13 +107,13 @@ test('Move to: Unsorted, then each node with its branches, leaving out where it 
   items[2].onSelect()
   assert.deepEqual(picked, ['i'])
   assert.deepEqual(moveToItems(folders, () => {}, { skip: null }).map((item) => item.label), ['Garden', '↳ Ideas', 'Work'], 'already in Unsorted')
-  assert.deepEqual(moveToItems([], () => {}, { unsorted: false }), [{ note: 'No nodes yet.' }])
+  assert.deepEqual(moveToItems([], () => {}, { unsorted: false }), [{ note: 'No topics yet.' }])
 })
 
 test('Help me sort: a matching #tag first, then shared words, one line per branch', () => {
   const state = space(
     [
-      note('idea', { title: 'Sky map glow', markdown: 'Sky map glow #ideas' }),
+      note('idea', { title: 'Canvas map glow', markdown: 'Canvas map glow #ideas' }),
       note('buy', { title: 'Buy a portable charger', markdown: 'Buy a portable charger' }),
       note('lost', { title: 'Zebra', markdown: 'Zebra' }),
       note('charger', { title: 'Charger list', markdown: 'portable charger options', folderId: 'n2b' }),
@@ -129,7 +129,7 @@ test('Help me sort: a matching #tag first, then shared words, one line per branc
   assert.deepEqual(suggestBranches(state, 'ideas'), [], 'no branches, no suggestions')
 })
 
-test('@ in a note: the longest node name wins, a branch after a slash, emails and unknown names are only words', () => {
+test('@ in a note: the longest topic name wins, a branch after a slash, emails and unknown names are only words', () => {
   const folders = [folder('g', { name: 'Garden' }), folder('p', { name: 'Project Direction' }), folder('i', { name: 'Ideas', parentId: 'g' })]
   const text = 'see @Project Direction, @garden/ideas and @Gardening; mail x@y.com, @3, @Garden/New, (@Garden)'
   assert.deepEqual(findMentions(text, folders).map(({ folderId, name }) => [folderId, name]), [['p', 'project direction'], ['i', 'garden/ideas'], ['g', 'garden'], ['g', 'garden']])
@@ -138,21 +138,21 @@ test('@ in a note: the longest node name wins, a branch after a slash, emails an
   assert.deepEqual(splitMentions('no @Gardn here', folders), ['no @Gardn here'])
 })
 
-test('@ only links: nothing is filed, nothing is made from a typo, and the note remembers the node by id', () => {
+test('@ only links: nothing is filed, nothing is made from a typo, and the note remembers the topic by id', () => {
   const base = space([], [folder('g', { name: 'Garden' })])
   const { state, note: made } = addSticky(base, 'water the roses @Garden and @Gardn', null, { source: 'Desk' })
   assert.deepEqual([made.folderId, made.unsorted], [null, true], 'still in Unsorted')
-  assert.equal(state.folders.length, 1, 'no node from a typo')
+  assert.equal(state.folders.length, 1, 'no topic from a typo')
   assert.deepEqual(made.refs, { garden: 'g' })
   assert.deepEqual(mentionedIn(state).get('g')?.map((item) => item.id), [made.id])
   assert.equal(linkMentions(state, made.id), state, 'nothing new, nothing changes')
   const filed = moveSticky(state, made.id, 'g')
-  assert.equal(mentionedIn(filed).has('g'), false, 'its own node does not list it twice')
+  assert.equal(mentionedIn(filed).has('g'), false, 'its own topic does not list it twice')
   const day = space([note('day-2026-09-28', { kind: 'day', date: '2026-09-28', markdown: 'walked @Garden' })], [folder('g', { name: 'Garden' })])
   assert.deepEqual(mentionedIn(day).get('g')?.map((item) => item.id), ['day-2026-09-28'])
 })
 
-test('renaming a node changes no words, and its @mentions still point at it', () => {
+test('renaming a topic changes no words, and its @mentions still point at it', () => {
   let state = space([note('a', { markdown: 'see @Garden/Ideas and @Garden. not @Gardening, not x@Garden' })], [folder('g', { name: 'Garden' }), folder('i', { name: 'Ideas', parentId: 'g' })])
   state = linkMentions(state, 'a')
   state = renameFolder(state, 'g', 'Yard')
@@ -166,7 +166,7 @@ test('renaming a node changes no words, and its @mentions still point at it', ()
   assert.deepEqual(stored.refs, { 'garden/ideas': 'i', garden: 'g' }, 'refs are kept when the workspace is loaded')
 })
 
-test('Import: one file is one new node, with branches, stickies and finished steps; a taken name gets a number', () => {
+test('Import: one file is one new topic, with branches, stickies and finished steps; a taken name gets a number', () => {
   const file = {
     title: 'Garden',
     summary: 'What grows where.',
@@ -179,7 +179,7 @@ test('Import: one file is one new node, with branches, stickies and finished ste
   const base = space([], [folder('g', { name: 'Garden' })])
   const { state, folder: made, branches } = importNode(base, file)
   assert.deepEqual([made.name, made.parentId, branches], ['Garden 2', null, 3])
-  assert.equal(state.folders.find((item) => item.id === 'g').name, 'Garden', 'the old node is untouched')
+  assert.equal(state.folders.find((item) => item.id === 'g').name, 'Garden', 'the old topic is untouched')
   const beds = state.folders.find((item) => item.name === 'Beds')
   const herbs = state.folders.find((item) => item.name === 'Herbs')
   assert.equal(herbs.parentId, beds.id)
@@ -188,11 +188,11 @@ test('Import: one file is one new node, with branches, stickies and finished ste
   assert.deepEqual(pileOf(state.notes, herbs.id).map((item) => item.markdown), ['Basil'])
   assert.ok(state.notes.every((item) => !item.unsorted && !item.color && item.source === 'Import'))
   assert.equal(freeNodeName(state.folders, 'garden'), 'garden 3')
-  assert.throws(() => importNode(base, { branches: [] }), /node file/)
-  assert.throws(() => importNode(base, { title: 'X', branches: 'no' }), /node file/)
+  assert.throws(() => importNode(base, { branches: [] }), /topic file/)
+  assert.throws(() => importNode(base, { title: 'X', branches: 'no' }), /topic file/)
 })
 
-test('the board: unplaced nodes line up after the others, Unsorted waits on the left', () => {
+test('the board: unplaced topics line up after the others, Unsorted waits on the left', () => {
   const folders = space([], [folder('a', { rank: 1 }), folder('b', { rank: 2, at: { x: 900, y: 300 } }), folder('c', { rank: 3 })]).folders
   const spots = boardSpots(folders, new Map([['a', { w: 500, h: 400 }]]))
   assert.deepEqual(spots.get('a'), { x: 0, y: 0 })
@@ -201,7 +201,7 @@ test('the board: unplaced nodes line up after the others, Unsorted waits on the 
   assert.deepEqual(spots.get(null), { x: -CARD.w - CARD.gap, y: 0 })
 })
 
-test('the board: moving a node keeps every other one where it shows, and the order follows left to right', () => {
+test('the board: moving a topic keeps every other one where it shows, and the order follows left to right', () => {
   let state = space([], [folder('a', { rank: 1 }), folder('b', { rank: 2 }), folder('c', { rank: 3 })])
   const spots = boardSpots(state.folders)
   state = placeNodes(state, spots, new Map([['c', { x: -700.4, y: 120 }]]))

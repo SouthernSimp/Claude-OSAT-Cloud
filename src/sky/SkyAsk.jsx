@@ -45,16 +45,16 @@ export function SkyAsk({ workspace, commit, models, ai, open, focus, asking, set
     return <button type="button" className="sky-ask-pill" onClick={() => setAsking(true)}><Sparkle weight="fill" /> Ask</button>
   }
   return (
-    <section className="sky-ask" role="dialog" aria-label="Ask about your Sky">
+    <section className="sky-ask" role="dialog" aria-label="Ask about your canvas">
       <header>
         <Sparkle weight="fill" />
-        <strong>Ask about your Sky</strong>
+        <strong>Ask about your canvas</strong>
         <button type="button" aria-label="Put it away" onClick={() => setAsking(false)}><X /></button>
       </header>
       <label className="sky-ask-scope">Use<select aria-label="AI note scope" value={effectiveScope} disabled={answer?.busy} onChange={(event) => setScope(event.target.value)}>{focused && <option value="focus">This topic · {focused.name}</option>}<option value="workspace">Workspace · related notes</option><option value="none">No notes</option></select></label>
 
       {!answer && !unanswered && (
-        <p className="sky-ask-lead">Ask which nodes belong together, what is in a node, or say “sort these”.</p>
+        <p className="sky-ask-lead">Ask which topics belong together, what is in a topic, or say “sort these”.</p>
       )}
 
       <div className="sky-ask-body" aria-live="polite">
@@ -80,7 +80,7 @@ export function SkyAsk({ workspace, commit, models, ai, open, focus, asking, set
           ref={field}
           value={draft}
           placeholder={label ? 'Ask, or say “sort these”' : 'Say “sort these”'}
-          aria-label="Ask about your Sky"
+          aria-label="Ask about your canvas"
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setAsking(false) } }}
         />
