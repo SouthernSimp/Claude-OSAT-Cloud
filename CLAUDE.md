@@ -282,7 +282,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     the drop folder, which model answers, cloud models (keys never reach the page), the
     connector (its key only ever goes to the clipboard). Scans stay in Settings → Data (Phase 15).
   - `surfaces/QuickSearch.jsx` (+ `search/`: `useSources`, `Preview`, `Ring`, icons): the quick bar (Phase 13c: one
-    bar; ⌘↵ asks into `LocalAssistant compact`, kept mounted so the chat you were in stays; ⌥↵ `captureThought` with
+    bar; Phase 36: one list, no tabs: Ask AI is the first row (`wordRows`, `startRow`: the highlight starts on it for a
+    question, else on the first thing found; Tab or ⌘↵ asks), each source a few rows and a `more` row ("See all") that
+    shows that source alone with a chip to come back; ↓ on the small bar opens the latest copies; ⌘↵ asks into `LocalAssistant compact`, kept mounted so the chat you were in stays; ⌥↵ `captureThought` with
     source 'Quick bar'; `mode` 'sticky' / 'ask' for a sticky or a question being written; commands from
     `findAll(…, { bar: true })` ranked by `rankCommands`; the last rows from `wordRows`) and the ring. In the browser preview they run on a stand-in bridge
     (`tests/ui/search-bridge.mjs`). `views/Launcher.jsx` is Settings → Launcher; `field/ClipboardOffer.jsx` is the

@@ -40,6 +40,10 @@ html:has(.quick-search) body { background: transparent; }
 .qs-said { flex: none; font: 560 var(--t-xs)/1 var(--font); color: var(--muted); }
 .qs-chip { flex: none; padding: 4px 10px; border-radius: var(--r-full); font: 600 var(--t-xs)/1 var(--font); color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
 
+/* One source at a time ("See all", a keyword, a Hyper key): the chip says which; × or Esc comes back to everything. */
+.qs-chip.is-scope { display: inline-flex; align-items: center; gap: 6px; cursor: default; -webkit-app-region: no-drag; }
+.qs-chip.is-scope svg { width: 10px; height: 10px; opacity: .7; }
+.qs-chip.is-scope:hover svg { opacity: 1; }
 .qs-tabs { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px 8px; border-top: 1px solid var(--line); -webkit-app-region: drag; }
 .qs-tabs button,
 .qs-foot button { -webkit-app-region: no-drag; }
@@ -68,6 +72,10 @@ html:has(.quick-search) body { background: transparent; }
 .qs-row:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .qs-row[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .qs-row[aria-selected="true"] > svg { color: var(--accent); }
+/* Ask AI and Save as a sticky show their own keys while another row is picked. */
+.qs-row kbd.is-quiet { background: none; opacity: .75; }
+/* Ask AI, the first row: the AI's sparkle in the accent. */
+.qs-row[data-kind="ask"] .qs-row-text b { color: var(--accent); }
 .qs-row kbd { flex: none; padding: 2px 6px; border-radius: 6px; font: 560 var(--t-2xs)/1.3 var(--font); color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .qs-row > .qs-pin { width: 13px; height: 13px; color: var(--faint); }
 /* A copied picture shows itself in its row (a capped thumbnail main keeps); a copy drags out into other apps. */
