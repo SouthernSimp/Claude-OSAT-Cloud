@@ -3,7 +3,8 @@ import { addFolder, moveSticky, nodesOf, pileOf, placeSticky } from '../nodes-mo
 import { folderPath, relatedNotes, trashNotes, wordsOf } from '../notes-model.js'
 import { readWhereAnswer } from '../../shared/ai-tasks.mjs'
 
-const fields = ['folderId', 'unsorted', 'rank', 'at', 'trashedAt', 'archived', 'pinned']
+// `filed` too: Undo of what the AI filed takes its mark away with it.
+const fields = ['folderId', 'unsorted', 'rank', 'at', 'trashedAt', 'archived', 'pinned', 'filed']
 const placement = (note) => Object.fromEntries(fields.filter((key) => Object.hasOwn(note, key)).map((key) => [key, note[key]]))
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 
@@ -33,12 +34,16 @@ export function fileUnsorted(state, ids, folderId, name = '', { at, trash = fals
     if (!next.folders.some((folder) => folder.id === folderId)) return { state, changes: [], moved: [] }
     for (const note of waiting) next = moveSticky(next, note.id, folderId)
   }
+  return { state: next, changes: placementChanges(state, next), moved: waiting.map((note) => note.id), folderId: trash || at ? null : folderId, made }
+}
+
+/* Where each note that moved between two states was and is now, for undoFiling. */
+export function placementChanges(state, next) {
   const before = new Map(state.notes.map((note) => [note.id, note]))
-  const changes = next.notes.flatMap((note) => {
+  return next.notes.flatMap((note) => {
     const old = before.get(note.id)
     return old && !equal(placement(old), placement(note)) ? [{ id: note.id, before: placement(old), after: placement(note) }] : []
   })
-  return { state: next, changes, moved: waiting.map((note) => note.id), folderId: trash || at ? null : folderId, made }
 }
 
 // One sticky, all destinations. Reuse Ask's word ranking, then require evidence

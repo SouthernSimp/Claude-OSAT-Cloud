@@ -327,6 +327,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `wordSuggestions`, `stillToSort`) in the same screen; every move goes through `fileUnsorted` (a node of the
     same name is reused) and one Undo (`undoFiling`, which also removes a node made for it while it is empty;
     Sky's `actions.fileGroups` / `undoUnsorted`, with the log in a ref so a toast's Undo is always the newest).
+    The AI files new stickies on its own (Phase 35, like Mem): `sky/auto-file.js` (pure: `readyToFile` waits until the
+    pile has been quiet `QUIET_MS`, only `unsorted` captures written since `settings.autoFile.since`; `withGist` gives a
+    long sticky a short title and `gist`; `fileForYou` files only the model's own picks and marks `filed`) run by
+    `sky/useAutoFile.js` on the desk (asks with `background: true`, so `ai.chatStream` never wakes or swaps a model for it;
+    tried ids in localStorage; one toast with Undo; `useAutoFileStatus` for Notes' line). Notes → Filed for you is
+    `notesInList(…, 'filed')`. Schema 12: notes may carry `filed` ({ by: 'ai', at, into }) and `gist`.
     What the AI can do is said by `assistant/ai-state.js` (`aiState`: checking, none, downloading, paused,
     offline, asleep, waking, thinking, slow, failed… each with a way forward) and run by `useAiJob` (gives up on a
     model that hasn't woken in 2 minutes; words answer instead). Unsorted and each

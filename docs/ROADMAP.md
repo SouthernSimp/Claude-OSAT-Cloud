@@ -1,5 +1,16 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 6 (evening): the AI files stickies for you
+
+Nate's biggest problem: writing down a pile of stickies, then having to sort them. Now, like Mem,
+the AI does it on its own: once you stop writing for a moment, each new sticky goes into the node
+it belongs in (or a new node two or more share), and one line says where, with Undo for the whole
+run. Long, tangled stickies get a short title and an "In short" line first; their own words never
+change. What the AI isn't sure of stays in Unsorted, where sorting by hand still works. Notes →
+Filed for you lists what it filed this week. A pile from before is only filed when Nate says
+"File them too". Settings → AI has the switch. It never wakes a model the way a question does:
+if the AI is resting or unloaded, the stickies wait and Notes says why.
+
 ## October 6: sorting Unsorted, redone
 
 Nate found the guided sorting screen a mess. It is now one sticky at a time with its likely
@@ -85,6 +96,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Planned |
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
+| 35 | The AI files stickies for you (like Mem): write a pile, it files each one once you stop, long ones get a short version, Filed for you in Notes, Undo for the whole run | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

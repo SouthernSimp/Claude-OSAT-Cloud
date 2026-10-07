@@ -129,6 +129,37 @@ export function readSortUnsortedAnswer(text, placeNames, stickyCount) {
   return { homes, made: [...fresh.values()].filter((group) => group.stickies.length > 1) }
 }
 
+/* ---------- A long sticky, shortened ---------- */
+
+/* One long or tangled sticky as a short title and one or two plain sentences, in the
+   writer's own voice. The sticky itself never changes; this is only how it reads in a list. */
+export function gistMessages(words) {
+  return [SYSTEM, {
+    role: 'user',
+    content: `This is one sticky someone wrote quickly. It may be long or tangled.
+
+${clip(words, 4000)}
+
+Answer in exactly two lines:
+Title: a short title, at most 8 words
+Gist: what it says in one or two plain sentences, at most 40 words, written as the person would ("Call Jordan about…", not "The user wants…")`,
+  }]
+}
+
+/* { title, gist } from the answer, or null when it had neither. Forgiving: a missing
+   "Title:" takes the first line, quotes and a trailing full stop on the title go. */
+export function readGistAnswer(text) {
+  const lines = unwrap(text).split('\n').map((line) => line.replace(/[*_`#]/g, '').trim()).filter(Boolean)
+  const pick = (label) => {
+    const index = lines.findIndex((line) => new RegExp(`^${label}\\s*[:\\-–—]`, 'i').test(line))
+    return index < 0 ? '' : lines[index].replace(new RegExp(`^${label}\\s*[:\\-–—]\\s*`, 'i'), '')
+  }
+  const tidy = (value, max) => value.replace(/^["“'‘]+|["”'’]+$/g, '').replace(/\s+/g, ' ').trim().slice(0, max)
+  const title = tidy(pick('title') || (lines.length > 1 && !/^gist/i.test(lines[0]) ? lines[0] : ''), 80).replace(/\.$/, '')
+  const gist = tidy(pick('gist') || pick('summary'), 400)
+  return title || gist ? { title, gist } : null
+}
+
 /* ---------- Where does this branch belong? ---------- */
 
 /* One branch against every place it could go (as in Sort Unsorted: `places` are { name, peek }).

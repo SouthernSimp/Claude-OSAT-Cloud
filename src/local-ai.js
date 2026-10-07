@@ -16,7 +16,8 @@ function validateLocalChatPayload(payload) {
       throw new Error('Messages must have a role and non-empty text.')
     }
   }
-  return { model: model.trim(), messages }
+  // `background`: filing on its own (src/sky/useAutoFile.js) never wakes a model the way a question does.
+  return { model: model.trim(), messages, ...(payload.background === true ? { background: true } : {}) }
 }
 
 export function isLoopbackOrigin(origin) {
@@ -67,8 +68,8 @@ export async function askLocalModel(messages, { signal, onDelta, unavailableMess
 
 /* Streams a reply, calling onDelta with each text fragment as it arrives.
    Resolves with the complete text. Aborting keeps whatever already streamed. */
-export async function streamLocalMessage({ model, messages, signal, onDelta }) {
-  const payload = validateLocalChatPayload({ model, messages })
+export async function streamLocalMessage({ model, messages, signal, onDelta, background = false }) {
+  const payload = validateLocalChatPayload({ model, messages, background })
   const emit = (text) => {
     if (text) onDelta?.(text)
   }

@@ -17,7 +17,8 @@ function validateLocalChatPayload(payload) {
       throw new Error('Messages must have a role and non-empty text.')
     }
   }
-  return { model: model.trim(), messages }
+  // `background`: filing on its own (src/sky/useAutoFile.js) never wakes a model the way a question does.
+  return { model: model.trim(), messages, ...(payload.background === true ? { background: true } : {}) }
 }
 
 async function localAiModels() {
@@ -36,7 +37,7 @@ async function localAiChatStream(payload, onDelta, signal) {
     method: 'POST',
     signal,
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ ...valid, max_tokens: MAX_TOKENS, stream: true }),
+    body: JSON.stringify({ model: valid.model, messages: valid.messages, max_tokens: MAX_TOKENS, stream: true }),
   })
   if (!upstream.ok || !upstream.body) throw new Error('LM Studio rejected the local request.')
   const decoder = new TextDecoder()

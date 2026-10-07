@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Archive, CalendarBlank, CaretRight, Clock, DotsThree, Folder, FolderPlus, FolderSimple, Hash, Notebook, PushPin, ShareNetwork, Trash, Tray,
+  Archive, CalendarBlank, CaretRight, Clock, DotsThree, Folder, FolderPlus, FolderSimple, Hash, Notebook, PushPin, ShareNetwork, Sparkle, Trash, Tray,
 } from "@phosphor-icons/react";
 import { Menu } from "../lib/Menu.jsx";
 import { canMoveFolder, folderSubtree, folderTree, isActiveNote, noteCounts, tagIndex } from "../notes-model.js";
 
 const SMART = [
   ["unsorted", "Unsorted", Tray, "unsorted"],
+  ["filed", "Filed for you", Sparkle, null],
   ["all", "All notes", Notebook, "all"],
   ["pinned", "Pinned", PushPin, "pinned"],
   ["recent", "Recent", Clock, null],

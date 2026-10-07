@@ -379,6 +379,24 @@
   font-size: var(--t-xs);
 }
 
+/* What filing on its own is doing (auto-file.js): one quiet line under the title. */
+.filing-line {
+  display: grid;
+  gap: var(--s-1);
+  margin: 0 var(--s-4) var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--muted);
+  font-size: var(--t-xs);
+  line-height: 1.4;
+}
+
+.filing-line .text-button {
+  font-size: var(--t-xs);
+  padding: 0;
+}
+
 .text-button.danger {
   color: var(--critical);
 }
@@ -1354,3 +1372,21 @@ textarea.note-title { flex: none; resize: none; overflow: hidden; max-height: 18
 .note-ai textarea { min-height: 120px; padding: var(--s-2); font: inherit; }
 .note-ai-answer { border-top: 1px solid var(--line); margin-top: var(--s-2); padding-top: var(--s-2); }
 .note-ai-answer small { color: var(--muted); }
+
+/* The AI's short version of a long sticky (auto-file.js); its own words follow, unchanged. */
+.note-gist {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-2);
+  margin: var(--s-3) var(--s-8) 0;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  font-size: var(--t-sm);
+  line-height: 1.45;
+}
+
+.note-gist > svg { margin-top: 3px; color: var(--accent); }
+.note-gist b { margin-right: var(--s-1); font-weight: 650; }
+.note-gist .icon-button { width: 22px; height: 22px; }

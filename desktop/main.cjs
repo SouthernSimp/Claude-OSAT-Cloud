@@ -926,7 +926,7 @@ async function answeringModels() {
 
 function chatWith(valid, onDelta, signal) {
   if (valid.model.startsWith('cloud:')) return bots.chatStream(valid, onDelta, signal)
-  return valid.model.startsWith('osat:') ? ai.chatStream(valid, onDelta, signal, { interactive: true }) : localAiChatStream(valid, onDelta, signal)
+  return valid.model.startsWith('osat:') ? ai.chatStream(valid, onDelta, signal, { interactive: !valid.background }) : localAiChatStream(valid, onDelta, signal)
 }
 
 /* ---- Your iPhone, through an OSAT folder in iCloud Drive (off until turned on) ---- */

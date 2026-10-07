@@ -5,9 +5,11 @@ import {
 import { Menu } from "../lib/Menu.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
 import { SORTS, notePreview, folderPath, folderTree, isDayNote, notesInList, searchNotes, sortNotes } from "../notes-model.js";
+import { autoFileSettings, waitingFromBefore } from "../sky/auto-file.js";
+import { useAutoFileStatus } from "../sky/useAutoFile.js";
 
 const LIST_TITLES = {
-  unsorted: "Unsorted", unfiled: "Unsorted", all: "All notes", pinned: "Pinned", recent: "Recent", daily: "Daily notes", archived: "Archive", trash: "Trash",
+  unsorted: "Unsorted", unfiled: "Unsorted", filed: "Filed for you", all: "All notes", pinned: "Pinned", recent: "Recent", daily: "Daily notes", archived: "Archive", trash: "Trash",
 };
 
 export function useVisibleNotes(workspace, ui) {
@@ -73,6 +75,8 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
         )}
       </div>
 
+      {(ui.list === "filed" || ui.list === "unsorted") && <FilingLine workspace={workspace} actions={actions} filedList={ui.list === "filed"} />}
+
       {bulk && (
         <div className="bulk-bar" role="toolbar" aria-label="Selected notes">
           <span>{selection.size} selected</span>
@@ -134,7 +138,8 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
                 <strong>{note.title || "Untitled note"}</strong>
                 <time dateTime={note.updatedAt}>{formatRelativeTime(note.updatedAt)}</time>
               </div>
-              <p>{notePreview(note) || <em>Nothing written yet</em>}</p>
+              {/* A one-line sticky is all title: nothing more to show, rather than "Nothing written yet". */}
+              {(note.gist || notePreview(note)) ? <p>{note.gist || notePreview(note)}</p> : !note.markdown.trim() && <p><em>Nothing written yet</em></p>}
               <div className="note-row-meta">
                 {isDayNote(note) && <span className="meta-chip"><CalendarBlank /> Daily</span>}
                 {path.length > 0 && ui.list !== "folder" && <span className="meta-chip"><FolderSimple /> {path.join(" / ")}</span>}
@@ -161,5 +166,34 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
         )}
       </div>
     </section>
+  );
+}
+
+/* What filing on its own is doing, in one calm line, and the way forward when it can't. */
+function FilingLine({ workspace, actions, filedList }) {
+  const status = useAutoFileStatus();
+  const { on, since } = autoFileSettings(workspace.settings);
+  if (!on && !filedList) return null;
+  const before = on && since ? waitingFromBefore(workspace, since) : 0;
+  const count = (n) => `${n} ${n === 1 ? "sticky" : "stickies"}`;
+  let line;
+  if (!on) line = filedList ? "The AI doesn’t file stickies for you right now." : null;
+  else if (status.state === "filing") line = `Filing ${count(status.count)}…`;
+  else if (status.state === "waiting") line = "New stickies are filed once you stop writing for a moment.";
+  else if (status.state === "no-ai") line = `${count(status.count)} wait for the AI. Set it up in Settings → AI.`;
+  else if (status.state === "resting") line = `The AI couldn’t file ${count(status.count)} just now (${status.message}). It tries again in a few minutes.`;
+  else if (filedList) line = "The AI files new stickies once you stop writing. Moving one yourself takes it off this list.";
+  if (!line && !before) return null;
+  return (
+    <div className="filing-line" role="status">
+      {line && <p>{line}</p>}
+      {!on && <button type="button" className="text-button" onClick={() => actions.autoFile({ on: true })}>File new stickies for me</button>}
+      {before > 0 && (
+        <p>
+          {count(before)} from before {before === 1 ? "waits" : "wait"} in Unsorted.{" "}
+          <button type="button" className="text-button" onClick={() => actions.autoFile({ since: new Date(0).toISOString() })}>File {before === 1 ? "it" : "them"} too</button>
+        </p>
+      )}
+    </div>
   );
 }

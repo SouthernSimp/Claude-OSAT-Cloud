@@ -322,6 +322,7 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
                 onBlur={(event) => { if (event.target.value.trim()) writeSticky(actions.commit, current, event.target.value) }}
               />
             </article>
+            {current.gist && <p className="sorter-gist"><b>In short</b> {current.gist}</p>}
             <p className="sorter-meta">
               <span>{[current.source && `From ${current.source}`, formatRelativeTime(current.createdAt)].filter(Boolean).join(' · ')}</span>
               <button type="button" onClick={() => actions.openNote(current.id)}>Open in Notes <ArrowUpRight /></button>

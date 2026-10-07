@@ -134,7 +134,7 @@ export function wordSuggestions(state, stickies = unsortedStickies(state)) {
 
 /* What the model's answers (one per batch of `stickies`, read with the same `places`) suggest,
    with words for whatever it left where it was. */
-export function modelSuggestions(state, stickies, places, answers) {
+export function modelSuggestions(state, stickies, places, answers, { words = true } = {}) {
   const homes = []
   const made = new Map()
   answers.forEach(({ from, text }) => {
@@ -146,6 +146,8 @@ export function modelSuggestions(state, stickies, places, answers) {
       made.set(key, { name: made.get(key)?.name || name, noteIds: [...(made.get(key)?.noteIds || []), ...picked.map((index) => batch[index].id)] })
     })
   })
+  // Filing on its own (auto-file.js), only the model's own picks count: what it wasn't sure of waits for Nate.
+  if (!words) return sortGroups({ homes, made: [...made.values()] })
   const placed = new Set([...homes.map((home) => home.noteId), ...[...made.values()].flatMap((group) => group.noteIds)])
   const rest = stickies.filter((note) => !placed.has(note.id))
   const byWords = wordHomes(state, rest)

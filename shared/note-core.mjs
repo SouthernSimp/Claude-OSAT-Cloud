@@ -61,7 +61,16 @@ export function normalizeNote(value, index = 0) {
     ...askOf(value.ask),
     // What it is connected to (schema 10), drawn as a line; it never files or moves either end.
     ...linksOf(value.links),
+    // Schema 12: the AI filed it for Nate (`filed`: when, and where it went), and a short
+    // version of a long sticky in the AI's words (`gist`); the sticky's own words never change.
+    ...filedOf(value.filed),
+    ...(typeof value.gist === 'string' && value.gist.trim() ? { gist: value.gist.trim().slice(0, 400) } : {}),
   }
+}
+
+function filedOf(value) {
+  if (!isObject(value) || value.by !== 'ai' || typeof value.at !== 'string' || typeof value.into !== 'string' || !value.into) return {}
+  return { filed: { by: 'ai', at: value.at, into: value.into } }
 }
 
 /* Connections (schema 10): the other ends of the lines drawn from a note or a folder, as

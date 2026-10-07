@@ -110,6 +110,8 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
     const open = (id) => { setSelectedId(id); setSelection(new Set()); setPane("editor"); };
     return {
       selectNote: open,
+      // Filing on its own (Settings → AI): on or off, or `since: null`-free "File them too" for stickies from before.
+      autoFile: (patch) => commit((state) => ({ ...state, settings: { ...(state.settings || {}), autoFile: { ...(state.settings?.autoFile || {}), ...patch } } })),
       createNote(folderId = null) {
         let created;
         commit((state) => { const result = createNote(state, { folderId }); created = result.note; return result.state; });

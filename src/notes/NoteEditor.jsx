@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Archive, ArrowCounterClockwise, ArrowsIn, ArrowsOut, At, ArrowLeft, ArrowUpRight, CheckSquare, Code, Copy, CopySimple, DotsThree, FolderSimple, Hash, Link as LinkIcon,
-  LinkSimple, ListBullets, ListNumbers, Minus, PushPin, Quotes, ShareNetwork, Sidebar, TextB, TextHOne, TextItalic, TextStrikethrough, Trash, BracketsSquare, MoonStars } from "@phosphor-icons/react";
+  LinkSimple, ListBullets, ListNumbers, Minus, PushPin, Quotes, ShareNetwork, Sidebar, TextB, TextHOne, TextItalic, TextStrikethrough, Trash, BracketsSquare, MoonStars, Sparkle, X } from "@phosphor-icons/react";
 import { Markdown } from "../lib/markdown.jsx";
 import { Menu } from "../lib/Menu.jsx";
 import { SaveStatus } from "../store/SaveStatus.jsx";
@@ -247,6 +247,13 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             ))}
             {!note.tags.length && !trashed && <button type="button" className="meta-tag ghost" onClick={() => { textareaRef.current?.focus(); commands.tag(); }}><Hash /> add a tag</button>}
           </div>
+          {note.gist && (
+            <div className="note-gist">
+              <Sparkle aria-hidden="true" />
+              <p><b>In short</b> {note.gist}</p>
+              {!trashed && <button type="button" className="icon-button" aria-label="Remove the short version" title="Remove the short version" onClick={() => actions.updateNote(note.id, { gist: undefined })}><X /></button>}
+            </div>
+          )}
 
           {writing && (
             <div className="editor-toolbar" role="toolbar" aria-label="Formatting">

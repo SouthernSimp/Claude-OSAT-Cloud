@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 11
+export const SCHEMA = 12
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -74,6 +74,9 @@ export const migrations = [
   // 11: chats remember their model and replies record which model answered.
   // Earlier renderers discard these fields, so they must refuse newer backups.
   { from: 10, run: (doc) => doc },
+  // 12: a sticky may say the AI filed it (`filed`) and carry a short version of itself in the
+  // AI's words (`gist`). An older OSAT would drop both, so it refuses this data.
+  { from: 11, run: (doc) => doc },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding

@@ -11,6 +11,7 @@ import { BotsSettings } from "../Bots.jsx";
 import { ObsidianView } from "../Obsidian.jsx";
 import { DeskKey, useDeskKeys } from "./launcher.jsx";
 import { Group, Legacy, Page, Row, Switch } from "./parts.jsx";
+import { autoFileSettings } from "../../sky/auto-file.js";
 
 /* The pages of Settings that are about OSAT itself (Phase 13b): the keys that bring it up, how it looks, the AI, bots,
    where the data lives, scans, the iPhone, About. The cards for the AI, scans and the iPhone are the ones they always
@@ -317,8 +318,15 @@ export function AppearancePage({ page, workspace, commit }) {
 }
 
 export function AiPage({ page, workspace, commit }) {
+  const filing = autoFileSettings(workspace.settings);
+  const setFiling = (on) => commit((state) => ({ ...state, settings: { ...(state.settings || {}), autoFile: { ...(state.settings?.autoFile || {}), on } } }));
   return (
     <Page page={page}>
+      <Group title="Sorting" note="Only the AI's own picks move. What it isn't sure of stays in Unsorted for you, and Notes → Filed for you shows where everything went.">
+        <Row title="File new stickies for me" hint="Write as many as you like. Once you stop for a moment, the AI puts each one in its node and gives long ones a short version. Undo takes a whole run back." words="auto sort file organize unsorted summarize shorten">
+          <Switch label="File new stickies for me" checked={filing.on} onChange={setFiling} />
+        </Row>
+      </Group>
       <Legacy words="about you model size download lm studio"><AboutYouCard workspace={workspace} commit={commit} /></Legacy>
       <Legacy words="local ai model size download lm studio gemma"><AiCard /></Legacy>
     </Page>
