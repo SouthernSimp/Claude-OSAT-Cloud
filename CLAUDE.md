@@ -178,6 +178,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `capture.cjs` (Phase 13g: screenshots and recording; CleanShot X's `cleanshot://` commands when it is installed,
     else `screencapture`; panels hide first; recent captures read CleanShot's media folder only when turned on; its
     `openExternal` is fenced in tests/under.test.mjs to `CLEANSHOT_URL`, never `upload`).
+    Phase 39 (Raycast-style, from the bar): ⌘K on a room, command, note, topic, Mac command, app, layout or Emoji offers Add to
+    favorites (⇧⌘F; favorites head the empty bar), Set a key… (recorded right there) and Set a word… (`custom` in launcher.json:
+    `customize`, `favoriteRows`, keys as `row:<rowKey>` run by index.cjs `runRow`; an app keeps them in `apps`). The bar may
+    only change that, through `search:customize` (validated in main); the rest of the settings stay the desk's
+    (`search:save-settings`). `system.cjs` + `shared/system-commands.mjs`: lock, sleep, screen off, dark mode, mute, hide
+    other apps, Empty the Bin (Return twice; a key on it only opens the bar on it). Layout `next-display` (`nextScreenFrame`).
     Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
     one way out of the Mac it adds is opening a web address in Nate's own browser (fenced in tests/under.test.mjs,
     refused offline). ⌘⇧Space is the third shortcut in main's `shortcuts` (`search`).

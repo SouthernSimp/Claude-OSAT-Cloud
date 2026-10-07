@@ -96,6 +96,8 @@ html:has(.quick-search) body { background: transparent; }
 .qs-screen { position: relative; width: min(78%, 320px); aspect-ratio: 16 / 10; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
 .qs-screen i { position: absolute; border-radius: 6px; background: color-mix(in srgb, var(--accent) 38%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .qs-screen i.is-back { inset: 24% 30% 26% 22%; border-style: dashed; background: transparent; box-shadow: inset 0 0 0 1.5px var(--faint); }
+/* Next screen: the window slides off to the right, where the next screen is. */
+.qs-screen i.is-next { inset: 28% -8% 28% 62%; }
 .qs-facts h2 { margin: 0 0 8px; font: 650 var(--t-lg)/1.25 var(--font); overflow-wrap: anywhere; color: var(--ink-strong); }
 .qs-offer { margin: 10px 0 0; font-size: var(--t-xs); line-height: 1.5; color: var(--muted); }
 .qs-offer kbd { padding: 1px 5px; border-radius: 5px; color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
@@ -171,3 +173,12 @@ html:has(.ring-surface) body { background: transparent; }
 /* Over the desk: a click anywhere else lets it go. */
 .ring-layer { position: fixed; inset: 0; z-index: var(--z-modal); }
 .ring-place { position: absolute; translate: -50% -50%; }
+
+/* Set a key… / Set a word… (⌘K): the footer asks, in one line. */
+.qs-editor { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0; font-size: var(--t-xs); color: var(--muted); }
+.qs-editor b { color: var(--ink-strong); font-weight: 600; }
+.qs-editor kbd { padding: 1px 5px; border-radius: 5px; background: color-mix(in srgb, var(--ink) 7%, transparent); font: inherit; }
+.qs-editor label { display: inline-flex; align-items: center; gap: 8px; }
+.quick-search .qs-editor input { width: 110px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-strong); background: transparent; color: var(--ink-strong); font: inherit; }
+.qs-editor button { padding: 3px 8px; border-radius: 6px; color: var(--accent); font: 600 var(--t-xs)/1.2 var(--font); }
+.qs-editor button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }

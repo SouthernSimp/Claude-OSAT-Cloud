@@ -253,6 +253,8 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   ready: search('ready'),
   settings: search('settings'),
   saveSettings: search('save-settings'),
+  // The bar's ⌘K: a favorite, a key or a word for one row (main takes nothing else from the bar).
+  customize: search('customize'),
   status: search('status'),
   askAccess: search('ask-access'),
   files: search('files'),
@@ -288,6 +290,8 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   openLink: search('open-link'),
   snap: search('snap'),
   emoji: search('emoji'),
+  // The Mac's own commands (lock, sleep, dark mode, mute, the Bin…): shared/system-commands.mjs.
+  system: search('system'),
   // Screenshots and recording (desktop/launcher/capture.cjs): CleanShot X when it's here, else the Mac's own.
   capture: search('capture'),
   captureStatus: search('capture-status'),

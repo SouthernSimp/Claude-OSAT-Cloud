@@ -156,13 +156,13 @@ test('window layouts: a tab of their own, and "left half" finds one from Everyth
   assert.deepEqual(buildRows(readTyped('le', keys), {}, keys, { now }), [], 'two letters are too little to offer a layout from Everything')
   assert.deepEqual(buildRows(readTyped('w top', keys), {}, keys, { now }).map((row) => row.title), ['Top half', 'Top left', 'Top right'], 'w is the tab')
   const every = buildRows(readTyped('', keys, 'windows'), {}, keys, { now })
-  assert.equal(every.length, 16)
+  assert.equal(every.length, 17)
   assert.equal(every.at(-1).title, 'Put it back')
   const off = buildRows(readTyped('left half', settings), {}, settings, { now })
   assert.equal(off[0].data.key, null, 'with window keys off, no key is promised')
   const noWindows = cleanSettings({ sources: { windows: { on: false } } }, { validHotkey })
   assert.deepEqual(buildRows(readTyped('left half', noWindows), {}, noWindows, { now }), [])
-  assert.deepEqual(actionsFor(every[0]).map((action) => action.label), ['Move the window'])
+  assert.deepEqual(actionsFor(every[0]).map((action) => action.label), ['Move the window', 'Add to favorites', 'Set a key…', 'Set a word…'])
   assert.equal(actionsFor(every.at(-1))[0].label, 'Put the window back')
   assert.deepEqual(detailsFor(all[0]), [['Moves', 'the window you were in'], ['Key', '⌃⌥Left']])
 })
@@ -227,4 +227,53 @@ test('one bar: commands come right after an app named by the words, and the word
     assert.equal(actionsFor(row).some((action) => action.keys === '⌘↵' || action.keys === '⌥↵'), false, row.kind)
     assert.equal(actionsFor(row)[1].keys, '⇧↵', row.kind)
   }
+})
+
+test('anything in the bar can be a favorite, or have its own key and word, set from ⌘K', async () => {
+  const { customize, idOf, keysOf, ownKeyOf, ownWordOf, wordsOf, applyPatch } = await import('../shared/launcher-model.mjs')
+  const layout = { key: 'layout:left-half', kind: 'layout', title: 'Left half', data: { layout: 'left-half' } }
+  const withLayoutKey = cleanSettings(applyPatch(cleanSettings(undefined, { validHotkey }), customize(cleanSettings(undefined, { validHotkey }), layout, { hotkey: 'Control+Alt+Shift+L' })), { validHotkey })
+  assert.equal(withLayoutKey.windows.on, false, 'a layout\'s own key never turns every window key on')
+  assert.equal(keysOf(withLayoutKey)['row:layout:left-half'], 'Control+Alt+Shift+L')
+  const base = cleanSettings(undefined, { validHotkey })
+  const room = { key: 'room:Notes', source: 'notes', kind: 'room', title: 'Notes', subtitle: 'Open', section: 'Commands', data: { go: ['Notes', null] } }
+  const lock = buildRows(readTyped('lock', base), {}, base, { now }).find((row) => row.kind === 'system')
+  assert.deepEqual([lock.title, actionsFor(lock).map((action) => action.id)], ['Lock the screen', ['system', 'favorite', 'set-key', 'set-word']])
+  assert.deepEqual(buildRows(readTyped('lo', base), {}, base, { now }), [], 'two letters are too little for the Mac’s commands')
+
+  // Favorite, key and word for a room: kept with the row, shown first on an empty bar, its word finds it.
+  let next = cleanSettings(applyPatch(base, customize(base, room, { favorite: true })), { validHotkey })
+  next = cleanSettings(applyPatch(next, customize(next, room, { hotkey: 'Control+Alt+N' })), { validHotkey })
+  next = cleanSettings(applyPatch(next, customize(next, room, { keyword: 'nn' })), { validHotkey })
+  assert.equal(keysOf(next)['row:room:Notes'], 'Control+Alt+N')
+  assert.equal(wordsOf(next)['row:room:Notes'], 'nn')
+  assert.deepEqual([ownKeyOf(next, room), ownWordOf(next, room), idOf(room)], ['Control+Alt+N', 'nn', 'row:room:Notes'])
+  const start = buildRows(readTyped('', next), {}, next, { now })
+  assert.deepEqual([start[0].section, start[0].title, start[0].favorite], ['Favorites', 'Notes', true])
+  assert.equal(actionsFor(start[0]).find((action) => action.id === 'favorite').label, 'Remove from favorites')
+  const byWord = buildRows(readTyped('nn', next), {}, next, { now, ai: { state: 'ready', label: 'AI' } })
+  assert.deepEqual([byWord[1].title, byWord[1].section], ['Notes', 'Your word “nn”'], 'after Ask AI, the thing your word names')
+
+  // Taking all three away forgets it; an app keeps its key and word with the apps.
+  let off = cleanSettings(applyPatch(next, customize(next, room, { favorite: false })), { validHotkey })
+  off = cleanSettings(applyPatch(off, customize(off, room, { hotkey: null })), { validHotkey })
+  off = cleanSettings(applyPatch(off, customize(off, room, { keyword: null })), { validHotkey })
+  assert.deepEqual(off.custom, [])
+  const safari = { key: 'app:/Applications/Safari.app', kind: 'app', title: 'Safari', data: { path: '/Applications/Safari.app' } }
+  const withApp = cleanSettings(applyPatch(base, customize(base, safari, { keyword: 'sf' })), { validHotkey })
+  assert.equal(withApp.apps.Safari.keyword, 'sf')
+  assert.equal(withApp.custom.length, 0)
+  // A word already taken is not given twice.
+  const taken = cleanSettings(applyPatch(base, customize(base, room, { keyword: 'g' })), { validHotkey })
+  assert.equal(ownWordOf(taken, room), null)
+})
+
+test('Next screen keeps the window as it is, in the same place in proportion, on the next screen', async () => {
+  const { nextScreenFrame } = await import('../shared/window-layouts.mjs')
+  const left = { workArea: { x: 0, y: 25, width: 1440, height: 875 } }
+  const right = { workArea: { x: 1440, y: 0, width: 2560, height: 1415 } }
+  assert.equal(nextScreenFrame({ x: 100, y: 100, width: 800, height: 600 }, [left]), null, 'one screen: nothing moves')
+  assert.deepEqual(nextScreenFrame({ x: 0, y: 25, width: 800, height: 600 }, [left, right]), { x: 1440, y: 0, width: 800, height: 600 }, 'at the top left, it stays at the top left')
+  assert.deepEqual(nextScreenFrame({ x: 1440 + 2560 - 800, y: 1415 - 600, width: 800, height: 600 }, [left, right]), { x: 640, y: 300, width: 800, height: 600 }, 'from the last screen it wraps to the first, bottom right stays bottom right')
+  assert.deepEqual(nextScreenFrame({ x: 1440, y: 0, width: 2560, height: 1415 }, [left, right]), { x: 0, y: 25, width: 1440, height: 875 }, 'too big for the next screen: it fits it')
 })
