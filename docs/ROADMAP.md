@@ -10,6 +10,14 @@ change. What the AI isn't sure of stays in Unsorted, where sorting by hand still
 Filed for you lists what it filed this week. A pile from before is only filed when Nate says
 "File them too". Settings → AI has the switch. It never wakes a model the way a question does:
 if the AI is resting or unloaded, the stickies wait and Notes says why.
+## October 6 (late): choose your AI
+
+Settings → AI now says which model is best for this Mac (the most capable one its memory holds
+comfortably; on Nate's 64 GB M5 Pro, Qwen 3.6 35B), lists the ones already downloaded, and
+compares all nine side by side: what each is good at, speed, smarts, download size and the memory
+it needs. One that needs a bigger Mac says so instead of offering a download. One of each family (Qwen
+3.5 4B, Ministral 3 3B, Qwen 3.6 35B) was run through OSAT's own engine with OSAT's real sorting
+and "In short" questions; the others share those families' engines.
 
 ## October 6: sorting Unsorted, redone
 
@@ -98,6 +106,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
 | 35 | The AI files stickies for you (like Mem): write a pile, it files each one once you stop, long ones get a short version, Filed for you in Notes, Undo for the whole run | In review |
 | 36 | One bar, one list: no tabs; Ask AI first, then apps, files, copies and notes with See all; Tab asks; ↓ shows the latest copies | In review |
+| 37 | Choose your AI: best for this Mac, your models, and nine local models compared (Gemma 4, Qwen 3.5/3.6, Ministral 3) | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

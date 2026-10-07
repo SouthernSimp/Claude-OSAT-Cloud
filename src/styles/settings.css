@@ -52,6 +52,8 @@
 
 /* ---- Groups, cards and rows ----------------------------------------------------------------------------------- */
 .setting-group { display: grid; gap: 8px; }
+/* Groups gathered in one older card (the AI's models) keep the page's spacing between them. */
+.settings-legacy > .ai-management { display: grid; gap: var(--set-gap); }
 .setting-group:not(:has(.setting-row)) { display: none; }
 .setting-group > h3 { padding: 0 6px; font: 600 var(--t-xs) var(--font); letter-spacing: 0; color: var(--muted); }
 .setting-card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); }

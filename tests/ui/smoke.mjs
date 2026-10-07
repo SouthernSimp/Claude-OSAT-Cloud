@@ -7,6 +7,8 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
 import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
 import { installSearchBridge } from './search-bridge.mjs'
+import { createRequire } from 'node:module'
+const { TIERS, fits, pickTier, recommendFor } = createRequire(import.meta.url)('../../desktop/ai/catalog.cjs')
 
 const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
@@ -1195,6 +1197,40 @@ async function main() {
   await phone.getByText('In step with your Mac.').waitFor({ timeout: 5000 })
     .catch(() => problems.push('iphone: the iCloud page did not say it is in step'))
   await phone.screenshot({ path: `${OUT}/iphone-icloud.png` })
+  // Settings → AI (Oct 2026): the best model for this Mac, the ones on it, and every model compared. A stand-in for the
+  // Mac app's AI: a 64 GB Mac with Light downloaded.
+  room = 'models'
+  const models = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  models.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
+  const memory = 64 * 1024 ** 3
+  const fakeStatus = {
+    recommended: pickTier(memory).id, best: recommendFor(memory).id, chosen: 'light', startup: false, totalMemory: memory, queued: [], download: null, engine: 'idle', message: '',
+    tiers: TIERS.map((tier) => ({ id: tier.id, label: tier.label, model: tier.model, blurb: tier.blurb, starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best, minMemory: tier.minMemory, fits: fits(tier, memory), size: tier.size, ready: tier.id === 'light', state: 'idle', busy: false, retained: false, blocked: false, message: '' })),
+  }
+  await models.addInitScript((status) => {
+    window.__installs = []
+    window.osatLocalAI = {
+      status: async () => status, onStatus: () => () => {}, models: async () => ({ models: [] }),
+      install: async (id) => { window.__installs.push(id); return status },
+    }
+    for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen')
+  }, fakeStatus)
+  await models.goto(`${url}?fresh=1`)
+  await models.waitForSelector('.workspace-content', { timeout: 15000 })
+  await models.keyboard.press('Control+,')
+  await models.getByRole('navigation', { name: 'Settings sections' }).getByRole('button', { name: 'AI', exact: true }).click()
+  await models.locator('.ai-compare tbody tr').first().waitFor({ timeout: 5000 }).catch(() => problems.push(`${room}: Settings → AI had no comparison`))
+  if (await models.locator('.ai-compare tbody tr').count() !== TIERS.length) problems.push(`${room}: the comparison did not list every model`)
+  const bestGroup = models.locator('.setting-group').filter({ has: models.locator('h3', { hasText: 'Best for this Mac' }) })
+  if (!(await bestGroup.innerText().catch(() => '')).includes('Qwen 3.6 35B')) problems.push(`${room}: a 64 GB Mac was not offered Qwen 3.6 35B`)
+  await models.locator('.ai-compare tr', { hasText: 'Qwen 3.5 9B' }).getByRole('button', { name: 'Get' }).click()
+  if (!(await models.evaluate(() => window.__installs)).includes('qwen35-9b')) problems.push(`${room}: Get did not download the model`)
+  await bestGroup.scrollIntoViewIfNeeded()
+  await models.screenshot({ path: `${OUT}/settings-models-best.png` })
+  await models.locator('.ai-compare').scrollIntoViewIfNeeded()
+  await models.screenshot({ path: `${OUT}/settings-models.png` })
+  await models.close()
+
   await browser.close()
 }
 
