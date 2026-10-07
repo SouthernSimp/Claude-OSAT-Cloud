@@ -6,6 +6,7 @@
 import { calculate } from './calc.mjs'
 import { groupItems, searchItems, titleOf, whenCopied } from './clipboard-model.mjs'
 import { customizable, favoriteRows, keywordAddress, matchKeyword } from './launcher-model.mjs'
+import { findSnippets, snippetRow } from './snippets.mjs'
 import { findSystem, systemRow } from './system-commands.mjs'
 import { findLayouts } from './window-layouts.mjs'
 
@@ -202,6 +203,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     const { keyword, query } = read.keyword
     // Your own word for something (set from ⌘K): that thing, first.
     if (keyword.row) rows.push({ ...favoriteRows({ custom: [{ ...keyword.row, favorite: true }] })[0], section: `Your word “${keyword.keyword}”`, favorite: keyword.row.favorite })
+    else if (keyword.snippet) rows.push(snippetRow(keyword.snippet, `Your word “${keyword.keyword}”`))
     else if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Apps', data: { app: keyword.app } })
     else rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-link', title: keyword.url.includes('{query}') ? `Search ${keyword.label} for “${query}”` : `Open ${keyword.label}`, subtitle: `${keyword.keyword} · web address`, section: 'Quick links', data: { url: keywordAddress(keyword, query) } })
   }
@@ -241,6 +243,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     rows.push(...apps.filter((item) => !named.includes(item)).map((item) => appRow(item, 'Apps')))
     rows.push(...files(found.files || [], 'Files').slice(0, 6))
     if ((found.files || []).length > 6) rows.push(more('files', 'files', 'Files'))
+    rows.push(...findSnippets(settings.snippets, read.query).slice(0, 3).map((snippet) => snippetRow(snippet)))
     rows.push(...clipFound.slice(0, 4).map((item) => clipRow(item, now, 'Clipboard')))
     if (clipFound.length > 4) rows.push(more('clipboard', `${clipFound.length} copies`, 'Clipboard'))
     rows.push(...(found.notes || []).slice(0, 5).map((item) => noteRow(item, 'Notes')))
@@ -306,6 +309,7 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
         ...(row.kind === 'link' ? [{ id: 'open-link', label: 'Open the link', keys: '⌘O' }] : []),
         ...(offer ? [{ id: 'offer', label: `Add to ${offer.folderName}`, hint: 'As a sticky in that topic', keys: '⇧⌘N' }] : []),
         { id: 'add', label: 'Add to a topic…', ...(offer ? {} : { keys: '⇧⌘N' }) },
+        { id: 'save-snippet', label: 'Save as a snippet…' },
         pin(row.data.pinned),
         { id: 'delete', label: 'Delete', hint: 'Forgets this copy', keys: '⌘⌫', danger: true },
       ]
@@ -325,6 +329,7 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
     case 'ask': return [{ id: 'ask-ai', label: 'Ask', keys: '↵' }]
     case 'more': return [{ id: 'scope', label: 'Show all', keys: '↵' }]
     case 'system': return [{ id: 'system', label: row.title, keys: '↵' }]
+    case 'snippet': return [{ id: 'paste-snippet', label: 'Paste', keys: '↵' }, { id: 'copy-snippet', label: 'Copy', keys: '⇧↵' }]
     case 'keyword-app': return [{ id: 'open-app-named', label: 'Open', keys: '↵' }]
     case 'keyword-link': return [{ id: 'open-link', label: 'Open in your browser', keys: '↵' }]
     case 'layout': return [{ id: 'snap', label: row.data?.layout === 'restore' ? 'Put the window back' : 'Move the window', keys: '↵' }]
@@ -353,6 +358,7 @@ export function detailsFor(row, { now = new Date() } = {}) {
     case 'shot': return [['Kind', /\.(mp4|mov|gif)$/i.test(d.name) ? 'Recording' : 'Screenshot'], ['Taken', DAY.format(new Date(d.at))], ['Kept by', 'CleanShot X']]
     case 'note': return [['Kind', 'Note'], ['Where', row.subtitle]]
     case 'node': return [['Kind', 'Topic'], ['Where', row.subtitle]]
+    case 'snippet': return [['Kind', 'Snippet'], ...(d.keyword ? [['Word', d.keyword]] : []), ['Length', `${d.text.length.toLocaleString('en-US')} characters`]]
     case 'system': return [['Does', row.title], ['Undo', row.subtitle === 'Can’t be undone' ? 'Can’t be undone' : 'Do it again to switch back']]
     default: return []
   }

@@ -292,6 +292,10 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   emoji: search('emoji'),
   // The Mac's own commands (lock, sleep, dark mode, mute, the Bin…): shared/system-commands.mjs.
   system: search('system'),
+  // Snippets (shared/snippets.mjs): filled in and pasted or copied by main; a copy's words saved as one.
+  pasteSnippet: search('paste-snippet'),
+  copySnippet: search('copy-snippet'),
+  saveSnippet: search('save-snippet'),
   // Screenshots and recording (desktop/launcher/capture.cjs): CleanShot X when it's here, else the Mac's own.
   capture: search('capture'),
   captureStatus: search('capture-status'),

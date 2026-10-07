@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MagnifyingGlass } from "@phosphor-icons/react";
 import { useUndoToast } from "../lib/UndoToast.jsx";
-import { ClipboardPage, KeyboardPage, LauncherProvider, QuickLinksPage, QuickSearchPage, RingPage, WindowLayoutsPage } from "./settings/launcher.jsx";
+import { ClipboardPage, KeyboardPage, LauncherProvider, QuickLinksPage, QuickSearchPage, RingPage, SnippetsPage, WindowLayoutsPage } from "./settings/launcher.jsx";
 import { AboutPage, AiPage, AppearancePage, BotsPage, DataPage, GeneralPage, PhonePage, ScansPage } from "./settings/osat-pages.jsx";
 import { SETTINGS_GROUPS, SETTINGS_PAGES, pageById, sectionFor } from "./settings/pages.js";
 import { QueryContext } from "./settings/parts.jsx";
@@ -31,6 +31,7 @@ const PAGES = {
   keyboard: KeyboardPage,
   clipboard: ClipboardPage,
   "quick-links": QuickLinksPage,
+  snippets: SnippetsPage,
   windows: WindowLayoutsPage,
   ring: RingPage,
   screenshots: ScreenshotsPage,

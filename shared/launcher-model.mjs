@@ -8,6 +8,7 @@
 import { calculate } from './calc.mjs'
 import { CAPTURES, cleanCaptureSettings } from './capture-model.mjs'
 import { RING_ITEMS } from './ring-model.mjs'
+import { cleanSnippets } from './snippets.mjs'
 import { LAYOUTS, cleanWindowKeys } from './window-layouts.mjs'
 
 export const SEARCH_HOTKEY = 'Command+Shift+Space'
@@ -59,6 +60,9 @@ export const DEFAULT_SETTINGS = Object.freeze({
   ask: { sources: true },
   pins: [],
   custom: [],
+  // Snippets (shared/snippets.mjs): text with a word. Typing the word in any app turns it into the text only once turned on.
+  snippets: [],
+  snippetsTyped: false,
   // Window keys (Control+Option+Arrow…) are off until turned on: they are global, and moving windows needs Accessibility.
   windows: { on: false, hotkeys: cleanWindowKeys(undefined) },
   // The ring opens with Hyper + middle-click over any app (`middle`, a small helper: desktop/launcher/middle-click.cjs) or
@@ -118,6 +122,8 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     const entry = { ...row, favorite: item.favorite === true, hotkey: key(item.hotkey ?? null), keyword: word(item.keyword ?? null) }
     if (entry.favorite || entry.hotkey || entry.keyword) custom.push(entry)
   }
+  // Snippets' words come last: one the bar already uses goes.
+  const snippets = cleanSnippets(from.snippets, used)
   const pins = (Array.isArray(from.pins) ? from.pins : []).filter((pin) => pin && typeof pin.rootId === 'string' && typeof pin.relative === 'string' && typeof pin.name === 'string' && ['file', 'folder'].includes(pin.kind))
     .slice(0, 30).map(({ rootId, relative, name, kind, where }) => ({ kind, rootId, relative, name, where: typeof where === 'string' ? where.slice(0, 200) : '' }))
   const clip = from.clipboard || {}
@@ -130,6 +136,8 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     clipboard: { items: [50, 100, 200, 500].includes(clip.items) ? clip.items : 200, days: [0, 7, 30, 90].includes(clip.days) ? clip.days : 30, offers: clip.offers !== false },
     pins,
     custom,
+    snippets,
+    snippetsTyped: from.snippetsTyped === true,
     ask: { sources: from.ask?.sources !== false },
     windows: { on: from.windows?.on === true, hotkeys: cleanWindowKeys(from.windows?.hotkeys, validHotkey) },
     ring: {
@@ -195,6 +203,7 @@ export function wordsOf(settings) {
   for (const [name, own] of Object.entries(settings.apps || {})) if (own.keyword) words[`app:${name}`] = own.keyword
   for (const link of settings.links || []) if (link.keyword) words[`link:${link.id}`] = link.keyword
   for (const entry of settings.custom || []) if (entry.keyword) words[`row:${entry.key}`] = entry.keyword
+  for (const snippet of settings.snippets || []) if (snippet.keyword) words[`snip:${snippet.id}`] = snippet.keyword
   return words
 }
 
@@ -207,6 +216,7 @@ export function nameOf(settings, id) {
   if (kind === 'link') return (settings.links || []).find((link) => link.id === rest)?.name || 'A quick link'
   if (kind === 'capture') return CAPTURES.find((item) => item.id === rest)?.label || rest
   if (kind === 'row') return (settings.custom || []).find((entry) => entry.key === rest)?.title || 'Something in the bar'
+  if (kind === 'snip') return `the snippet “${(settings.snippets || []).find((snippet) => snippet.id === rest)?.name || 'a snippet'}”`
   return rest || id
 }
 
@@ -274,7 +284,9 @@ export function matchKeyword(settings, text, { rows = false } = {}) {
   if (link) return link.url.includes('{query}') !== Boolean(query) ? null : { keyword: { id: link.id, keyword: word, label: link.name, url: link.url }, query }
   // Your own word for something in the bar (the bar only; the desk's line keeps to apps and links).
   const entry = rows && !query ? (settings.custom || []).find((item) => item.keyword === word) : null
-  return entry ? { keyword: { id: `row:${entry.key}`, keyword: word, label: entry.title, row: entry }, query: '' } : null
+  if (entry) return { keyword: { id: `row:${entry.key}`, keyword: word, label: entry.title, row: entry }, query: '' }
+  const snippet = rows && !query ? (settings.snippets || []).find((item) => item.keyword === word) : null
+  return snippet ? { keyword: { id: `snip:${snippet.id}`, keyword: word, label: snippet.name, snippet }, query: '' } : null
 }
 
 export const keywordAddress = (keyword, query = '') => keyword.url.replace('{query}', encodeURIComponent(query))

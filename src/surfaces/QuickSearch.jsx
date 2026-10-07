@@ -277,6 +277,16 @@ export function QuickSearchSurface() {
           said(target.favorite ? `Took “${target.title}” off your favorites` : `“${target.title}” is in your favorites`)
           break
         }
+        case 'paste-snippet': {
+          const result = await bridge.pasteSnippet(d.id)
+          if (result.reason === 'access') {
+            setToast({ message: 'Copied. Press ⌘V to paste. To paste for you, OSAT needs Accessibility.', label: 'Allow…', undo: () => bridge.askAccess().catch(() => {}), at: Date.now() })
+            hideLater(9000)
+          } else if (!result.pasted) { said('Copied. Press ⌘V to paste.', 0); hideLater(2400) }
+          break
+        }
+        case 'copy-snippet': await bridge.copySnippet(d.id); said('Copied'); hideLater(500); break
+        case 'save-snippet': setMenu(null); setEditing({ row: target, what: 'snippet', value: '' }); break
         case 'set-key': setMenu(null); setEditing({ row: target, what: 'key' }); break
         case 'set-word': setMenu(null); setEditing({ row: target, what: 'word', value: ownWordOf(settings, target) || '' }); break
         case 'sticky': saveSticky(d.text); break
@@ -313,6 +323,14 @@ export function QuickSearchSurface() {
       await bridge.customize(target, { hotkey })
       said(hotkey ? `${labelOf(hotkey)} now does “${target.title}”, from any app` : `“${target.title}” has no key now`, 3200)
       setEditing(null)
+    } catch (error) { said(cleanError(error), 5000) }
+  }, [bridge, said])
+  const saveSnippet = useCallback(async (target, value) => {
+    try {
+      const snippet = await bridge.saveSnippet(target.data.id, String(value || '').trim().toLowerCase() || null)
+      said(snippet.keyword ? `Saved as a snippet: type “${snippet.keyword}” for it` : 'Saved as a snippet', 3200)
+      setEditing(null)
+      requestAnimationFrame(() => input.current?.focus())
     } catch (error) { said(cleanError(error), 5000) }
   }, [bridge, said])
   const giveWord = useCallback(async (target, value) => {
@@ -551,9 +569,9 @@ export function QuickSearchSurface() {
                   <button type="button" onClick={() => { setEditing(null); input.current?.focus() }}>Cancel</button>
                 </p>
               ) : (
-                <form className="qs-editor" onSubmit={(event) => { event.preventDefault(); giveWord(editing.row, editing.value) }}>
-                  <label>A word for <b>{editing.row.title}</b>
-                    <input autoFocus value={editing.value} maxLength={12} placeholder="like nn" aria-label={`A word for ${editing.row.title}`} onChange={(event) => setEditing({ ...editing, value: event.target.value })} />
+                <form className="qs-editor" onSubmit={(event) => { event.preventDefault(); (editing.what === 'snippet' ? saveSnippet : giveWord)(editing.row, editing.value) }}>
+                  <label>{editing.what === 'snippet' ? <>Save as a snippet, with a word to type for it (optional)</> : <>A word for <b>{editing.row.title}</b></>}
+                    <input autoFocus value={editing.value} maxLength={13} placeholder={editing.what === 'snippet' ? 'like ;addr' : 'like nn'} aria-label={editing.what === 'snippet' ? 'A word for the snippet' : `A word for ${editing.row.title}`} onChange={(event) => setEditing({ ...editing, value: event.target.value })} />
                   </label>
                   <button type="submit">Save</button>
                   <button type="button" onClick={() => { setEditing(null); input.current?.focus() }}>Cancel</button>

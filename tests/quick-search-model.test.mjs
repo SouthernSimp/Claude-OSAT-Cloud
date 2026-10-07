@@ -118,12 +118,12 @@ test('Return does the obvious thing, and ⌘K lists the rest', () => {
   assert.equal(actionsFor(top).find((action) => action.id === 'delete').danger, true)
 
   const copy = { kind: 'text', data: clip('a', 'hello') }
-  assert.deepEqual(actionsFor(copy).map((action) => action.id), ['paste', 'copy', 'add', 'pin', 'delete'])
+  assert.deepEqual(actionsFor(copy).map((action) => action.id), ['paste', 'copy', 'add', 'save-snippet', 'pin', 'delete'])
   assert.equal(actionsFor(copy)[0].label, 'Paste')
   const offered = actionsFor(copy, { offer: { folderId: 'f1', folderName: 'Jordan' } })
-  assert.deepEqual(offered.map((action) => action.id), ['paste', 'copy', 'offer', 'add', 'pin', 'delete'])
+  assert.deepEqual(offered.map((action) => action.id), ['paste', 'copy', 'offer', 'add', 'save-snippet', 'pin', 'delete'])
   assert.equal(offered[2].label, 'Add to Jordan')
-  assert.deepEqual(actionsFor({ kind: 'link', data: clip('l', 'https://x.example', { kind: 'link' }) }).map((action) => action.id), ['paste', 'copy', 'open-link', 'add', 'pin', 'delete'])
+  assert.deepEqual(actionsFor({ kind: 'link', data: clip('l', 'https://x.example', { kind: 'link' }) }).map((action) => action.id), ['paste', 'copy', 'open-link', 'add', 'save-snippet', 'pin', 'delete'])
   assert.deepEqual(actionsFor({ kind: 'image', data: { id: 'i', kind: 'image', pinned: true } }).map((action) => action.label), ['Paste', 'Copy', 'Unpin', 'Delete'])
   assert.equal(actionsFor({ kind: 'app', data: {} })[0].id, 'open-app')
   assert.equal(actionsFor({ kind: 'node', data: {} })[0].label, 'Open on the canvas')
