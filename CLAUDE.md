@@ -19,11 +19,11 @@ launcher.json is its switch, Hyper R stays as the backup; it was checked headles
 Mac checklist).
 Nate's Mac has 0.1.171 (a local build of #52, built in /private/tmp after a fresh `npm ci`: a symlinked node_modules leaves
 the AI engine's dependencies out of app.asar); the latest release tag is v0.1.174.
-In progress, in Nate's order: "Ask across everything" in two stacked PRs (step one: the notes side, `src/assistant/ask-sources.js`
-and `relatedForAsk` in `work-scope.js`; step two, stacked on it: copied items and files, `shared/ask-find.mjs` picks them and
-leaves secret-looking text out, `ask:find` in `desktop/launcher/index.cjs`, never to a cloud model, the switch `ask.sources` in
-launcher.json, a first-time note, chips in `assistant/UsedSources.jsx`; a message keeps only pointers), then bots: "Record a skill" is built (Phase 19a, in review: `desktop/skills.cjs`, `desktop/skill-pages.cjs`, `shared/skill-model.mjs`, `src/tools/Skills.jsx`), the workers place is next, then Phase 27's connectors
-(first: see both ends of a connection in one view). Nate does not need Mac Calendar polish: Siri covers it.
+Merged since: #57 and #61 ("Ask across everything": the notes side, then copied items and files, `shared/ask-find.mjs`,
+`ask:find`, the `ask.sources` switch, `assistant/UsedSources.jsx`) and #63 ("Record a skill", Phase 19a: `desktop/skills.cjs`,
+`desktop/skill-pages.cjs`, `shared/skill-model.mjs`, `src/tools/Skills.jsx`). Still on Nate's Mac checklist: Ask over real copies
+and files. Next, in Nate's order: the workers place (bots), then Phase 27's connectors (#62, see both ends of a connection, is a
+draft). Synced calendars matter to Nate (keep Phase 14 alive); Mac Calendar polish does not: Siri covers it.
 
 ## Working with Nate
 
