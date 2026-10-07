@@ -24,6 +24,7 @@ const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
 const { createSystem } = require('./system.cjs')
+const { createSnippets } = require('./snippets.cjs')
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -41,6 +42,7 @@ async function createLauncher({
   apps = createApps(),
 }) {
   const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind, systemModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs'), sharedModule('system-commands.mjs')])
+  const snippetModel = await sharedModule('snippets.mjs')
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -62,6 +64,12 @@ async function createLauncher({
   const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel })
   // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
   const system = createSystem({ exec, platform, trusted, model: systemModel })
+  // Snippets: pasted from the bar, and (once turned on) typed in any app: snippets.cjs.
+  const snippets = createSnippets({
+    spawn: spawnHelper, exec, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
+    clipboard, quiet: history.quiet, paste: () => pasteInto({ exec, platform, trusted: () => true }),
+    log: (text) => console.error('The snippets helper:', text),
+  })
   // A layout key pressed while OSAT isn't allowed says so once, calmly, and then leaves it alone.
   let told = false
   async function snapFromKey(id) {
@@ -192,6 +200,7 @@ async function createLauncher({
     settings = next
     applyHotkeys()
     listenForMiddle()
+    snippets.sync()
     await writeSettings()
     history.limitsChanged()
     history.watch(settings.sources.clipboard.on)
@@ -221,11 +230,13 @@ async function createLauncher({
     }
     return save(launcherModel.customize(settings, row, { [allowed[0]]: value }))
   })
-  on('search:status', () => ({
+  on('search:status', () => (snippets.sync(), {
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
     keysFailed: hotkeys.failed(),
     // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
     middleClick: middleClick.state(),
+    // 'off', 'access', 'starting', 'listening', 'failed' or 'unavailable': the typed snippets' helper.
+    snippets: snippets.state(),
   }), ofDesk)
   // OSAT asks macOS for Accessibility only when a button is pressed (Settings → Launcher, or "Allow…" in the bar's
   // note after a paste that couldn't happen), never by itself.
@@ -332,6 +343,22 @@ async function createLauncher({
   })
   on('search:copy-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return true })
   on('search:paste-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return pasteWhenAble() })
+  /* Snippets from the bar: filled in here ({clipboard} is what is on it now), then pasted or copied. */
+  const snippetText = (id) => { const text = snippets.text(id); if (text === null) fail('That snippet is gone.'); return text }
+  on('search:paste-snippet', (id) => { clipboard.writeText(snippetText(id)); return pasteWhenAble() })
+  on('search:copy-snippet', (id) => { clipboard.writeText(snippetText(id)); return true })
+  /* "Save as a snippet…" on a copy: its words become a snippet, with a word if one was given. */
+  on('search:save-snippet', async (clipId, keyword) => {
+    const text = history.textOf(clipId)
+    if (typeof text !== 'string' || !text.trim()) fail('Only words can be a snippet.')
+    const word = typeof keyword === 'string' && keyword.trim() ? keyword.trim().toLowerCase() : null
+    if (word && !snippetModel.validSnippetWord(word)) fail('A snippet’s word is one to twelve letters or numbers, maybe after a sign: ;addr')
+    const holder = word ? launcherModel.holderOf(settings, { word }) : null
+    if (holder) fail(`“${word}” is already the word for ${holder}.`)
+    const snippet = { id: `snip-${crypto.randomUUID().slice(0, 8)}`, name: text.trim().split('\n')[0].slice(0, 40), keyword: word, text: text.slice(0, 5000) }
+    await save({ snippets: [...settings.snippets, snippet] })
+    return snippet
+  })
 
   async function openApp(appPath) {
     if (await shell.openPath(appPath)) fail('macOS could not open that app.')
@@ -462,11 +489,13 @@ async function createLauncher({
       history.watch(settings.sources.clipboard.on)
       applyHotkeys()
       listenForMiddle()
+      snippets.sync()
     },
     stop() {
       history.stop()
       hotkeys.stop()
       middleClick.stop()
+      snippets.stop()
     },
   }
 }

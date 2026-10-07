@@ -184,6 +184,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     only change that, through `search:customize` (validated in main); the rest of the settings stay the desk's
     (`search:save-settings`). `system.cjs` + `shared/system-commands.mjs`: lock, sleep, screen off, dark mode, mute, hide
     other apps, Empty the Bin (Return twice; a key on it only opens the bar on it). Layout `next-display` (`nextScreenFrame`).
+    Phase 41 snippets: `snippets` + `snippetsTyped` in launcher.json (`shared/snippets.mjs`: words like `;addr` (`validSnippetWord`),
+    {date} {time} {day} {clipboard}, `typedStep` is the helper's rule); `snippets.cjs` fills and pastes them (`search:paste-snippet`,
+    `search:save-snippet` from a copy's ⌘K) and, once turned on and allowed in Accessibility, runs a keyDown-monitor helper
+    (`osascript -l JavaScript`, like middle-click.cjs) that keeps only the last 16 letters and writes only `hit <n>`; OSAT then
+    presses ⌫ per letter and pastes through a quiet clipboard write, putting the clipboard back. Settings → Snippets.
     Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
     one way out of the Mac it adds is opening a web address in Nate's own browser (fenced in tests/under.test.mjs,
     refused offline). ⌘⇧Space is the third shortcut in main's `shortcuts` (`search`).

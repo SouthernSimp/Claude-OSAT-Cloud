@@ -155,3 +155,13 @@
   .setting-control { flex: 1 1 100%; justify-content: flex-start; }
   .setting-controls { justify-content: flex-start; }
 }
+
+/* Snippets: a word and its text side by side, the text wide. */
+.snippet-edit { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 10px; align-items: start; width: 100%; }
+.snippet-edit label, .snippet-form label { display: grid; gap: 4px; font-size: var(--t-xs); font-weight: 600; color: var(--muted); }
+.settings .snippet-edit input { height: 34px; padding: 0 10px; border-radius: 9px; font-size: var(--t-sm); }
+.settings .snippet-edit textarea, .settings .snippet-form textarea { padding: 8px 10px; border-radius: 9px; font: var(--t-sm)/1.45 var(--font); resize: vertical; }
+.snippet-form { grid-template-columns: minmax(0, 1fr) 110px; }
+.snippet-form .is-wide { grid-column: 1 / -1; }
+.snippet-form button { justify-self: start; }
+.snippet-edit .icon-plain { margin-top: 22px; }

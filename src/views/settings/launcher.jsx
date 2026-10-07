@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, LockSimple, Plus, X } from '@phosphor-icons/react'
 import { DAY_CHOICES, ITEM_CHOICES } from '../../../shared/clipboard-model.mjs'
 import { SOURCES, hostOf, holderOf, validAddress, validKeyword } from '../../../shared/launcher-model.mjs'
 import { MAX_RING, RING_ITEMS, ringItems } from '../../../shared/ring-model.mjs'
+import { validSnippetWord } from '../../../shared/snippets.mjs'
 import { LAYOUTS } from '../../../shared/window-layouts.mjs'
 import { AddRingTool } from './screenshots.jsx'
 import { Choice, Group, KeyRecorder, OnlyInTheMacApp, Page, Row, Select, Switch, WordField } from './parts.jsx'
@@ -276,6 +277,89 @@ function QuickLinks({ settings, save, showUndo }) {
           </form>
           {taken && <small className="setting-inline" role="status">“{w}” is {taken}’s word already. Pick another.</small>}
         </Row>
+      </Group>
+    </>
+  )
+}
+
+/* ---- Snippets ------------------------------------------------------------------------------------------------------ */
+
+export function SnippetsPage({ page }) {
+  return (
+    <LauncherPage page={page} what="In the Mac app, a snippet's word pastes its text from the quick bar, and (if you like) from any app.">
+      {({ settings, save, showUndo, status, bridge, look }) => <Snippets settings={settings} save={save} showUndo={showUndo} status={status} bridge={bridge} look={look} />}
+    </LauncherPage>
+  )
+}
+
+function Snippets({ settings, save, showUndo, status, bridge, look }) {
+  const [name, setName] = useState('')
+  const [word, setWord] = useState('')
+  const [text, setText] = useState('')
+  const w = word.trim().toLowerCase()
+  const taken = w ? holderOf(settings, { word: w }) : null
+  const ready = text.trim() && (!w || (validSnippetWord(w) && !taken))
+  const edit = (id, patch) => save({ snippets: settings.snippets.map((snippet) => (snippet.id === id ? { ...snippet, ...patch } : snippet)) })
+
+  function add(event) {
+    event.preventDefault()
+    if (!ready) return
+    save({ snippets: [...settings.snippets, { id: `snip-${Date.now().toString(36)}`, name: name.trim(), keyword: w || null, text }] })
+    setName(''); setWord(''); setText('')
+  }
+  function remove(snippet) {
+    const before = settings.snippets
+    save({ snippets: before.filter((other) => other.id !== snippet.id) })
+    showUndo(`Took off “${snippet.name}”`, () => save({ snippets: before }))
+  }
+  const helper = status?.snippets
+  const allowed = status?.accessibility === 'granted'
+
+  return (
+    <>
+      <Group title="Your snippets" note="Type a snippet's word in the quick bar and Return pastes it into the app you were in. {date}, {time}, {day} and {clipboard} fill in when it is pasted.">
+        {settings.snippets.map((snippet) => (
+          <Row key={snippet.id} title={snippet.name} hint={snippet.text.length > 120 ? `${snippet.text.slice(0, 120)}…` : snippet.text} words={`${snippet.keyword || ''} ${snippet.text}`} stacked>
+            <div className="snippet-edit">
+              <label><span>Word</span><input defaultValue={snippet.keyword || ''} maxLength={13} placeholder=";word" spellCheck={false} aria-label={`Word for ${snippet.name}`}
+                onBlur={(event) => {
+                  const next = event.target.value.trim().toLowerCase() || null
+                  if (next === snippet.keyword) return
+                  if (next && (!validSnippetWord(next) || holderOf(settings, { word: next }, `snip:${snippet.id}`))) { event.target.value = snippet.keyword || ''; return }
+                  edit(snippet.id, { keyword: next })
+                }} /></label>
+              <label className="is-wide"><span>Text</span><textarea defaultValue={snippet.text} rows={Math.min(6, snippet.text.split('\n').length + 1)} aria-label={`Text of ${snippet.name}`}
+                onBlur={(event) => { if (event.target.value.trim() && event.target.value !== snippet.text) edit(snippet.id, { text: event.target.value }) }} /></label>
+              <button type="button" className="icon-plain" aria-label={`Take off ${snippet.name}`} onClick={() => remove(snippet)}><X weight="bold" /></button>
+            </div>
+          </Row>
+        ))}
+        {settings.snippets.length === 0 && <Row title="No snippets yet" hint="Add one below, or press ⌘K on something you copied in the quick bar and choose Save as a snippet…" />}
+      </Group>
+      <Group title="Add a snippet">
+        <Row title="A new snippet" hint="A name, a word to type (a sign first keeps it out of your sentences: ;addr), and its text." stacked words="add new snippet text expand">
+          <form className="setting-form snippet-form" onSubmit={add}>
+            <label><span>Name</span><input value={name} maxLength={60} placeholder="Home address" aria-label="Name of the snippet" onChange={(event) => setName(event.target.value)} /></label>
+            <label><span>Word</span><input value={word} maxLength={13} placeholder=";addr" spellCheck={false} aria-label="Word for the snippet" onChange={(event) => setWord(event.target.value)} /></label>
+            <label className="is-wide"><span>Text</span><textarea value={text} rows={3} placeholder={'12 Oak Lane\nSpringfield'} aria-label="Text of the snippet" onChange={(event) => setText(event.target.value)} /></label>
+            <button className="outline-button" type="submit" disabled={!ready}><Plus /> Add</button>
+          </form>
+          {taken && <small className="setting-inline" role="status">“{w}” is {taken}’s word already. Pick another.</small>}
+          {w && !validSnippetWord(w) && <small className="setting-inline" role="status">A word is one to twelve letters or numbers, after one sign if you like: ;addr</small>}
+        </Row>
+      </Group>
+      <Group title="In any app" note="A small helper watches what you type for these words only. It keeps the last few letters in memory, writes nothing down, never sees a password field, and stops when OSAT quits.">
+        <Row title="Turn words into text in any app" hint={!settings.snippetsTyped ? 'Off: snippets paste from the quick bar only.'
+          : helper === 'listening' ? 'On: type a snippet’s word after a space or on a new line, and it becomes its text.'
+            : helper === 'access' || !allowed ? 'Waiting for Accessibility: allow OSAT below, then come back here.'
+              : helper === 'failed' ? 'The helper couldn’t start. Turn this off and on to try again.' : 'Starting…'} words="expand typing any app keys accessibility">
+          <Switch label="Turn words into text in any app" checked={settings.snippetsTyped} onChange={(on) => save({ snippetsTyped: on }).then(() => setTimeout(look, 800))} />
+        </Row>
+        {settings.snippetsTyped && !allowed && status?.accessibility === 'needed' && (
+          <Row title="Allow OSAT in Accessibility" hint="macOS asks once. OSAT asks only when you press the button.">
+            <button className="outline-button" type="button" onClick={() => bridge.askAccess().then(() => setTimeout(look, 1500), () => {})}><LockSimple /> Allow…</button>
+          </Row>
+        )}
       </Group>
     </>
   )
