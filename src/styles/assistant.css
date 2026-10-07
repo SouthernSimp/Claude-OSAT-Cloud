@@ -1063,3 +1063,25 @@ html:has(.quick-chat) body { background: transparent; }
   font-size: inherit;
   text-decoration: underline;
 }
+
+/* Compare models (Settings → AI): every model side by side. Scrolls inside its card when the room is narrow. */
+.ai-compare-wrap { overflow-x: auto; }
+.ai-compare { width: 100%; min-width: 640px; border-collapse: collapse; font-size: var(--t-sm); }
+.ai-compare th, .ai-compare td { padding: 10px 12px; text-align: left; vertical-align: middle; border-top: 1px solid var(--line); }
+.ai-compare thead th { border-top: 0; padding-top: 4px; color: var(--muted); font-size: var(--t-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.ai-compare tbody th { font-weight: 400; }
+.ai-compare tbody th b { display: block; font-weight: 600; color: var(--ink-strong, var(--ink)); }
+.ai-compare tbody th small { color: var(--muted); font-size: var(--t-xs); }
+.ai-compare tbody th small { display: block; }
+.ai-compare .ai-best { display: inline-block; margin-top: 4px; padding: 2px 7px; border-radius: var(--r-full); background: var(--accent-soft); color: var(--accent); font: 600 var(--t-2xs)/1.3 var(--font); font-style: normal; white-space: nowrap; }
+.ai-compare tr[data-best] { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.ai-compare tr:not([data-fits]) { color: var(--muted); }
+.ai-compare .ai-good { color: var(--muted); min-width: 160px; }
+.ai-compare td:nth-child(5), .ai-compare td:nth-child(6) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ai-compare .ai-get { text-align: right; white-space: nowrap; }
+.ai-compare .ai-have { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: var(--t-xs); }
+.ai-compare .ai-too-big { color: var(--faint, var(--muted)); font-size: var(--t-xs); }
+.ai-dots { display: inline-flex; gap: 3px; }
+.ai-dots i { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--ink) 14%, transparent); }
+.ai-dots i[data-on] { background: var(--accent); }
+@container room (max-width: 760px) { .ai-compare .ai-good { display: none; } .ai-compare { min-width: 520px; } }

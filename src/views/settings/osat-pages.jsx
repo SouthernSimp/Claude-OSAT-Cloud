@@ -28,7 +28,7 @@ const gb = (bytes) => `${(bytes / 1e9).toFixed(1)} GB`;
 export function AiSizes({ status, value, onChoose }) {
   return (
     <div className="ai-sizes" role="radiogroup" aria-label="AI size">
-      {status.tiers.map((tier) => (
+      {status.tiers.filter((tier) => tier.starter !== false).map((tier) => (
         <button key={tier.id} type="button" role="radio" className="ai-size" aria-checked={value === tier.id} onClick={() => onChoose(tier.id)}>
           <strong>
             {tier.label}
@@ -79,35 +79,39 @@ function AiCard() {
   const download = status.download;
   const percent = download ? Math.floor((download.received / download.total) * 100) : 0;
   const installed = status.tiers.filter((tier) => tier.ready);
-  const missing = status.tiers.filter((tier) => !tier.ready);
+  const best = status.tiers.find((tier) => tier.id === status.best);
   const rowState = (tier) => tier.state === "loading" ? "Loading…" : tier.state === "unloading" ? "Unloading…" : tier.busy ? "Busy · wait until its work finishes" : tier.state === "ready" ? tier.retained ? "Ready · stays loaded until you unload it or quit" : "Ready · rests after ten idle minutes" : tier.state === "error" ? tier.message : "Downloaded · loads on your next question";
 
   return (
     <section className="ai-management">
+      {best && <Group title="Best for this Mac" note={`Your Mac has ${Math.round(status.totalMemory / 1024 ** 3)} GB of memory. This is the most capable model that runs comfortably on it. Smaller ones answer faster.`}>
+        <Row title={best.model} hint={`${best.best}. ${gb(best.size)} to download, made by ${best.maker}.`} words="recommended best this mac">
+          <div className="ai-model-controls">
+            {best.ready
+              ? <button type="button" className="outline-button" disabled={Boolean(working) || status.chosen === best.id} onClick={() => act(best.id, () => bridge.select(best.id))}>{status.chosen === best.id ? "In use for new chats" : "Use for new chats"}</button>
+              : <button type="button" className="outline-button" disabled={Boolean(working) || status.queued?.includes(best.id) || download?.tier === best.id} onClick={() => act(best.id, () => bridge.install(best.id))}><DownloadSimple /> {download?.tier === best.id ? "Downloading…" : status.queued?.includes(best.id) ? "Queued" : "Download"}</button>}
+          </div>
+        </Row>
+      </Group>}
       <Group title="Your models" note="Downloads use disk space. Loading uses working memory. Every conversation can choose its own model.">
-        {status.tiers.map((tier) => <Row key={tier.id} title={tier.label + (tier.id === status.recommended ? " · Recommended for this Mac" : "")}
-          hint={tier.model + " · " + gb(tier.size) + " on disk. " + (tier.ready ? rowState(tier) : status.queued?.includes(tier.id) ? "Download queued" : tier.blurb)}
+        {!installed.length && <Row title="No model on this Mac yet" hint="Download one above or from the list below. It downloads in the background; you can keep working." />}
+        {installed.map((tier) => <Row key={tier.id} title={tier.model + (tier.id === status.best ? " · Best for this Mac" : "")}
+          hint={gb(tier.size) + " on disk. " + rowState(tier)}
           words={tier.model + " load unload memory download"} stacked>
           <div className="ai-model-controls">
-            {tier.ready ? <>
-              <button type="button" className="outline-button" disabled={Boolean(working) || tier.busy}
-                onClick={() => act(tier.id, () => tier.state === "ready" ? bridge.unload(tier.id) : bridge.load(tier.id))}>
-                {tier.state === "ready" ? "Unload" : tier.state === "loading" ? "Loading…" : tier.state === "unloading" ? "Unloading…" : "Load"}
-              </button>
-              <label className="ai-retain"><Switch label={"Keep " + tier.label + " loaded"} checked={Boolean(tier.retained)}
-                disabled={Boolean(working) || tier.state === "loading" || tier.state === "unloading"}
-                onChange={(value) => act(tier.id, () => bridge.keepLoaded(tier.id, value))} /> Keep loaded</label>
-              <button type="button" className="text-button" disabled={Boolean(working) || status.chosen === tier.id}
-                onClick={() => act(tier.id, () => bridge.select(tier.id))}>{status.chosen === tier.id ? "Default for new chats" : "Use for new chats"}</button>
-              <button type="button" className="text-button" disabled={Boolean(working) || tier.busy}
-                onClick={() => { if (window.confirm("Delete the " + tier.label + " downloaded model (" + gb(tier.size) + ")? You will need to download it again. Conversations stay here.")) act(tier.id, () => bridge.remove(tier.id)); }}>Delete download</button>
-            </> : <button type="button" className="outline-button" disabled={Boolean(working) || status.queued?.includes(tier.id)}
-              onClick={() => act(tier.id, () => bridge.install(tier.id))}><DownloadSimple /> Download {tier.label}</button>}
+            <button type="button" className="outline-button" disabled={Boolean(working) || tier.busy}
+              onClick={() => act(tier.id, () => tier.state === "ready" ? bridge.unload(tier.id) : bridge.load(tier.id))}>
+              {tier.state === "ready" ? "Unload" : tier.state === "loading" ? "Loading…" : tier.state === "unloading" ? "Unloading…" : "Load"}
+            </button>
+            <label className="ai-retain"><Switch label={"Keep " + tier.model + " loaded"} checked={Boolean(tier.retained)}
+              disabled={Boolean(working) || tier.state === "loading" || tier.state === "unloading"}
+              onChange={(value) => act(tier.id, () => bridge.keepLoaded(tier.id, value))} /> Keep loaded</label>
+            <button type="button" className="text-button" disabled={Boolean(working) || status.chosen === tier.id}
+              onClick={() => act(tier.id, () => bridge.select(tier.id))}>{status.chosen === tier.id ? "Default for new chats" : "Use for new chats"}</button>
+            <button type="button" className="text-button" disabled={Boolean(working) || tier.busy}
+              onClick={() => { if (window.confirm("Delete the " + tier.model + " download (" + gb(tier.size) + ")? You will need to download it again. Conversations stay here.")) act(tier.id, () => bridge.remove(tier.id)); }}>Delete download</button>
           </div>
         </Row>)}
-        {missing.length > 1 && <Row title="Install all three" hint={gb(missing.reduce((sum, tier) => sum + tier.size, 0)) + " remaining downloads. Models download one at a time and stay unloaded."} words="all models download disk">
-          <button type="button" className="outline-button" disabled={Boolean(working)} onClick={() => act("install", () => bridge.install(missing.map((tier) => tier.id)))}>Install all three</button>
-        </Row>}
       </Group>
       {download && <Group title="Download">
         <Row title={status.tiers.find((tier) => tier.id === download.tier)?.label || "AI model"} hint={download.state === "failed" ? download.message : gb(download.received) + " of " + gb(download.total)} stacked>
@@ -118,6 +122,11 @@ function AiCard() {
           </div>
         </Row>
       </Group>}
+      <Group title="Compare models" note="Speed and smarts are compared with each other. Every model stays on this Mac; nothing you ask leaves it.">
+        <Row title="Every model OSAT can set up" hint="Smaller ones answer faster; bigger ones think more carefully. One that needs more memory than this Mac has says so." words="compare models qwen gemma ministral download speed smarts" stacked>
+          <ModelTable status={status} download={download} working={working} onInstall={(id) => act(id, () => bridge.install(id))} />
+        </Row>
+      </Group>
       <Group title="Memory" note="Keep loaded is for this session. Otherwise models rest after ten idle minutes. Loading several models requires a resource review.">
         <Row title="Load AI at startup" hint="Load the downloaded default for new chats when OSAT opens. Turning this off keeps loading on demand." words="launch startup">
           <Switch label="Load AI at startup" checked={Boolean(status.startup)} disabled={Boolean(working)} onChange={(value) => act("startup", () => bridge.startup(value))} />
@@ -313,6 +322,40 @@ export function AppearancePage({ page, workspace, commit }) {
         </div>
       </Legacy>
     </Page>
+  );
+}
+
+const dots = (value, label) => <span className="ai-dots" role="img" aria-label={`${label} ${value} of 5`}>{[1, 2, 3, 4, 5].map((n) => <i key={n} data-on={n <= value || undefined} />)}</span>;
+
+/* Every model OSAT can set up, side by side: what it's good at, how big, how much memory it needs, speed and smarts.
+   One that this Mac can't hold comfortably says so instead of offering a download. */
+function ModelTable({ status, download, working, onInstall }) {
+  const percent = (tier) => (download?.tier === tier.id ? Math.floor((download.received / download.total) * 100) : null);
+  return (
+    <div className="ai-compare-wrap">
+      <table className="ai-compare">
+        <thead><tr><th scope="col">Model</th><th scope="col">Good for</th><th scope="col">Speed</th><th scope="col">Smarts</th><th scope="col">Download</th><th scope="col">Needs</th><th scope="col"><span className="visually-hidden">Get it</span></th></tr></thead>
+        <tbody>
+          {[...status.tiers].sort((a, b) => a.minMemory - b.minMemory || a.size - b.size).map((tier) => (
+            <tr key={tier.id} data-best={tier.id === status.best || undefined} data-fits={tier.fits !== false || undefined}>
+              <th scope="row"><b>{tier.model}</b><small>{tier.maker}</small>{tier.id === status.best && <em className="ai-best">Best for this Mac</em>}</th>
+              <td className="ai-good">{tier.best}</td>
+              <td>{dots(tier.speed, "Speed")}</td>
+              <td>{dots(tier.smarts, "Smarts")}</td>
+              <td>{gb(tier.size)}</td>
+              <td>{Math.round(tier.minMemory / 1024 ** 3)} GB</td>
+              <td className="ai-get">
+                {tier.ready ? <span className="ai-have"><Check aria-hidden="true" /> On this Mac</span>
+                  : percent(tier) !== null ? <span>{percent(tier)}%</span>
+                    : status.queued?.includes(tier.id) ? <span>Queued</span>
+                      : tier.fits === false ? <span className="ai-too-big">Needs a bigger Mac</span>
+                        : <button type="button" className="outline-button" disabled={Boolean(working)} onClick={() => onInstall(tier.id)}><DownloadSimple /> Get</button>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

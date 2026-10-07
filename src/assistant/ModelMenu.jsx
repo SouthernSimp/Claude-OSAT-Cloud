@@ -18,7 +18,7 @@ export function ModelMenu({ models = [], status, value, onChange, disabled = fal
   const ref = useRef(null)
   const selected = models.find((model) => model.id === value)
   const chosenTier = status?.tiers.find((tier) => 'osat:' + tier.id === value)
-  const label = chosenTier?.label || selected?.label || selected?.name || (value ? 'Model unavailable' : 'Choose a model')
+  const label = (chosenTier?.starter === false ? chosenTier.model : chosenTier?.label) || selected?.label || selected?.name || (value ? 'Model unavailable' : 'Choose a model')
   const close = () => { setOpen(false); ref.current?.querySelector('button')?.focus() }
 
   useEffect(() => {
@@ -54,12 +54,13 @@ export function ModelMenu({ models = [], status, value, onChange, disabled = fal
         disabled={disabled} onClick={() => setOpen((value) => !value)}><Sparkle /> <span>{label}</span><CaretDown /></button>
       {open && <div className="ai-model-options" role="menu" aria-label="Choose a model" onKeyDown={keys}>
         <p className="ai-menu-caption">For this conversation</p>
-        {(status?.tiers || []).map((tier) => {
+        {/* The models on this Mac; the rest are compared and downloaded in AI settings. Before any download: the three sizes. */}
+        {(status?.tiers || []).filter((tier) => tier.ready || (!status.tiers.some((item) => item.ready) && tier.starter !== false)).map((tier) => {
           const id = 'osat:' + tier.id
           return <button key={id} type="button" role="menuitemradio" aria-checked={value === id} disabled={!tier.ready}
             onClick={() => { onChange(id); close() }}>
-            <span><strong>{tier.label}{tier.id === status.recommended && <em>Recommended</em>}</strong>
-              <small>{uses[tier.id]}</small><small>{tier.model} · {tier.ready ? loadedLine(tier) : 'Download in AI settings'}</small></span>
+            <span><strong>{tier.starter === false ? tier.model : tier.label}{tier.id === (status.best || status.recommended) && <em>Best for this Mac</em>}</strong>
+              <small>{tier.best || uses[tier.id]}</small><small>{tier.starter === false ? '' : `${tier.model} · `}{tier.ready ? loadedLine(tier) : 'Download in AI settings'}</small></span>
             {value === id && <Check />}
           </button>
         })}
