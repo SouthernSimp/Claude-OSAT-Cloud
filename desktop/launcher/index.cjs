@@ -186,8 +186,9 @@ async function createLauncher({
     // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
     middleClick: middleClick.state(),
   }), ofDesk)
-  // The one place OSAT asks macOS for Accessibility: a button in Settings → Launcher, never by itself.
-  on('search:ask-access', () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(true), ofDesk)
+  // OSAT asks macOS for Accessibility only when a button is pressed (Settings → Launcher, or "Allow…" in the bar's
+  // note after a paste that couldn't happen), never by itself.
+  on('search:ask-access', () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(true))
 
   on('search:files', async (query) => {
     if (!settings.sources.files.on) return []
