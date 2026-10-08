@@ -1,7 +1,7 @@
 /* The OSAT connector's tools (desktop/bots/connector.cjs serves them over MCP, and as a plain
    web API, on this Mac only): list the topics, read one, find stickies by their words, add a
    topic, add, change, move and delete stickies, add and rename branches and topics, read and
-   write in the journal, read and add to OSAT's calendar, and find files on this Mac.
+   write in the journal, read and add to OSAT’s calendar, find files on this Mac, and ask OSAT’s own AI.
    Pure: each takes the workspace and the arguments a bot sent, and gives back the words to
    answer with and the store operations to make (main commits them, so the windows, Undo
    and sync see every change). Names work as well as ids, since that is how bots talk; a
@@ -230,6 +230,13 @@ export const TOOLS = [
       additionalProperties: false,
     },
     annotations: READS,
+  },
+  {
+    name: 'ask',
+    title: 'Ask OSAT’s AI',
+    description: 'Asks OSAT’s own AI, on this Mac, a question about Nate’s notes, journal, calendar and files. It looks things up itself and never changes anything, then answers in a few plain sentences, short enough for Siri to read aloud. It can take up to a minute and a half.',
+    inputSchema: { type: 'object', properties: { question: { type: 'string', description: 'The question, in plain words.' } }, required: ['question'], additionalProperties: false },
+    annotations: { ...READS, idempotentHint: false },
   },
 ]
 
@@ -613,13 +620,20 @@ const RUN = {
 }
 
 /* Runs one tool: { text, ops? }. Throws ToolError with a plain sentence for the bot.
-   find_files is the one that waits: it gives back a Promise of { text } (it only looks, so
-   no ops), and needs `findFiles` from main, so callers `await` what runTool returns. */
-export function runTool(name, args, { doc, now = new Date().toISOString(), makeId, source = 'Connector', findFiles: find }) {
+   find_files and ask are the ones that wait: each gives back a Promise of { text } (they only look,
+   so no ops) and needs a helper from main (`findFiles`, `ask`), so callers `await` what runTool returns. */
+export function runTool(name, args, { doc, now = new Date().toISOString(), makeId, source = 'Connector', findFiles: find, ask }) {
   const input = args && typeof args === 'object' && !Array.isArray(args) ? args : {}
   if (name === 'find_files') {
     if (typeof find !== 'function') throw new ToolError('Finding files works in the Mac app.')
     return findFiles(input, find)
+  }
+  // `ask` is OSAT's own AI, read-only (desktop/agent.cjs): (question) → Promise of { text }.
+  if (name === 'ask') {
+    if (typeof ask !== 'function') throw new ToolError('Asking works in the Mac app.')
+    const question = clean(input.question, 2000)
+    if (!question) throw new ToolError('Say what to ask.')
+    return Promise.resolve(ask(question)).then((answer) => ({ text: answer?.text?.trim() || 'OSAT’s AI had nothing to say to that.' }))
   }
   if (!Object.hasOwn(RUN, name)) throw new ToolError(`OSAT has no tool called “${clean(name, 60)}”.`)
   return RUN[name](doc, input, { now, makeId, source })

@@ -63,6 +63,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   let connectorPort = 0
   let connectorError = ''
   let recent = [] // what apps did through it lately, each with its Undo: { at, text, inverse }
+  let ask = null // the connector's "ask": OSAT's own AI, read-only (desktop/agent.cjs), set by main through setAsk
   const apps = () => settings.get().connector.apps
   const saveApps = (list) => settings.save({ connector: { ...settings.get().connector, apps: list } })
   const lowerFirst = (text) => text.charAt(0).toLowerCase() + text.slice(1)
@@ -84,7 +85,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     },
     // A tool's changes go through the store in one commit, marked with the app's name; what undoes them is kept for Undo.
     async call(name, args, app) {
-      const result = await tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles })
+      const result = await tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles, ask })
       if (result.ops?.length) {
         const { inverse } = applyOps(store.load().doc, result.ops)
         store.commit(client, result.ops)
@@ -292,6 +293,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     models: () => cloud.models(),
     chatStream: (payload, onDelta, signal) => cloud.chatStream(payload, onDelta, signal),
     appKey,
+    setAsk: (answer) => { ask = answer },
   }
 }
 

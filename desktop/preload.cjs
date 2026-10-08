@@ -82,6 +82,21 @@ contextBridge.exposeInMainWorld('osatLocalAI', Object.freeze({
   },
 }))
 
+/* Ask can act (desktop/agent.cjs): `onEvent` hears each step, a question before another app changes
+   anything ({ type: 'confirm', stepId, text }, answered with confirm), and the answer's pieces. */
+contextBridge.exposeInMainWorld('osatAgent', Object.freeze({
+  run: (id, payload, onEvent) => {
+    const channel = `agent:event:${id}`
+    const listener = (_event, message) => { if (message && typeof message === 'object') onEvent(message) }
+    ipcRenderer.on(channel, listener)
+    const done = ipcRenderer.invoke('agent:run', id, payload).finally(() => ipcRenderer.removeListener(channel, listener))
+    return { done, cancel: () => ipcRenderer.send('agent:cancel', id) }
+  },
+  confirm: (id, stepId, yes) => ipcRenderer.invoke('agent:confirm', id, stepId, yes === true),
+  undo: (undoId) => ipcRenderer.invoke('agent:undo', undoId),
+  apps: () => ipcRenderer.invoke('agent:apps'),
+}))
+
 const listen = (channel, listener) => {
   const handler = (_event, ...args) => listener(...args)
   ipcRenderer.on(channel, handler)

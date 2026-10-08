@@ -35,6 +35,7 @@ const { tierById } = require('./ai/catalog.cjs')
 const { createPhoneBridge } = require('./phone.cjs')
 const { watchFolder } = require('./folder-watch.cjs')
 const { createBots } = require('./bots/index.cjs')
+const { createAgent } = require('./agent.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -924,6 +925,8 @@ async function answeringModels() {
   }
 }
 
+/* `valid.schema` (a grammar for the built-in model) only ever comes from main (desktop/agent.cjs);
+   a window's payload is validated without one. */
 function chatWith(valid, onDelta, signal) {
   if (valid.model.startsWith('cloud:')) return bots.chatStream(valid, onDelta, signal)
   return valid.model.startsWith('osat:') ? ai.chatStream(valid, onDelta, signal, { interactive: !valid.background }) : localAiChatStream(valid, onDelta, signal)
@@ -1091,6 +1094,25 @@ async function registerBots() {
     offline: () => under.on,
   })
   bots.start().catch((error) => console.error('Bots could not start:', error))
+}
+
+/* ---- Ask can act: OSAT's AI uses tools, step by step (desktop/agent.cjs, Phase 48) ---- */
+
+async function registerAgent() {
+  const asker = (sender) => sender === mainWindow?.webContents || sender === launcher?.search.window.webContents
+  const agent = await createAgent({
+    store,
+    sharedModule,
+    chat: chatWith,
+    bots,
+    ipcMain,
+    findFiles: (query) => files.find(query),
+    trust: (event) => { assertTrustedSender(event); if (!asker(event.sender)) fail('Only the desk and the quick bar can do that.') },
+    models: answeringModels,
+    offline: () => under.on,
+  })
+  // The connector's "ask" (Siri, Shortcuts, Claude): read-only, the first answering model.
+  bots.setAsk((question) => agent.answer(question))
 }
 
 /* ---- Scans: the folder a scanner saves to; each new scan becomes a node (scans.cjs) ---- */
@@ -1319,6 +1341,7 @@ app.whenReady().then(async () => {
   await registerScans()
   await registerLauncher()
   await registerBots()
+  await registerAgent()
   createMacCalendar({ handle, fail })
   registerDesk()
   registerAsk()
