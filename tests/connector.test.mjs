@@ -11,7 +11,7 @@ import { connectorSetup, runTool, TOOLS, ToolError } from '../shared/connector-t
 
 const require = createRequire(import.meta.url)
 const { createStore } = require('../desktop/store/index.cjs')
-const { createConnector } = require('../desktop/bots/connector.cjs')
+const { appWithKey, createConnector } = require('../desktop/bots/connector.cjs')
 
 let n = 0
 const makeId = (prefix) => `${prefix}-${++n}`
@@ -68,15 +68,21 @@ test('add a sticky to a node, a branch or Unsorted; wrong names say what there i
   assert.throws(() => run('delete_everything', {}), /no tool called/)
 })
 
-/* The connector over HTTP, on a free port on this Mac. */
-async function served() {
+/* The connector over HTTP, on a free port on this Mac: Claude Code may change things, Shortcuts only reads. */
+const READ_KEY = 'k-read-only-0123456789ab'
+async function served({ tools = TOOLS } = {}) {
   let key = 'k-0123456789abcdefghij'
   const calls = []
+  const apps = [
+    { app: { id: 'a1', name: 'Claude Code', access: 'write' }, get key() { return key } },
+    { app: { id: 'a2', name: 'Shortcuts', access: 'read' }, key: READ_KEY },
+  ]
   const connector = createConnector({
-    tools: TOOLS,
-    key: () => key,
+    tools,
+    appFor: (given) => appWithKey(given, apps),
     version: '9.9',
-    call: async (name, args) => {
+    call: async (name, args, app) => {
+      assert.ok(app?.name, 'every call knows which app asked')
       calls.push([name, args])
       if (name === 'boom') throw new ToolError('That went wrong, plainly.')
       return { text: `ran ${name}` }
@@ -135,6 +141,7 @@ test('the connector refuses anyone without the key, other hosts and web pages', 
     assert.equal(calls.length, 0, 'no tool ever ran')
     setKey(null)
     assert.equal((await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, { headers: { authorization: 'Bearer null' } })).status, 401, 'no key set: nobody gets in')
+    assert.equal((await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, { headers: { authorization: 'Bearer undefined' } })).status, 401)
   } finally {
     connector.stop()
   }
@@ -188,6 +195,50 @@ test('the plain web API: the same tools by address, with the same key and the sa
     assert.equal((await send(undefined, { method: 'GET', route: '/api/search', headers: { authorization: 'Bearer wrong' } })).status, 401)
     assert.equal((await send(undefined, { method: 'GET', route: '/api/search', headers: { origin: 'https://evil.example' } })).status, 403)
     assert.equal(calls.length, 2, 'nothing ran without the key, or for a web page')
+  } finally {
+    connector.stop()
+  }
+})
+
+test('appWithKey: the app a key belongs to, or nobody', () => {
+  const entries = [{ app: { id: 'a' }, key: 'key-a' }, { app: { id: 'b' }, key: 'key-b' }, { app: { id: 'c' }, key: undefined }]
+  assert.equal(appWithKey('key-b', entries).id, 'b')
+  assert.equal(appWithKey('key-', entries), null)
+  assert.equal(appWithKey('', entries), null)
+  assert.equal(appWithKey(undefined, entries), null, 'an app without a key is never matched')
+  assert.equal(appWithKey('key-a', []), null)
+})
+
+test('an app that may only read sees and runs only the tools that read, over MCP and the web API', async () => {
+  // Annotated here as shared/connector-tools.mjs annotates them: a tool without readOnlyHint changes things.
+  const tools = TOOLS.map((tool) => (/^add/.test(tool.name) ? tool : { ...tool, annotations: { readOnlyHint: true } }))
+  const { connector, send, calls } = await served({ tools })
+  const asReader = { headers: { authorization: `Bearer ${READ_KEY}` } }
+  try {
+    const listed = (await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, asReader)).body.result.tools.map((tool) => tool.name)
+    assert.deepEqual(listed, ['list_nodes', 'read_node', 'search', 'read_journal'])
+    assert.equal((await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).body.result.tools.length, TOOLS.length, 'an app that may change things sees every tool')
+    const refused = await send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'add_sticky', arguments: { text: 'Hi' } } }, asReader)
+    assert.deepEqual(refused.body.result, { content: [{ type: 'text', text: 'Shortcuts can only read. Change that in Settings → Bots.' }], isError: true })
+    const api = await send({ text: 'Hi' }, { ...asReader, route: '/api/add_to_journal' })
+    assert.deepEqual([api.status, api.body], [403, 'Shortcuts can only read. Change that in Settings → Bots.\n'])
+    assert.match((await send({}, { ...asReader, route: '/api/nope' })).body, /It has: list_nodes, read_node, search, read_journal\./)
+    assert.equal(calls.length, 0, 'nothing that changes ran')
+    assert.equal((await send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'search', arguments: { query: 'x' } } }, asReader)).body.result.content[0].text, 'ran search')
+    assert.equal((await send(undefined, { ...asReader, method: 'GET', route: '/api/read_journal' })).status, 200)
+    assert.deepEqual(calls.map(([name]) => name), ['search', 'read_journal'])
+  } finally {
+    connector.stop()
+  }
+})
+
+test('a tool without the read-only mark counts as one that changes things', async () => {
+  const { connector, send, calls } = await served({ tools: TOOLS.map(({ annotations, ...tool }) => tool) })
+  try {
+    const asReader = { headers: { authorization: `Bearer ${READ_KEY}` } }
+    assert.deepEqual((await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, asReader)).body.result.tools, [])
+    assert.equal((await send(undefined, { ...asReader, method: 'GET', route: '/api/search' })).status, 403)
+    assert.equal(calls.length, 0)
   } finally {
     connector.stop()
   }

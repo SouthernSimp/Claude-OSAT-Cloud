@@ -534,7 +534,9 @@ try {
     // 12. The connector, as Claude Code would use it.
     const connector = await main.evaluate(() => window.osatBots.connectorOn()).catch((error) => ({ error: error.message }))
     check(connector.running && /^http:\/\/127\.0\.0\.1:\d+\/mcp$/.test(connector.url), `the connector did not start on this Mac: ${JSON.stringify(connector)}`)
-    await main.evaluate(() => window.osatBots.copySetup('other'))
+    const withApp = await main.evaluate(() => window.osatBots.addApp({ name: 'Claude Code', access: 'write' }))
+    check(withApp.apps?.[0]?.name === 'Claude Code' && !JSON.stringify(withApp).includes('Bearer'), `adding an app did not list it (without its key): ${JSON.stringify(withApp)}`)
+    await main.evaluate((id) => window.osatBots.copySetup('other', id), withApp.apps[0].id)
     const connectorKey = /Bearer (\S+)/.exec(await app.evaluate(({ clipboard }) => clipboard.readText()))?.[1]
     check(Boolean(connectorKey), 'the copied setup did not carry the key')
     check(!(await main.evaluate(() => window.osatSearch.clipboard().then((list) => list.items.some((item) => /Bearer/.test(item.text || ''))))), 'the connector\'s key was kept in the clipboard history')
