@@ -195,6 +195,8 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   connectorReset: () => ipcRenderer.invoke('bots:connector-reset'),
   copySetup: (which) => ipcRenderer.invoke('bots:copy-setup', which),
   undoConnector: (at) => ipcRenderer.invoke('bots:undo-connector', at),
+  // Siri and Shortcuts: main signs a ready-made shortcut and Shortcuts asks to add it.
+  addShortcut: (id) => ipcRenderer.invoke('bots:add-shortcut', id),
   onStatus: (listener) => listen('bots:status', listener),
 }))
 

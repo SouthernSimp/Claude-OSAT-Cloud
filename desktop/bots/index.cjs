@@ -14,6 +14,7 @@ const { createConnector } = require('./connector.cjs')
 const { createDropFolder } = require('./drop-folder.cjs')
 const { createKeychain } = require('./keychain.cjs')
 const { createSettings } = require('./settings.cjs')
+const { createShortcuts } = require('./shortcuts.cjs')
 
 /* Where keys are kept. The e2e test runs with a temp HOME, where the real Keychain can't be found
    and macOS pops a dialog, so it sets OSAT_KEYCHAIN=memory. As with OSAT_NODES_DIR, only from source:
@@ -103,6 +104,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     }
     watch = watchFolder({ dir: nodesDir, look: drop.look })
     if (settings.get().connector.on) startConnector().catch((error) => console.error('The connector could not start:', error.message)).finally(changed)
+    shortcuts.sweep().catch(() => {})
     await drop.look()
   }
 
@@ -164,6 +166,20 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     if (!done) throw new Error('That can’t be undone any more.')
     store.commit(client, done.inverse)
     recent = recent.filter((item) => item !== done)
+    return true
+  }))
+
+  /* ---- Siri and Shortcuts (Phase 47): ready-made shortcuts that use the connector's web API ---- */
+  const shortcuts = createShortcuts({ dir: path.join(dataDir, 'shortcuts'), build: (await sharedModule('shortcut-file.mjs')).shortcutFile })
+  // What the shortcuts carry to reach OSAT: for now the connector's own key. It will become appKey('Shortcuts', 'write').
+  function keyForShortcuts() {
+    if (!connector.running() || !connectorKey) throw new Error('Turn on the connector first.')
+    return { api: connectorUrl().replace(/\/mcp$/, '/api'), key: connectorKey }
+  }
+  // Shortcuts opens the signed file and asks Nate to add it: nothing is added without his click there.
+  handle('bots:add-shortcut', plain(async (id) => {
+    const file = await shortcuts.make(String(id), keyForShortcuts())
+    if (await shell.openPath(file)) throw new Error('Shortcuts couldn’t open it.')
     return true
   }))
 
