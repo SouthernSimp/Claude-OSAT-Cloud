@@ -132,6 +132,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 38 | Notes is home, the Sky becomes Canvas: one sidebar, List \| Canvas per topic, "topic" instead of node everywhere | In review |
 | 40 | A smarter calculator: units and dates, offline (currency later: it needs the internet) | In review |
 | 42 | Ask, tidier and honest: where a question goes, Try again, Edit your last question, a calmer box | In review |
+| 43 | The connector grows, and a plain web API (Phase 34's first step): Claude and other apps can find your stickies and read and write the journal; Shortcuts and scripts reach the same tools by web address | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

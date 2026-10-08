@@ -20,7 +20,7 @@ Open, all green, built that night: #65 the AI files stickies (Phase 35), #66 one
 widget-tray flake fix), #68 Notes is home / Canvas / topic (38), #69 favorites, keys and words from the bar + Mac commands +
 Next screen (39, on #66), #70 smarter calculator (40), #71 snippets (41, on #69), #72 Ask honest about the cloud, Try
 again, Edit (42), and **#73, all eight in one branch (`claude/everything`) for one DMG**: if Nate likes it, merge #73 and
-close the eight as included. Not done, on purpose: drag a window to an edge (macOS already tiles windows), trackpad
+close the eight as included. Oct 7: #74 (Phase 43, on #73): the connector finds stickies, reads and writes the journal, and answers as a plain web API at `/api/<tool>`. Not done, on purpose: drag a window to an edge (macOS already tiles windows), trackpad
 gestures, currency in the calculator (needs the internet; offer it opt-in). On Nate's Mac checklist: typed snippets in
 other apps, Mac commands, keys set from the bar, Qwen 3.6 35B (Settings → AI's pick for his 64 GB M5 Pro).
 
@@ -157,7 +157,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     input, never argv; off the Mac held in memory), `settings.cjs` (`bots.json`: model, providers,
     usage, connector, never a key), `connector.cjs` (MCP over HTTP on
     127.0.0.1 only, Bearer key from the Keychain, refuses other Hosts and web Origins; tools in
-    shared/connector-tools.mjs; each change commits through the store with its inverse for Undo).
+    shared/connector-tools.mjs (Phase 43: seven, adding `search`, `read_journal`, `add_to_journal`; the same tools
+    answer as a plain web API at `/api/<tool>`, GET query or POST JSON, text back, same key and walls); each change commits through the store with its inverse for Undo).
     Main routes models in one place: `answeringModels()` (the model chosen in Bots first, a cloud
     one only while online) and `chatWith()`; the line and Ask read `local-ai:models`, so the line's
     own code never changes to switch models. A new way out of the Mac must be added on purpose to

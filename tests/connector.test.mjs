@@ -32,8 +32,8 @@ async function tempStore() {
   return { store, run, onDisk }
 }
 
-test('tools: the four, each with a plain description and an input schema', () => {
-  assert.deepEqual(TOOLS.map((tool) => tool.name), ['list_nodes', 'read_node', 'add_node', 'add_sticky'])
+test('tools: the seven, each with a plain description and an input schema', () => {
+  assert.deepEqual(TOOLS.map((tool) => tool.name), ['list_nodes', 'read_node', 'add_node', 'add_sticky', 'search', 'read_journal', 'add_to_journal'])
   assert.ok(TOOLS.every((tool) => tool.description.length > 40 && tool.inputSchema.type === 'object'))
 })
 
@@ -87,7 +87,7 @@ async function served() {
     const request = http.request({ host: '127.0.0.1', port, path: route, method, headers: { 'content-type': 'application/json', authorization: `Bearer ${key}`, ...headers } }, (response) => {
       let text = ''
       response.on('data', (chunk) => { text += chunk })
-      response.on('end', () => resolve({ status: response.statusCode, body: text ? JSON.parse(text) : null }))
+      response.on('end', () => resolve({ status: response.statusCode, body: /json/.test(response.headers['content-type']) && text ? JSON.parse(text) : text || null }))
     })
     request.on('error', reject)
     request.end(body === undefined ? undefined : JSON.stringify(body))
@@ -104,7 +104,7 @@ test('the connector speaks MCP: initialize, tools/list, tools/call, notification
     assert.deepEqual([init.body.result.protocolVersion, init.body.result.serverInfo.name, init.body.result.capabilities.tools.listChanged], ['2025-03-26', 'osat', false])
     assert.equal((await send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '1999-01-01' } })).body.result.protocolVersion, '2025-06-18')
     assert.equal((await send({ jsonrpc: '2.0', method: 'notifications/initialized' })).status, 202)
-    assert.deepEqual((await send({ jsonrpc: '2.0', id: 2, method: 'tools/list' })).body.result.tools.map((tool) => tool.name), ['list_nodes', 'read_node', 'add_node', 'add_sticky'])
+    assert.deepEqual((await send({ jsonrpc: '2.0', id: 2, method: 'tools/list' })).body.result.tools.map((tool) => tool.name), TOOLS.map((tool) => tool.name))
     const called = await send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'add_sticky', arguments: { text: 'Hi' } } })
     assert.deepEqual(called.body.result, { content: [{ type: 'text', text: 'ran add_sticky' }] })
     assert.deepEqual(calls.at(-1), ['add_sticky', { text: 'Hi' }])
@@ -148,4 +148,47 @@ test('setup lines: Claude Code, Claude Desktop (through mcp-remote) and any othe
   assert.deepEqual(desktop.mcpServers.osat.args, ['-y', 'mcp-remote@latest', url, '--allow-http', '--header', 'Authorization:${AUTH_HEADER}'])
   assert.equal(desktop.mcpServers.osat.env.AUTH_HEADER, 'Bearer KEY')
   assert.equal(connectorSetup('other', { url, key: 'KEY' }), `Address: ${url}\nHeader: Authorization: Bearer KEY`)
+  assert.match(connectorSetup('api', { url, key: 'KEY' }), /^curl -H "Authorization: Bearer KEY" "http:\/\/127\.0\.0\.1:47823\/api\/search\?query=garden"\n.*\/api\/add_sticky$/)
+})
+
+test('search finds stickies by every word, newest first, saying where each lives', async () => {
+  const { run } = await tempStore()
+  run('add_node', { title: 'Garden', branches: [{ title: 'Beds', leaves: ['Water the tomatoes'] }] })
+  run('add_sticky', { text: 'Tomatoes: buy cages' })
+  assert.match(run('search', { query: 'TOMATOES' }), /^2 found for “tomatoes”:\n- \[Unsorted, 2026-09-29\] Tomatoes: buy cages\n- \[Garden › Beds, 2026-09-29\] Water the tomatoes$/)
+  assert.match(run('search', { query: 'tomatoes cages' }), /^1 found/)
+  assert.equal(run('search', { query: 'zucchini' }), 'Nothing in OSAT holds “zucchini”.')
+  assert.match(run('search', { limit: 1 }), /^2 found, newest first:\n- .*\n\n…and 1 more\.$/)
+})
+
+test('the journal: write today, write again, read it, and a bad day says how to write one', async () => {
+  const { run, onDisk } = await tempStore()
+  assert.equal(run('read_journal', { date: '2026-09-29' }), 'The journal has nothing for 2026-09-29 yet.')
+  assert.equal(run('add_to_journal', { text: 'Planted garlic #garden', date: '2026-09-29' }), 'Added to the journal for 2026-09-29.')
+  run('add_to_journal', { text: 'Rain later', date: '2026-09-29' })
+  assert.equal(run('read_journal', { date: '2026-09-29' }), '# Journal, 2026-09-29\n\nPlanted garlic #garden\nRain later')
+  assert.match(run('search', { query: 'garlic' }), /\[Journal, 2026-09-29, /)
+  const page = (await onDisk()).notes.find((note) => note.id === 'day-2026-09-29')
+  assert.deepEqual([page.kind, page.title, page.tags], ['day', 'Tuesday, September 29', ['garden']])
+  assert.throws(() => run('add_to_journal', { text: 'x', date: 'tomorrow' }), /YYYY-MM-DD/)
+  assert.throws(() => run('add_to_journal', { text: ' ' }), /what to add/)
+  assert.match(run('add_to_journal', { text: 'Today, whatever day it is' }), /^Added to the journal for \d{4}-\d{2}-\d{2}\.$/)
+})
+
+test('the plain web API: the same tools by address, with the same key and the same walls', async () => {
+  const { connector, send, calls } = await served()
+  try {
+    const found = await send(undefined, { method: 'GET', route: '/api/search?query=garden&limit=3' })
+    assert.deepEqual([found.status, found.body], [200, 'ran search\n'])
+    assert.deepEqual(calls.at(-1), ['search', { query: 'garden', limit: 3 }])
+    assert.equal((await send({ text: 'Buy seeds' }, { route: '/api/add_sticky' })).status, 200)
+    assert.deepEqual(calls.at(-1), ['add_sticky', { text: 'Buy seeds' }])
+    assert.match((await send({}, { route: '/api/boom' })).body, /no tool called “boom”/)
+    assert.equal((await send('not json', { route: '/api/add_sticky' })).status, 400)
+    assert.equal((await send(undefined, { method: 'GET', route: '/api/search', headers: { authorization: 'Bearer wrong' } })).status, 401)
+    assert.equal((await send(undefined, { method: 'GET', route: '/api/search', headers: { origin: 'https://evil.example' } })).status, 403)
+    assert.equal(calls.length, 2, 'nothing ran without the key, or for a web page')
+  } finally {
+    connector.stop()
+  }
 })

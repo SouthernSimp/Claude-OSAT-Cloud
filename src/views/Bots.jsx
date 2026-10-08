@@ -223,6 +223,7 @@ const SETUPS = [
   ['claude-code', 'Claude Code', 'Run this once in Terminal:'],
   ['claude-desktop', 'Claude Desktop', 'Add this to Claude Desktop’s config (Settings → Developer → Edit Config), then restart it:'],
   ['other', 'Grok Bot and other apps', 'Where an app asks for an MCP server, give it this address and header:'],
+  ['api', 'Shortcuts and scripts', 'The same tools as a plain web address: find your stickies, add one, write in the journal (in Shortcuts, use Get Contents of URL with this header):'],
 ]
 
 function ConnectorCard({ bridge, connector }) {
@@ -244,7 +245,7 @@ function ConnectorCard({ bridge, connector }) {
     <section className="content-card bots-card">
       <p className="eyebrow">CONNECTOR</p>
       <h2>{on ? 'Apps on this Mac can reach OSAT.' : 'Let apps on this Mac reach OSAT.'}</h2>
-      <p>The OSAT connector lets Claude Code, Claude Desktop, Grok Bot and other apps that speak MCP list, read and add topics and stickies. It only listens on this Mac, never on the network, and every app needs its key.</p>
+      <p>The OSAT connector lets Claude Code, Claude Desktop, Grok Bot and other apps that speak MCP find, read and add topics, stickies and journal lines. It only listens on this Mac, never on the network, and every app needs its key.</p>
       {connector?.error && <p className="bots-warning" role="status">{connector.error}</p>}
       <div className="button-row">
         {on
