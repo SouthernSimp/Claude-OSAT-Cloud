@@ -1086,6 +1086,8 @@ async function registerBots() {
     shell,
     // What OSAT puts there (the connector's key, instructions for a bot) never goes into the clipboard history.
     clipboard: launcher.history.quiet(require('electron').clipboard),
+    // The connector's find_files looks only in the places Files may (registerFiles ran first).
+    findFiles: (query) => files.find(query),
     offline: () => under.on,
   })
   bots.start().catch((error) => console.error('Bots could not start:', error))

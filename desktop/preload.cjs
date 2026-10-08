@@ -189,11 +189,15 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   removeProvider: (id) => ipcRenderer.invoke('bots:remove-provider', id),
   chooseModel: (model) => ipcRenderer.invoke('bots:choose-model', model),
   openPage: (url) => ipcRenderer.invoke('bots:open-page', url),
-  // The connector (MCP, on this Mac only): its key never comes here, only to the clipboard.
+  // The connector (MCP, on this Mac only): each app has its own key, which never comes here, only to the clipboard.
   connectorOn: () => ipcRenderer.invoke('bots:connector-on'),
   connectorOff: () => ipcRenderer.invoke('bots:connector-off'),
-  connectorReset: () => ipcRenderer.invoke('bots:connector-reset'),
-  copySetup: (which) => ipcRenderer.invoke('bots:copy-setup', which),
+  addApp: (app) => ipcRenderer.invoke('bots:app-add', app),
+  setAppAccess: (id, access) => ipcRenderer.invoke('bots:app-access', id, access),
+  removeApp: (id) => ipcRenderer.invoke('bots:app-remove', id),
+  undoRemoveApp: () => ipcRenderer.invoke('bots:app-undo-remove'),
+  resetAppKey: (id) => ipcRenderer.invoke('bots:app-reset', id),
+  copySetup: (which, id) => ipcRenderer.invoke('bots:copy-setup', which, id),
   undoConnector: (at) => ipcRenderer.invoke('bots:undo-connector', at),
   // Siri and Shortcuts: main signs a ready-made shortcut and Shortcuts asks to add it.
   addShortcut: (id) => ipcRenderer.invoke('bots:add-shortcut', id),

@@ -2,7 +2,8 @@
    and OSAT reach them, in one place with one Settings section (Settings → Bots):
      the drop folder   node files saved in ~/Documents/OSAT Nodes become nodes (drop-folder.cjs)
      cloud models      any provider with a key, next to the AI on this Mac (cloud.cjs)
-     the connector     an MCP server on this Mac only, with a key, off until turned on (connector.cjs)
+     the connector     an MCP server on this Mac only, off until turned on (connector.cjs); each app
+                       has its own key and may only read or also change (Phase 44)
    Every model and privacy setting lives here, so what leaves the Mac is said in one place.
    Main passes in what it owns (the store, IPC, Finder, the clipboard); this wires it up.
    Every change goes through the store, so the windows, Undo and sync see it. */
@@ -10,7 +11,7 @@ const path = require('node:path')
 const { randomBytes, randomUUID } = require('node:crypto')
 const { watchFolder } = require('../folder-watch.cjs')
 const { createCloud } = require('./cloud.cjs')
-const { createConnector } = require('./connector.cjs')
+const { appWithKey, createConnector } = require('./connector.cjs')
 const { createDropFolder } = require('./drop-folder.cjs')
 const { createKeychain } = require('./keychain.cjs')
 const { createSettings } = require('./settings.cjs')
@@ -24,14 +25,13 @@ function keychainFor({ service, env = process.env, platform = process.platform }
   return createKeychain({ service, platform: memory ? 'memory' : platform })
 }
 
-async function createBots({ dataDir, nodesDir, service, store, sharedModule, handle, fail, send, shell, clipboard, version = '0', offline = () => false }) {
+async function createBots({ dataDir, nodesDir, service, store, sharedModule, handle, fail, send, shell, clipboard, findFiles, version = '0', offline = () => false, keychain = keychainFor({ service }), now = Date.now }) {
   const core = await sharedModule('node-file.mjs')
   const providers = await sharedModule('providers.mjs')
   const tools = await sharedModule('connector-tools.mjs')
   const { applyOps } = await sharedModule('store-core.mjs')
   const settings = createSettings({ file: path.join(dataDir, 'bots.json'), clean: providers.cleanBotSettings })
   await settings.load()
-  const keychain = keychainFor({ service })
   const cloud = createCloud({ core: providers, settings, keychain, offline })
   const client = store.connect(() => {})
   const makeId = (prefix) => `${prefix}-${randomUUID()}`
@@ -53,24 +53,43 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   const drop = createDropFolder({ dir: nodesDir, core, take, onStatus: changed })
   let watch = null
 
-  /* ---- the connector ---- */
-  const KEY_ACCOUNT = 'connector-key'
-  let connectorKey = null
+  /* ---- the connector: each app has its own key, in the Keychain as `connector-key-<id>`, and its
+     own access (read, or read and change); settings.connector.apps lists them, never a key ---- */
+  const OLD_KEY = 'connector-key' // the one key every app shared before Phase 44
+  const keyAccount = (id) => `connector-key-${id}`
+  const newKey = () => randomBytes(24).toString('base64url')
+  const keys = new Map() // app id → its key, read from the Keychain once
+  let keysRead = null
+  let removed = null // the last app removed, with its key, so Undo can put it back
   let connectorPort = 0
   let connectorError = ''
-  let recent = [] // what bots did through it lately, each with its Undo: { at, text, inverse }
+  let recent = [] // what apps did through it lately, each with its Undo: { at, text, inverse }
+  const apps = () => settings.get().connector.apps
+  const saveApps = (list) => settings.save({ connector: { ...settings.get().connector, apps: list } })
+  const lowerFirst = (text) => text.charAt(0).toLowerCase() + text.slice(1)
+
+  // Used a moment ago: saved at most once a minute per app.
+  function used(app) {
+    if (now() - Date.parse(app.usedAt || '') < 60000) return
+    const usedAt = new Date(now()).toISOString()
+    saveApps(apps().map((item) => (item.id === app.id ? { ...item, usedAt } : item))).then(changed, () => {})
+  }
+
   const connector = createConnector({
     tools: tools.TOOLS,
-    key: () => connectorKey,
     version,
-    // A tool's changes go through the store in one commit; what undoes them is kept for Undo.
-    async call(name, args) {
-      const doc = store.load().doc
-      const result = tools.runTool(name, args, { doc, now: new Date().toISOString(), makeId })
+    appFor(given) {
+      const app = appWithKey(given, apps().map((item) => ({ app: item, key: keys.get(item.id) })))
+      if (app) used(app)
+      return app
+    },
+    // A tool's changes go through the store in one commit, marked with the app's name; what undoes them is kept for Undo.
+    async call(name, args, app) {
+      const result = await tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles })
       if (result.ops?.length) {
-        const { inverse } = applyOps(doc, result.ops)
+        const { inverse } = applyOps(store.load().doc, result.ops)
         store.commit(client, result.ops)
-        recent = [{ at: new Date().toISOString(), text: result.text, inverse }, ...recent].slice(0, 5)
+        recent = [{ at: new Date().toISOString(), text: `${app.name} ${lowerFirst(result.text.replace(/ \((?:note|folder|event)-[^)]+\)/g, ''))}`, inverse }, ...recent].slice(0, 5)
         changed()
       }
       return { text: result.text }
@@ -78,14 +97,56 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   })
   const connectorUrl = () => (connectorPort ? `http://127.0.0.1:${connectorPort}/mcp` : '')
   function connectorStatus() {
-    return { on: settings.get().connector.on, running: connector.running(), url: connectorUrl(), error: connectorError, recent: recent.map(({ at, text }) => ({ at, text })) }
-  }
-  async function startConnector() {
-    connectorKey = await keychain.get(KEY_ACCOUNT)
-    if (!connectorKey) {
-      connectorKey = randomBytes(24).toString('base64url')
-      await keychain.set(KEY_ACCOUNT, connectorKey)
+    return {
+      on: settings.get().connector.on,
+      running: connector.running(),
+      url: connectorUrl(),
+      error: connectorError,
+      apps: apps(),
+      removed: removed ? { id: removed.app.id, name: removed.app.name } : null,
+      recent: recent.map(({ at, text }) => ({ at, text })),
     }
+  }
+
+  async function makeApp(name, access, key = newKey()) {
+    const app = { id: randomUUID(), name, access: access === 'write' ? 'write' : 'read', createdAt: new Date(now()).toISOString() }
+    await keychain.set(keyAccount(app.id), key)
+    keys.set(app.id, key)
+    await saveApps([...apps(), app])
+    return app
+  }
+
+  /* Every app's key, from the Keychain, once. The single key from before becomes "First app",
+     able to change things as it was, with the same key, so an app set up with it keeps working. */
+  function readKeys() {
+    keysRead ||= (async () => {
+      const old = await keychain.get(OLD_KEY)
+      if (old && !apps().length) await makeApp('First app', 'write', old)
+      if (old) await keychain.remove(OLD_KEY) // else a removed First app would come back
+      for (const app of apps()) {
+        if (keys.has(app.id)) continue
+        let key = await keychain.get(keyAccount(app.id))
+        if (!key) {
+          key = newKey()
+          await keychain.set(keyAccount(app.id), key)
+        }
+        keys.set(app.id, key)
+      }
+    })().catch((error) => {
+      keysRead = null
+      throw error
+    })
+    return keysRead
+  }
+
+  function appOrSay(id) {
+    const app = apps().find((item) => item.id === id)
+    if (!app) throw new Error('That app isn’t connected any more.')
+    return app
+  }
+
+  async function startConnector() {
+    await readKeys()
     try {
       connectorPort = await connector.start(settings.get().connector.port || tools.CONNECTOR_PORT)
       connectorError = ''
@@ -94,6 +155,17 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
       throw new Error(connectorError)
     }
     if (connectorPort !== settings.get().connector.port) await settings.save({ connector: { ...settings.get().connector, port: connectorPort } })
+  }
+
+  /* For OSAT's own features (Siri and Shortcuts, webhooks): the key of the app with this exact
+     name, made the first time with `access`. Never through IPC: the key stays in main. */
+  async function appKey(name, access) {
+    await readKeys()
+    const wanted = providers.cleanAppName(name)
+    if (!wanted) throw new Error('An app needs a name.')
+    const app = apps().find((item) => item.name === wanted) || await makeApp(wanted, access)
+    changed()
+    return { id: app.id, key: keys.get(app.id) }
   }
 
   async function start() {
@@ -138,36 +210,70 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   handle('bots:connect', plain((input) => cloud.connect(input)), { from: 'app' })
   handle('bots:remove-provider', plain((id) => cloud.remove(String(id))), { from: 'app' })
   handle('bots:choose-model', plain((model) => cloud.choose(String(model))), { from: 'app' })
-  // The connector: on (a key is made the first time), off, a new key, and what to paste where.
+  // The connector: on, off, the apps that may reach it (each its own key), and what to paste where.
   handle('bots:connector-on', plain(async () => {
     await settings.save({ connector: { ...settings.get().connector, on: true } })
     await startConnector()
     return connectorStatus()
-  }))
+  }), { from: 'app' })
   handle('bots:connector-off', plain(async () => {
     connector.stop()
     await settings.save({ connector: { ...settings.get().connector, on: false } })
     return connectorStatus()
-  }))
-  // The old key stops working at once; apps need the new setup lines.
-  handle('bots:connector-reset', plain(async () => {
-    const key = randomBytes(24).toString('base64url')
-    await keychain.set(KEY_ACCOUNT, key)
-    connectorKey = key
+  }), { from: 'app' })
+  handle('bots:app-add', plain(async ({ name, access } = {}) => {
+    await readKeys()
+    const wanted = providers.cleanAppName(name)
+    if (!wanted) throw new Error('Give the app a name, like Claude Code.')
+    if (apps().some((app) => app.name.toLowerCase() === wanted.toLowerCase())) throw new Error(`“${wanted}” is already here. Copy its setup below, or give this one another name.`)
+    await makeApp(wanted, access)
     return connectorStatus()
-  }))
-  handle('bots:copy-setup', plain((which) => {
-    if (!connector.running() || !connectorKey) throw new Error('Turn the connector on first.')
-    clipboard.writeText(tools.connectorSetup(String(which), { url: connectorUrl(), key: connectorKey }))
+  }), { from: 'app' })
+  handle('bots:app-access', plain(async (id, access) => {
+    appOrSay(id)
+    await saveApps(apps().map((app) => (app.id === id ? { ...app, access: access === 'write' ? 'write' : 'read' } : app)))
+    return connectorStatus()
+  }), { from: 'app' })
+  // Its key stops working at once; Undo puts the app back with the same key.
+  handle('bots:app-remove', plain(async (id) => {
+    await readKeys()
+    const app = appOrSay(id)
+    removed = { app, key: keys.get(id) }
+    keys.delete(id)
+    await saveApps(apps().filter((item) => item.id !== id))
+    await keychain.remove(keyAccount(id))
+    return connectorStatus()
+  }), { from: 'app' })
+  handle('bots:app-undo-remove', plain(async () => {
+    if (!removed) throw new Error('There’s nothing to put back.')
+    const { app, key } = removed
+    await keychain.set(keyAccount(app.id), key)
+    keys.set(app.id, key)
+    await saveApps([...apps().filter((item) => item.id !== app.id), app])
+    removed = null
+    return connectorStatus()
+  }), { from: 'app' })
+  // The old key stops working at once; the app needs its setup again.
+  handle('bots:app-reset', plain(async (id) => {
+    appOrSay(id)
+    const key = newKey()
+    await keychain.set(keyAccount(id), key)
+    keys.set(id, key)
+    return connectorStatus()
+  }), { from: 'app' })
+  handle('bots:copy-setup', plain((which, id) => {
+    appOrSay(id)
+    if (!connector.running() || !keys.get(id)) throw new Error('Turn the connector on first.')
+    clipboard.writeText(tools.connectorSetup(String(which), { url: connectorUrl(), key: keys.get(id) }))
     return true
-  }))
+  }), { from: 'app' })
   handle('bots:undo-connector', plain((at) => {
     const done = recent.find((item) => item.at === at)
     if (!done) throw new Error('That can’t be undone any more.')
     store.commit(client, done.inverse)
     recent = recent.filter((item) => item !== done)
     return true
-  }))
+  }), { from: 'app' })
 
   /* ---- Siri and Shortcuts (Phase 47): ready-made shortcuts that use the connector's web API ---- */
   const shortcuts = createShortcuts({ dir: path.join(dataDir, 'shortcuts'), build: (await sharedModule('shortcut-file.mjs')).shortcutFile })
@@ -201,6 +307,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     // The chosen cloud model, first in every list of models (Ask, the line).
     models: () => cloud.models(),
     chatStream: (payload, onDelta, signal) => cloud.chatStream(payload, onDelta, signal),
+    appKey,
   }
 }
 
