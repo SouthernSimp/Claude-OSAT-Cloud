@@ -20,7 +20,7 @@ Open, all green, built that night: #65 the AI files stickies (Phase 35), #66 one
 widget-tray flake fix), #68 Notes is home / Canvas / topic (38), #69 favorites, keys and words from the bar + Mac commands +
 Next screen (39, on #66), #70 smarter calculator (40), #71 snippets (41, on #69), #72 Ask honest about the cloud, Try
 again, Edit (42), and **#73, all eight in one branch (`claude/everything`) for one DMG**: if Nate likes it, merge #73 and
-close the eight as included. Not done, on purpose: drag a window to an edge (macOS already tiles windows), trackpad
+close the eight as included. Oct 7: #74 (Phase 43, on #73): the connector finds stickies, reads and writes the journal, and answers as a plain web API at `/api/<tool>`. Not done, on purpose: drag a window to an edge (macOS already tiles windows), trackpad
 gestures, currency in the calculator (needs the internet; offer it opt-in). On Nate's Mac checklist: typed snippets in
 other apps, Mac commands, keys set from the bar, Qwen 3.6 35B (Settings → AI's pick for his 64 GB M5 Pro).
 
