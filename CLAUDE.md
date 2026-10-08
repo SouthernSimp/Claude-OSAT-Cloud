@@ -157,7 +157,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     input, never argv; off the Mac held in memory), `settings.cjs` (`bots.json`: model, providers,
     usage, connector, never a key), `connector.cjs` (MCP over HTTP on
     127.0.0.1 only, Bearer key from the Keychain, refuses other Hosts and web Origins; tools in
-    shared/connector-tools.mjs; each change commits through the store with its inverse for Undo).
+    shared/connector-tools.mjs (Phase 43: seven, adding `search`, `read_journal`, `add_to_journal`; the same tools
+    answer as a plain web API at `/api/<tool>`, GET query or POST JSON, text back, same key and walls); each change commits through the store with its inverse for Undo).
     Main routes models in one place: `answeringModels()` (the model chosen in Bots first, a cloud
     one only while online) and `chatWith()`; the line and Ask read `local-ai:models`, so the line's
     own code never changes to switch models. A new way out of the Mac must be added on purpose to

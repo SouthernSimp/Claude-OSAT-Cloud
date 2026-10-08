@@ -7,6 +7,8 @@
      - web pages can't reach it: a request from a browser (an Origin) or through another
        name (a Host that isn't this Mac) is refused;
      - every change goes through the store, so the windows, Undo and sync see it.
+   The same tools answer as a plain web API too, for Shortcuts, scripts and curl:
+   GET /api/search?query=garden, POST /api/add_sticky {"text": "…"}; the answer is plain text.
    `call(name, args)` runs a tool and resolves { text } or throws with a plain sentence. */
 const http = require('node:http')
 const { timingSafeEqual } = require('node:crypto')
@@ -59,14 +61,50 @@ function createConnector({ tools, call, key, version = '0' }) {
     return error(-32601, `OSAT doesn’t know ${method}.`)
   }
 
+  const text = (response, status, words) => {
+    response.writeHead(status, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })
+    response.end(`${words}\n`)
+  }
+
+  /* /api/<tool>: arguments from the address (GET) or a JSON body (POST); the answer as text. */
+  async function answerApi(name, url, request, response) {
+    if (!tools.some((tool) => tool.name === name)) return text(response, 404, `OSAT has no tool called “${name}”. It has: ${tools.map((tool) => tool.name).join(', ')}.`)
+    let args = {}
+    if (request.method === 'GET') {
+      for (const [key, value] of url.searchParams) args[key] = /^\d+$/.test(value) && key === 'limit' ? Number(value) : value
+    } else if (request.method === 'POST') {
+      let body = ''
+      for await (const chunk of request) {
+        body += chunk
+        if (body.length > MAX_BODY) return text(response, 413, 'That request is too big.')
+      }
+      try {
+        args = body.trim() ? JSON.parse(body) : {}
+        if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('not an object')
+      } catch {
+        return text(response, 400, 'Send the arguments as JSON, for example {"text": "Buy seeds"}.')
+      }
+    } else {
+      return text(response, 405, 'Use GET or POST.')
+    }
+    try {
+      return text(response, 200, (await call(name, args)).text)
+    } catch (problem) {
+      return text(response, 400, problem.message || 'That didn’t work.')
+    }
+  }
+
   async function handle(request, response) {
     // Only this Mac, by name too: a web page that renamed itself to 127.0.0.1 gets nothing.
     if (!LOOPBACK_HOST.test(request.headers.host || '')) return reply(response, 403, { error: 'This connector only answers on this Mac.' })
     const origin = request.headers.origin
     if (origin && origin !== 'null' && !LOOPBACK_ORIGIN.test(origin)) return reply(response, 403, { error: 'Web pages can’t use OSAT’s connector.' })
-    if (new URL(request.url, 'http://127.0.0.1').pathname !== '/mcp') return reply(response, 404, { error: 'The connector is at /mcp.' })
+    const url = new URL(request.url, 'http://127.0.0.1')
+    const api = /^\/api\/([a-z_]+)$/.exec(url.pathname)?.[1]
+    if (url.pathname !== '/mcp' && !api) return reply(response, 404, { error: 'The connector is at /mcp, and its tools at /api/<tool>.' })
     const auth = /^Bearer\s+(.+)$/i.exec(request.headers.authorization || '')?.[1]
     if (!sameKey(auth, key())) return reply(response, 401, { error: 'OSAT needs its connector key (Settings → Bots).' }, { 'www-authenticate': 'Bearer' })
+    if (api) return answerApi(api, url, request, response)
     if (request.method === 'DELETE') return reply(response, 200, {})
     if (request.method !== 'POST') return reply(response, 405, { error: 'Send requests with POST.' }, { allow: 'POST, DELETE' })
     let body = ''
