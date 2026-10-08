@@ -534,7 +534,9 @@ try {
     // 12. The connector, as Claude Code would use it.
     const connector = await main.evaluate(() => window.osatBots.connectorOn()).catch((error) => ({ error: error.message }))
     check(connector.running && /^http:\/\/127\.0\.0\.1:\d+\/mcp$/.test(connector.url), `the connector did not start on this Mac: ${JSON.stringify(connector)}`)
-    await main.evaluate(() => window.osatBots.copySetup('other'))
+    const withApp = await main.evaluate(() => window.osatBots.addApp({ name: 'Claude Code', access: 'write' }))
+    check(withApp.apps?.[0]?.name === 'Claude Code' && !JSON.stringify(withApp).includes('Bearer'), `adding an app did not list it (without its key): ${JSON.stringify(withApp)}`)
+    await main.evaluate((id) => window.osatBots.copySetup('other', id), withApp.apps[0].id)
     const connectorKey = /Bearer (\S+)/.exec(await app.evaluate(({ clipboard }) => clipboard.readText()))?.[1]
     check(Boolean(connectorKey), 'the copied setup did not carry the key')
     check(!(await main.evaluate(() => window.osatSearch.clipboard().then((list) => list.items.some((item) => /Bearer/.test(item.text || ''))))), 'the connector\'s key was kept in the clipboard history')
@@ -543,7 +545,7 @@ try {
     const init = await (await mcp({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } } })).json()
     check(init.result?.serverInfo?.name === 'osat', 'the connector did not answer initialize')
     const added = await (await mcp({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'add_node', arguments: { title: 'From Claude over MCP', summary: 'Sent through the connector.', source: 'Claude' } } })).json()
-    check(/Added the node “From Claude over MCP”/.test(added.result?.content?.[0]?.text), `add_node did not answer as expected: ${JSON.stringify(added)}`)
+    check(/Added the topic “From Claude over MCP”/.test(added.result?.content?.[0]?.text), `add_node did not answer as expected: ${JSON.stringify(added)}`)
     const viaMcp = async () => (await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).find((folder) => folder.name === 'From Claude over MCP')
     check(await until(async () => (await viaMcp())?.from?.source === 'Claude', 5000), 'a node added over MCP did not reach the windows')
     const listed = await (await mcp({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_nodes', arguments: {} } })).json()

@@ -15,15 +15,21 @@ const until = async (check) => { for (let i = 0; i < 100 && !check(); i += 1) aw
 
 test('over the web: OSAT’s own connector, with its key', async () => {
   const KEY = 'k-0123456789abcdefghij'
-  const tools = [{ name: 'add_sticky', description: 'Adds a sticky.', inputSchema: { type: 'object' } }]
-  const connector = createConnector({ tools, key: () => KEY, call: async (name, args) => ({ text: `${name}: ${args.text}` }) })
+  const tools = [
+    { name: 'search', description: 'Finds stickies.', inputSchema: { type: 'object' }, annotations: { readOnlyHint: true } },
+    { name: 'add_sticky', description: 'Adds a sticky.', inputSchema: { type: 'object' } },
+  ]
+  const app = { id: 'a1', name: 'Tester', access: 'read' }
+  const connector = createConnector({ tools, appFor: (given) => (given === KEY ? app : null), call: async (name, args, by) => ({ text: `${name} for ${by.name}: ${args.query}` }) })
   const port = await connector.start(0)
   const url = `http://127.0.0.1:${port}/mcp`
   try {
     const client = await connect({ kind: 'http', url, headers: { Authorization: `Bearer ${KEY}` } })
     assert.deepEqual(client.server.name, 'osat')
-    assert.deepEqual((await client.tools()).map((tool) => tool.name), ['add_sticky'])
-    assert.deepEqual(await client.call('add_sticky', { text: 'Buy seeds' }), { text: 'add_sticky: Buy seeds', isError: false })
+    const listed = await client.tools()
+    assert.deepEqual(listed.map((tool) => [tool.name, tool.annotations?.readOnlyHint]), [['search', true]], 'an app that may only look sees only what looks')
+    assert.deepEqual(await client.call('search', { query: 'seeds' }), { text: 'search for Tester: seeds', isError: false })
+    assert.deepEqual(await client.call('add_sticky', { text: 'Buy seeds' }), { text: 'Tester can only read. Change that in Settings → Bots.', isError: true })
     client.close()
     await assert.rejects(connect({ kind: 'http', url, headers: { Authorization: 'Bearer wrong' } }), /turned OSAT away: it needs a key/)
     await assert.rejects(connect({ kind: 'http', url: `http://127.0.0.1:${port}/nothing` }), /Nothing answers at that address/)

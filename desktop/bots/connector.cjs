@@ -2,14 +2,16 @@
    Claude Desktop, Grok Bot or any app that speaks MCP can list, read and add nodes and
    stickies. Off until Nate turns it on in Settings → Bots, and then:
      - it only listens on this Mac (127.0.0.1), never on the network;
-     - every request needs the key (Authorization: Bearer <key>), which lives in the Keychain
-       and can be reset;
+     - every request needs an app's own key (Authorization: Bearer <key>), which lives in the
+       Keychain and can be reset; an app that may only read sees and runs only the tools that
+       read (annotations.readOnlyHint), and is told so plainly if it tries another (Phase 44);
      - web pages can't reach it: a request from a browser (an Origin) or through another
        name (a Host that isn't this Mac) is refused;
      - every change goes through the store, so the windows, Undo and sync see it.
    The same tools answer as a plain web API too, for Shortcuts, scripts and curl:
    GET /api/search?query=garden, POST /api/add_sticky {"text": "…"}; the answer is plain text.
-   `call(name, args)` runs a tool and resolves { text } or throws with a plain sentence. */
+   `appFor(key)` says which app a key belongs to (or null); `call(name, args, app)` runs a tool
+   for it and resolves { text } or throws with a plain sentence. */
 const http = require('node:http')
 const { timingSafeEqual } = require('node:crypto')
 
@@ -25,15 +27,27 @@ const sameKey = (given, key) => {
   return Boolean(key) && a.length === b.length && timingSafeEqual(a, b)
 }
 
-function createConnector({ tools, call, key, version = '0' }) {
+/* The app a key belongs to, of [{ app, key }], or null. Every key is compared, in constant time. */
+function appWithKey(given, entries) {
+  let found = null
+  for (const entry of entries) if (sameKey(given, entry.key)) found = entry.app
+  return found
+}
+
+function createConnector({ tools, call, appFor, version = '0' }) {
   let server = null
+  // A tool without readOnlyHint counts as one that changes things.
+  const reads = (tool) => tool.annotations?.readOnlyHint === true
+  const toolsFor = (app) => (app.access === 'write' ? tools : tools.filter(reads))
+  const readOnly = (app, name) => app.access !== 'write' && tools.some((tool) => tool.name === name && !reads(tool))
+  const onlyReads = (app) => `${app.name} can only read. Change that in Settings → Bots.`
 
   const reply = (response, status, body, headers = {}) => {
     response.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers })
     response.end(body === undefined ? '' : JSON.stringify(body))
   }
 
-  async function answer(message) {
+  async function answer(message, app) {
     const { id, method, params } = message || {}
     const result = (value) => ({ jsonrpc: '2.0', id, result: value })
     const error = (code, text) => ({ jsonrpc: '2.0', id: id ?? null, error: { code, message: text } })
@@ -49,10 +63,12 @@ function createConnector({ tools, call, key, version = '0' }) {
       })
     }
     if (method === 'ping') return result({})
-    if (method === 'tools/list') return result({ tools })
+    if (method === 'tools/list') return result({ tools: toolsFor(app) })
     if (method === 'tools/call') {
+      const name = String(params?.name || '')
+      if (readOnly(app, name)) return result({ content: [{ type: 'text', text: onlyReads(app) }], isError: true })
       try {
-        const { text } = await call(String(params?.name || ''), params?.arguments || {})
+        const { text } = await call(name, params?.arguments || {}, app)
         return result({ content: [{ type: 'text', text }] })
       } catch (problem) {
         return result({ content: [{ type: 'text', text: problem.message || 'That didn’t work.' }], isError: true })
@@ -67,8 +83,9 @@ function createConnector({ tools, call, key, version = '0' }) {
   }
 
   /* /api/<tool>: arguments from the address (GET) or a JSON body (POST); the answer as text. */
-  async function answerApi(name, url, request, response) {
-    if (!tools.some((tool) => tool.name === name)) return text(response, 404, `OSAT has no tool called “${name}”. It has: ${tools.map((tool) => tool.name).join(', ')}.`)
+  async function answerApi(name, url, request, response, app) {
+    if (!tools.some((tool) => tool.name === name)) return text(response, 404, `OSAT has no tool called “${name}”. It has: ${toolsFor(app).map((tool) => tool.name).join(', ')}.`)
+    if (readOnly(app, name)) return text(response, 403, onlyReads(app))
     let args = {}
     if (request.method === 'GET') {
       for (const [key, value] of url.searchParams) args[key] = /^\d+$/.test(value) && key === 'limit' ? Number(value) : value
@@ -88,7 +105,7 @@ function createConnector({ tools, call, key, version = '0' }) {
       return text(response, 405, 'Use GET or POST.')
     }
     try {
-      return text(response, 200, (await call(name, args)).text)
+      return text(response, 200, (await call(name, args, app)).text)
     } catch (problem) {
       return text(response, 400, problem.message || 'That didn’t work.')
     }
@@ -103,8 +120,9 @@ function createConnector({ tools, call, key, version = '0' }) {
     const api = /^\/api\/([a-z_]+)$/.exec(url.pathname)?.[1]
     if (url.pathname !== '/mcp' && !api) return reply(response, 404, { error: 'The connector is at /mcp, and its tools at /api/<tool>.' })
     const auth = /^Bearer\s+(.+)$/i.exec(request.headers.authorization || '')?.[1]
-    if (!sameKey(auth, key())) return reply(response, 401, { error: 'OSAT needs its connector key (Settings → Bots).' }, { 'www-authenticate': 'Bearer' })
-    if (api) return answerApi(api, url, request, response)
+    const app = auth ? appFor(auth) : null
+    if (!app) return reply(response, 401, { error: 'OSAT needs this app’s connector key (Settings → Bots).' }, { 'www-authenticate': 'Bearer' })
+    if (api) return answerApi(api, url, request, response, app)
     if (request.method === 'DELETE') return reply(response, 200, {})
     if (request.method !== 'POST') return reply(response, 405, { error: 'Send requests with POST.' }, { allow: 'POST, DELETE' })
     let body = ''
@@ -119,7 +137,7 @@ function createConnector({ tools, call, key, version = '0' }) {
       return reply(response, 400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })
     }
     const batch = Array.isArray(parsed)
-    const answers = (await Promise.all((batch ? parsed : [parsed]).map(answer))).filter(Boolean)
+    const answers = (await Promise.all((batch ? parsed : [parsed]).map((message) => answer(message, app)))).filter(Boolean)
     if (!answers.length) return reply(response, 202)
     return reply(response, 200, batch ? answers : answers[0])
   }
@@ -154,4 +172,4 @@ function createConnector({ tools, call, key, version = '0' }) {
   return { start, stop, running: () => Boolean(server), address: () => server?.address() || null }
 }
 
-module.exports = { createConnector, PROTOCOLS }
+module.exports = { createConnector, appWithKey, PROTOCOLS }
