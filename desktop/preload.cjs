@@ -214,7 +214,41 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   resetAppKey: (id) => ipcRenderer.invoke('bots:app-reset', id),
   copySetup: (which, id) => ipcRenderer.invoke('bots:copy-setup', which, id),
   undoConnector: (at) => ipcRenderer.invoke('bots:undo-connector', at),
+  // Siri and Shortcuts: main signs a ready-made shortcut and Shortcuts asks to add it.
+  addShortcut: (id) => ipcRenderer.invoke('bots:add-shortcut', id),
   onStatus: (listener) => listen('bots:status', listener),
+}))
+
+/* Webhooks (Settings → Bots, Phase 46): the addresses OSAT tells when something happens, and
+   the ntfy address services add stickies through (it goes to the clipboard from main). */
+contextBridge.exposeInMainWorld('osatHooks', Object.freeze({
+  status: () => ipcRenderer.invoke('hooks:status'),
+  add: (hook) => ipcRenderer.invoke('hooks:add', hook),
+  change: (id, patch) => ipcRenderer.invoke('hooks:change', id, patch),
+  remove: (id) => ipcRenderer.invoke('hooks:remove', id),
+  test: (id) => ipcRenderer.invoke('hooks:test', id),
+  inboxOn: () => ipcRenderer.invoke('hooks:inbox-on'),
+  inboxOff: () => ipcRenderer.invoke('hooks:inbox-off'),
+  inboxReset: () => ipcRenderer.invoke('hooks:inbox-reset'),
+  inboxServer: (server) => ipcRenderer.invoke('hooks:inbox-server', server),
+  copyAddress: () => ipcRenderer.invoke('hooks:copy-address'),
+  onStatus: (listener) => listen('hooks:status', listener),
+}))
+
+/* Apps OSAT can use (Settings → Bots, Phase 48): the MCP servers Claude uses, each off until turned
+   on. Keys and env values go to the Keychain in main; status only says an app has one. Ask (the
+   desk's and the quick bar's) lists what the apps that are on can do and calls them. */
+contextBridge.exposeInMainWorld('osatAskApps', Object.freeze({
+  status: () => ipcRenderer.invoke('askapps:status'),
+  add: (input) => ipcRenderer.invoke('askapps:add', input),
+  remove: (id) => ipcRenderer.invoke('askapps:remove', id),
+  undoRemove: () => ipcRenderer.invoke('askapps:undo-remove'),
+  toggle: (id, on) => ipcRenderer.invoke('askapps:toggle', id, on === true),
+  check: (id) => ipcRenderer.invoke('askapps:check', id),
+  claudeConfig: () => ipcRenderer.invoke('askapps:claude-config'),
+  import: (names) => ipcRenderer.invoke('askapps:import', names),
+  tools: () => ipcRenderer.invoke('askapps:tools'),
+  call: (app, name, args) => ipcRenderer.invoke('askapps:call', app, name, args),
 }))
 
 /* Scans: the folder a scanner saves to. The desk takes each sorted scan, imports it and

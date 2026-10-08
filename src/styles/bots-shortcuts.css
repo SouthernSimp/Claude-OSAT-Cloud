@@ -1,0 +1,13 @@
+/* ---- Settings → Bots → Siri and Shortcuts (views/bots/ShortcutsCard.jsx) ---- */
+
+.bots-shortcuts { display: grid; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.bots-shortcuts li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
+.bots-shortcuts li > svg { width: 15px; height: 15px; color: var(--faint); }
+.bots-shortcuts span { display: grid; gap: 2px; min-width: 0; }
+.bots-shortcuts b { color: var(--ink); font-weight: 600; }
+.bots-shortcuts small { color: var(--muted); font-size: var(--t-xs); }
+
+@container room (max-width: 560px) {
+  .bots-shortcuts li { grid-template-columns: 16px minmax(0, 1fr); }
+  .bots-shortcuts li > button { grid-column: 2; justify-self: start; }
+}

@@ -57,6 +57,9 @@ const WAITS = [
   [/^phone:enable$/, 'The iPhone link waits until you’re back online.'],
   // Turning it off takes the copy of the notes out of iCloud Drive, which iCloud sends on.
   [/^phone:disable$/, 'Turning the iPhone link off waits until you’re back online.'],
+  // The apps OSAT uses (Settings → Bots): their web addresses and the commands it starts. Listing them
+  // still works (askapps:tools answers nothing offline), and adding or turning one on just waits.
+  [/^askapps:(call|check)$/, 'Apps OSAT uses wait until you’re back online.'],
 ]
 const refusal = (channel) => WAITS.find(([pattern]) => pattern.test(channel))?.[1] || null
 

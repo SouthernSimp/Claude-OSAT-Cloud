@@ -4,17 +4,22 @@
      cloud models      any provider with a key, next to the AI on this Mac (cloud.cjs)
      the connector     an MCP server on this Mac only, off until turned on (connector.cjs); each app
                        has its own key and may only read or also change (Phase 44)
+     webhooks          moments sent to other services, stickies from them through ntfy (webhooks.cjs)
+     apps OSAT uses    the MCP servers Claude uses (Gmail, Notion…), each off until turned on (ask-apps.cjs)
    Every model and privacy setting lives here, so what leaves the Mac is said in one place.
    Main passes in what it owns (the store, IPC, Finder, the clipboard); this wires it up.
    Every change goes through the store, so the windows, Undo and sync see it. */
 const path = require('node:path')
 const { randomBytes, randomUUID } = require('node:crypto')
 const { watchFolder } = require('../folder-watch.cjs')
+const { createAskApps } = require('./ask-apps.cjs')
 const { createCloud } = require('./cloud.cjs')
 const { appWithKey, createConnector } = require('./connector.cjs')
 const { createDropFolder } = require('./drop-folder.cjs')
 const { createKeychain } = require('./keychain.cjs')
 const { createSettings } = require('./settings.cjs')
+const { createWebhooks } = require('./webhooks.cjs')
+const { createShortcuts } = require('./shortcuts.cjs')
 
 /* Where keys are kept. The e2e test runs with a temp HOME, where the real Keychain can't be found
    and macOS pops a dialog, so it sets OSAT_KEYCHAIN=memory. As with OSAT_NODES_DIR, only from source:
@@ -24,7 +29,7 @@ function keychainFor({ service, env = process.env, platform = process.platform }
   return createKeychain({ service, platform: memory ? 'memory' : platform })
 }
 
-async function createBots({ dataDir, nodesDir, service, store, sharedModule, handle, fail, send, shell, clipboard, findFiles, version = '0', offline = () => false, keychain = keychainFor({ service }), now = Date.now }) {
+async function createBots({ dataDir, nodesDir, service, store, sharedModule, handle, fail, send, shell, clipboard, findFiles, version = '0', offline = () => false, keychain = keychainFor({ service }), now = Date.now, shortcutTool = {} }) {
   const core = await sharedModule('node-file.mjs')
   const providers = await sharedModule('providers.mjs')
   const tools = await sharedModule('connector-tools.mjs')
@@ -32,15 +37,22 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   const settings = createSettings({ file: path.join(dataDir, 'bots.json'), clean: providers.cleanBotSettings })
   await settings.load()
   const cloud = createCloud({ core: providers, settings, keychain, offline })
+  const askApps = createAskApps({ file: path.join(dataDir, 'ask-apps.json'), keychain, offline, version, ownPort: () => settings.get().connector.port || tools.CONNECTOR_PORT })
+  await askApps.load()
   const client = store.connect(() => {})
   const makeId = (prefix) => `${prefix}-${randomUUID()}`
   const status = () => ({
     nodes: drop.status(),
     cloud: cloud.status(),
     connector: connectorStatus(),
+    askApps: askApps.status().apps,
     offline: offline(),
   })
-  const changed = () => send('bots:status', status())
+  const changed = () => {
+    // Main calls this when OSAT goes offline too: every app's connection and command closes then.
+    if (offline()) askApps.closeAll()
+    send('bots:status', status())
+  }
 
   /* A node file's tree becomes a New node (packed when it is only a summary). */
   function take(tree, { name, hash, source = '' }) {
@@ -75,6 +87,21 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     saveApps(apps().map((item) => (item.id === app.id ? { ...item, usedAt } : item))).then(changed, () => {})
   }
 
+  /* One tool run for an app: its changes go through the store in one commit, marked with the app's
+     name; what undoes them is kept for Undo. The connector calls it, and so do OSAT's own features
+     (webhooks, as the app "Webhook"). Each Undo is told apart by its time, so no two share one. */
+  async function runForApp(name, args, app) {
+    const result = await tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles, ask })
+    if (result.ops?.length) {
+      const { inverse } = applyOps(store.load().doc, result.ops)
+      store.commit(client, result.ops)
+      const at = new Date(Math.max(Date.now(), recent.length ? Date.parse(recent[0].at) + 1 : 0)).toISOString()
+      recent = [{ at, text: `${app.name} ${lowerFirst(result.text.replace(/ \((?:note|folder|event)-[^)]+\)/g, ''))}`, inverse }, ...recent].slice(0, 5)
+      changed()
+    }
+    return { text: result.text }
+  }
+
   const connector = createConnector({
     tools: tools.TOOLS,
     version,
@@ -83,17 +110,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
       if (app) used(app)
       return app
     },
-    // A tool's changes go through the store in one commit, marked with the app's name; what undoes them is kept for Undo.
-    async call(name, args, app) {
-      const result = await tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles, ask })
-      if (result.ops?.length) {
-        const { inverse } = applyOps(store.load().doc, result.ops)
-        store.commit(client, result.ops)
-        recent = [{ at: new Date().toISOString(), text: `${app.name} ${lowerFirst(result.text.replace(/ \((?:note|folder|event)-[^)]+\)/g, ''))}`, inverse }, ...recent].slice(0, 5)
-        changed()
-      }
-      return { text: result.text }
-    },
+    call: runForApp,
   })
   const connectorUrl = () => (connectorPort ? `http://127.0.0.1:${connectorPort}/mcp` : '')
   function connectorStatus() {
@@ -176,12 +193,16 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     }
     watch = watchFolder({ dir: nodesDir, look: drop.look })
     if (settings.get().connector.on) startConnector().catch((error) => console.error('The connector could not start:', error.message)).finally(changed)
+    hooks.start().catch((error) => console.error('Webhooks could not start:', error.message))
+    shortcuts.sweep().catch(() => {})
     await drop.look()
   }
 
   function stop() {
     watch?.stop()
     connector.stop()
+    hooks.stop()
+    askApps.closeAll()
     watch = null
   }
 
@@ -274,6 +295,65 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     return true
   }), { from: 'app' })
 
+  /* ---- webhooks (Phase 46): moments out to other services, stickies in through ntfy ---- */
+  const hooks = createWebhooks({
+    file: path.join(dataDir, 'webhooks.json'),
+    model: await sharedModule('webhook-model.mjs'),
+    store,
+    // The main process's fetch, so Offline holds every delivery and every read.
+    fetch: (...args) => globalThis.fetch(...args),
+    offline,
+    // As the app "Webhook", so the connector's list says "Webhook added a sticky to Unsorted." with Undo.
+    // It needs no key: it runs here in main, never through the connector's door.
+    addSticky: (text) => runForApp('add_sticky', { text }, { name: 'Webhook', access: 'write' }),
+    onStatus: (value) => send('hooks:status', value),
+  })
+  handle('hooks:status', () => hooks.status(), { from: 'app' })
+  handle('hooks:add', plain((input) => hooks.add(input)), { from: 'app' })
+  handle('hooks:change', plain((id, patch) => hooks.change(String(id), patch)), { from: 'app' })
+  handle('hooks:remove', plain((id) => hooks.remove(String(id))), { from: 'app' })
+  handle('hooks:test', plain((id) => hooks.test(String(id))), { from: 'app' })
+  handle('hooks:inbox-on', plain(() => hooks.inboxOn()), { from: 'app' })
+  handle('hooks:inbox-off', plain(() => hooks.inboxOff()), { from: 'app' })
+  handle('hooks:inbox-reset', plain(() => hooks.inboxReset()), { from: 'app' })
+  handle('hooks:inbox-server', plain((server) => hooks.inboxServer(String(server || ''))), { from: 'app' })
+  handle('hooks:copy-address', plain(() => {
+    if (!hooks.address()) throw new Error('Turn it on first.')
+    clipboard.writeText(hooks.address())
+    return true
+  }), { from: 'app' })
+
+  /* ---- Siri and Shortcuts (Phase 47): ready-made shortcuts that use the connector's web API ---- */
+  // `shortcutTool` is only for the tests: a stand-in for Apple's signing tool.
+  const shortcuts = createShortcuts({ dir: path.join(dataDir, 'shortcuts'), build: (await sharedModule('shortcut-file.mjs')).shortcutFile, ...shortcutTool })
+  /* What the shortcuts carry to reach OSAT: the key of the app "Shortcuts", made able to change
+     things the first time, so it shows in the connector's list, where Nate can make it "Can look"
+     or remove it (then the shortcuts stop working until they are added again). */
+  async function keyForShortcuts() {
+    if (!connector.running()) throw new Error('Turn on the connector first.')
+    const { key } = await appKey('Shortcuts', 'write')
+    return { api: connectorUrl().replace(/\/mcp$/, '/api'), key }
+  }
+  // Shortcuts opens the signed file and asks Nate to add it: nothing is added without his click there.
+  handle('bots:add-shortcut', plain(async (id) => {
+    const file = await shortcuts.make(String(id), await keyForShortcuts())
+    if (await shell.openPath(file)) throw new Error('Shortcuts couldn’t open it.')
+    return true
+  }), { from: 'app' })
+
+  /* Apps OSAT can use (ask-apps.cjs): keys and env values go to the Keychain, never back here.
+     Using one waits while offline (under.cjs). Ask in the quick bar lists and calls them too. */
+  handle('askapps:status', () => askApps.status(), { from: 'app' })
+  handle('askapps:add', plain((input) => askApps.add(input && typeof input === 'object' ? input : {})), { from: 'app' })
+  handle('askapps:remove', plain((id) => askApps.remove(String(id))), { from: 'app' })
+  handle('askapps:undo-remove', plain(() => askApps.undoRemove()), { from: 'app' })
+  handle('askapps:toggle', plain((id, on) => askApps.toggle(String(id), on === true)), { from: 'app' })
+  handle('askapps:check', plain((id) => askApps.check(String(id))), { from: 'app' })
+  handle('askapps:claude-config', plain(() => askApps.claudeOffers()), { from: 'app' })
+  handle('askapps:import', plain((names) => askApps.importClaude(Array.isArray(names) ? names : [])), { from: 'app' })
+  handle('askapps:tools', plain(() => askApps.tools()), { from: 'any' })
+  handle('askapps:call', plain((id, name, args) => askApps.call(String(id), String(name), args)), { from: 'any' })
+
   // Only a provider's own pages (its keys, its usage), in the browser Nate already uses.
   handle('bots:open-page', async (url) => {
     const known = providers.PRESETS.flatMap((preset) => [preset.keys, preset.usage])
@@ -288,12 +368,19 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     start,
     stop,
     status,
-    changed,
+    // Main calls this when Offline changes; the webhooks send what waited and read again.
+    changed: () => { hooks.nudge(); changed() },
     // The chosen cloud model, first in every list of models (Ask, the line).
     models: () => cloud.models(),
     chatStream: (payload, onDelta, signal) => cloud.chatStream(payload, onDelta, signal),
     appKey,
     setAsk: (answer) => { ask = answer },
+    // For Ask in main: what the apps that are on can do (never throws; a failing app is left out
+    // and its reason shows in Settings → Bots), and one of them doing it.
+    askApps: {
+      tools: () => askApps.tools().finally(changed),
+      call: (id, name, args) => askApps.call(String(id), String(name), args).finally(changed),
+    },
   }
 }
 
