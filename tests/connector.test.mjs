@@ -32,8 +32,8 @@ async function tempStore() {
   return { store, run, onDisk }
 }
 
-test('tools: the seven, each with a plain description and an input schema', () => {
-  assert.deepEqual(TOOLS.map((tool) => tool.name), ['list_nodes', 'read_node', 'add_node', 'add_sticky', 'search', 'read_journal', 'add_to_journal'])
+test('tools: each with a plain description and an input schema', () => {
+  assert.deepEqual(TOOLS.map((tool) => tool.name), ['list_nodes', 'read_node', 'add_node', 'add_sticky', 'edit_sticky', 'move_sticky', 'delete_sticky', 'add_branch', 'rename', 'search', 'read_journal', 'add_to_journal', 'list_events', 'add_event', 'find_files'])
   assert.ok(TOOLS.every((tool) => tool.description.length > 40 && tool.inputSchema.type === 'object'))
 })
 
@@ -41,7 +41,7 @@ test('add a node, list it, read it back as the Markdown a node file is made of; 
   const { run, onDisk } = await tempStore()
   assert.match(run('list_nodes', {}), /There are no nodes yet\. 0 stickies wait in Unsorted/)
   assert.match(run('add_node', { title: 'Garden', summary: 'What grows where.', source: 'Claude', branches: [{ title: 'Beds', leaves: ['Tomatoes', 'Dig the bed'] }] }),
-    /Added the node “Garden” to the Sky, marked New\.$/)
+    /Added the node “Garden” \(folder-\d+\) to the Sky, marked New\.$/)
   assert.match(run('add_node', { markdown: '# Spring launch\nA party in April.' }), /packed \(only a summary so far\)/)
   assert.match(run('add_node', { title: 'Garden', summary: 'What grows where.', source: 'Claude', branches: [{ title: 'Beds', leaves: ['Tomatoes', 'Dig the bed'] }] }), /already in OSAT/, 'the same node twice makes it once')
   assert.equal(run('list_nodes', {}), '2 nodes in OSAT:\n- Garden (New, from Claude): 3 stickies; branches: Beds\n- Spring launch (New, packed, from Connector): 1 sticky\n\nUnsorted: 0 stickies.')
@@ -53,9 +53,9 @@ test('add a node, list it, read it back as the Markdown a node file is made of; 
 test('add a sticky to a node, a branch or Unsorted; wrong names say what there is', async () => {
   const { run, store } = await tempStore()
   run('add_node', { title: 'Garden', branches: [{ title: 'Beds', leaves: ['Tomatoes'] }] })
-  assert.equal(run('add_sticky', { text: 'Water on Sunday', node: 'Garden', branch: 'beds', source: 'Claude' }), 'Added a sticky to Garden › Beds.')
-  assert.equal(run('add_sticky', { text: 'Buy seeds', node: 'Garden' }), 'Added a sticky to Garden.')
-  assert.equal(run('add_sticky', { text: 'Call Jordan' }), 'Added a sticky to Unsorted.')
+  assert.match(run('add_sticky', { text: 'Water on Sunday', node: 'Garden', branch: 'beds', source: 'Claude' }), /^Added a sticky to Garden › Beds \(note-\d+\)\.$/)
+  assert.match(run('add_sticky', { text: 'Buy seeds', node: 'Garden' }), /^Added a sticky to Garden \(note-\d+\)\.$/)
+  assert.match(run('add_sticky', { text: 'Call Jordan' }), /^Added a sticky to Unsorted \(note-\d+\)\.$/)
   assert.equal(run('read_node', { node: 'Garden' }), '# Garden\n\n- Buy seeds\n\n## Beds\n- Tomatoes\n- Water on Sunday')
   assert.equal(run('read_node', { node: 'Unsorted' }), '# Unsorted\n\n- Call Jordan')
   const unsorted = store.load().doc.notes.find((note) => note.markdown === 'Call Jordan')
@@ -155,7 +155,7 @@ test('search finds stickies by every word, newest first, saying where each lives
   const { run } = await tempStore()
   run('add_node', { title: 'Garden', branches: [{ title: 'Beds', leaves: ['Water the tomatoes'] }] })
   run('add_sticky', { text: 'Tomatoes: buy cages' })
-  assert.match(run('search', { query: 'TOMATOES' }), /^2 found for “tomatoes”:\n- \[Unsorted, 2026-09-29\] Tomatoes: buy cages\n- \[Garden › Beds, 2026-09-29\] Water the tomatoes$/)
+  assert.match(run('search', { query: 'TOMATOES' }), /^2 found for “tomatoes”:\n- \(note-\d+\) \[Unsorted, 2026-09-29\] Tomatoes: buy cages\n- \(note-\d+\) \[Garden › Beds, 2026-09-29\] Water the tomatoes$/)
   assert.match(run('search', { query: 'tomatoes cages' }), /^1 found/)
   assert.equal(run('search', { query: 'zucchini' }), 'Nothing in OSAT holds “zucchini”.')
   assert.match(run('search', { limit: 1 }), /^2 found, newest first:\n- .*\n\n…and 1 more\.$/)
