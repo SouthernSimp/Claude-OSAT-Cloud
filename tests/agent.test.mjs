@@ -159,3 +159,27 @@ test('the final answer reads what the tools answered; a spoken answer is short a
   assert.equal(spoken('## Today\n- **Dentist** at 3, see [the note](osat://x)\n```js\nx\n```'), 'Today Dentist at 3, see the note')
   assert.equal(spoken(Array.from({ length: 150 }, () => 'word').join(' ')).split(' ').length, 120)
 })
+
+test('Ask acts when a question asks to do something or names a connected app; a chat keeps its steps and its switch', async () => {
+  const { wantsTools } = await import('../src/assistant/useAgent.js')
+  const { normalizeChat } = await import('../src/assistant/chats.js')
+  for (const question of ['Move the seeds sticky to Garden', 'what’s on tomorrow?', 'Search my notes for tomatoes', 'Add a sticky to call Mom']) assert.ok(wantsTools(question), question)
+  assert.ok(wantsTools('anything new in notion today', ['Notion']))
+  assert.ok(!wantsTools('I have a lot on my mind. Help me untangle it.'))
+  const chat = normalizeChat({
+    id: 'chat-1',
+    tools: false,
+    messages: [{ id: 'm-1', role: 'assistant', content: 'Moved it.', steps: [
+      { id: 'step-1', tool: 'move_sticky', why: 'Filing Buy seeds', app: '', state: 'done', summary: 'Moved “Buy seeds” to Garden.', text: 'not kept' },
+      { why: 'Adding the dentist', app: 'Google Calendar', state: 'running' },
+      { why: '   ' },
+    ] }],
+  })
+  assert.equal(chat.tools, false)
+  assert.deepEqual(chat.messages[0].steps, [
+    { why: 'Filing Buy seeds', state: 'done', summary: 'Moved “Buy seeds” to Garden.' },
+    { why: 'Adding the dentist', app: 'Google Calendar', state: 'skipped' },
+  ])
+  assert.deepEqual(normalizeChat(chat), chat, 'normalizing again changes nothing')
+  assert.equal('tools' in normalizeChat({ id: 'chat-2', tools: true, messages: [] }), false, 'on is the default and is not written')
+})

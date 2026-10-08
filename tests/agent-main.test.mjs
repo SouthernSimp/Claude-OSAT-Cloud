@@ -125,6 +125,7 @@ test('another app’s change waits for Allow; Not now and Stop skip it; offline 
   assert.equal(result.undo, null, 'nothing changed in OSAT')
   assert.ok(t.chats.every((payload) => payload.schema === undefined), 'a cloud model never gets a grammar')
   assert.match(t.chats[0].messages[0].content, /- google_calendar\.create_event: In Google Calendar: Adds an event\./)
+  assert.doesNotMatch(t.chats[0].messages[0].content, /- find_files:/, 'a cloud model is never offered the files on this Mac')
 
   const no = await agentOn({ apps: CALENDAR, turns: [step('google_calendar.create_event', { title: 'Gym' })] })
   const declined = no.run('agent-4')

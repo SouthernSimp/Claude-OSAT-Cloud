@@ -14,6 +14,10 @@ export function wantsTools(question, apps = []) {
   return wantsActions(text) || DOING.test(text) || apps.some((name) => typeof name === 'string' && name.trim() && lower.includes(name.trim().toLowerCase()))
 }
 
+/* What Ask sends when it acts leaves room for the tools' own words (about 6,000 letters) and what they
+   answer. ponytail: the built-in AI reads about 8k tokens; past a few steps its engine forgets the oldest. */
+export const AGENT_MEMORY_CHARS = 10000
+
 let runs = 0
 
 export function useAgent() {
@@ -61,9 +65,13 @@ export function useAgent() {
     bridge.confirm(now.id, now.stepId, yes === true).catch(() => {})
   }
 
+  // Once tried, the button goes: after a failure (main no longer holds it) it can't work either.
   async function undo(messageId) {
-    await bridge.undo(undos[messageId])
-    setUndos((current) => ({ ...current, [messageId]: 'undone' }))
+    try {
+      await bridge.undo(undos[messageId])
+    } finally {
+      setUndos((current) => ({ ...current, [messageId]: 'undone' }))
+    }
   }
 
   return {

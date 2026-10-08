@@ -90,7 +90,9 @@ async function createAgent({ store, sharedModule, chat, bots, findFiles, ipcMain
   async function act({ model, messages, readOnly = false, onEvent = () => {}, confirm, signal }) {
     const changes = []
     const shown = new Map()
-    const all = [...ownTools(changes), ...await appTools()].filter((tool) => !readOnly || tool.readOnly)
+    // A cloud model never learns what files are on this Mac (Ask promises that copies and files stay here).
+    const cloud = model.startsWith('cloud:')
+    const all = [...ownTools(changes), ...await appTools()].filter((tool) => (!readOnly || tool.readOnly) && !(cloud && tool.name === 'find_files'))
     // Only the built-in model takes a grammar; the window never sends a schema (main's chatWith passes it on).
     const ask = (convo, { schema }) => chat({ model, messages: convo, ...(model.startsWith('osat:') ? { schema } : {}) }, () => {}, signal)
     let answer = ''
@@ -126,12 +128,15 @@ async function createAgent({ store, sharedModule, chat, bots, findFiles, ipcMain
       waiting.set(stepId, resolve)
       send({ type: 'confirm', stepId, text: agent.confirmText({ tool, args, why }) })
     })
-    // Stop answers every question still waiting with "not now".
+    // Stop answers every question still waiting with "not now"; so does closing the window that asked.
     controller.signal.addEventListener('abort', () => { for (const resolve of waiting.values()) resolve(false) }, { once: true })
+    const gone = () => controller.abort()
+    event.sender.once?.('destroyed', gone)
     try {
       return await act({ model, messages, onEvent: send, confirm, signal: controller.signal })
     } finally {
       runs.delete(key)
+      event.sender.removeListener?.('destroyed', gone)
     }
   })
   ipcMain.handle('agent:confirm', async (event, id, stepId, yes) => {

@@ -1,5 +1,6 @@
 import {
   ArrowClockwise,
+  ArrowCounterClockwise,
   ArrowUp,
   Cloud,
   PencilSimple,
@@ -20,6 +21,7 @@ import {
   Stop,
   Trash,
   WarningCircle,
+  Wrench,
   X,
 } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -39,6 +41,8 @@ import { useUndoToast } from "../lib/UndoToast.jsx";
 import { deriveTitle, fitToMemory, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
 import { cleanError, setupLine, useAi } from "./useAi.js";
 import { ModelMenu } from './ModelMenu.jsx';
+import { AgentConfirm, AgentSteps } from "./AgentSteps.jsx";
+import { AGENT_MEMORY_CHARS, useAgent } from "./useAgent.js";
 import "../styles/assistant.css";
 
 const STARTERS = [
@@ -123,6 +127,8 @@ export function UsedNotes({ ids, notes, folders = [], onOpen }) {
 export function LocalAssistant({ workspace, commit, navigate, initialPrompt = null, compact = false }) {
   const { models, status: ai, bridge } = useAi();
   const [toast, showUndo] = useUndoToast();
+  // Ask can act (Phase 48): in the Mac app a question that asks to do something may use tools.
+  const agent = useAgent();
   const [model, setModel] = useState("");
   const [activeId, setActiveId] = useState(null);
   const [draft, setDraft] = useState("");
@@ -322,17 +328,18 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     const controller = new AbortController();
     abortRef.current = controller;
     let full = "";
-    const fit = fitToMemory(outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds })), base.messages, content, workspace.notes, noteIds, files, workspace.folders, found.text));
+    const acting = base.tools !== false && agent.wants(content);
+    const fit = fitToMemory(outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds }), { acting }), base.messages, content, workspace.notes, noteIds, files, workspace.folders, found.text), acting ? AGENT_MEMORY_CHARS : undefined);
+    const onDelta = (delta) => {
+      full += delta;
+      setStreaming(extractActions(full).body);
+    };
+    let acted = { steps: [], undo: null };
     try {
-      await streamLocalMessage({
-        model,
-        messages: fit.messages,
-        signal: controller.signal,
-        onDelta: (delta) => {
-          full += delta;
-          setStreaming(extractActions(full).body);
-        },
-      });
+      if (acting) {
+        acted = await agent.act({ model, messages: fit.messages, signal: controller.signal, onDelta });
+        if (acted.error) setError(acted.error);
+      } else await streamLocalMessage({ model, messages: fit.messages, signal: controller.signal, onDelta });
     } catch (reason) {
       if (reason?.name !== "AbortError") setError(cleanError(reason) || "The AI could not answer.");
     } finally {
@@ -340,15 +347,32 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     }
 
     const { body, actions } = extractActions(full);
+    const steps = (acted.steps || []).map(({ why, app, state, summary }) => ({ why, app, state, summary }));
     setStreaming("");
     setBusy(false);
-    if (!body.trim()) return;
-    const answer = newMessage("assistant", body, { modelId: model, modelName: modelLabel(replyingModel || model), ...(fit.leftOut ? { leftOut: fit.leftOut } : {}) });
+    // Steps taken without an answer (stopped, or the answer failed) are still kept, with their Undo.
+    if (!body.trim() && !steps.length) return;
+    const answer = newMessage("assistant", body.trim() ? body : "Here’s what I did.", { modelId: model, modelName: modelLabel(replyingModel || model), ...(fit.leftOut ? { leftOut: fit.leftOut } : {}), ...(steps.length ? { steps } : {}) });
     commit((state) => {
       const saved = (state.chats || []).find((item) => item.id === chat.id) || chat;
       return putChat(state, { ...saved, messages: [...saved.messages, answer] });
     });
-    if (actions.length && wantsActions(content)) setPending((current) => ({ ...current, [answer.id]: actions }));
+    if (acted.undo) agent.keepUndo(answer.id, acted.undo);
+    if (!acting && actions.length && wantsActions(content)) setPending((current) => ({ ...current, [answer.id]: actions }));
+  }
+
+  function undoAsk(messageId) {
+    agent.undo(messageId).then(() => showUndo("Put back what Ask changed", null), (reason) => setError(cleanError(reason)));
+  }
+
+  // "Can use tools", per chat: off is remembered on the chat (a new one is made for it, like Reads related notes).
+  function setTools(on) {
+    commit((state) => {
+      const chat = active || newChat({ modelId: model });
+      if (!active) setActiveId(chat.id);
+      const { tools: _off, ...rest } = chat;
+      return putChat(state, on ? rest : { ...rest, tools: false });
+    });
   }
 
   function approve(messageId, action) {
@@ -506,7 +530,11 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                 {message.role === "assistant" && <span className="bubble-avatar"><Sparkle weight="fill" /></span>}
                 <div className="bubble-body">
                   {message.role === "assistant" && (message.modelName || message.modelId) && <small className="bubble-model">{message.modelName || message.modelId}</small>}
+                  {message.role === "assistant" && <AgentSteps steps={message.steps} />}
                   {message.role === "assistant" ? <Markdown text={message.content} headingOffset={2} /> : <p className="user-text">{message.content}</p>}
+                  {message.role === "assistant" && agent.undoState(message.id) === "ready" && (
+                    <button className="agent-undo" type="button" onClick={() => undoAsk(message.id)}><ArrowCounterClockwise /> Undo what Ask changed</button>
+                  )}
                   {message.leftOut > 0 && <small className="bubble-model">To fit the AI’s memory, it didn’t read the {message.leftOut === 1 ? "oldest message" : `${message.leftOut} oldest messages`} in this chat. Start a new chat for a fresh page.</small>}
                   {message.role === "user" && <UsedNotes ids={message.noteIds} notes={workspace.notes} folders={workspace.folders} onOpen={openNote} />}
                   {message.role === "user" && <UsedSources copies={message.copies} files={message.fileRefs} navigate={navigate} />}
@@ -544,12 +572,14 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
               <article className="bubble assistant">
                 <span className="bubble-avatar"><Sparkle weight="fill" /></span>
                 <div className="bubble-body">
+                  <AgentSteps steps={agent.steps} />
+                  <AgentConfirm asking={agent.asking} onAnswer={agent.answer} />
                   {streaming ? (
                     <>
                       <Markdown text={streaming} headingOffset={2} />
                       <span className="caret" aria-hidden="true" />
                     </>
-                  ) : (
+                  ) : !agent.asking && (
                     <p className="thinking"><CircleNotch className="spin" /> Thinking on this Mac…</p>
                   )}
                 </div>
@@ -626,6 +656,13 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
               {active?.contextScope?.folderId && <option value="focus">Reads this topic</option>}
               <option value="none">Reads no notes</option>
             </select>
+            {agent.can && (
+              <label className="ask-tools-switch" title="Ask may look things up and make changes in OSAT for you, showing each step, with one Undo. Another app asks you first.">
+                <Wrench aria-hidden="true" />
+                <span>Can use tools</span>
+                <input type="checkbox" role="switch" aria-label="Can use tools" checked={active?.tools !== false} disabled={busy} onChange={(event) => setTools(event.target.checked)} />
+              </label>
+            )}
             {replying && !isLocalModel(replying)
               ? <span className="composer-note is-cloud" title={whereLine(replying)}><Cloud /> To {replying.where || "the cloud"}</span>
               : <span className="composer-note" title="Nothing leaves this Mac"><LockKey /> On this Mac</span>}

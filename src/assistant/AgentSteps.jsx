@@ -29,6 +29,8 @@ export function AgentSteps({ steps }) {
 
 export function AgentConfirm({ asking, onAnswer }) {
   const allow = useRef(null);
+  const answer = useRef(onAnswer);
+  answer.current = onAnswer;
   useEffect(() => {
     if (!asking) return undefined;
     allow.current?.focus();
@@ -37,11 +39,11 @@ export function AgentConfirm({ asking, onAnswer }) {
       if (event.key !== "Escape") return;
       event.preventDefault();
       event.stopPropagation();
-      onAnswer(false);
+      answer.current(false);
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [asking, onAnswer]);
+  }, [asking]);
   if (!asking) return null;
   return (
     <div className="agent-confirm" role="alertdialog" aria-label="Ask wants to change something in another app">
