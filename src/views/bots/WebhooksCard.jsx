@@ -93,11 +93,8 @@ function SendCard({ bridge, hooks, offline }) {
       setName('')
     }, 'Added. Send a test to see it arrive.')
   }
-  const remove = (hook) => act(
-    () => bridge.remove(hook.id),
-    `Removed ${hook.name}.`,
-    () => bridge.add({ url: hook.url, name: hook.name, events: hook.events, on: hook.on }),
-  )
+  // Main keeps the address as it was, for Undo: the window only ever gets its host.
+  const remove = (hook) => act(() => bridge.remove(hook.id), `Removed ${hook.name}.`, () => bridge.undoRemove())
 
   return (
     <section className="content-card bots-card">
@@ -110,7 +107,7 @@ function SendCard({ bridge, hooks, offline }) {
             <li key={hook.id} className="hooks-row">
               <div className="hooks-head">
                 <WebhooksLogo aria-hidden="true" />
-                <span><b>{hook.name}</b><small>{host(hook.url)}</small></span>
+                <span><b>{hook.name}</b><small>{hook.host}</small></span>
                 <Switch checked={hook.on} label={`Send to ${hook.name}`} onChange={(on) => act(() => bridge.change(hook.id, { on }))} />
               </div>
               <Moments value={hook.events} disabled={!hook.on} onChange={(next) => act(() => bridge.change(hook.id, { events: next }))} />

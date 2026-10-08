@@ -331,6 +331,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   handle('hooks:add', plain((input) => hooks.add(input)), { from: 'app' })
   handle('hooks:change', plain((id, patch) => hooks.change(String(id), patch)), { from: 'app' })
   handle('hooks:remove', plain((id) => hooks.remove(String(id))), { from: 'app' })
+  handle('hooks:undo-remove', plain(() => hooks.undoRemove()), { from: 'app' })
   handle('hooks:test', plain((id) => hooks.test(String(id))), { from: 'app' })
   handle('hooks:inbox-on', plain(() => hooks.inboxOn()), { from: 'app' })
   handle('hooks:inbox-off', plain(() => hooks.inboxOff()), { from: 'app' })

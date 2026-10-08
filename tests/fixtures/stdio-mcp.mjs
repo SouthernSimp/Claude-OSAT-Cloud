@@ -1,6 +1,7 @@
 /* A tiny MCP server over stdin/stdout for tests/mcp-client.test.mjs: one JSON message per line.
    Its tools: echo (words back), env (the SECRET_THING it was started with), pid, slow (never
-   answers), crash (says why on stderr and exits). Tools come in two pages, to follow nextCursor. */
+   answers), crash (says why on stderr and exits). Tools come in two pages, to follow nextCursor.
+   Started with SLOW_START set, it never answers its handshake (a first npx run, a stuck server). */
 import readline from 'node:readline'
 
 const say = (message) => process.stdout.write(`${JSON.stringify(message)}\n`)
@@ -13,7 +14,7 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
   const { id, method, params } = JSON.parse(line)
   if (id === undefined) return
   const answer = (result) => say({ jsonrpc: '2.0', id, result })
-  if (method === 'initialize') return answer({ protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'fixture', version: '1' } })
+  if (method === 'initialize') return process.env.SLOW_START ? undefined : answer({ protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'fixture', version: '1' } })
   if (method === 'tools/list') {
     return params?.cursor === 'page-2'
       ? answer({ tools: ['pid', 'slow', 'crash'].map(tool) })

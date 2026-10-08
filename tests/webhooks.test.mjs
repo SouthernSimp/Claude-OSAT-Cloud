@@ -272,12 +272,49 @@ test('a note begun in Notes goes out a minute on, with the words it has by then'
   assert.deepEqual(sent.map((item) => item.body.content), ['New sticky: Call Sam'])
 })
 
-test('Undo of a removed address puts it back as it was, switched off if it was', async (t) => {
-  const { hooks } = await setup(t)
-  await hooks.add({ url: 'https://hooks.zapier.com/catch/1', events: ['sticky.added'], on: false })
-  assert.equal(hooks.status().hooks[0].on, false)
-  await hooks.add({ url: 'https://hooks.zapier.com/catch/2', events: ['sticky.added'] })
-  assert.equal(hooks.status().hooks[1].on, true)
+test('Undo of a removed address puts it back as it was: its place, switched off, its last line, what waited', async (t) => {
+  let off = false
+  const { hooks, commit } = await setup(t, { offline: () => off })
+  for (const url of ['https://hooks.zapier.com/catch/1', 'https://hooks.slack.com/services/x', 'https://discord.com/api/webhooks/3']) await hooks.add({ url, events: ['sticky.added'] })
+  commit([sticky('note-a', 'One')])
+  await hooks.settle()
+  off = true
+  commit([sticky('note-b', 'Two')])
+  await hooks.settle()
+  const before = hooks.status().hooks
+  assert.deepEqual(before.map((hook) => [hook.name, hook.host, hook.url, hook.waiting]), [['Zapier', 'hooks.zapier.com', undefined, 1], ['Slack', 'hooks.slack.com', undefined, 1], ['Discord', 'discord.com', undefined, 1]], 'the window gets the host, never the whole address')
+  await hooks.remove(before[1].id)
+  assert.deepEqual(hooks.status().hooks.map((hook) => hook.name), ['Zapier', 'Discord'])
+  await hooks.undoRemove()
+  assert.deepEqual(hooks.status().hooks, before, 'the same id, place, last line and what waited')
+  await assert.rejects(hooks.undoRemove(), /nothing to put back/)
+
+  await hooks.change(before[0].id, { on: false })
+  await hooks.remove(before[0].id)
+  await hooks.undoRemove()
+  assert.equal(hooks.status().hooks[0].on, false, 'switched off stays off')
+})
+
+test('told to slow down in a burst (Retry-After), the rest for that address wait for it and none is lost', async (t) => {
+  let n = 0
+  const slowDown = { ok: false, status: 429, headers: { get: (name) => (name === 'retry-after' ? '2' : null) } }
+  const { hooks, commit, sent, fire, timers } = await setup(t, { respond: () => { n += 1; return n === 6 ? slowDown : { ok: true, status: 200 } } })
+  await hooks.add({ url: 'https://discord.com/api/webhooks/2', events: ['sticky.added'] })
+  commit(Array.from({ length: 20 }, (_, i) => sticky(`note-${i}`, `Sticky ${i}`)))
+  await hooks.settle()
+  assert.equal(sent.length, 6, 'nothing more once it said slow down')
+  assert.equal(hooks.status().hooks[0].last.text, 'Discord asked OSAT to slow down. OSAT tries again in 2 seconds.')
+  assert.deepEqual([...timers].map((timer) => timer.ms), [2000])
+  await fire(2000)
+  assert.deepEqual(sent.slice(6).map((item) => item.body.content), Array.from({ length: 15 }, (_, i) => `New sticky: Sticky ${i + 5}`), 'in order, from the one it turned away')
+  assert.equal(hooks.status().hooks[0].last.ok, true)
+})
+
+test('a test that fails is never said to have been tried twice', async (t) => {
+  const { hooks, sent } = await setup(t, { respond: () => ({ ok: false, status: 503 }) })
+  await hooks.add({ url: 'https://discord.com/api/webhooks/2', events: ['sticky.added'] })
+  await assert.rejects(hooks.test(hooks.status().hooks[0].id), /^Error: Discord answered 503\. Try the test again in a moment\.$/)
+  assert.equal(sent.length, 1)
 })
 
 test('offline, moments wait (up to 100) and go when back online; a test says it waits', async (t) => {

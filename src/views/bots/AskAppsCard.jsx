@@ -43,7 +43,7 @@ export function AskAppsCard({ apps = [], offline = false }) {
       ? { kind: 'http', name: form.name, url: form.url, header: form.key }
       : { kind: 'command', name: form.name, command: form.command }
     const row = await act(() => bridge.add(input), (made) => (made.error
-      ? { ok: false, text: `${made.name} was added, but ${made.error.charAt(0).toLowerCase()}${made.error.slice(1)}` }
+      ? { ok: false, text: `${made.name} was added. ${made.error}` }
       : { ok: true, text: made.tools === null ? `${made.name} was added.` : `${made.name} was added. ${things(made.tools)}.` }))
     if (row) setForm(null)
   }
@@ -58,9 +58,12 @@ export function AskAppsCard({ apps = [], offline = false }) {
   }
 
   const importPicked = async () => {
-    const result = await act(() => bridge.import([...picked]), ({ added, skipped }) => (skipped.length
-      ? { ok: false, text: `${skipped.map((item) => `${item.name}: ${item.why}`).join(' ')}` }
-      : { ok: true, text: `${added.length === 1 ? `${added[0].name} was` : `${added.length} apps were`} added. Each stays off until you turn it on.` }))
+    const result = await act(() => bridge.import([...picked]), ({ added, skipped }) => {
+      const came = added.length ? `${added.length === 1 ? `${added[0].name} was` : `${added.length} apps were`} added. ` : ''
+      return skipped.length
+        ? { ok: false, text: `${came}${skipped.map((item) => `${item.name}: ${item.why}`).join(' ')}` }
+        : { ok: true, text: `${came}Each stays off until you turn it on.` }
+    })
     if (result) setOffers(null)
   }
 
@@ -136,17 +139,17 @@ export function AskAppsCard({ apps = [], offline = false }) {
       )}
 
       {form && (
-        <form className="ask-apps-form" onSubmit={add}>
+        <form className="bots-connect ask-apps-form" onSubmit={add}>
           <Choice label="How OSAT reaches it" value={form.kind} options={KINDS} onChange={(kind) => setForm({ ...form, kind })} />
           <label><span>Name</span><input value={form.name} maxLength={60} placeholder="Optional, like Notion" onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
           {form.kind === 'http' ? (
             <>
-              <label><span>Address</span><input value={form.url} spellCheck={false} placeholder="https://mcp.notion.com/mcp" onChange={(event) => setForm({ ...form, url: event.target.value })} /></label>
-              <label><span>Key</span><input type="password" value={form.key} autoComplete="off" spellCheck={false} placeholder="Only if it needs one" onChange={(event) => setForm({ ...form, key: event.target.value })} /></label>
+              <label><span>Address</span><input value={form.url} spellCheck={false} placeholder="https://example.com/mcp" onChange={(event) => setForm({ ...form, url: event.target.value })} /></label>
+              <label className="bots-key"><span>Key</span><input type="password" value={form.key} autoComplete="off" spellCheck={false} placeholder="Only if it needs one" onChange={(event) => setForm({ ...form, key: event.target.value })} /></label>
             </>
           ) : (
             <>
-              <label><span>Command</span><input className="ask-apps-command" value={form.command} spellCheck={false} placeholder="npx -y @notionhq/notion-mcp-server" onChange={(event) => setForm({ ...form, command: event.target.value })} /></label>
+              <label className="bots-key"><span>Command</span><input value={form.command} spellCheck={false} placeholder="npx -y @notionhq/notion-mcp-server" onChange={(event) => setForm({ ...form, command: event.target.value })} /></label>
               <p className="ai-note">OSAT runs this command on your Mac when Ask needs the app, and stops it after 10 quiet minutes. A key it needs can go in front, like NOTION_TOKEN=… npx …; OSAT keeps it in your Keychain.</p>
             </>
           )}

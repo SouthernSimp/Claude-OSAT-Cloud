@@ -4,9 +4,11 @@
                 as a short event stream. Through the main process's fetch, so Offline locks it.
      'command'  a program on this Mac that OSAT starts, talking one JSON message per line over
                 its input and output. Closing it ends the program (and what it started).
-   connect(server) shakes hands (initialize, then notifications/initialized) and resolves
-   { tools(), call(name, args), close() }. Each request gives up after 30 seconds, and every
-   error is one plain sentence. `fetch`, `spawn` and `timeout` are passed in by the tests. */
+   connect(server, { signal }) shakes hands (initialize, then notifications/initialized) and resolves
+   { tools(), call(name, args), close() }; aborting `signal` ends it even while it is still starting.
+   Each request gives up after 30 seconds, and every error is one plain sentence; one the app itself
+   answered is marked `answered` (the connection is fine). A web app that ends its session (404) gets
+   a new one, once. `fetch`, `spawn` and `timeout` are passed in by the tests. */
 const { spawn: nodeSpawn } = require('node:child_process')
 const os = require('node:os')
 const path = require('node:path')
@@ -40,6 +42,7 @@ function searchPath(given = '') {
 function httpTransport({ url, headers = {} }, { fetch, timeout }) {
   let session = ''
   let protocol = ''
+  const closing = new AbortController() // ends every request still under way
   const headersNow = () => ({
     ...headers,
     'content-type': 'application/json',
@@ -49,18 +52,28 @@ function httpTransport({ url, headers = {} }, { fetch, timeout }) {
   })
 
   async function send(message) {
+    if (closing.signal.aborted) throw plain('It was closed.')
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeout)
+    const sent = session
     try {
       let response
       try {
-        response = await fetch(url, { method: 'POST', headers: headersNow(), body: JSON.stringify(message), signal: controller.signal })
+        response = await fetch(url, { method: 'POST', headers: headersNow(), body: JSON.stringify(message), signal: AbortSignal.any([controller.signal, closing.signal]) })
       } catch (error) {
-        throw controller.signal.aborted ? timedOut(timeout) : unreachable(error)
+        throw controller.signal.aborted || closing.signal.aborted ? error : unreachable(error)
       }
       session = response.headers.get('mcp-session-id') || session
       if (!response.ok) {
         response.body?.cancel().catch(() => {})
+        // The app ended the session it gave (MCP says: start a new one).
+        if (response.status === 404 && sent) {
+          if (session === sent) {
+            session = ''
+            protocol = ''
+          }
+          throw Object.assign(plain('The app ended its session. Try again.'), { expired: true })
+        }
         throw refused(response.status)
       }
       if (message.id === undefined) {
@@ -72,6 +85,7 @@ function httpTransport({ url, headers = {} }, { fetch, timeout }) {
       if (!found) throw plain('It answered with something OSAT couldn’t read.')
       return found
     } catch (error) {
+      if (closing.signal.aborted) throw plain('It was closed.')
       throw controller.signal.aborted ? timedOut(timeout) : error
     } finally {
       clearTimeout(timer)
@@ -82,6 +96,8 @@ function httpTransport({ url, headers = {} }, { fetch, timeout }) {
     send,
     agreed: (version) => { protocol = version },
     close() {
+      if (closing.signal.aborted) return
+      closing.abort()
       // Ends the session on the app's side; refused offline like any request, which is fine.
       if (session) fetch(url, { method: 'DELETE', headers: headersNow() }).then((response) => response.body?.cancel(), () => {}).catch(() => {})
     },
@@ -207,7 +223,10 @@ function commandTransport({ command, args = [], env = {} }, { spawn, timeout }) 
     })
   }
 
+  let closed = false
   function close() {
+    if (closed) return
+    closed = true
     stop(plain('It was closed.'))
     child.stdin.end()
     const kill = (signal) => {
@@ -241,24 +260,44 @@ function textOf(result) {
   return parts.join('\n\n')
 }
 
-async function connect(server, { fetch = (...args) => globalThis.fetch(...args), spawn = nodeSpawn, timeout = TIMEOUT, version = '0' } = {}) {
+async function connect(server, { fetch = (...args) => globalThis.fetch(...args), spawn = nodeSpawn, timeout = TIMEOUT, version = '0', signal } = {}) {
+  signal?.throwIfAborted()
   const transport = server.kind === 'command' ? commandTransport(server, { spawn, timeout }) : httpTransport(server, { fetch, timeout })
+  // Closed while still starting (Offline, quitting, turned off): the program ends now, not after its handshake.
+  const stop = () => transport.close()
+  signal?.addEventListener('abort', stop, { once: true })
   let next = 0
-  async function ask(method, params) {
-    const answer = await transport.send({ jsonrpc: '2.0', id: ++next, method, ...(params ? { params } : {}) })
-    if (answer.error) throw plain(`It answered: ${String(answer.error.message || 'something went wrong').replace(/\.$/, '')}.`)
+  let renewing = null
+  async function ask(method, params, renew = true) {
+    let answer
+    try {
+      answer = await transport.send({ jsonrpc: '2.0', id: ++next, method, ...(params ? { params } : {}) })
+    } catch (error) {
+      if (!error.expired || !renew) throw error
+      renewing ||= handshake().finally(() => { renewing = null })
+      await renewing
+      return ask(method, params, false)
+    }
+    if (answer.error) throw Object.assign(plain(`It answered: ${String(answer.error.message || 'something went wrong').replace(/\.$/, '')}.`), { answered: true })
     return answer.result || {}
+  }
+
+  async function handshake() {
+    const hello = await ask('initialize', { protocolVersion: PROTOCOL, capabilities: {}, clientInfo: { name: 'osat', title: 'OSAT', version } }, false)
+    // Its version stands when it answers with another one it knows.
+    transport.agreed?.(typeof hello.protocolVersion === 'string' ? hello.protocolVersion : PROTOCOL)
+    await transport.send({ jsonrpc: '2.0', method: 'notifications/initialized' })
+    return hello
   }
 
   let hello
   try {
-    hello = await ask('initialize', { protocolVersion: PROTOCOL, capabilities: {}, clientInfo: { name: 'osat', title: 'OSAT', version } })
-    // Its version stands when it answers with another one it knows.
-    transport.agreed?.(typeof hello.protocolVersion === 'string' ? hello.protocolVersion : PROTOCOL)
-    await transport.send({ jsonrpc: '2.0', method: 'notifications/initialized' })
+    hello = await handshake()
   } catch (error) {
     transport.close()
-    throw error
+    throw signal?.aborted ? signal.reason : error
+  } finally {
+    signal?.removeEventListener('abort', stop)
   }
 
   return {

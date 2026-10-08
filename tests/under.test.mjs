@@ -96,6 +96,40 @@ test('an app’s command ends when OSAT goes offline, and none starts while offl
   assert.equal(starts, 1, 'nothing started while offline')
 })
 
+/* npx fetching a server the first time, or one that hangs: still in its handshake when OSAT goes
+   offline or quits, it ends at once (it runs in its own process group, so it would outlive OSAT). */
+test('an app’s command still starting ends at once when OSAT goes offline', async () => {
+  const require = createRequire(import.meta.url)
+  const { spawn } = require('node:child_process')
+  const { createAskApps, WAITS } = require('../desktop/bots/ask-apps.cjs')
+  const { connect } = require('../desktop/bots/mcp-client.cjs')
+  const { createKeychain } = require('../desktop/bots/keychain.cjs')
+  const dir = await mkdtemp(path.join(tmpdir(), 'osat-under-apps-'))
+  let offline = false
+  const pids = []
+  const apps = createAskApps({
+    file: path.join(dir, 'ask-apps.json'),
+    keychain: createKeychain({ platform: 'memory' }),
+    offline: () => offline,
+    connect: (server, options) => connect(server, { ...options, spawn: (...args) => { const child = spawn(...args); pids.push(child.pid); return child } }),
+  })
+  const fixture = fileURLToPath(new URL('./fixtures/stdio-mcp.mjs', import.meta.url))
+  const adding = apps.add({ kind: 'command', command: process.execPath, args: [fixture], env: { SLOW_START: '1' } })
+  for (let i = 0; i < 100 && !pids.length; i += 1) await new Promise((resolve) => setTimeout(resolve, 20))
+  const alive = () => { try { process.kill(pids[0], 0); return true } catch { return false } }
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  assert.equal(alive(), true, 'it is still starting')
+  const asked = Date.now()
+  offline = true
+  apps.closeAll()
+  const row = await adding
+  assert.ok(Date.now() - asked < 2000, 'its check gave up at once, not after 30 seconds')
+  assert.equal(row.error, WAITS)
+  for (let i = 0; i < 100 && alive(); i += 1) await new Promise((resolve) => setTimeout(resolve, 20))
+  assert.equal(alive(), false, 'going offline ended it')
+  assert.deepEqual(apps.running(), [])
+})
+
 test('going offline closes the locks first, then pauses, then saves; going online saves first', async () => {
   const steps = []
   let under

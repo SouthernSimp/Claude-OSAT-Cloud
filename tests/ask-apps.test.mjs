@@ -8,7 +8,9 @@ import test from 'node:test'
 
 const require = createRequire(import.meta.url)
 const { createAskApps, splitCommandLine, headerFrom, webAddress, WAITS } = require('../desktop/bots/ask-apps.cjs')
-const { createKeychain } = require('../desktop/bots/keychain.cjs')
+const { createKeychain, SAFE_SECRET } = require('../desktop/bots/keychain.cjs')
+const { connect: mcpConnect } = require('../desktop/bots/mcp-client.cjs')
+const { fileURLToPath } = await import('node:url')
 const { createBots } = require('../desktop/bots/index.cjs')
 const { createStore } = require('../desktop/store/index.cjs')
 const storeCore = await import('../shared/store-core.mjs')
@@ -18,13 +20,15 @@ const TOOLS = [
   { name: 'create_event', description: 'Makes an event.', inputSchema: { type: 'object' } },
 ]
 
-/* Ask apps in a temp folder, with a Keychain in memory, a stand-in connection and timers to fire by hand. */
-async function setup({ claude } = {}) {
+/* Ask apps in a temp folder, with a Keychain in memory, a stand-in connection (or the real one) and timers to fire by hand. */
+async function setup({ claude, connect: real } = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'osat-ask-apps-'))
   const file = path.join(dir, 'ask-apps.json')
   const claudeConfig = path.join(dir, 'claude_desktop_config.json')
   if (claude) await fs.writeFile(claudeConfig, JSON.stringify(claude))
-  const keychain = createKeychain({ platform: 'memory' })
+  // In memory, but held to what the Mac's Keychain takes in one item.
+  const memory = createKeychain({ platform: 'memory' })
+  const keychain = { ...memory, set: async (name, secret) => { assert.match(secret, SAFE_SECRET); await memory.set(name, secret) } }
   const started = []
   const closed = []
   const timers = new Set()
@@ -37,6 +41,7 @@ async function setup({ claude } = {}) {
       tools: async () => TOOLS,
       call: async (name, args) => {
         if (name === 'broken') throw new Error('It stopped before answering.')
+        if (name === 'late') return world.late
         return { text: `${name} ${JSON.stringify(args)}`, isError: false }
       },
       close: () => closed.push(server),
@@ -46,7 +51,7 @@ async function setup({ claude } = {}) {
     file,
     keychain,
     claudeConfig,
-    connect,
+    connect: real || connect,
     offline: () => world.offline,
     ownPort: () => 47823,
     makeId: () => `app${++n}`,
@@ -272,4 +277,74 @@ test('wired into Bots: Ask lists and uses an app that is on, here OSAT’s own c
   } finally {
     bots.stop()
   }
+})
+
+test('a long key or env (Atlassian, a service JWT) is kept across several Keychain items, and all go on Remove', async () => {
+  const { apps, keychain, started, onDisk } = await setup()
+  const env = { JIRA_URL: 'https://example.atlassian.net', JIRA_API_TOKEN: 'j'.repeat(800), CONFLUENCE_API_TOKEN: 'c'.repeat(800) }
+  const row = await apps.add({ name: 'Atlassian', kind: 'command', command: 'uvx', args: ['mcp-atlassian'], env })
+  assert.equal(row.error, '')
+  assert.deepEqual(started[0].env, env, 'read back whole')
+  const { parts } = JSON.parse(await onDisk())[0]
+  assert.ok(parts > 1)
+  assert.ok(!(await onDisk()).includes('jjjj'))
+  await apps.remove(row.id)
+  for (let part = 0; part < parts; part += 1) assert.equal(await keychain.get(part ? `ask-app-app1-${part}` : 'ask-app-app1'), null)
+  await apps.undoRemove()
+  await apps.toggle(row.id, false)
+  await apps.toggle(row.id, true)
+  assert.deepEqual(started.at(-1).env, env, 'Undo puts every part back')
+  await assert.rejects(apps.add({ kind: 'http', url: 'https://x.example.com/mcp', header: 'k'.repeat(9000) }), /too long for OSAT to keep/)
+})
+
+test('an app’s own “no” (wrong arguments) keeps its program running, and calls beside it still work', async () => {
+  const { apps } = await setup({ connect: mcpConnect })
+  const fixture = fileURLToPath(new URL('./fixtures/stdio-mcp.mjs', import.meta.url))
+  const row = await apps.add({ kind: 'command', command: process.execPath, args: [fixture] })
+  try {
+    const pid = (await apps.call(row.id, 'pid')).text
+    const [nope, echo] = await Promise.allSettled([apps.call(row.id, 'nope'), apps.call(row.id, 'echo', { words: 'hi' })])
+    assert.match(nope.reason.message, /It answered: Unknown tool nope\./)
+    assert.equal(echo.value.text, 'You said: hi', 'a call beside it still works')
+    assert.equal((await apps.call(row.id, 'pid')).text, pid, 'the same program, not started again')
+  } finally {
+    apps.closeAll()
+  }
+})
+
+test('a failure from a connection already closed leaves the newer one running', async () => {
+  const { apps, world, started, closed } = await setup()
+  await apps.add({ kind: 'http', url: 'https://one.example.com/mcp' })
+  let fail
+  world.late = new Promise((resolve, reject) => { fail = reject })
+  const late = apps.call('app1', 'late')
+  apps.closeAll()
+  await apps.call('app1', 'list_events') // a new connection
+  fail(new Error('It stopped before answering.'))
+  await assert.rejects(late, /stopped/)
+  assert.deepEqual(apps.running(), ['app1'])
+  assert.deepEqual([started.length, closed.length], [2, 1])
+})
+
+test('Claude Desktop’s entries are read as OSAT keeps them, so one already here is never added twice', async () => {
+  const { apps } = await setup({ claude: { mcpServers: { cal: { type: 'http', url: 'https://Calendar.example.com' }, fs: { command: ' mcp-fs ', args: ['/tmp'] } } } })
+  assert.deepEqual((await apps.importClaude(['cal', 'fs'])).added.map((row) => row.where), ['https://calendar.example.com/', 'mcp-fs /tmp'])
+  assert.deepEqual((await apps.claudeOffers()).apps.map((item) => item.added), [true, true])
+  assert.deepEqual((await apps.importClaude(['cal', 'fs'])).added, [])
+  assert.equal(apps.status().apps.length, 2)
+})
+
+test('an app that is off never starts, even on Check; one that failed isn’t tried again with every question', async () => {
+  const { apps, started, world } = await setup({ claude: CLAUDE })
+  await apps.importClaude(['notion'])
+  assert.equal((await apps.check('app1')).tools, null)
+  assert.deepEqual(started, [], 'Check on an app that is off starts nothing')
+  world.fail = 'Nothing answered at that address.'
+  await apps.add({ kind: 'http', url: 'https://down.example.com/mcp' })
+  assert.equal(started.length, 1)
+  assert.deepEqual(await apps.tools(), [])
+  assert.deepEqual(await apps.tools(), [])
+  assert.equal(started.length, 1, 'Ask doesn’t start it again with each question')
+  world.fail = null
+  assert.equal((await apps.check('app2')).tools, 2, 'Check tries again')
 })

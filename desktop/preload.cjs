@@ -211,6 +211,7 @@ contextBridge.exposeInMainWorld('osatHooks', Object.freeze({
   add: (hook) => ipcRenderer.invoke('hooks:add', hook),
   change: (id, patch) => ipcRenderer.invoke('hooks:change', id, patch),
   remove: (id) => ipcRenderer.invoke('hooks:remove', id),
+  undoRemove: () => ipcRenderer.invoke('hooks:undo-remove'),
   test: (id) => ipcRenderer.invoke('hooks:test', id),
   inboxOn: () => ipcRenderer.invoke('hooks:inbox-on'),
   inboxOff: () => ipcRenderer.invoke('hooks:inbox-off'),

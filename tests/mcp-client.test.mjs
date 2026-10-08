@@ -39,18 +39,23 @@ test('over the web: OSAT’s own connector, with its key', async () => {
   await assert.rejects(connect({ kind: 'http', url }), /Nothing answered at that address/)
 })
 
-/* A server that answers as an event stream, keeps a session, and pages its tools. */
+/* A server that answers as an event stream, keeps a session, and pages its tools. Its tool
+   `restart` forgets every session, as a server that restarts does. */
 async function streamingServer() {
   const seen = []
+  let current = 1
   const server = http.createServer(async (request, response) => {
     let body = ''
     for await (const chunk of request) body += chunk
     seen.push({ method: request.method, session: request.headers['mcp-session-id'], version: request.headers['mcp-protocol-version'], body: body ? JSON.parse(body) : null })
+    const session = request.headers['mcp-session-id']
+    if (session && session !== `session-${current}`) return response.writeHead(404).end()
     if (request.method === 'DELETE') return response.writeHead(200).end()
     const { id, method, params } = JSON.parse(body)
     if (id === undefined) return response.writeHead(202).end()
+    if (method === 'tools/call' && params.name === 'restart') current += 1
     if (method === 'initialize') {
-      response.writeHead(200, { 'content-type': 'application/json', 'mcp-session-id': 'session-1' })
+      response.writeHead(200, { 'content-type': 'application/json', 'mcp-session-id': `session-${current}` })
       return response.end(JSON.stringify({ jsonrpc: '2.0', id, result: { protocolVersion: '2025-03-26', serverInfo: { name: 'stream' } } }))
     }
     if (method === 'tools/call' && params.name === 'hang') return undefined // never answers
@@ -91,6 +96,33 @@ test('over the web: an event-stream answer, the session kept, the agreed version
     server.closeAllConnections()
     server.close()
   }
+})
+
+test('over the web: a session the app ended is started again, once, and the call goes through', async () => {
+  const { server, seen, url } = await streamingServer()
+  try {
+    const client = await connect({ kind: 'http', url }, { timeout: 1000 })
+    await client.call('restart', {})
+    assert.deepEqual(await client.call('today', {}), { text: 'Three events today.\n\n(a picture)', isError: false })
+    assert.deepEqual(seen.slice(-4).map((item) => [item.body?.method, item.session]), [
+      ['tools/call', 'session-1'], // answered 404: that session is gone
+      ['initialize', undefined],
+      ['notifications/initialized', 'session-2'],
+      ['tools/call', 'session-2'],
+    ])
+    client.close()
+  } finally {
+    server.closeAllConnections()
+    server.close()
+  }
+})
+
+test('over the web: closing while it still starts ends it at once', async () => {
+  const controller = new AbortController()
+  const fetch = (_, init) => new Promise((resolve, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)))
+  const starting = connect({ kind: 'http', url: 'https://mcp.example.com/mcp' }, { fetch, signal: controller.signal })
+  controller.abort(new Error('Apps OSAT uses wait until you’re back online.'))
+  await assert.rejects(starting, /wait until you’re back online/)
 })
 
 test('over the web: Offline’s refusal passes through in its own words', async () => {

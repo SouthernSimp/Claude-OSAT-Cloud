@@ -2,8 +2,11 @@
      out   each moment he ticked (a sticky added or filed, a topic added, the journal written) is
            sent as JSON to the addresses he gave, one after another, through the main process's
            fetch (so Offline holds it). Offline, up to 100 wait in memory and go when he is back
-           online; a network error, a 5xx or "slow down" (429) is tried once more after 30 s, then
-           said calmly. Words still being written (the journal, a note begun in Notes) go a minute on.
+           online; a network error or a 5xx is tried once more after 30 s, then said calmly. Told
+           to slow down (429, as Slack and Discord say after a burst), the rest for that address
+           wait until it says (Retry-After, else 30 s) and then go in order. Words still being
+           written (the journal, a note begun in Notes) go a minute on.
+           The window gets each address's host only: a Slack or Zapier address lets anyone post.
      in    "Let services add stickies": an ntfy topic with a random name. Services send words to
            it; OSAT reads it every minute while online, and each message becomes a sticky in
            Unsorted (source Webhook). The Mac never listens to the internet.
@@ -17,6 +20,9 @@ const RETRY_MS = 30 * 1000
 const POLL_MS = 60 * 1000
 const SETTLE_MS = 60 * 1000
 const TIMEOUT_MS = 15 * 1000
+const MAX_REST_MS = 10 * 60 * 1000
+// ponytail: what waits out a "slow down" is held in memory, at most 500 an address; Sort them all files up to 300.
+const MAX_RESTING = 500
 
 function createWebhooks({
   file, model, store, fetch, addSticky,
@@ -39,7 +45,9 @@ function createWebhooks({
   let running = false
   const journal = new Map() // date → { timer, line }: at most one send a minute per day
   const typing = new Map() // note id → timer: a note begun in Notes goes once its words have settled
+  const resting = new Map() // hook id → { timer, items: [{ body, retry }] }: told to slow down, the rest wait
   const retries = new Set()
+  let removed = null // the last address removed, as it was, with what waited for it: for Undo
 
   const iso = () => new Date(now()).toISOString()
   const hookById = (id) => settings.get().hooks.find((hook) => hook.id === id)
@@ -49,7 +57,7 @@ function createWebhooks({
     const { hooks, inbox } = settings.get()
     return {
       offline: offline(),
-      hooks: hooks.map((hook) => ({ ...hook, waiting: waiting.filter((item) => item.id === hook.id).length })),
+      hooks: hooks.map(({ url, ...hook }) => ({ ...hook, host: host(url), waiting: waiting.filter((item) => item.id === hook.id).length })),
       inbox: { on: inbox.on, server: inbox.server, host: host(inbox.server), address: inbox.on ? model.ntfyAddress(inbox) : '', lastAt: inbox.lastAt, error: inboxError },
     }
   }
@@ -62,12 +70,18 @@ function createWebhooks({
   }
 
   /* One delivery. Resolves the result line it remembered ({ ok, text }), or null while it waits.
-     `force` sends to an address that is switched off (Send a test). */
-  async function deliver(id, body, { retry = true, force = false } = {}) {
+     `test` is Send a test: it goes even to an address that is switched off, and is never tried again. */
+  async function deliver(id, body, { retry = true, test = false } = {}) {
     const hook = hookById(id)
-    if (!hook || (!hook.on && !force)) return null
+    if (!hook || (!hook.on && !test)) return null
+    if (resting.has(id) && !test) {
+      const rest = resting.get(id)
+      rest.items = [...rest.items, { body, retry }].slice(-MAX_RESTING)
+      return null
+    }
     if (offline()) return wait(id, body)
     let problem
+    let slow = 0
     try {
       const response = await fetch(hook.url, {
         method: 'POST',
@@ -77,13 +91,17 @@ function createWebhooks({
       })
       response.body?.cancel().catch(() => {})
       if (response.ok) return done(id, { ok: true, text: '' })
-      if (response.status === 429) problem = `${hook.name} asked OSAT to slow down`
-      else if (response.status < 500) return done(id, { ok: false, text: `${hook.name} answered ${response.status}. Check the address.` })
+      if (response.status === 429) {
+        problem = `${hook.name} asked OSAT to slow down`
+        slow = restFor(response)
+      } else if (response.status < 500) return done(id, { ok: false, text: `${hook.name} answered ${response.status}. Check the address.` })
       else problem = `${hook.name} answered ${response.status}`
     } catch (error) {
       if (error.code === 'OFFLINE' || offline()) return wait(id, body)
       problem = `${hook.name} couldn’t be reached`
     }
+    if (test) return done(id, { ok: false, text: `${problem}. Try the test again in a moment.` })
+    if (slow) return rest(id, body, retry, slow, problem)
     if (!retry) return done(id, { ok: false, text: `${problem}, even after a second try, so that one wasn’t sent.` })
     const timer = setTimer(() => {
       retries.delete(timer)
@@ -95,6 +113,38 @@ function createWebhooks({
   async function done(id, last) {
     await remember(id, last)
     return last
+  }
+  // How long an address asked OSAT to wait: Retry-After in seconds or as a date, else 30 s.
+  function restFor(response) {
+    const value = response.headers?.get?.('retry-after')
+    const seconds = Number(value)
+    const ms = value && Number.isFinite(seconds) ? seconds * 1000 : Date.parse(value) - now()
+    return ms > 0 ? Math.min(ms, MAX_REST_MS) : RETRY_MS
+  }
+  const inWords = (ms) => {
+    const seconds = Math.ceil(ms / 1000)
+    if (seconds >= 90) return `${Math.round(seconds / 60)} minutes`
+    return seconds === 1 ? '1 second' : `${seconds} seconds`
+  }
+  /* Told to slow down: this one (when it had a try left) and whatever comes for the address meanwhile
+     wait until then, and go in order, so a burst (Sort them all) doesn't lose the rest. */
+  function rest(id, body, retry, ms, problem) {
+    const timer = setTimer(() => {
+      retries.delete(timer)
+      const { items = [] } = resting.get(id) || {}
+      resting.delete(id)
+      for (const item of items) queue(id, item.body, { retry: item.retry })
+    }, ms)
+    retries.add(timer)
+    resting.set(id, { timer, items: retry ? [{ body, retry: false }] : [] })
+    return done(id, { ok: false, text: retry ? `${problem}. OSAT tries again in ${inWords(ms)}.` : `${problem}, even after a second try, so that one wasn’t sent.` })
+  }
+  function stopResting(id) {
+    const rest = resting.get(id)
+    if (!rest) return
+    clearTimer(rest.timer)
+    retries.delete(rest.timer)
+    resting.delete(id)
   }
   function wait(id, body) {
     waiting = [...waiting, { id, body }].slice(-MAX_WAITING)
@@ -235,11 +285,10 @@ function createWebhooks({
 
   /* ---- out: the addresses ---- */
 
-  // `on` is false only when Undo puts back an address that was switched off.
-  async function add({ url, name, events, on } = {}) {
+  async function add({ url, name, events } = {}) {
     const address = model.webhookAddress(url)
     if (settings.get().hooks.length >= model.MAX_HOOKS) throw new Error(`OSAT keeps up to ${model.MAX_HOOKS} addresses. Remove one first.`)
-    const hook = { id: `hook-${randomUUID()}`, name: String(name || '').trim().slice(0, 40) || model.hookName(address), url: address, on: on !== false, events: Array.isArray(events) ? events : [] }
+    const hook = { id: `hook-${randomUUID()}`, name: String(name || '').trim().slice(0, 40) || model.hookName(address), url: address, on: true, events: Array.isArray(events) ? events : [] }
     await settings.save({ hooks: [...settings.get().hooks, hook] })
     changed()
     return status()
@@ -252,14 +301,35 @@ function createWebhooks({
     if (Array.isArray(patch.events)) next.events = patch.events
     if (typeof patch.name === 'string' && patch.name.trim()) next.name = patch.name.trim().slice(0, 40)
     await settings.save({ hooks: settings.get().hooks.map((hook) => (hook.id === id ? { ...hook, ...next } : hook)) })
-    if (next.on === false) waiting = waiting.filter((item) => item.id !== id)
+    if (next.on === false) {
+      waiting = waiting.filter((item) => item.id !== id)
+      stopResting(id)
+    }
     changed()
     return status()
   }
 
   async function remove(id) {
+    const hooks = settings.get().hooks
+    const index = hooks.findIndex((hook) => hook.id === id)
+    if (index < 0) throw new Error('That address isn’t in OSAT any more.')
+    removed = { hook: hooks[index], index, waiting: waiting.filter((item) => item.id === id) }
     waiting = waiting.filter((item) => item.id !== id)
-    await settings.save({ hooks: settings.get().hooks.filter((hook) => hook.id !== id) })
+    stopResting(id)
+    await settings.save({ hooks: hooks.filter((hook) => hook.id !== id) })
+    changed()
+    return status()
+  }
+
+  /* Undo of Remove: the address exactly as it was (switched off stays off), in its place, with what waited for it. */
+  async function undoRemove() {
+    if (!removed) throw new Error('There’s nothing to put back.')
+    const hooks = settings.get().hooks
+    if (hooks.length >= model.MAX_HOOKS) throw new Error(`OSAT keeps up to ${model.MAX_HOOKS} addresses. Remove one first.`)
+    const { hook, index, waiting: held } = removed
+    removed = null
+    await settings.save({ hooks: [...hooks.slice(0, index), hook, ...hooks.slice(index)] })
+    waiting = [...waiting, ...held].slice(-MAX_WAITING)
     changed()
     return status()
   }
@@ -268,7 +338,7 @@ function createWebhooks({
   async function test(id) {
     if (!hookById(id)) throw new Error('That address isn’t in OSAT any more.')
     if (offline()) throw new Error('Sending waits until you’re back online.')
-    const result = await queue(id, model.payloadFor({ event: 'test' }, null, { at: iso() }), { retry: false, force: true })
+    const result = await queue(id, model.payloadFor({ event: 'test' }, null, { at: iso() }), { retry: false, test: true })
     if (!result) throw new Error('Sending waits until you’re back online.')
     if (!result.ok) throw new Error(result.text)
     return status()
@@ -307,6 +377,7 @@ function createWebhooks({
     pollTimer = null
     for (const timer of retries) clearTimer(timer)
     retries.clear()
+    resting.clear()
     for (const day of journal.values()) clearTimer(day.timer)
     journal.clear()
     for (const timer of typing.values()) clearTimer(timer)
@@ -314,7 +385,7 @@ function createWebhooks({
   }
 
   return {
-    start, stop, status, nudge, add, change, remove, test, inboxOn, inboxOff, inboxReset, inboxServer,
+    start, stop, status, nudge, add, change, remove, undoRemove, test, inboxOn, inboxOff, inboxReset, inboxServer,
     address: () => model.ntfyAddress(settings.get().inbox),
     // For tests: wait for every delivery and read now under way.
     settle: async () => { await sending; await polling },

@@ -17,13 +17,8 @@
 .ask-app-tools li { padding: 2px 8px; border-radius: var(--r-full); color: var(--muted); background: color-mix(in srgb, var(--ink) 5%, transparent); font: 11px/1.5 var(--font-mono); }
 .settings .ask-apps-removed .text-button { margin-left: auto; }
 
-/* Add an app, and what Claude Desktop has. */
-.ask-apps-form { display: grid; gap: 10px; margin-top: 14px; }
+/* Add an app (a .bots-connect form, bots.css), and what Claude Desktop has. */
 .ask-apps-form .segmented { justify-self: start; }
-.ask-apps-form label { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 10px; align-items: center; font-size: var(--t-sm); color: var(--muted); }
-.settings .ask-apps-form input { min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-md); color: var(--ink); background: var(--surface); font: inherit; font-size: var(--t-sm); }
-.settings .ask-apps-form input.ask-apps-command,
-.settings .ask-apps-form input[type="password"] { font-family: var(--font-mono); }
 .ask-apps-import { display: grid; gap: 8px; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); }
 .ask-apps-import strong { color: var(--ink); font-weight: 650; }
 .ask-apps-import ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
@@ -35,5 +30,4 @@
 @container room (max-width: 760px) {
   .ask-apps > li { grid-template-columns: 16px minmax(0, 1fr) auto; }
   .ask-app-actions { grid-column: 2 / -1; justify-content: flex-start; }
-  .ask-apps-form label { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }

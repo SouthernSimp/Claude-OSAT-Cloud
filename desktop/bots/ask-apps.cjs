@@ -1,9 +1,10 @@
 /* Apps OSAT can use (Phase 48, Settings → Bots): the MCP servers Claude uses (Google Calendar,
    Gmail, Notion…), added by Nate or imported from Claude Desktop, each one off until he turns it on.
    The list is <data folder>/ask-apps.json, written whole like bots.json. Keys and env values never
-   go there or to the window: they sit in the Keychain as 'ask-app-<id>' (base64 JSON
-   { headers, env }); the file keeps only their names. What each app can do (its tools) is kept
-   there too, refreshed on Check, so listing them never has to start anything.
+   go there or to the window: they sit in the Keychain as base64 JSON { headers, env }, cut into
+   items of 400 letters ('ask-app-<id>', then 'ask-app-<id>-1', …; `parts` says how many); the file
+   keeps only their names. What each app can do (its tools) is kept there too, refreshed on Check,
+   so listing them never has to start anything.
    A connection starts on first use and closes after 10 idle minutes; all close at quit and when
    OSAT goes offline (closeAll), and offline, using one says it waits. A command only ever runs
    because Nate added it, or imported and then turned it on, having seen its whole command line. */
@@ -12,17 +13,17 @@ const path = require('node:path')
 const nodeFs = require('node:fs/promises')
 const { randomBytes } = require('node:crypto')
 const { connect: mcpConnect } = require('./mcp-client.cjs')
+const { MAX_SECRET } = require('./keychain.cjs')
 
 const IDLE = 10 * 60 * 1000
 const WAITS = 'Apps OSAT uses wait until you’re back online.'
 const CLAUDE_CONFIG = path.join(os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json')
-// keychain.cjs takes a secret of up to 400 safe letters; base64 is safe.
-// ponytail: one Keychain item per app caps keys at about 290 letters; split it if a real key is longer.
-const MAX_SECRET = 400
+// keychain.cjs takes up to 400 safe letters an item (base64 is safe): 20 items hold about 6 KB of keys.
+const MAX_PARTS = 20
 const MAX_TOOLS = 200
 
 const plain = (text) => new Error(text)
-const account = (id) => `ask-app-${id}`
+const account = (id, part = 0) => (part ? `ask-app-${id}-${part}` : `ask-app-${id}`)
 const strings = (value) => (value && typeof value === 'object' && !Array.isArray(value)
   ? Object.fromEntries(Object.entries(value).filter(([key, text]) => typeof text === 'string' && /^[A-Za-z_][A-Za-z0-9_-]{0,99}$/.test(key)))
   : {})
@@ -156,16 +157,21 @@ function createAskApps({
     checkedAt: app.checkedAt || null,
   })
 
-  async function keep(id, secret) {
-    const encoded = Buffer.from(JSON.stringify(secret)).toString('base64')
-    if (encoded.length > MAX_SECRET) throw plain('That key is too long for OSAT to keep.')
-    await keychain.set(account(id), encoded)
+  /* The secret as base64, in as many Keychain items as it needs; `app.parts` says how many. */
+  async function keep(app, encoded) {
+    const parts = encoded.match(new RegExp(`.{1,${MAX_SECRET}}`, 'g'))
+    if (parts.length > MAX_PARTS) throw plain('That key is too long for OSAT to keep.')
+    for (const [part, text] of parts.entries()) await keychain.set(account(app.id, part), text)
+    app.parts = parts.length
   }
+  const partsOf = (app) => Array.from({ length: app.parts || 1 }, (_, part) => account(app.id, part))
+  const kept = async (app) => (await Promise.all(partsOf(app).map((name) => keychain.get(name)))).map((text) => text || '').join('')
+  const forget = async (app) => { for (const name of partsOf(app)) await keychain.remove(name) }
 
   async function secretOf(app) {
     if (!app.secrets.length) return {}
     try {
-      return JSON.parse(Buffer.from(await keychain.get(account(app.id)) || '', 'base64').toString('utf8'))
+      return JSON.parse(Buffer.from(await kept(app), 'base64').toString('utf8'))
     } catch {
       return {}
     }
@@ -178,20 +184,25 @@ function createAskApps({
     if (!entry) return
     live.delete(id)
     timers.clearTimeout(entry.timer)
+    // A command still starting (npx fetching it, a slow server) ends now too, not after its handshake.
+    entry.stop.abort(plain(offline() ? WAITS : 'It was closed.'))
     entry.ready.then((client) => client.close(), () => {})
   }
+  // Only the connection that failed: a newer one started meanwhile stays.
+  const closeIf = (id, entry) => { if (live.get(id) === entry) close(id) }
 
   function closeAll() {
     for (const id of [...live.keys()]) close(id)
   }
 
-  async function start(app) {
+  async function start(app, signal) {
     const secret = await secretOf(app)
-    // Offline may have come on while the Keychain answered.
+    // Offline may have come on, or it was closed, while the Keychain answered.
     if (offline()) throw plain(WAITS)
+    signal.throwIfAborted()
     return connect(app.kind === 'command'
       ? { kind: 'command', command: app.command, args: app.args, env: strings(secret.env) }
-      : { kind: 'http', url: app.url, headers: strings(secret.headers) }, { version })
+      : { kind: 'http', url: app.url, headers: strings(secret.headers) }, { version, signal })
   }
 
   /* The app's connection, started on first use; each use starts its 10 idle minutes again. */
@@ -200,11 +211,13 @@ function createAskApps({
     const app = find(id)
     let entry = live.get(id)
     if (!entry) {
-      entry = { ready: start(app), timer: null }
+      const stop = new AbortController()
+      entry = { ready: start(app, stop.signal), stop, timer: null }
       live.set(id, entry)
       entry.ready.then(() => errors.delete(id), (error) => {
+        if (live.get(id) !== entry) return // closed on purpose
         errors.set(id, error.message)
-        if (live.get(id) === entry) close(id)
+        close(id)
       })
     }
     timers.clearTimeout(entry.timer)
@@ -213,18 +226,22 @@ function createAskApps({
     return entry.ready
   }
 
-  /* Connects and lists what it can do; a problem is kept on its row, not thrown. */
+  /* Connects and lists what it can do; a problem is kept on its row, not thrown. An app that is
+     off never starts: what it runs waits until Nate turns it on. */
   async function check(id) {
     const app = find(id)
+    if (!app.on) return row(app)
+    const ready = use(id)
+    const entry = live.get(id)
     try {
-      const client = await use(id)
+      const client = await ready
       app.tools = (await client.tools()).filter((tool) => tool && typeof tool.name === 'string').slice(0, MAX_TOOLS).map(cleanTool)
       app.checkedAt = now()
       errors.delete(id)
       await save()
     } catch (error) {
-      errors.set(id, error.message)
-      close(id)
+      if (app.on && apps.includes(app)) errors.set(id, error.message)
+      if (!error.answered) closeIf(id, entry)
     }
     return row(app)
   }
@@ -253,7 +270,7 @@ function createAskApps({
     app.secrets = [...Object.keys(secret.headers || {}), ...Object.keys(secret.env || {})]
     app.name = cleanName(input.name) || nameFor(app)
     if (from) app.from = from
-    if (app.secrets.length) await keep(app.id, secret)
+    if (app.secrets.length) await keep(app, Buffer.from(JSON.stringify(secret)).toString('base64'))
     apps.push(app)
     await save()
     // Added by hand, it is on: Nate wrote it. Imported, it waits until he turns it on.
@@ -276,13 +293,13 @@ function createAskApps({
     const index = apps.findIndex((item) => item.id === id)
     if (index < 0) throw plain('That app isn’t in OSAT any more.')
     const app = apps[index]
-    const secret = app.secrets.length ? await keychain.get(account(id)) : null
+    const secret = app.secrets.length ? await kept(app) : null
     apps.splice(index, 1)
     close(id)
     errors.delete(id)
     removed = { app, index, secret }
     await save()
-    if (secret) await keychain.remove(account(id))
+    if (secret) await forget(app)
     return { name: app.name }
   }
 
@@ -290,7 +307,7 @@ function createAskApps({
     if (!removed) throw plain('There’s nothing to put back.')
     const { app, index, secret } = removed
     removed = null
-    if (secret) await keychain.set(account(app.id), secret)
+    if (secret) await keep(app, secret)
     apps.splice(Math.min(index, apps.length), 0, app)
     await save()
     return row(app)
@@ -312,12 +329,16 @@ function createAskApps({
       throw plain(error.code === 'ENOENT' ? 'Claude Desktop’s settings aren’t on this Mac.' : 'OSAT couldn’t read Claude Desktop’s settings.')
     }
     const servers = config?.mcpServers && typeof config.mcpServers === 'object' ? config.mcpServers : {}
+    // Written as add() keeps it, so one already here is known (an address it can't use is still
+    // offered, and skipped with its reason).
+    const address = (url) => { try { return webAddress(url) } catch { return url } }
     return Object.entries(servers).flatMap(([name, server]) => {
-      if (typeof server?.url === 'string') return [{ name, kind: 'http', url: server.url, headers: strings(server.headers), where: server.url }]
-      if (typeof server?.command !== 'string' || !server.command.trim()) return []
+      if (typeof server?.url === 'string') return [{ name, kind: 'http', url: server.url, headers: strings(server.headers), where: address(server.url) }]
+      const command = typeof server?.command === 'string' ? server.command.trim() : ''
+      if (!command) return []
       const args = Array.isArray(server.args) ? server.args.map(String) : []
       const env = strings(server.env)
-      return [{ name, kind: 'command', command: server.command, args, env, where: commandLine(server.command, args, Object.keys(env)) }]
+      return [{ name, kind: 'command', command, args, env, where: commandLine(command, args, Object.keys(env)) }]
     }).filter((item) => !isOwn(item.where))
   }
 
@@ -347,21 +368,26 @@ function createAskApps({
   /* ---- for Ask ---- */
 
   /* What the apps that are on can do; one never checked is checked now. Never throws: an app
-     that fails is left out, its reason on its row. Offline, nothing. */
+     that fails is left out, its reason on its row, and not tried again with every question (Check
+     or turning it on again does). Offline, nothing. */
   async function tools() {
     if (offline()) return []
-    await Promise.all(apps.filter((app) => app.on && !app.tools).map((app) => check(app.id).catch(() => {})))
+    const failed = (app) => errors.has(app.id) && errors.get(app.id) !== WAITS
+    await Promise.all(apps.filter((app) => app.on && !app.tools && !failed(app)).map((app) => check(app.id).catch(() => {})))
     return apps.filter((app) => app.on).flatMap((app) => (app.tools || []).map((tool) => ({ app: app.id, appName: app.name, ...tool })))
   }
 
   async function call(id, name, args) {
     const app = find(id)
     if (!app.on) throw plain(`${app.name} is off. Turn it on in Settings → Bots first.`)
-    const client = await use(id)
+    const ready = use(id)
+    const entry = live.get(id)
+    const client = await ready
     try {
       return await client.call(String(name), args && typeof args === 'object' && !Array.isArray(args) ? args : {})
     } catch (error) {
-      close(id) // a fresh start next time
+      // A broken connection starts fresh next time; the app's own "no" (wrong arguments) leaves it be.
+      if (!error.answered) closeIf(id, entry)
       throw error
     }
   }
