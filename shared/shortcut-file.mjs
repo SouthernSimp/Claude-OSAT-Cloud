@@ -1,4 +1,4 @@
-/* Siri and Shortcuts (Phase 47): five ready-made shortcuts Nate adds from Settings → Bots.
+/* Siri and Shortcuts (Phase 47): six ready-made shortcuts Nate adds from Settings → Bots.
    Each talks to the connector's plain web API on this Mac (desktop/bots/connector.cjs):
    POST /api/add_sticky, GET /api/read_journal…, with the key in an Authorization header,
    and the answer (plain words) shown or spoken. Pure: `shortcutFile(id, { api, key })` gives
@@ -23,6 +23,7 @@ export const SHORTCUTS = [
   { id: 'write', name: 'Write in my OSAT journal', say: 'Say “Hey Siri, write in my OSAT journal”, then the line for today’s page.', glyph: 59798 },
   { id: 'read', name: "What's in my OSAT journal", say: 'Say “Hey Siri, what’s in my OSAT journal”, and Siri reads today’s page.', glyph: 59465 },
   { id: 'find', name: 'Find in OSAT', say: 'Say “Hey Siri, find in OSAT”, then a few words. It shows the stickies that hold them.', glyph: 59772 },
+  { id: 'ask', name: 'Ask OSAT', say: 'Say “Hey Siri, ask OSAT”, then your question. Siri reads OSAT’s answer from your notes.', glyph: 59414 },
 ]
 
 const uuid = (n) => `05A70000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -63,6 +64,7 @@ const ask = (id, prompt) => action('ask', { UUID: id, WFAskActionPrompt: prompt,
 const answer = (id) => words(OBJ, output(id, 'Contents of URL'))
 const notify = (id) => action('notification', { WFNotificationActionTitle: 'OSAT', WFNotificationActionBody: answer(id) })
 const show = (id) => action('showresult', { Text: answer(id) })
+const speak = (id) => action('speaktext', { WFText: answer(id) })
 const said = (id) => words(OBJ, output(id, 'Provided Input'))
 
 function actionsFor(id, where) {
@@ -70,15 +72,15 @@ function actionsFor(id, where) {
   if (id === 'add') return [ask(first, 'What should OSAT keep?'), request(where, 'add_sticky', { id: second, json: [['text', said(first)], ['source', words('Siri')]] }), notify(second)]
   if (id === 'send') return [request(where, 'add_sticky', { id: first, json: [['text', words(OBJ, INPUT)], ['source', words('Share')]] }), notify(first)]
   if (id === 'write') return [ask(first, 'What should go in today’s journal?'), request(where, 'add_to_journal', { id: second, json: [['text', said(first)]] }), notify(second)]
-  if (id === 'read') return [request(where, 'read_journal', { id: first }), show(first)]
-  if (id === 'find') {
-    return [
-      ask(first, 'What should OSAT look for?'),
-      action('urlencode', { UUID: second, WFInput: said(first), WFEncodeMode: 'Encode' }),
-      request(where, 'search', { id: third, url: words(`${where.api}/search?query=${OBJ}`, output(second, 'URL Encoded Text')) }),
-      show(third),
-    ]
-  }
+  if (id === 'read') return [request(where, 'read_journal', { id: first }), speak(first), show(first)]
+  // Words typed or said go in the address, encoded: ask, encode, then GET the tool.
+  const lookUp = (prompt, tool, param) => [
+    ask(first, prompt),
+    action('urlencode', { UUID: second, WFInput: said(first), WFEncodeMode: 'Encode' }),
+    request(where, tool, { id: third, url: words(`${where.api}/${tool}?${param}=${OBJ}`, output(second, 'URL Encoded Text')) }),
+  ]
+  if (id === 'find') return [...lookUp('What should OSAT look for?', 'search', 'query'), show(third)]
+  if (id === 'ask') return [...lookUp('What do you want to ask?', 'ask', 'question'), speak(third), show(third)]
   throw new Error(`OSAT has no shortcut called “${String(id).slice(0, 40)}”.`)
 }
 

@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { BookOpen, Check, Export, MagnifyingGlass, Microphone, NotePencil, Plus } from '@phosphor-icons/react'
+import { BookOpen, ChatCircle, Check, Export, MagnifyingGlass, Microphone, NotePencil, Plus } from '@phosphor-icons/react'
 
 import { SHORTCUTS } from '../../../shared/shortcut-file.mjs'
 import '../../styles/bots-shortcuts.css'
 
-const ICONS = { add: Microphone, send: Export, write: NotePencil, read: BookOpen, find: MagnifyingGlass }
+const ICONS = { add: Microphone, send: Export, write: NotePencil, read: BookOpen, find: MagnifyingGlass, ask: ChatCircle }
 const cleanError = (error) => String(error?.message || error || 'That didn’t work.').replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 /* Settings → Bots → Siri and Shortcuts (Phase 47): ready-made shortcuts that reach OSAT through
@@ -30,7 +30,7 @@ export function ShortcutsCard({ bridge, connector }) {
     <section className="content-card bots-card">
       <p className="eyebrow">SIRI AND SHORTCUTS</p>
       <h2>Talk to OSAT with Siri.</h2>
-      {!on && <p>Turn on the connector above, and Siri can add to OSAT, read your journal and find stickies.</p>}
+      {!on && <p>Turn on the connector above, and Siri can add to OSAT, read your journal, find stickies and answer from your notes.</p>}
       {on && (
         <>
           <p>Add these to Shortcuts, and Siri and the Share menu reach OSAT on this Mac.</p>
@@ -52,7 +52,7 @@ export function ShortcutsCard({ bridge, connector }) {
             })}
           </ul>
           {message && <p className={message.ok ? 'bots-message' : 'bots-warning'} role="status">{message.ok && <Check />} {message.text}</p>}
-          <p className="ai-note">Each one carries the connector’s key: after Reset the key, add them again. They run on this Mac; on your iPhone they can’t reach it.</p>
+          <p className="ai-note">They reach OSAT as the app “Shortcuts” in the connector above. If you reset its key or remove it, add them again. They run on this Mac; on your iPhone they can’t reach it.</p>
         </>
       )}
     </section>

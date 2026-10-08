@@ -5,6 +5,7 @@ import { OTHER, PRESETS } from '../../shared/providers.mjs'
 import { useAi } from '../assistant/useAi.js'
 import { formatRelativeTime } from '../lib/ui.js'
 import { ConnectorCard } from './bots/ConnectorCard.jsx'
+import { ShortcutsCard } from './bots/ShortcutsCard.jsx'
 import '../styles/bots.css'
 
 const cleanError = (error) => String(error?.message || error || 'That didn’t work.').replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
@@ -43,6 +44,7 @@ export function BotsSettings() {
       <ModelCard bridge={bridge} cloud={status?.cloud} offline={status?.offline} />
       <CloudCard bridge={bridge} cloud={status?.cloud} />
       <ConnectorCard bridge={bridge} connector={status?.connector} />
+      <ShortcutsCard bridge={bridge} connector={status?.connector} />
     </>
   )
 }

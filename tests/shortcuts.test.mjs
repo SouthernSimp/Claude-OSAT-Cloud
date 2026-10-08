@@ -1,14 +1,19 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
 import { SHORTCUTS, shortcutFile, shortcutPlan } from '../shared/shortcut-file.mjs'
+import * as storeCore from '../shared/store-core.mjs'
 
 const require = createRequire(import.meta.url)
 const { createShortcuts, SHORTCUTS_TOOL } = require('../desktop/bots/shortcuts.cjs')
+const { createBots } = require('../desktop/bots/index.cjs')
+const { createKeychain } = require('../desktop/bots/keychain.cjs')
+const { createStore } = require('../desktop/store/index.cjs')
 
 const OBJ = '￼'
 const WHERE = { api: 'http://127.0.0.1:47823/api', key: 'k&<>"ey-0123456789' }
@@ -75,8 +80,10 @@ test('each shortcut has its actions, in order', () => {
   assert.deepEqual(kinds('add'), ['ask', 'downloadurl', 'notification'])
   assert.deepEqual(kinds('send'), ['downloadurl', 'notification'])
   assert.deepEqual(kinds('write'), ['ask', 'downloadurl', 'notification'])
-  assert.deepEqual(kinds('read'), ['downloadurl', 'showresult'])
+  assert.deepEqual(kinds('read'), ['downloadurl', 'speaktext', 'showresult'])
   assert.deepEqual(kinds('find'), ['ask', 'urlencode', 'downloadurl', 'showresult'])
+  assert.deepEqual(kinds('ask'), ['ask', 'urlencode', 'downloadurl', 'speaktext', 'showresult'])
+  assert.deepEqual(SHORTCUTS.map((item) => item.name), ['Add to OSAT', 'Send to OSAT', 'Write in my OSAT journal', "What's in my OSAT journal", 'Find in OSAT', 'Ask OSAT'])
   assert.equal(params('add', 'ask').WFAskActionPrompt, 'What should OSAT keep?')
 })
 
@@ -118,11 +125,27 @@ test('the journal shortcuts write and read today’s page; Find sends the words 
   assert.equal(read.WFJSONValues, undefined)
   assert.equal(read.WFURL.Value.string, `${WHERE.api}/read_journal`)
   assert.equal(params('read', 'showresult').Text.Value.attachmentsByRange['{0, 1}'].OutputUUID, read.UUID)
+  assert.equal(params('read', 'speaktext').WFText.Value.attachmentsByRange['{0, 1}'].OutputUUID, read.UUID, 'Siri reads the page')
   const encode = params('find', 'urlencode')
   assert.equal(encode.WFInput.Value.attachmentsByRange['{0, 1}'].OutputUUID, params('find', 'ask').UUID)
   const url = params('find', 'downloadurl').WFURL.Value
   assert.equal(url.string, `${WHERE.api}/search?query=${OBJ}`)
   assert.deepEqual(url.attachmentsByRange, { [`{${url.string.indexOf(OBJ)}, 1}`]: { Type: 'ActionOutput', OutputUUID: encode.UUID, OutputName: 'URL Encoded Text' } })
+})
+
+test('Ask OSAT sends the question encoded, then Siri reads the answer and shows it', () => {
+  assert.equal(params('ask', 'ask').WFAskActionPrompt, 'What do you want to ask?')
+  const encode = params('ask', 'urlencode')
+  assert.equal(encode.WFInput.Value.attachmentsByRange['{0, 1}'].OutputUUID, params('ask', 'ask').UUID)
+  const request = params('ask', 'downloadurl')
+  assert.equal(request.WFHTTPMethod, 'GET')
+  assert.equal(request.WFURL.Value.string, `${WHERE.api}/ask?question=${OBJ}`)
+  assert.equal(request.WFURL.Value.attachmentsByRange[`{${`${WHERE.api}/ask?question=`.length}, 1}`].OutputUUID, encode.UUID)
+  assert.deepEqual(items(request.WFHTTPHeaders), { Authorization: { string: `Bearer ${WHERE.key}` } })
+  for (const kind of ['speaktext', 'showresult']) {
+    const words = Object.values(params('ask', kind))[0].Value
+    assert.deepEqual(words.attachmentsByRange['{0, 1}'], { Type: 'ActionOutput', OutputUUID: request.UUID, OutputName: 'Contents of URL' })
+  }
 })
 
 test('a shortcut only ever talks to OSAT on this Mac, with a key', () => {
@@ -175,4 +198,57 @@ test('a signing failure says so plainly and leaves nothing behind; old signed fi
   assert.deepEqual(await fs.readdir(dir), ['Add to OSAT.shortcut'])
 
   await assert.rejects(createShortcuts({ dir, build: shortcutFile, run, platform: 'linux' }).make('add', WHERE), /in the Mac app/)
+})
+
+const freePort = () => new Promise((resolve) => {
+  const probe = net.createServer().listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)) })
+})
+
+test('Add to Shortcuts: the connector must be on; the shortcut carries the key of the app “Shortcuts”, which works', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'osat-shortcuts-bots-'))
+  await fs.writeFile(path.join(dir, 'bots.json'), JSON.stringify({ connector: { port: await freePort() } }))
+  const store = await createStore({ dir: path.join(dir, 'store'), core: storeCore, writeDelay: 0, maxDelay: 0 })
+  const handlers = {}
+  const opened = []
+  // Apple's signing tool, played by a copy: the "signed" file is the property list itself.
+  const run = (file, args) => fs.copyFile(args[args.indexOf('--input') + 1], args[args.indexOf('--output') + 1])
+  const bots = await createBots({
+    dataDir: dir,
+    nodesDir: path.join(dir, 'nodes'),
+    service: 'OSAT-Test',
+    store,
+    sharedModule: (name) => import(`../shared/${name}`),
+    handle: (channel, work) => { handlers[channel] = work },
+    fail: (message) => { throw new Error(message) },
+    send: () => {},
+    shell: { openPath: async (file) => { opened.push(file); return '' } },
+    clipboard: { writeText: () => {} },
+    keychain: createKeychain({ platform: 'memory' }),
+    shortcutTool: { run, platform: 'darwin' },
+  })
+  const ipc = (channel, ...args) => handlers[channel](...args)
+  try {
+    await assert.rejects(ipc('bots:add-shortcut', 'add'), /Turn on the connector first/)
+    assert.deepEqual(opened, [])
+    const { url } = await ipc('bots:connector-on')
+    assert.equal(await ipc('bots:add-shortcut', 'add'), true)
+    assert.equal(await ipc('bots:add-shortcut', 'ask'), true)
+    assert.deepEqual(opened.map((file) => path.basename(file)), ['Add to OSAT.shortcut', 'Ask OSAT.shortcut'])
+    const apps = ipc('bots:status').connector.apps
+    assert.deepEqual(apps.map(({ name, access }) => [name, access]), [['Shortcuts', 'write']], 'made once, able to change things')
+
+    // What the file holds reaches OSAT: the address of the running connector and a key it takes.
+    const text = await fs.readFile(opened[0], 'utf8')
+    const api = url.replace(/\/mcp$/, '/api')
+    assert.ok(text.includes(`<string>${api}/add_sticky</string>`))
+    const key = /<string>Bearer ([^<]+)<\/string>/.exec(text)[1]
+    assert.ok(!JSON.stringify(ipc('bots:status')).includes(key), 'the key never reaches the window')
+    const response = await fetch(`${api}/add_sticky`, { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: JSON.stringify({ text: 'Call the dentist', source: 'Siri' }) })
+    assert.equal(response.status, 200)
+    assert.equal(store.load().doc.notes.find((note) => note.markdown === 'Call the dentist').source, 'Siri')
+  } finally {
+    bots.stop()
+    await store.flush()
+    await fs.rm(dir, { recursive: true, force: true })
+  }
 })

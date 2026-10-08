@@ -25,7 +25,7 @@ function keychainFor({ service, env = process.env, platform = process.platform }
   return createKeychain({ service, platform: memory ? 'memory' : platform })
 }
 
-async function createBots({ dataDir, nodesDir, service, store, sharedModule, handle, fail, send, shell, clipboard, findFiles, version = '0', offline = () => false, keychain = keychainFor({ service }), now = Date.now }) {
+async function createBots({ dataDir, nodesDir, service, store, sharedModule, handle, fail, send, shell, clipboard, findFiles, version = '0', offline = () => false, keychain = keychainFor({ service }), now = Date.now, shortcutTool = {} }) {
   const core = await sharedModule('node-file.mjs')
   const providers = await sharedModule('providers.mjs')
   const tools = await sharedModule('connector-tools.mjs')
@@ -276,18 +276,22 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   }), { from: 'app' })
 
   /* ---- Siri and Shortcuts (Phase 47): ready-made shortcuts that use the connector's web API ---- */
-  const shortcuts = createShortcuts({ dir: path.join(dataDir, 'shortcuts'), build: (await sharedModule('shortcut-file.mjs')).shortcutFile })
-  // What the shortcuts carry to reach OSAT: for now the connector's own key. It will become appKey('Shortcuts', 'write').
-  function keyForShortcuts() {
-    if (!connector.running() || !connectorKey) throw new Error('Turn on the connector first.')
-    return { api: connectorUrl().replace(/\/mcp$/, '/api'), key: connectorKey }
+  // `shortcutTool` is only for the tests: a stand-in for Apple's signing tool.
+  const shortcuts = createShortcuts({ dir: path.join(dataDir, 'shortcuts'), build: (await sharedModule('shortcut-file.mjs')).shortcutFile, ...shortcutTool })
+  /* What the shortcuts carry to reach OSAT: the key of the app "Shortcuts", made able to change
+     things the first time, so it shows in the connector's list, where Nate can make it "Can look"
+     or remove it (then the shortcuts stop working until they are added again). */
+  async function keyForShortcuts() {
+    if (!connector.running()) throw new Error('Turn on the connector first.')
+    const { key } = await appKey('Shortcuts', 'write')
+    return { api: connectorUrl().replace(/\/mcp$/, '/api'), key }
   }
   // Shortcuts opens the signed file and asks Nate to add it: nothing is added without his click there.
   handle('bots:add-shortcut', plain(async (id) => {
-    const file = await shortcuts.make(String(id), keyForShortcuts())
+    const file = await shortcuts.make(String(id), await keyForShortcuts())
     if (await shell.openPath(file)) throw new Error('Shortcuts couldn’t open it.')
     return true
-  }))
+  }), { from: 'app' })
 
   // Only a provider's own pages (its keys, its usage), in the browser Nate already uses.
   handle('bots:open-page', async (url) => {
