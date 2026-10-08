@@ -75,7 +75,7 @@ test('each app has its own key; one that may only look can’t change anything; 
 
     assert.equal((await t.mcp('not-a-key', 'tools/list')).status, 401, 'an unknown key is refused')
     const added = await t.mcp(claude, 'tools/call', sticky('Water the garden'))
-    assert.deepEqual(added.body.result.content, [{ type: 'text', text: 'Added a sticky to Unsorted.' }])
+    assert.match(added.body.result.content[0].text, /^Added a sticky to Unsorted \(note-[\w-]+\)\.$/)
     const note = t.store.load().doc.notes.find((item) => item.markdown === 'Water the garden')
     assert.equal(note.source, 'Claude Code', 'what an app adds carries its name')
 
@@ -137,7 +137,7 @@ test('the one key from before becomes “First app”, able to change things, wi
   try {
     const on = await t.ipc('bots:connector-on')
     assert.deepEqual(on.apps.map(({ name, access }) => [name, access]), [['First app', 'write']])
-    assert.equal((await t.mcp('k-the-old-shared-key-0000', 'tools/call', sticky('Still works'))).body.result.content[0].text, 'Added a sticky to Unsorted.')
+    assert.match((await t.mcp('k-the-old-shared-key-0000', 'tools/call', sticky('Still works'))).body.result.content[0].text, /^Added a sticky to Unsorted/)
     assert.equal(await keychain.get('connector-key'), null, 'the old key moved')
     await t.ipc('bots:app-remove', on.apps[0].id)
   } finally {

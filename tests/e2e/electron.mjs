@@ -545,7 +545,7 @@ try {
     const init = await (await mcp({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } } })).json()
     check(init.result?.serverInfo?.name === 'osat', 'the connector did not answer initialize')
     const added = await (await mcp({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'add_node', arguments: { title: 'From Claude over MCP', summary: 'Sent through the connector.', source: 'Claude' } } })).json()
-    check(/Added the node “From Claude over MCP”/.test(added.result?.content?.[0]?.text), `add_node did not answer as expected: ${JSON.stringify(added)}`)
+    check(/Added the topic “From Claude over MCP”/.test(added.result?.content?.[0]?.text), `add_node did not answer as expected: ${JSON.stringify(added)}`)
     const viaMcp = async () => (await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).find((folder) => folder.name === 'From Claude over MCP')
     check(await until(async () => (await viaMcp())?.from?.source === 'Claude', 5000), 'a node added over MCP did not reach the windows')
     const listed = await (await mcp({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_nodes', arguments: {} } })).json()

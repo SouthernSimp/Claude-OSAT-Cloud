@@ -265,7 +265,7 @@ function nodeOrSay(folders, wanted) {
   const node = findIn(folders, null, wanted) || folders.find((folder) => folder.id === clean(wanted, 200)) || null
   if (node) return node
   const names = childrenOf(folders, null).map((folder) => folder.name)
-  throw new ToolError(`There is no node called “${clean(wanted, 80)}”.${names.length ? ` The nodes are: ${names.join(', ')}.` : ' There are no nodes yet.'}`)
+  throw new ToolError(`There is no topic called “${clean(wanted, 80)}”.${names.length ? ` The topics are: ${names.join(', ')}.` : ' There are no topics yet.'}`)
 }
 
 /* A branch anywhere inside `node`, by id or name (any case). */
@@ -381,7 +381,7 @@ function addNode(doc, args, { now, makeId, source }) {
   const result = arrivalOps(doc, { ...tree, source: from }, { hash: fingerprint(JSON.stringify({ ...tree, source: '' })), file: '', source: from, now, makeId })
   if (result.duplicate) return { text: `“${result.duplicate.name}” is already in OSAT, so nothing new was made.` }
   const packed = result.folder.packed ? ' It is packed (only a summary so far), for Nate to unpack when he is ready.' : ''
-  return { text: `Added the node “${result.folder.name}” (${result.folder.id}) to the Sky, marked New.${packed}`, ops: result.ops, folder: result.folder }
+  return { text: `Added the topic “${result.folder.name}” (${result.folder.id}) to the canvas, marked New.${packed}`, ops: result.ops, folder: result.folder }
 }
 
 function addSticky(doc, args, { now, makeId, source }) {

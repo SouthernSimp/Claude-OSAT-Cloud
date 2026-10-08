@@ -88,7 +88,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
       if (result.ops?.length) {
         const { inverse } = applyOps(store.load().doc, result.ops)
         store.commit(client, result.ops)
-        recent = [{ at: new Date().toISOString(), text: `${app.name} ${lowerFirst(result.text)}`, inverse }, ...recent].slice(0, 5)
+        recent = [{ at: new Date().toISOString(), text: `${app.name} ${lowerFirst(result.text.replace(/ \((?:note|folder|event)-[^)]+\)/g, ''))}`, inverse }, ...recent].slice(0, 5)
         changed()
       }
       return { text: result.text }

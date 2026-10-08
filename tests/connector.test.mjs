@@ -41,7 +41,7 @@ test('add a node, list it, read it back as the Markdown a node file is made of; 
   const { run, onDisk } = await tempStore()
   assert.match(run('list_nodes', {}), /There are no nodes yet\. 0 stickies wait in Unsorted/)
   assert.match(run('add_node', { title: 'Garden', summary: 'What grows where.', source: 'Claude', branches: [{ title: 'Beds', leaves: ['Tomatoes', 'Dig the bed'] }] }),
-    /Added the node “Garden” \(folder-\d+\) to the Sky, marked New\.$/)
+    /Added the topic “Garden” \(folder-\d+\) to the canvas, marked New\.$/)
   assert.match(run('add_node', { markdown: '# Spring launch\nA party in April.' }), /packed \(only a summary so far\)/)
   assert.match(run('add_node', { title: 'Garden', summary: 'What grows where.', source: 'Claude', branches: [{ title: 'Beds', leaves: ['Tomatoes', 'Dig the bed'] }] }), /already in OSAT/, 'the same node twice makes it once')
   assert.equal(run('list_nodes', {}), '2 nodes in OSAT:\n- Garden (New, from Claude): 3 stickies; branches: Beds\n- Spring launch (New, packed, from Connector): 1 sticky\n\nUnsorted: 0 stickies.')
@@ -60,7 +60,7 @@ test('add a sticky to a node, a branch or Unsorted; wrong names say what there i
   assert.equal(run('read_node', { node: 'Unsorted' }), '# Unsorted\n\n- Call Jordan')
   const unsorted = store.load().doc.notes.find((note) => note.markdown === 'Call Jordan')
   assert.deepEqual([unsorted.unsorted, unsorted.source], [true, 'Connector'])
-  assert.throws(() => run('add_sticky', { text: 'x', node: 'Gardn' }), (error) => error instanceof ToolError && /no node called “Gardn”\. The nodes are: Garden\./.test(error.message))
+  assert.throws(() => run('add_sticky', { text: 'x', node: 'Gardn' }), (error) => error instanceof ToolError && /no topic called “Gardn”\. The topics are: Garden\./.test(error.message))
   assert.throws(() => run('add_sticky', { text: 'x', node: 'Garden', branch: 'Herbs' }), /no branch called “Herbs”\. Its branches are: Beds\./)
   assert.throws(() => run('add_sticky', { text: 'x', branch: 'Beds' }), /Say which node/)
   assert.throws(() => run('add_sticky', { text: '  ' }), /needs some words/)
@@ -210,19 +210,19 @@ test('appWithKey: the app a key belongs to, or nobody', () => {
 })
 
 test('an app that may only read sees and runs only the tools that read, over MCP and the web API', async () => {
-  // Annotated here as shared/connector-tools.mjs annotates them: a tool without readOnlyHint changes things.
-  const tools = TOOLS.map((tool) => (/^add/.test(tool.name) ? tool : { ...tool, annotations: { readOnlyHint: true } }))
-  const { connector, send, calls } = await served({ tools })
+  const { connector, send, calls } = await served({ tools: TOOLS })
+  const reading = TOOLS.filter((tool) => tool.annotations?.readOnlyHint === true).map((tool) => tool.name)
   const asReader = { headers: { authorization: `Bearer ${READ_KEY}` } }
   try {
     const listed = (await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, asReader)).body.result.tools.map((tool) => tool.name)
-    assert.deepEqual(listed, ['list_nodes', 'read_node', 'search', 'read_journal'])
+    assert.deepEqual(listed, reading)
+    assert.deepEqual(reading, ['list_nodes', 'read_node', 'search', 'read_journal', 'list_events', 'find_files'])
     assert.equal((await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).body.result.tools.length, TOOLS.length, 'an app that may change things sees every tool')
     const refused = await send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'add_sticky', arguments: { text: 'Hi' } } }, asReader)
     assert.deepEqual(refused.body.result, { content: [{ type: 'text', text: 'Shortcuts can only read. Change that in Settings → Bots.' }], isError: true })
     const api = await send({ text: 'Hi' }, { ...asReader, route: '/api/add_to_journal' })
     assert.deepEqual([api.status, api.body], [403, 'Shortcuts can only read. Change that in Settings → Bots.\n'])
-    assert.match((await send({}, { ...asReader, route: '/api/nope' })).body, /It has: list_nodes, read_node, search, read_journal\./)
+    assert.match((await send({}, { ...asReader, route: '/api/nope' })).body, new RegExp(`It has: ${reading.join(', ')}\\.`))
     assert.equal(calls.length, 0, 'nothing that changes ran')
     assert.equal((await send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'search', arguments: { query: 'x' } } }, asReader)).body.result.content[0].text, 'ran search')
     assert.equal((await send(undefined, { ...asReader, method: 'GET', route: '/api/read_journal' })).status, 200)

@@ -128,7 +128,7 @@ test('move_sticky files into a topic or branch at the end, or back to Unsorted; 
   run('move_sticky', { sticky: id })
   assert.deepEqual([sticky().folderId, sticky().unsorted], [null, true])
   assert.equal(run('move_sticky', { sticky: id }), '“Mulch the beds” is already in Unsorted.')
-  assert.throws(() => run('move_sticky', { sticky: id, node: 'Gardn' }), /no node called “Gardn”/)
+  assert.throws(() => run('move_sticky', { sticky: id, node: 'Gardn' }), /no topic called “Gardn”/)
   assert.throws(() => run('move_sticky', { sticky: id, node: 'Garden', branch: 'Roses' }), /no branch called “Roses”\. Its branches are: Beds, Herbs\./)
   assert.throws(() => run('move_sticky', { sticky: id, branch: 'Beds' }), /Say which node/)
 })
@@ -172,7 +172,7 @@ test('add_branch: in a topic or inside a branch, at the end; a name already ther
   assert.match(run('add_sticky', { text: 'Stake them', node: 'Garden', branch: idOf(run('add_branch', { node: 'Garden', title: 'Tomatoes', inside: 'Beds' })) }), /Garden › Beds › Tomatoes/)
   assert.throws(() => run('add_branch', { node: 'Garden', title: ' ' }), /needs a title/)
   assert.throws(() => run('add_branch', { node: 'Garden', title: 'x', inside: 'Roses' }), /no branch called “Roses”/)
-  assert.throws(() => run('add_branch', { node: 'Shed', title: 'x' }), /no node called “Shed”/)
+  assert.throws(() => run('add_branch', { node: 'Shed', title: 'x' }), /no topic called “Shed”/)
 })
 
 test('rename: a topic or one of its branches, only the name; links follow by id', async () => {
