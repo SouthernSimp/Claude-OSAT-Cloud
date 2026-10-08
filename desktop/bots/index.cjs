@@ -17,6 +17,7 @@ const { createDropFolder } = require('./drop-folder.cjs')
 const { createKeychain } = require('./keychain.cjs')
 const { createSettings } = require('./settings.cjs')
 const { createWebhooks } = require('./webhooks.cjs')
+const { createShortcuts } = require('./shortcuts.cjs')
 
 /* Where keys are kept. The e2e test runs with a temp HOME, where the real Keychain can't be found
    and macOS pops a dialog, so it sets OSAT_KEYCHAIN=memory. As with OSAT_NODES_DIR, only from source:
@@ -26,7 +27,7 @@ function keychainFor({ service, env = process.env, platform = process.platform }
   return createKeychain({ service, platform: memory ? 'memory' : platform })
 }
 
-async function createBots({ dataDir, nodesDir, service, store, sharedModule, handle, fail, send, shell, clipboard, findFiles, version = '0', offline = () => false, keychain = keychainFor({ service }), now = Date.now }) {
+async function createBots({ dataDir, nodesDir, service, store, sharedModule, handle, fail, send, shell, clipboard, findFiles, version = '0', offline = () => false, keychain = keychainFor({ service }), now = Date.now, shortcutTool = {} }) {
   const core = await sharedModule('node-file.mjs')
   const providers = await sharedModule('providers.mjs')
   const tools = await sharedModule('connector-tools.mjs')
@@ -183,6 +184,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     watch = watchFolder({ dir: nodesDir, look: drop.look })
     if (settings.get().connector.on) startConnector().catch((error) => console.error('The connector could not start:', error.message)).finally(changed)
     hooks.start().catch((error) => console.error('Webhooks could not start:', error.message))
+    shortcuts.sweep().catch(() => {})
     await drop.look()
   }
 
@@ -307,6 +309,24 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   handle('hooks:copy-address', plain(() => {
     if (!hooks.address()) throw new Error('Turn it on first.')
     clipboard.writeText(hooks.address())
+    return true
+  }), { from: 'app' })
+
+  /* ---- Siri and Shortcuts (Phase 47): ready-made shortcuts that use the connector's web API ---- */
+  // `shortcutTool` is only for the tests: a stand-in for Apple's signing tool.
+  const shortcuts = createShortcuts({ dir: path.join(dataDir, 'shortcuts'), build: (await sharedModule('shortcut-file.mjs')).shortcutFile, ...shortcutTool })
+  /* What the shortcuts carry to reach OSAT: the key of the app "Shortcuts", made able to change
+     things the first time, so it shows in the connector's list, where Nate can make it "Can look"
+     or remove it (then the shortcuts stop working until they are added again). */
+  async function keyForShortcuts() {
+    if (!connector.running()) throw new Error('Turn on the connector first.')
+    const { key } = await appKey('Shortcuts', 'write')
+    return { api: connectorUrl().replace(/\/mcp$/, '/api'), key }
+  }
+  // Shortcuts opens the signed file and asks Nate to add it: nothing is added without his click there.
+  handle('bots:add-shortcut', plain(async (id) => {
+    const file = await shortcuts.make(String(id), await keyForShortcuts())
+    if (await shell.openPath(file)) throw new Error('Shortcuts couldn’t open it.')
     return true
   }), { from: 'app' })
 
