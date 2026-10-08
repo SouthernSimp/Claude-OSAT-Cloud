@@ -39,15 +39,16 @@ test('tools: each with a plain description and an input schema', () => {
 
 test('add a node, list it, read it back as the Markdown a node file is made of; saved to disk', async () => {
   const { run, onDisk } = await tempStore()
-  assert.match(run('list_nodes', {}), /There are no nodes yet\. 0 stickies wait in Unsorted/)
+  assert.match(run('list_nodes', {}), /There are no topics yet\. 0 stickies wait in Unsorted/)
   assert.match(run('add_node', { title: 'Garden', summary: 'What grows where.', source: 'Claude', branches: [{ title: 'Beds', leaves: ['Tomatoes', 'Dig the bed'] }] }),
     /Added the topic “Garden” \(folder-\d+\) to the canvas, marked New\.$/)
   assert.match(run('add_node', { markdown: '# Spring launch\nA party in April.' }), /packed \(only a summary so far\)/)
   assert.match(run('add_node', { title: 'Garden', summary: 'What grows where.', source: 'Claude', branches: [{ title: 'Beds', leaves: ['Tomatoes', 'Dig the bed'] }] }), /already in OSAT/, 'the same node twice makes it once')
-  assert.equal(run('list_nodes', {}), '2 nodes in OSAT:\n- Garden (New, from Claude): 3 stickies; branches: Beds\n- Spring launch (New, packed, from Connector): 1 sticky\n\nUnsorted: 0 stickies.')
+  // A source the bot names is ignored: what an app adds is marked with its name in OSAT.
+  assert.equal(run('list_nodes', {}), '2 topics in OSAT:\n- Garden (New, from Connector): 3 stickies; branches: Beds\n- Spring launch (New, packed, from Connector): 1 sticky\n\nUnsorted: 0 stickies.')
   assert.equal(run('read_node', { node: 'garden' }), '# Garden\n\n- What grows where.\n\n## Beds\n- Tomatoes\n- Dig the bed')
   const saved = await onDisk()
-  assert.deepEqual(saved.folders.map((folder) => [folder.name, folder.fresh, folder.from?.source]), [['Garden', true, 'Claude'], ['Beds', undefined, undefined], ['Spring launch', true, 'Connector']])
+  assert.deepEqual(saved.folders.map((folder) => [folder.name, folder.fresh, folder.from?.source]), [['Garden', true, 'Connector'], ['Beds', undefined, undefined], ['Spring launch', true, 'Connector']])
 })
 
 test('add a sticky to a node, a branch or Unsorted; wrong names say what there is', async () => {
@@ -62,7 +63,7 @@ test('add a sticky to a node, a branch or Unsorted; wrong names say what there i
   assert.deepEqual([unsorted.unsorted, unsorted.source], [true, 'Connector'])
   assert.throws(() => run('add_sticky', { text: 'x', node: 'Gardn' }), (error) => error instanceof ToolError && /no topic called “Gardn”\. The topics are: Garden\./.test(error.message))
   assert.throws(() => run('add_sticky', { text: 'x', node: 'Garden', branch: 'Herbs' }), /no branch called “Herbs”\. Its branches are: Beds\./)
-  assert.throws(() => run('add_sticky', { text: 'x', branch: 'Beds' }), /Say which node/)
+  assert.throws(() => run('add_sticky', { text: 'x', branch: 'Beds' }), /Say which topic/)
   assert.throws(() => run('add_sticky', { text: '  ' }), /needs some words/)
   assert.throws(() => run('add_node', { summary: 'no title' }), /needs a title/)
   assert.throws(() => run('delete_everything', {}), /no tool called/)
@@ -156,6 +157,8 @@ test('setup lines: Claude Code, Claude Desktop (through mcp-remote) and any othe
   assert.equal(desktop.mcpServers.osat.env.AUTH_HEADER, 'Bearer KEY')
   assert.equal(connectorSetup('other', { url, key: 'KEY' }), `Address: ${url}\nHeader: Authorization: Bearer KEY`)
   assert.match(connectorSetup('api', { url, key: 'KEY' }), /^curl -H "Authorization: Bearer KEY" "http:\/\/127\.0\.0\.1:47823\/api\/search\?query=garden"\n.*\/api\/add_sticky$/)
+  // An app that may only look gets lines that only look.
+  assert.match(connectorSetup('api', { url, key: 'KEY', write: false }), /\/api\/search\?query=garden"\n.*\/api\/read_journal$/)
 })
 
 test('search finds stickies by every word, newest first, saying where each lives', async () => {
@@ -178,6 +181,8 @@ test('the journal: write today, write again, read it, and a bad day says how to 
   const page = (await onDisk()).notes.find((note) => note.id === 'day-2026-09-29')
   assert.deepEqual([page.kind, page.title, page.tags], ['day', 'Tuesday, September 29', ['garden']])
   assert.throws(() => run('add_to_journal', { text: 'x', date: 'tomorrow' }), /YYYY-MM-DD/)
+  assert.throws(() => run('add_to_journal', { text: 'x', date: '2026-02-31' }), /YYYY-MM-DD/, 'a day that doesn’t exist')
+  assert.throws(() => run('read_journal', { date: '2026-13-01' }), /YYYY-MM-DD/)
   assert.throws(() => run('add_to_journal', { text: ' ' }), /what to add/)
   assert.match(run('add_to_journal', { text: 'Today, whatever day it is' }), /^Added to the journal for \d{4}-\d{2}-\d{2}\.$/)
 })
@@ -238,6 +243,9 @@ test('a tool without the read-only mark counts as one that changes things', asyn
     const asReader = { headers: { authorization: `Bearer ${READ_KEY}` } }
     assert.deepEqual((await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, asReader)).body.result.tools, [])
     assert.equal((await send(undefined, { ...asReader, method: 'GET', route: '/api/search' })).status, 403)
+    // So does a name no tool has: an app that may only look never reaches the call.
+    const unlisted = await send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'not_listed', arguments: {} } }, asReader)
+    assert.equal(unlisted.body.result.isError, true)
     assert.equal(calls.length, 0)
   } finally {
     connector.stop()

@@ -8,7 +8,7 @@
    sticky named by words must be the only one holding them, never a guess. */
 
 import { arrivalOps, markdownTree, nodeTree, NodeFileError } from './node-file.mjs'
-import { normalizeNote, parseTags, rankOf } from './note-core.mjs'
+import { normalizeNote, parseTags, rankOf, renameWikilinks } from './note-core.mjs'
 
 const MAX_TEXT = 8000
 const GAP = 1024
@@ -24,26 +24,26 @@ const NODE = { type: 'string', description: 'The topic’s name (or id). The arg
 export const TOOLS = [
   {
     name: 'list_nodes',
-    title: 'List nodes',
-    description: 'Lists the nodes in OSAT (the top-level topics in its Sky), with their branches and how many stickies each holds, and how many stickies wait in Unsorted.',
+    title: 'List topics',
+    description: 'Lists the topics in OSAT (the tools call a topic a node), with their branches and how many stickies each holds, and how many stickies wait in Unsorted.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     annotations: READS,
   },
   {
     name: 'read_node',
-    title: 'Read a node',
-    description: 'Reads one node as Markdown: "# " its name, its own stickies as list items, then each branch as "## " (a branch inside one as "### ") with its stickies. Use "Unsorted" to read the stickies that are in no node.',
-    inputSchema: { type: 'object', properties: { node: { type: 'string', description: 'The node’s name (or id), or "Unsorted".' } }, required: ['node'], additionalProperties: false },
+    title: 'Read a topic',
+    description: 'Reads one topic as Markdown: "# " its name, its own stickies as list items, then each branch as "## " (a branch inside one as "### ") with its stickies. Use "Unsorted" to read the stickies that are in no topic.',
+    inputSchema: { type: 'object', properties: { node: { type: 'string', description: 'The topic’s name (or id), or "Unsorted". The argument is called node, OSAT’s older word for a topic.' } }, required: ['node'], additionalProperties: false },
     annotations: READS,
   },
   {
     name: 'add_node',
-    title: 'Add a node',
-    description: 'Adds a new node to OSAT’s Sky, marked New. Give a title and a summary; branches (each with a title and leaves, the stickies) are optional. A node with only a title and a summary arrives packed, for Nate to unpack when he is ready. Or give the whole node as Markdown ("# Title", summary, "## Branch", "- sticky"). Adding the very same node twice makes it once.',
+    title: 'Add a topic',
+    description: 'Adds a new topic to OSAT’s canvas, marked New (the tool is called add_node, OSAT’s older word for a topic). Give a title and a summary; branches (each with a title and leaves, the stickies) are optional. A topic with only a title and a summary arrives packed, for Nate to unpack when he is ready. Or give the whole topic as Markdown ("# Title", summary, "## Branch", "- sticky"). Adding the very same topic twice makes it once.',
     inputSchema: {
       type: 'object',
       properties: {
-        title: { type: 'string', description: 'The node’s name.' },
+        title: { type: 'string', description: 'The topic’s name.' },
         summary: { type: 'string', description: 'What it is about, in a sentence or a paragraph.' },
         branches: {
           type: 'array',
@@ -58,8 +58,7 @@ export const TOOLS = [
             required: ['title'],
           },
         },
-        markdown: { type: 'string', description: 'Instead of the fields above: the whole node as Markdown.' },
-        source: { type: 'string', description: 'Who is sending it, shown quietly on the node (for example "Claude").' },
+        markdown: { type: 'string', description: 'Instead of the fields above: the whole topic as Markdown.' },
       },
       additionalProperties: false,
     },
@@ -68,14 +67,13 @@ export const TOOLS = [
   {
     name: 'add_sticky',
     title: 'Add a sticky',
-    description: 'Adds one sticky (a short note) to a node, to a branch of it, or, with no node given, to Unsorted.',
+    description: 'Adds one sticky (a short note) to a topic (the node argument), to a branch of it, or, with no topic given, to Unsorted.',
     inputSchema: {
       type: 'object',
       properties: {
         text: { type: 'string', description: 'The sticky’s words. The first line is its title.' },
-        node: { type: 'string', description: 'The node’s name (or id). Leave out for Unsorted.' },
-        branch: { type: 'string', description: 'A branch of that node, by name (or id).' },
-        source: { type: 'string', description: 'Who is sending it (for example "Claude").' },
+        node: { ...NODE, description: `${NODE.description} Leave out for Unsorted.` },
+        branch: { type: 'string', description: 'A branch of that topic, by name (or id).' },
       },
       required: ['text'],
       additionalProperties: false,
@@ -289,7 +287,7 @@ function pathOf(folders, id) {
 /* Where a sticky goes: a topic, a branch of it, or with neither given, Unsorted. */
 function placeOrSay(folders, { node, branch }) {
   if (!clean(node)) {
-    if (clean(branch)) throw new ToolError('Say which node the branch is in.')
+    if (clean(branch)) throw new ToolError('Say which topic the branch is in.')
     return { target: null, where: 'Unsorted' }
   }
   const home = nodeOrSay(folders, node)
@@ -298,7 +296,7 @@ function placeOrSay(folders, { node, branch }) {
 }
 
 /* One sticky, by its id or by words only it holds (every word, any case, as search reads
-   them; a sticky whose title is exactly those words wins over ones that merely hold them). */
+   them). When several hold them, nothing is picked: the bot is shown their ids. */
 function stickyOrSay(doc, wanted) {
   const value = clean(wanted, 400)
   if (!value) throw new ToolError('Say which sticky, by its id or by words it holds.')
@@ -307,9 +305,7 @@ function stickyOrSay(doc, wanted) {
   if (byId) return byId
   const words = value.toLowerCase().split(/\s+/)
   const holding = live.filter((note) => { const text = `${note.title}\n${note.markdown}`.toLowerCase(); return words.every((word) => text.includes(word)) })
-  const exact = holding.filter((note) => note.title.trim().toLowerCase() === value.toLowerCase())
-  const one = holding.length === 1 ? holding : exact
-  if (one.length === 1) return one[0]
+  if (holding.length === 1) return holding[0]
   const quoted = clean(wanted, 80)
   if (!holding.length) throw new ToolError(`No sticky holds “${quoted}”.`)
   const lines = holding.slice(0, 5).map((note) => `- (${note.id}) ${note.title.slice(0, 80)}`)
@@ -321,7 +317,7 @@ function listNodes(doc) {
   const notes = doc.notes || []
   const nodes = childrenOf(folders, null)
   const unsorted = notes.filter((note) => active(note) && !note.folderId).length
-  if (!nodes.length) return `There are no nodes yet. ${unsorted} ${unsorted === 1 ? 'sticky waits' : 'stickies wait'} in Unsorted.`
+  if (!nodes.length) return `There are no topics yet. ${unsorted} ${unsorted === 1 ? 'sticky waits' : 'stickies wait'} in Unsorted.`
   const lines = nodes.map((node) => {
     const inside = subtree(folders, node.id)
     const count = notes.filter((note) => active(note) && inside.has(note.folderId)).length
@@ -329,7 +325,7 @@ function listNodes(doc) {
     const marks = [node.fresh && 'New', node.packed && 'packed', node.from?.source && `from ${node.from.source}`].filter(Boolean)
     return `- ${node.name}${marks.length ? ` (${marks.join(', ')})` : ''}: ${count} ${count === 1 ? 'sticky' : 'stickies'}${branches.length ? `; branches: ${branches.join(', ')}` : ''}`
   })
-  return `${nodes.length} ${nodes.length === 1 ? 'node' : 'nodes'} in OSAT:\n${lines.join('\n')}\n\nUnsorted: ${unsorted} ${unsorted === 1 ? 'sticky' : 'stickies'}.`
+  return `${nodes.length} ${nodes.length === 1 ? 'topic' : 'topics'} in OSAT:\n${lines.join('\n')}\n\nUnsorted: ${unsorted} ${unsorted === 1 ? 'sticky' : 'stickies'}.`
 }
 
 const item = (note) => `- ${note.markdown.trim().replace(/\n/g, '\n  ')}`
@@ -357,7 +353,7 @@ function readNode(doc, { node: wanted }) {
   return out.join('\n')
 }
 
-/* A short fingerprint of what was sent, so the same node sent twice makes one node. */
+/* A short fingerprint of what was sent, so the same topic sent twice makes one topic. */
 function fingerprint(value) {
   let a = 0x811c9dc5
   let b = 0x01000193
@@ -369,16 +365,16 @@ function fingerprint(value) {
   return `${a.toString(16).padStart(8, '0')}${b.toString(16).padStart(8, '0')}${(value.length >>> 0).toString(16).padStart(8, '0')}`
 }
 
+/* What an app adds is marked with the name Nate gave it (`source`), never one it claims. */
 function addNode(doc, args, { now, makeId, source }) {
   let tree
   try {
-    tree = clean(args.markdown, 200000) ? markdownTree(args.markdown) : nodeTree({ ...args, source: args.source || source })
+    tree = clean(args.markdown, 200000) ? markdownTree(args.markdown) : nodeTree({ ...args, source })
   } catch (error) {
-    if (error instanceof NodeFileError) throw new ToolError('A node needs a title (or Markdown starting with "# " and its name).')
+    if (error instanceof NodeFileError) throw new ToolError('A topic needs a title (or Markdown starting with "# " and its name).')
     throw error
   }
-  const from = clean(args.source, 40) || tree.source || source
-  const result = arrivalOps(doc, { ...tree, source: from }, { hash: fingerprint(JSON.stringify({ ...tree, source: '' })), file: '', source: from, now, makeId })
+  const result = arrivalOps(doc, { ...tree, source }, { hash: fingerprint(JSON.stringify({ ...tree, source: '' })), file: '', source, now, makeId })
   if (result.duplicate) return { text: `“${result.duplicate.name}” is already in OSAT, so nothing new was made.` }
   const packed = result.folder.packed ? ' It is packed (only a summary so far), for Nate to unpack when he is ready.' : ''
   return { text: `Added the topic “${result.folder.name}” (${result.folder.id}) to the canvas, marked New.${packed}`, ops: result.ops, folder: result.folder }
@@ -395,7 +391,7 @@ function addSticky(doc, args, { now, makeId, source }) {
     markdown: text,
     folderId: target?.id || null,
     unsorted: !target,
-    source: clean(args.source, 40) || source,
+    source,
     createdAt: now,
     updatedAt: now,
     rank: (last ? rankOf(last) : 0) + GAP,
@@ -404,14 +400,23 @@ function addSticky(doc, args, { now, makeId, source }) {
 }
 
 /* New words for a sticky, like the note editor: the title follows the first line, tags follow
-   the words. Its @ links (refs) stay as they were. */
+   the words, and other notes' [[Old title]] links follow a new title (relinkRenamedNote). Its
+   @ links (refs) stay as they were. */
 function editSticky(doc, args, { now }) {
   const note = stickyOrSay(doc, args.sticky)
   const text = clean(args.text, MAX_TEXT)
   if (!text) throw new ToolError('A sticky needs some words.')
   if (text === note.markdown.trim()) return { text: `“${note.title}” already says that.` }
   const title = titleOf(text)
-  return { text: `Changed the sticky “${title}” (${note.id}).`, ops: [{ t: 'patch', c: 'notes', id: note.id, v: { title, markdown: text, tags: parseTags(`${title}\n${text}`), updatedAt: now } }] }
+  const others = (doc.notes || []).filter((item) => item.id !== note.id)
+  const relinked = renameWikilinks(others, note.title, title).filter((item, index) => item !== others[index])
+  return {
+    text: `Changed the sticky “${title}” (${note.id}).`,
+    ops: [
+      { t: 'patch', c: 'notes', id: note.id, v: { title, markdown: text, tags: parseTags(`${title}\n${text}`), updatedAt: now } },
+      ...relinked.map((item) => ({ t: 'patch', c: 'notes', id: item.id, v: { markdown: item.markdown } })),
+    ],
+  }
 }
 
 /* Files a sticky the way the canvas does (moveSticky): at the end of its new home, out of
@@ -491,7 +496,7 @@ const dayStart = (key) => { const [y, m, d] = key.split('-').map(Number); return
 function dayKey(date, now) {
   const asked = clean(date, 20)
   if (asked) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(asked) || Number.isNaN(Date.parse(`${asked}T12:00:00Z`))) throw new ToolError('Give the day as YYYY-MM-DD, for example 2026-10-07.')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(asked) || !localStamp(asked)) throw new ToolError('Give the day as YYYY-MM-DD, for example 2026-10-07.')
     return asked
   }
   return localDay(new Date(now))
@@ -534,12 +539,15 @@ function localStamp(value) {
 const endOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59)
 const howToWrite = (what) => `Give the ${what} as YYYY-MM-DDTHH:MM on this Mac’s clock, for example 2026-10-09T14:30, or YYYY-MM-DD for the whole day.`
 
-/* "2026-10-09 14:30–15:30", "2026-10-09, all day" (00:00 to 23:59, how add_event writes one). */
+/* "2026-10-09 14:30–15:30", "2026-10-09, all day" (marked allDay, or 00:00 to 23:59 as add_event
+   wrote one before it marked them), "2026-10-12 to 2026-10-13, all day". */
 function whenOf(event) {
   const start = new Date(event.start)
   const end = event.end ? new Date(event.end) : null
   const valid = end && end > start
-  if (valid && localTime(start) === '00:00' && localTime(end) === '23:59' && localDay(end) === localDay(start)) return `${localDay(start)}, all day`
+  if (valid && (event.allDay === true || (localTime(start) === '00:00' && localTime(end) === '23:59'))) {
+    return `${localDay(start)}${localDay(end) === localDay(start) ? '' : ` to ${localDay(end)}`}, all day`
+  }
   return `${localDay(start)} ${localTime(start)}${valid ? `–${localDay(end) === localDay(start) ? '' : `${localDay(end)} `}${localTime(end)}` : ''}`
 }
 
@@ -562,37 +570,41 @@ function listEvents(doc, { from, to }, { now }) {
 }
 
 /* Like the Calendar room's own: { id, title, start, end, notes }, the times as ISO stamps,
-   kept in order of start. */
+   kept in order of start; whole days are marked allDay, so the Calendar says "All day". */
 function addEvent(doc, args, { makeId }) {
   const title = clean(args.title, 200)
   if (!title) throw new ToolError('An event needs a title.')
   const start = localStamp(args.start)
   if (!start) throw new ToolError(howToWrite('start'))
   let end = start.timed ? new Date(start.at.getTime() + 60 * 60 * 1000) : endOfDay(start.at)
+  let allDay = !start.timed
   if (clean(args.end, 40)) {
     const until = localStamp(args.end)
     if (!until) throw new ToolError(howToWrite('end'))
     end = until.timed ? until.at : endOfDay(until.at)
+    allDay &&= !until.timed
   }
   if (end <= start.at) throw new ToolError('The end comes before the start.')
-  const event = { id: makeId('event'), title, start: start.at.toISOString(), end: end.toISOString(), notes: clean(args.notes, 1000) }
+  const event = { id: makeId('event'), title, start: start.at.toISOString(), end: end.toISOString(), notes: clean(args.notes, 1000), ...(allDay ? { allDay: true } : {}) }
   const events = doc.calendar?.events || []
   const later = events.findIndex((other) => Date.parse(other?.start) > start.at.getTime())
   return { text: `Added “${title}” to OSAT’s calendar: ${whenOf(event)} (${event.id}).`, ops: [{ t: 'add', c: 'calendar.events', v: event, at: later < 0 ? events.length : later }] }
 }
 
-/* `find` is main's file search: (query) → [{ name, where, kind, modifiedAt }]. */
+/* `find` is main's file search: (query, limit) → [{ name, where, kind, modifiedAt }], the closest
+   first. It is asked for one more than shown, only to know whether there are more. */
 async function findFiles({ query: asked, limit }, find) {
   const query = clean(asked, 200)
   if (!query) throw new ToolError('Say what to look for, for example “taxes pdf last week”.')
-  const found = (await find(query)) || []
-  if (!found.length) return { text: `No files match “${query}”.` }
   const most = limitOf(limit)
+  const found = (await find(query, most + 1)) || []
+  if (!found.length) return { text: `No files match “${query}”.` }
   const lines = found.slice(0, most).map((file) => {
     const changed = file.modifiedAt ? new Date(file.modifiedAt) : null
     return `- ${file.name}${file.kind ? ` (${file.kind})` : ''}${file.where ? ` in ${file.where}` : ''}${changed && !Number.isNaN(changed.getTime()) ? `, changed ${localDay(changed)}` : ''}`
   })
-  return { text: `${found.length} ${found.length === 1 ? 'file' : 'files'} for “${query}”:\n${lines.join('\n')}${andMore(found.length, most)}` }
+  const more = found.length > most ? `\n\nThere are more. Use more words${most < 50 ? ', or ask for more (up to 50)' : ''}.` : ''
+  return { text: `${found.length > most ? 'The closest ' : ''}${lines.length} ${lines.length === 1 ? 'file' : 'files'} for “${query}”:\n${lines.join('\n')}${more}` }
 }
 
 const RUN = {
@@ -628,8 +640,8 @@ export function runTool(name, args, { doc, now = new Date().toISOString(), makeI
 export const CONNECTOR_PORT = 47823
 
 /* What to paste where, to connect an app to OSAT. `key` is the real key (copied to the
-   clipboard) or dots (shown in Settings). */
-export function connectorSetup(which, { url, key }) {
+   clipboard) or dots (shown in Settings); `write` is false for an app that may only look. */
+export function connectorSetup(which, { url, key, write = true }) {
   if (which === 'claude-code') return `claude mcp add --transport http osat ${url} --header "Authorization: Bearer ${key}"`
   if (which === 'claude-desktop') {
     // Claude Desktop starts servers itself, so mcp-remote (run by npx) carries it to OSAT's address.
@@ -638,7 +650,8 @@ export function connectorSetup(which, { url, key }) {
   if (which === 'api') {
     // The same tools as a plain web API: Shortcuts' "Get Contents of URL", scripts, curl.
     const api = url.replace(/\/mcp$/, '/api')
-    return `curl -H "Authorization: Bearer ${key}" "${api}/search?query=garden"\ncurl -H "Authorization: Bearer ${key}" -d '{"text": "Buy seeds"}' ${api}/add_sticky`
+    const find = `curl -H "Authorization: Bearer ${key}" "${api}/search?query=garden"`
+    return write ? `${find}\ncurl -H "Authorization: Bearer ${key}" -d '{"text": "Buy seeds"}' ${api}/add_sticky` : `${find}\ncurl -H "Authorization: Bearer ${key}" ${api}/read_journal`
   }
   return `Address: ${url}\nHeader: Authorization: Bearer ${key}`
 }

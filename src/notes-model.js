@@ -3,7 +3,7 @@
    testable without a browser. */
 
 import { fromOf } from '../shared/node-file.mjs'
-import { PAPERS, linksOf, normalizeNote, parseTags, rankOf } from './note-core.js'
+import { PAPERS, WIKILINK, linksOf, normalizeNote, parseTags, rankOf, renameWikilinks, titleKey } from './note-core.js'
 
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 const clamp = (value) => Math.round(Math.max(-1e6, Math.min(1e6, value)))
@@ -182,8 +182,6 @@ export function appendToDay(state, dateKey, line) {
 
 /* ---------- wikilinks ---------- */
 
-const WIKILINK = /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g
-
 export function parseWikilinks(markdown) {
   const targets = [], seen = new Set()
   for (const match of String(markdown || '').matchAll(WIKILINK)) {
@@ -193,8 +191,6 @@ export function parseWikilinks(markdown) {
   }
   return targets
 }
-
-const titleKey = (title) => String(title || '').trim().toLowerCase()
 
 export function resolveWikilink(notes, target) {
   const key = titleKey(target)
@@ -232,20 +228,8 @@ export function wikilinkPairs(notes) {
   return [...pairs.values()]
 }
 
-/* Renaming a note rewrites [[Old title]] mentions so links keep pointing at it. */
-export function renameWikilinks(notes, oldTitle, newTitle) {
-  const key = titleKey(oldTitle)
-  const next = String(newTitle || '').trim()
-  if (!key || !next || key === titleKey(next)) return notes
-  return notes.map((note) => {
-    if (typeof note.markdown !== 'string' || !note.markdown.includes('[[')) return note
-    const markdown = note.markdown.replace(WIKILINK, (whole, target, alias) => {
-      if (titleKey(target) !== key) return whole
-      return `[[${next}${alias !== undefined ? `|${alias}` : ''}]]`
-    })
-    return markdown === note.markdown ? note : { ...note, markdown }
-  })
-}
+// renameWikilinks lives in shared/note-core.mjs, so the connector's edit_sticky relinks the same way.
+export { renameWikilinks }
 
 /* ---------- lists, search, sort ---------- */
 

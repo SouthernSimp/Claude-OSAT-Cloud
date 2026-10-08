@@ -8,6 +8,25 @@ const isObject = (value) => Boolean(value) && typeof value === 'object' && !Arra
 const cleanString = (value, fallback = '') => (typeof value === 'string' ? value : fallback)
 const uid = (prefix) => `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`
 
+/* [[Title]], [[Title#part]] or [[Title|shown words]]: a link to the note with that title, any case. */
+export const WIKILINK = /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g
+export const titleKey = (title) => String(title || '').trim().toLowerCase()
+
+/* Renaming a note rewrites [[Old title]] mentions so links keep pointing at it. */
+export function renameWikilinks(notes, oldTitle, newTitle) {
+  const key = titleKey(oldTitle)
+  const next = String(newTitle || '').trim()
+  if (!key || !next || key === titleKey(next)) return notes
+  return notes.map((note) => {
+    if (typeof note.markdown !== 'string' || !note.markdown.includes('[[')) return note
+    const markdown = note.markdown.replace(WIKILINK, (whole, target, alias) => {
+      if (titleKey(target) !== key) return whole
+      return `[[${next}${alias !== undefined ? `|${alias}` : ''}]]`
+    })
+    return markdown === note.markdown ? note : { ...note, markdown }
+  })
+}
+
 export function parseTags(text) {
   const tags = []
   TAG_PATTERN.lastIndex = 0

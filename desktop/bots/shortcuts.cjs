@@ -3,9 +3,11 @@
    that uses the Mac's own iCloud identity, takes a moment and needs no network (the "anyone" mode
    asks Apple's servers, so OSAT never uses it). Everything sits in a private folder in the data
    folder: the unsigned file is removed at once; a signed one holds the key, but Shortcuts reads it
-   after OSAT hands it over, so it is removed once it is an hour old (`sweep`, also at start).
-   `build(id, where)` gives { name, text }; `run` is passed in for the tests. */
+   after OSAT hands it over, so it is removed once it is an hour old (`sweep`: an hour after each
+   one is made, and at start for any left by a crash), and every one at quit (`stop`).
+   `build(id, where)` gives { name, text }; `run` and the timers are passed in for the tests. */
 const fs = require('node:fs/promises')
+const { rmSync } = require('node:fs')
 const path = require('node:path')
 const { execFile } = require('node:child_process')
 
@@ -18,7 +20,8 @@ function runFile(file, args) {
   })
 }
 
-function createShortcuts({ dir, build, run = runFile, platform = process.platform, now = Date.now }) {
+function createShortcuts({ dir, build, run = runFile, platform = process.platform, now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout }) {
+  const timers = new Set()
   async function sweep() {
     for (const name of await fs.readdir(dir).catch(() => [])) {
       const file = path.join(dir, name)
@@ -44,10 +47,20 @@ function createShortcuts({ dir, build, run = runFile, platform = process.platfor
     } finally {
       await fs.rm(unsigned, { force: true })
     }
+    const timer = setTimer(() => { timers.delete(timer); sweep().catch(() => {}) }, KEEP_MS + 1000)
+    timer.unref?.()
+    timers.add(timer)
     return signed
   }
 
-  return { make, sweep }
+  // At quit: no signed file, and so no key, stays behind. Sync, as the app is going.
+  function stop() {
+    for (const timer of timers) clearTimer(timer)
+    timers.clear()
+    rmSync(dir, { recursive: true, force: true })
+  }
+
+  return { make, sweep, stop }
 }
 
 module.exports = { createShortcuts, SHORTCUTS_TOOL }

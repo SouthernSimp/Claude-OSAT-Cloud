@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { ArrowCounterClockwise, Check, ClipboardText, LockSimple, PaperPlaneTilt, Plus, Tray, WebhooksLogo } from '@phosphor-icons/react'
 
 import { MOMENTS, NTFY_SERVER } from '../../../shared/webhook-model.mjs'
+import { cleanError } from '../../assistant/useAi.js'
 import { formatRelativeTime } from '../../lib/ui.js'
 import { Switch } from '../settings/parts.jsx'
 import '../../styles/bots-webhooks.css'
 
-const cleanError = (error) => String(error?.message || error || 'That didn’t work.').replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 const host = (address) => { try { return new URL(address).host } catch { return address } }
 
 /* What main says about the webhooks (desktop/bots/webhooks.cjs). Null in the browser preview. */
@@ -96,7 +96,7 @@ function SendCard({ bridge, hooks, offline }) {
   const remove = (hook) => act(
     () => bridge.remove(hook.id),
     `Removed ${hook.name}.`,
-    () => bridge.add({ url: hook.url, name: hook.name, events: hook.events }),
+    () => bridge.add({ url: hook.url, name: hook.name, events: hook.events, on: hook.on }),
   )
 
   return (

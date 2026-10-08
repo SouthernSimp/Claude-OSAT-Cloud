@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { ArrowCounterClockwise, Check, ClipboardText, Plug, Plus } from '@phosphor-icons/react'
 
 import { connectorSetup } from '../../../shared/connector-tools.mjs'
+import { cleanError } from '../../assistant/useAi.js'
 import { formatRelativeTime } from '../../lib/ui.js'
 import { Choice } from '../settings/parts.jsx'
 import '../../styles/connector-apps.css'
 
-const cleanError = (error) => String(error?.message || error || 'That didn’t work.').replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 const ACCESS = [['read', 'Can look'], ['write', 'Can look and change']]
 
@@ -15,7 +15,7 @@ const SETUPS = [
   ['claude-code', 'Claude Code', 'Run this once in Terminal:'],
   ['claude-desktop', 'Claude Desktop', 'Add this to Claude Desktop’s config (Settings → Developer → Edit Config), then restart it:'],
   ['other', 'Grok Bot and other apps', 'Where an app asks for an MCP server, give it this address and header:'],
-  ['api', 'Shortcuts and scripts', 'The same tools as a plain web address: find your stickies, add one, write in the journal (in Shortcuts, use Get Contents of URL with this header):'],
+  ['api', 'Shortcuts and scripts', 'The same tools as a plain web address (in Shortcuts, use Get Contents of URL with this header):'],
 ]
 
 /* The OSAT connector: an MCP server on this Mac only (Phase 44). Each app that may reach it has
@@ -54,7 +54,11 @@ export function ConnectorCard({ bridge, connector }) {
     <section className="content-card bots-card">
       <p className="eyebrow">CONNECTOR</p>
       <h2>{on ? 'Apps on this Mac can reach OSAT.' : 'Let apps on this Mac reach OSAT.'}</h2>
-      <p>The OSAT connector lets Claude Code, Claude Desktop, Shortcuts and other apps find, read and add topics, stickies and journal lines. It only listens on this Mac, never on the network. Each app gets its own key, and you choose whether it can only look or also change things.</p>
+      <p>The OSAT connector lets Claude Code, Claude Desktop, Shortcuts and other apps reach your notes. It only listens on this Mac, never on the network. Each app gets its own key, and you choose what it may do:</p>
+      <ul className="connector-access">
+        <li><b>Can look:</b> find and read stickies, topics, the journal, the calendar and the names of your files.</li>
+        <li><b>Can look and change:</b> also add, change, move and delete stickies, add and rename topics and branches, write in the journal and add events. Each change shows below with Undo.</li>
+      </ul>
       {connector?.error && <p className="bots-warning" role="status">{connector.error}</p>}
       <div className="button-row">
         {on
@@ -84,7 +88,7 @@ export function ConnectorCard({ bridge, connector }) {
                         <div key={id} className="bots-setup">
                           <strong>{label}</strong>
                           <p>{how}</p>
-                          <pre>{connectorSetup(id, { url: connector.url, key: '••••••••' })}</pre>
+                          <pre>{connectorSetup(id, { url: connector.url, key: '••••••••', write: app.access === 'write' })}</pre>
                           <button className="outline-button" type="button" onClick={() => act(() => bridge.copySetup(id, app.id), `Copied for ${label}, with ${app.name}’s key.`)}><ClipboardText /> Copy with the key</button>
                         </div>
                       ))}

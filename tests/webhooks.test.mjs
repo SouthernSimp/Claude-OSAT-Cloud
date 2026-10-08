@@ -59,6 +59,34 @@ test('moments: not a day page, an empty note, an Undo, a sticky a service sent, 
   assert.deepEqual(model.momentsOf(before, after, ops, { now: NOW }), [])
 })
 
+test('moments: a service’s sticky filed by Nate is news; stickies arriving inside a new topic are the topic’s news', () => {
+  const garden = { id: 'garden', name: 'Garden', createdAt: at() }
+  const relay = note('relay', { source: 'Webhook' })
+  const before = doc([relay], [garden])
+  const after = doc([{ ...relay, folderId: 'garden' }], [garden])
+  assert.deepEqual(model.momentsOf(before, after, [{ t: 'patch', c: 'notes', id: 'relay', v: { folderId: 'garden' } }], { now: NOW }), [{ event: 'sticky.filed', id: 'relay' }])
+
+  // A topic file with its branches and stickies, as arrivalOps makes it: one message, not one a sticky.
+  const trip = { id: 'trip', name: 'Trip', createdAt: at() }
+  const days = { id: 'days', name: 'Days', parentId: 'trip', createdAt: at() }
+  const leaves = [note('l1', { folderId: 'trip' }), note('l2', { folderId: 'days' }), note('l3', { folderId: 'days' })]
+  const ops = [{ t: 'add', c: 'folders', v: trip }, { t: 'add', c: 'folders', v: days }, ...leaves.map((v) => ({ t: 'add', c: 'notes', v }))]
+  assert.deepEqual(model.momentsOf(doc(), doc(leaves, [trip, days]), ops, { now: NOW }), [{ event: 'topic.added', id: 'trip' }])
+  // A sticky added into a topic that was already there is its own news.
+  assert.deepEqual(model.momentsOf(doc([], [trip]), doc([leaves[0]], [trip]), [{ t: 'add', c: 'notes', v: leaves[0] }], { now: NOW }), [{ event: 'sticky.added', id: 'l1' }])
+})
+
+test('moments: a note begun empty in Notes counts once its first words come, marked as still being written', () => {
+  const empty = note('n1', { markdown: '' })
+  const typed = { ...empty, markdown: 'C' }
+  assert.deepEqual(model.momentsOf(doc(), doc([empty]), [{ t: 'add', c: 'notes', v: empty }], { now: NOW }), [])
+  assert.deepEqual(model.momentsOf(doc([empty]), doc([typed]), [{ t: 'patch', c: 'notes', id: 'n1', v: { markdown: 'C' } }], { now: NOW }), [{ event: 'sticky.added', id: 'n1', typed: true }])
+  assert.deepEqual(model.momentsOf(doc([typed]), doc([{ ...typed, markdown: 'Ca' }]), [{ t: 'patch', c: 'notes', id: 'n1', v: { markdown: 'Ca' } }], { now: NOW }), [], 'only the first words')
+  const old = { ...empty, createdAt: at(-60 * 60 * 1000) }
+  assert.deepEqual(model.momentsOf(doc([old]), doc([{ ...old, markdown: 'x' }]), [{ t: 'patch', c: 'notes', id: 'n1', v: { markdown: 'x' } }], { now: NOW }), [], 'an old note emptied and written again isn’t new')
+  assert.equal(model.payloadFor({ event: 'sticky.added', id: 'n1' }, doc([empty]), {}), null, 'nothing to say about an empty note')
+})
+
 test('the message: one plain line for Slack and Discord, and the details for Zapier', () => {
   const folders = [{ id: 'garden', name: 'Garden' }, { id: 'beds', name: 'Beds', parentId: 'garden' }]
   const sticky = note('seeds', { title: 'Buy seeds', markdown: 'Buy seeds\nfor the raised beds', folderId: 'beds', source: 'Quick bar' })
@@ -91,6 +119,11 @@ test('addresses: https anywhere, plain http only on this Mac', () => {
   assert.equal(model.hookName('https://hooks.zapier.com/x'), 'Zapier')
   assert.equal(model.hookName('https://discord.com/api/webhooks/1/a'), 'Discord')
   assert.equal(model.hookName('http://127.0.0.1:5678/'), 'This Mac')
+  assert.equal(model.hookName('https://maker.ifttt.com/trigger/x'), 'IFTTT')
+  assert.equal(model.hookName('https://hook.eu1.make.com/abc'), 'Make')
+  assert.equal(model.hookName('https://n8n.example.co.uk/hook'), 'Example')
+  assert.equal(model.hookName('https://me.app.n8n.cloud/webhook/1'), 'n8n')
+  assert.equal(model.hookName('https://hooks.bit.ly/x'), 'Bit')
 })
 
 test('ntfy replies: each message a sticky, its title first; older ones and other events left', () => {
@@ -214,6 +247,39 @@ test('a 404 says so plainly; a 5xx is tried once more after 30 s, then given up 
   assert.equal(timers.size, 0)
 })
 
+test('“slow down” (429) is tried once more after 30 s, not blamed on the address', async (t) => {
+  let answers = [429, 200]
+  const { hooks, commit, sent, fire } = await setup(t, { respond: () => { const status = answers.shift() ?? 200; return { ok: status < 300, status } } })
+  await hooks.add({ url: 'https://discord.com/api/webhooks/2', events: ['sticky.added'] })
+  commit([sticky('note-a', 'One')])
+  await hooks.settle()
+  assert.equal(hooks.status().hooks[0].last.text, 'Discord asked OSAT to slow down. OSAT tries again in 30 seconds.')
+  await fire(30000)
+  assert.equal(sent.length, 2)
+  assert.equal(hooks.status().hooks[0].last.ok, true)
+})
+
+test('a note begun in Notes goes out a minute on, with the words it has by then', async (t) => {
+  const { hooks, commit, sent, fire } = await setup(t)
+  await hooks.add({ url: 'https://hooks.zapier.com/catch/1', events: ['sticky.added'] })
+  const empty = { id: 'note-n', title: '', markdown: '', createdAt: at(), updatedAt: at(), folderId: null }
+  commit([{ t: 'add', c: 'notes', v: empty }])
+  commit([{ t: 'patch', c: 'notes', id: 'note-n', v: { markdown: 'C', title: 'C' } }])
+  commit([{ t: 'patch', c: 'notes', id: 'note-n', v: { markdown: 'Call Sam', title: 'Call Sam' } }])
+  await hooks.settle()
+  assert.equal(sent.length, 0, 'nothing while it is being written')
+  await fire(60000)
+  assert.deepEqual(sent.map((item) => item.body.content), ['New sticky: Call Sam'])
+})
+
+test('Undo of a removed address puts it back as it was, switched off if it was', async (t) => {
+  const { hooks } = await setup(t)
+  await hooks.add({ url: 'https://hooks.zapier.com/catch/1', events: ['sticky.added'], on: false })
+  assert.equal(hooks.status().hooks[0].on, false)
+  await hooks.add({ url: 'https://hooks.zapier.com/catch/2', events: ['sticky.added'] })
+  assert.equal(hooks.status().hooks[1].on, true)
+})
+
 test('offline, moments wait (up to 100) and go when back online; a test says it waits', async (t) => {
   let off = true
   const { hooks, commit, sent, fire } = await setup(t, { offline: () => off })
@@ -293,6 +359,26 @@ test('the inbox: turned on, it reads from now; each message becomes a sticky; wh
 
   await hooks.inboxOff()
   assert.equal(hooks.status().inbox.address, '')
+
+  // On again, hours later: what was sent while it was off isn't taken; the address stays the same.
+  tick(3 * 60 * 60 * 1000)
+  const later = Math.floor((NOW + 60000 + 3 * 60 * 60 * 1000) / 1000)
+  replies.push([
+    JSON.stringify({ id: 'off1', time: later - 600, event: 'message', message: 'Sent while it was off' }),
+    JSON.stringify({ id: 'on1', time: later + 5, event: 'message', message: 'Sent after' }),
+  ].join('\n'))
+  await hooks.inboxOn()
+  await fire(0)
+  assert.equal(hooks.status().inbox.address, next)
+  assert.equal(sent.at(-1).url, `${next}/json?poll=1&since=${later}`)
+  const words = store.load().doc.notes.filter((item) => item.source === 'Webhook').map((item) => item.markdown)
+  assert.ok(words.includes('Sent after') && !words.includes('Sent while it was off'))
+
+  // Choosing the server it already reads from changes nothing.
+  const since = (await saved()).inbox.since
+  tick(30000)
+  await hooks.inboxServer('')
+  assert.equal((await saved()).inbox.since, since)
 })
 
 test('a sticky a service sent is never sent back out', async (t) => {
@@ -316,6 +402,13 @@ test('the inbox says calmly when the relay can’t be read, and waits offline', 
   await assert.rejects(hooks.inboxServer('http://ntfy.example.com'), /Use an https/)
   await hooks.inboxServer('https://ntfy.example.com/')
   assert.equal(hooks.status().inbox.host, 'ntfy.example.com')
+})
+
+test('the inbox never shows fetch’s own words when the relay can’t be reached', async (t) => {
+  const { hooks, fire } = await setup(t, { respond: () => { throw new TypeError('fetch failed') } })
+  await hooks.inboxOn()
+  await fire(0)
+  assert.equal(hooks.status().inbox.error, 'OSAT couldn’t reach ntfy.sh. It tries again in a minute.')
 })
 
 /* ---------- wired in as main does (desktop/bots/index.cjs) ---------- */

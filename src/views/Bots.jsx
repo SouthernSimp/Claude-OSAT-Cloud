@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, ClipboardText, Cloud, FolderOpen, Laptop, LockSimple, Plus, Robot } from '@phosphor-icons/react'
 
 import { OTHER, PRESETS } from '../../shared/providers.mjs'
-import { useAi } from '../assistant/useAi.js'
+import { cleanError, useAi } from '../assistant/useAi.js'
 import { formatRelativeTime } from '../lib/ui.js'
 import { AskAppsCard } from './bots/AskAppsCard.jsx'
 import { ConnectorCard } from './bots/ConnectorCard.jsx'
@@ -10,7 +10,6 @@ import { WebhooksCard } from './bots/WebhooksCard.jsx'
 import { ShortcutsCard } from './bots/ShortcutsCard.jsx'
 import '../styles/bots.css'
 
-const cleanError = (error) => String(error?.message || error || 'That didn’t work.').replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 const number = (value) => new Intl.NumberFormat('en-US').format(value || 0)
 const shortDate = (iso) => (iso ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(iso)) : '')
 

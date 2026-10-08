@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { ArrowCounterClockwise, ArrowsClockwise, Check, DownloadSimple, LockSimple, Plus, PuzzlePiece } from '@phosphor-icons/react'
 
+import { cleanError } from '../../assistant/useAi.js'
 import { formatRelativeTime } from '../../lib/ui.js'
 import { Choice, Switch } from '../settings/parts.jsx'
 import '../../styles/bots-ask-apps.css'
 
-const cleanError = (error) => String(error?.message || error || 'That didn’t work.').replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 const KINDS = [['http', 'A web address'], ['command', 'A command on this Mac']]
 const things = (count) => (count === 1 ? '1 thing it can do' : `${count} things it can do`)
 

@@ -69,8 +69,9 @@ const said = (id) => words(OBJ, output(id, 'Provided Input'))
 
 function actionsFor(id, where) {
   const [first, second, third] = [uuid(1), uuid(2), uuid(3)]
-  if (id === 'add') return [ask(first, 'What should OSAT keep?'), request(where, 'add_sticky', { id: second, json: [['text', said(first)], ['source', words('Siri')]] }), notify(second)]
-  if (id === 'send') return [request(where, 'add_sticky', { id: first, json: [['text', words(OBJ, INPUT)], ['source', words('Share')]] }), notify(first)]
+  // What they add is marked "Shortcuts", the app whose key they carry (the connector sets that).
+  if (id === 'add') return [ask(first, 'What should OSAT keep?'), request(where, 'add_sticky', { id: second, json: [['text', said(first)]] }), notify(second)]
+  if (id === 'send') return [request(where, 'add_sticky', { id: first, json: [['text', words(OBJ, INPUT)]] }), notify(first)]
   if (id === 'write') return [ask(first, 'What should go in today’s journal?'), request(where, 'add_to_journal', { id: second, json: [['text', said(first)]] }), notify(second)]
   if (id === 'read') return [request(where, 'read_journal', { id: first }), speak(first), show(first)]
   // Words typed or said go in the address, encoded: ask, encode, then GET the tool.

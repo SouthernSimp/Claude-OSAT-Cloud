@@ -56,7 +56,12 @@ export function ntfyServer(value) {
   return `${url.origin}${url.pathname.replace(/\/+$/, '')}`
 }
 
-/* "hooks.zapier.com" → "Zapier"; this Mac's own addresses → "This Mac". */
+// Services whose name isn't just their domain with a capital; the parts of a country's ending (.co.uk).
+const KNOWN_NAMES = { ifttt: 'IFTTT', n8n: 'n8n', integromat: 'Make', ntfy: 'ntfy' }
+const SECOND_LEVEL = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac', 'or', 'ne', 'go'])
+
+/* "hooks.zapier.com" → "Zapier", "maker.ifttt.com" → "IFTTT", "hooks.example.co.uk" → "Example";
+   this Mac's own addresses → "This Mac". */
 export function hookName(address) {
   let host = ''
   try {
@@ -66,8 +71,12 @@ export function hookName(address) {
   }
   if (LOOPBACK.test(host) || host.endsWith('.localhost')) return 'This Mac'
   const labels = host.split('.')
-  const name = labels.length > 1 ? labels.at(-2) : labels[0]
-  return name ? name[0].toUpperCase() + name.slice(1) : 'Webhook'
+  // The domain's own name: before the ending, or before "co"/"com"/"org" in a country's ending (.co.uk).
+  let at = Math.max(0, labels.length - 2)
+  if (at > 0 && SECOND_LEVEL.has(labels[at]) && labels.at(-1).length === 2) at -= 1
+  const name = labels[at]
+  if (!name) return 'Webhook'
+  return KNOWN_NAMES[name.toLowerCase()] || name[0].toUpperCase() + name.slice(1)
 }
 
 function cleanHook(hook) {
@@ -147,12 +156,17 @@ const fresh = (record, now) => now - Date.parse(record?.createdAt) < FRESH_MS
 const isSticky = (note) => note && !note.kind && !note.trashedAt && !note.archived && Boolean(String(note.markdown || '').trim())
 
 /* The moments in one commit, from the workspace before and after it: a sticky added (with words,
-   made just now), a sticky filed (it lands in a topic or branch), a topic added, the journal
-   written. A sticky a service sent (source Webhook) is never sent back out, so nothing can loop. */
+   made just now; a note made empty in Notes counts once its first words come, marked `typed`,
+   since more are on the way), a sticky filed (it lands in a topic or branch), a topic added, the
+   journal written. Stickies that arrive inside a topic made in the same change (a topic file, an
+   import, a scan) are that topic's news, said once. A sticky a service sent (source Webhook) is
+   never sent back out as added, so nothing can loop. */
 export function momentsOf(before, after, ops, { now = Date.now() } = {}) {
   const out = []
   const seen = new Set()
   const find = (doc, collection, id) => (doc?.[collection] || []).find((item) => item?.id === id)
+  const madeNow = new Set((ops || []).filter((op) => op?.t === 'add' && op.c === 'folders').map((op) => op.v?.id))
+  const isNew = (note) => fresh(note, now) && note.source !== SOURCE && !madeNow.has(note.folderId)
   for (const op of ops || []) {
     if ((op?.t !== 'add' && op?.t !== 'patch') || (op.c !== 'notes' && op.c !== 'folders')) continue
     const id = op.t === 'add' ? op.v?.id : op.id
@@ -165,9 +179,14 @@ export function momentsOf(before, after, ops, { now = Date.now() } = {}) {
       if (!old && !next.parentId && next.kind !== 'branch' && fresh(next, now)) out.push({ event: 'topic.added', id })
     } else if (next.kind === 'day') {
       if (next.markdown !== old?.markdown && String(next.markdown || '').trim()) out.push({ event: 'journal.written', date: next.date })
-    } else if (isSticky(next) && next.source !== SOURCE) {
-      if (!old && fresh(next, now)) out.push({ event: 'sticky.added', id })
-      else if (old && next.folderId && next.folderId !== old.folderId) out.push({ event: 'sticky.filed', id })
+    } else if (isSticky(next)) {
+      if (!old) {
+        if (isNew(next)) out.push({ event: 'sticky.added', id })
+      } else if (!String(old.markdown || '').trim()) {
+        if (isNew(next)) out.push({ event: 'sticky.added', id, typed: true })
+      } else if (next.folderId && next.folderId !== old.folderId) {
+        out.push({ event: 'sticky.filed', id })
+      }
     }
   }
   return out
@@ -192,7 +211,7 @@ const dayWords = (date) => new Intl.DateTimeFormat('en-US', { month: 'long', day
 
 /* What OSAT sends for a moment: { event, at, text, content, sticky? | topic? | journal? }. `text` and
    `content` are the same plain line, so Slack (text) and Discord (content) show it with no setup.
-   Null when there is nothing to say (the record is gone, the journal line is empty). */
+   Null when there is nothing to say (the record is gone or emptied, the journal line is empty). */
 export function payloadFor(moment, doc, { at = new Date().toISOString() } = {}) {
   const folders = doc?.folders || []
   const send = (text, more) => ({ event: moment.event, at, text: oneLine(text, 300), content: oneLine(text, 300), ...more })
@@ -207,7 +226,7 @@ export function payloadFor(moment, doc, { at = new Date().toISOString() } = {}) 
     return line ? send(`Journal, ${dayWords(moment.date)}: ${line}`, { journal: { date: moment.date, line } }) : null
   }
   const note = (doc?.notes || []).find((item) => item?.id === moment.id)
-  if (!note) return null
+  if (!isSticky(note)) return null
   const { topic, branch } = placeOf(folders, note.folderId)
   const where = [topic, branch].filter(Boolean).join(' › ')
   const sticky = { id: note.id, title: note.title, text: String(note.markdown || '').trim(), topic, branch, source: note.source || null }

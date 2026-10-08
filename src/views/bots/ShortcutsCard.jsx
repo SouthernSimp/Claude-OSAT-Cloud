@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { BookOpen, ChatCircle, Check, Export, MagnifyingGlass, Microphone, NotePencil, Plus } from '@phosphor-icons/react'
 
 import { SHORTCUTS } from '../../../shared/shortcut-file.mjs'
-import '../../styles/bots-shortcuts.css'
+import { cleanError } from '../../assistant/useAi.js'
 
 const ICONS = { add: Microphone, send: Export, write: NotePencil, read: BookOpen, find: MagnifyingGlass, ask: ChatCircle }
-const cleanError = (error) => String(error?.message || error || 'That didn’t work.').replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 /* Settings → Bots → Siri and Shortcuts (Phase 47): ready-made shortcuts that reach OSAT through
    the connector. A button has main sign one, and Shortcuts asks Nate to add it. */
@@ -34,7 +33,7 @@ export function ShortcutsCard({ bridge, connector }) {
       {on && (
         <>
           <p>Add these to Shortcuts, and Siri and the Share menu reach OSAT on this Mac.</p>
-          <ul className="bots-shortcuts" aria-label="Shortcuts">
+          <ul className="bots-providers bots-shortcuts" aria-label="Shortcuts">
             {SHORTCUTS.map((item) => {
               const Icon = ICONS[item.id]
               return (

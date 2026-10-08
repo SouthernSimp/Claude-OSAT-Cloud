@@ -125,6 +125,75 @@ test('removing an app stops its key at once; Undo puts it back with the same key
     assert.equal((await t.mcp(key, 'ping')).status, 401, 'the old key stopped')
     assert.equal((await t.mcp(fresh, 'ping')).status, 200)
     await assert.rejects(t.ipc('bots:app-remove', 'no-such-app'), /isn’t connected any more/)
+
+    // Undo puts it back where it was, until the next change to the apps; never as a second of a name.
+    await t.ipc('bots:app-add', { name: 'Shortcuts', access: 'read' })
+    await t.ipc('bots:app-remove', app.id)
+    assert.deepEqual((await t.ipc('bots:app-undo-remove')).apps.map((item) => item.name), ['Claude Code', 'Shortcuts'])
+    await t.ipc('bots:app-remove', app.id)
+    assert.equal((await t.ipc('bots:app-add', { name: 'Grok Bot', access: 'read' })).removed, null, 'the next change ends the Undo')
+    await assert.rejects(t.ipc('bots:app-undo-remove'), /nothing to put back/)
+    const again = (await t.ipc('bots:app-add', { name: 'Claude Code', access: 'read' })).apps.find((item) => item.name === 'Claude Code')
+    await t.ipc('bots:app-remove', again.id)
+    await t.bots.appKey('claude code', 'write')
+    await assert.rejects(t.ipc('bots:app-undo-remove'), /another “Claude Code” now/)
+    assert.equal(t.status().apps.filter((item) => item.name.toLowerCase() === 'claude code').length, 1)
+  } finally {
+    t.bots.stop()
+  }
+})
+
+test('the calls of one batch each see the one before: nothing is written over, a name is reused', async () => {
+  const t = await bots()
+  try {
+    await t.ipc('bots:connector-on')
+    const [app] = (await t.ipc('bots:app-add', { name: 'Claude Code', access: 'write' })).apps
+    const key = await t.keyOf(app.id)
+    const call = (id, name, args) => ({ jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args } })
+    const batch = (messages) => fetch(t.status().url, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` }, body: JSON.stringify(messages) }).then((response) => response.json())
+    await t.mcp(key, 'tools/call', { name: 'add_to_journal', arguments: { text: 'first line', date: '2026-10-08' } })
+    await t.mcp(key, 'tools/call', { name: 'add_node', arguments: { title: 'Garden' } })
+    const answers = await batch([
+      call(1, 'add_to_journal', { text: 'line A', date: '2026-10-08' }),
+      call(2, 'add_to_journal', { text: 'line B', date: '2026-10-08' }),
+      call(3, 'add_branch', { node: 'Garden', title: 'Herbs' }),
+      call(4, 'add_branch', { node: 'Garden', title: 'Herbs' }),
+      call(5, 'add_sticky', { text: 'One' }),
+      call(6, 'add_sticky', { text: 'Two' }),
+    ])
+    assert.equal(answers.length, 6)
+    const doc = t.store.load().doc
+    assert.equal(doc.notes.find((note) => note.id === 'day-2026-10-08').markdown, 'first line\nline A\nline B')
+    assert.equal(doc.folders.filter((folder) => folder.name === 'Herbs').length, 1)
+    assert.match(answers[3].result.content[0].text, /already has a branch called “Herbs”/)
+    const ranks = ['One', 'Two'].map((text) => doc.notes.find((note) => note.markdown === text).rank)
+    assert.ok(ranks[1] > ranks[0], 'each at the end, one after the other')
+  } finally {
+    t.bots.stop()
+  }
+})
+
+test('Undo in Settings only takes back a change nothing has changed since', async () => {
+  const t = await bots()
+  try {
+    await t.ipc('bots:connector-on')
+    const [app] = (await t.ipc('bots:app-add', { name: 'Claude Code', access: 'write' })).apps
+    const key = await t.keyOf(app.id)
+    const id = /\((note-[\w-]+)\)/.exec((await t.mcp(key, 'tools/call', sticky('Buy milk'))).body.result.content[0].text)[1]
+    await t.mcp(key, 'tools/call', { name: 'edit_sticky', arguments: { sticky: id, text: 'Buy oat milk' } })
+    // Nate goes on writing in it.
+    t.store.commit(t.store.connect(() => {}), [{ t: 'patch', c: 'notes', id, v: { markdown: 'Buy oat milk and bread and eggs' } }])
+    const [edit, add] = t.status().recent
+    assert.equal(edit.text, 'Claude Code changed the sticky “Buy oat milk”.')
+    await assert.rejects(t.ipc('bots:undo-connector', edit.at), /changed in OSAT since/)
+    await assert.rejects(t.ipc('bots:undo-connector', add.at), /changed in OSAT since/)
+    assert.equal(t.store.load().doc.notes.find((note) => note.id === id).markdown, 'Buy oat milk and bread and eggs', 'his words stay')
+    assert.deepEqual(t.status().recent, [], 'and an Undo that can’t be done isn’t offered again')
+
+    // Untouched since: Undo goes ahead.
+    await t.mcp(key, 'tools/call', { name: 'edit_sticky', arguments: { sticky: id, text: 'Buy oat milk' } })
+    await t.ipc('bots:undo-connector', t.status().recent[0].at)
+    assert.equal(t.store.load().doc.notes.find((note) => note.id === id).markdown, 'Buy oat milk and bread and eggs')
   } finally {
     t.bots.stop()
   }
@@ -180,8 +249,8 @@ test('appKey: OSAT’s own features get an app by its exact name, made once', as
   try {
     await t.ipc('bots:connector-on')
     const first = await t.bots.appKey('Siri', 'write')
-    const second = await t.bots.appKey('Siri', 'read')
-    assert.deepEqual(second, first)
+    const second = await t.bots.appKey('siri', 'read')
+    assert.deepEqual(second, first, 'any case, as Add an app reads names')
     assert.deepEqual(t.status().apps.map(({ name, access }) => [name, access]), [['Siri', 'write']])
     assert.equal((await t.api(first.key, 'add_sticky', { text: 'From Siri' })).status, 200)
   } finally {

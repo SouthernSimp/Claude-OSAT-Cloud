@@ -1,6 +1,6 @@
 /* The OSAT connector: a small MCP server (Model Context Protocol, over HTTP) so Claude Code,
-   Claude Desktop, Grok Bot or any app that speaks MCP can list, read and add nodes and
-   stickies. Off until Nate turns it on in Settings → Bots, and then:
+   Claude Desktop, Grok Bot or any app that speaks MCP can find, read, add and change topics,
+   stickies, the journal and OSAT's calendar. Off until Nate turns it on in Settings → Bots, and then:
      - it only listens on this Mac (127.0.0.1), never on the network;
      - every request needs an app's own key (Authorization: Bearer <key>), which lives in the
        Keychain and can be reset; an app that may only read sees and runs only the tools that
@@ -19,7 +19,7 @@ const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05']
 const MAX_BODY = 1024 * 1024
 const LOOPBACK_HOST = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i
 const LOOPBACK_ORIGIN = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i
-const INSTRUCTIONS = 'OSAT is the owner’s private notes app on their Mac. Nodes are topics in its Sky; a node has branches, and stickies are short notes. Read before you add, add only what was asked, and name yourself as the source.'
+const INSTRUCTIONS = 'OSAT is the owner’s private notes app on their Mac. Topics (the tools call them nodes) live on its canvas; a topic has branches, and stickies are short notes. Read before you add, and add or change only what was asked. What you add is marked with the name this app was given in OSAT.'
 
 const sameKey = (given, key) => {
   const a = Buffer.from(String(given || ''))
@@ -36,10 +36,10 @@ function appWithKey(given, entries) {
 
 function createConnector({ tools, call, appFor, version = '0' }) {
   let server = null
-  // A tool without readOnlyHint counts as one that changes things.
+  // A tool without readOnlyHint counts as one that changes things, and so does a name not listed.
   const reads = (tool) => tool.annotations?.readOnlyHint === true
   const toolsFor = (app) => (app.access === 'write' ? tools : tools.filter(reads))
-  const readOnly = (app, name) => app.access !== 'write' && tools.some((tool) => tool.name === name && !reads(tool))
+  const readOnly = (app, name) => app.access !== 'write' && !tools.some((tool) => tool.name === name && reads(tool))
   const onlyReads = (app) => `${app.name} can only read. Change that in Settings → Bots.`
 
   const reply = (response, status, body, headers = {}) => {

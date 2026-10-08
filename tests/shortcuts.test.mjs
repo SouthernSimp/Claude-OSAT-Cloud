@@ -96,7 +96,7 @@ test('Add to OSAT posts what was said, with the key, and shows the answer', () =
   assert.deepEqual(items(request.WFHTTPHeaders), { Authorization: { string: `Bearer ${WHERE.key}` } })
   const body = items(request.WFJSONValues)
   assert.deepEqual(body.text, { string: OBJ, attachmentsByRange: { '{0, 1}': { Type: 'ActionOutput', OutputUUID: asked, OutputName: 'Provided Input' } } })
-  assert.deepEqual(body.source, { string: 'Siri' })
+  assert.deepEqual(Object.keys(body), ['text'], 'the connector marks it with the app’s name')
   const shown = params('add', 'notification').WFNotificationActionBody.Value.attachmentsByRange['{0, 1}']
   assert.deepEqual(shown, { Type: 'ActionOutput', OutputUUID: request.UUID, OutputName: 'Contents of URL' })
 })
@@ -110,7 +110,7 @@ test('Send to OSAT sits in the Share menu and Services, takes links and words, a
   assert.equal(plan.WFWorkflowNoInputBehavior.Name, 'WFWorkflowNoInputBehaviorAskForInput')
   const body = items(params('send', 'downloadurl').WFJSONValues)
   assert.deepEqual(body.text.attachmentsByRange['{0, 1}'], { Type: 'ExtensionInput' })
-  assert.deepEqual(body.source, { string: 'Share' })
+  assert.deepEqual(Object.keys(body), ['text'])
   // The others take no input and sit nowhere special.
   assert.deepEqual(shortcutPlan('add', WHERE).WFWorkflowTypes, [])
   assert.equal(shortcutPlan('add', WHERE).WFWorkflowNoInputBehavior, undefined)
@@ -200,6 +200,24 @@ test('a signing failure says so plainly and leaves nothing behind; old signed fi
   await assert.rejects(createShortcuts({ dir, build: shortcutFile, run, platform: 'linux' }).make('add', WHERE), /in the Mac app/)
 })
 
+test('a signed file, which holds the key, goes an hour after it was made, and every one at quit', async () => {
+  const dir = await tempDir()
+  let clock = Date.now()
+  const timers = []
+  const run = (file, args) => fs.writeFile(args[args.indexOf('--output') + 1], 'AEA1 signed')
+  const shortcuts = createShortcuts({ dir, build: shortcutFile, run, platform: 'darwin', now: () => clock, setTimer: (fn, ms) => { timers.push({ fn, ms }); return timers.length }, clearTimer: () => {} })
+  await shortcuts.make('add', WHERE)
+  assert.equal(timers.length, 1)
+  assert.ok(timers[0].ms > 60 * 60 * 1000, 'a sweep an hour on')
+  clock += 61 * 60 * 1000
+  timers[0].fn()
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  assert.deepEqual(await fs.readdir(dir), [])
+  await shortcuts.make('find', WHERE)
+  shortcuts.stop()
+  assert.equal(await fs.stat(dir).catch(() => null), null, 'nothing stays after quit')
+})
+
 const freePort = () => new Promise((resolve) => {
   const probe = net.createServer().listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)) })
 })
@@ -243,9 +261,10 @@ test('Add to Shortcuts: the connector must be on; the shortcut carries the key o
     assert.ok(text.includes(`<string>${api}/add_sticky</string>`))
     const key = /<string>Bearer ([^<]+)<\/string>/.exec(text)[1]
     assert.ok(!JSON.stringify(ipc('bots:status')).includes(key), 'the key never reaches the window')
-    const response = await fetch(`${api}/add_sticky`, { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: JSON.stringify({ text: 'Call the dentist', source: 'Siri' }) })
+    // A source the request names is ignored: what an app adds is marked with its name in OSAT.
+    const response = await fetch(`${api}/add_sticky`, { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: JSON.stringify({ text: 'Call the dentist', source: 'Claude' }) })
     assert.equal(response.status, 200)
-    assert.equal(store.load().doc.notes.find((note) => note.markdown === 'Call the dentist').source, 'Siri')
+    assert.equal(store.load().doc.notes.find((note) => note.markdown === 'Call the dentist').source, 'Shortcuts')
   } finally {
     bots.stop()
     await store.flush()

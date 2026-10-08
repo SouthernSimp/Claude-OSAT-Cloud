@@ -87,9 +87,10 @@ test('a sticky by id or by words: only one may hold them, never a guess', async 
   assert.throws(() => run('delete_sticky', { sticky: 'seeds' }), (error) => error instanceof ToolError
     && /^3 stickies hold “seeds”:\n- \(note-\d+\) Seeds: save the tomato ones\n- \(note-\d+\) Buy seeds for spring\n- \(note-\d+\) Buy seeds\nSay which by its id\.$/.test(error.message))
   assert.throws(() => run('delete_sticky', { sticky: '  ' }), /Say which sticky/)
-  // Every word, any case and order, as search reads them; an exact title settles a tie.
+  // Every word, any case and order, as search reads them. An exact title is no exception: two hold it.
   assert.match(run('edit_sticky', { sticky: 'PEAS carrots', text: 'Buy seeds for spring\nCarrots, peas, beans' }), /^Changed the sticky “Buy seeds for spring” \(note-\d+\)\.$/)
-  assert.match(run('move_sticky', { sticky: 'buy seeds', node: 'Garden' }), /^Moved “Buy seeds” to Garden\.$/)
+  assert.throws(() => run('delete_sticky', { sticky: 'buy seeds' }), /^Error: 2 stickies hold “buy seeds”:\n- \(note-\d+\) Buy seeds for spring\n- \(note-\d+\) Buy seeds\nSay which by its id\.$/)
+  assert.match(run('move_sticky', { sticky: seeds, node: 'Garden' }), /^Moved “Buy seeds” to Garden\.$/)
   assert.match(run('move_sticky', { sticky: seeds, node: 'Garden', branch: 'Herbs' }), /^Moved “Buy seeds” to Garden › Herbs\.$/)
   // Seven hold "e": only the first five are listed.
   for (const words of ['one', 'two', 'three']) run('add_sticky', { text: `Extra ${words}` })
@@ -112,6 +113,20 @@ test('edit_sticky: new words, title and tags follow; Undo brings the old words b
   assert.equal(note('Call Jordan'), undefined)
 })
 
+test('edit_sticky: [[links]] to its old title follow the new one, and Undo puts them back', async () => {
+  const { run, note, idOf, undoes, doc } = await garden()
+  const id = idOf(run('add_sticky', { text: 'Seed list\nCarrots' }))
+  run('add_sticky', { text: 'See [[Seed list]] and [[seed list|the list]] before [[Other]]' })
+  const linking = () => doc().notes.find((item) => item.markdown.startsWith('See '))
+  undoes('edit_sticky', { sticky: id, text: 'Seeds to buy\nCarrots' })
+  run('edit_sticky', { sticky: id, text: 'Seeds to buy\nCarrots' })
+  assert.equal(linking().markdown, 'See [[Seeds to buy]] and [[Seeds to buy|the list]] before [[Other]]')
+  assert.equal(note('Seeds to buy\nCarrots').title, 'Seeds to buy')
+  // The same title in other words links nowhere new.
+  run('edit_sticky', { sticky: id, text: 'Seeds to buy\nCarrots, peas' })
+  assert.equal(linking().markdown, 'See [[Seeds to buy]] and [[Seeds to buy|the list]] before [[Other]]')
+})
+
 test('move_sticky files into a topic or branch at the end, or back to Unsorted; Undo moves it back', async () => {
   const { run, idOf, undoes, doc } = await garden()
   const id = idOf(run('add_sticky', { text: 'Mulch the beds' }))
@@ -130,7 +145,7 @@ test('move_sticky files into a topic or branch at the end, or back to Unsorted; 
   assert.equal(run('move_sticky', { sticky: id }), '“Mulch the beds” is already in Unsorted.')
   assert.throws(() => run('move_sticky', { sticky: id, node: 'Gardn' }), /no topic called “Gardn”/)
   assert.throws(() => run('move_sticky', { sticky: id, node: 'Garden', branch: 'Roses' }), /no branch called “Roses”\. Its branches are: Beds, Herbs\./)
-  assert.throws(() => run('move_sticky', { sticky: id, branch: 'Beds' }), /Say which node/)
+  assert.throws(() => run('move_sticky', { sticky: id, branch: 'Beds' }), /Say which topic the branch is in/)
 })
 
 test('move_sticky: a sticky set down on the canvas lets go of its spot, and Undo gives it back', () => {
@@ -200,8 +215,12 @@ test('add_event: a time lasts an hour, a day the whole day; kept in order of sta
   assert.deepEqual(doc().calendar.events.find((event) => event.id === idOf(dentist)), { id: idOf(dentist), title: 'Dentist', start: local(2026, 10, 9, 14, 30), end: local(2026, 10, 9, 15, 30), notes: '' })
   assert.match(run('add_event', { title: 'Market', start: '2026-10-08', notes: 'Bring bags' }), /2026-10-08, all day/)
   assert.match(run('add_event', { title: 'Trip', start: '2026-10-10T09:00', end: '2026-10-11T17:00' }), /2026-10-10 09:00–2026-10-11 17:00/)
-  assert.match(run('add_event', { title: 'Fair', start: '2026-10-12', end: '2026-10-13' }), /2026-10-12 00:00–2026-10-13 23:59/)
-  assert.deepEqual(doc().calendar.events.map((event) => event.title), ['Market', 'Dentist', 'Trip', 'Fair'], 'in order of start')
+  assert.match(run('add_event', { title: 'Fair', start: '2026-10-12', end: '2026-10-13' }), /2026-10-12 to 2026-10-13, all day/)
+  assert.match(run('add_event', { title: 'Late', start: '2026-10-14', end: '2026-10-14T18:00' }), /2026-10-14 00:00–18:00/)
+  // A whole day is marked so, for the Calendar room's "All day".
+  assert.deepEqual(doc().calendar.events.map((event) => [event.title, event.allDay]), [['Market', true], ['Dentist', undefined], ['Trip', undefined], ['Fair', true], ['Late', undefined]])
+  assert.match(run('list_events', { from: '2026-10-08', to: '2026-10-08' }), /2026-10-08, all day: Market \(Bring bags\)$/)
+  assert.deepEqual(doc().calendar.events.map((event) => event.title), ['Market', 'Dentist', 'Trip', 'Fair', 'Late'], 'in order of start')
   assert.equal(doc().calendar.events[0].end, local(2026, 10, 8, 23, 59))
   assert.match(undoes('add_event', { title: 'Call', start: '2026-10-09 08:00:00' }), /2026-10-09 08:00–09:00/)
   assert.throws(() => run('add_event', { title: 'x', start: 'next Friday' }), (error) => error instanceof ToolError && /Give the start as YYYY-MM-DDTHH:MM/.test(error.message))
@@ -227,14 +246,15 @@ test('list_events: today through 7 days on, or the days asked for, one line each
   assert.equal(run('list_events', { from: '2030-01-01' }), 'Nothing on OSAT’s calendar from 2030-01-01 to 2030-01-08.')
   assert.throws(() => run('list_events', { from: '2026-10-09', to: '2026-10-01' }), /last day comes before the first/)
   assert.throws(() => run('list_events', { from: 'today' }), /YYYY-MM-DD/)
+  assert.throws(() => run('list_events', { from: '2026-02-30' }), /YYYY-MM-DD/, 'a day that doesn’t exist')
 })
 
 test('find_files: only looks, through the Mac app’s own search', async () => {
   const doc = storeCore.createEmptyDoc()
   assert.throws(() => runTool('find_files', { query: 'taxes' }, { doc, now: NOW, makeId }), (error) => error instanceof ToolError && error.message === 'Finding files works in the Mac app.')
   const asked = []
-  const findFiles = async (query) => {
-    asked.push(query)
+  const findFiles = async (query, limit) => {
+    asked.push([query, limit])
     if (query === 'nothing') return []
     return Array.from({ length: 12 }, (_, i) => ({ name: `Taxes ${2014 + i}.pdf`, where: 'Documents › Taxes', kind: 'PDF', modifiedAt: i === 0 ? undefined : local(2026, 4, 15, 12) }))
   }
@@ -242,9 +262,10 @@ test('find_files: only looks, through the Mac app’s own search', async () => {
   assert.ok(result instanceof Promise)
   const { text, ops } = await result
   assert.equal(ops, undefined)
-  assert.equal(text, '12 files for “taxes pdf”:\n- Taxes 2014.pdf (PDF) in Documents › Taxes\n- Taxes 2015.pdf (PDF) in Documents › Taxes, changed 2026-04-15\n\n…and 10 more.')
-  assert.deepEqual(asked, ['taxes pdf'])
-  assert.match((await runTool('find_files', { query: 'taxes' }, { doc, findFiles })).text, /^12 files[^]*\n\n…and 2 more\.$/, '10 unless asked')
+  assert.equal(text, 'The closest 2 files for “taxes pdf”:\n- Taxes 2014.pdf (PDF) in Documents › Taxes\n- Taxes 2015.pdf (PDF) in Documents › Taxes, changed 2026-04-15\n\nThere are more. Use more words, or ask for more (up to 50).')
+  assert.deepEqual(asked, [['taxes pdf', 3]], 'one more than it shows, to know if there are more')
+  assert.match((await runTool('find_files', { query: 'taxes' }, { doc, findFiles })).text, /^The closest 10 files[^]*\n\nThere are more\./, '10 unless asked')
+  assert.match((await runTool('find_files', { query: 'taxes', limit: 30 }, { doc, findFiles })).text, /^12 files for “taxes”:\n(- .*\n){11}- [^\n]*$/, 'all of them, said as all')
   assert.equal((await runTool('find_files', { query: 'nothing' }, { doc, findFiles })).text, 'No files match “nothing”.')
   await assert.rejects(runTool('find_files', {}, { doc, findFiles }), /Say what to look for/)
 })

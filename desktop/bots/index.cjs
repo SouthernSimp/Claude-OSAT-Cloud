@@ -33,7 +33,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   const core = await sharedModule('node-file.mjs')
   const providers = await sharedModule('providers.mjs')
   const tools = await sharedModule('connector-tools.mjs')
-  const { applyOps } = await sharedModule('store-core.mjs')
+  const { applyOps, same } = await sharedModule('store-core.mjs')
   const settings = createSettings({ file: path.join(dataDir, 'bots.json'), clean: providers.cleanBotSettings })
   await settings.load()
   const cloud = createCloud({ core: providers, settings, keychain, offline })
@@ -71,13 +71,15 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   const newKey = () => randomBytes(24).toString('base64url')
   const keys = new Map() // app id → its key, read from the Keychain once
   let keysRead = null
-  let removed = null // the last app removed, with its key, so Undo can put it back
+  let removed = null // the last app removed, with its key and place, so Undo can put it back until the next change
   let connectorPort = 0
   let connectorError = ''
-  let recent = [] // what apps did through it lately, each with its Undo: { at, text, inverse }
+  let recent = [] // what apps did through it lately, each with its Undo: { at, text, inverse, left }
   const apps = () => settings.get().connector.apps
   const saveApps = (list) => settings.save({ connector: { ...settings.get().connector, apps: list } })
   const lowerFirst = (text) => text.charAt(0).toLowerCase() + text.slice(1)
+  // A record in a collection such as 'notes' or 'calendar.events'.
+  const recordIn = (doc, { c, id }) => [].concat(c.split('.').reduce((node, key) => node?.[key], doc) || []).find((item) => item?.id === id)
 
   // Used a moment ago: saved at most once a minute per app.
   function used(app) {
@@ -88,14 +90,19 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
 
   /* One tool run for an app: its changes go through the store in one commit, marked with the app's
      name; what undoes them is kept for Undo. The connector calls it, and so do OSAT's own features
-     (webhooks, as the app "Webhook"). Each Undo is told apart by its time, so no two share one. */
+     (webhooks, as the app "Webhook"). Each Undo is told apart by its time, so no two share one.
+     Reading the workspace, running the tool and committing happen with no wait in between, so the
+     calls of one batch each see the one before (only find_files waits, and it changes nothing). */
   async function runForApp(name, args, app) {
-    const result = await tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles })
+    const result = tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles })
+    if (typeof result?.then === 'function') return { text: (await result).text }
     if (result.ops?.length) {
-      const { inverse } = applyOps(store.load().doc, result.ops)
+      const { doc, inverse } = applyOps(store.load().doc, result.ops)
       store.commit(client, result.ops)
+      // Each record as this change left it: Undo only goes ahead while they are still so.
+      const left = result.ops.map((op) => ({ c: op.c, id: op.id || op.v?.id })).map((item) => ({ ...item, record: recordIn(doc, item) }))
       const at = new Date(Math.max(Date.now(), recent.length ? Date.parse(recent[0].at) + 1 : 0)).toISOString()
-      recent = [{ at, text: `${app.name} ${lowerFirst(result.text.replace(/ \((?:note|folder|event)-[^)]+\)/g, ''))}`, inverse }, ...recent].slice(0, 5)
+      recent = [{ at, text: `${app.name} ${lowerFirst(result.text.replace(/ \((?:note|folder|event)-[^)]+\)/g, ''))}`, inverse, left }, ...recent].slice(0, 5)
       changed()
     }
     return { text: result.text }
@@ -173,13 +180,14 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     if (connectorPort !== settings.get().connector.port) await settings.save({ connector: { ...settings.get().connector, port: connectorPort } })
   }
 
-  /* For OSAT's own features (Siri and Shortcuts, webhooks): the key of the app with this exact
-     name, made the first time with `access`. Never through IPC: the key stays in main. */
+  /* For OSAT's own features (Siri and Shortcuts, webhooks): the key of the app with this name (any
+     case, as Add an app reads names), made the first time with `access`. Never through IPC: the
+     key stays in main. */
   async function appKey(name, access) {
     await readKeys()
     const wanted = providers.cleanAppName(name)
     if (!wanted) throw new Error('An app needs a name.')
-    const app = apps().find((item) => item.name === wanted) || await makeApp(wanted, access)
+    const app = apps().find((item) => item.name.toLowerCase() === wanted.toLowerCase()) || await makeApp(wanted, access)
     changed()
     return { id: app.id, key: keys.get(app.id) }
   }
@@ -201,6 +209,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     watch?.stop()
     connector.stop()
     hooks.stop()
+    shortcuts.stop()
     askApps.closeAll()
     watch = null
   }
@@ -245,11 +254,13 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     const wanted = providers.cleanAppName(name)
     if (!wanted) throw new Error('Give the app a name, like Claude Code.')
     if (apps().some((app) => app.name.toLowerCase() === wanted.toLowerCase())) throw new Error(`“${wanted}” is already here. Copy its setup below, or give this one another name.`)
+    removed = null
     await makeApp(wanted, access)
     return connectorStatus()
   }), { from: 'app' })
   handle('bots:app-access', plain(async (id, access) => {
     appOrSay(id)
+    removed = null
     await saveApps(apps().map((app) => (app.id === id ? { ...app, access: access === 'write' ? 'write' : 'read' } : app)))
     return connectorStatus()
   }), { from: 'app' })
@@ -257,7 +268,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   handle('bots:app-remove', plain(async (id) => {
     await readKeys()
     const app = appOrSay(id)
-    removed = { app, key: keys.get(id) }
+    removed = { app, key: keys.get(id), at: apps().indexOf(app) }
     keys.delete(id)
     await saveApps(apps().filter((item) => item.id !== id))
     await keychain.remove(keyAccount(id))
@@ -265,32 +276,41 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   }), { from: 'app' })
   handle('bots:app-undo-remove', plain(async () => {
     if (!removed) throw new Error('There’s nothing to put back.')
-    const { app, key } = removed
+    const { app, key, at } = removed
+    if (apps().some((item) => item.name.toLowerCase() === app.name.toLowerCase())) throw new Error(`There is another “${app.name}” now, so the old one can’t come back.`)
     await keychain.set(keyAccount(app.id), key)
     keys.set(app.id, key)
-    await saveApps([...apps().filter((item) => item.id !== app.id), app])
+    const list = apps().filter((item) => item.id !== app.id)
+    await saveApps([...list.slice(0, at), app, ...list.slice(at)])
     removed = null
     return connectorStatus()
   }), { from: 'app' })
   // The old key stops working at once; the app needs its setup again.
   handle('bots:app-reset', plain(async (id) => {
     appOrSay(id)
+    removed = null
     const key = newKey()
     await keychain.set(keyAccount(id), key)
     keys.set(id, key)
     return connectorStatus()
   }), { from: 'app' })
   handle('bots:copy-setup', plain((which, id) => {
-    appOrSay(id)
+    const app = appOrSay(id)
     if (!connector.running() || !keys.get(id)) throw new Error('Turn the connector on first.')
-    clipboard.writeText(tools.connectorSetup(String(which), { url: connectorUrl(), key: keys.get(id) }))
+    clipboard.writeText(tools.connectorSetup(String(which), { url: connectorUrl(), key: keys.get(id), write: app.access === 'write' }))
     return true
   }), { from: 'app' })
+  // Only while nothing has changed it since: Undo here would otherwise wipe out the newer change.
   handle('bots:undo-connector', plain((at) => {
     const done = recent.find((item) => item.at === at)
     if (!done) throw new Error('That can’t be undone any more.')
-    store.commit(client, done.inverse)
     recent = recent.filter((item) => item !== done)
+    const doc = store.load().doc
+    if (done.left.some((item) => !same(item.record, recordIn(doc, item)))) {
+      changed()
+      throw new Error('That has changed in OSAT since, so it can’t be undone from here. Change it in OSAT instead.')
+    }
+    store.commit(client, done.inverse)
     return true
   }), { from: 'app' })
 

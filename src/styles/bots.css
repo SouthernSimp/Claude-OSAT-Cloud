@@ -29,11 +29,12 @@
 /* Connect a provider: pick it, paste the key. */
 .bots-connect { display: grid; gap: 10px; margin-top: 14px; }
 .bots-connect label { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 10px; align-items: center; font-size: var(--t-sm); color: var(--muted); }
-.bots-connect input, .bots-connect select { min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-md); color: var(--ink); background: var(--surface); font: inherit; font-size: var(--t-sm); }
+.bots-connect input, .bots-connect select, .settings .connector-add input { min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-md); color: var(--ink); background: var(--surface); font: inherit; font-size: var(--t-sm); }
 .bots-connect .bots-key input { font-family: var(--font-mono); }
 .bots-connect .button-row { margin-top: 4px; }
 .bots-providers { display: grid; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
 .bots-providers li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
+.bots-providers.bots-shortcuts li { grid-template-columns: 16px minmax(0, 1fr) auto; } /* one button a row (views/bots/ShortcutsCard.jsx) */
 .bots-providers li > svg { width: 15px; height: 15px; color: var(--faint); }
 .bots-providers span { display: grid; gap: 2px; min-width: 0; }
 .bots-providers b { color: var(--ink); font-weight: 600; }
@@ -41,7 +42,7 @@
 
 @container room (max-width: 560px) {
   .bots-connect label { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .bots-providers li { grid-template-columns: 16px minmax(0, 1fr); }
+  .bots-providers li, .bots-providers.bots-shortcuts li { grid-template-columns: 16px minmax(0, 1fr); }
   .bots-providers li > button { grid-column: 2; justify-self: start; }
 }
 

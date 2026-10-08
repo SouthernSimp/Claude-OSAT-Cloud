@@ -2,7 +2,8 @@
      out   each moment he ticked (a sticky added or filed, a topic added, the journal written) is
            sent as JSON to the addresses he gave, one after another, through the main process's
            fetch (so Offline holds it). Offline, up to 100 wait in memory and go when he is back
-           online; a network error or a 5xx is tried once more after 30 s, then said calmly.
+           online; a network error, a 5xx or "slow down" (429) is tried once more after 30 s, then
+           said calmly. Words still being written (the journal, a note begun in Notes) go a minute on.
      in    "Let services add stickies": an ntfy topic with a random name. Services send words to
            it; OSAT reads it every minute while online, and each message becomes a sticky in
            Unsorted (source Webhook). The Mac never listens to the internet.
@@ -14,7 +15,7 @@ const { createSettings } = require('./settings.cjs')
 const MAX_WAITING = 100
 const RETRY_MS = 30 * 1000
 const POLL_MS = 60 * 1000
-const JOURNAL_MS = 60 * 1000
+const SETTLE_MS = 60 * 1000
 const TIMEOUT_MS = 15 * 1000
 
 function createWebhooks({
@@ -37,6 +38,7 @@ function createWebhooks({
   let wasOffline = offline()
   let running = false
   const journal = new Map() // date → { timer, line }: at most one send a minute per day
+  const typing = new Map() // note id → timer: a note begun in Notes goes once its words have settled
   const retries = new Set()
 
   const iso = () => new Date(now()).toISOString()
@@ -75,8 +77,9 @@ function createWebhooks({
       })
       response.body?.cancel().catch(() => {})
       if (response.ok) return done(id, { ok: true, text: '' })
-      if (response.status < 500) return done(id, { ok: false, text: `${hook.name} answered ${response.status}. Check the address.` })
-      problem = `${hook.name} answered ${response.status}`
+      if (response.status === 429) problem = `${hook.name} asked OSAT to slow down`
+      else if (response.status < 500) return done(id, { ok: false, text: `${hook.name} answered ${response.status}. Check the address.` })
+      else problem = `${hook.name} answered ${response.status}`
     } catch (error) {
       if (error.code === 'OFFLINE' || offline()) return wait(id, body)
       problem = `${hook.name} couldn’t be reached`
@@ -112,6 +115,16 @@ function createWebhooks({
     if (body) for (const hook of hooks) queue(hook.id, body)
   }
 
+  /* A note begun empty in Notes is still being written when its first words arrive: it goes out a
+     minute on, with the words it has by then. */
+  function typedSoon(id) {
+    if (typing.has(id)) return
+    typing.set(id, setTimer(() => {
+      typing.delete(id)
+      send({ event: 'sticky.added', id }, store.load().doc)
+    }, SETTLE_MS))
+  }
+
   /* The journal changes with every few letters: its newest line goes out a minute after the
      first change, and only when it is new. */
   function journalSoon(date) {
@@ -125,7 +138,7 @@ function createWebhooks({
       if (!body || body.journal.line === day.line) return
       day.line = body.journal.line
       for (const hook of settings.get().hooks) if (hook.on && hook.events.includes('journal.written')) queue(hook.id, body)
-    }, JOURNAL_MS)
+    }, SETTLE_MS)
   }
 
   function onCommit(from, ops) {
@@ -135,6 +148,7 @@ function createWebhooks({
     if (from === 'replace' || !settings.get().hooks.some((hook) => hook.on && hook.events.length)) return
     for (const moment of model.momentsOf(before, seen, ops, { now: now() })) {
       if (moment.event === 'journal.written') journalSoon(moment.date)
+      else if (moment.typed) typedSoon(moment.id)
       else send(moment, seen)
     }
   }
@@ -160,7 +174,7 @@ function createWebhooks({
       const response = await fetch(model.ntfyPollUrl(inbox), { headers: { 'user-agent': 'OSAT' }, signal: AbortSignal.timeout(TIMEOUT_MS) })
       if (!response.ok) {
         response.body?.cancel().catch(() => {})
-        throw new Error(`it answered ${response.status}`)
+        throw Object.assign(new Error(`it answered ${response.status}`), { status: response.status })
       }
       const { texts, last } = model.readNtfy(await response.text(), { after: inbox.after })
       // Reset or turned off meanwhile: nothing from the old address counts.
@@ -170,7 +184,8 @@ function createWebhooks({
       if (last) await settings.save({ inbox: { ...current, since: last, ...(texts.length ? { lastAt: iso() } : {}) } })
       inboxError = ''
     } catch (error) {
-      if (error.code !== 'OFFLINE' && !offline()) inboxError = `OSAT couldn’t check ${host(inbox.server)} (${error.message}). It tries again in a minute.`
+      // A status says something; fetch's own words ("fetch failed") don't.
+      if (error.code !== 'OFFLINE' && !offline()) inboxError = error.status ? `OSAT couldn’t check ${host(inbox.server)} (it answered ${error.status}). It tries again in a minute.` : `OSAT couldn’t reach ${host(inbox.server)}. It tries again in a minute.`
     } finally {
       changed()
     }
@@ -182,9 +197,11 @@ function createWebhooks({
     return { ...settings.get().inbox, topic: newTopic(), since: String(seconds), after: seconds, ...patch }
   }
 
+  /* On again with the same address: what services sent while it was off isn't taken. */
   async function inboxOn() {
     const inbox = settings.get().inbox
-    await settings.save({ inbox: inbox.topic ? { ...inbox, on: true } : freshInbox({ on: true }) })
+    const seconds = Math.floor(now() / 1000)
+    await settings.save({ inbox: inbox.topic ? { ...inbox, on: true, since: String(seconds), after: seconds } : freshInbox({ on: true }) })
     inboxError = ''
     pollSoon(0)
     return status()
@@ -208,6 +225,7 @@ function createWebhooks({
 
   async function inboxServer(value) {
     const server = value ? model.ntfyServer(value) : model.NTFY_SERVER
+    if (server === settings.get().inbox.server) return status()
     const seconds = Math.floor(now() / 1000)
     await settings.save({ inbox: { ...settings.get().inbox, server, since: String(seconds), after: seconds } })
     inboxError = ''
@@ -217,10 +235,11 @@ function createWebhooks({
 
   /* ---- out: the addresses ---- */
 
-  async function add({ url, name, events } = {}) {
+  // `on` is false only when Undo puts back an address that was switched off.
+  async function add({ url, name, events, on } = {}) {
     const address = model.webhookAddress(url)
     if (settings.get().hooks.length >= model.MAX_HOOKS) throw new Error(`OSAT keeps up to ${model.MAX_HOOKS} addresses. Remove one first.`)
-    const hook = { id: `hook-${randomUUID()}`, name: String(name || '').trim().slice(0, 40) || model.hookName(address), url: address, on: true, events: Array.isArray(events) ? events : [] }
+    const hook = { id: `hook-${randomUUID()}`, name: String(name || '').trim().slice(0, 40) || model.hookName(address), url: address, on: on !== false, events: Array.isArray(events) ? events : [] }
     await settings.save({ hooks: [...settings.get().hooks, hook] })
     changed()
     return status()
@@ -290,6 +309,8 @@ function createWebhooks({
     retries.clear()
     for (const day of journal.values()) clearTimer(day.timer)
     journal.clear()
+    for (const timer of typing.values()) clearTimer(timer)
+    typing.clear()
   }
 
   return {
