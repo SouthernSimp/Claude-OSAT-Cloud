@@ -3,7 +3,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
-const { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, screen, session, shell, systemPreferences, utilityProcess } = require('electron')
+const { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, powerMonitor, screen, session, shell, systemPreferences, utilityProcess } = require('electron')
 const { createUnder, guardFetch, isLocal, refusal } = require('./under.cjs')
 
 /* Offline (see "Offline" below). Two locks, set before any of OSAT's own modules load:
@@ -36,6 +36,7 @@ const { createPhoneBridge } = require('./phone.cjs')
 const { watchFolder } = require('./folder-watch.cjs')
 const { createBots } = require('./bots/index.cjs')
 const { createAgent } = require('./agent.cjs')
+const { createBrief } = require('./brief.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -232,6 +233,7 @@ function showDesk() {
   }
   window.focus()
   window.webContents.send('desk:shown')
+  brief?.check()
   return undefined
 }
 
@@ -1113,6 +1115,26 @@ async function registerAgent() {
   })
   // The connector's "ask" (Siri, Shortcuts, Claude): read-only, the first answering model.
   bots.setAsk((question) => agent.answer(question))
+  return agent
+}
+
+/* ---- The morning brief: a short plan for the day atop today's journal (desktop/brief.cjs, Phase 49) ---- */
+
+let brief = null
+async function registerBrief(agent, macCalendar) {
+  brief = await createBrief({
+    store,
+    sharedModule,
+    agent,
+    dataDir: app.getPath('userData'),
+    models: answeringModels,
+    handle,
+    fail,
+    offline: () => under.on,
+    macToday: macCalendar.today,
+    onWake: (check) => powerMonitor.on('resume', check),
+  })
+  brief.start()
 }
 
 /* ---- Scans: the folder a scanner saves to; each new scan becomes a node (scans.cjs) ---- */
@@ -1341,8 +1363,8 @@ app.whenReady().then(async () => {
   await registerScans()
   await registerLauncher()
   await registerBots()
-  await registerAgent()
-  createMacCalendar({ handle, fail })
+  const agent = await registerAgent()
+  await registerBrief(agent, createMacCalendar({ handle, fail }))
   registerDesk()
   registerAsk()
   createWindow()
@@ -1371,6 +1393,7 @@ app.on('will-quit', () => {
   ai?.dispose()
   stopPhone()
   bots?.stop()
+  brief?.stop()
   files?.stop()
   launcher?.stop()
 })

@@ -87,12 +87,13 @@ async function createAgent({ store, sharedModule, chat, bots, findFiles, ipcMain
 
   /* One question, acted on. Never throws once something may have changed: the steps and the
      Undo come back with the error, so the window can still offer them. */
-  async function act({ model, messages, readOnly = false, onEvent = () => {}, confirm, signal }) {
+  async function act({ model, messages, readOnly = false, use = () => true, onEvent = () => {}, confirm, signal }) {
     const changes = []
     const shown = new Map()
     // A cloud model never learns what files are on this Mac (Ask promises that copies and files stay here).
     const cloud = model.startsWith('cloud:')
-    const all = [...ownTools(changes), ...await appTools()].filter((tool) => (!readOnly || tool.readOnly) && !(cloud && tool.name === 'find_files'))
+    // `use` narrows them further (the morning brief leaves out files, and other apps while offline).
+    const all = [...ownTools(changes), ...await appTools()].filter((tool) => (!readOnly || tool.readOnly) && !(cloud && tool.name === 'find_files') && use(tool))
     // Only the built-in model takes a grammar; the window never sends a schema (main's chatWith passes it on).
     const ask = (convo, { schema }) => chat({ model, messages: convo, ...(model.startsWith('osat:') ? { schema } : {}) }, () => {}, signal)
     let answer = ''

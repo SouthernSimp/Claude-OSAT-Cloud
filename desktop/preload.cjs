@@ -97,6 +97,15 @@ contextBridge.exposeInMainWorld('osatAgent', Object.freeze({
   apps: () => ipcRenderer.invoke('agent:apps'),
 }))
 
+// The morning brief (desktop/brief.cjs): Settings → AI and the desk's one line.
+contextBridge.exposeInMainWorld('osatBrief', Object.freeze({
+  status: () => ipcRenderer.invoke('brief:status'),
+  set: (patch) => ipcRenderer.invoke('brief:set', patch),
+  write: () => ipcRenderer.invoke('brief:write'),
+  seen: () => ipcRenderer.invoke('brief:seen'),
+  undo: () => ipcRenderer.invoke('brief:undo'),
+}))
+
 const listen = (channel, listener) => {
   const handler = (_event, ...args) => listener(...args)
   ipcRenderer.on(channel, handler)
