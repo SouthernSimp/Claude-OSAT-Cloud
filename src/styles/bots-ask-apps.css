@@ -1,0 +1,39 @@
+/* ---- Settings → Bots → Apps OSAT can use (views/bots/AskAppsCard.jsx) -----
+   One row per app: its name, where it is, what it can do, on/off, Check and Remove. */
+
+.ask-apps { display: grid; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.ask-apps > li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto auto; gap: 6px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
+.ask-apps > li > svg { align-self: start; width: 15px; height: 15px; margin-top: 3px; color: var(--faint); }
+.ask-app-name { display: grid; gap: 2px; min-width: 0; justify-items: start; }
+.ask-app-name b { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.ask-app-name small { color: var(--muted); font-size: var(--t-xs); }
+.settings .ask-app-name small.ask-app-error { color: var(--ink); }
+.ask-apps code,
+.ask-apps-import code { display: block; max-width: 100%; color: var(--muted); font: 11px/1.45 var(--font-mono); overflow-wrap: anywhere; }
+.settings .ask-app-count { padding: 0; font-size: var(--t-xs); }
+.ask-app-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; }
+.ask-app-actions { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: flex-end; }
+.ask-app-tools { display: flex; flex-wrap: wrap; grid-column: 2 / -1; gap: 4px; margin: 2px 0 0; padding: 0; list-style: none; }
+.ask-app-tools li { padding: 2px 8px; border-radius: var(--r-full); color: var(--muted); background: color-mix(in srgb, var(--ink) 5%, transparent); font: 11px/1.5 var(--font-mono); }
+.settings .ask-apps-removed .text-button { margin-left: auto; }
+
+/* Add an app, and what Claude Desktop has. */
+.ask-apps-form { display: grid; gap: 10px; margin-top: 14px; }
+.ask-apps-form .segmented { justify-self: start; }
+.ask-apps-form label { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 10px; align-items: center; font-size: var(--t-sm); color: var(--muted); }
+.settings .ask-apps-form input { min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-md); color: var(--ink); background: var(--surface); font: inherit; font-size: var(--t-sm); }
+.settings .ask-apps-form input.ask-apps-command,
+.settings .ask-apps-form input[type="password"] { font-family: var(--font-mono); }
+.ask-apps-import { display: grid; gap: 8px; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.ask-apps-import strong { color: var(--ink); font-weight: 650; }
+.ask-apps-import ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ask-apps-import label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; font-size: var(--t-sm); cursor: pointer; }
+.ask-apps-import label input { margin-top: 3px; }
+.ask-apps-import label b { color: var(--ink); font-weight: 600; }
+.ask-apps-import label small { color: var(--muted); font-size: var(--t-xs); }
+
+@container room (max-width: 760px) {
+  .ask-apps > li { grid-template-columns: 16px minmax(0, 1fr) auto; }
+  .ask-app-actions { grid-column: 2 / -1; justify-content: flex-start; }
+  .ask-apps-form label { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}

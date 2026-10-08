@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
+import net from 'node:net'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
@@ -8,6 +9,9 @@ import test from 'node:test'
 const require = createRequire(import.meta.url)
 const { createAskApps, splitCommandLine, headerFrom, webAddress, WAITS } = require('../desktop/bots/ask-apps.cjs')
 const { createKeychain } = require('../desktop/bots/keychain.cjs')
+const { createBots } = require('../desktop/bots/index.cjs')
+const { createStore } = require('../desktop/store/index.cjs')
+const storeCore = await import('../shared/store-core.mjs')
 
 const TOOLS = [
   { name: 'list_events', description: 'Lists events.', inputSchema: { type: 'object' }, annotations: { readOnlyHint: true } },
@@ -92,6 +96,8 @@ test('add a command line: its env goes to the Keychain, and the line is shown wi
   assert.equal(row.name, 'Notion')
   assert.equal(row.where, 'NOTION_TOKEN=•••• npx -y @notionhq/notion-mcp-server')
   assert.deepEqual(started, [{ kind: 'command', command: 'npx', args: ['-y', '@notionhq/notion-mcp-server'], env: { NOTION_TOKEN: 'ntn_secret' } }])
+  await apps.add({ kind: 'command', command: 'A=1 run-it', env: { B: '2' } })
+  assert.deepEqual(started[1].env, { A: '1', B: '2' }, 'env in front of the line and env given both count')
   assert.ok(!(await onDisk()).includes('ntn_secret'))
   assert.ok((await keychain.get('ask-app-app1')).length > 0)
   assert.equal((await fs.stat(file)).mode & 0o777, 0o600)
@@ -100,7 +106,7 @@ test('add a command line: its env goes to the Keychain, and the line is shown wi
   // Read back by a new OSAT: the same list, nothing running yet.
   const again = createAskApps({ file, keychain })
   await again.load()
-  assert.deepEqual(again.status().apps.map((app) => [app.name, app.on, app.tools, app.where]), [['Notion', true, 2, 'NOTION_TOKEN=•••• npx -y @notionhq/notion-mcp-server']])
+  assert.deepEqual(again.status().apps.map((app) => [app.name, app.on, app.tools, app.where]), [['Notion', true, 2, 'NOTION_TOKEN=•••• npx -y @notionhq/notion-mcp-server'], ['run-it', true, 2, 'A=•••• B=•••• run-it']])
   assert.deepEqual(again.running(), [])
 })
 
@@ -202,6 +208,7 @@ test('offline: nothing starts, using one says it waits, and going offline closes
   assert.deepEqual([added.on, added.tools], [true, null], 'added offline, it is checked back online')
   assert.equal(started.length, 1, 'nothing started while offline')
   world.offline = false
+  assert.equal(apps.status().apps[0].error, '', 'back online, it no longer says it waits')
   await apps.call('app1', 'list_events')
   assert.equal(started.length, 2)
 })
@@ -221,4 +228,48 @@ test('a connection closes after 10 idle minutes; using it again starts the clock
   assert.equal(closed.length, 1)
   await apps.call('app1', 'list_events')
   assert.equal(started.length, 2, 'the next use starts it again')
+})
+
+const freePort = () => new Promise((resolve) => {
+  const probe = net.createServer().listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)) })
+})
+
+/* Bots as main wires it (temp folder, a Keychain in memory), with OSAT's own connector as the app:
+   Ask's side (createBots().askApps) lists only what an app that may only look can do, and calls it. */
+test('wired into Bots: Ask lists and uses an app that is on, here OSAT’s own connector', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'osat-ask-apps-bots-'))
+  await fs.writeFile(path.join(dir, 'bots.json'), JSON.stringify({ connector: { port: await freePort() } }))
+  const store = await createStore({ dir: path.join(dir, 'store'), core: storeCore, writeDelay: 0, maxDelay: 0 })
+  const handlers = {}
+  const bots = await createBots({
+    dataDir: dir,
+    nodesDir: path.join(dir, 'nodes'),
+    service: 'OSAT-Test',
+    store,
+    sharedModule: (name) => import(`../shared/${name}`),
+    handle: (channel, work, options) => { handlers[channel] = { work, from: options?.from } },
+    fail: (message) => { throw new Error(message) },
+    send: () => {},
+    shell: {},
+    clipboard: { writeText: () => {} },
+    keychain: createKeychain({ platform: 'memory' }),
+  })
+  const ipc = (channel, ...args) => handlers[channel].work(...args)
+  try {
+    assert.deepEqual(['status', 'add', 'remove', 'undo-remove', 'toggle', 'check', 'claude-config', 'import', 'tools', 'call'].map((name) => handlers[`askapps:${name}`].from),
+      ['app', 'app', 'app', 'app', 'app', 'app', 'app', 'app', 'any', 'any'], 'the quick bar’s Ask may list and call; only the desk manages')
+    await ipc('bots:connector-on')
+    const { key } = await bots.appKey('Ask test', 'read')
+    const row = await ipc('askapps:add', { kind: 'http', name: 'Myself', url: ipc('bots:status').connector.url, header: key })
+    assert.deepEqual([row.on, row.error, row.tools > 0], [true, '', true])
+    assert.deepEqual(ipc('bots:status').askApps.map((app) => app.name), ['Myself'])
+    const tools = await bots.askApps.tools()
+    assert.ok(tools.length && tools.every((tool) => tool.app === row.id && tool.appName === 'Myself' && tool.readOnly), 'an app that may only look shows only what looks')
+    assert.ok(tools.some((tool) => tool.name === 'search'))
+    const found = await bots.askApps.call(row.id, 'search', { query: 'nothing like this' })
+    assert.equal(found.isError, false)
+    assert.ok(!(await fs.readFile(path.join(dir, 'ask-apps.json'), 'utf8')).includes(key), 'the key never reaches the file')
+  } finally {
+    bots.stop()
+  }
 })

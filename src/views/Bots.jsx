@@ -4,6 +4,7 @@ import { Check, ClipboardText, Cloud, FolderOpen, Laptop, LockSimple, Plus, Robo
 import { OTHER, PRESETS } from '../../shared/providers.mjs'
 import { useAi } from '../assistant/useAi.js'
 import { formatRelativeTime } from '../lib/ui.js'
+import { AskAppsCard } from './bots/AskAppsCard.jsx'
 import { ConnectorCard } from './bots/ConnectorCard.jsx'
 import '../styles/bots.css'
 
@@ -42,6 +43,7 @@ export function BotsSettings() {
       <DropFolderCard bridge={bridge} nodes={status?.nodes} />
       <ModelCard bridge={bridge} cloud={status?.cloud} offline={status?.offline} />
       <CloudCard bridge={bridge} cloud={status?.cloud} />
+      <AskAppsCard apps={status?.askApps} offline={status?.offline} />
       <ConnectorCard bridge={bridge} connector={status?.connector} />
     </>
   )

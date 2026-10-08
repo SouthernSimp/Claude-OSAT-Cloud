@@ -151,7 +151,8 @@ function createAskApps({
     from: app.from || '',
     tools: app.tools ? app.tools.length : null,
     toolNames: (app.tools || []).map((tool) => tool.name),
-    error: errors.get(app.id) || '',
+    // "It waits until you're back online" no longer holds once OSAT is.
+    error: errors.get(app.id) === WAITS && !offline() ? '' : errors.get(app.id) || '',
     checkedAt: app.checkedAt || null,
   })
 
@@ -241,8 +242,9 @@ function createAskApps({
     } else {
       // A command line as one string, or (imported) the command, its words and its env.
       const given = Array.isArray(input.args)
-        ? { command: String(input.command || '').trim(), args: input.args.map(String), env: strings(input.env) }
+        ? { command: String(input.command || '').trim(), args: input.args.map(String), env: {} }
         : splitCommandLine(input.command)
+      given.env = { ...given.env, ...strings(input.env) }
       if (!given.command || /[\r\n\0]/.test([given.command, ...given.args].join(' '))) throw plain('Write the command that starts it.')
       app.command = given.command
       app.args = given.args.slice(0, 100)
@@ -344,12 +346,12 @@ function createAskApps({
 
   /* ---- for Ask ---- */
 
-  /* What the apps that are on can do; one never checked is checked now. Offline, nothing. */
+  /* What the apps that are on can do; one never checked is checked now. Never throws: an app
+     that fails is left out, its reason on its row. Offline, nothing. */
   async function tools() {
     if (offline()) return []
-    const on = apps.filter((app) => app.on)
-    await Promise.all(on.filter((app) => !app.tools).map((app) => check(app.id)))
-    return on.flatMap((app) => (app.tools || []).map((tool) => ({ app: app.id, appName: app.name, ...tool })))
+    await Promise.all(apps.filter((app) => app.on && !app.tools).map((app) => check(app.id).catch(() => {})))
+    return apps.filter((app) => app.on).flatMap((app) => (app.tools || []).map((tool) => ({ app: app.id, appName: app.name, ...tool })))
   }
 
   async function call(id, name, args) {

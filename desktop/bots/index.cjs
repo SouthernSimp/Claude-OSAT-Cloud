@@ -317,7 +317,10 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     appKey,
     // For Ask in main: what the apps that are on can do (never throws; a failing app is left out
     // and its reason shows in Settings → Bots), and one of them doing it.
-    askApps: { tools: () => askApps.tools(), call: (id, name, args) => askApps.call(String(id), String(name), args) },
+    askApps: {
+      tools: () => askApps.tools().finally(changed),
+      call: (id, name, args) => askApps.call(String(id), String(name), args).finally(changed),
+    },
   }
 }
 
