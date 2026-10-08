@@ -1,0 +1,41 @@
+/* ---- Settings → Bots → Webhooks (views/bots/WebhooksCard.jsx) ----------------
+   The addresses OSAT tells, their moments, and the address services add stickies through.
+   Cards, messages and the setup boxes come from bots.css. */
+
+.hooks-list { display: grid; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.hooks-row { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.hooks-head { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.hooks-head > svg { width: 15px; height: 15px; color: var(--faint); }
+.hooks-head span { display: grid; gap: 2px; min-width: 0; }
+.hooks-head b { color: var(--ink); font-weight: 600; font-size: var(--t-sm); }
+.hooks-head small { overflow: hidden; color: var(--muted); font-size: var(--t-xs); text-overflow: ellipsis; white-space: nowrap; }
+.hooks-foot { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.hooks-foot small { flex: 1 1 200px; min-width: 0; color: var(--muted); font-size: var(--t-xs); }
+.hooks-foot small.is-problem { color: var(--ink); }
+
+/* The moments: four ticks, wrapping as the room narrows. */
+.hooks-moments { display: flex; flex-wrap: wrap; gap: 6px 16px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.hooks-moments legend { float: left; width: 100%; margin-bottom: 4px; padding: 0; color: var(--muted); font-size: var(--t-xs); }
+.hooks-moments label { display: inline-flex; gap: 6px; align-items: center; color: var(--ink); font-size: var(--t-sm); cursor: pointer; }
+.hooks-moments input { margin: 0; accent-color: var(--accent); }
+.hooks-moments:disabled label { color: var(--faint); cursor: default; }
+.hooks-row .hooks-moments { padding-left: 26px; }
+
+/* Add an address. */
+.hooks-add { display: grid; gap: 10px; margin-top: 14px; }
+.hooks-field { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 10px; align-items: center; color: var(--muted); font-size: var(--t-sm); }
+.hooks-add .hooks-moments { padding-left: 100px; }
+.hooks-add .button-row { margin-top: 4px; }
+
+/* Your own ntfy server, folded away. */
+.hooks-server { margin-top: 12px; font-size: var(--t-sm); }
+.hooks-server summary { color: var(--muted); cursor: pointer; }
+.hooks-server form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 8px; }
+
+.settings .bots-message .text-button { margin-left: auto; padding-block: 0; }
+
+@container room (max-width: 560px) {
+  .hooks-field { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .hooks-add .hooks-moments, .hooks-row .hooks-moments { padding-left: 0; }
+  .hooks-server form { grid-template-columns: minmax(0, 1fr); }
+}

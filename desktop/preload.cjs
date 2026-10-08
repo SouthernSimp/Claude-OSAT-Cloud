@@ -198,6 +198,22 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   onStatus: (listener) => listen('bots:status', listener),
 }))
 
+/* Webhooks (Settings → Bots, Phase 46): the addresses OSAT tells when something happens, and
+   the ntfy address services add stickies through (it goes to the clipboard from main). */
+contextBridge.exposeInMainWorld('osatHooks', Object.freeze({
+  status: () => ipcRenderer.invoke('hooks:status'),
+  add: (hook) => ipcRenderer.invoke('hooks:add', hook),
+  change: (id, patch) => ipcRenderer.invoke('hooks:change', id, patch),
+  remove: (id) => ipcRenderer.invoke('hooks:remove', id),
+  test: (id) => ipcRenderer.invoke('hooks:test', id),
+  inboxOn: () => ipcRenderer.invoke('hooks:inbox-on'),
+  inboxOff: () => ipcRenderer.invoke('hooks:inbox-off'),
+  inboxReset: () => ipcRenderer.invoke('hooks:inbox-reset'),
+  inboxServer: (server) => ipcRenderer.invoke('hooks:inbox-server', server),
+  copyAddress: () => ipcRenderer.invoke('hooks:copy-address'),
+  onStatus: (listener) => listen('hooks:status', listener),
+}))
+
 /* Scans: the folder a scanner saves to. The desk takes each sorted scan, imports it and
    says done. */
 contextBridge.exposeInMainWorld('osatScans', Object.freeze({

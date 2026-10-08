@@ -3,6 +3,7 @@
      the drop folder   node files saved in ~/Documents/OSAT Nodes become nodes (drop-folder.cjs)
      cloud models      any provider with a key, next to the AI on this Mac (cloud.cjs)
      the connector     an MCP server on this Mac only, with a key, off until turned on (connector.cjs)
+     webhooks          moments sent to other services, stickies from them through ntfy (webhooks.cjs)
    Every model and privacy setting lives here, so what leaves the Mac is said in one place.
    Main passes in what it owns (the store, IPC, Finder, the clipboard); this wires it up.
    Every change goes through the store, so the windows, Undo and sync see it. */
@@ -14,6 +15,7 @@ const { createConnector } = require('./connector.cjs')
 const { createDropFolder } = require('./drop-folder.cjs')
 const { createKeychain } = require('./keychain.cjs')
 const { createSettings } = require('./settings.cjs')
+const { createWebhooks } = require('./webhooks.cjs')
 
 /* Where keys are kept. The e2e test runs with a temp HOME, where the real Keychain can't be found
    and macOS pops a dialog, so it sets OSAT_KEYCHAIN=memory. As with OSAT_NODES_DIR, only from source:
@@ -103,12 +105,14 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     }
     watch = watchFolder({ dir: nodesDir, look: drop.look })
     if (settings.get().connector.on) startConnector().catch((error) => console.error('The connector could not start:', error.message)).finally(changed)
+    hooks.start().catch((error) => console.error('Webhooks could not start:', error.message))
     await drop.look()
   }
 
   function stop() {
     watch?.stop()
     connector.stop()
+    hooks.stop()
     watch = null
   }
 
@@ -167,6 +171,35 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     return true
   }))
 
+  /* ---- webhooks (Phase 46): moments out to other services, stickies in through ntfy ---- */
+  const hooks = createWebhooks({
+    file: path.join(dataDir, 'webhooks.json'),
+    model: await sharedModule('webhook-model.mjs'),
+    store,
+    // The main process's fetch, so Offline holds every delivery and every read.
+    fetch: (...args) => globalThis.fetch(...args),
+    offline,
+    addSticky(text, source) {
+      const result = tools.runTool('add_sticky', { text, source }, { doc: store.load().doc, now: new Date().toISOString(), makeId })
+      if (result.ops?.length) store.commit(client, result.ops)
+    },
+    onStatus: (value) => send('hooks:status', value),
+  })
+  handle('hooks:status', () => hooks.status())
+  handle('hooks:add', plain((input) => hooks.add(input)))
+  handle('hooks:change', plain((id, patch) => hooks.change(String(id), patch)))
+  handle('hooks:remove', plain((id) => hooks.remove(String(id))))
+  handle('hooks:test', plain((id) => hooks.test(String(id))))
+  handle('hooks:inbox-on', plain(() => hooks.inboxOn()))
+  handle('hooks:inbox-off', plain(() => hooks.inboxOff()))
+  handle('hooks:inbox-reset', plain(() => hooks.inboxReset()))
+  handle('hooks:inbox-server', plain((server) => hooks.inboxServer(String(server || ''))))
+  handle('hooks:copy-address', plain(() => {
+    if (!hooks.address()) throw new Error('Turn it on first.')
+    clipboard.writeText(hooks.address())
+    return true
+  }))
+
   // Only a provider's own pages (its keys, its usage), in the browser Nate already uses.
   handle('bots:open-page', async (url) => {
     const known = providers.PRESETS.flatMap((preset) => [preset.keys, preset.usage])
@@ -181,7 +214,8 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     start,
     stop,
     status,
-    changed,
+    // Main calls this when Offline changes; the webhooks send what waited and read again.
+    changed: () => { hooks.nudge(); changed() },
     // The chosen cloud model, first in every list of models (Ask, the line).
     models: () => cloud.models(),
     chatStream: (payload, onDelta, signal) => cloud.chatStream(payload, onDelta, signal),
