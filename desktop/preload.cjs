@@ -220,6 +220,22 @@ contextBridge.exposeInMainWorld('osatHooks', Object.freeze({
   onStatus: (listener) => listen('hooks:status', listener),
 }))
 
+/* Apps OSAT can use (Settings → Bots, Phase 48): the MCP servers Claude uses, each off until turned
+   on. Keys and env values go to the Keychain in main; status only says an app has one. Ask (the
+   desk's and the quick bar's) lists what the apps that are on can do and calls them. */
+contextBridge.exposeInMainWorld('osatAskApps', Object.freeze({
+  status: () => ipcRenderer.invoke('askapps:status'),
+  add: (input) => ipcRenderer.invoke('askapps:add', input),
+  remove: (id) => ipcRenderer.invoke('askapps:remove', id),
+  undoRemove: () => ipcRenderer.invoke('askapps:undo-remove'),
+  toggle: (id, on) => ipcRenderer.invoke('askapps:toggle', id, on === true),
+  check: (id) => ipcRenderer.invoke('askapps:check', id),
+  claudeConfig: () => ipcRenderer.invoke('askapps:claude-config'),
+  import: (names) => ipcRenderer.invoke('askapps:import', names),
+  tools: () => ipcRenderer.invoke('askapps:tools'),
+  call: (app, name, args) => ipcRenderer.invoke('askapps:call', app, name, args),
+}))
+
 /* Scans: the folder a scanner saves to. The desk takes each sorted scan, imports it and
    says done. */
 contextBridge.exposeInMainWorld('osatScans', Object.freeze({

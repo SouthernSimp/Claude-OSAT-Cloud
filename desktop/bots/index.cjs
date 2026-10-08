@@ -5,12 +5,14 @@
      the connector     an MCP server on this Mac only, off until turned on (connector.cjs); each app
                        has its own key and may only read or also change (Phase 44)
      webhooks          moments sent to other services, stickies from them through ntfy (webhooks.cjs)
+     apps OSAT uses    the MCP servers Claude uses (Gmail, Notion…), each off until turned on (ask-apps.cjs)
    Every model and privacy setting lives here, so what leaves the Mac is said in one place.
    Main passes in what it owns (the store, IPC, Finder, the clipboard); this wires it up.
    Every change goes through the store, so the windows, Undo and sync see it. */
 const path = require('node:path')
 const { randomBytes, randomUUID } = require('node:crypto')
 const { watchFolder } = require('../folder-watch.cjs')
+const { createAskApps } = require('./ask-apps.cjs')
 const { createCloud } = require('./cloud.cjs')
 const { appWithKey, createConnector } = require('./connector.cjs')
 const { createDropFolder } = require('./drop-folder.cjs')
@@ -35,15 +37,22 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   const settings = createSettings({ file: path.join(dataDir, 'bots.json'), clean: providers.cleanBotSettings })
   await settings.load()
   const cloud = createCloud({ core: providers, settings, keychain, offline })
+  const askApps = createAskApps({ file: path.join(dataDir, 'ask-apps.json'), keychain, offline, version, ownPort: () => settings.get().connector.port || tools.CONNECTOR_PORT })
+  await askApps.load()
   const client = store.connect(() => {})
   const makeId = (prefix) => `${prefix}-${randomUUID()}`
   const status = () => ({
     nodes: drop.status(),
     cloud: cloud.status(),
     connector: connectorStatus(),
+    askApps: askApps.status().apps,
     offline: offline(),
   })
-  const changed = () => send('bots:status', status())
+  const changed = () => {
+    // Main calls this when OSAT goes offline too: every app's connection and command closes then.
+    if (offline()) askApps.closeAll()
+    send('bots:status', status())
+  }
 
   /* A node file's tree becomes a New node (packed when it is only a summary). */
   function take(tree, { name, hash, source = '' }) {
@@ -192,6 +201,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     watch?.stop()
     connector.stop()
     hooks.stop()
+    askApps.closeAll()
     watch = null
   }
 
@@ -330,6 +340,19 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     return true
   }), { from: 'app' })
 
+  /* Apps OSAT can use (ask-apps.cjs): keys and env values go to the Keychain, never back here.
+     Using one waits while offline (under.cjs). Ask in the quick bar lists and calls them too. */
+  handle('askapps:status', () => askApps.status(), { from: 'app' })
+  handle('askapps:add', plain((input) => askApps.add(input && typeof input === 'object' ? input : {})), { from: 'app' })
+  handle('askapps:remove', plain((id) => askApps.remove(String(id))), { from: 'app' })
+  handle('askapps:undo-remove', plain(() => askApps.undoRemove()), { from: 'app' })
+  handle('askapps:toggle', plain((id, on) => askApps.toggle(String(id), on === true)), { from: 'app' })
+  handle('askapps:check', plain((id) => askApps.check(String(id))), { from: 'app' })
+  handle('askapps:claude-config', plain(() => askApps.claudeOffers()), { from: 'app' })
+  handle('askapps:import', plain((names) => askApps.importClaude(Array.isArray(names) ? names : [])), { from: 'app' })
+  handle('askapps:tools', plain(() => askApps.tools()), { from: 'any' })
+  handle('askapps:call', plain((id, name, args) => askApps.call(String(id), String(name), args)), { from: 'any' })
+
   // Only a provider's own pages (its keys, its usage), in the browser Nate already uses.
   handle('bots:open-page', async (url) => {
     const known = providers.PRESETS.flatMap((preset) => [preset.keys, preset.usage])
@@ -350,6 +373,12 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     models: () => cloud.models(),
     chatStream: (payload, onDelta, signal) => cloud.chatStream(payload, onDelta, signal),
     appKey,
+    // For Ask in main: what the apps that are on can do (never throws; a failing app is left out
+    // and its reason shows in Settings → Bots), and one of them doing it.
+    askApps: {
+      tools: () => askApps.tools().finally(changed),
+      call: (id, name, args) => askApps.call(String(id), String(name), args).finally(changed),
+    },
   }
 }
 
