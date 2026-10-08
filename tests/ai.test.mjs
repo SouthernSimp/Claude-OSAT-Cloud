@@ -9,7 +9,7 @@ import test, { after } from 'node:test'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
-const { TIERS, pickTier } = require('../desktop/ai/catalog.cjs')
+const { TIERS, pickTier, recommendFor } = require('../desktop/ai/catalog.cjs')
 const { downloadFile } = require('../desktop/ai/download.cjs')
 const { createAi } = require('../desktop/ai/index.cjs')
 
@@ -25,7 +25,16 @@ test('the recommended size follows the Mac’s memory', () => {
   assert.equal(pickTier(24 * GB).id, 'balanced')
   assert.equal(pickTier(32 * GB).id, 'deep')
   assert.equal(pickTier(64 * GB).id, 'deep')
+  // Of every model: the smartest that fits, the bigger between equals.
+  assert.equal(recommendFor(8 * GB).id, 'qwen35-4b')
+  assert.equal(recommendFor(16 * GB).id, 'qwen35-9b')
+  assert.equal(recommendFor(24 * GB).id, 'gemma4-12b')
+  assert.equal(recommendFor(32 * GB).id, 'deep')
+  assert.equal(recommendFor(64 * GB).id, 'qwen36-35b')
+  assert.equal(recommendFor(4 * GB).id, 'light', 'nothing fits: the smallest starter')
+  assert.equal(new Set(TIERS.map((tier) => tier.id)).size, TIERS.length)
   for (const tier of TIERS) {
+    assert.ok(tier.speed >= 1 && tier.speed <= 5 && tier.smarts >= 1 && tier.smarts <= 5 && tier.best && tier.maker, tier.id)
     assert.match(tier.sha256, /^[0-9a-f]{64}$/)
     assert.match(tier.url, new RegExp(`^https://huggingface\\.co/.+/resolve/[0-9a-f]{40}/${tier.file.replace(/\./g, '\\.')}$`))
   }
@@ -243,7 +252,7 @@ async function pool(options = {}) {
     download: instantDownload, freeMemory: () => 48 * GB, estimate: async () => ({ bytes: 4 * GB }),
     confirmLoad: async (info) => { confirmations.push(info); return info.keepOthers ? 'alongside' : 'replace' },
     confirmUnload: async () => true, ...options })
-  await ai.install(TIERS.map((tier) => tier.id))
+  await ai.install(TIERS.filter((tier) => tier.starter).map((tier) => tier.id))
   await settle(() => ai.status().queued.length === 0)
   return { ai, dir, procs, killed, confirmations }
 }
@@ -252,7 +261,7 @@ test('installing all three is sequential, preserves the default, and never loads
   const { ai, procs } = await pool()
   assert.equal(ai.status().chosen, 'light')
   assert.equal(ai.models().length, 3)
-  assert.deepEqual(ai.status().tiers.map((tier) => tier.state), ['idle', 'idle', 'idle'])
+  assert.deepEqual(ai.status().tiers.filter((tier) => tier.starter).map((tier) => tier.state), ['idle', 'idle', 'idle'])
   await ai.select('deep')
   assert.equal(ai.models()[0].id, 'osat:deep')
   assert.equal(procs.length, 0)
@@ -268,7 +277,7 @@ test('a request routes to its own model; retained models survive switching and i
   assert.equal(await ai.chatStream({ model: 'osat:balanced', messages: [{ role: 'user', content: 'hello' }] }, () => {}, undefined, { interactive: true }), 'balanced')
   assert.equal(ai.status().chosen, 'light')
   await new Promise((resolve) => setTimeout(resolve, 40))
-  assert.deepEqual(ai.status().tiers.map((tier) => tier.state), ['ready', 'ready', 'idle'])
+  assert.deepEqual(ai.status().tiers.filter((tier) => tier.starter).map((tier) => tier.state), ['ready', 'ready', 'idle'])
   assert.deepEqual(killed, [])
   const freed = await ai.unloadAll()
   assert.deepEqual(freed.unloaded, ['light', 'balanced'])

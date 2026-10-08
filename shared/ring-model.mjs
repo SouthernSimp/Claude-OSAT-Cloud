@@ -11,7 +11,7 @@ export const RING_ITEMS = [
   { id: 'sticky', label: 'New sticky' },
   { id: 'chat', label: 'Ask' },
   { id: 'desk', label: 'The desk' },
-  { id: 'sky', label: 'The Sky' },
+  { id: 'sky', label: 'Canvas' },
   { id: 'files', label: 'Files' },
   { id: 'left', label: 'Left half', layout: 'left-half', inDesk: false },
   { id: 'right', label: 'Right half', layout: 'right-half', inDesk: false },

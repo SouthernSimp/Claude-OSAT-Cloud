@@ -19,8 +19,8 @@ export const TOUR = [
   {
     id: 'sky',
     target: '.sky-entry',
-    title: 'The Sky is your map',
-    body: 'Your nodes and branches spread out like a mind map. Click a node to open it, double-click to focus on just that one. ⌘3 opens it from anywhere.',
+    title: 'The canvas is your map',
+    body: 'Your topics and branches spread out like a mind map. Click a topic to open it, double-click to focus on just that one. ⌘3 opens it from anywhere.',
   },
   {
     id: 'tools',

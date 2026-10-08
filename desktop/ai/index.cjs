@@ -6,7 +6,7 @@ const fsp = require('node:fs/promises')
 const path = require('node:path')
 const os = require('node:os')
 const { setTimeout: sleep } = require('node:timers/promises')
-const { TIERS, pickTier, tierById } = require('./catalog.cjs')
+const { TIERS, fits, pickTier, recommendFor, tierById } = require('./catalog.cjs')
 const { downloadFile } = require('./download.cjs')
 
 const IDLE = 10 * 60 * 1000
@@ -35,7 +35,7 @@ function createAi({
   const estimates = new Map()
   const fileFor = (tier) => path.join(dir, tier.file)
   const isReady = (tier) => {
-    if (mock) return true
+    if (mock) return Boolean(tier.starter) // the practice model stands in for the three starter sizes only
     try { return fs.statSync(fileFor(tier)).size === tier.size } catch { return false }
   }
   const stateOf = (id) => engines.get(id)?.state || 'idle'
@@ -51,10 +51,13 @@ function createAi({
 
   function status() {
     return {
-      recommended: pickTier(totalMemory).id, chosen, startup: autoLoad, totalMemory,
+      // `recommended`: the welcome's starter size; `best`: the best of every model for this Mac (Settings → AI).
+      recommended: pickTier(totalMemory).id, best: recommendFor(totalMemory).id, chosen, startup: autoLoad, totalMemory,
       tiers: TIERS.map((tier) => {
         const entry = engines.get(tier.id)
         return { id: tier.id, label: tier.label, model: tier.model, blurb: tier.blurb,
+          starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best,
+          minMemory: tier.minMemory, fits: fits(tier, totalMemory),
           size: tier.size, ready: isReady(tier), state: stateOf(tier.id),
           busy: Boolean(entry && busy(entry)), retained: Boolean(entry?.retained),
           blocked: blocked.has(tier.id), message: entry?.message || '',
@@ -415,7 +418,7 @@ function createAi({
     const ready = TIERS.filter(isReady)
     const preferred = ready.find((tier) => tier.id === chosen) || ready.find((tier) => tier.id === pickTier(totalMemory).id) || ready[0]
     return ready.sort((a, b) => Number(b === preferred) - Number(a === preferred)).map((tier) => ({
-      id: 'osat:' + tier.id, name: mock ? 'Practice model' : tier.model + ' · ' + tier.label,
+      id: 'osat:' + tier.id, name: mock ? 'Practice model' : tier.starter ? tier.model + ' · ' + tier.label : tier.model,
       label: tier.label, runtime: 'osat', offline: true, state: stateOf(tier.id),
       recommended: tier.id === pickTier(totalMemory).id,
     }))

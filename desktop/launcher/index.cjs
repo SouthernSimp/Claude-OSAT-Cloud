@@ -23,6 +23,8 @@ const { createMiddleClick } = require('./middle-click.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
+const { createSystem } = require('./system.cjs')
+const { createSnippets } = require('./snippets.cjs')
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -39,7 +41,8 @@ async function createLauncher({
   // The apps on this Mac (tests hand in a short list).
   apps = createApps(),
 }) {
-  const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs')])
+  const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind, systemModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs'), sharedModule('system-commands.mjs')])
+  const snippetModel = await sharedModule('snippets.mjs')
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -59,6 +62,14 @@ async function createLauncher({
   const trusted = () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(false)
   // Window snapping: it needs Accessibility, and OSAT never moves its own windows.
   const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel })
+  // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
+  const system = createSystem({ exec, platform, trusted, model: systemModel })
+  // Snippets: pasted from the bar, and (once turned on) typed in any app: snippets.cjs.
+  const snippets = createSnippets({
+    spawn: spawnHelper, exec, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
+    clipboard, quiet: history.quiet, paste: () => pasteInto({ exec, platform, trusted: () => true }),
+    log: (text) => console.error('The snippets helper:', text),
+  })
   // A layout key pressed while OSAT isn't allowed says so once, calmly, and then leaves it alone.
   let told = false
   async function snapFromKey(id) {
@@ -133,7 +144,29 @@ async function createLauncher({
     if (kind === 'app') return () => openAppByName(rest).catch(() => {})
     if (kind === 'link') return () => openLinkKey(rest).catch(() => {})
     if (kind === 'capture') return () => capture.take(rest, { tell: true }).catch(() => {})
+    if (kind === 'row') return () => runRow(rest).catch(() => {})
     return () => {}
+  }
+  /* A key Nate gave something from the bar's ⌘K (`custom` in launcher.json): it does what Return on that row does. */
+  async function runRow(key) {
+    const entry = settings.custom.find((item) => item.key === key)
+    if (!entry) return
+    const d = entry.data || {}
+    if (entry.kind === 'system') {
+      // Something that can't be undone is never done by a key alone: the bar opens on it, for Return twice.
+      if (systemModel.systemCommand(d.id)?.confirm) { search.show({ scope: 'all', text: entry.title }); return }
+      const result = await system.run(d.id)
+      if (result.reason === 'access') notify({ title: 'OSAT', body: `To ${entry.title.toLowerCase()}, OSAT needs to be allowed in Accessibility. Settings → Launcher shows how.` })
+      return
+    }
+    if (entry.kind === 'emoji') { if (platform === 'darwin') app?.showEmojiPanel?.(); return }
+    if (entry.kind === 'layout') { await snapFromKey(d.layout); return }
+    if (entry.kind === 'app') { if (await apps.has(d.path)) await openApp(d.path); return }
+    // The bar's own commands open the bar; the rest open in OSAT.
+    if (key === 'act:sticky') { search.show({ view: 'sticky' }); return }
+    if (key === 'act:ask') { search.show({ view: 'chat' }); return }
+    if (key === 'act:clipboard') { search.show({ scope: 'clipboard' }); return }
+    if (Array.isArray(d.go) && typeof d.go[0] === 'string') command({ view: d.go[0], detail: d.go[1] && typeof d.go[1] === 'object' ? d.go[1] : null })
   }
   /* A key on an app opens it. A key on a link opens it, or, when it wants words, opens the search with its word waiting. */
   async function openAppByName(name) {
@@ -167,6 +200,7 @@ async function createLauncher({
     settings = next
     applyHotkeys()
     listenForMiddle()
+    snippets.sync()
     await writeSettings()
     history.limitsChanged()
     history.watch(settings.sources.clipboard.on)
@@ -180,11 +214,29 @@ async function createLauncher({
   on('search:ready', () => { search.ready(); return true })
   on('search:settings', () => settings, (sender) => ofSearchOrDesk(sender) || ofRing(sender))
   on('search:save-settings', save, ofDesk)
-  on('search:status', () => ({
+  /* From the bar's ⌘K: a favorite, a key or a word for one thing in it, and nothing else (the rest of the settings
+     stay the desk's). `row` is what the bar showed; only the kinds that can be customized are taken. */
+  on('search:customize', async (row, change) => {
+    if (!launcherModel.customizable(row) || !change || typeof change !== 'object') fail('That can’t be changed from the bar.')
+    const allowed = Object.keys(change).filter((key) => ['favorite', 'hotkey', 'keyword'].includes(key))
+    if (allowed.length !== 1 || allowed.length !== Object.keys(change).length) fail('That can’t be changed from the bar.')
+    const value = change[allowed[0]]
+    if (allowed[0] === 'favorite' ? typeof value !== 'boolean' : value !== null && typeof value !== 'string') fail('That can’t be changed from the bar.')
+    if (allowed[0] === 'keyword' && value !== null && !launcherModel.validKeyword(value)) fail('A word is one to twelve letters or numbers, like “nn”.')
+    if (allowed[0] === 'hotkey' && value !== null && !validHotkey(value)) fail('That key can’t be used. Hold ⌘, ⌃, ⌥ or ⇧ with a letter, a number or an arrow.')
+    if (allowed[0] === 'keyword' && value !== null) {
+      const holder = launcherModel.holderOf(settings, { word: value }, launcherModel.idOf(row))
+      if (holder) fail(`“${value}” is already the word for ${holder}.`)
+    }
+    return save(launcherModel.customize(settings, row, { [allowed[0]]: value }))
+  })
+  on('search:status', () => (snippets.sync(), {
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
     keysFailed: hotkeys.failed(),
     // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
     middleClick: middleClick.state(),
+    // 'off', 'access', 'starting', 'listening', 'failed' or 'unavailable': the typed snippets' helper.
+    snippets: snippets.state(),
   }), ofDesk)
   // OSAT asks macOS for Accessibility only when a button is pressed (Settings → Launcher, or "Allow…" in the bar's
   // note after a paste that couldn't happen), never by itself.
@@ -291,6 +343,22 @@ async function createLauncher({
   })
   on('search:copy-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return true })
   on('search:paste-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return pasteWhenAble() })
+  /* Snippets from the bar: filled in here ({clipboard} is what is on it now), then pasted or copied. */
+  const snippetText = (id) => { const text = snippets.text(id); if (text === null) fail('That snippet is gone.'); return text }
+  on('search:paste-snippet', (id) => { clipboard.writeText(snippetText(id)); return pasteWhenAble() })
+  on('search:copy-snippet', (id) => { clipboard.writeText(snippetText(id)); return true })
+  /* "Save as a snippet…" on a copy: its words become a snippet, with a word if one was given. */
+  on('search:save-snippet', async (clipId, keyword) => {
+    const text = history.textOf(clipId)
+    if (typeof text !== 'string' || !text.trim()) fail('Only words can be a snippet.')
+    const word = typeof keyword === 'string' && keyword.trim() ? keyword.trim().toLowerCase() : null
+    if (word && !snippetModel.validSnippetWord(word)) fail('A snippet’s word is one to twelve letters or numbers, maybe after a sign: ;addr')
+    const holder = word ? launcherModel.holderOf(settings, { word }) : null
+    if (holder) fail(`“${word}” is already the word for ${holder}.`)
+    const snippet = { id: `snip-${crypto.randomUUID().slice(0, 8)}`, name: text.trim().split('\n')[0].slice(0, 40), keyword: word, text: text.slice(0, 5000) }
+    await save({ snippets: [...settings.snippets, snippet] })
+    return snippet
+  })
 
   async function openApp(appPath) {
     if (await shell.openPath(appPath)) fail('macOS could not open that app.')
@@ -326,6 +394,16 @@ async function createLauncher({
     search.hide()
     await wait(140)
     return snap.snap(id)
+  })
+
+  /* The Mac's own commands. One that needs Accessibility says so with the bar still there; the others go once the
+     bar is out of the way (the Bin's second Return is the bar's to ask for). */
+  on('search:system', async (id) => {
+    if (!systemModel.systemCommand(id)) fail('That isn’t a command OSAT knows.')
+    if (platform === 'darwin' && ['lock', 'hide-others'].includes(id) && !trusted()) return { ok: false, reason: 'access' }
+    search.hide()
+    await wait(140)
+    return system.run(id)
   })
 
   /* The ring: quick tools around the pointer. Its page asks for what to draw (search:settings) and says what was picked. */
@@ -411,11 +489,13 @@ async function createLauncher({
       history.watch(settings.sources.clipboard.on)
       applyHotkeys()
       listenForMiddle()
+      snippets.sync()
     },
     stop() {
       history.stop()
       hotkeys.stop()
       middleClick.stop()
+      snippets.stop()
     },
   }
 }

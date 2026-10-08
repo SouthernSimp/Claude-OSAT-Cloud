@@ -13,7 +13,7 @@ const folder = (id, extra = {}) => ({ id, name: id, createdAt: day(0, 1), ...ext
 const space = (notes, folders = []) => normalizeWorkspace({ ...createDefaultWorkspace(), notes, folders })
 const ids = (list) => list.map((item) => item.id)
 
-test('a question that names a node pulls that node’s newest stickies, branches included', () => {
+test('a question that names a topic pulls that topic’s newest stickies, branches included', () => {
   const state = space(
     [note('Jordan likes tea', { folderId: 'jordan', updatedAt: day(8, 3) }), note('Jordan’s lease', { folderId: 'sub', updatedAt: day(8, 9) }), note('Old gift idea', { folderId: 'jordan', updatedAt: day(1, 1) }), note('Pasta', { folderId: 'food' })],
     [folder('jordan', { name: 'Jordan' }), folder('sub', { name: 'Lease', parentId: 'jordan' }), folder('food', { name: 'Food' })],
@@ -53,7 +53,7 @@ test('each source says what it is and where it lives', () => {
   assert.equal(noteKind(note('x')), 'Sticky')
   assert.equal(noteWhere(scan, folders), 'in Jordan / Lease')
   assert.equal(noteWhere(note('x'), folders), 'in Unsorted')
-  assert.equal(noteWhere(note('x', { at: { x: 1, y: 2 } }), folders), 'on the Sky')
+  assert.equal(noteWhere(note('x', { at: { x: 1, y: 2 } }), folders), 'on the canvas')
   assert.equal(noteHeading(scan, folders), 'SCAN: Lease (in Jordan / Lease, edited Sep 28, 2026)')
 })
 

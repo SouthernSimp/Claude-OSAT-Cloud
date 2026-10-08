@@ -36,7 +36,7 @@ function createSnap({ exec = run, platform = process.platform, trusted = () => f
   return {
     /* Whether OSAT may move windows now (never asks; the one place that asks is Settings → Launcher). */
     allowed: () => platform === 'darwin' && trusted() === true,
-    /* → { ok: true, app, layout } or { ok: false, reason: 'access' | 'mac' | 'nowindow' | 'own' | 'nothing' | 'failed' }. */
+    /* → { ok: true, app, layout } or { ok: false, reason: 'access' | 'mac' | 'nowindow' | 'own' | 'nothing' | 'one-screen' | 'failed' }. */
     async snap(id) {
       if (platform !== 'darwin') return { ok: false, reason: 'mac' }
       if (!trusted()) return { ok: false, reason: 'access' }
@@ -59,8 +59,10 @@ function createSnap({ exec = run, platform = process.platform, trusted = () => f
       } else {
         const list = screens()
         if (!list.length) return { ok: false, reason: 'failed' }
-        const screen = layouts.screenFor(now, list)
-        frame = layouts.frameFor(id, screen.workArea || screen)
+        if (id === 'next-display') {
+          frame = layouts.nextScreenFrame(now, list)
+          if (!frame) return { ok: false, reason: 'one-screen', app: front.app }
+        } else frame = layouts.frameFor(id, layouts.screenFor(now, list).workArea || layouts.screenFor(now, list))
         // Only the size it had before OSAT's first move is worth going back to.
         if (!same(now, placed.get(front.app))) before.set(front.app, now)
       }

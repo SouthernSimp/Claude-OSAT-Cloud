@@ -4,7 +4,7 @@ import test from 'node:test'
 
 import { cleanSettings } from '../shared/launcher-model.mjs'
 import {
-  actionsFor, buildRows, detailsFor, fileKind, fileWords, isPicture, rankApps, rankCommands, readTyped, scopesOn, sizeText, wants, wordRows,
+  actionsFor, buildRows, detailsFor, fileKind, fileWords, isPicture, looksLikeQuestion, rankApps, rankCommands, readTyped, scopesOn, sizeText, startRow, wants, wordRows,
 } from '../shared/quick-search-model.mjs'
 
 const { validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
@@ -93,9 +93,12 @@ test('one tab shows one source at more length: the clipboard by day, files recen
   assert.deepEqual(searched.map((row) => row.section), ['Files', 'Files'], 'words search; recents step aside')
   const kindOnly = buildRows(readTyped('', pinned, 'files'), { files: recent }, pinned, { now, fileFilter: 'pdf' })
   assert.deepEqual(kindOnly.map((row) => row.title), ['New.pdf', 'Old.pdf'])
-  assert.equal(buildRows(readTyped('', pinned, 'all'), { recentFiles: recent, clipboard: { items } }, pinned, { now })[0].section, 'Pinned', 'opened with nothing typed: pins, recent files, then the latest copies')
   const start = buildRows(readTyped('', pinned, 'all'), { recentFiles: recent, clipboard: { items } }, pinned, { now })
-  assert.deepEqual([...new Set(start.map((row) => row.section))], ['Pinned', 'Recent files', 'Clipboard'])
+  assert.deepEqual([...new Set(start.map((row) => row.section))], ['Clipboard', 'Pinned', 'Recent files'], 'opened with nothing typed: the latest copies, then pins and recent files')
+  const many = Array.from({ length: 9 }, (_, index) => clip(`m${index}`, `copy ${index}`))
+  const seeAll = buildRows(readTyped('', settings, 'all'), { clipboard: { items: many } }, settings, { now })
+  assert.deepEqual(seeAll.filter((row) => row.kind !== 'more').length, 6)
+  assert.deepEqual([seeAll[6].title, seeAll[6].data.scope, actionsFor(seeAll[6])[0].id], ['See all 9 copies', 'clipboard', 'scope'])
 })
 
 test('apps: names that start with the words come first', () => {
@@ -115,15 +118,15 @@ test('Return does the obvious thing, and ⌘K lists the rest', () => {
   assert.equal(actionsFor(top).find((action) => action.id === 'delete').danger, true)
 
   const copy = { kind: 'text', data: clip('a', 'hello') }
-  assert.deepEqual(actionsFor(copy).map((action) => action.id), ['paste', 'copy', 'add', 'pin', 'delete'])
+  assert.deepEqual(actionsFor(copy).map((action) => action.id), ['paste', 'copy', 'add', 'save-snippet', 'pin', 'delete'])
   assert.equal(actionsFor(copy)[0].label, 'Paste')
   const offered = actionsFor(copy, { offer: { folderId: 'f1', folderName: 'Jordan' } })
-  assert.deepEqual(offered.map((action) => action.id), ['paste', 'copy', 'offer', 'add', 'pin', 'delete'])
+  assert.deepEqual(offered.map((action) => action.id), ['paste', 'copy', 'offer', 'add', 'save-snippet', 'pin', 'delete'])
   assert.equal(offered[2].label, 'Add to Jordan')
-  assert.deepEqual(actionsFor({ kind: 'link', data: clip('l', 'https://x.example', { kind: 'link' }) }).map((action) => action.id), ['paste', 'copy', 'open-link', 'add', 'pin', 'delete'])
+  assert.deepEqual(actionsFor({ kind: 'link', data: clip('l', 'https://x.example', { kind: 'link' }) }).map((action) => action.id), ['paste', 'copy', 'open-link', 'add', 'save-snippet', 'pin', 'delete'])
   assert.deepEqual(actionsFor({ kind: 'image', data: { id: 'i', kind: 'image', pinned: true } }).map((action) => action.label), ['Paste', 'Copy', 'Unpin', 'Delete'])
   assert.equal(actionsFor({ kind: 'app', data: {} })[0].id, 'open-app')
-  assert.equal(actionsFor({ kind: 'node', data: {} })[0].label, 'Open in the Sky')
+  assert.equal(actionsFor({ kind: 'node', data: {} })[0].label, 'Open on the canvas')
   assert.equal(actionsFor({ kind: 'calc', data: {} })[0].label, 'Copy the answer')
   assert.deepEqual(actionsFor(null), [])
   assert.deepEqual(actionsFor({ kind: 'mystery' }), [])
@@ -153,13 +156,13 @@ test('window layouts: a tab of their own, and "left half" finds one from Everyth
   assert.deepEqual(buildRows(readTyped('le', keys), {}, keys, { now }), [], 'two letters are too little to offer a layout from Everything')
   assert.deepEqual(buildRows(readTyped('w top', keys), {}, keys, { now }).map((row) => row.title), ['Top half', 'Top left', 'Top right'], 'w is the tab')
   const every = buildRows(readTyped('', keys, 'windows'), {}, keys, { now })
-  assert.equal(every.length, 16)
+  assert.equal(every.length, 17)
   assert.equal(every.at(-1).title, 'Put it back')
   const off = buildRows(readTyped('left half', settings), {}, settings, { now })
   assert.equal(off[0].data.key, null, 'with window keys off, no key is promised')
   const noWindows = cleanSettings({ sources: { windows: { on: false } } }, { validHotkey })
   assert.deepEqual(buildRows(readTyped('left half', noWindows), {}, noWindows, { now }), [])
-  assert.deepEqual(actionsFor(every[0]).map((action) => action.label), ['Move the window'])
+  assert.deepEqual(actionsFor(every[0]).map((action) => action.label), ['Move the window', 'Add to favorites', 'Set a key…', 'Set a word…'])
   assert.equal(actionsFor(every.at(-1))[0].label, 'Put the window back')
   assert.deepEqual(detailsFor(all[0]), [['Moves', 'the window you were in'], ['Key', '⌃⌥Left']])
 })
@@ -188,21 +191,34 @@ test('one bar: commands come right after an app named by the words, and the word
   const ready = { state: 'ready', label: 'Balanced, on this Mac' }
   const rows = buildRows(readTyped('no', settings), { apps, commands }, settings, { now, ai: ready })
   assert.deepEqual(rows.map((row) => [row.section, row.kind, row.title]), [
+    ['Ask', 'ask', 'Ask AI “no”'],
     ['Apps', 'app', 'Notion'],
     ['Commands', 'room', 'Notes'],
     ['Commands', 'room', 'New note'],
     ['Commands', 'room', 'Write a sticky'],
     ['Apps', 'app', 'Sticky Notes'],
-    ['With these words', 'sticky', 'Save as a sticky'],
-    ['With these words', 'ask', 'Ask the AI'],
+    ['Write it down', 'sticky', 'Save as a sticky'],
   ])
-  assert.equal(rows.at(-1).subtitle, 'Balanced, on this Mac')
-  assert.deepEqual(actionsFor(rows.at(-1)).map((action) => [action.id, action.keys]), [['ask-ai', '↵']])
-  assert.deepEqual(actionsFor(rows.at(-2)).map((action) => [action.id, action.keys]), [['sticky', '↵']])
-  assert.equal(rows.at(-2).data.text, 'no')
+  assert.equal(rows[0].subtitle, 'Balanced, on this Mac')
+  assert.deepEqual(actionsFor(rows[0]).map((action) => [action.id, action.keys]), [['ask-ai', '↵']])
+  assert.deepEqual(actionsFor(rows.at(-1)).map((action) => [action.id, action.keys]), [['sticky', '↵']])
+  assert.equal(rows.at(-1).data.text, 'no')
+  // The highlight starts on the first thing found; on Ask for a question, or when nothing else was found.
+  assert.equal(startRow(rows, readTyped('no', settings)), 1)
+  const question = readTyped('how do I export a node?', settings)
+  assert.equal(startRow(buildRows(question, { apps }, settings, { now, ai: ready }), question), 0)
+  const nothing = readTyped('zebra plans', settings)
+  assert.equal(startRow(buildRows(nothing, {}, settings, { now, ai: ready }), nothing), 0)
+  const sumAsked = readTyped('what is 2*49?', settings)
+  assert.equal(buildRows(sumAsked, {}, settings, { now, ai: ready })[startRow(buildRows(sumAsked, {}, settings, { now, ai: ready }), sumAsked)]?.kind ?? 'ask', 'ask', 'words around a sum are a question')
+  const plainSum = readTyped('2*49', settings)
+  assert.equal(buildRows(plainSum, {}, settings, { now, ai: ready })[startRow(buildRows(plainSum, {}, settings, { now, ai: ready }), plainSum)].kind, 'calc')
+  assert.equal(looksLikeQuestion('summarize what I copied today'), true)
+  assert.equal(looksLikeQuestion('what'), false, 'one word is a search')
+  assert.equal(looksLikeQuestion('notion'), false)
 
-  // Offline, Ask says whether it waits; nothing typed, or another tab, has no such rows.
-  const said = (ai) => wordRows(readTyped('plan the trip', settings), ai)[1].subtitle
+  // Offline, Ask says whether it waits; nothing typed, or another source, has no such rows.
+  const said = (ai) => wordRows(readTyped('plan the trip', settings), ai)[0].subtitle
   assert.match(said({ state: 'waits' }), /waits until you’re back online/)
   assert.match(said({ state: 'ready', label: 'Light', offline: true }), /^Offline, the AI on this Mac still answers · Light$/)
   assert.match(said({ state: 'none' }), /Set up the AI/)
@@ -215,4 +231,53 @@ test('one bar: commands come right after an app named by the words, and the word
     assert.equal(actionsFor(row).some((action) => action.keys === '⌘↵' || action.keys === '⌥↵'), false, row.kind)
     assert.equal(actionsFor(row)[1].keys, '⇧↵', row.kind)
   }
+})
+
+test('anything in the bar can be a favorite, or have its own key and word, set from ⌘K', async () => {
+  const { customize, idOf, keysOf, ownKeyOf, ownWordOf, wordsOf, applyPatch } = await import('../shared/launcher-model.mjs')
+  const layout = { key: 'layout:left-half', kind: 'layout', title: 'Left half', data: { layout: 'left-half' } }
+  const withLayoutKey = cleanSettings(applyPatch(cleanSettings(undefined, { validHotkey }), customize(cleanSettings(undefined, { validHotkey }), layout, { hotkey: 'Control+Alt+Shift+L' })), { validHotkey })
+  assert.equal(withLayoutKey.windows.on, false, 'a layout\'s own key never turns every window key on')
+  assert.equal(keysOf(withLayoutKey)['row:layout:left-half'], 'Control+Alt+Shift+L')
+  const base = cleanSettings(undefined, { validHotkey })
+  const room = { key: 'room:Notes', source: 'notes', kind: 'room', title: 'Notes', subtitle: 'Open', section: 'Commands', data: { go: ['Notes', null] } }
+  const lock = buildRows(readTyped('lock', base), {}, base, { now }).find((row) => row.kind === 'system')
+  assert.deepEqual([lock.title, actionsFor(lock).map((action) => action.id)], ['Lock the screen', ['system', 'favorite', 'set-key', 'set-word']])
+  assert.deepEqual(buildRows(readTyped('lo', base), {}, base, { now }), [], 'two letters are too little for the Mac’s commands')
+
+  // Favorite, key and word for a room: kept with the row, shown first on an empty bar, its word finds it.
+  let next = cleanSettings(applyPatch(base, customize(base, room, { favorite: true })), { validHotkey })
+  next = cleanSettings(applyPatch(next, customize(next, room, { hotkey: 'Control+Alt+N' })), { validHotkey })
+  next = cleanSettings(applyPatch(next, customize(next, room, { keyword: 'nn' })), { validHotkey })
+  assert.equal(keysOf(next)['row:room:Notes'], 'Control+Alt+N')
+  assert.equal(wordsOf(next)['row:room:Notes'], 'nn')
+  assert.deepEqual([ownKeyOf(next, room), ownWordOf(next, room), idOf(room)], ['Control+Alt+N', 'nn', 'row:room:Notes'])
+  const start = buildRows(readTyped('', next), {}, next, { now })
+  assert.deepEqual([start[0].section, start[0].title, start[0].favorite], ['Favorites', 'Notes', true])
+  assert.equal(actionsFor(start[0]).find((action) => action.id === 'favorite').label, 'Remove from favorites')
+  const byWord = buildRows(readTyped('nn', next), {}, next, { now, ai: { state: 'ready', label: 'AI' } })
+  assert.deepEqual([byWord[1].title, byWord[1].section], ['Notes', 'Your word “nn”'], 'after Ask AI, the thing your word names')
+
+  // Taking all three away forgets it; an app keeps its key and word with the apps.
+  let off = cleanSettings(applyPatch(next, customize(next, room, { favorite: false })), { validHotkey })
+  off = cleanSettings(applyPatch(off, customize(off, room, { hotkey: null })), { validHotkey })
+  off = cleanSettings(applyPatch(off, customize(off, room, { keyword: null })), { validHotkey })
+  assert.deepEqual(off.custom, [])
+  const safari = { key: 'app:/Applications/Safari.app', kind: 'app', title: 'Safari', data: { path: '/Applications/Safari.app' } }
+  const withApp = cleanSettings(applyPatch(base, customize(base, safari, { keyword: 'sf' })), { validHotkey })
+  assert.equal(withApp.apps.Safari.keyword, 'sf')
+  assert.equal(withApp.custom.length, 0)
+  // A word already taken is not given twice.
+  const taken = cleanSettings(applyPatch(base, customize(base, room, { keyword: 'g' })), { validHotkey })
+  assert.equal(ownWordOf(taken, room), null)
+})
+
+test('Next screen keeps the window as it is, in the same place in proportion, on the next screen', async () => {
+  const { nextScreenFrame } = await import('../shared/window-layouts.mjs')
+  const left = { workArea: { x: 0, y: 25, width: 1440, height: 875 } }
+  const right = { workArea: { x: 1440, y: 0, width: 2560, height: 1415 } }
+  assert.equal(nextScreenFrame({ x: 100, y: 100, width: 800, height: 600 }, [left]), null, 'one screen: nothing moves')
+  assert.deepEqual(nextScreenFrame({ x: 0, y: 25, width: 800, height: 600 }, [left, right]), { x: 1440, y: 0, width: 800, height: 600 }, 'at the top left, it stays at the top left')
+  assert.deepEqual(nextScreenFrame({ x: 1440 + 2560 - 800, y: 1415 - 600, width: 800, height: 600 }, [left, right]), { x: 640, y: 300, width: 800, height: 600 }, 'from the last screen it wraps to the first, bottom right stays bottom right')
+  assert.deepEqual(nextScreenFrame({ x: 1440, y: 0, width: 2560, height: 1415 }, [left, right]), { x: 0, y: 25, width: 1440, height: 875 }, 'too big for the next screen: it fits it')
 })

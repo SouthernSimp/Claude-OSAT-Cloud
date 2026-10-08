@@ -208,7 +208,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Nodes set down somewhere new; everything else keeps its place. */
-  const place = (changes) => actions.canvasCommit('Moved topics on Sky', (state) => placeNodes(state, boardSpots(state.folders, latest.current.sizes), changes))
+  const place = (changes) => actions.canvasCommit('Moved topics on the canvas', (state) => placeNodes(state, boardSpots(state.folders, latest.current.sizes), changes))
 
   /* Fly to a node (or a branch's node, or Unsorted), opening it and every folded branch on
      the way down; a sticky in it glows. */
@@ -374,7 +374,7 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
       if (parent) { actions.hang([{ kind: 'folder', id, at: hangAt(parent, at) }, ...stay(folder.parentId, id)]); return }
       if (!folder.parentId) { place(new Map([[id, at]])); return }
       // A branch whose node isn't open: set down on its own.
-      actions.canvasCommit('Set a branch on Sky', (state) => {
+      actions.canvasCommit('Set a branch on the canvas', (state) => {
         const moved = moveFolder(state, id, null, Infinity, { loose: true })
         return placeNodes(moved, boardSpots(moved.folders, latest.current.sizes), new Map([[id, at]]))
       })
@@ -554,13 +554,13 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
         {naming && (
           <div className="board-naming" style={{ translate: `${naming.x}px ${naming.y}px` }}>
             <div className="node-head is-naming" data-paper="canary">
-              <NameField placeholder="Name the node" onDone={makeNode} />
+              <NameField placeholder="Name the topic" onDone={makeNode} />
             </div>
           </div>
         )}
       </div>
 
-      {!roots.length && !loose.length && <div className="sky-empty-canvas"><h2>A little room to think.</h2><p>Start with a sticky. Make a node when a topic takes shape.</p><button type="button" className="is-primary" onClick={() => startSticky(newSpot())}>Write your first sticky</button></div>}
+      {!roots.length && !loose.length && <div className="sky-empty-canvas"><h2>A little room to think.</h2><p>Start with a sticky. Make a topic when ideas take shape.</p><button type="button" className="is-primary" onClick={() => startSticky(newSpot())}>Write your first sticky</button></div>}
       {!focus && roots.length > 0 && <div className="sky-canvas-caption"><strong>See the connections.</strong><span>Open a topic to work with its branches and stickies.</span></div>}
       <p className="board-hint" aria-hidden="true">
         {trees.size
@@ -615,7 +615,7 @@ function RootCard({ folder, index, box, moving, isOpen, workspace, actions, togg
         role="button"
         tabIndex={0}
         aria-expanded={isOpen}
-        aria-label={`${loose ? 'Branch' : 'Node'}: ${folder.name}`}
+        aria-label={`${loose ? 'Branch' : 'Topic'}: ${folder.name}`}
         {...head}
         {...carryable({ kind: 'folder', id: folder.id, data: { parentId: null, loose } }, { live: liveFor(folder.id) })}
         onClick={(event) => { if (event.detail < 2 && !event.target.closest('button, input, textarea')) toggle(folder.id) }}
@@ -629,7 +629,7 @@ function RootCard({ folder, index, box, moving, isOpen, workspace, actions, togg
       >
         <span className="node-kind"><i />{loose ? 'Branch' : 'Topic'}<ArrowRight /></span>
         {actions.renaming === folder.id
-          ? <NameField initial={folder.name} placeholder={loose ? 'Name the branch' : 'Name the node'} onDone={(name) => actions.endRename(folder.id, name)} />
+          ? <NameField initial={folder.name} placeholder={loose ? 'Name the branch' : 'Name the topic'} onDone={(name) => actions.endRename(folder.id, name)} />
           : <strong>{folder.name}</strong>}
         {(folder.fresh || folder.packed || folder.from?.source) && (
           <span className="node-origin">

@@ -40,6 +40,10 @@ html:has(.quick-search) body { background: transparent; }
 .qs-said { flex: none; font: 560 var(--t-xs)/1 var(--font); color: var(--muted); }
 .qs-chip { flex: none; padding: 4px 10px; border-radius: var(--r-full); font: 600 var(--t-xs)/1 var(--font); color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
 
+/* One source at a time ("See all", a keyword, a Hyper key): the chip says which; × or Esc comes back to everything. */
+.qs-chip.is-scope { display: inline-flex; align-items: center; gap: 6px; cursor: default; -webkit-app-region: no-drag; }
+.qs-chip.is-scope svg { width: 10px; height: 10px; opacity: .7; }
+.qs-chip.is-scope:hover svg { opacity: 1; }
 .qs-tabs { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px 8px; border-top: 1px solid var(--line); -webkit-app-region: drag; }
 .qs-tabs button,
 .qs-foot button { -webkit-app-region: no-drag; }
@@ -68,6 +72,10 @@ html:has(.quick-search) body { background: transparent; }
 .qs-row:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .qs-row[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .qs-row[aria-selected="true"] > svg { color: var(--accent); }
+/* Ask AI and Save as a sticky show their own keys while another row is picked. */
+.qs-row kbd.is-quiet { background: none; opacity: .75; }
+/* Ask AI, the first row: the AI's sparkle in the accent. */
+.qs-row[data-kind="ask"] .qs-row-text b { color: var(--accent); }
 .qs-row kbd { flex: none; padding: 2px 6px; border-radius: 6px; font: 560 var(--t-2xs)/1.3 var(--font); color: var(--muted); background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .qs-row > .qs-pin { width: 13px; height: 13px; color: var(--faint); }
 /* A copied picture shows itself in its row (a capped thumbnail main keeps); a copy drags out into other apps. */
@@ -88,6 +96,8 @@ html:has(.quick-search) body { background: transparent; }
 .qs-screen { position: relative; width: min(78%, 320px); aspect-ratio: 16 / 10; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
 .qs-screen i { position: absolute; border-radius: 6px; background: color-mix(in srgb, var(--accent) 38%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .qs-screen i.is-back { inset: 24% 30% 26% 22%; border-style: dashed; background: transparent; box-shadow: inset 0 0 0 1.5px var(--faint); }
+/* Next screen: the window slides off to the right, where the next screen is. */
+.qs-screen i.is-next { inset: 28% -8% 28% 62%; }
 .qs-facts h2 { margin: 0 0 8px; font: 650 var(--t-lg)/1.25 var(--font); overflow-wrap: anywhere; color: var(--ink-strong); }
 .qs-offer { margin: 10px 0 0; font-size: var(--t-xs); line-height: 1.5; color: var(--muted); }
 .qs-offer kbd { padding: 1px 5px; border-radius: 5px; color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
@@ -163,3 +173,12 @@ html:has(.ring-surface) body { background: transparent; }
 /* Over the desk: a click anywhere else lets it go. */
 .ring-layer { position: fixed; inset: 0; z-index: var(--z-modal); }
 .ring-place { position: absolute; translate: -50% -50%; }
+
+/* Set a key… / Set a word… (⌘K): the footer asks, in one line. */
+.qs-editor { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0; font-size: var(--t-xs); color: var(--muted); }
+.qs-editor b { color: var(--ink-strong); font-weight: 600; }
+.qs-editor kbd { padding: 1px 5px; border-radius: 5px; background: color-mix(in srgb, var(--ink) 7%, transparent); font: inherit; }
+.qs-editor label { display: inline-flex; align-items: center; gap: 8px; }
+.quick-search .qs-editor input { width: 110px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-strong); background: transparent; color: var(--ink-strong); font: inherit; }
+.qs-editor button { padding: 3px 8px; border-radius: 6px; color: var(--accent); font: 600 var(--t-xs)/1.2 var(--font); }
+.qs-editor button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }

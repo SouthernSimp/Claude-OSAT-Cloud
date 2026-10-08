@@ -39,7 +39,7 @@ export function Preview({ row, bridge, workspace, offer = null, now, onDragStart
   else if (row.kind === 'layout') body = <LayoutPreview id={d.layout} />
   else if (COPIED_WORDS.has(row.kind)) body = <pre className={`qs-text ${row.kind === 'link' ? 'is-link' : ''}`}>{own.text ?? d.text}</pre>
   // Save as a sticky / Ask the AI: the words that would go.
-  else if (row.kind === 'sticky' || row.kind === 'ask') body = <pre className="qs-text">{d.text}</pre>
+  else if (row.kind === 'sticky' || row.kind === 'ask' || row.kind === 'snippet') body = <pre className="qs-text">{d.text}</pre>
   else if (row.kind === 'note') body = <NotePreview workspace={workspace} id={d.go?.[1]?.noteId} />
   else if (row.kind === 'node') body = <NodePreview workspace={workspace} id={d.go?.[1]?.folderId} />
   else body = <div className="qs-glyph"><RowIcon row={row} weight="light" /></div>
@@ -66,7 +66,7 @@ function LayoutPreview({ id }) {
   const box = layoutById(id)?.box
   return (
     <div className="qs-screen" aria-hidden="true">
-      <i className={box ? '' : 'is-back'} style={box ? { left: `${box[0] * 100}%`, top: `${box[1] * 100}%`, width: `${box[2] * 100}%`, height: `${box[3] * 100}%` } : undefined} />
+      <i className={box ? '' : id === 'next-display' ? 'is-next' : 'is-back'} style={box ? { left: `${box[0] * 100}%`, top: `${box[1] * 100}%`, width: `${box[2] * 100}%`, height: `${box[3] * 100}%` } : undefined} />
     </div>
   )
 }

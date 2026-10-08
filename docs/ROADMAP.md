@@ -1,5 +1,44 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 6 (evening): the AI files stickies for you
+
+Nate's biggest problem: writing down a pile of stickies, then having to sort them. Now, like Mem,
+the AI does it on its own: once you stop writing for a moment, each new sticky goes into the node
+it belongs in (or a new node two or more share), and one line says where, with Undo for the whole
+run. Long, tangled stickies get a short title and an "In short" line first; their own words never
+change. What the AI isn't sure of stays in Unsorted, where sorting by hand still works. Notes →
+Filed for you lists what it filed this week. A pile from before is only filed when Nate says
+"File them too". Settings → AI has the switch. It never wakes a model the way a question does:
+if the AI is resting or unloaded, the stickies wait and Notes says why.
+## October 6 (late): choose your AI
+
+Settings → AI now says which model is best for this Mac (the most capable one its memory holds
+comfortably; on Nate's 64 GB M5 Pro, Qwen 3.6 35B), lists the ones already downloaded, and
+compares all nine side by side: what each is good at, speed, smarts, download size and the memory
+it needs. One that needs a bigger Mac says so instead of offering a download. One of each family (Qwen
+3.5 4B, Ministral 3 3B, Qwen 3.6 35B) was run through OSAT's own engine with OSAT's real sorting
+and "In short" questions; the others share those families' engines.
+## October 6 (night): Notes is home, the Sky becomes Canvas
+
+Notes and the Sky were two places for the same stickies, with two sidebars and two words
+("nodes" and "topics"). Now Notes is home: its sidebar is Unsorted, Filed for you, your topics; a
+topic's list has **List | Canvas** to see the same topic spread out. The Sky is now **Canvas**: an
+open board to think on, without a sidebar of its own or sorting screens (Notes' Unsorted has
+"Sort by hand", and the canvas's ⋯ menu too). Everything Nate reads says **topic** instead of
+node, and **canvas** instead of Sky.
+## October 6 (night): a smarter calculator
+
+The bar's calculator answers more than sums, all on this Mac: units ("5 km in miles", "72 f to c", "3 cups in ml",
+"10 lb to kg", "1 gb in mb", "60 mph in km/h") and dates ("days until christmas", "days until friday", "days since
+march 3", "days between dec 1 and jan 15", "today + 30 days"). Currency waits: it needs today's rates from the
+internet, which OSAT doesn't fetch on its own yet.
+## October 6 (late night): Ask, tidier and honest about the cloud
+
+Ask said "Nothing leaves this Mac" even with a cloud model chosen; now the line under the box says where the
+question goes ("On this Mac", or "To DeepSeek"). The last answer has **Try again**, and your last question **Edit**
+(both with Undo). Which notes a conversation reads is a small menu in the box, Attach and Speak are icons, and the
+second privacy footer and the duplicate New button are gone.
+
 ## October 6: sorting Unsorted, redone
 
 Nate found the guided sorting screen a mess. It is now one sticky at a time with its likely
@@ -85,6 +124,14 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Planned |
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Planned |
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Planned |
+| 35 | The AI files stickies for you (like Mem): write a pile, it files each one once you stop, long ones get a short version, Filed for you in Notes, Undo for the whole run | In review |
+| 41 | Snippets: a word for text you paste often; from the bar, and typed in any app (opt-in) | In review |
+| 39 | Change it from the bar: favorites, keys and words from ⌘K; the Mac's own commands; Next screen | In review |
+| 36 | One bar, one list: no tabs; Ask AI first, then apps, files, copies and notes with See all; Tab asks; ↓ shows the latest copies | In review |
+| 37 | Choose your AI: best for this Mac, your models, and nine local models compared (Gemma 4, Qwen 3.5/3.6, Ministral 3) | In review |
+| 38 | Notes is home, the Sky becomes Canvas: one sidebar, List \| Canvas per topic, "topic" instead of node everywhere | In review |
+| 40 | A smarter calculator: units and dates, offline (currency later: it needs the internet) | In review |
+| 42 | Ask, tidier and honest: where a question goes, Try again, Edit your last question, a calmer box | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

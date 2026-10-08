@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Archive, ArrowCounterClockwise, ArrowsIn, ArrowsOut, At, ArrowLeft, ArrowUpRight, CheckSquare, Code, Copy, CopySimple, DotsThree, FolderSimple, Hash, Link as LinkIcon,
-  LinkSimple, ListBullets, ListNumbers, Minus, PushPin, Quotes, ShareNetwork, Sidebar, TextB, TextHOne, TextItalic, TextStrikethrough, Trash, BracketsSquare, MoonStars } from "@phosphor-icons/react";
+  LinkSimple, ListBullets, ListNumbers, Minus, PushPin, Quotes, ShareNetwork, Sidebar, TextB, TextHOne, TextItalic, TextStrikethrough, Trash, BracketsSquare, MoonStars, Sparkle, X } from "@phosphor-icons/react";
 import { Markdown } from "../lib/markdown.jsx";
 import { Menu } from "../lib/Menu.jsx";
 import { SaveStatus } from "../store/SaveStatus.jsx";
@@ -172,7 +172,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
     { label: note.pinned ? "Unpin" : "Pin to top", icon: PushPin, onSelect: () => actions.setPinned([note.id], !note.pinned) },
     { label: note.archived ? "Unarchive" : "Archive", icon: Archive, onSelect: () => actions.setArchived([note.id], !note.archived) },
     { label: "Duplicate", icon: CopySimple, onSelect: () => actions.duplicateNote(note.id) },
-    ...(isActiveNote(note) ? [{ label: "See it in the Sky", icon: MoonStars, onSelect: () => actions.showInNode(note.id) }] : []),
+    ...(isActiveNote(note) ? [{ label: "See it on the canvas", icon: MoonStars, onSelect: () => actions.showInNode(note.id) }] : []),
     { label: "Copy as Markdown", icon: Copy, onSelect: () => navigator.clipboard?.writeText(`# ${note.title}\n\n${note.markdown}`) },
     { divider: true },
     { label: "Move to Trash", icon: Trash, danger: true, onSelect: () => actions.trashNotes([note.id]) },
@@ -247,6 +247,13 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             ))}
             {!note.tags.length && !trashed && <button type="button" className="meta-tag ghost" onClick={() => { textareaRef.current?.focus(); commands.tag(); }}><Hash /> add a tag</button>}
           </div>
+          {note.gist && (
+            <div className="note-gist">
+              <Sparkle aria-hidden="true" />
+              <p><b>In short</b> {note.gist}</p>
+              {!trashed && <button type="button" className="icon-button" aria-label="Remove the short version" title="Remove the short version" onClick={() => actions.updateNote(note.id, { gist: undefined })}><X /></button>}
+            </div>
+          )}
 
           {writing && (
             <div className="editor-toolbar" role="toolbar" aria-label="Formatting">
@@ -289,7 +296,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
                   aria-label="Note text"
                   spellCheck="true"
                   value={note.markdown}
-                  placeholder={"Start writing. @Node links to a node, #tags organize, [[Note title]] links, - [ ] is a next step."}
+                  placeholder={"Start writing. @Topic links to a topic, #tags organize, [[Note title]] links, - [ ] is a next step."}
                   onChange={(event) => { actions.updateNote(note.id, { markdown: event.target.value }); setTimeout(refreshAutocomplete, 0); }}
                   onKeyDown={onKeyDown}
                   onClick={() => setComplete(null)}
@@ -334,11 +341,11 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             {tasks.total > 0 && <span>{tasks.done}/{tasks.total} steps done</span>}
             <span>Edited {formatRelativeTime(note.updatedAt)}</span>
             {mentions.map((folderId) => (
-              <button key={folderId} type="button" className="text-button mention-chip" title="See it in the Sky" onClick={() => actions.openFolderBoard(folderId)}>
+              <button key={folderId} type="button" className="text-button mention-chip" title="See it on the canvas" onClick={() => actions.openFolderBoard(folderId)}>
                 <At /> {folderPath(workspace.folders, folderId).join(" › ")}
               </button>
             ))}
-            {isActiveNote(note) && <button type="button" className="text-button" onClick={() => actions.showInNode(note.id)}><MoonStars /> See it in the Sky</button>}
+            {isActiveNote(note) && <button type="button" className="text-button" onClick={() => actions.showInNode(note.id)}><MoonStars /> See it on the canvas</button>}
           </footer>
         </div>
 
@@ -416,10 +423,10 @@ function NoteInspector({ workspace, note, actions, tasks, textareaRef }) {
         ) : <p className="inspector-empty">No other note links here yet.</p>}
       </section>
       <section>
-        <h4>Node</h4>
+        <h4>Topic</h4>
         {note.folderId
           ? <ul className="link-list"><li><button type="button" onClick={() => actions.showInNode(note.id)}><ShareNetwork /> <span>{folderPath(workspace.folders, note.folderId).join(" › ")}</span></button></li></ul>
-          : <p className="inspector-empty">Unsorted. Use Move to above, or drag it into a node in the Sky.</p>}
+          : <p className="inspector-empty">Unsorted. Use Move to above, or drag it into a topic on the canvas.</p>}
       </section>
     </aside>
   );

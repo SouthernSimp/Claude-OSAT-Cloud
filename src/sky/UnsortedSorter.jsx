@@ -108,7 +108,7 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
     if (!result) { setSay('This sticky or its place changed. Nothing moved.'); return }
     const title = `“${(note.title || 'Untitled').slice(0, 40)}”`
     const where = result.folderId ? pathOf(result.state.folders, result.folderId) : ''
-    const message = kind === 'trash' ? `Deleted ${title}` : where ? `Moved ${title} to ${where}` : `Put ${title} on the Sky`
+    const message = kind === 'trash' ? `Deleted ${title}` : where ? `Moved ${title} to ${where}` : `Put ${title} on the canvas`
     advanceFrom(note.id)
     setPlaced((value) => value + 1)
     setSay(message)
@@ -145,10 +145,10 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
     if (answer) {
       setPicks((value) => ({ ...value, [note.id]: { list: [answer] } }))
       setPick(answer.kind === 'make' ? null : 0)
-      setSay(answer.kind === 'make' ? `The AI suggests a new node, ${answer.name}.` : `The AI suggests ${pathOf(latest.current.folders, answer.folderId)}.`)
+      setSay(answer.kind === 'make' ? `The AI suggests a new topic, ${answer.name}.` : `The AI suggests ${pathOf(latest.current.folders, answer.folderId)}.`)
     } else if (/^\W*none\b/i.test(String(out.result).trim())) {
       setPicks((value) => ({ ...value, [note.id]: { list: [], sky: true } }))
-      setSay('The AI thinks this one can stay free on the Sky.')
+      setSay('The AI thinks this one can stay free on the canvas.')
     } else one.fail('The AI’s answer didn’t name a place OSAT knows')
   }
 
@@ -183,7 +183,7 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
     if (!result) { setSay('These stickies changed. Nothing moved.'); return }
     const [only] = groups
     const message = groups.length > 1 ? `Sorted ${sayStickies(result.moved.length)}`
-      : only.kind === 'make' ? `Made the node “${only.name}” with ${sayStickies(result.moved.length)}`
+      : only.kind === 'make' ? `Made the topic “${only.name}” with ${sayStickies(result.moved.length)}`
         : `Moved ${sayStickies(result.moved.length)} to ${pathOf(latest.current.folders, only.folderId)}`
     setPlaced((value) => value + result.moved.length)
     setReview((value) => (value ? { ...value, groups: value.groups.filter((group) => !groups.includes(group)) } : value))
@@ -322,26 +322,27 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
                 onBlur={(event) => { if (event.target.value.trim()) writeSticky(actions.commit, current, event.target.value) }}
               />
             </article>
+            {current.gist && <p className="sorter-gist"><b>In short</b> {current.gist}</p>}
             <p className="sorter-meta">
               <span>{[current.source && `From ${current.source}`, formatRelativeTime(current.createdAt)].filter(Boolean).join(' · ')}</span>
               <button type="button" onClick={() => actions.openNote(current.id)}>Open in Notes <ArrowUpRight /></button>
             </p>
             <div className="sorter-quiet" aria-label="Or">
               <button type="button" onClick={later}>Skip for now <kbd aria-hidden="true">L</kbd></button>
-              <button type="button" title="On the Sky’s canvas, in no node" onClick={() => place('sky')}>Put it on the Sky <kbd aria-hidden="true">S</kbd></button>
+              <button type="button" title="On the canvas, in no topic" onClick={() => place('sky')}>Put it on the canvas <kbd aria-hidden="true">S</kbd></button>
               <button type="button" onClick={() => place('trash')}>Delete <kbd aria-hidden="true">⌫</kbd></button>
             </div>
           </div>
 
           <div className="sorter-homes">
-            <h4 id="sorter-homes-title">{query.trim() ? `Places matching “${query.trim()}”` : homes.length ? 'Suggested places' : newNode ? 'Suggested: a new node' : 'No suggestion for this one'}</h4>
-            {!query.trim() && !homes.length && !newNode && <p className="sorter-quiet-line">{aiPick?.sky ? 'The AI thinks it can stay free on the Sky.' : 'Search for a node or branch below, or make a new node.'}</p>}
+            <h4 id="sorter-homes-title">{query.trim() ? `Places matching “${query.trim()}”` : homes.length ? 'Suggested places' : newNode ? 'Suggested: a new topic' : 'No suggestion for this one'}</h4>
+            {!query.trim() && !homes.length && !newNode && <p className="sorter-quiet-line">{aiPick?.sky ? 'The AI thinks it can stay free on the canvas.' : 'Search for a topic or branch below, or make a new topic.'}</p>}
             <div className="sorter-list" role="listbox" aria-labelledby="sorter-homes-title" aria-activedescendant={row ? `sorter-row-${selected}` : undefined}>
               {rows.map((item, at) => item.kind === 'make' ? (
                 <div key="make" id={`sorter-row-${at}`} role="option" aria-selected={selected === at} className="sorter-row is-new" onClick={() => { setPick(at); nameField.current?.focus() }}>
                   <kbd aria-hidden="true">N</kbd>
                   <div>
-                    <label><Plus aria-hidden="true" /> New node <input ref={nameField} value={item.name} maxLength={80} placeholder="Name it" aria-label="New node name" onFocus={() => setPick(at)} onChange={(event) => setNames((value) => ({ ...value, [current.id]: event.target.value }))} /></label>
+                    <label><Plus aria-hidden="true" /> New topic <input ref={nameField} value={item.name} maxLength={80} placeholder="Name it" aria-label="New topic name" onFocus={() => setPick(at)} onChange={(event) => setNames((value) => ({ ...value, [current.id]: event.target.value }))} /></label>
                     {item.why && <small>{item.why}</small>}
                   </div>
                 </div>
@@ -357,15 +358,15 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
                   </div>
                 </div>
               ))}
-              {query.trim() && !found.length && <p className="sorter-quiet-line">No node or branch is called that. Esc clears the search.</p>}
+              {query.trim() && !found.length && <p className="sorter-quiet-line">No topic or branch is called that. Esc clears the search.</p>}
             </div>
             <label className="sorter-find">
               <MagnifyingGlass aria-hidden="true" />
-              <input ref={findField} value={query} placeholder="Search for a node or branch…" aria-label="Find another node or branch" onChange={(event) => { setQuery(event.target.value); setPick(null) }} />
+              <input ref={findField} value={query} placeholder="Search for a topic or branch…" aria-label="Find another topic or branch" onChange={(event) => { setQuery(event.target.value); setPick(null) }} />
               <kbd aria-hidden="true">F</kbd>
             </label>
             <button type="button" className="is-primary sorter-go" disabled={row && !ready} onClick={() => place('home')}>
-              <span>{!row ? 'Put it on the Sky' : row.kind === 'make' ? (row.name.trim() ? `Make the node “${row.name.trim()}”` : 'Name the new node') : `Move to ${row.path.replaceAll(' / ', ' › ')}`}</span>
+              <span>{!row ? 'Put it on the canvas' : row.kind === 'make' ? (row.name.trim() ? `Make the topic “${row.name.trim()}”` : 'Name the new topic') : `Move to ${row.path.replaceAll(' / ', ' › ')}`}</span>
               <kbd aria-hidden="true">↵</kbd>
             </button>
             <AiLine state={one.state} onAsk={askAi} onAction={(action) => runAction(one, action, askAi)} />
@@ -378,7 +379,7 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
           <p>{notes.length ? `${sayStickies(notes.length)} still wait in Unsorted, whenever you like.` : 'Every sticky has a place. New ones will wait here.'}</p>
           <div>
             {notes.length > 0 && <button type="button" className="is-primary" onClick={() => { setOrder([]); setChosen(false); setCurrentId(null) }}>Sort the rest</button>}
-            <button type="button" onClick={onClose}>Back to the Sky</button>
+            <button type="button" onClick={onClose}>Back to the canvas</button>
           </div>
         </div>
       )}
@@ -395,7 +396,7 @@ export function UnsortedSorter({ workspace, notes, actions, history, ai, navigat
         )}
         {/* The keys that matter; the rest are in the tooltip. */}
         <p className="sorter-keys" aria-hidden="true"
-          title={view === 'one' ? `↵ Move · ↑↓${numbered > 0 ? ` or ${numbered > 1 ? `1–${Math.min(9, numbered)}` : '1'}` : ''} Choose · N New node · F Search · L Skip for now · S Put it on the Sky · ⌫ Delete · A Ask the AI · ←→ Look through · ⌘Z Undo · Esc Close` : undefined}>
+          title={view === 'one' ? `↵ Move · ↑↓${numbered > 0 ? ` or ${numbered > 1 ? `1–${Math.min(9, numbered)}` : '1'}` : ''} Choose · N New topic · F Search · L Skip for now · S Put it on the canvas · ⌫ Delete · A Ask the AI · ←→ Look through · ⌘Z Undo · Esc Close` : undefined}>
           {view === 'one'
             ? <><b>↵</b> Move · <b>↑↓</b> Choose · <b>L</b> Skip · <b>⌘Z</b> Undo · <b>Esc</b> Close</>
             : <><b>↵</b> Do all of these · <b>⌘Z</b> Undo · <b>Esc</b> One at a time</>}

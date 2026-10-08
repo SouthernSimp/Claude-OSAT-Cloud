@@ -47,7 +47,7 @@ export function JournalView({ workspace, commit, navigate, target }) {
         <footer>
           <span>{wordCount(entry?.markdown || '')} words · only for you</span>
           {entry && isActiveNote(entry) && <>
-            <button type="button" onClick={() => navigate('Mindmap', { noteId: id })}><MoonStars /> See it in the Sky</button>
+            <button type="button" onClick={() => navigate('Mindmap', { noteId: id })}><MoonStars /> See it on the canvas</button>
             <button type="button" onClick={() => navigate('Notes', { noteId: id })}>Open in Notes <ArrowUpRight /></button>
           </>}
         </footer>

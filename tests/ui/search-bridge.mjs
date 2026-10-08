@@ -44,8 +44,29 @@ export function installSearchBridge(defaults) {
     ready: async () => true,
     settings: async () => settings,
     saveSettings: async (patch) => { settings = merge(patch); heard.forEach((listener) => listener(settings)); return settings },
+    // ⌘K's favorite, key and word for one row (main's `search:customize`, kept as shared/launcher-model.mjs `customize` does).
+    customize: async (row, change) => {
+      window.__calls.push(['customize', row.key, change])
+      const before = (settings.custom || []).find((entry) => entry.key === row.key)
+      const entry = { favorite: false, hotkey: null, keyword: null, ...(before || { key: row.key, kind: row.kind, title: row.title, subtitle: row.subtitle || '', data: row.data || {} }), ...change }
+      const rest = (settings.custom || []).filter((item) => item.key !== row.key)
+      settings = { ...settings, custom: entry.favorite || entry.hotkey || entry.keyword ? [...rest, entry] : rest }
+      heard.forEach((listener) => listener(settings))
+      return settings
+    },
+    system: async (id) => { window.__calls.push(['system', id]); return { ok: true } },
+    pasteSnippet: async (id) => { window.__calls.push(['pasteSnippet', id]); return { pasted: false, reason: 'access' } },
+    copySnippet: async (id) => { window.__calls.push(['copySnippet', id]); return true },
+    saveSnippet: async (clipId, keyword) => {
+      window.__calls.push(['saveSnippet', clipId, keyword])
+      const copy = clipboard.find((item) => item.id === clipId)
+      const snippet = { id: `snip-${clipId}`, name: copy.text.split('\n')[0].slice(0, 40), keyword, text: copy.text }
+      settings = { ...settings, snippets: [...(settings.snippets || []), snippet] }
+      heard.forEach((listener) => listener(settings))
+      return snippet
+    },
     onSettings: (listener) => { heard.add(listener); return () => heard.delete(listener) },
-    status: async () => ({ accessibility: 'needed', keysFailed: [], middleClick: 'listening' }),
+    status: async () => ({ accessibility: 'needed', keysFailed: [], middleClick: 'listening', snippets: settings.snippetsTyped ? 'access' : 'off' }),
     pauseClipboard: async (on) => { paused = on === true; return paused },
     clearClipboard: async () => 'undo-clear',
     onShown: (listener) => { window.__shown = listener; return () => {} },

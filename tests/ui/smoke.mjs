@@ -7,6 +7,8 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
 import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
 import { installSearchBridge } from './search-bridge.mjs'
+import { createRequire } from 'node:module'
+const { TIERS, fits, pickTier, recommendFor } = createRequire(import.meta.url)('../../desktop/ai/catalog.cjs')
 
 const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
@@ -15,10 +17,19 @@ const PORT = Number(process.env.OSAT_PORT || 4317)
 const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
 const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Pile', 'Sort a pile'], ['Settings', 'Settings']]
 
-/* Opens a node on the Sky as a map (a click opens or closes one, so only when it isn't open yet). */
+/* Opens a topic (or a branch's topic) on the canvas as a map, through Find (the canvas has no list of its own). */
 async function openNode(page, name) {
   if (await page.locator('.board-card.is-open [data-node-head]', { hasText: name }).count()) return
-  await page.getByRole('navigation', { name: 'Sky topics', exact: true }).getByRole('button', { name, exact: true }).click()
+  await findOnCanvas(page, name)
+}
+async function findOnCanvas(page, name) {
+  await page.getByRole('combobox', { name: 'Find on the canvas' }).fill(name)
+  await page.locator('#sky-search-results [role="option"]', { hasText: name }).first().click()
+}
+/* Unsorted's sorter: from the canvas's ⋯ menu (Notes has "Sort by hand"). */
+async function openSorter(page) {
+  await page.getByRole('button', { name: 'Canvas actions', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Sort Unsorted by hand' }).click()
 }
 
 let server
@@ -65,7 +76,7 @@ async function main() {
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowRight')
     await sleep(500)
-    if (!/Sky/.test(await heading())) problems.push('tour: the arrow keys did not walk it to the Sky')
+    if (!/canvas/i.test(await heading())) problems.push('tour: the arrow keys did not walk it to the canvas')
     await page.screenshot({ path: `${OUT}/tour-sky.png` })
     await page.getByRole('button', { name: 'Back' }).click()
     await page.locator('.tour').getByRole('button', { name: 'Next', exact: true }).click()
@@ -126,11 +137,11 @@ async function main() {
     for (const [view, key] of SPACES) await visit(view, () => page.keyboard.press(`Control+${key}`), theme)
     // The Sky: the layer above the desk, a whiteboard of nodes; one opens in place; Esc goes back down.
     room = 'sky'
-    if (theme === 'light') await page.getByRole('button', { name: 'Open the Sky', exact: true }).click()
+    if (theme === 'light') await page.getByRole('button', { name: 'Open the canvas', exact: true }).click()
     else await page.keyboard.press('Control+3')
     await page.locator('.sky-layer').waitFor({ timeout: 5000 }).catch(() => problems.push(`sky: ⌃3 did not bring the Sky (${theme})`))
     // The first time, the Sky says how it works; Got it puts that away for good.
-    const guide = page.getByRole('dialog', { name: 'How the Sky works' })
+    const guide = page.getByRole('dialog', { name: 'How the canvas works' })
     if (theme === 'light') {
       await guide.waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the first visit did not say how the Sky works'))
       await sleep(500)
@@ -147,7 +158,7 @@ async function main() {
       await page.getByRole('textbox', { name: 'A new sticky', exact: true }).press('Escape')
       const free = page.locator('.board-sticky', { hasText: 'Freely placed Sky sticky' })
       await free.waitFor({ timeout: 3000 })
-      await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
+      await openSorter(page)
       await page.getByRole('button', { name: 'See the list', exact: true }).click()
       if (await page.locator('.sky-unsorted-drawer .sticky', { hasText: 'Freely placed Sky sticky' }).count()) problems.push('sky: a free sticky was duplicated in the Unsorted drawer')
       await page.getByRole('button', { name: 'Close Unsorted' }).click()
@@ -157,7 +168,7 @@ async function main() {
       await sleep(250)
       if (await free.evaluate((element) => element.style.translate) === before) problems.push('sky: arrow keys did not move a focused free sticky')
       const nudged = await free.evaluate((element) => element.style.translate)
-      await page.getByRole('button', { name: 'Undo Sky change', exact: true }).click()
+      await page.getByRole('button', { name: 'Undo canvas change', exact: true }).click()
       if (await free.evaluate((element) => element.style.translate) !== before) problems.push('history: Undo did not restore the free sticky')
       await free.locator('.sticky').focus()
       await page.keyboard.press('Control+Shift+z')
@@ -170,9 +181,9 @@ async function main() {
       await page.locator('.sky-layer').waitFor({ state: 'detached', timeout: 3000 })
       await page.keyboard.press('Control+3')
       await free.waitFor({ timeout: 3000 })
-      await page.getByRole('button', { name: 'Undo Sky change', exact: true }).click()
+      await page.getByRole('button', { name: 'Undo canvas change', exact: true }).click()
       if (await free.evaluate((element) => element.style.translate) !== before) problems.push('history: Undo history was lost after leaving Sky')
-      await page.getByRole('button', { name: 'Redo Sky change', exact: true }).click()
+      await page.getByRole('button', { name: 'Redo canvas change', exact: true }).click()
       if (await free.evaluate((element) => element.style.translate) !== nudged) problems.push('history: Redo history was lost after leaving Sky')
       await page.screenshot({ path: `${OUT}/sky-history.png` })
       const from = await free.boundingBox()
@@ -186,15 +197,15 @@ async function main() {
       await free.locator('.sticky').click({ button: 'right' })
       await page.getByRole('menuitem', { name: 'Back to Unsorted', exact: true }).click()
       await free.waitFor({ state: 'detached', timeout: 3000 })
-      await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
+      await openSorter(page)
       await page.getByRole('button', { name: 'See the list', exact: true }).click()
       await page.locator('.sky-unsorted-drawer .sticky', { hasText: 'Freely placed Sky sticky' }).waitFor({ timeout: 3000 })
       await page.getByRole('button', { name: 'Close Unsorted' }).click()
       await page.getByRole('button', { name: 'Undo', exact: true }).click()
       await free.waitFor({ timeout: 3000 })
       if (await free.evaluate((element) => element.style.translate) !== placed) problems.push('sky: Undo did not restore the sticky’s exact placement')
-      await page.getByRole('combobox', { name: 'Find in Sky' }).fill('Freely placed Sky sticky')
-      await page.getByRole('combobox', { name: 'Find in Sky' }).press('Enter')
+      await page.getByRole('combobox', { name: 'Find on the canvas' }).fill('Freely placed Sky sticky')
+      await page.getByRole('combobox', { name: 'Find on the canvas' }).press('Enter')
       await free.locator('.sticky.is-found').waitFor({ timeout: 3000 })
       await sleep(800)
       await page.screenshot({ path: `${OUT}/sky-free-stickies.png` })
@@ -304,7 +315,7 @@ async function main() {
   await rail.getByRole('button', { name: 'Quick bar', exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: the sidebar had no Quick bar page'))
   await goTo('Quick bar')
   const names = (await page.locator('.setting-group', { hasText: 'Where it looks' }).locator('.setting-text b').allInnerTexts().catch(() => [])).join(', ')
-  if (names !== 'Files, Clipboard, Apps, Notes and nodes, Calculator, Window layouts') problems.push(`settings: the places were ${names}`)
+  if (names !== 'Files, Clipboard, Apps, Notes and topics, Calculator, Window layouts') problems.push(`settings: the places were ${names}`)
   await page.getByRole('switch', { name: 'Look in Clipboard' }).uncheck()
   await page.getByRole('radio', { name: 'The full view' }).click()
   if ((await page.evaluate(() => window.osatSearch.settings())).view !== 'full') problems.push('settings: a change was not saved at once')
@@ -322,7 +333,7 @@ async function main() {
   await page.getByRole('button', { name: 'Key for Files' }).click()
   await page.keyboard.press('Control+Alt+Shift+Meta+F')
   await page.getByRole('button', { name: 'Key for Files' }).filter({ hasText: 'Hyper' }).filter({ hasText: /F$/ }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: a recorded Hyper key was not shown as Hyper F'))
-  await page.getByRole('button', { name: 'Key for Notes and nodes' }).click()
+  await page.getByRole('button', { name: 'Key for Notes and topics' }).click()
   await page.keyboard.press('Control+Alt+Shift+Meta+F')
   await page.getByText('Hyper F is Files’s key already.').waitFor({ timeout: 3000 }).catch(() => problems.push('settings: a key two things wanted was not refused, naming who has it'))
   await page.keyboard.press('Escape')
@@ -395,6 +406,17 @@ async function main() {
   if (!await page.getByRole('button', { name: 'Key for Record screen' }).count()) problems.push('settings: Record screen had no key to set')
   await page.screenshot({ path: `${OUT}/settings-screenshots.png` })
   // Every other page opens without a fault, and the search finds a row by its words on any page.
+  // Snippets: add one; its word shows; the switch for any app waits for Accessibility and says so.
+  await goTo('Snippets')
+  await page.getByRole('textbox', { name: 'Name of the snippet' }).fill('Home address')
+  await page.getByRole('textbox', { name: 'Word for the snippet' }).fill(';addr')
+  await page.getByRole('textbox', { name: 'Text of the snippet' }).fill('12 Oak Lane\nSpringfield')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Word for Home address' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: a snippet was not added'))
+  await page.getByRole('switch', { name: 'Turn words into text in any app' }).check()
+  await page.locator('.setting-row', { hasText: 'Waiting for Accessibility' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: typed snippets did not say they wait for Accessibility'))
+  await page.screenshot({ path: `${OUT}/settings-snippets.png` })
+  await page.getByRole('switch', { name: 'Turn words into text in any app' }).uncheck()
   for (const name of ['General', 'Appearance', 'AI', 'Bots', 'Data', 'Scans', 'iPhone', 'About']) {
     await goTo(name)
     if (!await page.locator('.settings-section .setting-head h2', { hasText: new RegExp(`^${name}$`) }).count()) problems.push(`settings: the ${name} page did not open`)
@@ -667,8 +689,8 @@ async function main() {
   // The AI in the Sky: a pill opens a small card; "sort these" opens Unsorted's sorter on Suggested homes, which
   // suggests homes from matching words (no AI in this test); Do it and Undo work, and Unsorted's list and a branch fold.
   room = 'sky ask'
-  await page.locator('.sky-breadcrumb').getByRole('button', { name: 'All Sky', exact: true }).click()
-  await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
+  await page.locator('.sky-breadcrumb').getByRole('button', { name: 'Everything', exact: true }).click()
+  await openSorter(page)
   await page.getByRole('button', { name: 'See the list', exact: true }).click()
   const unsortedCard = page.locator('.sky-unsorted-drawer')
   await unsortedCard.getByRole('button', { name: 'Write a sticky' }).dispatchEvent('click').catch(() => problems.push('sky: Unsorted had no Write a sticky'))
@@ -684,12 +706,12 @@ async function main() {
   const review = page.getByRole('region', { name: 'Sort Unsorted stickies', exact: true })
   await review.locator('.sorter-progress', { hasText: 'Sticky 1 of 3' }).waitFor({ timeout: 3000 })
     .catch(async () => problems.push(`sorting: the chosen few were not the three cat stickies (${await review.locator('.sorter-progress').textContent()})`))
-  const proposed = await review.getByRole('textbox', { name: 'New node name' }).inputValue()
+  const proposed = await review.getByRole('textbox', { name: 'New topic name' }).inputValue()
   if (proposed !== 'Cat') problems.push(`sorting: related stickies had no proposed new node (${proposed})`)
-  if (await page.getByRole('navigation', { name: 'Sky topics', exact: true }).getByRole('button', { name: 'Cat', exact: true }).count()) problems.push('sorting: a proposal created a node without approval')
+  if (await page.locator('[data-node-head]', { hasText: 'Cat' }).count()) problems.push('sorting: a proposal created a topic without approval')
   if (!/isn’t set up yet|LM Studio|AI/.test(await review.locator('.sorter-ai').textContent())) problems.push('sorting: the AI line said nothing')
   const firstSticky = await review.locator('.sorter-paper textarea').inputValue()
-  await review.getByRole('textbox', { name: 'Find another node or branch' }).fill('Questions')
+  await review.getByRole('textbox', { name: 'Find another topic or branch' }).fill('Questions')
   await review.getByRole('button', { name: 'Move to Project Direction › Questions', exact: true }).click()
   await review.locator('.sorter-progress', { hasText: 'Sticky 2 of 3' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sorting: the progress did not count the placement'))
   if (await review.locator('.sorter-paper textarea').inputValue() === firstSticky) problems.push('sorting: Move did not go on to the next sticky')
@@ -704,7 +726,7 @@ async function main() {
   await page.screenshot({ path: `${OUT}/sky-sorting-review.png` })
   await review.getByRole('button', { name: 'Close Unsorted', exact: true }).click()
   await page.locator('.sky-layer').getByRole('button', { name: 'Ask', exact: true }).click().catch(() => problems.push('sky: there was no Ask pill'))
-  const skyCard = page.getByRole('dialog', { name: 'Ask about your Sky' })
+  const skyCard = page.getByRole('dialog', { name: 'Ask about your canvas' })
   await skyCard.waitFor({ timeout: 3000 }).catch(() => problems.push('sky: the Ask pill did not open its card'))
   await skyCard.getByRole('textbox').fill('sort these')
   await skyCard.getByRole('textbox').press('Enter')
@@ -722,7 +744,7 @@ async function main() {
   await page.getByRole('button', { name: 'Close Unsorted' }).click()
   await review.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => problems.push('sky: Unsorted did not close'))
   await page.screenshot({ path: `${OUT}/sky-folded.png` })
-  await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
+  await openSorter(page)
   if (await page.locator('.board').getAttribute('style') !== cameraBeforeDrawer) problems.push('sky: opening Unsorted moved the camera')
   await page.getByRole('button', { name: 'See the list', exact: true }).click()
   await unsortedCard.locator('.sticky', { hasText: 'Buy cat litter' }).waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Undo did not bring the cat stickies back to Unsorted'))
@@ -744,34 +766,34 @@ async function main() {
   await page.getByRole('button', { name: 'Open Later', exact: true }).click({ force: true }).catch(() => {})
   await page.locator('.branch-card[aria-label="Branch: Later"][data-layers]').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: the branch did not open again'))
   // Focus closes the drawer and keeps one topic; All Sky restores the overview.
-  await page.locator('.sky-nav-views').getByRole('button', { name: /^Unsorted/ }).click()
-  await page.getByRole('navigation', { name: 'Sky topics', exact: true }).getByRole('button', { name: 'Project Direction', exact: true }).click()
+  await openSorter(page)
+  await findOnCanvas(page, 'Project Direction')
   await page.locator('.board.is-focused').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: selecting a topic did not focus on it'))
   if (await page.locator('.sky-unsorted-drawer').count()) problems.push('sky: focus still showed Unsorted')
   await page.screenshot({ path: `${OUT}/sky-focus.png` })
-  await page.locator('.sky-breadcrumb').getByRole('button', { name: 'All Sky', exact: true }).click()
+  await page.locator('.sky-breadcrumb').getByRole('button', { name: 'Everything', exact: true }).click()
   await page.locator('.board.is-focused').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('sky: All Sky did not end the focus'))
   await openNode(page, 'Project Direction')
   room = 'sky menus'
-  await page.getByRole('combobox', { name: 'Find in Sky' }).fill('Project Direction')
-  await page.getByRole('combobox', { name: 'Find in Sky' }).press('Enter')
+  await page.getByRole('combobox', { name: 'Find on the canvas' }).fill('Project Direction')
+  await page.getByRole('combobox', { name: 'Find on the canvas' }).press('Enter')
   await sleep(900)
   await page.getByRole('button', { name: 'More for Project Direction', exact: true }).click()
   for (const gone of ['Link to', 'Lay it out', 'Put inside', 'Colour', 'Remove node']) if (await page.getByRole('menuitem', { name: gone }).count()) problems.push(`sky: the node menu still says "${gone}"`)
-  for (const kept of ['Color', 'Delete node', 'Help me sort']) if (!await page.getByRole('menuitem', { name: kept }).count()) problems.push(`sky: the node menu has no "${kept}"`)
+  for (const kept of ['Color', 'Delete topic', 'Help me sort']) if (!await page.getByRole('menuitem', { name: kept }).count()) problems.push(`sky: the node menu has no "${kept}"`)
   await page.getByRole('menuitem', { name: 'Help me sort' }).click().catch(() => {})
   await page.locator('.sort-help').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: Help me sort said nothing'))
   await sleep(300)
   await page.screenshot({ path: `${OUT}/sky-sort.png` })
   // A branch's menu: New branch inside puts one inside it, on its own line, and Rename works.
-  await page.getByRole('navigation', { name: 'Sky topics', exact: true }).getByRole('button', { name: 'Later', exact: true }).click()
+  await findOnCanvas(page, 'Later')
   await sleep(900)
   await page.getByRole('button', { name: 'More for Later', exact: true }).click()
   await page.getByRole('menuitem', { name: 'New branch inside' }).click().catch(() => problems.push('sky: a branch menu has no "New branch inside"'))
   await page.getByRole('textbox', { name: 'Name the branch inside', exact: true }).fill('Mac apps')
   await page.getByRole('textbox', { name: 'Name the branch inside', exact: true }).press('Enter')
   await page.locator('.branch-card[aria-label="Branch: Mac apps"]').waitFor({ timeout: 3000 }).catch(() => problems.push('sky: New branch inside did not make a branch inside'))
-  await page.getByRole('navigation', { name: 'Sky topics', exact: true }).getByRole('button', { name: 'Mac apps', exact: true }).click()
+  await findOnCanvas(page, 'Mac apps')
   await sleep(900)
   await page.getByRole('button', { name: 'More for Mac apps', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Rename' }).click().catch(() => {})
@@ -838,14 +860,14 @@ async function main() {
   room = 'pop-outs'
   // Sent up to the Sky (its menu), the same sticky is set down freely; Notes still finds it in Unsorted.
   await here.click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Send up to the Sky' }).click()
+  await page.getByRole('menuitem', { name: 'Send to the canvas' }).click()
   await page.locator('.board-sticky', { hasText: 'Written right here' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: Send up to the Sky did not set the sticky on the canvas'))
   await page.locator('.sky-layer').getByRole('button', { name: 'Desk', exact: true }).click()
   await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 })
   const shelfSticky = page.locator('.home .desk-sticky', { hasText: 'Smoke test thought' })
   if (await shelfSticky.count()) {
     await shelfSticky.click({ button: 'right' })
-    await page.getByRole('menuitem', { name: 'Send up to the Sky' }).click()
+    await page.getByRole('menuitem', { name: 'Send to the canvas' }).click()
     await page.locator('.sky-layer').getByRole('button', { name: 'Desk', exact: true }).click()
     await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 })
   }
@@ -965,10 +987,10 @@ async function main() {
   await page.screenshot({ path: `${OUT}/pile.png` })
   await page.locator('.pile-suggestion', { hasText: 'Car' }).getByRole('button', { name: 'Make the branch' }).click().catch(() => {})
   if (await page.locator('.pile-group').count() !== 2) problems.push(`pile: expected 2 branches, found ${await page.locator('.pile-group').count()}`)
-  await page.getByRole('button', { name: 'Send to the Sky' }).click()
-  await page.getByLabel('Name of the node').fill('Kitchen table')
+  await page.getByRole('button', { name: 'Send to the canvas' }).click()
+  await page.getByLabel('Name of the topic').fill('Kitchen table')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  await page.getByRole('button', { name: 'See it in the Sky' }).click().catch(() => problems.push('pile: sending did not offer to show it in the Sky'))
+  await page.getByRole('button', { name: 'See it on the canvas' }).click().catch(() => problems.push('pile: sending did not offer to show it in the Sky'))
   await page.locator('[data-node-head]', { hasText: 'Kitchen table' }).waitFor({ timeout: 5000 }).catch(() => problems.push('pile: the node was not in the Sky'))
   if (await page.locator('.pile-room').count()) problems.push('pile: the table stayed open over the Sky')
 
@@ -979,12 +1001,21 @@ async function main() {
   await bar.addInitScript(installSearchBridge, DEFAULT_SETTINGS)
   await bar.goto(`${url}?surface=search&fresh=1`)
   await bar.locator('.quick-search[data-mode="bar"]').waitFor({ timeout: 8000 }).catch(() => problems.push(`${room}: the bar did not open`))
-  // Words typed: the last rows say they can be kept or asked; the one-line hint names the keys.
+  // ↓ on the small bar opens the list: the latest copies first, then files.
+  await bar.locator('#qs-input').press('ArrowDown')
+  await bar.locator('.quick-search[data-mode="full"]').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: ↓ did not open the list`))
+  await bar.locator('.qs-head').first().waitFor({ timeout: 3000 }).catch(() => {})
+  if ((await bar.locator('.qs-head').first().innerText().catch(() => '')).toLowerCase() !== 'clipboard') problems.push(`${room}: the list did not start with what was copied`)
+  await bar.screenshot({ path: `${OUT}/QuickBar-start.png` })
+  await bar.evaluate(() => window.__shown({}))
+  // Words typed: Ask AI is the first row and Save as a sticky the last; the one-line hint names the keys.
   await bar.fill('#qs-input', 'pack the tent')
   await bar.locator('.qs-row', { hasText: 'Save as a sticky' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: typed words did not offer Save as a sticky`))
-  if (!await bar.locator('.qs-row', { hasText: 'Ask the AI' }).count()) problems.push(`${room}: typed words did not offer Ask the AI`)
+  if (!/^Ask AI “pack the tent”/.test(await bar.locator('.qs-row').first().innerText().catch(() => ''))) problems.push(`${room}: Ask AI was not the first row`)
+  if ((await bar.locator('.qs-row[aria-selected="true"]').innerText().catch(() => '')).startsWith('Ask AI') === false) problems.push(`${room}: with nothing else found, the highlight did not start on Ask AI`)
   const hint = await bar.locator('.qs-keys').innerText().catch(() => '')
-  if (!/⌘↵\s*Ask/.test(hint) || !/⌥↵\s*Save as a sticky/.test(hint)) problems.push(`${room}: the hint did not name ⌘↵ and ⌥↵ (${hint})`)
+  if (!/⇥\s*Ask AI/.test(hint) || !/⌥↵\s*Save as a sticky/.test(hint)) problems.push(`${room}: the hint did not name ⇥ and ⌥↵ (${hint})`)
+  if (await bar.locator('[role="tab"]').count()) problems.push(`${room}: the bar still has tabs`)
   await bar.screenshot({ path: `${OUT}/QuickBar-words.png` })
   // ⌥Return: straight to Unsorted.
   await bar.keyboard.press('Alt+Enter')
@@ -1001,7 +1032,7 @@ async function main() {
   await bar.fill('#qs-input', 'clipboard')
   await bar.locator('.qs-row', { hasText: 'Clipboard history' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "clipboard" did not find the clipboard history`))
   await bar.keyboard.press('Enter')
-  await bar.locator('[role="tab"][aria-selected="true"]', { hasText: 'Clipboard' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "clipboard" did not open the clipboard history`))
+  await bar.locator('.qs-chip.is-scope', { hasText: 'Clipboard' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "clipboard" did not open the clipboard history`))
   // A copied picture shows itself in its row, and a copy drags out into other apps.
   await bar.locator('.qs-row .qs-thumb').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a copied picture had no thumbnail in its row`))
   if (await bar.locator('.qs-row[draggable="true"]').count() < 4) problems.push(`${room}: the copies could not be dragged out`)
@@ -1013,7 +1044,7 @@ async function main() {
   if ((await bar.evaluate(() => window.__calls)).filter(([name]) => name === 'dragClip').length !== dragsBefore + 1) problems.push(`${room}: dragging the preview did not hand the copy to the Mac's drag`)
   await bar.screenshot({ path: `${OUT}/QuickBar-clipboard.png` })
   // ⌘Return: Ask, in the same window, with the question; Esc comes back to the bar, then away.
-  await bar.getByRole('tab', { name: 'Everything' }).click()
+  await bar.locator('.qs-chip.is-scope').click()
   await bar.fill('#qs-input', 'What should I pack?')
   await bar.keyboard.press('Control+Enter')
   await bar.locator('.qs-chat .composer textarea').waitFor({ timeout: 5000 }).catch(() => problems.push(`${room}: ⌘Return did not open Ask`))
@@ -1023,6 +1054,58 @@ async function main() {
   await bar.screenshot({ path: `${OUT}/QuickBar-ask.png` })
   await bar.locator('.qs-chat .composer textarea').press('Escape')
   await bar.locator('#qs-input').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push(`${room}: Esc did not come back from Ask to the bar`))
+  // Raycast-style customizing, right in the bar (⌘K): a word, a key and a favorite for a command; the Mac's own commands.
+  await bar.evaluate(() => window.__shown({}))
+  await bar.fill('#qs-input', 'clipboard history')
+  await bar.locator('.qs-row[aria-selected="true"]', { hasText: 'Clipboard history' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "clipboard history" did not pick the command`))
+  await bar.keyboard.press('Control+k')
+  await bar.locator('.qs-actions').getByRole('menuitem', { name: /Set a word/ }).click().catch(() => problems.push(`${room}: ⌘K had no Set a word…`))
+  await bar.getByRole('textbox', { name: 'A word for Clipboard history' }).fill('cb')
+  await bar.getByRole('textbox', { name: 'A word for Clipboard history' }).press('Enter')
+  await bar.fill('#qs-input', 'cb')
+  await bar.locator('.qs-head', { hasText: 'Your word “cb”' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the word did not find what it was given to`))
+  await bar.screenshot({ path: `${OUT}/QuickBar-your-word.png` })
+  await bar.keyboard.press('Control+k')
+  await bar.locator('.qs-actions').getByRole('menuitem', { name: /Set a key/ }).click()
+  await bar.locator('.qs-editor', { hasText: 'Press the keys for' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: Set a key… did not ask for the keys`))
+  await bar.screenshot({ path: `${OUT}/QuickBar-set-key.png` })
+  await bar.keyboard.press('Control+Alt+B')
+  await bar.locator('.qs-foot', { hasText: 'now does “Clipboard history”' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: giving a key did not say so`))
+  if (!(await bar.evaluate(() => window.__calls)).some(([name, key, change]) => name === 'customize' && key === 'act:clipboard' && change.hotkey === 'Control+Alt+B')) problems.push(`${room}: the key pressed was not given to the command`)
+  await bar.keyboard.press('Shift+Control+f')
+  await bar.locator('.qs-foot', { hasText: 'is in your favorites' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: ⇧⌘F did not add a favorite`))
+  await bar.evaluate(() => window.__shown({}))
+  await bar.locator('.quick-search[data-mode="bar"]').waitFor({ timeout: 3000 })
+  await bar.locator('#qs-input').press('ArrowDown')
+  if ((await bar.locator('.qs-head').first().innerText().catch(() => '')).toLowerCase() !== 'favorites') problems.push(`${room}: a favorite was not first on the empty bar`)
+  await bar.screenshot({ path: `${OUT}/QuickBar-favorites.png` })
+  await bar.fill('#qs-input', 'lock')
+  await bar.locator('.qs-row[data-kind="system"]', { hasText: 'Lock the screen' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "lock" did not offer Lock the screen`))
+  await bar.fill('#qs-input', 'empty bin')
+  await bar.locator('.qs-row[aria-selected="true"]', { hasText: 'Empty the Bin' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "empty bin" did not pick Empty the Bin`))
+  await bar.keyboard.press('Enter')
+  if ((await bar.evaluate(() => window.__calls)).some(([name]) => name === 'system')) problems.push(`${room}: Empty the Bin did not wait for a second Return`)
+  await bar.locator('.qs-foot', { hasText: 'Press Return again' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: Empty the Bin did not say it can't be undone`))
+  await bar.keyboard.press('Enter')
+  await sleep(200)
+  if (!(await bar.evaluate(() => window.__calls)).some(([name, id]) => name === 'system' && id === 'empty-bin')) problems.push(`${room}: the second Return did not empty the Bin`)
+  await bar.evaluate(() => window.__shown({}))
+  // Snippets: a copy saved as one from ⌘K, then its word finds it and Return pastes it.
+  await bar.fill('#qs-input', 'v revised quote')
+  await bar.locator('.qs-row[aria-selected="true"]', { hasText: 'Jordan asked' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the copy was not picked`))
+  await bar.keyboard.press('Control+k')
+  await bar.locator('.qs-actions').getByRole('menuitem', { name: /Save as a snippet/ }).click().catch(() => problems.push(`${room}: a copy had no Save as a snippet…`))
+  await bar.getByRole('textbox', { name: 'A word for the snippet' }).fill(';jq')
+  await bar.getByRole('textbox', { name: 'A word for the snippet' }).press('Enter')
+  await bar.locator('.qs-foot', { hasText: 'Saved as a snippet' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: saving a snippet did not say so`))
+  await bar.evaluate(() => window.__shown({}))
+  await bar.fill('#qs-input', ';jq')
+  await bar.locator('.qs-row[data-kind="snippet"][aria-selected="true"]').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a snippet's word did not find it`))
+  await bar.screenshot({ path: `${OUT}/QuickBar-snippet.png` })
+  await bar.keyboard.press('Enter')
+  await sleep(200)
+  if (!(await bar.evaluate(() => window.__calls)).some(([name, id]) => name === 'pasteSnippet' && id === 'snip-c1')) problems.push(`${room}: Return on a snippet did not paste it`)
+  await bar.evaluate(() => window.__shown({}))
   // ⌥⇧Space (the Ask key) opens it on Ask; ring "sticky" opens it to write bar.
   await bar.evaluate(() => window.__shown({ view: 'chat' }))
   await bar.locator('.qs-chat .composer textarea').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push(`${room}: the Ask key did not open Ask`))
@@ -1054,7 +1137,7 @@ async function main() {
     await search.keyboard.press('Control+k')
     const actions = search.locator('.qs-actions')
     await actions.waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: ⌘K did not list the actions`))
-    for (const label of ['Open', 'Show in Finder', 'Copy path', 'Ask about it', 'Add to a node…', 'Pin', 'Delete']) {
+    for (const label of ['Open', 'Show in Finder', 'Copy path', 'Ask about it', 'Add to a topic…', 'Pin', 'Delete']) {
       if (!(await actions.innerText().catch(() => '')).includes(label)) problems.push(`${room}: ⌘K did not list ${label}`)
     }
     if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-actions.png` })
@@ -1084,7 +1167,6 @@ async function main() {
     await search.fill('#qs-input', 'v')
     await search.locator('.qs-head', { hasText: 'Pinned' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "v" did not show the clipboard with its pins first`))
     if (!await search.locator('.qs-head', { hasText: 'Today' }).count()) problems.push(`${room}: the clipboard was not grouped by day`)
-    await search.getByRole('tab', { name: 'Clipboard' }).click()
     await search.getByRole('button', { name: 'Images' }).click()
     await search.locator('.qs-row', { hasText: 'Image' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the Images filter showed no picture`))
     await search.locator('.qs-picture').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the copied picture had no big preview`))
@@ -1095,26 +1177,37 @@ async function main() {
     await search.keyboard.press('Enter')
     await search.locator('.qs-foot [role="status"]', { hasText: 'Copied. Press ⌘V to paste' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: Return on a copy did not say to press ⌘V without Accessibility`))
     // A sum answers (on Everything); a room is found; Tab moves between the tabs; Esc backs out a step at a time, then away.
-    await search.getByRole('tab', { name: 'Everything' }).click()
+    await search.locator('.qs-chip.is-scope').click()
     await search.fill('#qs-input', '2*49')
     await search.locator('.qs-row', { hasText: '= 98' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a sum did not answer`))
+    // Units and dates answer too, offline.
+    await search.fill('#qs-input', '5 km in miles')
+    await search.locator('.qs-row', { hasText: '= 3.107 mi' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a unit did not convert`))
+    await search.fill('#qs-input', 'days until christmas')
+    await search.locator('.qs-row[data-kind="calc"]', { hasText: /= \d+ days/ }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "days until christmas" did not answer`))
+    if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-dates.png` })
     // A window layout: "left half" finds one with a picture of where the window will go; without Accessibility the panel
     // says what is waiting (the Mac app touches nothing); w is the Windows tab with every layout.
     await search.fill('#qs-input', 'left half')
-    await search.locator('.qs-row', { hasText: 'Left half' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "left half" did not find a layout`))
+    await search.locator('.qs-row[data-kind="layout"]', { hasText: 'Left half' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: "left half" did not find a layout`))
     await search.locator('.qs-screen i').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a layout had no picture of where the window goes`))
     await search.keyboard.press('Enter')
     await search.locator('.qs-foot [role="status"]', { hasText: 'allowed in Accessibility' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a layout did not say what is waiting without Accessibility`))
     if (!(await search.evaluate(() => window.__calls)).some(([name, layout]) => name === 'snap' && layout === 'left-half')) problems.push(`${room}: Return on a layout did not ask for it`)
     await search.fill('#qs-input', 'w')
     await search.locator('.qs-row', { hasText: 'Put it back' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: w did not list every layout`))
-    if ((await search.locator('.qs-row').count()) !== 16) problems.push(`${room}: the Windows tab did not list all sixteen layouts`)
+    if ((await search.locator('.qs-row').count()) !== 17) problems.push(`${room}: the Windows tab did not list all seventeen layouts`)
     if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-windows.png` })
-    await search.getByRole('tab', { name: 'Everything' }).click()
-    await search.fill('#qs-input', 'sky')
-    await search.locator('.qs-row', { hasText: 'Sky' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a room was not found`))
+    await search.locator('.qs-chip.is-scope').click()
+    await search.fill('#qs-input', 'canvas')
+    await search.locator('.qs-row', { hasText: 'Canvas' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a room was not found`))
+    if (!/canvas/i.test(await search.locator('.qs-row[aria-selected="true"]').innerText().catch(() => ''))) problems.push(`${room}: the highlight did not start on the first thing found`)
+    // Tab asks the AI about the words (as in Raycast); Esc comes back to the bar.
     await search.keyboard.press('Tab')
-    if ((await search.locator('[role="tab"][aria-selected="true"]').innerText()) !== 'Files') problems.push(`${room}: Tab did not move to the next tab`)
+    await search.locator('.qs-chat .composer textarea').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push(`${room}: Tab did not ask the AI`))
+    await search.locator('.qs-chat .composer textarea').press('Escape')
+    await search.locator('#qs-input').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push(`${room}: Esc did not come back from Ask`))
+    await search.fill('#qs-input', 'canvas')
     await search.keyboard.press('Escape')
     if ((await search.inputValue('#qs-input')) !== '') problems.push(`${room}: Esc did not clear the words first`)
     await search.keyboard.press('Escape')
@@ -1182,6 +1275,40 @@ async function main() {
   await phone.getByText('In step with your Mac.').waitFor({ timeout: 5000 })
     .catch(() => problems.push('iphone: the iCloud page did not say it is in step'))
   await phone.screenshot({ path: `${OUT}/iphone-icloud.png` })
+  // Settings → AI (Oct 2026): the best model for this Mac, the ones on it, and every model compared. A stand-in for the
+  // Mac app's AI: a 64 GB Mac with Light downloaded.
+  room = 'models'
+  const models = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  models.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
+  const memory = 64 * 1024 ** 3
+  const fakeStatus = {
+    recommended: pickTier(memory).id, best: recommendFor(memory).id, chosen: 'light', startup: false, totalMemory: memory, queued: [], download: null, engine: 'idle', message: '',
+    tiers: TIERS.map((tier) => ({ id: tier.id, label: tier.label, model: tier.model, blurb: tier.blurb, starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best, minMemory: tier.minMemory, fits: fits(tier, memory), size: tier.size, ready: tier.id === 'light', state: 'idle', busy: false, retained: false, blocked: false, message: '' })),
+  }
+  await models.addInitScript((status) => {
+    window.__installs = []
+    window.osatLocalAI = {
+      status: async () => status, onStatus: () => () => {}, models: async () => ({ models: [] }),
+      install: async (id) => { window.__installs.push(id); return status },
+    }
+    for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen')
+  }, fakeStatus)
+  await models.goto(`${url}?fresh=1`)
+  await models.waitForSelector('.workspace-content', { timeout: 15000 })
+  await models.keyboard.press('Control+,')
+  await models.getByRole('navigation', { name: 'Settings sections' }).getByRole('button', { name: 'AI', exact: true }).click()
+  await models.locator('.ai-compare tbody tr').first().waitFor({ timeout: 5000 }).catch(() => problems.push(`${room}: Settings → AI had no comparison`))
+  if (await models.locator('.ai-compare tbody tr').count() !== TIERS.length) problems.push(`${room}: the comparison did not list every model`)
+  const bestGroup = models.locator('.setting-group').filter({ has: models.locator('h3', { hasText: 'Best for this Mac' }) })
+  if (!(await bestGroup.innerText().catch(() => '')).includes('Qwen 3.6 35B')) problems.push(`${room}: a 64 GB Mac was not offered Qwen 3.6 35B`)
+  await models.locator('.ai-compare tr', { hasText: 'Qwen 3.5 9B' }).getByRole('button', { name: 'Get' }).click()
+  if (!(await models.evaluate(() => window.__installs)).includes('qwen35-9b')) problems.push(`${room}: Get did not download the model`)
+  await bestGroup.scrollIntoViewIfNeeded()
+  await models.screenshot({ path: `${OUT}/settings-models-best.png` })
+  await models.locator('.ai-compare').scrollIntoViewIfNeeded()
+  await models.screenshot({ path: `${OUT}/settings-models.png` })
+  await models.close()
+
   await browser.close()
 }
 

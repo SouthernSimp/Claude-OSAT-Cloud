@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowCounterClockwise, Minus, Plus } from '@phosphor-icons/react'
 
 import { useUndoToast } from '../lib/UndoToast.jsx'
@@ -167,7 +167,8 @@ function Tray({ widgets, full, from, props, onAdd, tidy, onClose }) {
   const done = useRef(onClose)
   done.current = onClose
 
-  useEffect(() => {
+  // Before the first paint, so Esc and a click outside work from the moment the tray can be seen.
+  useLayoutEffect(() => {
     const element = node.current
     grow(element, from?.isConnected ? rect(from) : null)
     element.querySelector('button')?.focus()

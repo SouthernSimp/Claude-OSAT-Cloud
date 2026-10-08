@@ -28,7 +28,7 @@ const KINDS = {
   note: [NotePencil, 'Note'],
   file: [File, 'On this Mac'],
   'mac-folder': [FolderSimple, 'On this Mac'],
-  folder: [FolderSimple, 'Node'],
+  folder: [FolderSimple, 'Topic'],
   room: [null, 'Room'],
   action: [null, 'Action'],
 }

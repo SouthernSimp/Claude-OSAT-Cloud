@@ -259,6 +259,8 @@ export function notesInList(state, list, folderId = null, now = Date.now()) {
     return active.filter((note) => scope.has(note.folderId))
   }
   if (list === 'pinned') return active.filter((note) => note.pinned)
+  // What the AI filed in the last week and is still where it put it (auto-file.js).
+  if (list === 'filed') return active.filter((note) => note.filed && note.folderId === note.filed.into && now - Date.parse(note.filed.at) < 7 * 86400000)
   if (list === 'recent') return active.filter((note) => now - Date.parse(note.updatedAt) < 7 * 86400000)
   // 'unfiled' was its own list before Unsorted took it in.
   if (list === 'unsorted' || list === 'unfiled') return active.filter(isUnsorted)

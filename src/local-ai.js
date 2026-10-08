@@ -16,7 +16,8 @@ function validateLocalChatPayload(payload) {
       throw new Error('Messages must have a role and non-empty text.')
     }
   }
-  return { model: model.trim(), messages }
+  // `background`: filing on its own (src/sky/useAutoFile.js) never wakes a model the way a question does.
+  return { model: model.trim(), messages, ...(payload.background === true ? { background: true } : {}) }
 }
 
 export function isLoopbackOrigin(origin) {
@@ -61,14 +62,14 @@ export async function getLocalModels({ signal } = {}) {
 export async function askLocalModel(messages, { signal, onDelta, unavailableMessage } = {}) {
   const models = await getLocalModels({ signal })
   const model = models.find((item) => item.offline === true && !item.id.startsWith('cloud:'))
-  if (!model) throw new Error(unavailableMessage || 'Local AI is unavailable. You can still use the suggestion or place this on Sky.')
+  if (!model) throw new Error(unavailableMessage || 'Local AI is unavailable. You can still use the suggestion or place this on the canvas.')
   return streamLocalMessage({ model: model.id, messages, signal, onDelta })
 }
 
 /* Streams a reply, calling onDelta with each text fragment as it arrives.
    Resolves with the complete text. Aborting keeps whatever already streamed. */
-export async function streamLocalMessage({ model, messages, signal, onDelta }) {
-  const payload = validateLocalChatPayload({ model, messages })
+export async function streamLocalMessage({ model, messages, signal, onDelta, background = false }) {
+  const payload = validateLocalChatPayload({ model, messages, background })
   const emit = (text) => {
     if (text) onDelta?.(text)
   }

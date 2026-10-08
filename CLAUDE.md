@@ -8,22 +8,21 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 6, 2026
+## Resume checkpoint — October 6, 2026 (night)
 
-Merged: #51 (quick bar, Ask, clipboard and ring over other apps, right-click, drag a copy, Copy text from the screen),
-#52 (Sort Unsorted made easy to read, `src/sky/UnsortedSorter.jsx`), #53 (edit a sticky in place in the sorter; Settings →
-Shortcuts), #55 (right-click on the desk's Desktop files and shelf icons in `field/FieldDesk.jsx`; Sort them all reads up to
-300 stickies) and #54 (Phase 13i: Hyper + middle-click opens the ring over any app: `desktop/launcher/middle-click.cjs` runs
-`osascript -l JavaScript` with AppKit's global mouse monitor, `shared/ring-click.mjs` holds the rules, `ring.middle` in
-launcher.json is its switch, Hyper R stays as the backup; it was checked headlessly only, a real middle button is on Nate's
-Mac checklist).
-Nate's Mac has 0.1.171 (a local build of #52, built in /private/tmp after a fresh `npm ci`: a symlinked node_modules leaves
-the AI engine's dependencies out of app.asar); the latest release tag is v0.1.174.
-Merged since: #57 and #61 ("Ask across everything": the notes side, then copied items and files, `shared/ask-find.mjs`,
-`ask:find`, the `ask.sources` switch, `assistant/UsedSources.jsx`) and #63 ("Record a skill", Phase 19a: `desktop/skills.cjs`,
-`desktop/skill-pages.cjs`, `shared/skill-model.mjs`, `src/tools/Skills.jsx`). Still on Nate's Mac checklist: Ask over real copies
-and files. Next, in Nate's order: the workers place (bots), then Phase 27's connectors (#62, see both ends of a connection, is a
-draft). Synced calendars matter to Nate (keep Phase 14 alive); Mac Calendar polish does not: Siri covers it.
+Nate's answers that steer everything now (Oct 6): the AI files his stickies for him like Mem, with sorting by hand still
+there; Notes (sidebar + list) is home and the Sky becomes **Canvas**, an open board to think on; **topic** replaces node
+on screen; the quick bar, clipboard and quick chat are **one list**; Settings → AI recommends the best local model for the
+Mac and compares them; Raycast-style customizing from the bar. Merged that night: #58 and #60 (Return pastes; builds are
+signed with one steady identity so Accessibility survives updates) and #64.
+
+Open, all green, built that night: #65 the AI files stickies (Phase 35), #66 one bar (36), #67 choose your AI (37, plus the
+widget-tray flake fix), #68 Notes is home / Canvas / topic (38), #69 favorites, keys and words from the bar + Mac commands +
+Next screen (39, on #66), #70 smarter calculator (40), #71 snippets (41, on #69), #72 Ask honest about the cloud, Try
+again, Edit (42), and **#73, all eight in one branch (`claude/everything`) for one DMG**: if Nate likes it, merge #73 and
+close the eight as included. Not done, on purpose: drag a window to an edge (macOS already tiles windows), trackpad
+gestures, currency in the calculator (needs the internet; offer it opt-in). On Nate's Mac checklist: typed snippets in
+other apps, Mac commands, keys set from the bar, Qwen 3.6 35B (Settings → AI's pick for his 64 GB M5 Pro).
 
 ## Working with Nate
 
@@ -77,8 +76,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 ## Architecture today
 
 - `desktop/` — Electron main process (CommonJS).
-  - `ai/`: the AI that sets itself up. `catalog.cjs` (Light / Balanced / Deep: Gemma 4, pinned
-    URL + size + SHA-256, `pickTier(memory)`), `download.cjs` (resumable `.part`, checksum, free
+  - `ai/`: the AI that sets itself up. `catalog.cjs` (pinned URL + size + SHA-256 each; the three `starter` sizes
+    Light / Balanced / Deep are Gemma 4 and what the welcome offers, `pickTier(memory)`; Phase 37 adds Qwen 3.5 4B/9B,
+    Qwen 3.6 35B, Ministral 3 3B/8B and Gemma 4 12B with `speed`/`smarts`/`best` for Settings → AI's comparison, and
+    `recommendFor(memory)` = status `best`; Qwen 3.5 4B, Ministral 3 3B and Qwen 3.6 35B were run through the engine
+    with the real sorting and gist prompts; the others share those families' architectures), `download.cjs` (resumable `.part`, checksum, free
     disk), `runtime.cjs` (node-llama-cpp in a `utilityProcess`, one chat at a time, Gemma's
     thinking turned off), `index.cjs` (`createAi`: the chosen size in `prefs.json`, background
     download, engine starts on the first question and stops after 10 idle minutes; `mock`).
@@ -178,6 +180,17 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `capture.cjs` (Phase 13g: screenshots and recording; CleanShot X's `cleanshot://` commands when it is installed,
     else `screencapture`; panels hide first; recent captures read CleanShot's media folder only when turned on; its
     `openExternal` is fenced in tests/under.test.mjs to `CLEANSHOT_URL`, never `upload`).
+    Phase 39 (Raycast-style, from the bar): ⌘K on a room, command, note, topic, Mac command, app, layout or Emoji offers Add to
+    favorites (⇧⌘F; favorites head the empty bar), Set a key… (recorded right there) and Set a word… (`custom` in launcher.json:
+    `customize`, `favoriteRows`, keys as `row:<rowKey>` run by index.cjs `runRow`; an app keeps them in `apps`). The bar may
+    only change that, through `search:customize` (validated in main); the rest of the settings stay the desk's
+    (`search:save-settings`). `system.cjs` + `shared/system-commands.mjs`: lock, sleep, screen off, dark mode, mute, hide
+    other apps, Empty the Bin (Return twice; a key on it only opens the bar on it). Layout `next-display` (`nextScreenFrame`).
+    Phase 41 snippets: `snippets` + `snippetsTyped` in launcher.json (`shared/snippets.mjs`: words like `;addr` (`validSnippetWord`),
+    {date} {time} {day} {clipboard}, `typedStep` is the helper's rule); `snippets.cjs` fills and pastes them (`search:paste-snippet`,
+    `search:save-snippet` from a copy's ⌘K) and, once turned on and allowed in Accessibility, runs a keyDown-monitor helper
+    (`osascript -l JavaScript`, like middle-click.cjs) that keeps only the last 16 letters and writes only `hit <n>`; OSAT then
+    presses ⌫ per letter and pastes through a quiet clipboard write, putting the clipboard back. Settings → Snippets.
     Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
     one way out of the Mac it adds is opening a web address in Nate's own browser (fenced in tests/under.test.mjs,
     refused offline). ⌘⇧Space is the third shortcut in main's `shortcuts` (`search`).
@@ -218,7 +231,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   this Mac can do, `captures` in launcher.json) — Phase 13's pure rules, shared by main, the panel and the desk: how typed
   words are read (`readTyped`, `readLine`, keywords), how sources become one list of rows (`buildRows`), what Return
   and ⌘K do (`actionsFor`), the clipboard's kinds, limits and groups, "Add to Jordan?" (`offerFor`), the safe
-  calculator (never eval), where each layout puts a window, and the ring's tools.
+  calculator (never eval; since Phase 40 also units, "5 km in miles", and dates, "days until christmas", worked out offline), where each layout puts a window, and the ring's tools.
 - `shared/note-core.mjs` — the note record (`normalizeNote`, `parseTags`), shared so the main
   process makes notes exactly like the windows (`src/note-core.js` re-exports it).
 - `shared/node-file.mjs` — node files, read one way everywhere (drop folder, the Sky's Import, the
@@ -271,7 +284,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `?fresh=1` starts the preview empty).
   - `App.jsx`: picks the surface: the desk (`shell/Desk.jsx`), `?surface=phone` the iPhone app (`surfaces/Phone.jsx`:
     Today, Notes, iCloud), `?surface=search` the quick bar (with Ask inside it), `?surface=ring` the ring.
-  - `lib/spaces.js`: the one list of spaces (Desk, Notes, Sky (id `Mindmap`), Ask, Files), tools and
+  - `lib/spaces.js`: the one list of spaces (Desk, Notes, Canvas (id `Mindmap`, once the Sky), Ask, Files), tools and
     Settings. The dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
   - `views/Roadmap.jsx`: Tools → Roadmap (also ⌘K and the Go menu) shows docs/ROADMAP.md, built in
     with `?raw` and drawn by `lib/markdown.jsx`. Nate reads it there: keep it in plain words, the
@@ -282,7 +295,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     the drop folder, which model answers, cloud models (keys never reach the page), the
     connector (its key only ever goes to the clipboard). Scans stay in Settings → Data (Phase 15).
   - `surfaces/QuickSearch.jsx` (+ `search/`: `useSources`, `Preview`, `Ring`, icons): the quick bar (Phase 13c: one
-    bar; ⌘↵ asks into `LocalAssistant compact`, kept mounted so the chat you were in stays; ⌥↵ `captureThought` with
+    bar; Phase 36: one list, no tabs: Ask AI is the first row (`wordRows`, `startRow`: the highlight starts on it for a
+    question, else on the first thing found; Tab or ⌘↵ asks), each source a few rows and a `more` row ("See all") that
+    shows that source alone with a chip to come back; ↓ on the small bar opens the latest copies; ⌘↵ asks into `LocalAssistant compact`, kept mounted so the chat you were in stays; ⌥↵ `captureThought` with
     source 'Quick bar'; `mode` 'sticky' / 'ask' for a sticky or a question being written; commands from
     `findAll(…, { bar: true })` ranked by `rankCommands`; the last rows from `wordRows`) and the ring. In the browser preview they run on a stand-in bridge
     (`tests/ui/search-bridge.mjs`). `views/Launcher.jsx` is Settings → Launcher; `field/ClipboardOffer.jsx` is the
@@ -327,6 +342,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `wordSuggestions`, `stillToSort`) in the same screen; every move goes through `fileUnsorted` (a node of the
     same name is reused) and one Undo (`undoFiling`, which also removes a node made for it while it is empty;
     Sky's `actions.fileGroups` / `undoUnsorted`, with the log in a ref so a toast's Undo is always the newest).
+    The AI files new stickies on its own (Phase 35, like Mem): `sky/auto-file.js` (pure: `readyToFile` waits until the
+    pile has been quiet `QUIET_MS`, only `unsorted` captures written since `settings.autoFile.since`; `withGist` gives a
+    long sticky a short title and `gist`; `fileForYou` files only the model's own picks and marks `filed`) run by
+    `sky/useAutoFile.js` on the desk (asks with `background: true`, so `ai.chatStream` never wakes or swaps a model for it;
+    tried ids in localStorage; one toast with Undo; `useAutoFileStatus` for Notes' line). Notes → Filed for you is
+    `notesInList(…, 'filed')`. Schema 12: notes may carry `filed` ({ by: 'ai', at, into }) and `gist`.
     What the AI can do is said by `assistant/ai-state.js` (`aiState`: checking, none, downloading, paused,
     offline, asleep, waking, thinking, slow, failed… each with a way forward) and run by `useAiJob` (gives up on a
     model that hasn't woken in 2 minutes; words answer instead). Unsorted and each
@@ -372,6 +393,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - Styles: `src/styles/`, tokens in `tokens.css`.
   - `lib/UndoToast.jsx`: `useUndoToast()`, the one Undo toast (Notes, Money, Calendar); remove at once, offer Undo. `glass.css` loads last: the glass kit, the dock,
     transitions, and the token overrides that make the quick bar see-through.
+- Words (Phase 38, Oct 2026): what Nate reads says **topic** (never node) and **canvas** (never Sky): "New topic",
+  "Delete topic", "a topic file", "See it on the canvas", the dock's Canvas. The code keeps its names (`nodes-model.js`,
+  `folder`, the room id `Mindmap`, `src/sky/`, the drop folder `OSAT Nodes`, the connector's `add_node`). Where the
+  older notes below say node or Sky, read topic and canvas on screen.
 - Words (Phase 12): one word per thing everywhere: sticky, note, node, branch, Unsorted,
   Delete, Move to, New node / New branch, Write a sticky, Color. Never thought (for a card),
   folder (for a node), Unfiled, To sort, Toss, Clear, Put inside, Make it a node. Nodes show

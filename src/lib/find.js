@@ -20,9 +20,9 @@ const ACTIONS = [
   { key: 'act:tidy-desktop', label: 'Tidy my Desktop', hint: 'Review a plan before moving files', also: 'clean organize files', go: ['Files', { rootId: 'desktop', tidy: true }] },
   { key: 'act:new-note', label: 'New note', also: 'write page', go: ['Notes', { action: 'new' }] },
   { key: 'act:today', label: 'Today’s note', also: 'journal day page', go: ['Notes', { action: 'today' }] },
-  { key: 'act:new-folder', label: 'New node', also: 'folder group pile project', go: ['Mindmap', { action: 'new-node' }] },
+  { key: 'act:new-folder', label: 'New topic', also: 'folder group pile project', go: ['Mindmap', { action: 'new-node' }] },
   { key: 'act:reflect', label: 'Reflect', hint: 'Three quiet questions, in the Journal', also: 'reflection evening close the day', go: ['Journal', { tab: 'reflect' }] },
-  { key: 'act:board', label: 'Open the Sky', also: 'map mindmap nodes board whiteboard canvas sort stars', go: ['Mindmap'] },
+  { key: 'act:board', label: 'Open the canvas', also: 'map mindmap topics board whiteboard canvas sort stars', go: ['Mindmap'] },
   { key: 'act:focus', label: 'Focus for 25 minutes', also: 'timer pomodoro quiet concentrate', go: ['Focus'] },
   { key: 'act:widget', label: 'Add a widget', hint: 'Calendar, Next, Focus, Habits…', also: 'widgets tray', go: ['Widgets'] },
   { key: 'act:tour', label: 'Take the tour', hint: 'A quick look around OSAT', also: 'help guide tutorial welcome intro how it works learn', go: ['Tour'] },
@@ -83,7 +83,7 @@ export function findAll(workspace, query, { files = [], limit = LIMIT, bar = fal
   // Nodes and branches (by their name, every word of it) open laid out in the Sky. They come
   // before the notes: a name is what someone types when they know where it is.
   const folders = workspace.folders.filter((folder) => words.every((word) => folder.name.toLowerCase().includes(word)))
-    .map((folder) => ({ key: `folder:${folder.id}`, label: folder.name, hint: folder.parentId ? folderPath(workspace.folders, folder.parentId).join(' › ') : folder.kind === 'branch' ? 'Branch' : 'Node', kind: 'folder', go: ['Mindmap', { folderId: folder.id }] }))
+    .map((folder) => ({ key: `folder:${folder.id}`, label: folder.name, hint: folder.parentId ? folderPath(workspace.folders, folder.parentId).join(' › ') : folder.kind === 'branch' ? 'Branch' : 'Topic', kind: 'folder', go: ['Mindmap', { folderId: folder.id }] }))
   // Notes leave room for files on this Mac once Spotlight answers.
   const nodeRows = folders.slice(0, limit === LIMIT ? 3 : 6)
   const fileRows = macFiles.slice(0, 2)

@@ -16,6 +16,8 @@ import { clamp, inputActive } from '../lib/ui.js'
 import { SETTINGS, spaceForKey, titleFor } from '../lib/spaces.js'
 import { NotesView } from '../notes/NotesView.jsx'
 import { Sky } from '../sky/Sky.jsx'
+import { useAutoFile } from '../sky/useAutoFile.js'
+import { useUndoToast } from '../lib/UndoToast.jsx'
 import { importScan } from '../nodes-model.js'
 import { relinkRenamedNote, updateNote } from '../notes-model.js'
 import { storageFrom, useWorkspace } from '../store/useWorkspace.js'
@@ -130,6 +132,9 @@ export function Desk() {
   const skyRef = useRef(null)
   const on = offline.on === true
   useAlive()
+  // The AI files new stickies on its own once you stop writing (auto-file.js); one line says where, with Undo.
+  const [filedToast, showFiled] = useUndoToast()
+  useAutoFile({ workspace, commit, hydrated, onFiled: (noteId) => offDesk(noteId), onToast: showFiled })
 
   /* Blur at zero means a clear desk: the Mac's frosting comes off entirely. */
   const clear = workspace?.settings?.blur === 0
@@ -429,6 +434,21 @@ export function Desk() {
     try { localStorage.setItem(DOCK_KEY, side) } catch { /* a convenience only */ }
   }
 
+  /* A sticky filed into a node leaves the desk (out of its stack too); the function it
+     returns puts it back where it lay, for Undo. */
+  function offDesk(noteId) {
+    const before = latest.current.prefs.places || {}
+    const after = setDown(before, noteId, null)
+    const moved = changes(before, after)
+    if (!moved.length) return undefined
+    moved.forEach(([key, spot]) => place(key, spot))
+    return () => {
+      const undo = changes(after, before)
+      if (undo.some(([key]) => !same(latest.current.prefs.places?.[key], after[key]))) return
+      undo.forEach(([key, spot]) => place(key, spot))
+    }
+  }
+
   /* Set down right away (null picks it up); the Mac app keeps the spot for next time. */
   function place(id, spot) {
     // Returning a free Sky sticky to the desk retires its Sky presentation, not its note.
@@ -492,8 +512,9 @@ export function Desk() {
     <main className={`overlay-surface ${bridge ? '' : 'is-preview'}`} data-sky={sky || undefined}>
       <GlassDefs />
       <SaveStatus recovery />
+      {filedToast}
       <div className="workspace-content is-filled" inert={welcome || tour || away || undefined}>
-        <button type="button" className="sky-entry" aria-label="Open the Sky" onClick={() => goUp()}><TreeStructure aria-hidden="true" /> Sky <kbd>⌘3</kbd></button>
+        <button type="button" className="sky-entry" aria-label="Open the canvas" onClick={() => goUp()}><TreeStructure aria-hidden="true" /> Canvas <kbd>⌘3</kbd></button>
         <FieldDesk
           {...common}
           visit={visit}
@@ -557,19 +578,7 @@ export function Desk() {
             navigate={navigate}
             target={skyTarget}
             onClose={goDown}
-            onFiled={(noteId) => {
-              // Off the desk (out of its stack too); Undo puts it back where it lay.
-              const before = prefs.places || {}
-              const after = setDown(before, noteId, null)
-              const moved = changes(before, after)
-              if (!moved.length) return
-              moved.forEach(([key, spot]) => place(key, spot))
-              return () => {
-                const undo = changes(after, before)
-                if (undo.some(([key]) => !same(latest.current.prefs.places?.[key], after[key]))) return
-                undo.forEach(([key, spot]) => place(key, spot))
-              }
-            }}
+            onFiled={offDesk}
             onStackSent={(key) => {
               const spot = prefs.places?.[key]
               if (!spot) return

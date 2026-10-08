@@ -120,6 +120,20 @@ test('schema 11 preserves existing notes and chats with their selected and respo
   assert.deepEqual(upgraded.chats, old.chats)
 })
 
+test('schema 12 keeps notes as they were; a note may say the AI filed it and carry a gist', async () => {
+  const old = { ...createEmptyDoc(), schema: 11, rev: 3, notes: [note('kept')] }
+  const upgraded = migrate(old)
+  assert.equal(upgraded.schema, 12)
+  assert.deepEqual(upgraded.notes, old.notes)
+  const { normalizeNote } = await import('../shared/note-core.mjs')
+  const kept = normalizeNote({ id: 'n', markdown: 'x', filed: { by: 'ai', at: '2026-10-06T00:00:00.000Z', into: 'f1' }, gist: '  Short  ' })
+  assert.deepEqual(kept.filed, { by: 'ai', at: '2026-10-06T00:00:00.000Z', into: 'f1' })
+  assert.equal(kept.gist, 'Short')
+  const dropped = normalizeNote({ id: 'n', markdown: 'x', filed: { by: 'me', at: 'x', into: 'f1' }, gist: '  ' })
+  assert.equal('filed' in dropped, false)
+  assert.equal('gist' in dropped, false)
+})
+
 test('schema 5: stickies left on the scratch page land in Unsorted, nothing else changes', () => {
   const scratch = { ...note('s'), kind: 'scratch', color: 'sky', unsorted: false }
   const filed = { ...note('f'), kind: 'scratch', folderId: 'x' }

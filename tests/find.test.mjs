@@ -36,15 +36,15 @@ test('#tags require the tag and leave rooms and folders out', () => {
   assert.deepEqual(keys(findAll(workspace, '#nothing')), [])
 })
 
-test('nodes by name open laid out in the Sky', () => {
+test('topics by name open laid out on the canvas', () => {
   const rows = findAll(workspace, 'trip')
   const folder = rows.find((row) => row.kind === 'folder')
   assert.deepEqual(folder?.go, ['Mindmap', { folderId: 'f-trips' }])
-  assert.equal(folder?.hint, 'Node')
+  assert.equal(folder?.hint, 'Topic')
   assert.ok(!rows.some((row) => row.kind === 'board'), 'the old boards are not offered')
 })
 
-test('a node or branch is found by its name even when many notes match, and ahead of them', () => {
+test('a topic or branch is found by its name even when many notes match, and ahead of them', () => {
   const crowded = {
     ...workspace,
     folders: [...workspace.folders, { id: 'f-later', name: 'Later ideas', parentId: 'f-trips', createdAt: at(1) }],

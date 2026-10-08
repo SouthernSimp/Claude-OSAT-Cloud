@@ -5,10 +5,12 @@
    desk's line use the same rules. Pure. */
 import { calculate } from './calc.mjs'
 import { groupItems, searchItems, titleOf, whenCopied } from './clipboard-model.mjs'
-import { keywordAddress, matchKeyword } from './launcher-model.mjs'
+import { customizable, favoriteRows, keywordAddress, matchKeyword } from './launcher-model.mjs'
+import { findSnippets, snippetRow } from './snippets.mjs'
+import { findSystem, systemRow } from './system-commands.mjs'
 import { findLayouts } from './window-layouts.mjs'
 
-/* The tabs under the field. Only the sources that are on show. */
+/* One source at a time ("See all", a keyword like "v", or a source's Hyper key). Only the sources that are on. */
 export const SCOPES = [['all', 'Everything'], ['files', 'Files'], ['clipboard', 'Clipboard'], ['apps', 'Apps'], ['notes', 'Notes'], ['windows', 'Windows']]
 const SCOPE_OF_SOURCE = { files: 'files', clipboard: 'clipboard', apps: 'apps', notes: 'notes', windows: 'windows' }
 
@@ -32,7 +34,7 @@ export function readTyped(text, settings, scope = 'all') {
   let query = typed
   let keyword = null
   // A keyword picks its tab; on that tab already (clicked, or Tab), it is still not part of the words.
-  const hit = matchKeyword(settings, typed)
+  const hit = matchKeyword(settings, typed, { rows: true })
   if (hit?.source && (scope === 'all' || SCOPE_OF_SOURCE[hit.source] === scope)) { where = SCOPE_OF_SOURCE[hit.source] || scope; query = hit.query }
   else if (hit?.keyword && scope === 'all') keyword = hit
   const math = where === 'all' && settings.sources.calc?.on ? calculate(typed) : null
@@ -118,7 +120,7 @@ const noteRow = (item, section) => ({
   source: 'notes',
   kind: item.kind === 'note' ? 'note' : item.kind === 'folder' ? 'node' : 'room',
   title: item.label,
-  subtitle: item.hint || (item.kind === 'note' ? 'Note' : item.kind === 'folder' ? 'Node' : 'Open'),
+  subtitle: item.hint || (item.kind === 'note' ? 'Note' : item.kind === 'folder' ? 'Topic' : 'Open'),
   section,
   data: { go: item.go },
 })
@@ -135,8 +137,9 @@ export function rankCommands(list, query) {
   return list.map((item, index) => [rank(item), index, item]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(([, , item]) => item)
 }
 
-/* The last two rows whenever words are typed on Everything: save them as a sticky, or ask the AI. `ai` is
-   { state: 'ready' | 'checking' | 'none' | 'waits', label, offline }: 'waits' is offline with no AI on this Mac. */
+/* Whenever words are typed on Everything: ask the AI about them (the first row, ⌘↵) and save them as a sticky (the
+   last, ⌥↵). `ai` is { state: 'ready' | 'checking' | 'none' | 'waits', label, offline }: 'waits' is offline with no
+   AI on this Mac. [ask, sticky] */
 export function wordRows(read, ai = { state: 'checking' }) {
   if (read.scope !== 'all' || !read.typed) return []
   const said = {
@@ -145,11 +148,31 @@ export function wordRows(read, ai = { state: 'checking' }) {
     none: 'Set up the AI first (Settings → AI)',
     waits: 'Offline: asking waits until you’re back online',
   }[ai.state] || ''
-  const section = 'With these words'
+  const words = read.typed.length > 48 ? `${read.typed.slice(0, 47)}…` : read.typed
   return [
-    { key: 'do:sticky', source: 'do', kind: 'sticky', title: 'Save as a sticky', subtitle: 'In Unsorted', section, data: { text: read.typed } },
-    { key: 'do:ask', source: 'do', kind: 'ask', title: 'Ask the AI', subtitle: said, section, data: { text: read.typed, state: ai.state } },
+    { key: 'do:ask', source: 'do', kind: 'ask', title: `Ask AI “${words}”`, subtitle: said, section: 'Ask', data: { text: read.typed, state: ai.state } },
+    { key: 'do:sticky', source: 'do', kind: 'sticky', title: 'Save as a sticky', subtitle: 'The AI files it for you', section: 'Write it down', data: { text: read.typed } },
   ]
+}
+
+/* Words that read as a question or a request to the AI ("how do I…", "summarize…", "…?"): Return asks. */
+const ASKING = /^(who|what|when|where|why|how|which|can|could|should|would|will|is|are|am|do|does|did|was|were|have|has|explain|summari[sz]e|tell me|help me|write|draft|rewrite|translate|compare|give me|list|suggest|plan)\b/i
+export const looksLikeQuestion = (typed) => {
+  const words = String(typed || '').trim()
+  return words.endsWith('?') || (ASKING.test(words) && words.split(/\s+/).length >= 3)
+}
+
+/* Where the highlight starts: on a sum's answer if there is one; on Ask when the words are a question or nothing else
+   was found; else on the first thing found (Ask stays one ⌘↵ away). */
+export function startRow(rows, read) {
+  const ask = rows.findIndex((row) => row.kind === 'ask')
+  if (ask < 0) return 0
+  // A worked-out answer ("2*49", "days until christmas?") beats asking, however it is worded.
+  const calc = rows.findIndex((row) => row.kind === 'calc')
+  if (calc >= 0) return calc
+  if (looksLikeQuestion(read.typed)) return ask
+  const found = rows.findIndex((row) => row.source !== 'do')
+  return found < 0 ? ask : found
 }
 
 /* Names that start with the words come first, then words that start a word of the name, then the rest. */
@@ -166,19 +189,22 @@ export function rankApps(apps, query) {
 }
 
 /* One list from what every source answered. `found` is { files, recentFiles, clipboard, apps, commands, notes }
-   (each an array; the clipboard is main's list()). Order in Everything: a sum, Nate's keyword, apps named by the
-   words, commands, other apps, files, the clipboard, notes, then (with `ai`) Save as a sticky and Ask the AI. Under
-   one tab, that source alone, at more length. */
+   (each an array; the clipboard is main's list()). Order in Everything: (with `ai`) Ask AI, a sum, Nate's keyword,
+   apps named by the words, commands, other apps, files, the clipboard, notes, then Save as a sticky. Nothing typed:
+   the latest copies, pinned files, recent files. One source ("See all"), that source alone, at more length. */
 export function buildRows(read, found, settings, { now = new Date(), fileFilter = 'all', clipFilter = 'all', ai = null } = {}) {
   const rows = []
   const pins = settings.pins || []
   const isPinned = (item) => pins.some((pin) => pin.rootId === item.rootId && pin.relative === item.relative)
   const files = (list, section) => list.map((item) => ({ ...fileRow(item, section), pinned: isPinned(item) }))
 
-  if (read.math) rows.push({ key: 'calc', source: 'calc', kind: 'calc', title: `= ${read.math.text}`, subtitle: read.typed, section: 'Calculator', data: read.math })
+  if (read.math) rows.push({ key: 'calc', source: 'calc', kind: 'calc', title: `= ${read.math.text}`, subtitle: read.math.note || read.typed, section: 'Calculator', data: read.math })
   if (read.keyword) {
     const { keyword, query } = read.keyword
-    if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Apps', data: { app: keyword.app } })
+    // Your own word for something (set from ⌘K): that thing, first.
+    if (keyword.row) rows.push({ ...favoriteRows({ custom: [{ ...keyword.row, favorite: true }] })[0], section: `Your word “${keyword.keyword}”`, favorite: keyword.row.favorite })
+    else if (keyword.snippet) rows.push(snippetRow(keyword.snippet, `Your word “${keyword.keyword}”`))
+    else if (keyword.app) rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-app', title: `Open ${keyword.label}`, subtitle: `${keyword.keyword} · app`, section: 'Apps', data: { app: keyword.app } })
     else rows.push({ key: `kw:${keyword.id}`, source: 'keyword', kind: 'keyword-link', title: keyword.url.includes('{query}') ? `Search ${keyword.label} for “${query}”` : `Open ${keyword.label}`, subtitle: `${keyword.keyword} · web address`, section: 'Quick links', data: { url: keywordAddress(keyword, query) } })
   }
 
@@ -204,24 +230,41 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   if (read.scope === 'windows') return [...rows, ...findLayouts(read.query).map((layout) => layoutRow(layout, keys))]
   if (read.scope === 'notes') return [...rows, ...(found.notes || []).map((item) => noteRow(item, 'Notes'))]
 
+  // One list, no tabs (Oct 2026): Ask first, then what was found, each source a few rows with "See all" when there's more.
+  const more = (scope, count, section) => ({ key: `more:${scope}`, source: 'more', kind: 'more', title: `See all ${count}`, subtitle: section, section, data: { scope } })
   if (has) {
+    const [ask, sticky] = ai ? wordRows(read, ai) : []
+    if (ask) rows.unshift(ask)
     const apps = rankApps(found.apps || [], read.query).slice(0, 3)
     const named = apps.filter((item) => item.name.toLowerCase().startsWith(read.query.toLowerCase()))
     rows.push(...named.map((item) => appRow(item, 'Apps')))
     rows.push(...(found.commands || []).slice(0, 3).map((item) => noteRow(item, 'Commands')))
+    rows.push(...findSystem(read.query).slice(0, 3).map((item) => systemRow(item)))
     rows.push(...apps.filter((item) => !named.includes(item)).map((item) => appRow(item, 'Apps')))
     rows.push(...files(found.files || [], 'Files').slice(0, 6))
+    if ((found.files || []).length > 6) rows.push(more('files', 'files', 'Files'))
+    rows.push(...findSnippets(settings.snippets, read.query).slice(0, 3).map((snippet) => snippetRow(snippet)))
     rows.push(...clipFound.slice(0, 4).map((item) => clipRow(item, now, 'Clipboard')))
+    if (clipFound.length > 4) rows.push(more('clipboard', `${clipFound.length} copies`, 'Clipboard'))
     rows.push(...(found.notes || []).slice(0, 5).map((item) => noteRow(item, 'Notes')))
     // "left half", "max": a layout, when the words are about a window.
     if (settings.sources.windows?.on && read.query.length >= 3) rows.push(...findLayouts(read.query).slice(0, 2).map((layout) => layoutRow(layout, keys)))
-    if (ai) rows.push(...wordRows(read, ai))
+    if (sticky) rows.push(sticky)
   } else {
+    // Nothing typed: your favorites, then what you copied last, then your pinned and recent files.
+    rows.push(...favoriteRows(settings))
+    rows.push(...clipboard.slice(0, 6).map((item) => clipRow(item, now, 'Clipboard')))
+    if (clipboard.length > 6) rows.push(more('clipboard', `${clipboard.length} copies`, 'Clipboard'))
     rows.push(...files(pins, 'Pinned'))
     rows.push(...files(found.recentFiles || [], 'Recent files').slice(0, 5))
-    rows.push(...clipboard.slice(0, 5).map((item) => clipRow(item, now, 'Clipboard')))
   }
-  return dedupe(rows)
+  return markFavorites(dedupe(rows), settings)
+}
+
+// A row that is one of your favorites says so (⌘K offers to take it off).
+function markFavorites(rows, settings) {
+  const favorite = new Set((settings.custom || []).filter((entry) => entry.favorite).map((entry) => entry.key))
+  return favorite.size ? rows.map((row) => (favorite.has(row.key) && !row.favorite ? { ...row, favorite: true } : row)) : rows
 }
 
 function dedupe(rows) {
@@ -231,7 +274,13 @@ function dedupe(rows) {
 
 /* What ⌘K lists for a row; the first is what Return does (⇧↵ the second; ⌘↵ always asks and ⌥↵ always saves a
    sticky, whatever the row). `offer` is a customer the copy could be added to ({ folderId, folderName }). */
-export function actionsFor(row, { offer = null, canAsk = false } = {}) {
+export function actionsFor(row, options = {}) {
+  const own = ownActions(row, options)
+  // Anything that can be a favorite, or have its own key or word, offers it here, so it is done without Settings.
+  return customizable(row) ? [...own, { id: 'favorite', label: row.favorite ? 'Remove from favorites' : 'Add to favorites', keys: '⇧⌘F' }, { id: 'set-key', label: 'Set a key…' }, { id: 'set-word', label: 'Set a word…' }] : own
+}
+
+function ownActions(row, { offer = null, canAsk = false } = {}) {
   if (!row) return []
   const pin = (on) => ({ id: 'pin', label: on ? 'Unpin' : 'Pin', keys: '⌘P' })
   switch (row.kind) {
@@ -242,7 +291,7 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
         { id: 'reveal', label: 'Show in Finder', keys: '⇧↵' },
         { id: 'copy-path', label: 'Copy path', keys: '⇧⌘C' },
         ...(canAsk && row.kind === 'file' ? [{ id: 'ask', label: 'Ask about it', keys: '⇧⌘A' }] : []),
-        ...(row.kind === 'file' ? [{ id: 'add', label: 'Add to a node…', keys: '⇧⌘N' }] : []),
+        ...(row.kind === 'file' ? [{ id: 'add', label: 'Add to a topic…', keys: '⇧⌘N' }] : []),
         pin(row.pinned),
         { id: 'delete', label: 'Delete', hint: 'Moves it to the Bin', keys: '⌘⌫', danger: true },
       ]
@@ -258,8 +307,9 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
         { id: 'paste', label: 'Paste', keys: '↵' },
         { id: 'copy', label: 'Copy', keys: '⇧↵' },
         ...(row.kind === 'link' ? [{ id: 'open-link', label: 'Open the link', keys: '⌘O' }] : []),
-        ...(offer ? [{ id: 'offer', label: `Add to ${offer.folderName}`, hint: 'As a sticky in that node', keys: '⇧⌘N' }] : []),
-        { id: 'add', label: 'Add to a node…', ...(offer ? {} : { keys: '⇧⌘N' }) },
+        ...(offer ? [{ id: 'offer', label: `Add to ${offer.folderName}`, hint: 'As a sticky in that topic', keys: '⇧⌘N' }] : []),
+        { id: 'add', label: 'Add to a topic…', ...(offer ? {} : { keys: '⇧⌘N' }) },
+        { id: 'save-snippet', label: 'Save as a snippet…' },
         pin(row.data.pinned),
         { id: 'delete', label: 'Delete', hint: 'Forgets this copy', keys: '⌘⌫', danger: true },
       ]
@@ -272,11 +322,14 @@ export function actionsFor(row, { offer = null, canAsk = false } = {}) {
     ]
     case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⇧↵' }]
     case 'note': return [{ id: 'go', label: 'Open', keys: '↵' }]
-    case 'node': return [{ id: 'go', label: 'Open in the Sky', keys: '↵' }]
+    case 'node': return [{ id: 'go', label: 'Open on the canvas', keys: '↵' }]
     case 'room': return [{ id: 'go', label: 'Open', keys: '↵' }]
     case 'calc': return [{ id: 'copy-text', label: 'Copy the answer', keys: '↵' }, { id: 'paste-text', label: 'Paste the answer', keys: '⇧↵' }]
     case 'sticky': return [{ id: 'sticky', label: 'Save as a sticky', keys: '↵' }]
     case 'ask': return [{ id: 'ask-ai', label: 'Ask', keys: '↵' }]
+    case 'more': return [{ id: 'scope', label: 'Show all', keys: '↵' }]
+    case 'system': return [{ id: 'system', label: row.title, keys: '↵' }]
+    case 'snippet': return [{ id: 'paste-snippet', label: 'Paste', keys: '↵' }, { id: 'copy-snippet', label: 'Copy', keys: '⇧↵' }]
     case 'keyword-app': return [{ id: 'open-app-named', label: 'Open', keys: '↵' }]
     case 'keyword-link': return [{ id: 'open-link', label: 'Open in your browser', keys: '↵' }]
     case 'layout': return [{ id: 'snap', label: row.data?.layout === 'restore' ? 'Put the window back' : 'Move the window', keys: '↵' }]
@@ -304,7 +357,9 @@ export function detailsFor(row, { now = new Date() } = {}) {
     case 'capture': return [['With', row.subtitle.replace(/^With /, '')]]
     case 'shot': return [['Kind', /\.(mp4|mov|gif)$/i.test(d.name) ? 'Recording' : 'Screenshot'], ['Taken', DAY.format(new Date(d.at))], ['Kept by', 'CleanShot X']]
     case 'note': return [['Kind', 'Note'], ['Where', row.subtitle]]
-    case 'node': return [['Kind', 'Node'], ['Where', row.subtitle]]
+    case 'node': return [['Kind', 'Topic'], ['Where', row.subtitle]]
+    case 'snippet': return [['Kind', 'Snippet'], ...(d.keyword ? [['Word', d.keyword]] : []), ['Length', `${d.text.length.toLocaleString('en-US')} characters`]]
+    case 'system': return [['Does', row.title], ['Undo', row.subtitle === 'Can’t be undone' ? 'Can’t be undone' : 'Do it again to switch back']]
     default: return []
   }
 }

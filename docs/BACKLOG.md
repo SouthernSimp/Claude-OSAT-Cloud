@@ -3,7 +3,7 @@
 One list for every idea, so none gets lost. Ranked by how much it protects trust in
 OSAT first, then how much it saves Nate effort, then "wow". Claude keeps it current:
 when something lands it moves to Done; when a new idea comes up it gets a rank here
-the same day. Last sorted: October 6, 2026.
+the same day. Last sorted: October 6, 2026 (night).
 
 ## Now: make sure what exists is real
 
@@ -44,12 +44,16 @@ next sort, so nothing depends on anyone remembering the chat.
 | Idea | Suggested | Rank |
 |---|---|---|
 | Use the DigitalOcean droplet for extra features (Nate, Oct 6, "eventually, idk"). Needs a goal first, e.g. a private sync relay or hosting a bigger model; would have to stay opt-in and keep notes private | Oct 6 | Unranked |
-| UI smoke test flake: "widgets: Esc did not put the tray away" failed once on a pull-request run and passed on rerun (Oct 6). Make the wait explicit so a red check always means a real problem | Oct 6 | Unranked (small, would rank near #2) |
+| UI smoke test flake: "widgets: Esc did not put the tray away" failed once on a pull-request run and passed on rerun (Oct 6). Make the wait explicit so a red check always means a real problem | Oct 6 | Done (PR #67): the tray's Esc listener now attaches before its first paint |
 | Show this ranked list inside OSAT beside the Roadmap (Tools → Roadmap) so Nate reads it in the app | Oct 6 | Unranked |
 | Attach reference images inside a sticky on the desk (Nate's idea): drop a picture onto a sticky, it shows small inside it and opens big | Oct 7 | Unranked (not Phase 13c) |
 | Settings: Launcher → Quick bar and General both hold the bar's keys; fold them into one place once Nate says which he looks in | Oct 7 | Unranked (small) |
 | The ring's window layouts on the desk's own ring are left out (they move other apps' windows); say so on the ring itself, not only in Settings | Oct 7 | Unranked (small) |
 | A dragged quick bar has no "put it back in the middle"; add one to its ⌘K or the ring's menu if Nate misses it | Oct 7 | Unranked (small) |
+| Currency in the calculator ("100 usd in eur"): needs today's rates from the internet; would be opt-in, paused by Offline, added to the fence in tests/under.test.mjs | Oct 6 | Later (asked in #70) |
+| Drag a window to a screen edge to snap it: macOS (Sequoia and later) already tiles windows this way, so OSAT's would fight it; trackpad gestures need a private framework | Oct 6 | Not doing (said in #73) |
+| An Undo toast in a room sits over the bottom of the room (seen over Ask's box after Try again); place room toasts above the room's own controls | Oct 6 | Small, near the top of "Then" |
+| tests/ui/sorting.mjs (not in CI) still looks for `.sorter-paper h3`, gone since the Oct 6 sorter redo; update it or fold it into the smoke test | Oct 6 | Small |
 | Old clipboard pictures keep the thumbnail they were saved with (tall ones can be big); new ones are capped. Re-make old ones once at start if it matters | Oct 7 | Unranked (small) |
 
 | Screenshots and recording from the launcher, driving CleanShot X (Phase 13g) | Oct 6 | In review |

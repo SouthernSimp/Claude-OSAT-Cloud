@@ -11,6 +11,7 @@ import { BotsSettings } from "../Bots.jsx";
 import { ObsidianView } from "../Obsidian.jsx";
 import { DeskKey, useDeskKeys } from "./launcher.jsx";
 import { Group, Legacy, Page, Row, Switch } from "./parts.jsx";
+import { autoFileSettings } from "../../sky/auto-file.js";
 
 /* The pages of Settings that are about OSAT itself (Phase 13b): the keys that bring it up, how it looks, the AI, bots,
    where the data lives, scans, the iPhone, About. The cards for the AI, scans and the iPhone are the ones they always
@@ -28,7 +29,7 @@ const gb = (bytes) => `${(bytes / 1e9).toFixed(1)} GB`;
 export function AiSizes({ status, value, onChoose }) {
   return (
     <div className="ai-sizes" role="radiogroup" aria-label="AI size">
-      {status.tiers.map((tier) => (
+      {status.tiers.filter((tier) => tier.starter !== false).map((tier) => (
         <button key={tier.id} type="button" role="radio" className="ai-size" aria-checked={value === tier.id} onClick={() => onChoose(tier.id)}>
           <strong>
             {tier.label}
@@ -79,35 +80,39 @@ function AiCard() {
   const download = status.download;
   const percent = download ? Math.floor((download.received / download.total) * 100) : 0;
   const installed = status.tiers.filter((tier) => tier.ready);
-  const missing = status.tiers.filter((tier) => !tier.ready);
+  const best = status.tiers.find((tier) => tier.id === status.best);
   const rowState = (tier) => tier.state === "loading" ? "Loading…" : tier.state === "unloading" ? "Unloading…" : tier.busy ? "Busy · wait until its work finishes" : tier.state === "ready" ? tier.retained ? "Ready · stays loaded until you unload it or quit" : "Ready · rests after ten idle minutes" : tier.state === "error" ? tier.message : "Downloaded · loads on your next question";
 
   return (
     <section className="ai-management">
+      {best && <Group title="Best for this Mac" note={`Your Mac has ${Math.round(status.totalMemory / 1024 ** 3)} GB of memory. This is the most capable model that runs comfortably on it. Smaller ones answer faster.`}>
+        <Row title={best.model} hint={`${best.best}. ${gb(best.size)} to download, made by ${best.maker}.`} words="recommended best this mac">
+          <div className="ai-model-controls">
+            {best.ready
+              ? <button type="button" className="outline-button" disabled={Boolean(working) || status.chosen === best.id} onClick={() => act(best.id, () => bridge.select(best.id))}>{status.chosen === best.id ? "In use for new chats" : "Use for new chats"}</button>
+              : <button type="button" className="outline-button" disabled={Boolean(working) || status.queued?.includes(best.id) || download?.tier === best.id} onClick={() => act(best.id, () => bridge.install(best.id))}><DownloadSimple /> {download?.tier === best.id ? "Downloading…" : status.queued?.includes(best.id) ? "Queued" : "Download"}</button>}
+          </div>
+        </Row>
+      </Group>}
       <Group title="Your models" note="Downloads use disk space. Loading uses working memory. Every conversation can choose its own model.">
-        {status.tiers.map((tier) => <Row key={tier.id} title={tier.label + (tier.id === status.recommended ? " · Recommended for this Mac" : "")}
-          hint={tier.model + " · " + gb(tier.size) + " on disk. " + (tier.ready ? rowState(tier) : status.queued?.includes(tier.id) ? "Download queued" : tier.blurb)}
+        {!installed.length && <Row title="No model on this Mac yet" hint="Download one above or from the list below. It downloads in the background; you can keep working." />}
+        {installed.map((tier) => <Row key={tier.id} title={tier.model + (tier.id === status.best ? " · Best for this Mac" : "")}
+          hint={gb(tier.size) + " on disk. " + rowState(tier)}
           words={tier.model + " load unload memory download"} stacked>
           <div className="ai-model-controls">
-            {tier.ready ? <>
-              <button type="button" className="outline-button" disabled={Boolean(working) || tier.busy}
-                onClick={() => act(tier.id, () => tier.state === "ready" ? bridge.unload(tier.id) : bridge.load(tier.id))}>
-                {tier.state === "ready" ? "Unload" : tier.state === "loading" ? "Loading…" : tier.state === "unloading" ? "Unloading…" : "Load"}
-              </button>
-              <label className="ai-retain"><Switch label={"Keep " + tier.label + " loaded"} checked={Boolean(tier.retained)}
-                disabled={Boolean(working) || tier.state === "loading" || tier.state === "unloading"}
-                onChange={(value) => act(tier.id, () => bridge.keepLoaded(tier.id, value))} /> Keep loaded</label>
-              <button type="button" className="text-button" disabled={Boolean(working) || status.chosen === tier.id}
-                onClick={() => act(tier.id, () => bridge.select(tier.id))}>{status.chosen === tier.id ? "Default for new chats" : "Use for new chats"}</button>
-              <button type="button" className="text-button" disabled={Boolean(working) || tier.busy}
-                onClick={() => { if (window.confirm("Delete the " + tier.label + " downloaded model (" + gb(tier.size) + ")? You will need to download it again. Conversations stay here.")) act(tier.id, () => bridge.remove(tier.id)); }}>Delete download</button>
-            </> : <button type="button" className="outline-button" disabled={Boolean(working) || status.queued?.includes(tier.id)}
-              onClick={() => act(tier.id, () => bridge.install(tier.id))}><DownloadSimple /> Download {tier.label}</button>}
+            <button type="button" className="outline-button" disabled={Boolean(working) || tier.busy}
+              onClick={() => act(tier.id, () => tier.state === "ready" ? bridge.unload(tier.id) : bridge.load(tier.id))}>
+              {tier.state === "ready" ? "Unload" : tier.state === "loading" ? "Loading…" : tier.state === "unloading" ? "Unloading…" : "Load"}
+            </button>
+            <label className="ai-retain"><Switch label={"Keep " + tier.model + " loaded"} checked={Boolean(tier.retained)}
+              disabled={Boolean(working) || tier.state === "loading" || tier.state === "unloading"}
+              onChange={(value) => act(tier.id, () => bridge.keepLoaded(tier.id, value))} /> Keep loaded</label>
+            <button type="button" className="text-button" disabled={Boolean(working) || status.chosen === tier.id}
+              onClick={() => act(tier.id, () => bridge.select(tier.id))}>{status.chosen === tier.id ? "Default for new chats" : "Use for new chats"}</button>
+            <button type="button" className="text-button" disabled={Boolean(working) || tier.busy}
+              onClick={() => { if (window.confirm("Delete the " + tier.model + " download (" + gb(tier.size) + ")? You will need to download it again. Conversations stay here.")) act(tier.id, () => bridge.remove(tier.id)); }}>Delete download</button>
           </div>
         </Row>)}
-        {missing.length > 1 && <Row title="Install all three" hint={gb(missing.reduce((sum, tier) => sum + tier.size, 0)) + " remaining downloads. Models download one at a time and stay unloaded."} words="all models download disk">
-          <button type="button" className="outline-button" disabled={Boolean(working)} onClick={() => act("install", () => bridge.install(missing.map((tier) => tier.id)))}>Install all three</button>
-        </Row>}
       </Group>
       {download && <Group title="Download">
         <Row title={status.tiers.find((tier) => tier.id === download.tier)?.label || "AI model"} hint={download.state === "failed" ? download.message : gb(download.received) + " of " + gb(download.total)} stacked>
@@ -118,6 +123,11 @@ function AiCard() {
           </div>
         </Row>
       </Group>}
+      <Group title="Compare models" note="Speed and smarts are compared with each other. Every model stays on this Mac; nothing you ask leaves it.">
+        <Row title="Every model OSAT can set up" hint="Smaller ones answer faster; bigger ones think more carefully. One that needs more memory than this Mac has says so." words="compare models qwen gemma ministral download speed smarts" stacked>
+          <ModelTable status={status} download={download} working={working} onInstall={(id) => act(id, () => bridge.install(id))} />
+        </Row>
+      </Group>
       <Group title="Memory" note="Keep loaded is for this session. Otherwise models rest after ten idle minutes. Loading several models requires a resource review.">
         <Row title="Load AI at startup" hint="Load the downloaded default for new chats when OSAT opens. Turning this off keeps loading on demand." words="launch startup">
           <Switch label="Load AI at startup" checked={Boolean(status.startup)} disabled={Boolean(working)} onChange={(value) => act("startup", () => bridge.startup(value))} />
@@ -159,13 +169,13 @@ function ScansCard() {
       <p className="eyebrow">SCANS</p>
       {status?.dir ? (
         <>
-          <h2>Scans become nodes.</h2>
+          <h2>Scans become topics.</h2>
           <p>
             {status.error || (status.waiting
               ? "A scan is being sorted now."
               : status.last
                 ? `Watching ${folder}. The last scan came in ${formatRelativeTime(status.last)}.`
-                : `Watching ${folder}. Scan something and it appears in the Sky in a minute or two.`)}
+                : `Watching ${folder}. Scan something and it appears on the canvas in a minute or two.`)}
           </p>
           <div className="button-row">
             <button className="outline-button" type="button" onClick={() => bridge.show().catch(() => {})}><FolderOpen /> Show the folder</button>
@@ -175,8 +185,8 @@ function ScansCard() {
         </>
       ) : (
         <>
-          <h2>Turn paper into a node.</h2>
-          <p>Choose the folder your scanner saves to. Each new scan is read on this Mac, and the AI sorts it into a node with branches, waiting for you in the Sky. A single sticky comes in as one sticky. A date becomes a question: add it to your Calendar? Scans already in the folder are left alone.</p>
+          <h2>Turn paper into a topic.</h2>
+          <p>Choose the folder your scanner saves to. Each new scan is read on this Mac, and the AI sorts it into a topic with branches, waiting for you on the canvas. A single sticky comes in as one sticky. A date becomes a question: add it to your Calendar? Scans already in the folder are left alone.</p>
           <button className="primary-button" type="button" onClick={() => act(bridge.choose)}><Printer /> Choose the scans folder</button>
         </>
       )}
@@ -266,7 +276,7 @@ function PhoneCards() {
       <section className="content-card">
         <p className="eyebrow">READ YOUR NOTES</p>
         <h2>Files → iCloud Drive → OSAT → Notes.</h2>
-        <p>A copy that follows your notes as you write, in the same nodes. Write in OSAT; changes made to the copy aren’t read back.</p>
+        <p>A copy that follows your notes as you write, in the same topics. Write in OSAT; changes made to the copy aren’t read back.</p>
       </section>
     </>
   );
@@ -274,7 +284,7 @@ function PhoneCards() {
 
 /* ---- The pages ----------------------------------------------------------------------------------------------------- */
 
-const KEYS_INSIDE = [["⌘1 – ⌘5", "Desk, Notes, Sky, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new sticky"], ["⌘,", "Settings"], ["⌘F", "Search these settings"], ["esc", "Back out, one step at a time"]];
+const KEYS_INSIDE = [["⌘1 – ⌘5", "Desk, Notes, Canvas, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new sticky"], ["⌘,", "Settings"], ["⌘F", "Search these settings"], ["esc", "Back out, one step at a time"]];
 
 export function GeneralPage({ page }) {
   const keys = useDeskKeys();
@@ -316,9 +326,50 @@ export function AppearancePage({ page, workspace, commit }) {
   );
 }
 
+const dots = (value, label) => <span className="ai-dots" role="img" aria-label={`${label} ${value} of 5`}>{[1, 2, 3, 4, 5].map((n) => <i key={n} data-on={n <= value || undefined} />)}</span>;
+
+/* Every model OSAT can set up, side by side: what it's good at, how big, how much memory it needs, speed and smarts.
+   One that this Mac can't hold comfortably says so instead of offering a download. */
+function ModelTable({ status, download, working, onInstall }) {
+  const percent = (tier) => (download?.tier === tier.id ? Math.floor((download.received / download.total) * 100) : null);
+  return (
+    <div className="ai-compare-wrap">
+      <table className="ai-compare">
+        <thead><tr><th scope="col">Model</th><th scope="col">Good for</th><th scope="col">Speed</th><th scope="col">Smarts</th><th scope="col">Download</th><th scope="col">Needs</th><th scope="col"><span className="visually-hidden">Get it</span></th></tr></thead>
+        <tbody>
+          {[...status.tiers].sort((a, b) => a.minMemory - b.minMemory || a.size - b.size).map((tier) => (
+            <tr key={tier.id} data-best={tier.id === status.best || undefined} data-fits={tier.fits !== false || undefined}>
+              <th scope="row"><b>{tier.model}</b><small>{tier.maker}</small>{tier.id === status.best && <em className="ai-best">Best for this Mac</em>}</th>
+              <td className="ai-good">{tier.best}</td>
+              <td>{dots(tier.speed, "Speed")}</td>
+              <td>{dots(tier.smarts, "Smarts")}</td>
+              <td>{gb(tier.size)}</td>
+              <td>{Math.round(tier.minMemory / 1024 ** 3)} GB</td>
+              <td className="ai-get">
+                {tier.ready ? <span className="ai-have"><Check aria-hidden="true" /> On this Mac</span>
+                  : percent(tier) !== null ? <span>{percent(tier)}%</span>
+                    : status.queued?.includes(tier.id) ? <span>Queued</span>
+                      : tier.fits === false ? <span className="ai-too-big">Needs a bigger Mac</span>
+                        : <button type="button" className="outline-button" disabled={Boolean(working)} onClick={() => onInstall(tier.id)}><DownloadSimple /> Get</button>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function AiPage({ page, workspace, commit }) {
+  const filing = autoFileSettings(workspace.settings);
+  const setFiling = (on) => commit((state) => ({ ...state, settings: { ...(state.settings || {}), autoFile: { ...(state.settings?.autoFile || {}), on } } }));
   return (
     <Page page={page}>
+      <Group title="Sorting" note="Only the AI's own picks move. What it isn't sure of stays in Unsorted for you, and Notes → Filed for you shows where everything went.">
+        <Row title="File new stickies for me" hint="Write as many as you like. Once you stop for a moment, the AI puts each one in its topic and gives long ones a short version. Undo takes a whole run back." words="auto sort file organize unsorted summarize shorten">
+          <Switch label="File new stickies for me" checked={filing.on} onChange={setFiling} />
+        </Row>
+      </Group>
       <Legacy words="about you model size download lm studio"><AboutYouCard workspace={workspace} commit={commit} /></Legacy>
       <Legacy words="local ai model size download lm studio gemma"><AiCard /></Legacy>
     </Page>
@@ -371,7 +422,7 @@ export function DataPage({ page, workspace, commit, storage, showUndo }) {
         </Row>
       </Group>
       <Group title="Backup">
-        <Row title="Download a backup" hint="One file with every note and node." words="export save file json">
+        <Row title="Download a backup" hint="One file with every note and topic." words="export save file json">
           <button className="primary-button" type="button" onClick={backup}><DownloadSimple /> Download a backup</button>
         </Row>
         <Row title="Restore a backup" hint="Restoring keeps a copy of what it replaces, so it can be undone." words="import load file json">
@@ -395,7 +446,7 @@ export function ScansPage({ page }) {
     <Page page={page}>
       {window.osatScans
         ? <Legacy words="scanner folder brother paper"><ScansCard /></Legacy>
-        : <Group><Row title="Scans live in the Mac app" hint="In the Mac app, choose the folder your scanner saves to, and each new scan is read on this Mac and sorted into a node." /></Group>}
+        : <Group><Row title="Scans live in the Mac app" hint="In the Mac app, choose the folder your scanner saves to, and each new scan is read on this Mac and sorted into a topic." /></Group>}
     </Page>
   );
 }

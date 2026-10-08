@@ -8,6 +8,7 @@
 import { calculate } from './calc.mjs'
 import { CAPTURES, cleanCaptureSettings } from './capture-model.mjs'
 import { RING_ITEMS } from './ring-model.mjs'
+import { cleanSnippets } from './snippets.mjs'
 import { LAYOUTS, cleanWindowKeys } from './window-layouts.mjs'
 
 export const SEARCH_HOTKEY = 'Command+Shift+Space'
@@ -18,7 +19,7 @@ export const SOURCES = [
   { id: 'files', label: 'Files', blurb: 'Documents, pictures and folders on this Mac, the ones you used lately first', keyword: 'f', letter: 'S' },
   { id: 'clipboard', label: 'Clipboard', blurb: 'Everything you copy, kept only on this Mac', keyword: 'v', letter: 'V' },
   { id: 'apps', label: 'Apps', blurb: 'Open any app on this Mac', keyword: 'a', letter: 'A' },
-  { id: 'notes', label: 'Notes and nodes', blurb: 'Your own notes, nodes and rooms', keyword: 'n', letter: 'N' },
+  { id: 'notes', label: 'Notes and topics', blurb: 'Your own notes, topics and rooms', keyword: 'n', letter: 'N' },
   { id: 'calc', label: 'Calculator', blurb: 'Type a sum and the answer is right there', keyword: null, letter: null },
   { id: 'windows', label: 'Window layouts', blurb: 'Snap the window you were in to a half, a third or a corner', keyword: 'w', letter: 'W' },
 ]
@@ -58,6 +59,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
   // Ask can look at what you copied and at files in your approved places (never when a cloud model answers).
   ask: { sources: true },
   pins: [],
+  custom: [],
+  // Snippets (shared/snippets.mjs): text with a word. Typing the word in any app turns it into the text only once turned on.
+  snippets: [],
+  snippetsTyped: false,
   // Window keys (Control+Option+Arrow…) are off until turned on: they are global, and moving windows needs Accessibility.
   windows: { on: false, hotkeys: cleanWindowKeys(undefined) },
   // The ring opens with Hyper + middle-click over any app (`middle`, a small helper: desktop/launcher/middle-click.cjs) or
@@ -109,6 +114,16 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     if (links.some((other) => other.id === id)) continue
     links.push({ id, name: String(item.name || '').trim().slice(0, 40) || hostOf(url), url, keyword: word(item.keyword ?? null), hotkey: key(item.hotkey ?? null), on: item.on !== false })
   }
+  // Favorites, keys and words for anything else in the bar (set from ⌘K there): after apps and links, so theirs come first.
+  const custom = []
+  for (const item of (Array.isArray(from.custom) ? from.custom : []).slice(0, 80)) {
+    const row = cleanRow(item)
+    if (!row || custom.some((other) => other.key === row.key)) continue
+    const entry = { ...row, favorite: item.favorite === true, hotkey: key(item.hotkey ?? null), keyword: word(item.keyword ?? null) }
+    if (entry.favorite || entry.hotkey || entry.keyword) custom.push(entry)
+  }
+  // Snippets' words come last: one the bar already uses goes.
+  const snippets = cleanSnippets(from.snippets, used)
   const pins = (Array.isArray(from.pins) ? from.pins : []).filter((pin) => pin && typeof pin.rootId === 'string' && typeof pin.relative === 'string' && typeof pin.name === 'string' && ['file', 'folder'].includes(pin.kind))
     .slice(0, 30).map(({ rootId, relative, name, kind, where }) => ({ kind, rootId, relative, name, where: typeof where === 'string' ? where.slice(0, 200) : '' }))
   const clip = from.clipboard || {}
@@ -120,6 +135,9 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     links,
     clipboard: { items: [50, 100, 200, 500].includes(clip.items) ? clip.items : 200, days: [0, 7, 30, 90].includes(clip.days) ? clip.days : 30, offers: clip.offers !== false },
     pins,
+    custom,
+    snippets,
+    snippetsTyped: from.snippetsTyped === true,
     ask: { sources: from.ask?.sources !== false },
     windows: { on: from.windows?.on === true, hotkeys: cleanWindowKeys(from.windows?.hotkeys, validHotkey) },
     ring: {
@@ -174,6 +192,7 @@ export function keysOf(settings, { all = false } = {}) {
   for (const [name, own] of Object.entries(settings.apps || {})) if (own.hotkey) keys[`app:${name}`] = own.hotkey
   for (const link of settings.links || []) if (link.hotkey && (all || link.on !== false)) keys[`link:${link.id}`] = link.hotkey
   for (const [id, hotkey] of Object.entries(settings.captures?.hotkeys || {})) if (hotkey) keys[`capture:${id}`] = hotkey
+  for (const entry of settings.custom || []) if (entry.hotkey) keys[`row:${entry.key}`] = entry.hotkey
   return keys
 }
 
@@ -183,6 +202,8 @@ export function wordsOf(settings) {
   for (const source of SOURCES) if (settings.sources[source.id]?.keyword) words[`source:${source.id}`] = settings.sources[source.id].keyword
   for (const [name, own] of Object.entries(settings.apps || {})) if (own.keyword) words[`app:${name}`] = own.keyword
   for (const link of settings.links || []) if (link.keyword) words[`link:${link.id}`] = link.keyword
+  for (const entry of settings.custom || []) if (entry.keyword) words[`row:${entry.key}`] = entry.keyword
+  for (const snippet of settings.snippets || []) if (snippet.keyword) words[`snip:${snippet.id}`] = snippet.keyword
   return words
 }
 
@@ -194,6 +215,8 @@ export function nameOf(settings, id) {
   if (kind === 'snap') return LAYOUTS.find((layout) => layout.id === rest)?.label || rest
   if (kind === 'link') return (settings.links || []).find((link) => link.id === rest)?.name || 'A quick link'
   if (kind === 'capture') return CAPTURES.find((item) => item.id === rest)?.label || rest
+  if (kind === 'row') return (settings.custom || []).find((entry) => entry.key === rest)?.title || 'Something in the bar'
+  if (kind === 'snip') return `the snippet “${(settings.snippets || []).find((snippet) => snippet.id === rest)?.name || 'a snippet'}”`
   return rest || id
 }
 
@@ -216,6 +239,7 @@ export function withKey(settings, id, hotkey) {
     case 'app': return { ...settings, apps: { ...settings.apps, [rest]: { keyword: null, ...(settings.apps?.[rest] || {}), hotkey } } }
     case 'link': return { ...settings, links: (settings.links || []).map((link) => (link.id === rest ? { ...link, hotkey } : link)) }
     case 'capture': return { ...settings, captures: { ...settings.captures, hotkeys: { ...settings.captures.hotkeys, [rest]: hotkey } } }
+    case 'row': return { ...settings, custom: (settings.custom || []).map((entry) => (entry.key === rest ? { ...entry, hotkey } : entry)) }
     default: return settings
   }
 }
@@ -242,7 +266,7 @@ export const activeSources = (settings) => SOURCES.filter((source) => settings.s
 /* What a typed line starts with: a source's keyword ("v invoice" → the clipboard for "invoice"),
    an app's word or a quick link's. A keyword counts only as a whole word at the start, so "very good"
    is not the clipboard. Answers { source, query } | { keyword, query } | null. */
-export function matchKeyword(settings, text) {
+export function matchKeyword(settings, text, { rows = false } = {}) {
   const line = String(text || '').trim()
   const first = /^(\S+)(?:\s+([\s\S]*))?$/.exec(line)
   if (!first) return null
@@ -257,8 +281,12 @@ export function matchKeyword(settings, text) {
   if (app) return query ? null : { keyword: { id: `app:${app[0]}`, keyword: word, label: app[0], app: app[0] }, query: '' }
   // A quick link with {query} wants words to search for; one without opens on its word alone.
   const link = (settings.links || []).find((item) => item.on !== false && item.keyword === word)
-  if (!link || link.url.includes('{query}') !== Boolean(query)) return null
-  return { keyword: { id: link.id, keyword: word, label: link.name, url: link.url }, query }
+  if (link) return link.url.includes('{query}') !== Boolean(query) ? null : { keyword: { id: link.id, keyword: word, label: link.name, url: link.url }, query }
+  // Your own word for something in the bar (the bar only; the desk's line keeps to apps and links).
+  const entry = rows && !query ? (settings.custom || []).find((item) => item.keyword === word) : null
+  if (entry) return { keyword: { id: `row:${entry.key}`, keyword: word, label: entry.title, row: entry }, query: '' }
+  const snippet = rows && !query ? (settings.snippets || []).find((item) => item.keyword === word) : null
+  return snippet ? { keyword: { id: `snip:${snippet.id}`, keyword: word, label: snippet.name, snippet }, query: '' } : null
 }
 
 export const keywordAddress = (keyword, query = '') => keyword.url.replace('{query}', encodeURIComponent(query))
@@ -296,3 +324,50 @@ export function handOff(job, takers = []) {
   if (!taker) return { ok: false, message: 'No bot takes jobs yet. Bots that can are planned; Settings → Bots shows what is connected today.' }
   return { ok: true, taker, run: () => taker.run(job) }
 }
+
+/* ---------- Favorites, keys and words from the bar (Oct 2026) ---------- */
+
+/* What can be a favorite, or have a key or a word of its own, from ⌘K in the bar: rooms and commands, notes, topics,
+   the Mac's commands, apps, Emoji & symbols and window layouts. Files keep their pins, copies theirs. */
+export const CUSTOM_KINDS = ['room', 'note', 'node', 'system', 'app', 'emoji', 'layout']
+export const customizable = (row) => Boolean(row && CUSTOM_KINDS.includes(row.kind) && typeof row.key === 'string' && !/^(do|more|kw):/.test(row.key))
+
+/* A row kept as it was shown: its key, kind, words and what doing it needs (small, plain data only). */
+function cleanRow(value) {
+  if (!value || typeof value !== 'object' || typeof value.key !== 'string' || !value.key || value.key.length > 200 || !CUSTOM_KINDS.includes(value.kind)) return null
+  const data = value.data && typeof value.data === 'object' && !Array.isArray(value.data) ? value.data : {}
+  let text
+  try { text = JSON.stringify(data) } catch { return null }
+  if (text.length > 1000) return null
+  return { key: value.key, kind: value.kind, title: String(value.title || '').trim().slice(0, 80) || 'Untitled', subtitle: String(value.subtitle || '').slice(0, 120), data: JSON.parse(text) }
+}
+
+export const customOf = (settings, key) => (settings.custom || []).find((entry) => entry.key === key) || null
+
+/* The patch that gives `row` a favorite, a key or a word (`change` is { favorite } | { hotkey } | { keyword }; null
+   takes one away). An app keeps its key and word with the apps; the rest, and every favorite, are kept in `custom`
+   with the row they came from (a layout's own key too, so giving one a key never turns on all the window keys). */
+export function customize(settings, row, change) {
+  if (row.kind === 'app' && !('favorite' in change)) return { apps: { [row.title]: change } }
+  const list = settings.custom || []
+  const before = list.find((entry) => entry.key === row.key)
+  const entry = { favorite: false, hotkey: null, keyword: null, ...(before || cleanRow(row) || {}), ...change }
+  const rest = list.filter((item) => item.key !== row.key)
+  return { custom: entry.favorite || entry.hotkey || entry.keyword ? [...rest, entry] : rest }
+}
+
+/* The key or word a row has now, wherever it is kept (null when none). */
+export function ownKeyOf(settings, row) {
+  if (row.kind === 'app') return settings.apps?.[row.title]?.hotkey || null
+  return customOf(settings, row.key)?.hotkey || null
+}
+export function ownWordOf(settings, row) {
+  if (row.kind === 'app') return settings.apps?.[row.title]?.keyword || null
+  return customOf(settings, row.key)?.keyword || null
+}
+export const idOf = (row) => (row.kind === 'app' ? `app:${row.title}` : `row:${row.key}`)
+
+/* The favorites, as rows for the top of the bar. */
+const SOURCE_OF = { app: 'apps', system: 'system', layout: 'windows', emoji: 'tools' }
+export const favoriteRows = (settings) => (settings.custom || []).filter((entry) => entry.favorite)
+  .map((entry) => ({ key: entry.key, source: SOURCE_OF[entry.kind] || 'notes', kind: entry.kind, title: entry.title, subtitle: entry.subtitle, section: 'Favorites', data: entry.data, favorite: true }))

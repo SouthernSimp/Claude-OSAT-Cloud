@@ -96,9 +96,9 @@ async function setUp() {
   return { dir, drop, doc: () => doc, statuses }
 }
 
-test('the drop folder: a node file becomes a New node and moves to Added; nothing is deleted', async () => {
+test('the drop folder: a topic file becomes a New topic and moves to Added; nothing is deleted', async () => {
   const { dir, drop, doc } = await setUp()
-  assert.match(await fs.readFile(path.join(dir, 'What lives here.txt'), 'utf8'), /Saving a node for OSAT/)
+  assert.match(await fs.readFile(path.join(dir, 'What lives here.txt'), 'utf8'), /Saving a topic for OSAT/)
   await fs.writeFile(path.join(dir, 'Garden.md'), '---\nsource: Muse\n---\n# Garden\nWhat grows where.\n## Beds\n- Tomatoes\n')
   await fs.writeFile(path.join(dir, 'Spring.txt'), 'Spring launch\nOnly a summary.')
   assert.equal(await drop.look(), 2)
@@ -117,7 +117,7 @@ test('the drop folder: a broken file is set aside with a calm word, never lost; 
   await fs.writeFile(path.join(dir, 'huge.md'), `# Huge\n${'x'.repeat(2 * 1024 * 1024)}`)
   assert.equal(await drop.look(), 0)
   assert.deepEqual(await list(path.join(dir, 'Set aside')), ['broken.json', 'huge.md'])
-  assert.deepEqual(drop.status().setAside.map((item) => item.why).sort(), ['It’s bigger than a node file can be (2 MB).', 'That file isn’t valid JSON.'])
+  assert.deepEqual(drop.status().setAside.map((item) => item.why).sort(), ['It’s bigger than a topic file can be (2 MB).', 'That file isn’t valid JSON.'])
   assert.equal(doc().folders.length, 0)
 
   const words = '# Garden\nA summary.'

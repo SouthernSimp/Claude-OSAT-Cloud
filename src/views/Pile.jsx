@@ -354,14 +354,14 @@ export function PileView({ workspace, commit, navigate, onClose }) {
     setSending(null)
     setHelp(null)
     if (!made?.nodes.length && !made?.notes.length) return
-    const label = mode === 'one' ? (name.trim() || pileName(before)) : `${made.nodes.length} ${made.nodes.length === 1 ? 'node' : 'nodes'}`
+    const label = mode === 'one' ? (name.trim() || pileName(before)) : `${made.nodes.length} ${made.nodes.length === 1 ? 'topic' : 'topics'}`
     setSent({ label, nodeId: made.nodes[0] || null })
     setCurrentId(null)
     keepCurrent(null)
     setBlank(true)
     pending.current = null
     setCam({ x: 0, y: 0, z: 1 })
-    showUndo(`Sent ${label} to the Sky`, () => {
+    showUndo(`Sent ${label} to the canvas`, () => {
       commit((state) => purgeNotes({
         ...setPiles(state, [...pilesOf(state), before]),
         folders: state.folders.filter((folder) => !made.folders.includes(folder.id)),
@@ -408,7 +408,7 @@ export function PileView({ workspace, commit, navigate, onClose }) {
           <button type="button" className="pile-tool" onClick={() => readFiles([() => files.attachChosen()])} title="Read a photo, scan or PDF of a pile into stickies"><Image weight="bold" /> Photo</button>
         )}
         <button type="button" className="pile-tool" onClick={askHelp} disabled={!pile?.cards.length || help?.busy}><Sparkle weight="bold" /> Help me sort</button>
-        <button type="button" className="pile-send" onClick={() => setSending({ name: pile?.name || '', mode: 'one' })} disabled={!pile?.cards.length}>Send to the Sky</button>
+        <button type="button" className="pile-send" onClick={() => setSending({ name: pile?.name || '', mode: 'one' })} disabled={!pile?.cards.length}>Send to the canvas</button>
       </header>
 
       <div
@@ -491,7 +491,7 @@ export function PileView({ workspace, commit, navigate, onClose }) {
         {sent && !pile?.cards.length && (
           <div className="pile-sent" role="status">
             <p>Sent {sent.label} to the Sky.</p>
-            {sent.nodeId && <button type="button" className="is-primary" onClick={() => { navigate('Mindmap', { folderId: sent.nodeId, open: true }); onClose?.() }}>See it in the Sky</button>}
+            {sent.nodeId && <button type="button" className="is-primary" onClick={() => { navigate('Mindmap', { folderId: sent.nodeId, open: true }); onClose?.() }}>See it on the canvas</button>}
             <button type="button" onClick={() => { setSent(null); input.current?.focus() }}>Start the next pile</button>
           </div>
         )}
@@ -572,18 +572,18 @@ function SendPanel({ pile, initial, onSend, onCancel }) {
       <form
         className="pile-send-panel"
         role="dialog"
-        aria-label="Send to the Sky"
+        aria-label="Send to the canvas"
         onSubmit={(event) => { event.preventDefault(); onSend({ name, mode }) }}
         onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel() } }}
       >
-        <h2>Send to the Sky</h2>
+        <h2>Send to the canvas</h2>
         <label className="pile-field">
-          <span>Name of the node</span>
+          <span>Name of the topic</span>
           <input ref={field} value={name} placeholder={pileName(pile)} maxLength={80} onChange={(event) => setName(event.target.value)} disabled={mode === 'each'} />
         </label>
         <div className="pile-modes" role="radiogroup" aria-label="How it goes up">
-          <label><input type="radio" name="mode" checked={mode === 'one'} onChange={() => setMode('one')} /> <span><strong>One node</strong>{branches ? `, with its ${branches} ${branches === 1 ? 'branch' : 'branches'} inside` : ''}{loose ? `; ${loose} ${loose === 1 ? 'sticky' : 'stickies'} not in a branch yet stay in the node` : ''}</span></label>
-          <label className={branches ? '' : 'is-off'}><input type="radio" name="mode" checked={mode === 'each'} disabled={!branches} onChange={() => setMode('each')} /> <span><strong>Each branch its own node</strong>{loose ? `; ${loose} ${loose === 1 ? 'sticky goes' : 'stickies go'} to Unsorted` : ''}</span></label>
+          <label><input type="radio" name="mode" checked={mode === 'one'} onChange={() => setMode('one')} /> <span><strong>One topic</strong>{branches ? `, with its ${branches} ${branches === 1 ? 'branch' : 'branches'} inside` : ''}{loose ? `; ${loose} ${loose === 1 ? 'sticky' : 'stickies'} not in a branch yet stay in the topic` : ''}</span></label>
+          <label className={branches ? '' : 'is-off'}><input type="radio" name="mode" checked={mode === 'each'} disabled={!branches} onChange={() => setMode('each')} /> <span><strong>Each branch its own topic</strong>{loose ? `; ${loose} ${loose === 1 ? 'sticky goes' : 'stickies go'} to Unsorted` : ''}</span></label>
         </div>
         <div className="pile-send-actions">
           <button type="button" onClick={onCancel}>Not yet</button>
