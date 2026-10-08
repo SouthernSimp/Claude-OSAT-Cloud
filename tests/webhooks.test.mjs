@@ -126,7 +126,6 @@ const TOPIC = 'T0pic_with-24-or-more-chars'
 
 async function setup(t, { respond = () => ({ ok: true, status: 200 }), offline = () => false } = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'osat-webhooks-'))
-  t.after(() => fs.rm(dir, { recursive: true, force: true }))
   const store = await createStore({ dir: path.join(dir, 'store'), core: storeCore, writeDelay: 0, maxDelay: 0 })
   const client = store.connect(() => {})
   let n = 0
@@ -145,14 +144,20 @@ async function setup(t, { respond = () => ({ ok: true, status: 200 }), offline =
       sent.push({ url, body: init.body ? JSON.parse(init.body) : null })
       return respond(url, sent.length)
     },
-    addSticky(text, source) {
-      store.commit(client, runTool('add_sticky', { text, source }, { doc: store.load().doc, now: new Date(clock).toISOString(), makeId }).ops)
+    addSticky(text) {
+      store.commit(client, runTool('add_sticky', { text }, { doc: store.load().doc, now: new Date(clock).toISOString(), makeId, source: model.SOURCE }).ops)
     },
     setTimer: (fn, ms) => { const timer = { fn, ms }; timers.add(timer); return timer },
     clearTimer: (timer) => timers.delete(timer),
   })
   await hooks.start()
-  t.after(() => hooks.stop())
+  // The store and the settings file may still be writing: let them finish before the folder goes.
+  t.after(async () => {
+    hooks.stop()
+    await hooks.settle()
+    await store.flush()
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 })
+  })
   const commit = (ops) => store.commit(client, ops)
   // Runs the timers that wait `ms`, then waits for what they started.
   const fire = async (ms) => {
@@ -165,7 +170,7 @@ async function setup(t, { respond = () => ({ ok: true, status: 200 }), offline =
   return { hooks, store, commit, sent, fire, timers, saved, dir, tick: (ms) => { clock += ms } }
 }
 
-const sticky = (id, text) => ({ t: 'add', c: 'notes', v: storeCore.migrate ? { id, title: text, markdown: text, createdAt: at(), updatedAt: at(), folderId: null, unsorted: true, source: 'Quick bar' } : null })
+const sticky = (id, text) => ({ t: 'add', c: 'notes', v: { id, title: text, markdown: text, createdAt: at(), updatedAt: at(), folderId: null, unsorted: true, source: 'Quick bar' } })
 
 test('a sticky added goes to each address that wants it; the settings file is private', async (t) => {
   const { hooks, commit, sent, saved, dir } = await setup(t)
@@ -311,4 +316,51 @@ test('the inbox says calmly when the relay can’t be read, and waits offline', 
   await assert.rejects(hooks.inboxServer('http://ntfy.example.com'), /Use an https/)
   await hooks.inboxServer('https://ntfy.example.com/')
   assert.equal(hooks.status().inbox.host, 'ntfy.example.com')
+})
+
+/* ---------- wired in as main does (desktop/bots/index.cjs) ---------- */
+
+test('a sticky from a service comes in as the app “Webhook”: the connector’s list says so, with Undo', async (t) => {
+  const { createBots } = require('../desktop/bots/index.cjs')
+  const { createKeychain } = require('../desktop/bots/keychain.cjs')
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'osat-webhooks-bots-'))
+  const store = await createStore({ dir: path.join(dir, 'store'), core: storeCore, writeDelay: 0, maxDelay: 0 })
+  // The relay, stood in for: one message, sent a moment after the inbox was turned on.
+  const realFetch = globalThis.fetch
+  t.after(() => { globalThis.fetch = realFetch })
+  const asked = []
+  globalThis.fetch = async (url) => {
+    asked.push(String(url))
+    return { ok: true, status: 200, text: async () => JSON.stringify({ id: 'm1', time: Math.floor(Date.now() / 1000) + 5, event: 'message', message: 'Buy milk' }) }
+  }
+  const handlers = {}
+  const bots = await createBots({
+    dataDir: dir,
+    nodesDir: path.join(dir, 'nodes'),
+    service: 'OSAT-Test',
+    store,
+    sharedModule: (name) => import(`../shared/${name}`),
+    handle: (channel, work) => { handlers[channel] = work },
+    fail: (message) => { throw new Error(message) },
+    send: () => {},
+    shell: {},
+    clipboard: { writeText: () => {} },
+    keychain: createKeychain({ platform: 'memory' }),
+  })
+  await bots.start()
+  t.after(async () => {
+    bots.stop()
+    await store.flush()
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 })
+  })
+  await handlers['hooks:inbox-on']()
+  const added = () => store.load().doc.notes.find((item) => item.markdown === 'Buy milk')
+  for (let i = 0; i < 200 && !added(); i += 1) await new Promise((resolve) => setTimeout(resolve, 10))
+  assert.ok(asked[0].startsWith('https://ntfy.sh/'))
+  assert.deepEqual([added().source, added().unsorted], ['Webhook', true])
+  const { recent, apps } = handlers['bots:status']().connector
+  assert.deepEqual(recent.map((item) => item.text), ['Webhook added a sticky to Unsorted.'])
+  assert.deepEqual(apps, [], 'no key is made for it')
+  await handlers['bots:undo-connector'](recent[0].at)
+  assert.equal(added(), undefined)
 })

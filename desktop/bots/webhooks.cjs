@@ -6,7 +6,8 @@
      in    "Let services add stickies": an ntfy topic with a random name. Services send words to
            it; OSAT reads it every minute while online, and each message becomes a sticky in
            Unsorted (source Webhook). The Mac never listens to the internet.
-   `model` is shared/webhook-model.mjs; `addSticky(text, source)` commits through the store. */
+   `model` is shared/webhook-model.mjs; `addSticky(text)` commits through the store as the app
+   "Webhook" (bots/index.cjs), so its sticky carries source Webhook and the connector's list can undo it. */
 const { randomBytes, randomUUID } = require('node:crypto')
 const { createSettings } = require('./settings.cjs')
 
@@ -165,7 +166,7 @@ function createWebhooks({
       // Reset or turned off meanwhile: nothing from the old address counts.
       const current = settings.get().inbox
       if (!current.on || current.topic !== inbox.topic || current.server !== inbox.server) return
-      for (const text of texts) addSticky(text, model.SOURCE)
+      for (const text of texts) await addSticky(text)
       if (last) await settings.save({ inbox: { ...current, since: last, ...(texts.length ? { lastAt: iso() } : {}) } })
       inboxError = ''
     } catch (error) {

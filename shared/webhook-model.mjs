@@ -23,6 +23,8 @@ const TOPIC = /^[A-Za-z0-9_-]{24,64}$/
 const NTFY_ID = /^[A-Za-z0-9]{1,64}$/
 const ID = /^[\w-]{1,64}$/
 
+// A string matching the pattern: test() alone would read undefined as the word "undefined".
+const fits = (pattern, value) => typeof value === 'string' && pattern.test(value)
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 const words = (value, max) => (typeof value === 'string' ? value.trim().slice(0, max) : '')
 const iso = (value) => (typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null)
@@ -69,7 +71,7 @@ export function hookName(address) {
 }
 
 function cleanHook(hook) {
-  if (!isObject(hook) || !ID.test(hook.id)) return []
+  if (!isObject(hook) || !fits(ID, hook.id)) return []
   let url
   try {
     url = webhookAddress(hook.url)
@@ -97,7 +99,7 @@ export function cleanHookSettings(value) {
   } catch {
     // An unusable server falls back to ntfy.sh's own.
   }
-  const topic = TOPIC.test(inbox.topic) ? inbox.topic : ''
+  const topic = fits(TOPIC, inbox.topic) ? inbox.topic : ''
   return {
     hooks: (Array.isArray(input.hooks) ? input.hooks : []).flatMap(cleanHook).slice(0, MAX_HOOKS),
     inbox: {
@@ -105,7 +107,7 @@ export function cleanHookSettings(value) {
       server,
       topic,
       // Where reading picks up: the last message's id, or at first the time it was turned on.
-      since: NTFY_ID.test(inbox.since) ? inbox.since : '',
+      since: fits(NTFY_ID, inbox.since) ? inbox.since : '',
       after: Number.isFinite(inbox.after) ? inbox.after : 0,
       lastAt: iso(inbox.lastAt),
     },
@@ -130,7 +132,7 @@ export function readNtfy(body, { after = 0 } = {}) {
     } catch {
       continue
     }
-    if (!isObject(message) || message.event !== 'message' || !NTFY_ID.test(message.id)) continue
+    if (!isObject(message) || message.event !== 'message' || !fits(NTFY_ID, message.id)) continue
     last = message.id
     if (Number(message.time) < after) continue
     const text = [words(message.title, 200), words(message.message, MAX_TEXT)].filter(Boolean).join('\n')

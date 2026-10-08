@@ -76,6 +76,21 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     saveApps(apps().map((item) => (item.id === app.id ? { ...item, usedAt } : item))).then(changed, () => {})
   }
 
+  /* One tool run for an app: its changes go through the store in one commit, marked with the app's
+     name; what undoes them is kept for Undo. The connector calls it, and so do OSAT's own features
+     (webhooks, as the app "Webhook"). Each Undo is told apart by its time, so no two share one. */
+  async function runForApp(name, args, app) {
+    const result = await tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles })
+    if (result.ops?.length) {
+      const { inverse } = applyOps(store.load().doc, result.ops)
+      store.commit(client, result.ops)
+      const at = new Date(Math.max(Date.now(), recent.length ? Date.parse(recent[0].at) + 1 : 0)).toISOString()
+      recent = [{ at, text: `${app.name} ${lowerFirst(result.text.replace(/ \((?:note|folder|event)-[^)]+\)/g, ''))}`, inverse }, ...recent].slice(0, 5)
+      changed()
+    }
+    return { text: result.text }
+  }
+
   const connector = createConnector({
     tools: tools.TOOLS,
     version,
@@ -84,17 +99,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
       if (app) used(app)
       return app
     },
-    // A tool's changes go through the store in one commit, marked with the app's name; what undoes them is kept for Undo.
-    async call(name, args, app) {
-      const result = await tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles })
-      if (result.ops?.length) {
-        const { inverse } = applyOps(store.load().doc, result.ops)
-        store.commit(client, result.ops)
-        recent = [{ at: new Date().toISOString(), text: `${app.name} ${lowerFirst(result.text.replace(/ \((?:note|folder|event)-[^)]+\)/g, ''))}`, inverse }, ...recent].slice(0, 5)
-        changed()
-      }
-      return { text: result.text }
-    },
+    call: runForApp,
   })
   const connectorUrl = () => (connectorPort ? `http://127.0.0.1:${connectorPort}/mcp` : '')
   function connectorStatus() {
@@ -285,26 +290,25 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     // The main process's fetch, so Offline holds every delivery and every read.
     fetch: (...args) => globalThis.fetch(...args),
     offline,
-    addSticky(text, source) {
-      const result = tools.runTool('add_sticky', { text, source }, { doc: store.load().doc, now: new Date().toISOString(), makeId })
-      if (result.ops?.length) store.commit(client, result.ops)
-    },
+    // As the app "Webhook", so the connector's list says "Webhook added a sticky to Unsorted." with Undo.
+    // It needs no key: it runs here in main, never through the connector's door.
+    addSticky: (text) => runForApp('add_sticky', { text }, { name: 'Webhook', access: 'write' }),
     onStatus: (value) => send('hooks:status', value),
   })
-  handle('hooks:status', () => hooks.status())
-  handle('hooks:add', plain((input) => hooks.add(input)))
-  handle('hooks:change', plain((id, patch) => hooks.change(String(id), patch)))
-  handle('hooks:remove', plain((id) => hooks.remove(String(id))))
-  handle('hooks:test', plain((id) => hooks.test(String(id))))
-  handle('hooks:inbox-on', plain(() => hooks.inboxOn()))
-  handle('hooks:inbox-off', plain(() => hooks.inboxOff()))
-  handle('hooks:inbox-reset', plain(() => hooks.inboxReset()))
-  handle('hooks:inbox-server', plain((server) => hooks.inboxServer(String(server || ''))))
+  handle('hooks:status', () => hooks.status(), { from: 'app' })
+  handle('hooks:add', plain((input) => hooks.add(input)), { from: 'app' })
+  handle('hooks:change', plain((id, patch) => hooks.change(String(id), patch)), { from: 'app' })
+  handle('hooks:remove', plain((id) => hooks.remove(String(id))), { from: 'app' })
+  handle('hooks:test', plain((id) => hooks.test(String(id))), { from: 'app' })
+  handle('hooks:inbox-on', plain(() => hooks.inboxOn()), { from: 'app' })
+  handle('hooks:inbox-off', plain(() => hooks.inboxOff()), { from: 'app' })
+  handle('hooks:inbox-reset', plain(() => hooks.inboxReset()), { from: 'app' })
+  handle('hooks:inbox-server', plain((server) => hooks.inboxServer(String(server || ''))), { from: 'app' })
   handle('hooks:copy-address', plain(() => {
     if (!hooks.address()) throw new Error('Turn it on first.')
     clipboard.writeText(hooks.address())
     return true
-  }))
+  }), { from: 'app' })
 
   // Only a provider's own pages (its keys, its usage), in the browser Nate already uses.
   handle('bots:open-page', async (url) => {
