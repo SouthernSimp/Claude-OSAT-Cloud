@@ -1,0 +1,21 @@
+/* ---- Settings → Bots → the connector's apps (views/bots/ConnectorCard.jsx) -----
+   One row per app: its name and when it was last used, what it may do, its setup. */
+
+.settings .connector-apps-title { margin: 18px 0 0; font-size: var(--t-sm); font-weight: 650; color: var(--ink); }
+.connector-apps { display: grid; margin: 8px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.connector-apps > li { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto; gap: 8px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
+.connector-app-name { display: grid; gap: 2px; min-width: 0; }
+.connector-app-name b { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.connector-app-name small { color: var(--muted); font-size: var(--t-xs); }
+.connector-app-actions { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: flex-end; }
+.connector-apps .bots-setups { grid-column: 1 / -1; margin-top: 4px; }
+.settings .connector-removed .text-button { margin-left: auto; }
+
+/* Add an app: its name, what it may do, Add. */
+.connector-add { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+.settings .connector-add input { flex: 1 1 200px; min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-md); color: var(--ink); background: var(--surface); font: inherit; font-size: var(--t-sm); }
+
+@container room (max-width: 760px) {
+  .connector-apps > li { grid-template-columns: minmax(0, 1fr); }
+  .connector-app-actions { justify-content: flex-start; }
+}

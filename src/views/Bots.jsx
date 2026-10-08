@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { ArrowCounterClockwise, Check, ClipboardText, Cloud, FolderOpen, Laptop, LockSimple, Plug, Plus, Robot } from '@phosphor-icons/react'
+import { Check, ClipboardText, Cloud, FolderOpen, Laptop, LockSimple, Plus, Robot } from '@phosphor-icons/react'
 
-import { connectorSetup } from '../../shared/connector-tools.mjs'
 import { OTHER, PRESETS } from '../../shared/providers.mjs'
 import { useAi } from '../assistant/useAi.js'
 import { formatRelativeTime } from '../lib/ui.js'
+import { ConnectorCard } from './bots/ConnectorCard.jsx'
 import { WebhooksCard } from './bots/WebhooksCard.jsx'
 import '../styles/bots.css'
 
@@ -215,71 +215,6 @@ function CloudCard({ bridge, cloud }) {
         </ul>
       )}
       <p className="ai-note">{cloud?.lasting === false ? 'There’s no Keychain here, so keys are kept only until OSAT quits.' : 'Keys are kept in your Mac’s Keychain, never in a file. Remove takes the key out of the Keychain.'}</p>
-    </section>
-  )
-}
-
-/* The OSAT connector: an MCP server on this Mac only, with a key. Apps that speak MCP
-   (Claude Code, Claude Desktop, Grok Bot) list, read and add nodes and stickies. */
-const SETUPS = [
-  ['claude-code', 'Claude Code', 'Run this once in Terminal:'],
-  ['claude-desktop', 'Claude Desktop', 'Add this to Claude Desktop’s config (Settings → Developer → Edit Config), then restart it:'],
-  ['other', 'Grok Bot and other apps', 'Where an app asks for an MCP server, give it this address and header:'],
-  ['api', 'Shortcuts and scripts', 'The same tools as a plain web address: find your stickies, add one, write in the journal (in Shortcuts, use Get Contents of URL with this header):'],
-]
-
-function ConnectorCard({ bridge, connector }) {
-  const [message, setMessage] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const act = async (work, done) => {
-    setBusy(true)
-    try {
-      await work()
-      setMessage(done ? { ok: true, text: done } : null)
-    } catch (error) {
-      setMessage({ ok: false, text: cleanError(error) })
-    } finally {
-      setBusy(false)
-    }
-  }
-  const on = connector?.on && connector.running
-  return (
-    <section className="content-card bots-card">
-      <p className="eyebrow">CONNECTOR</p>
-      <h2>{on ? 'Apps on this Mac can reach OSAT.' : 'Let apps on this Mac reach OSAT.'}</h2>
-      <p>The OSAT connector lets Claude Code, Claude Desktop, Grok Bot and other apps that speak MCP find, read and add topics, stickies and journal lines. It only listens on this Mac, never on the network, and every app needs its key.</p>
-      {connector?.error && <p className="bots-warning" role="status">{connector.error}</p>}
-      <div className="button-row">
-        {on
-          ? <button className="outline-button" type="button" disabled={busy} onClick={() => act(bridge.connectorOff)}>Turn off</button>
-          : <button className="primary-button" type="button" disabled={busy} onClick={() => act(bridge.connectorOn)}><Plug /> Turn on</button>}
-        {on && <button className="text-button" type="button" disabled={busy} onClick={() => act(bridge.connectorReset, 'New key made. The old one stopped working: copy the setup again for each app.')}>Reset the key</button>}
-      </div>
-      {on && (
-        <div className="bots-setups">
-          {SETUPS.map(([id, name, how]) => (
-            <div key={id} className="bots-setup">
-              <strong>{name}</strong>
-              <p>{how}</p>
-              <pre>{connectorSetup(id, { url: connector.url, key: '••••••••' })}</pre>
-              <button className="outline-button" type="button" onClick={() => act(() => bridge.copySetup(id), `Copied for ${name}, with the key.`)}><ClipboardText /> Copy with the key</button>
-            </div>
-          ))}
-        </div>
-      )}
-      {message && <p className={message.ok ? 'bots-message' : 'bots-warning'} role="status">{message.ok && <Check />} {message.text}</p>}
-      {connector?.recent?.length > 0 && (
-        <ul className="bots-arrivals" aria-label="Lately through the connector">
-          {connector.recent.map((item) => (
-            <li key={item.at}>
-              <Plug aria-hidden="true" />
-              <span>{item.text}</span>
-              <button className="text-button" type="button" onClick={() => act(() => bridge.undoConnector(item.at))}><ArrowCounterClockwise /> Undo</button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="ai-note">Muse’s custom connectors run in Meta’s cloud, so they can’t reach this Mac. Muse saves topics through the folder above instead.</p>
     </section>
   )
 }
