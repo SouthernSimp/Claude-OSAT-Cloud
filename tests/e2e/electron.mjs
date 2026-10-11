@@ -547,9 +547,9 @@ try {
     const added = await (await mcp({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'add_node', arguments: { title: 'From Claude over MCP', summary: 'Sent through the connector.', source: 'Claude' } } })).json()
     check(/Added the topic “From Claude over MCP”/.test(added.result?.content?.[0]?.text), `add_node did not answer as expected: ${JSON.stringify(added)}`)
     const viaMcp = async () => (await main.evaluate(async () => (await window.osat.store.load()).doc.folders)).find((folder) => folder.name === 'From Claude over MCP')
-    check(await until(async () => (await viaMcp())?.from?.source === 'Claude', 5000), 'a node added over MCP did not reach the windows')
+    check(await until(async () => (await viaMcp())?.from?.source === 'Claude Code', 5000), 'a node added over MCP did not reach the windows')
     const listed = await (await mcp({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_nodes', arguments: {} } })).json()
-    check(/From Claude over MCP \(New, packed, from Claude\)/.test(listed.result?.content?.[0]?.text), 'list_nodes did not list the new node')
+    check(/From Claude over MCP \(New, packed, from Claude Code\)/.test(listed.result?.content?.[0]?.text), 'list_nodes did not list the new node')
     const lately = (await main.evaluate(() => window.osatBots.status())).connector.recent
     await main.evaluate((at) => window.osatBots.undoConnector(at), lately[0]?.at)
     check(await until(async () => !(await viaMcp()), 5000), 'Undo did not take away what came through the connector')
