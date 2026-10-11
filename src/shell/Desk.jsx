@@ -10,6 +10,7 @@ import { ringItems } from '../../shared/ring-model.mjs'
 import { ClipboardOffer } from '../field/ClipboardOffer.jsx'
 import { FieldDesk } from '../field/FieldDesk.jsx'
 import { FieldSheet } from '../field/FieldSheet.jsx'
+import { MorningBriefNote } from '../field/MorningBriefNote.jsx'
 import { onCarryEdge } from '../lib/carry.js'
 import { changes, setDown } from '../field/stacks.js'
 import { clamp, inputActive } from '../lib/ui.js'
@@ -624,6 +625,7 @@ export function Desk() {
         </div>
       )}
       <ClipboardOffer workspace={workspace} commit={commit} />
+      <MorningBriefNote workspace={workspace} navigate={navigate} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
       {tour && !welcome && <Tour onDone={() => setTour(false)} />}
     </main>

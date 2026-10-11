@@ -75,6 +75,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   let connectorPort = 0
   let connectorError = ''
   let recent = [] // what apps did through it lately, each with its Undo: { at, text, inverse, left }
+  let ask = null // read-only connector answer, set by main through setAsk
   const apps = () => settings.get().connector.apps
   const saveApps = (list) => settings.save({ connector: { ...settings.get().connector, apps: list } })
   const lowerFirst = (text) => text.charAt(0).toLowerCase() + text.slice(1)
@@ -94,7 +95,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
      Reading the workspace, running the tool and committing happen with no wait in between, so the
      calls of one batch each see the one before (only find_files waits, and it changes nothing). */
   async function runForApp(name, args, app) {
-    const result = tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles })
+    const result = tools.runTool(name, args, { doc: store.load().doc, now: new Date().toISOString(), makeId, source: app.name, findFiles, ask })
     if (typeof result?.then === 'function') return { text: (await result).text }
     if (result.ops?.length) {
       const { doc, inverse } = applyOps(store.load().doc, result.ops)
@@ -394,6 +395,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     models: () => cloud.models(),
     chatStream: (payload, onDelta, signal) => cloud.chatStream(payload, onDelta, signal),
     appKey,
+    setAsk: (answer) => { ask = answer },
     // For Ask in main: what the apps that are on can do (never throws; a failing app is left out
     // and its reason shows in Settings → Bots), and one of them doing it.
     askApps: {

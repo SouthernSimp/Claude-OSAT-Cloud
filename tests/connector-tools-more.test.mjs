@@ -55,8 +55,8 @@ async function garden() {
   return tools
 }
 
-test('annotations: exactly the six that only look are read-only; deleting is destructive', () => {
-  const reads = ['list_nodes', 'read_node', 'search', 'read_journal', 'list_events', 'find_files']
+test('annotations: exactly the seven that only look are read-only; deleting is destructive', () => {
+  const reads = ['list_nodes', 'read_node', 'search', 'read_journal', 'list_events', 'find_files', 'ask']
   assert.deepEqual(TOOLS.filter((tool) => tool.annotations.readOnlyHint === true).map((tool) => tool.name), reads)
   assert.deepEqual(TOOLS.filter((tool) => isReadOnly(tool.name)).map((tool) => tool.name), reads)
   assert.ok(TOOLS.every((tool) => typeof tool.annotations.readOnlyHint === 'boolean' && typeof tool.annotations.destructiveHint === 'boolean'))

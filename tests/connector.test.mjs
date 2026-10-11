@@ -33,7 +33,7 @@ async function tempStore() {
 }
 
 test('tools: each with a plain description and an input schema', () => {
-  assert.deepEqual(TOOLS.map((tool) => tool.name), ['list_nodes', 'read_node', 'add_node', 'add_sticky', 'edit_sticky', 'move_sticky', 'delete_sticky', 'add_branch', 'rename', 'search', 'read_journal', 'add_to_journal', 'list_events', 'add_event', 'find_files'])
+  assert.deepEqual(TOOLS.map((tool) => tool.name), ['list_nodes', 'read_node', 'add_node', 'add_sticky', 'edit_sticky', 'move_sticky', 'delete_sticky', 'add_branch', 'rename', 'search', 'read_journal', 'add_to_journal', 'list_events', 'add_event', 'find_files', 'ask'])
   assert.ok(TOOLS.every((tool) => tool.description.length > 40 && tool.inputSchema.type === 'object'))
 })
 
@@ -221,7 +221,7 @@ test('an app that may only read sees and runs only the tools that read, over MCP
   try {
     const listed = (await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, asReader)).body.result.tools.map((tool) => tool.name)
     assert.deepEqual(listed, reading)
-    assert.deepEqual(reading, ['list_nodes', 'read_node', 'search', 'read_journal', 'list_events', 'find_files'])
+    assert.deepEqual(reading, ['list_nodes', 'read_node', 'search', 'read_journal', 'list_events', 'find_files', 'ask'])
     assert.equal((await send({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).body.result.tools.length, TOOLS.length, 'an app that may change things sees every tool')
     const refused = await send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'add_sticky', arguments: { text: 'Hi' } } }, asReader)
     assert.deepEqual(refused.body.result, { content: [{ type: 'text', text: 'Shortcuts can only read. Change that in Settings → Bots.' }], isError: true })
