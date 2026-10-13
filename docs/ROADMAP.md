@@ -146,6 +146,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 53 | While you sleep: once a night, on the charger, the AI on your Mac looks over the week’s stickies and leaves a few ideas on the canvas (faint threads between things that belong together, and subjects that could be a topic). Keep one with a tap (Undo takes it back) or wave it away; nothing changes by itself, and a cloud model never reads for it | In review |
 | 54 | Trust fixes: an update must be signed by the same certificate as the OSAT you have; webhooks waiting offline survive a quit; old caches out of the repo | In review |
 | 55 | A GitHub room (Tools → GitHub): your repositories, and in each what waits for you (each pull request in its own words, whether its checks passed, Merge, asked once more) and what changed lately; through the gh signed in on your Mac | In review |
+| 56 | Put the desk away: right-click the desk → Put the desk away. Every sticky and stack goes into one topic on the canvas (“Put away · Oct 12”, each stack a branch with its name); stickies already in a topic stay there and are connected. One Undo puts it all back | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

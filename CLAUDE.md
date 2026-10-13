@@ -10,7 +10,7 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 12, 2026 (late): Phases 53–55 stacked, waiting on Nate's merge
 
-Main has everything through Phase 52 (#78). Three draft PRs are stacked so merging #81 alone lands all three:
+Main has everything through Phase 52 (#78). Four PRs are stacked so merging #82 alone lands them all (#82 Phase 56 Put the desk away, `claude/put-away`):
 #79 Phase 53 While you sleep (`claude/overnight`), #80 Phase 54 trust fixes (`claude/trust-fixes`, contains #79), #81 Phase 55
 the GitHub room (`claude/github-room`, contains both). Nate asked for it all to arrive through Check for updates; Claude's
 own `gh pr merge` was blocked by the session's permission rules, so Nate merges (#81 on GitHub, or 79 → 80 → 81).
@@ -500,6 +500,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   repo names and numbers pass `validRepo`/`validNumber` in main. `github:*` waits offline (under.cjs) and the one command
   line is in the fence (tests/under.test.mjs). Merge marks a draft ready first, then `gh pr merge --merge`; the room asks
   once more inline and offers Merge only when checks passed (or there are none) and nothing clashes. Not yet: Try this build.
+
+- Put the desk away (Phase 56): `src/field/put-away.js` (pure: `putAway(state, places, { name })`, `putAwayName`), the
+  desk menu's item in FieldDesk.jsx (`putDeskAway`: one commit, the places cleared, one Undo restoring both through the
+  workspace inverse). Unsorted stickies move into the topic or a stack's branch; sorted ones stay home and are connected.
+  Paper on the real desk: Tools → Sort a pile → Photo already reads a photo of stickies into a pile kept apart from topics.
 
 ## Layout traps worth remembering
 

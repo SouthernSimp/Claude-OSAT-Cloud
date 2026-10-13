@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowBendUpRight, ArrowSquareOut, ArrowsOut, Broom, CaretDown, CaretUp, Eye, FolderOpen, FolderSimple, LineSegment, NotePencil, PaintBucket, PencilSimple, PushPin, ShareNetwork, Sparkle, SquaresFour, Stack, Trash, TreeStructure,
+  Archive, ArrowBendUpRight, ArrowSquareOut, ArrowsOut, Broom, CaretDown, CaretUp, Eye, FolderOpen, FolderSimple, LineSegment, NotePencil, PaintBucket, PencilSimple, PushPin, ShareNetwork, Sparkle, SquaresFour, Stack, Trash, TreeStructure,
 } from '@phosphor-icons/react'
 
 import { FocusEnvironment } from '../Experience.jsx'
@@ -18,6 +18,8 @@ import { NameField } from '../sky/Piles.jsx'
 import { FileThumb, canAsk, filesBridge, openEntry, useFolder, useFreshness } from '../views/Files.jsx'
 import { GRID, STICKY, StickyLayer, menuEvent, spotOn, useLinking, useStickySurface } from './DeskStickies.jsx'
 import { addToStack, changes, isStack, setDown, stackOf, stackUp, unstack } from './stacks.js'
+import { putAway, putAwayName } from './put-away.js'
+import { applyOps, diffDocs } from '../../shared/store-core.mjs'
 import { useReducedMotion } from './FieldChrome.jsx'
 import { deskArea } from '../shell/dock-model.js'
 import { dayPhase, fitCells, freeSpot, homeItems, paperFields, phaseCopy } from './field-model.js'
@@ -387,6 +389,27 @@ export function FieldDesk({
     })
   }
 
+  /* Put the desk away (Phase 56): every sticky and stack into one topic on the canvas, the desk clear,
+     one Undo for both. */
+  function putDeskAway() {
+    const before = places
+    let result = null
+    let inverse = null
+    commit((state) => {
+      result = putAway(state, before, { name: putAwayName(state) })
+      if (!result) return state
+      inverse = applyOps(state, diffDocs(state, result.state)).inverse
+      return result.state
+    })
+    if (!result) return
+    const after = result.places
+    changes(before, after).forEach(([key, spot]) => onPlace(key, spot))
+    showUndo(`Put ${result.count === 1 ? 'a sticky' : `${result.count} stickies`} away in “${result.folder.name}” on the canvas`, () => {
+      commit((state) => applyOps(state, inverse).doc)
+      changes(after, before).forEach(([key, spot]) => onPlace(key, spot))
+    })
+  }
+
   function deskMenu(event) {
     const box = home.current.getBoundingClientRect()
     const at = { x: event.clientX - box.left, y: event.clientY - box.top }
@@ -395,6 +418,7 @@ export function FieldDesk({
       { label: 'New topic', icon: TreeStructure, onSelect: () => setNodeDraft(at) },
       { divider: true },
       stickies.length ? { label: 'Clean up stickies', icon: Broom, onSelect: cleanUp } : null,
+      stickies.length || stacks.length ? { label: 'Put the desk away', icon: Archive, hint: 'onto the canvas', onSelect: putDeskAway } : null,
       {
         label: 'Icon size', icon: SquaresFour, items: [['s', 'Small'], ['m', 'Medium'], ['l', 'Large']].map(([id, label]) => ({
           label, checked: iconSize === id, onSelect: () => { setIconSize(id); keep(SIZE_KEY, id) },
