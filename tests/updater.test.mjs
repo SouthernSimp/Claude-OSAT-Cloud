@@ -7,7 +7,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 const require = createRequire(import.meta.url)
-const { SWAP, createUpdater, isNewer, pickUpdate } = require('../desktop/updater.cjs')
+const { SWAP, createUpdater, isNewer, pickUpdate, pinnedRequirement } = require('../desktop/updater.cjs')
 
 const asset = (name, size = 100) => ({ name, size, browser_download_url: `https://github.com/x/releases/download/v0.1.9/${name}` })
 const release = (tag, extra = {}) => ({
@@ -84,4 +84,12 @@ test('a missing download changes nothing', async () => {
   await fs.mkdir(target); await fs.writeFile(path.join(target, 'v'), 'old')
   assert.throws(() => execFileSync('/bin/sh', ['-c', SWAP, 'sh', '4194305', target, path.join(root, 'nope'), path.join(root, 'keep'), 'true']))
   assert.equal(await fs.readFile(path.join(target, 'v'), 'utf8'), 'old')
+})
+
+test('an update must be signed by the same identity as this OSAT, when this OSAT has one', () => {
+  const own = 'Executable=/Applications/OSAT.app/Contents/MacOS/OSAT\ndesignated => identifier "ai.mccreery.osat" and certificate root = H"0a1b2c3d4e5f60718293a4b5c6d7e8f901234567"\n'
+  assert.equal(pinnedRequirement(own), 'identifier "ai.mccreery.osat" and certificate root = H"0a1b2c3d4e5f60718293a4b5c6d7e8f901234567"')
+  assert.equal(pinnedRequirement('designated => anchor apple generic and identifier "ai.mccreery.osat" and certificate leaf[subject.OU] = ABCDE12345'), 'anchor apple generic and identifier "ai.mccreery.osat" and certificate leaf[subject.OU] = ABCDE12345')
+  assert.equal(pinnedRequirement('designated => cdhash H"5e1f3c0b9a8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f"'), null, 'an ad-hoc build has nothing to pin')
+  assert.equal(pinnedRequirement(''), null)
 })

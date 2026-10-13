@@ -8,44 +8,20 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 12, 2026 (late night): 44–51 merged, Phase 52 in review
+## Resume checkpoint — October 12, 2026 (late): Phases 53–55 stacked, waiting on Nate's merge
 
-Main has #75 (44–49), #76 (50: the bar learns, `shared/picks.mjs`) and #77 (51: AI on selected text, Hyper T),
-merged at Nate's word. Nate wants the quick bar good enough to stop using Raycast and left the choices to Claude.
-Phase 52 (`claude/bar-usable`): `appTier` in quick-search-model (initials, word starts, letters in order; a strong
-match leads Everything), System Settings panes in `shared/system-commands.mjs` (`pane:<bundle id>`, opened with
-`open x-apple.systempreferences:<id>` in system.cjs), and Ask AI under the results unless the words are a question
-or found nothing. Next Raycast gaps: script commands / extensions (the biggest), a color picker, ask about the
-screen. REA (`npx rea-agents setup`) can trace how Raycast does one.
-
-## Earlier checkpoint — October 10, 2026: Phases 44–49 in review
-
-Main is `0749003` (through Phase 43, PRs #73 and #74 merged). `claude/power`
-now combines the power work with `claude/ask-acts` (48b and 49), including both
-sides of the bots merge: synchronous workspace changes and loss-resistant
-connector Undo, plus the read-only `ask` callback.
-
-Codex's clean review checkout is
-`/Users/nate/Desktop/Projects/OSAT V2/work/osat-power-review`.
-The shared older repository has a damaged duplicate branch reference; its refs,
-untracked files and other worktrees were left alone. Continue in the clean checkout.
-One draft PR targets main. Do not merge until Nate says “merge”.
-
-Review fixes: Ask changes commit without yielding between reading and writing;
-Undo refuses to overwrite later edits or remove a branch with new children.
-Stop still prevents an external change after Allow resolves. The confirmation
-shows every argument, including nested values, traps keyboard focus and Esc
-means Not now. Offline does not discover or run other apps' tools. Read-only
-connector questions and the morning brief use noninteractive model loading.
-Brief Undo restores only its own block and keeps later writing; a stale Undo
-cannot undo a newer brief. The automatic brief notice also offers Undo.
-
-Validation and the Mac checklist live in `docs/POWER-REVIEW-20261010.md`.
-All local testing is headless; no installed app or real OSAT data was opened.
-OAuth sign-in is not supported by the MCP client. Offline webhook deliveries
-wait in memory and are lost on quit. Ask Undo lasts for ten runs in memory;
-brief Undo lasts until another brief or quit. Another app's changes are outside
-OSAT's Undo and must be reversed in that app.
+Main has everything through Phase 52 (#78). Four PRs are stacked so merging #82 alone lands them all (#82 Phase 56 Put the desk away, `claude/put-away`):
+#79 Phase 53 While you sleep (`claude/overnight`), #80 Phase 54 trust fixes (`claude/trust-fixes`, contains #79), #81 Phase 55
+the GitHub room (`claude/github-room`, contains both). Nate asked for it all to arrive through Check for updates; Claude's
+own `gh pr merge` was blocked by the session's permission rules, so Nate merges (#81 on GitHub, or 79 → 80 → 81).
+Phase 53: `shared/overnight-model.mjs` (pure: `due`, `candidatePairs`, the two questions and readers, `liveIdeas`,
+`ideaWords` for the brief), `desktop/overnight.cjs` (runner, `overnight.json`, `overnight:*` IPC, local models only,
+`background: true`), `src/sky/useOvernight.js`, faint `is-idea` threads in Board.jsx, "Ideas from last night" and
+`keepIdea`/`ideaItems` in Sky.jsx (through `canvasCommit`, so Undo), Settings → AI → While you sleep.
+Phase 54 and 55: see "Architecture added in Phase 55" and the webhooks/updater lines below.
+Nate's direction (Oct 12): OSAT should grow into a business management tool; see docs/BACKLOG.md (plan with him first).
+Next: Try this build in the GitHub room; Raycast gaps (script commands in Raycast's header format, a color picker).
+Older checkpoints are in git history.
 
 ## Working with Nate
 
@@ -494,7 +470,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   commits each change and keeps its inverse and resulting records for safe Undo.
 - `desktop/bots/webhooks.cjs` + `shared/webhook-model.mjs`: opt-in outgoing
   webhooks and an ntfy relay for incoming stickies. Main owns the addresses;
-  incoming stickies use `runForApp` as Webhook. Offline holds a bounded queue in memory.
+  incoming stickies use `runForApp` as Webhook. Offline holds a bounded queue, saved in
+  `webhooks-waiting.json` (0600) so a quit doesn't lose it; it goes at the next start while online (Phase 54).
+- `desktop/updater.cjs` (Settings → About → Check for updates): the release's zip and its SHA-256, then
+  `codesign --verify -R=<this app's own designated requirement>` (`pinnedRequirement`, Phase 54): a new build must be
+  signed by the same certificate (CI's `OSAT_SIGN_P12`). An ad-hoc build has nothing to pin and only checks integrity.
+  Changing the signing certificate means installing that build from its DMG once.
 - `desktop/bots/shortcuts.cjs` + `shared/shortcut-file.mjs` +
   `scripts/shortcuts-check.cjs`: six ready-made shortcuts, signed with this Mac's
   iCloud identity. Temporary files contain a key and are removed after an hour or quit.
@@ -511,6 +492,19 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   in device-local `brief.json`, read-only agent, no interactive model loading,
   Mac Calendar/Reminders only with existing permission. Only the brief block on
   today's journal is replaced. Settings and the automatic notice offer guarded Undo.
+
+## Architecture added in Phase 55
+
+- `shared/github-model.mjs` + `desktop/github.cjs` + `src/views/GitHub.jsx` (Tools → GitHub): through the `gh` Homebrew
+  installed (`/opt/homebrew/bin/gh`; Finder apps lack Homebrew's PATH), never a key of OSAT's own. `execFile`, no shell;
+  repo names and numbers pass `validRepo`/`validNumber` in main. `github:*` waits offline (under.cjs) and the one command
+  line is in the fence (tests/under.test.mjs). Merge marks a draft ready first, then `gh pr merge --merge`; the room asks
+  once more inline and offers Merge only when checks passed (or there are none) and nothing clashes. Not yet: Try this build.
+
+- Put the desk away (Phase 56): `src/field/put-away.js` (pure: `putAway(state, places, { name })`, `putAwayName`), the
+  desk menu's item in FieldDesk.jsx (`putDeskAway`: one commit, the places cleared, one Undo restoring both through the
+  workspace inverse). Unsorted stickies move into the topic or a stack's branch; sorted ones stay home and are connected.
+  Paper on the real desk: Tools → Sort a pile → Photo already reads a photo of stickies into a pile kept apart from topics.
 
 ## Layout traps worth remembering
 

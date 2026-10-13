@@ -53,7 +53,7 @@ const cardKey = (key) => (key.startsWith('folder:') ? key.slice(7) : key)
    and what hangs off it comes along; drop it on a node or a branch to give it a home there.
    Double-click a node to focus on it alone (Done comes back). Connections (a dot on each
    card's edge) join any two things; @mentions join nodes. Unsorted waits on the far left. */
-export const Board = forwardRef(function Board({ workspace, actions, open, toggle, sorting, focus, onFocus, onOpenUnsorted }, ref) {
+export const Board = forwardRef(function Board({ workspace, ideas = [], actions, open, toggle, sorting, focus, onFocus, onOpenUnsorted }, ref) {
   const view = useRef(null)
   const stored = useRef(readCamera())
   const [camera, setCamera] = useState(() => stored.current || { x: 120, y: 160, z: 1 })
@@ -453,6 +453,18 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
     const to = shown(b)
     if (from && to) lines.push({ key: `link:${link.key}`, kind: 'link', d: edgePath(from, to).d, link })
   })
+  // Ideas from overnight (Phase 53): a faint thread until it is kept or waved away.
+  ideas.forEach((idea) => {
+    if (idea.kind !== 'link') return
+    const a = endOf(idea.a)
+    const b = endOf(idea.b)
+    const pair = [a, b].sort().join('|')
+    if (!a || !b || a === b || drawn.has(pair)) return
+    drawn.add(pair)
+    const from = shown(a)
+    const to = shown(b)
+    if (from && to) lines.push({ key: `idea:${idea.id}`, kind: 'idea', d: edgePath(from, to).d, idea })
+  })
   if (!focus) {
     const pairs = new Set()
     mentions.forEach((notes, folderId) => notes.forEach((note) => {
@@ -494,7 +506,14 @@ export const Board = forwardRef(function Board({ workspace, actions, open, toggl
                 <path className="link-hit" d={line.d} onClick={(event) => actions.lineMenu(event, line.link)} onContextMenu={(event) => actions.lineMenu(event, line.link)} />
               </g>
             )
-            : <path key={line.key} className={`is-${line.kind}`} d={line.d} />))}
+            : line.kind === 'idea'
+              ? (
+                <g key={line.key}>
+                  <path className="is-idea" d={line.d} />
+                  <path className="link-hit" d={line.d} onClick={(event) => actions.ideaMenu(event, line.idea)} onContextMenu={(event) => actions.ideaMenu(event, line.idea)}><title>{line.idea.why}</title></path>
+                </g>
+              )
+              : <path key={line.key} className={`is-${line.kind}`} d={line.d} />))}
           {drawing && <path className="is-link is-drawing" d={edgePath(drawing, { x: linker.linking.x, y: linker.linking.y, w: 0, h: 0 }).d} />}
         </svg>
 

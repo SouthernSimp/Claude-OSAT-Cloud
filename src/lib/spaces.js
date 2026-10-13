@@ -1,5 +1,5 @@
 import {
-  BookOpenText, CalendarBlank, CurrencyDollar, Files, GearSix, Globe, House, ListChecks,
+  BookOpenText, CalendarBlank, CurrencyDollar, Files, GearSix, GithubLogo, Globe, House, ListChecks,
   MapTrifold, MusicNotes, NotePencil, Sparkle, Stack, TerminalWindow, TreeStructure, UploadSimple,
 } from '@phosphor-icons/react'
 
@@ -28,6 +28,7 @@ export const TOOLS = [
   { id: 'Browser', label: 'Browser', icon: Globe, hint: 'The web, with a clipper into Notes' },
   { id: 'Terminal', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
   { id: 'Roadmap', label: 'Roadmap', icon: MapTrifold, hint: 'Where OSAT is going' },
+  { id: 'GitHub', label: 'GitHub', icon: GithubLogo, hint: 'Your repositories: what waits for you, and Merge' },
 ]
 
 export const SETTINGS = { id: 'Settings', label: 'Settings', icon: GearSix, hint: 'Appearance, data, the shortcut' }

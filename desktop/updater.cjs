@@ -38,6 +38,15 @@ function pickUpdate(release, current) {
   return { version, name: zip.name, size: zip.size, url: zip.browser_download_url, shaUrl: sha.browser_download_url }
 }
 
+/* The rule macOS keeps for "signed by the same identity as this app", from `codesign -d -r-`'s words,
+   or null for an ad-hoc build (its rule is only its own hash, which every new build changes). A new build
+   must meet it: the checksum comes from the same release as the zip, so on its own it only proves the
+   download wasn't broken, not who made it. */
+function pinnedRequirement(text) {
+  const rule = /designated => (.+)$/m.exec(String(text || ''))?.[1]?.trim()
+  return rule && /\bcertificate\b|\banchor apple\b/.test(rule) && !/\bcdhash\b/.test(rule) ? rule : null
+}
+
 /* Waits for OSAT to quit, puts the new app where the old one was (the old one is kept),
    and opens it. If anything fails the old app goes back. Arguments: pid, app, new app, keep folder, opener. */
 const SWAP = `
@@ -99,7 +108,13 @@ function createUpdater({ app, dataDir, quit, fetchImpl = (...args) => fetch(...a
       const plist = path.join(next, 'Contents', 'Info.plist')
       const read = async (key) => (await run('/usr/libexec/PlistBuddy', ['-c', `Print :${key}`, plist])).stdout.trim()
       if ((await read('CFBundleIdentifier')) !== APP_ID || (await read('CFBundleShortVersionString')) !== update.version) throw new Error('The download wasn’t the OSAT it should be, so nothing was changed.')
-      await run('codesign', ['--verify', '--deep', '--strict', next])
+      const own = await run('codesign', ['-d', '-r-', appPath]).then(({ stdout, stderr }) => `${stdout}\n${stderr}`, () => '')
+      const rule = pinnedRequirement(own)
+      await run('codesign', ['--verify', '--deep', '--strict', ...(rule ? [`-R=${rule}`] : []), next]).catch(() => {
+        throw new Error(rule
+          ? 'The update isn’t signed the way this OSAT is, so nothing was changed. If OSAT’s signing changed on purpose, install the new build from its DMG once.'
+          : 'The update’s signature didn’t check out, so nothing was changed.')
+      })
       await fsp.rm(zip, { force: true })
       spawnImpl('/bin/sh', ['-c', SWAP, 'sh', String(process.pid), appPath, next, path.join(dir, 'previous'), 'open'], { detached: true, stdio: 'ignore' }).unref()
       onProgress({ state: 'restarting' })
@@ -113,4 +128,4 @@ function createUpdater({ app, dataDir, quit, fetchImpl = (...args) => fetch(...a
   return { check, install }
 }
 
-module.exports = { REPO, SWAP, createUpdater, isNewer, pickUpdate }
+module.exports = { REPO, SWAP, createUpdater, isNewer, pickUpdate, pinnedRequirement }

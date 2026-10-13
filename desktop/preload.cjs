@@ -97,6 +97,15 @@ contextBridge.exposeInMainWorld('osatAgent', Object.freeze({
   apps: () => ipcRenderer.invoke('agent:apps'),
 }))
 
+// Tools → GitHub (desktop/github.cjs): repos and pull requests through the gh on this Mac.
+contextBridge.exposeInMainWorld('osatGitHub', Object.freeze({
+  status: () => ipcRenderer.invoke('github:status'),
+  repos: () => ipcRenderer.invoke('github:repos'),
+  repo: (name) => ipcRenderer.invoke('github:repo', name),
+  merge: (name, number) => ipcRenderer.invoke('github:merge', name, number),
+  open: (url) => ipcRenderer.invoke('github:open', url),
+}))
+
 // The morning brief (desktop/brief.cjs): Settings → AI and the desk's one line.
 contextBridge.exposeInMainWorld('osatBrief', Object.freeze({
   status: () => ipcRenderer.invoke('brief:status'),
@@ -111,6 +120,17 @@ const listen = (channel, listener) => {
   ipcRenderer.on(channel, handler)
   return () => ipcRenderer.removeListener(channel, handler)
 }
+
+// While you sleep (desktop/overnight.cjs): the canvas's ideas and Settings → AI.
+contextBridge.exposeInMainWorld('osatOvernight', Object.freeze({
+  status: () => ipcRenderer.invoke('overnight:status'),
+  set: (patch) => ipcRenderer.invoke('overnight:set', patch),
+  think: () => ipcRenderer.invoke('overnight:think'),
+  done: (id, dismiss) => ipcRenderer.invoke('overnight:done', id, dismiss === true),
+  seen: () => ipcRenderer.invoke('overnight:seen'),
+  onChange: (listener) => listen('overnight:changed', listener),
+}))
+
 
 contextBridge.exposeInMainWorld('osatBrowser', Object.freeze({
   state: () => ipcRenderer.invoke('browser:state'),

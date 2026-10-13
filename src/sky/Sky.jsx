@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowCounterClockwise, ArrowClockwise, ArrowDown, ArrowsIn, Broom, CaretRight, CornersOut, Crosshair, DotsThree, DownloadSimple, LineSegment, MagnifyingGlass, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, Sparkle, Stack, Trash,
+  ArrowCounterClockwise, ArrowClockwise, ArrowDown, ArrowsIn, Broom, CaretRight, CornersOut, Crosshair, DotsThree, DownloadSimple, LineSegment, MagnifyingGlass, Moon, NotePencil, PaintBucket, PencilSimple, Plus, Question, ShareNetwork, Sparkle, Stack, Trash, X,
 } from '@phosphor-icons/react'
 
 import { useCarrying, useDrop } from '../lib/carry.js'
@@ -30,7 +30,8 @@ import { arrangeTopics } from './arrange.js'
 import { canvasChange, replayCanvas } from './canvas-history.js'
 import { branchWords, wherePlaces } from './where.js'
 import { tidyTree } from './map-layout.js'
-import { connect, disconnect, folderKey, linksAt, noteKey, recordOf } from '../links-model.js'
+import { connect, disconnect, folderKey, linksAt, noteKey, partsOf, recordOf } from '../links-model.js'
+import { useOvernight } from './useOvernight.js'
 
 const OPEN_KEY = 'osat.sky.open.v1'
 function readOpen() {
@@ -96,6 +97,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
   const findField = useRef(null)
   const picker = useRef(null)
   const carrying = useCarrying()
+  const overnight = useOvernight(workspace)
 
   function canvasCommit(label, updater) {
     let entry
@@ -323,6 +325,31 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
     },
     unlink(a, b) {
       canvasCommit(`Removed the connection to “${nameOf(b)}”`, (state) => disconnect(state, a, b))
+    },
+    /* While you sleep (Phase 53): an idea from overnight, kept through the canvas (so Undo takes it
+       back) or waved away for good. A topic idea makes the topic and connects its stickies to it;
+       nothing moves. */
+    keepIdea(idea) {
+      if (idea.kind === 'link') canvasCommit(`Connected “${nameOf(idea.a)}” and “${nameOf(idea.b)}”`, (state) => connect(state, idea.a, idea.b))
+      else {
+        canvasCommit(`Made the topic “${idea.name}”`, (state) => {
+          const made = addFolder(state, idea.name)
+          return made.folder ? idea.notes.reduce((next, id) => connect(next, folderKey(made.folder.id), noteKey(id)), made.state) : state
+        })
+      }
+      overnight.done(idea, false)
+    },
+    ideaItems(idea) {
+      const first = partsOf(idea.kind === 'link' ? idea.a : noteKey(idea.notes[0]))
+      return [
+        { note: idea.why },
+        { label: idea.kind === 'link' ? 'Connect them' : `Make “${idea.name}” a topic`, icon: idea.kind === 'link' ? LineSegment : Sparkle, onSelect: () => actions.keepIdea(idea) },
+        { label: 'Show me', icon: Crosshair, onSelect: () => board.current?.goTo(first.kind === 'note' ? { noteId: first.id } : { folderId: first.id }) },
+        { label: 'Not this', icon: X, onSelect: () => overnight.done(idea, true) },
+      ]
+    },
+    ideaMenu(event, idea) {
+      openMenu(event, actions.ideaItems(idea))
     },
     lineMenu(event, line) {
       openMenu(event, [{ label: 'Remove the connection', icon: Trash, onSelect: () => actions.unlink(line.a, line.b) }])
@@ -731,6 +758,21 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
           <div className="sky-location">
             <div className="sky-breadcrumb"><button type="button" onClick={overview} aria-current={!focus ? 'page' : undefined}>Everything</button>{focused && <><CaretRight /><strong>{focused.name}</strong></>}</div>
             {!unsortedOpen && sortHistory.length > 0 && <button type="button" className="sky-fit" onClick={() => setUnsortedOpen(true)}><Stack /> Back to sorting</button>}
+            {overnight.ideas.length > 0 && (
+              <button
+                type="button"
+                className="sky-fit sky-overnight"
+                title="What OSAT thought over while you slept. Nothing changes until you keep one."
+                onClick={(event) => {
+                  overnight.seen()
+                  openMenu(event, overnight.ideas.map((idea) => ({
+                    label: idea.kind === 'link' ? `“${nameOf(idea.a)}” and “${nameOf(idea.b)}”` : `A new topic: ${idea.name}`,
+                    icon: idea.kind === 'link' ? LineSegment : Sparkle,
+                    items: actions.ideaItems(idea),
+                  })))
+                }}
+              ><Moon /> Ideas from last night</button>
+            )}
             <span className="sky-view-label">{focused ? 'Topic map' : 'Overview'}</span>
             <button type="button" className="sky-icon-button" aria-label="Undo canvas change" disabled={!history.current.past.length || unsortedOpen} title={`Undo${history.current.past.length ? `: ${history.current.past.at(-1).label}` : ''} · ⌘Z`} onClick={() => stepHistory('undo')}><ArrowCounterClockwise /></button>
             <button type="button" className="sky-icon-button" aria-label="Redo canvas change" disabled={!history.current.future.length || unsortedOpen} title={`Redo${history.current.future.length ? `: ${history.current.future.at(-1).label}` : ''} · ⇧⌘Z`} onClick={() => stepHistory('redo')}><ArrowClockwise /></button>
@@ -738,7 +780,7 @@ export const Sky = forwardRef(function Sky({ workspace, commit, history, navigat
             <button type="button" className="sky-fit" onClick={() => board.current?.fit()}><CornersOut /> Fit view</button>
           </div>
           <div className="sky-body">
-        <Board ref={board} workspace={workspace} actions={actions} open={open} toggle={toggle} sorting={sorting} focus={focus} onOpenUnsorted={(noteId) => openSorting(noteId ? { target: noteId } : {})} onFocus={(id) => (id ? focusOn(id) : setFocus(null))} />
+        <Board ref={board} workspace={workspace} ideas={overnight.ideas} actions={actions} open={open} toggle={toggle} sorting={sorting} focus={focus} onOpenUnsorted={(noteId) => openSorting(noteId ? { target: noteId } : {})} onFocus={(id) => (id ? focusOn(id) : setFocus(null))} />
         <div id="sky-unsorted" hidden={!unsortedOpen}><UnsortedDrawer active={unsortedOpen} workspace={workspace} history={sortHistory} notes={unsorted} ai={ai} navigate={navigate} actions={{ ...actions, openUnsortedNotes: () => navigate('Notes', { list: 'unsorted' }) }} start={unsortedStart} onClose={() => setUnsortedOpen(false)} /></div>
         <SkyAsk workspace={workspace} commit={commit} models={models} ai={aiNow()} open={open} focus={focus} asking={asking} setAsking={setAsking} navigate={navigate} onSortAll={() => { setAsking(false); openSorting({ mode: 'all' }) }} />
           </div>

@@ -76,13 +76,14 @@ export function briefMessages({ day, doc, known = {}, timeZone }) {
     ['Waiting in Unsorted', waiting.length ? `${waiting.length} ${waiting.length === 1 ? 'sticky' : 'stickies'}, the newest: ${waiting.slice(0, 5).map((note) => `“${firstLine(note)}”`).join(', ')}` : 'Nothing: Unsorted is empty.'],
     ['Stickies Nate changed yesterday', touched.slice(0, 8).map((note) => `“${firstLine(note)}”`).join(', ')],
     ['Yesterday’s journal', withoutBrief(known.journal).slice(0, 1500)],
+    ['Ideas OSAT left on the canvas last night', known.ideas],
     ['The topics', plainWords(known.topics).slice(0, 1500)],
   ].filter(([, text]) => String(text || '').trim())
   return [
     { role: 'system', content: `You are OSAT’s AI, on Nate’s Mac. Each morning you write Nate a short brief for his day, at the top of his journal. Today is ${dayLabel(day, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.` },
     {
       role: 'user',
-      content: `Write my morning brief for today. In this order: what’s on today (events and reminders; if nothing is, say the day is open), what waits in Unsorted, what I was working on yesterday, and one gentle suggestion for the day. At most ${BRIEF_WORDS} words, in plain, warm sentences to me, like a note from a friend: no title, no headings, no lists. Use only what is known; leave out what isn’t. Say topic, never node.
+      content: `Write my morning brief for today. In this order: what’s on today (events and reminders; if nothing is, say the day is open), what waits in Unsorted, what I was working on yesterday, any ideas OSAT left on my canvas last night (in a few words; they wait for me to keep or wave away), and one gentle suggestion for the day. At most ${BRIEF_WORDS} words, in plain, warm sentences to me, like a note from a friend: no title, no headings, no lists. Use only what is known; leave out what isn’t. Say topic, never node.
 What OSAT already knows is below. Look something up with a tool only if it isn’t here (a connected app’s calendar, for example).
 
 ${sections.map(([label, text]) => `[${label}]\n${String(text).trim()}`).join('\n\n')}`,

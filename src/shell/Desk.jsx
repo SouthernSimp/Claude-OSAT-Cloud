@@ -34,6 +34,7 @@ import { Ring } from '../search/Ring.jsx'
 import { NowPlayingView } from '../views/NowPlaying.jsx'
 import { PileView } from '../views/Pile.jsx'
 import { RoadmapView } from '../views/Roadmap.jsx'
+import { GitHubView } from '../views/GitHub.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
 import { DOCK_KEY, cleanSide, fullBox } from './dock-model.js'
@@ -54,7 +55,7 @@ import { needsTour, Tour } from './Tour.jsx'
    internet off for OSAT; the desk stays as it is, and only rooms that need the internet wait. */
 
 // The rooms that can't do anything offline; they say so instead of opening.
-const ONLINE_ONLY = new Set(['Browser', 'Terminal', 'NowPlaying'])
+const ONLINE_ONLY = new Set(['Browser', 'Terminal', 'NowPlaying', 'GitHub'])
 
 const ROOMS = {
   Notes: [1100, 720],
@@ -69,6 +70,7 @@ const ROOMS = {
   Settings: [980, 760],
   NowPlaying: [520, 660],
   Roadmap: [900, 760],
+  GitHub: [1040, 740],
   Pile: [1200, 820],
   note: [600, 640],
 }
@@ -667,6 +669,7 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Budget': return <BudgetView {...room} />
     case 'Settings': return <SettingsView {...room} storage={storage} target={pop.detail?.section ? target : null} />
     case 'Roadmap': return <RoadmapView />
+    case 'GitHub': return <GitHubView />
     case 'Pile': return <PileView {...room} onClose={onClose} />
     case 'NowPlaying': return <NowPlayingView {...room} media={window.osatDesk?.nowPlaying ? window.osatDesk : null} />
     default: return null

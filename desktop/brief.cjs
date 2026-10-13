@@ -19,7 +19,7 @@ const LIMIT_MS = 3 * 60 * 1000
 const NO_AI = 'The morning brief needs OSAT’s AI: choose a size below, or start LM Studio.'
 const NOT_WRITTEN = 'The brief couldn’t be written just now. OSAT will try again later.'
 
-async function createBrief({ store, sharedModule, agent, dataDir, models, handle, fail, offline = () => false, macToday = async () => ({ events: [], reminders: [] }), onWake, now = () => new Date(), timeZone }) {
+async function createBrief({ store, sharedModule, agent, dataDir, models, handle, fail, offline = () => false, macToday = async () => ({ events: [], reminders: [] }), ideas = async () => '', onWake, now = () => new Date(), timeZone }) {
   const brief = await sharedModule('brief-model.mjs')
   const tools = await sharedModule('connector-tools.mjs')
   const { applyOps } = await sharedModule('store-core.mjs')
@@ -69,6 +69,7 @@ async function createBrief({ store, sharedModule, agent, dataDir, models, handle
       mac: brief.macText(mac || {}, day, timeZone),
       journal: say('read_journal', { date: brief.dayBefore(day) }),
       topics: say('list_nodes', {}),
+      ideas: await ideas().catch(() => ''),
     }
     return brief.briefMessages({ day, doc, known, timeZone })
   }

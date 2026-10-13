@@ -57,7 +57,7 @@ test('under, a loopback answer can’t send the main process fetch anywhere else
 })
 
 test('what reaches out answers in plain words while offline; the rest works', () => {
-  for (const channel of ['browser:open', 'browser:navigate', 'skills:record-start', 'skills:run', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'ai:install', 'phone:enable', 'phone:disable', 'askapps:call', 'askapps:check']) {
+  for (const channel of ['browser:open', 'browser:navigate', 'skills:record-start', 'skills:run', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'ai:install', 'phone:enable', 'phone:disable', 'askapps:call', 'askapps:check', 'github:status', 'github:repos', 'github:repo', 'github:merge', 'github:open']) {
     assert.match(refusal(channel), /when you’re back online|until you’re back online/, channel)
   }
   // Files on this Mac still list, show and search; the desk shows the Desktop while offline.
@@ -182,8 +182,16 @@ const FENCE = [
   [/\bfetch\(/, 'a fetch outside the main process', (file) => file === 'desktop/ai/runtime.cjs'],
   // A program Bots starts could reach the internet on its own, where neither lock reaches.
   [/\bspawn\(/, 'a program started for bots', (file) => file.startsWith('desktop/bots/')],
+  // GitHub's gh tool talks to github.com on its own, where the fetch lock doesn't reach.
+  [/\brun\(file, args/, 'GitHub’s gh tool', (file) => file === 'desktop/github.cjs'],
 ]
 const ALLOWED = {
+  'desktop/github.cjs': [
+    // Tools → GitHub: only when Nate asks, never offline (the line above it checks, and under.cjs refuses github:*).
+    "run(file, args, { timeout: 30000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, GH_PROMPT_DISABLED: '1', NO_COLOR: '1', GH_NO_UPDATE_NOTIFIER: '1' } }, (error, stdout, stderr) => {",
+    // A github.com page Nate clicked, refused offline on the same line.
+    'if (!offline()) await shell.openExternal(url)',
+  ],
   'desktop/main.cjs': [
     // Refused offline: the check sits on the same line.
     'if (!under.on && /^https:\\/\\//i.test(url)) shell.openExternal(url)',

@@ -37,6 +37,8 @@ const { watchFolder } = require('./folder-watch.cjs')
 const { createBots } = require('./bots/index.cjs')
 const { createAgent } = require('./agent.cjs')
 const { createBrief } = require('./brief.cjs')
+const { createGitHub } = require('./github.cjs')
+const { createOvernight } = require('./overnight.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -320,6 +322,7 @@ function buildMenu() {
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         room('Roadmap', 'Roadmap'),
+        room('GitHub', 'GitHub'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
@@ -1132,9 +1135,31 @@ async function registerBrief(agent, macCalendar) {
     fail,
     offline: () => under.on,
     macToday: macCalendar.today,
+    // Last night's ideas (Phase 53); overnight is registered just after the brief.
+    ideas: async () => (overnight ? overnight.words() : ''),
     onWake: (check) => powerMonitor.on('resume', check),
   })
   brief.start()
+}
+
+/* ---- While you sleep: ideas for the canvas, thought over at night on this Mac (desktop/overnight.cjs, Phase 53) ---- */
+
+let overnight = null
+async function registerOvernight() {
+  overnight = await createOvernight({
+    store,
+    sharedModule,
+    dataDir: app.getPath('userData'),
+    models: answeringModels,
+    chat: chatWith,
+    handle,
+    fail,
+    send: sendToAllWindows,
+    onBattery: () => powerMonitor.isOnBatteryPower(),
+    idleSeconds: () => powerMonitor.getSystemIdleTime(),
+    onWake: (check) => powerMonitor.on('resume', check),
+  })
+  overnight.start()
 }
 
 /* ---- Scans: the folder a scanner saves to; each new scan becomes a node (scans.cjs) ---- */
@@ -1365,6 +1390,9 @@ app.whenReady().then(async () => {
   await registerBots()
   const agent = await registerAgent()
   await registerBrief(agent, createMacCalendar({ handle, fail }))
+  // Tools → GitHub (desktop/github.cjs, Phase 55): through the gh signed in on this Mac.
+  await createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on })
+  await registerOvernight()
   registerDesk()
   registerAsk()
   createWindow()
@@ -1394,6 +1422,7 @@ app.on('will-quit', () => {
   stopPhone()
   bots?.stop()
   brief?.stop()
+  overnight?.stop()
   files?.stop()
   launcher?.stop()
 })

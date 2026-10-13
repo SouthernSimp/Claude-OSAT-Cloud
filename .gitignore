@@ -23,3 +23,6 @@ outputs/sky-refinement-20261004/
 outputs/unsorted-review-20261004/
 
 outputs/unsorted-concepts-20261004/
+# Old caches and backups (kept on disk, not in git)
+.vite-osat-field/
+.design-backups/
