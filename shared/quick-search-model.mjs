@@ -7,6 +7,7 @@ import { calculate } from './calc.mjs'
 import { groupItems, searchItems, titleOf, whenCopied } from './clipboard-model.mjs'
 import { customizable, favoriteRows, keywordAddress, matchKeyword } from './launcher-model.mjs'
 import { findSnippets, snippetRow } from './snippets.mjs'
+import { scoreOf, topHit } from './picks.mjs'
 import { findSystem, systemRow } from './system-commands.mjs'
 import { findLayouts } from './window-layouts.mjs'
 
@@ -175,8 +176,9 @@ export function startRow(rows, read) {
   return found < 0 ? ask : found
 }
 
-/* Names that start with the words come first, then words that start a word of the name, then the rest. */
-export function rankApps(apps, query) {
+/* Names that start with the words come first, then words that start a word of the name, then the rest; within each,
+   the apps you pick from the bar most (shared/picks.mjs) first. */
+export function rankApps(apps, query, picks = null, now = Date.now()) {
   const words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean)
   if (!words.length) return [...apps].sort((a, b) => a.name.localeCompare(b.name))
   const tier = (name) => {
@@ -185,14 +187,15 @@ export function rankApps(apps, query) {
     if (words.every((word) => lower.split(/[^a-z0-9]+/).some((part) => part.startsWith(word)))) return 1
     return words.every((word) => lower.includes(word)) ? 2 : 3
   }
-  return apps.filter((app) => tier(app.name) < 3).sort((a, b) => tier(a.name) - tier(b.name) || a.name.localeCompare(b.name))
+  const used = (app) => (picks ? scoreOf(picks, `app:${app.path}`, query, now) : 0)
+  return apps.filter((app) => tier(app.name) < 3).sort((a, b) => tier(a.name) - tier(b.name) || used(b) - used(a) || a.name.localeCompare(b.name))
 }
 
 /* One list from what every source answered. `found` is { files, recentFiles, clipboard, apps, commands, notes }
    (each an array; the clipboard is main's list()). Order in Everything: (with `ai`) Ask AI, a sum, Nate's keyword,
    apps named by the words, commands, other apps, files, the clipboard, notes, then Save as a sticky. Nothing typed:
    the latest copies, pinned files, recent files. One source ("See all"), that source alone, at more length. */
-export function buildRows(read, found, settings, { now = new Date(), fileFilter = 'all', clipFilter = 'all', ai = null } = {}) {
+export function buildRows(read, found, settings, { now = new Date(), fileFilter = 'all', clipFilter = 'all', ai = null, picks = null } = {}) {
   const rows = []
   const pins = settings.pins || []
   const isPinned = (item) => pins.some((pin) => pin.rootId === item.rootId && pin.relative === item.relative)
@@ -235,7 +238,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   if (has) {
     const [ask, sticky] = ai ? wordRows(read, ai) : []
     if (ask) rows.unshift(ask)
-    const apps = rankApps(found.apps || [], read.query).slice(0, 3)
+    const apps = rankApps(found.apps || [], read.query, picks, +now).slice(0, 3)
     const named = apps.filter((item) => item.name.toLowerCase().startsWith(read.query.toLowerCase()))
     rows.push(...named.map((item) => appRow(item, 'Apps')))
     rows.push(...(found.commands || []).slice(0, 3).map((item) => noteRow(item, 'Commands')))
@@ -249,6 +252,13 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     rows.push(...(found.notes || []).slice(0, 5).map((item) => noteRow(item, 'Notes')))
     // "left half", "max": a layout, when the words are about a window.
     if (settings.sources.windows?.on && read.query.length >= 3) rows.push(...findLayouts(read.query).slice(0, 2).map((layout) => layoutRow(layout, keys)))
+    // What you picked before for these words comes first (after Ask, a sum and your own word).
+    const hit = picks && topHit(rows, picks, read.query, +now)
+    if (hit) {
+      rows.splice(rows.indexOf(hit), 1)
+      const at = rows.findIndex((row) => !['do', 'calc', 'keyword'].includes(row.source))
+      rows.splice(at < 0 ? rows.length : at, 0, { ...hit, section: 'Top hit' })
+    }
     if (sticky) rows.push(sticky)
   } else {
     // Nothing typed: your favorites, then what you copied last, then your pinned and recent files.

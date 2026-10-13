@@ -103,7 +103,7 @@ export function QuickSearchPage({ page }) {
   const keys = useDeskKeys()
   return (
     <LauncherPage page={page} what="In the Mac app, one bar opens over your other apps to find a file, something you copied, an app or a note, ask the AI, or save a sticky.">
-      {({ settings, save }) => (
+      {({ bridge, settings, save, setMessage }) => (
         <>
           <Group title="Open it" note="In the bar: Return opens what is picked, ⌘Return asks the AI about what you typed, ⌥Return saves it to Unsorted as a sticky, ⌘K lists every action, Esc backs out a step. Drag it by its edge and it opens there next time.">
             {keys.bridge && (
@@ -126,6 +126,11 @@ export function QuickSearchPage({ page }) {
                 <Switch label={`Look in ${source.label}`} checked={settings.sources[source.id].on} onChange={(on) => save({ sources: { [source.id]: { on } } })} />
               </Row>
             ))}
+          </Group>
+          <Group title="What it learns" note="What you open or paste from the bar comes first the next time you type the same thing, like Raycast. It stays on this Mac.">
+            <Row title="Forget what the bar learned" hint="Results go back to their plain order." words="learn top hit ranking frecency forget reset">
+              <button className="outline-button" type="button" onClick={() => bridge.forgetPicks().then(() => setMessage('The bar forgot what you picked.'), (error) => setMessage(explain(error)))}>Forget</button>
+            </Row>
           </Group>
         </>
       )}

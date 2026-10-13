@@ -8,6 +8,7 @@ import { DEFAULT_SETTINGS, canonicalKey, customizable, ownKeyOf, ownWordOf, vali
 import { systemCommand } from '../../shared/system-commands.mjs'
 import { comboFrom, labelOf } from '../lib/hotkey.js'
 import { FILE_FILTERS, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
+import { remember } from '../../shared/picks.mjs'
 import { LocalAssistant, modelLabel } from '../assistant/LocalAssistant.jsx'
 import { cleanError, useAi } from '../assistant/useAi.js'
 import { findAll } from '../lib/find.js'
@@ -37,6 +38,9 @@ const comboOf = (event) => {
   return `${event.altKey ? '⌥' : ''}${event.shiftKey ? '⇧' : ''}${event.metaKey || event.ctrlKey ? '⌘' : ''}${key}`
 }
 
+// What counts as picking a row (so it comes first next time): opening, pasting or running it, not ⌘K's other actions.
+const PICKED = new Set(['open', 'go', 'open-app', 'open-app-named', 'paste', 'copy', 'paste-snippet', 'copy-snippet', 'system', 'snap', 'open-link', 'shot-open', 'capture', 'emoji'])
+
 export function QuickSearchSurface() {
   const bridge = window.osatSearch
   const { workspace, commit, ready } = useWorkspace()
@@ -56,6 +60,8 @@ export function QuickSearchSurface() {
   const [toast, setToast] = useState(null)
   const [gone, setGone] = useState(() => new Set())
   const [visit, setVisit] = useState(0)
+  // What you picked from the bar before (shared/picks.mjs): it comes first next time.
+  const [picks, setPicks] = useState({})
   const [opened, setOpened] = useState('bar')
   // A sticky or a question being written in the bar ('sticky' | 'ask'), and Ask: on, kept once opened (so the chat
   // you were in is there next time), and what to hand it ({ chatId } or { prompt, send }).
@@ -82,13 +88,14 @@ export function QuickSearchSurface() {
   const [shooting, setShooting] = useState(null)
   const [shotList, setShotList] = useState([])
   useEffect(() => { bridge?.captureStatus?.().then(setShooting, () => {}) }, [bridge, visit])
+  useEffect(() => { bridge?.picks?.().then((saved) => setPicks(saved || {}), () => {}) }, [bridge, visit])
   const askedRecent = Boolean(settings.captures?.recent && shooting?.cleanshot) && read.scope === 'all' && wantsRecent(read.query)
   useEffect(() => { if (askedRecent) bridge.captureRecent().then((list) => setShotList(Array.isArray(list) ? list : []), () => {}) }, [bridge, askedRecent, visit])
   const captures = useMemo(() => (shooting && read.scope === 'all' ? findCaptures(read.query, shooting.list || [], { cleanshot: shooting.cleanshot }) : []), [shooting, read.scope, read.query])
   const shots = useMemo(() => (askedRecent ? recentRows(shotList) : []), [askedRecent, shotList])
   const rows = useMemo(
-    () => buildRows(read, { ...found, commands, notes, captures, shots }, settings, { fileFilter, clipFilter, ai }).filter((row) => !gone.has(row.key)),
-    [read, found, commands, notes, captures, shots, settings, fileFilter, clipFilter, gone, ai.state, ai.label, ai.offline], // eslint-disable-line react-hooks/exhaustive-deps
+    () => buildRows(read, { ...found, commands, notes, captures, shots }, settings, { fileFilter, clipFilter, ai, picks }).filter((row) => !gone.has(row.key)),
+    [read, found, commands, notes, captures, shots, settings, fileFilter, clipFilter, gone, picks, ai.state, ai.label, ai.offline], // eslint-disable-line react-hooks/exhaustive-deps
   )
   const active = Math.min(cursor ?? startRow(rows, read), Math.max(0, rows.length - 1))
   const row = rows[active] || null
@@ -204,6 +211,11 @@ export function QuickSearchSurface() {
     if (!target) return
     const d = target.data
     const undoable = (message, undo) => setToast({ message, undo, at: Date.now() })
+    if (PICKED.has(id) && !['do', 'more', 'calc'].includes(target.source)) {
+      const typed = live.current?.query || ''
+      setPicks((now) => remember(now, target.key, typed))
+      bridge?.picked?.(target.key, typed).catch(() => {})
+    }
     try {
       switch (id) {
         case 'emoji': { const result = await bridge.emoji(); if (!result.ok) said('The character picker is available on the Mac.'); break }
@@ -315,7 +327,7 @@ export function QuickSearchSurface() {
   }, [bridge, said, away, hideLater, toOSAT, reloadClipboard, addTo, saveSticky, askAi])
 
   /* The keys. One listener that reads the latest state, so nothing is stale. */
-  live.current = { rows, active, row, actions, menu, picker, text, scope, tabs, toast, full, offer, mode, chatOn, editing, armed, settings }
+  live.current = { query: read.query, rows, active, row, actions, menu, picker, text, scope, tabs, toast, full, offer, mode, chatOn, editing, armed, settings }
 
   /* Set a key… / Set a word…: given to that one row from here (main takes nothing else from the bar). */
   const giveKey = useCallback(async (target, hotkey) => {

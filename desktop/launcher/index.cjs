@@ -10,6 +10,7 @@
    Nothing here sends anything anywhere, except opening a link Nate chose in his own browser, which
    waits while OSAT is offline. */
 const crypto = require('node:crypto')
+const fs = require('node:fs')
 const fsp = require('node:fs/promises')
 const path = require('node:path')
 const { hotkeyLabel, validHotkey } = require('../desk.cjs')
@@ -43,6 +44,7 @@ async function createLauncher({
 }) {
   const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind, systemModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs'), sharedModule('system-commands.mjs')])
   const snippetModel = await sharedModule('snippets.mjs')
+  const pickModel = await sharedModule('picks.mjs')
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -214,6 +216,24 @@ async function createLauncher({
   on('search:ready', () => { search.ready(); return true })
   on('search:settings', () => settings, (sender) => ofSearchOrDesk(sender) || ofRing(sender))
   on('search:save-settings', save, ofDesk)
+
+  /* What you pick from the bar (shared/picks.mjs), so it comes first next time. Kept in picks.json, this Mac only. */
+  const picksFile = path.join(dataDir, 'picks.json')
+  let picks = {}
+  let picksTimer = null
+  const writePicks = () => {
+    clearTimeout(picksTimer)
+    picksTimer = null
+    try { fs.mkdirSync(dataDir, { recursive: true }); fs.writeFileSync(picksFile, JSON.stringify(picks), { mode: 0o600 }) } catch {}
+  }
+  on('search:picks', () => picks)
+  on('search:picked', (key, typed) => {
+    if (typeof key !== 'string' || (typed != null && typeof typed !== 'string')) return false
+    picks = pickModel.remember(picks, key, typed)
+    if (!picksTimer) picksTimer = setTimeout(writePicks, 2000)
+    return true
+  })
+  on('search:forget-picks', () => { picks = {}; writePicks(); return true }, ofDesk)
   /* From the bar's ⌘K: a favorite, a key or a word for one thing in it, and nothing else (the rest of the settings
      stay the desk's). `row` is what the bar showed; only the kinds that can be customized are taken. */
   on('search:customize', async (row, change) => {
@@ -484,6 +504,7 @@ async function createLauncher({
     hotkeyLabel: (accelerator) => launcherModel.hyperLabel(accelerator, hotkeyLabel),
     async start() {
       await readSettings()
+      picks = pickModel.cleanPicks(await fsp.readFile(picksFile, 'utf8').then(JSON.parse, () => null))
       capture.detect()
       await history.start()
       history.watch(settings.sources.clipboard.on)
@@ -492,6 +513,7 @@ async function createLauncher({
       snippets.sync()
     },
     stop() {
+      if (picksTimer) writePicks()
       history.stop()
       hotkeys.stop()
       middleClick.stop()

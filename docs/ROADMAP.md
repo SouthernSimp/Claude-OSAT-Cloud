@@ -140,6 +140,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 48a | Apps OSAT can use: connect by web address or local command, or import from Claude Desktop | In review |
 | 48b | Ask can act: visible steps, Allow before another app changes, and one Undo for OSAT changes | In review |
 | 49 | An optional morning brief at the top of today’s journal, with Undo | In review |
+| 50 | The quick bar learns (Raycast-style): what you open or paste for some words comes first as the Top hit next time; apps you use often sort first; Settings → Quick bar → Forget | In review (on #75) |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
