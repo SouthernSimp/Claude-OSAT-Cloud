@@ -1,0 +1,56 @@
+/* Tools → GitHub (Phase 55): repos on the left, what waits for you and what changed lately on the right. */
+.gh-room { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); height: 100%; min-height: 0; }
+.gh-repos { display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 14px 10px; border-right: 1px solid var(--line-soft); background: var(--surface); }
+.gh-repos ul { flex: 1; min-height: 0; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.gh-repos li button { display: grid; gap: 2px; width: 100%; padding: 8px 10px; border-radius: var(--r-sm); text-align: left; color: var(--ink); }
+.gh-repos li button:hover { background: var(--surface-hover); }
+.gh-repos li button[aria-current] { background: var(--accent-soft); }
+.gh-repos strong { overflow: hidden; font-size: var(--t-sm); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.gh-repos small { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: var(--t-xs); }
+.gh-repos small svg { width: 11px; height: 11px; }
+.gh-find { display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-raised); }
+.gh-find svg { flex: none; width: 14px; height: 14px; color: var(--muted); }
+.gh-room .gh-find input { width: 100%; min-height: 32px; padding: 0; border: 0; background: none; color: var(--ink); font-size: var(--t-sm); outline: none; }
+
+.gh-main { display: grid; align-content: start; gap: 18px; min-height: 0; padding: 18px 22px 28px; overflow-y: auto; }
+.gh-head { display: flex; align-items: flex-start; gap: 8px; }
+.gh-head > div { flex: 1; min-width: 0; }
+.gh-head h2 { margin: 0; font-size: var(--t-2xl); }
+.gh-head p { margin: 4px 0 0; color: var(--muted); font-size: var(--t-sm); }
+.gh-main h3 { margin: 0 0 8px; color: var(--muted); font-size: var(--t-xs); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.gh-quiet { margin: 0; color: var(--muted); font-size: var(--t-sm); }
+.gh-said { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--accent-soft); font-size: var(--t-sm); }
+.gh-said.is-problem { background: var(--critical-soft); }
+.gh-said svg { flex: none; width: 16px; height: 16px; margin-top: 1px; }
+
+.gh-pull { display: grid; gap: 8px; margin-bottom: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); }
+.gh-pull header { display: flex; align-items: baseline; gap: 10px; }
+.gh-pull h4 { flex: 1; min-width: 0; margin: 0; font-size: var(--t-md); }
+.gh-pull header small { flex: none; color: var(--muted); font-size: var(--t-xs); }
+.gh-pull > p { margin: 0; color: var(--ink); font-size: var(--t-sm); line-height: 1.5; }
+.gh-pull footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gh-gap { flex: 1; }
+.gh-ask { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-sm); }
+.gh-checks { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: var(--t-xs); }
+.gh-checks svg { width: 14px; height: 14px; }
+.gh-checks.is-passed { color: var(--accent); }
+.gh-checks.is-failed { color: var(--critical); }
+.is-spinning { animation: gh-spin 1s linear infinite; }
+@keyframes gh-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .is-spinning { animation: none; } }
+
+.gh-changes { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.gh-changes li { display: flex; align-items: baseline; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); font-size: var(--t-sm); }
+.gh-changes span { flex: 1; min-width: 0; }
+.gh-changes small { flex: none; color: var(--muted); font-size: var(--t-xs); }
+
+.gh-setup { display: grid; justify-items: center; align-content: center; gap: 8px; height: 100%; padding: 32px; text-align: center; }
+.gh-setup > svg { width: 36px; height: 36px; color: var(--muted); }
+.gh-setup h2 { margin: 0; }
+.gh-setup p { max-width: 46ch; margin: 0; }
+
+@container room (max-width: 760px) {
+  .gh-room { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .gh-repos { max-height: 160px; border-right: 0; border-bottom: 1px solid var(--line-soft); }
+  .gh-main { padding: 14px 16px 24px; }
+}

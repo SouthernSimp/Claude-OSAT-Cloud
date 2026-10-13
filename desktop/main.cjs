@@ -37,6 +37,7 @@ const { watchFolder } = require('./folder-watch.cjs')
 const { createBots } = require('./bots/index.cjs')
 const { createAgent } = require('./agent.cjs')
 const { createBrief } = require('./brief.cjs')
+const { createGitHub } = require('./github.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -320,6 +321,7 @@ function buildMenu() {
         room('Browser', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         room('Roadmap', 'Roadmap'),
+        room('GitHub', 'GitHub'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
@@ -1365,6 +1367,8 @@ app.whenReady().then(async () => {
   await registerBots()
   const agent = await registerAgent()
   await registerBrief(agent, createMacCalendar({ handle, fail }))
+  // Tools → GitHub (desktop/github.cjs, Phase 55): through the gh signed in on this Mac.
+  await createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on })
   registerDesk()
   registerAsk()
   createWindow()

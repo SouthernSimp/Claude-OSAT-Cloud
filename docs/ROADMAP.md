@@ -142,7 +142,8 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 49 | An optional morning brief at the top of today’s journal, with Undo | Merged (PR #75), Oct 12 |
 | 50 | The quick bar learns (Raycast-style): what you open or paste for some words comes first as the Top hit next time; apps you use often sort first; Settings → Quick bar → Forget | Merged (PR #76), Oct 12 |
 | 51 | AI on selected text (Raycast-style): select words in any app, press Hyper T, pick Fix spelling, Shorter, Clearer, Friendlier, Professional, a list, Summarize, Explain, Translate, a reply, or type your own; Return pastes it over the selection | Merged (PR #77), Oct 12 |
-| 52 | A bar you can use instead of Raycast: apps match by initials and letters in order ("gc" Google Chrome, "vsc" Visual Studio Code, "sptfy" Spotify) and a strong match leads; System Settings panes (Wi-Fi, Bluetooth, Displays…); Ask AI waits under what was found unless you ask a question | In review |
+| 52 | A bar you can use instead of Raycast: apps match by initials and letters in order ("gc" Google Chrome, "vsc" Visual Studio Code, "sptfy" Spotify) and a strong match leads; System Settings panes (Wi-Fi, Bluetooth, Displays…); Ask AI waits under what was found unless you ask a question | Merged (PR #78), Oct 12 |
+| 55 | A GitHub room (Tools → GitHub): your repositories, and in each what waits for you (each pull request in its own words, whether its checks passed, Merge, asked once more) and what changed lately; through the gh signed in on your Mac | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

@@ -97,6 +97,15 @@ contextBridge.exposeInMainWorld('osatAgent', Object.freeze({
   apps: () => ipcRenderer.invoke('agent:apps'),
 }))
 
+// Tools → GitHub (desktop/github.cjs): repos and pull requests through the gh on this Mac.
+contextBridge.exposeInMainWorld('osatGitHub', Object.freeze({
+  status: () => ipcRenderer.invoke('github:status'),
+  repos: () => ipcRenderer.invoke('github:repos'),
+  repo: (name) => ipcRenderer.invoke('github:repo', name),
+  merge: (name, number) => ipcRenderer.invoke('github:merge', name, number),
+  open: (url) => ipcRenderer.invoke('github:open', url),
+}))
+
 // The morning brief (desktop/brief.cjs): Settings → AI and the desk's one line.
 contextBridge.exposeInMainWorld('osatBrief', Object.freeze({
   status: () => ipcRenderer.invoke('brief:status'),

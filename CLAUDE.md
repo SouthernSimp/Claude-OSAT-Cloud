@@ -512,6 +512,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   Mac Calendar/Reminders only with existing permission. Only the brief block on
   today's journal is replaced. Settings and the automatic notice offer guarded Undo.
 
+## Architecture added in Phase 55
+
+- `shared/github-model.mjs` + `desktop/github.cjs` + `src/views/GitHub.jsx` (Tools → GitHub): through the `gh` Homebrew
+  installed (`/opt/homebrew/bin/gh`; Finder apps lack Homebrew's PATH), never a key of OSAT's own. `execFile`, no shell;
+  repo names and numbers pass `validRepo`/`validNumber` in main. `github:*` waits offline (under.cjs) and the one command
+  line is in the fence (tests/under.test.mjs). Merge marks a draft ready first, then `gh pr merge --merge`; the room asks
+  once more inline and offers Merge only when checks passed (or there are none) and nothing clashes. Not yet: Try this build.
+
 ## Layout traps worth remembering
 
 - The desk (`.overlay-surface`) is `100dvh` and never scrolls; each pop-out's body is a
