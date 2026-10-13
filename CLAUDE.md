@@ -43,7 +43,7 @@ cannot undo a newer brief. The automatic brief notice also offers Undo.
 Validation and the Mac checklist live in `docs/POWER-REVIEW-20261010.md`.
 All local testing is headless; no installed app or real OSAT data was opened.
 OAuth sign-in is not supported by the MCP client. Offline webhook deliveries
-wait in memory and are lost on quit. Ask Undo lasts for ten runs in memory;
+wait on disk and survive a quit (Phase 54). Ask Undo lasts for ten runs in memory;
 brief Undo lasts until another brief or quit. Another app's changes are outside
 OSAT's Undo and must be reversed in that app.
 
@@ -494,7 +494,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   commits each change and keeps its inverse and resulting records for safe Undo.
 - `desktop/bots/webhooks.cjs` + `shared/webhook-model.mjs`: opt-in outgoing
   webhooks and an ntfy relay for incoming stickies. Main owns the addresses;
-  incoming stickies use `runForApp` as Webhook. Offline holds a bounded queue in memory.
+  incoming stickies use `runForApp` as Webhook. Offline holds a bounded queue, saved in
+  `webhooks-waiting.json` (0600) so a quit doesn't lose it; it goes at the next start while online (Phase 54).
+- `desktop/updater.cjs` (Settings → About → Check for updates): the release's zip and its SHA-256, then
+  `codesign --verify -R=<this app's own designated requirement>` (`pinnedRequirement`, Phase 54): a new build must be
+  signed by the same certificate (CI's `OSAT_SIGN_P12`). An ad-hoc build has nothing to pin and only checks integrity.
+  Changing the signing certificate means installing that build from its DMG once.
 - `desktop/bots/shortcuts.cjs` + `shared/shortcut-file.mjs` +
   `scripts/shortcuts-check.cjs`: six ready-made shortcuts, signed with this Mac's
   iCloud identity. Temporary files contain a key and are removed after an hour or quit.

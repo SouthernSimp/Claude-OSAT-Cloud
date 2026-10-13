@@ -334,6 +334,27 @@ test('offline, moments wait (up to 100) and go when back online; a test says it 
   assert.equal(hooks.status().hooks[0].waiting, 0)
 })
 
+test('what waits offline survives a quit, and goes when OSAT opens online', async (t) => {
+  const { hooks, commit, sent, dir, store } = await setup(t, { offline: () => true })
+  await hooks.add({ url: 'https://hooks.slack.com/services/x', events: ['sticky.added'] })
+  commit([sticky('note-a', 'Buy milk')])
+  commit([sticky('note-b', 'Call Dana')])
+  await hooks.settle()
+  assert.equal(sent.length, 0)
+  const file = path.join(dir, 'webhooks-waiting.json')
+  assert.equal(JSON.parse(await fs.readFile(file, 'utf8')).length, 2)
+  assert.equal((await fs.stat(file)).mode & 0o777, 0o600, 'private: it holds what the stickies say')
+  hooks.stop()
+
+  const later = []
+  const reopened = createWebhooks({ file: path.join(dir, 'webhooks.json'), model, store, offline: () => false, fetch: async (url, init = {}) => { later.push(JSON.parse(init.body).content); return { ok: true, status: 200 } }, addSticky() {}, setTimer: () => ({}), clearTimer() {} })
+  await reopened.start()
+  await reopened.settle()
+  reopened.stop()
+  assert.deepEqual(later, ['New sticky: Buy milk', 'New sticky: Call Dana'], 'in order, once back')
+  assert.deepEqual(JSON.parse(await fs.readFile(file, 'utf8')), [], 'and they no longer wait')
+})
+
 test('the journal goes out at most once a minute a day, with its newest line', async (t) => {
   const { hooks, commit, sent, fire } = await setup(t)
   await hooks.add({ url: 'https://hooks.zapier.com/catch/1', events: ['journal.written'] })

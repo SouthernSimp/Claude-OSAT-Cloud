@@ -53,7 +53,7 @@ next sort, so nothing depends on anyone remembering the chat.
 | Currency in the calculator ("100 usd in eur"): needs today's rates from the internet; would be opt-in, paused by Offline, added to the fence in tests/under.test.mjs | Oct 6 | Later (asked in #70) |
 | Drag a window to a screen edge to snap it: macOS (Sequoia and later) already tiles windows this way, so OSAT's would fight it; trackpad gestures need a private framework | Oct 6 | Not doing (said in #73) |
 | An Undo toast in a room sits over the bottom of the room (seen over Ask's box after Try again); place room toasts above the room's own controls | Oct 6 | Small, near the top of "Then" |
-| tests/ui/sorting.mjs (not in CI) still looks for `.sorter-paper h3`, gone since the Oct 6 sorter redo; update it or fold it into the smoke test | Oct 6 | Small |
+| tests/ui/sorting.mjs (not in CI) still looked for `.sorter-paper h3`, gone since the Oct 6 sorter redo | Oct 6 | Done (Phase 54): removed; the smoke test covers the sorter |
 | Old clipboard pictures keep the thumbnail they were saved with (tall ones can be big); new ones are capped. Re-make old ones once at start if it matters | Oct 7 | Unranked (small) |
 
 | Screenshots and recording from the launcher, driving CleanShot X (Phase 13g) | Oct 6 | In review |

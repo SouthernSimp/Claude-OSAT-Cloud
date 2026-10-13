@@ -1,8 +1,8 @@
 /* Webhooks (Phase 46, Settings → Bots), off until Nate adds an address or turns the inbox on.
      out   each moment he ticked (a sticky added or filed, a topic added, the journal written) is
            sent as JSON to the addresses he gave, one after another, through the main process's
-           fetch (so Offline holds it). Offline, up to 100 wait in memory and go when he is back
-           online; a network error or a 5xx is tried once more after 30 s, then said calmly. Told
+           fetch (so Offline holds it). Offline, up to 100 wait (kept in webhooks-waiting.json beside
+           the settings, so a quit doesn't lose them) and go when he is back online; a network error or a 5xx is tried once more after 30 s, then said calmly. Told
            to slow down (429, as Slack and Discord say after a burst), the rest for that address
            wait until it says (Retry-After, else 30 s) and then go in order. Words still being
            written (the journal, a note begun in Notes) go a minute on.
@@ -13,6 +13,8 @@
    `model` is shared/webhook-model.mjs; `addSticky(text)` commits through the store as the app
    "Webhook" (bots/index.cjs), so its sticky carries source Webhook and the connector's list can undo it. */
 const { randomBytes, randomUUID } = require('node:crypto')
+const fs = require('node:fs/promises')
+const path = require('node:path')
 const { createSettings } = require('./settings.cjs')
 
 const MAX_WAITING = 100
@@ -34,7 +36,27 @@ function createWebhooks({
   newTopic = () => randomBytes(24).toString('base64url'),
 }) {
   const settings = createSettings({ file, clean: model.cleanHookSettings })
-  let waiting = [] // offline: { id, body }, oldest first
+  let waiting = [] // offline: { id, body }, oldest first; every change goes through setWaiting, which saves it
+  const waitingFile = path.join(path.dirname(file), 'webhooks-waiting.json')
+  let savingWaiting = Promise.resolve()
+  function setWaiting(next) {
+    waiting = next
+    const text = `${JSON.stringify(next)}\n`
+    savingWaiting = savingWaiting.catch(() => {}).then(async () => {
+      const temp = `${waitingFile}.tmp`
+      await fs.writeFile(temp, text, { mode: 0o600 })
+      await fs.rename(temp, waitingFile)
+    }).catch((error) => console.error('Webhooks: what waits offline couldn’t be saved:', error))
+  }
+  async function loadWaiting() {
+    try {
+      const held = JSON.parse(await fs.readFile(waitingFile, 'utf8'))
+      const ids = new Set(settings.get().hooks.map((hook) => hook.id))
+      return Array.isArray(held) ? held.filter((item) => item && ids.has(item.id) && item.body && typeof item.body === 'object').slice(-MAX_WAITING) : []
+    } catch {
+      return []
+    }
+  }
   let sending = Promise.resolve()
   let seen = null // the workspace as of the last commit, to tell what changed
   let stopCommits = null
@@ -147,7 +169,7 @@ function createWebhooks({
     resting.delete(id)
   }
   function wait(id, body) {
-    waiting = [...waiting, { id, body }].slice(-MAX_WAITING)
+    setWaiting([...waiting, { id, body }].slice(-MAX_WAITING))
     changed()
     return null
   }
@@ -302,7 +324,7 @@ function createWebhooks({
     if (typeof patch.name === 'string' && patch.name.trim()) next.name = patch.name.trim().slice(0, 40)
     await settings.save({ hooks: settings.get().hooks.map((hook) => (hook.id === id ? { ...hook, ...next } : hook)) })
     if (next.on === false) {
-      waiting = waiting.filter((item) => item.id !== id)
+      setWaiting(waiting.filter((item) => item.id !== id))
       stopResting(id)
     }
     changed()
@@ -314,7 +336,7 @@ function createWebhooks({
     const index = hooks.findIndex((hook) => hook.id === id)
     if (index < 0) throw new Error('That address isn’t in OSAT any more.')
     removed = { hook: hooks[index], index, waiting: waiting.filter((item) => item.id === id) }
-    waiting = waiting.filter((item) => item.id !== id)
+    setWaiting(waiting.filter((item) => item.id !== id))
     stopResting(id)
     await settings.save({ hooks: hooks.filter((hook) => hook.id !== id) })
     changed()
@@ -329,7 +351,7 @@ function createWebhooks({
     const { hook, index, waiting: held } = removed
     removed = null
     await settings.save({ hooks: [...hooks.slice(0, index), hook, ...hooks.slice(index)] })
-    waiting = [...waiting, ...held].slice(-MAX_WAITING)
+    setWaiting([...waiting, ...held].slice(-MAX_WAITING))
     changed()
     return status()
   }
@@ -354,7 +376,7 @@ function createWebhooks({
       pollTimer = null
     } else {
       const held = waiting
-      waiting = []
+      setWaiting([])
       for (const item of held) queue(item.id, item.body)
       pollSoon(0)
     }
@@ -363,6 +385,13 @@ function createWebhooks({
 
   async function start() {
     await settings.load()
+    // What waited offline before the last quit: it goes now if OSAT is online, or waits on.
+    const held = await loadWaiting()
+    if (held.length && offline()) waiting = held
+    else if (held.length) {
+      setWaiting([])
+      for (const item of held) queue(item.id, item.body)
+    }
     seen = store.load().doc
     stopCommits = store.onCommit(onCommit)
     running = true
@@ -388,7 +417,7 @@ function createWebhooks({
     start, stop, status, nudge, add, change, remove, undoRemove, test, inboxOn, inboxOff, inboxReset, inboxServer,
     address: () => model.ntfyAddress(settings.get().inbox),
     // For tests: wait for every delivery and read now under way.
-    settle: async () => { await sending; await polling },
+    settle: async () => { await sending; await polling; await savingWaiting },
   }
 }
 
