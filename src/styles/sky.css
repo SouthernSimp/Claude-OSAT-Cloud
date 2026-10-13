@@ -484,6 +484,9 @@ html[data-carry-edge="up"] body::after {
 .board-lines path.is-link.is-drawing { stroke-dasharray: 6 6; }
 .board-lines .link-hit { stroke: transparent; stroke-width: 16; stroke-dasharray: none; animation: none; pointer-events: stroke; cursor: pointer; }
 .board-lines g:hover > path.is-link { stroke-width: 3.5; stroke-opacity: 1; }
+/* An idea from overnight (Phase 53): a faint, slow thread until it is kept or waved away. */
+.board-lines path.is-idea { stroke: var(--accent); stroke-width: 2; stroke-opacity: 0.35; stroke-dasharray: 2 9; animation: line-flow 3.2s linear infinite; }
+.board-lines g:hover > path.is-idea { stroke-opacity: 0.85; stroke-width: 3; }
 
 /* A card in a map: laid out by the map, gliding when the map changes. */
 .map-card { position: absolute; top: 0; left: 0; display: grid; gap: 8px; width: max-content; transition: translate 460ms var(--glide); animation: card-in 420ms var(--spring) both; }
