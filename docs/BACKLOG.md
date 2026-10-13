@@ -43,6 +43,7 @@ next sort, so nothing depends on anyone remembering the chat.
 
 | Idea | Suggested | Rank |
 |---|---|---|
+| A GitHub room (Nate, Oct 12): his repos in plain words. Each open pull request with its summary, whether its checks passed, **Try this build** (downloads the CI DMG and installs it, like Check for updates) and **Merge** (asks first). Through the `gh` already signed in on the Mac, or a key in the Keychain; paused while Offline and added to the fence in tests/under.test.mjs | Oct 12 | Next after 53–54 (Claude's pick) |
 | Use the DigitalOcean droplet for extra features (Nate, Oct 6, "eventually, idk"). Needs a goal first, e.g. a private sync relay or hosting a bigger model; would have to stay opt-in and keep notes private | Oct 6 | Unranked |
 | UI smoke test flake: "widgets: Esc did not put the tray away" failed once on a pull-request run and passed on rerun (Oct 6). Make the wait explicit so a red check always means a real problem | Oct 6 | Done (PR #67): the tray's Esc listener now attaches before its first paint |
 | Show this ranked list inside OSAT beside the Roadmap (Tools → Roadmap) so Nate reads it in the app | Oct 6 | Unranked |
