@@ -8,44 +8,17 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 12, 2026 (late night): 44–51 merged, Phase 52 in review
+## Resume checkpoint — October 12, 2026 (night): through 52 merged, Phase 53 in review
 
-Main has #75 (44–49), #76 (50: the bar learns, `shared/picks.mjs`) and #77 (51: AI on selected text, Hyper T),
-merged at Nate's word. Nate wants the quick bar good enough to stop using Raycast and left the choices to Claude.
-Phase 52 (`claude/bar-usable`): `appTier` in quick-search-model (initials, word starts, letters in order; a strong
-match leads Everything), System Settings panes in `shared/system-commands.mjs` (`pane:<bundle id>`, opened with
-`open x-apple.systempreferences:<id>` in system.cjs), and Ask AI under the results unless the words are a question
-or found nothing. Next Raycast gaps: script commands / extensions (the biggest), a color picker, ask about the
-screen. REA (`npx rea-agents setup`) can trace how Raycast does one.
-
-## Earlier checkpoint — October 10, 2026: Phases 44–49 in review
-
-Main is `0749003` (through Phase 43, PRs #73 and #74 merged). `claude/power`
-now combines the power work with `claude/ask-acts` (48b and 49), including both
-sides of the bots merge: synchronous workspace changes and loss-resistant
-connector Undo, plus the read-only `ask` callback.
-
-Codex's clean review checkout is
-`/Users/nate/Desktop/Projects/OSAT V2/work/osat-power-review`.
-The shared older repository has a damaged duplicate branch reference; its refs,
-untracked files and other worktrees were left alone. Continue in the clean checkout.
-One draft PR targets main. Do not merge until Nate says “merge”.
-
-Review fixes: Ask changes commit without yielding between reading and writing;
-Undo refuses to overwrite later edits or remove a branch with new children.
-Stop still prevents an external change after Allow resolves. The confirmation
-shows every argument, including nested values, traps keyboard focus and Esc
-means Not now. Offline does not discover or run other apps' tools. Read-only
-connector questions and the morning brief use noninteractive model loading.
-Brief Undo restores only its own block and keeps later writing; a stale Undo
-cannot undo a newer brief. The automatic brief notice also offers Undo.
-
-Validation and the Mac checklist live in `docs/POWER-REVIEW-20261010.md`.
-All local testing is headless; no installed app or real OSAT data was opened.
-OAuth sign-in is not supported by the MCP client. Offline webhook deliveries
-wait in memory and are lost on quit. Ask Undo lasts for ten runs in memory;
-brief Undo lasts until another brief or quit. Another app's changes are outside
-OSAT's Undo and must be reversed in that app.
+Main has everything through Phase 52 (#78). Phase 53, While you sleep (`claude/overnight`, one draft PR): once a night
+on the charger the AI on this Mac leaves ideas on the canvas. `shared/overnight-model.mjs` (pure: `due`, `candidatePairs`,
+the two questions and their readers, `liveIdeas`), `desktop/overnight.cjs` (runner, `overnight.json`, `overnight:*` IPC,
+local models only, `background: true`), `osatOvernight` in the preload, `src/sky/useOvernight.js`, faint `is-idea` threads in
+Board.jsx, "Ideas from last night" and `keepIdea`/`ideaItems` in Sky.jsx (keeping goes through `canvasCommit`, so Undo),
+Settings → AI → While you sleep (`settings/Overnight.jsx`). Tests: tests/overnight.test.mjs, tests/ui/overnight.mjs.
+Nate's direction (Oct 12): OSAT should grow into a business management tool; see docs/BACKLOG.md (plan with him first).
+Next Raycast gaps after that: script commands (in Raycast's own header format), a color picker, ask about the screen.
+Older checkpoints are in git history.
 
 ## Working with Nate
 

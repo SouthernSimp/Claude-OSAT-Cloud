@@ -37,6 +37,7 @@ const { watchFolder } = require('./folder-watch.cjs')
 const { createBots } = require('./bots/index.cjs')
 const { createAgent } = require('./agent.cjs')
 const { createBrief } = require('./brief.cjs')
+const { createOvernight } = require('./overnight.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -1137,6 +1138,26 @@ async function registerBrief(agent, macCalendar) {
   brief.start()
 }
 
+/* ---- While you sleep: ideas for the canvas, thought over at night on this Mac (desktop/overnight.cjs, Phase 53) ---- */
+
+let overnight = null
+async function registerOvernight() {
+  overnight = await createOvernight({
+    store,
+    sharedModule,
+    dataDir: app.getPath('userData'),
+    models: answeringModels,
+    chat: chatWith,
+    handle,
+    fail,
+    send: sendToAllWindows,
+    onBattery: () => powerMonitor.isOnBatteryPower(),
+    idleSeconds: () => powerMonitor.getSystemIdleTime(),
+    onWake: (check) => powerMonitor.on('resume', check),
+  })
+  overnight.start()
+}
+
 /* ---- Scans: the folder a scanner saves to; each new scan becomes a node (scans.cjs) ---- */
 
 let scans = null
@@ -1365,6 +1386,7 @@ app.whenReady().then(async () => {
   await registerBots()
   const agent = await registerAgent()
   await registerBrief(agent, createMacCalendar({ handle, fail }))
+  await registerOvernight()
   registerDesk()
   registerAsk()
   createWindow()
@@ -1394,6 +1416,7 @@ app.on('will-quit', () => {
   stopPhone()
   bots?.stop()
   brief?.stop()
+  overnight?.stop()
   files?.stop()
   launcher?.stop()
 })
