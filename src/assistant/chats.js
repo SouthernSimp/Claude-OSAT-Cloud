@@ -29,6 +29,14 @@ const modelId = (value) => typeof value === 'string' && value.trim() && value.le
 const cleanScope = (value) => value && ['workspace', 'focus', 'none'].includes(value.kind) ? { kind: value.kind, ...(value.kind === 'focus' && typeof value.folderId === 'string' ? { folderId: value.folderId } : {}) } : null
 const ids = (value) => (Array.isArray(value) ? value.filter((id) => typeof id === 'string').slice(0, 8) : [])
 const pointers = (value, keys) => (Array.isArray(value) ? value.filter((item) => item && keys.every((key) => typeof item[key] === 'string')).slice(0, 3).map((item) => Object.fromEntries(keys.map((key) => [key, item[key].slice(0, 500)]))) : [])
+// What Ask did while it acted (Phase 48): each step's words and how it ended, never what a tool answered.
+const STEP_STATES = ['done', 'failed', 'skipped']
+const steps = (value) => (Array.isArray(value) ? value.filter((step) => step && typeof step.why === 'string' && step.why.trim()).slice(0, 12).map((step) => ({
+  why: step.why.slice(0, 120),
+  ...(typeof step.app === 'string' && step.app ? { app: step.app.slice(0, 80) } : {}),
+  state: STEP_STATES.includes(step.state) ? step.state : 'skipped',
+  ...(typeof step.summary === 'string' && step.summary ? { summary: step.summary.slice(0, 120) } : {}),
+})) : [])
 const names = (value) => (Array.isArray(value) ? value.filter((name) => typeof name === 'string').slice(0, 3).map((name) => name.slice(0, 200)) : [])
 
 /* Deterministic, so loading a workspace never rewrites chats that were fine. */
@@ -47,13 +55,16 @@ export function normalizeChat(value) {
       // Only pointers to what was read (a copy's id and date, a file's place and name), never their words.
       ...(pointers(message.copies, ['id', 'at']).length ? { copies: pointers(message.copies, ['id', 'at']) } : {}),
       ...(pointers(message.fileRefs, ['rootId', 'relative', 'name']).length ? { fileRefs: pointers(message.fileRefs, ['rootId', 'relative', 'name']) } : {}),
+      ...(steps(message.steps).length ? { steps: steps(message.steps) } : {}),
       ...(Number.isInteger(message.leftOut) && message.leftOut > 0 ? { leftOut: message.leftOut } : {}),
       ...(typeof message.savedNoteId === 'string' ? { savedNoteId: message.savedNoteId } : {}),
       ...(modelId(message.modelId) ? { modelId: modelId(message.modelId) } : {}),
       ...(typeof message.modelName === 'string' && message.modelName.trim() ? { modelName: message.modelName.slice(0, 300) } : {}),
     }))
   return { id: value.id, title: text(value.title), messages, createdAt: text(value.createdAt), updatedAt: text(value.updatedAt, text(value.createdAt)),
-    ...(modelId(value.modelId) ? { modelId: modelId(value.modelId) } : {}), ...(cleanScope(value.contextScope) ? { contextScope: cleanScope(value.contextScope) } : {}) }
+    ...(modelId(value.modelId) ? { modelId: modelId(value.modelId) } : {}), ...(cleanScope(value.contextScope) ? { contextScope: cleanScope(value.contextScope) } : {}),
+    // "Can use tools" turned off for this chat (it is on unless said).
+    ...(value.tools === false ? { tools: false } : {}) }
 }
 
 /* Adds the chat or replaces it, stamping the time it changed. */

@@ -82,6 +82,30 @@ contextBridge.exposeInMainWorld('osatLocalAI', Object.freeze({
   },
 }))
 
+/* Ask can act (desktop/agent.cjs): `onEvent` hears each step, a question before another app changes
+   anything ({ type: 'confirm', stepId, text }, answered with confirm), and the answer's pieces. */
+contextBridge.exposeInMainWorld('osatAgent', Object.freeze({
+  run: (id, payload, onEvent) => {
+    const channel = `agent:event:${id}`
+    const listener = (_event, message) => { if (message && typeof message === 'object') onEvent(message) }
+    ipcRenderer.on(channel, listener)
+    const done = ipcRenderer.invoke('agent:run', id, payload).finally(() => ipcRenderer.removeListener(channel, listener))
+    return { done, cancel: () => ipcRenderer.send('agent:cancel', id) }
+  },
+  confirm: (id, stepId, yes) => ipcRenderer.invoke('agent:confirm', id, stepId, yes === true),
+  undo: (undoId) => ipcRenderer.invoke('agent:undo', undoId),
+  apps: () => ipcRenderer.invoke('agent:apps'),
+}))
+
+// The morning brief (desktop/brief.cjs): Settings → AI and the desk's one line.
+contextBridge.exposeInMainWorld('osatBrief', Object.freeze({
+  status: () => ipcRenderer.invoke('brief:status'),
+  set: (patch) => ipcRenderer.invoke('brief:set', patch),
+  write: () => ipcRenderer.invoke('brief:write'),
+  seen: () => ipcRenderer.invoke('brief:seen'),
+  undo: (token) => ipcRenderer.invoke('brief:undo', token),
+}))
+
 const listen = (channel, listener) => {
   const handler = (_event, ...args) => listener(...args)
   ipcRenderer.on(channel, handler)
@@ -189,13 +213,52 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   removeProvider: (id) => ipcRenderer.invoke('bots:remove-provider', id),
   chooseModel: (model) => ipcRenderer.invoke('bots:choose-model', model),
   openPage: (url) => ipcRenderer.invoke('bots:open-page', url),
-  // The connector (MCP, on this Mac only): its key never comes here, only to the clipboard.
+  // The connector (MCP, on this Mac only): each app has its own key, which never comes here, only to the clipboard.
   connectorOn: () => ipcRenderer.invoke('bots:connector-on'),
   connectorOff: () => ipcRenderer.invoke('bots:connector-off'),
-  connectorReset: () => ipcRenderer.invoke('bots:connector-reset'),
-  copySetup: (which) => ipcRenderer.invoke('bots:copy-setup', which),
+  addApp: (app) => ipcRenderer.invoke('bots:app-add', app),
+  setAppAccess: (id, access) => ipcRenderer.invoke('bots:app-access', id, access),
+  removeApp: (id) => ipcRenderer.invoke('bots:app-remove', id),
+  undoRemoveApp: () => ipcRenderer.invoke('bots:app-undo-remove'),
+  resetAppKey: (id) => ipcRenderer.invoke('bots:app-reset', id),
+  copySetup: (which, id) => ipcRenderer.invoke('bots:copy-setup', which, id),
   undoConnector: (at) => ipcRenderer.invoke('bots:undo-connector', at),
+  // Siri and Shortcuts: main signs a ready-made shortcut and Shortcuts asks to add it.
+  addShortcut: (id) => ipcRenderer.invoke('bots:add-shortcut', id),
   onStatus: (listener) => listen('bots:status', listener),
+}))
+
+/* Webhooks (Settings → Bots, Phase 46): the addresses OSAT tells when something happens, and
+   the ntfy address services add stickies through (it goes to the clipboard from main). */
+contextBridge.exposeInMainWorld('osatHooks', Object.freeze({
+  status: () => ipcRenderer.invoke('hooks:status'),
+  add: (hook) => ipcRenderer.invoke('hooks:add', hook),
+  change: (id, patch) => ipcRenderer.invoke('hooks:change', id, patch),
+  remove: (id) => ipcRenderer.invoke('hooks:remove', id),
+  undoRemove: () => ipcRenderer.invoke('hooks:undo-remove'),
+  test: (id) => ipcRenderer.invoke('hooks:test', id),
+  inboxOn: () => ipcRenderer.invoke('hooks:inbox-on'),
+  inboxOff: () => ipcRenderer.invoke('hooks:inbox-off'),
+  inboxReset: () => ipcRenderer.invoke('hooks:inbox-reset'),
+  inboxServer: (server) => ipcRenderer.invoke('hooks:inbox-server', server),
+  copyAddress: () => ipcRenderer.invoke('hooks:copy-address'),
+  onStatus: (listener) => listen('hooks:status', listener),
+}))
+
+/* Apps OSAT can use (Settings → Bots, Phase 48): the MCP servers Claude uses, each off until turned
+   on. Keys and env values go to the Keychain in main; status only says an app has one. Ask (the
+   desk's and the quick bar's) lists what the apps that are on can do and calls them. */
+contextBridge.exposeInMainWorld('osatAskApps', Object.freeze({
+  status: () => ipcRenderer.invoke('askapps:status'),
+  add: (input) => ipcRenderer.invoke('askapps:add', input),
+  remove: (id) => ipcRenderer.invoke('askapps:remove', id),
+  undoRemove: () => ipcRenderer.invoke('askapps:undo-remove'),
+  toggle: (id, on) => ipcRenderer.invoke('askapps:toggle', id, on === true),
+  check: (id) => ipcRenderer.invoke('askapps:check', id),
+  claudeConfig: () => ipcRenderer.invoke('askapps:claude-config'),
+  import: (names) => ipcRenderer.invoke('askapps:import', names),
+  tools: () => ipcRenderer.invoke('askapps:tools'),
+  call: (app, name, args) => ipcRenderer.invoke('askapps:call', app, name, args),
 }))
 
 /* Scans: the folder a scanner saves to. The desk takes each sorted scan, imports it and

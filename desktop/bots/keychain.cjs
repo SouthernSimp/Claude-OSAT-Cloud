@@ -7,7 +7,9 @@ const { execFile, spawn: nodeSpawn } = require('node:child_process')
 
 const ACCOUNT = /^[a-z0-9-]{1,64}$/
 // Keys are checked by cleanKey first; this keeps anything that could break the command out.
-const SAFE_SECRET = /^[A-Za-z0-9._~+/=:@-]{1,400}$/
+// A longer secret is cut into several items (ask-apps.cjs).
+const MAX_SECRET = 400
+const SAFE_SECRET = new RegExp(`^[A-Za-z0-9._~+/=:@-]{1,${MAX_SECRET}}$`)
 
 function runFile(file, args) {
   return new Promise((resolve) => {
@@ -66,4 +68,4 @@ function createKeychain({ service = 'OSAT', platform = process.platform, run = r
   return chain
 }
 
-module.exports = { createKeychain }
+module.exports = { createKeychain, MAX_SECRET, SAFE_SECRET }

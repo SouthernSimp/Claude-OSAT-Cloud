@@ -175,6 +175,31 @@ function createMacCalendar({ handle, fail, run = osascript, platform = process.p
   })
   handle('maccal:remove-reminder', async (id) => ask('remove-reminder', { id: need(word(id, 300)) }))
   handle('maccal:reminder-done', async (id, done) => ask('set-reminder-done', { id: need(word(id, 300)), done: done === true }))
+
+  /* The morning brief's look (Phase 49): today's events and the reminders due by today, only from
+     what OSAT may already read. The status check never asks macOS, so nothing here ever does;
+     anything that doesn't answer is simply left out. `day` is YYYY-MM-DD, `from`/`to` its ISO bounds. */
+  async function today({ from, to, day }) {
+    const none = { events: [], reminders: [] }
+    if (platform !== 'darwin') return none
+    const read = async (command, args) => {
+      try {
+        const answer = JSON.parse(await run(command, args, { timeout: 40000 }))
+        return Array.isArray(answer) ? answer : null
+      } catch {
+        return null
+      }
+    }
+    let allowed
+    try { allowed = JSON.parse(await run('status', {})) } catch { return none }
+    const events = allowed?.events === 'allowed' ? await read('events', { from, to }) : null
+    const reminders = allowed?.reminders === 'allowed' ? await read('reminders', {}) : null
+    return {
+      events: events || [],
+      reminders: (reminders || []).filter((item) => typeof item?.due === 'string' && item.due && item.due <= day),
+    }
+  }
+  return { today }
 }
 
 module.exports = { SCRIPT, createMacCalendar }

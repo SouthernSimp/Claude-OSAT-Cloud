@@ -94,6 +94,8 @@ jobs:
         run: node scripts/find-check.mjs
       - name: Check the Bin takes a file and says where it landed
         run: node scripts/bin-check.cjs
+      - name: Check the ready-made shortcuts read as property lists and sign
+        run: node scripts/shortcuts-check.cjs
       - name: Build the DMG
         env:
           # electron-builder skips all signing on pull requests by default, which

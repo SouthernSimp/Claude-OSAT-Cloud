@@ -1,0 +1,5 @@
+/* The morning brief (Phase 49): its line on the desk sits above "Add to Jordan?", so both can show. */
+.desk-note.is-brief { bottom: 196px; }
+
+/* Settings → AI: the time it is written. */
+.settings .brief-time { width: auto; min-height: 0; height: 32px; padding: 0 10px; border-radius: 9px; font-variant-numeric: tabular-nums; }

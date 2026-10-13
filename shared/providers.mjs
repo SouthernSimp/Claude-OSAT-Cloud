@@ -170,5 +170,22 @@ export function cleanBotSettings(value) {
       ...(total.estimated === true ? { estimated: true } : {}),
     }]))
   const port = Number.isInteger(input.connector?.port) && input.connector.port > 1024 && input.connector.port < 65536 ? input.connector.port : 0
-  return { model, providers, usage, connector: { on: input.connector?.on === true, port } }
+  return { model, providers, usage, connector: { on: input.connector?.on === true, port, apps: cleanApps(input.connector?.apps) } }
+}
+
+/* An app's name as shown in Settings and on what it adds: one line, at most 40 characters. */
+export const cleanAppName = (value) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, 40) : '')
+
+/* The apps that may reach the connector (Phase 44), each with its own key in the Keychain
+   (never here): { id, name, access: 'read' | 'write', createdAt, usedAt? }. The id is part of
+   the key's Keychain name, so only plain letters, digits and dashes pass. */
+function cleanApps(value) {
+  const seen = new Set()
+  const stamp = (at) => (typeof at === 'string' ? at.slice(0, 40) : '')
+  return (Array.isArray(value) ? value : []).flatMap((app) => {
+    const name = cleanAppName(app?.name)
+    if (!isObject(app) || typeof app.id !== 'string' || !/^[a-z0-9-]{1,40}$/.test(app.id) || seen.has(app.id) || !name || !['read', 'write'].includes(app.access)) return []
+    seen.add(app.id)
+    return [{ id: app.id, name, access: app.access, createdAt: stamp(app.createdAt), ...(stamp(app.usedAt) ? { usedAt: stamp(app.usedAt) } : {}) }]
+  })
 }

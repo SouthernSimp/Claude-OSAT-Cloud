@@ -55,7 +55,7 @@ test('model ids: "cloud:<provider>:<model>", even with slashes and colons in the
 })
 
 test('settings: the AI on this Mac unless a connected provider is picked; totals only for providers kept', () => {
-  assert.deepEqual(cleanBotSettings(null), { model: 'local', providers: [], usage: {}, connector: { on: false, port: 0 } })
+  assert.deepEqual(cleanBotSettings(null), { model: 'local', providers: [], usage: {}, connector: { on: false, port: 0, apps: [] } })
   const settings = cleanBotSettings({
     model: 'cloud:deepseek:deepseek-chat',
     providers: [{ id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' }],
@@ -65,7 +65,7 @@ test('settings: the AI on this Mac unless a connected provider is picked; totals
   })
   assert.equal(settings.model, 'cloud:deepseek:deepseek-chat')
   assert.deepEqual(settings.usage, { deepseek: { requests: 2, input: 10, output: 0, since: '2026-09-29' } })
-  assert.deepEqual(settings.connector, { on: true, port: 0 })
+  assert.deepEqual(settings.connector, { on: true, port: 0, apps: [] })
   assert.ok(!JSON.stringify(settings).includes(KEY), 'a key never makes it into the settings')
   assert.equal(cleanBotSettings({ ...settings, providers: [] }).model, 'local', 'a removed provider falls back to this Mac')
 })

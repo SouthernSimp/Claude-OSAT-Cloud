@@ -8,21 +8,34 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 6, 2026 (night)
+## Resume checkpoint — October 10, 2026: Phases 44–49 in review
 
-Nate's answers that steer everything now (Oct 6): the AI files his stickies for him like Mem, with sorting by hand still
-there; Notes (sidebar + list) is home and the Sky becomes **Canvas**, an open board to think on; **topic** replaces node
-on screen; the quick bar, clipboard and quick chat are **one list**; Settings → AI recommends the best local model for the
-Mac and compares them; Raycast-style customizing from the bar. Merged that night: #58 and #60 (Return pastes; builds are
-signed with one steady identity so Accessibility survives updates) and #64.
+Main is `0749003` (through Phase 43, PRs #73 and #74 merged). `claude/power`
+now combines the power work with `claude/ask-acts` (48b and 49), including both
+sides of the bots merge: synchronous workspace changes and loss-resistant
+connector Undo, plus the read-only `ask` callback.
 
-Open, all green, built that night: #65 the AI files stickies (Phase 35), #66 one bar (36), #67 choose your AI (37, plus the
-widget-tray flake fix), #68 Notes is home / Canvas / topic (38), #69 favorites, keys and words from the bar + Mac commands +
-Next screen (39, on #66), #70 smarter calculator (40), #71 snippets (41, on #69), #72 Ask honest about the cloud, Try
-again, Edit (42), and **#73, all eight in one branch (`claude/everything`) for one DMG**: if Nate likes it, merge #73 and
-close the eight as included. Oct 7: #74 (Phase 43, on #73): the connector finds stickies, reads and writes the journal, and answers as a plain web API at `/api/<tool>`. Not done, on purpose: drag a window to an edge (macOS already tiles windows), trackpad
-gestures, currency in the calculator (needs the internet; offer it opt-in). On Nate's Mac checklist: typed snippets in
-other apps, Mac commands, keys set from the bar, Qwen 3.6 35B (Settings → AI's pick for his 64 GB M5 Pro).
+Codex's clean review checkout is
+`/Users/nate/Desktop/Projects/OSAT V2/work/osat-power-review`.
+The shared older repository has a damaged duplicate branch reference; its refs,
+untracked files and other worktrees were left alone. Continue in the clean checkout.
+One draft PR targets main. Do not merge until Nate says “merge”.
+
+Review fixes: Ask changes commit without yielding between reading and writing;
+Undo refuses to overwrite later edits or remove a branch with new children.
+Stop still prevents an external change after Allow resolves. The confirmation
+shows every argument, including nested values, traps keyboard focus and Esc
+means Not now. Offline does not discover or run other apps' tools. Read-only
+connector questions and the morning brief use noninteractive model loading.
+Brief Undo restores only its own block and keeps later writing; a stale Undo
+cannot undo a newer brief. The automatic brief notice also offers Undo.
+
+Validation and the Mac checklist live in `docs/POWER-REVIEW-20261010.md`.
+All local testing is headless; no installed app or real OSAT data was opened.
+OAuth sign-in is not supported by the MCP client. Offline webhook deliveries
+wait in memory and are lost on quit. Ask Undo lasts for ten runs in memory;
+brief Undo lasts until another brief or quit. Another app's changes are outside
+OSAT's Undo and must be reversed in that app.
 
 ## Working with Nate
 
@@ -157,7 +170,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     input, never argv; off the Mac held in memory), `settings.cjs` (`bots.json`: model, providers,
     usage, connector, never a key), `connector.cjs` (MCP over HTTP on
     127.0.0.1 only, Bearer key from the Keychain, refuses other Hosts and web Origins; tools in
-    shared/connector-tools.mjs (Phase 43: seven, adding `search`, `read_journal`, `add_to_journal`; the same tools
+    shared/connector-tools.mjs (Phases 43–48: fifteen tools plus read-only `ask`; the same tools
     answer as a plain web API at `/api/<tool>`, GET query or POST JSON, text back, same key and walls); each change commits through the store with its inverse for Undo).
     Main routes models in one place: `answeringModels()` (the model chosen in Bots first, a cloud
     one only while online) and `chatWith()`; the line and Ask read `local-ai:models`, so the line's
@@ -245,7 +258,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - `shared/ai-tasks.mjs` — the model's small jobs, each a question and a forgiving reader:
   Unpack with AI (Markdown back), Help me sort ("sticky: branch" lines) and Sort Unsorted (Phase 26:
   "n: place number", "n: new: Name" or "none" per sticky; `readSortUnsortedAnswer`).
-- `shared/connector-tools.mjs` — the connector's four tools as pure `runTool(name, args, { doc })`
+- `shared/connector-tools.mjs` — fifteen connector tools plus read-only `ask`, with MCP
+  `annotations` and `isReadOnly`, as pure `runTool(name, args, { doc })`
   → `{ text, ops }`, names or ids, and `connectorSetup` (the lines for Claude Code / Desktop).
 - `shared/sync-core.mjs` + `shared/sync-engine.mjs` — pure sync, for the Mac now and the iPhone
   app next. Every change gets a hybrid-clock stamp (`<ms>.<count>.<device>`, sorts as text);
@@ -461,6 +475,32 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `files`). Asking on the desk answers in a card under the line and saves the
   chat; Pop out moves it to the quick bar's Ask. Action cards (add a step, a note, an event) only
   appear when the question asks for something to be added.
+
+## Architecture added in Phases 44–49
+
+- `desktop/bots/index.cjs`: per-app keys live in the Keychain as
+  `connector-key-<id>`; the old key migrates to First app without breaking its
+  setup. Settings holds names and access levels, never the keys. `runForApp`
+  commits each change and keeps its inverse and resulting records for safe Undo.
+- `desktop/bots/webhooks.cjs` + `shared/webhook-model.mjs`: opt-in outgoing
+  webhooks and an ntfy relay for incoming stickies. Main owns the addresses;
+  incoming stickies use `runForApp` as Webhook. Offline holds a bounded queue in memory.
+- `desktop/bots/shortcuts.cjs` + `shared/shortcut-file.mjs` +
+  `scripts/shortcuts-check.cjs`: six ready-made shortcuts, signed with this Mac's
+  iCloud identity. Temporary files contain a key and are removed after an hour or quit.
+- `desktop/bots/mcp-client.cjs` + `ask-apps.cjs`: streamable HTTP or local-command
+  MCP servers, explicitly enabled in Settings. Claude Desktop imports start off.
+  No OAuth flow; keys and environment values stay in the Keychain. Offline closes
+  connections and stops local commands.
+- `shared/agent.mjs` + `desktop/agent.cjs`: bounded tool loop and read-only spoken
+  answers. Own changing tools commit without confirmation; external changing
+  tools wait for Allow. Built-in models get `stepSchema`; cloud and LM Studio get
+  JSON instructions. `src/assistant/useAgent.js` and `AgentSteps.jsx` show steps,
+  confirmation and Undo in Ask. File results never go to a cloud model.
+- `shared/brief-model.mjs` + `desktop/brief.cjs`: off by default, local-time schedule
+  in device-local `brief.json`, read-only agent, no interactive model loading,
+  Mac Calendar/Reminders only with existing permission. Only the brief block on
+  today's journal is replaced. Settings and the automatic notice offer guarded Undo.
 
 ## Layout traps worth remembering
 

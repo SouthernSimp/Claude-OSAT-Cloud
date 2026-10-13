@@ -1,0 +1,143 @@
+/* Ask can act (Phase 48): the steps above an answer, the question before another app changes
+   anything, Undo for what a run changed, and the "Can use tools" switch in the composer. */
+
+.agent-steps {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 var(--s-2);
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--t-2xs);
+}
+
+.agent-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.agent-step > svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
+
+.agent-step.is-done > svg { color: var(--accent); }
+.agent-step.is-running { color: var(--ink); }
+
+.agent-step-words {
+  display: grid;
+  min-width: 0;
+}
+
+.agent-step-words > span,
+.agent-step-words small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-step-words em { font-style: normal; color: var(--faint); }
+.agent-step-words small { color: var(--faint); font-size: var(--t-2xs); }
+
+.agent-confirm {
+  display: grid;
+  gap: var(--s-2);
+  margin: var(--s-2) 0;
+  padding: var(--s-3);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  animation: bubble-in var(--d-base) var(--ease-out);
+}
+
+.agent-confirm p {
+  max-height: 180px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--t-xs);
+}
+
+.agent-confirm-buttons {
+  display: flex;
+  gap: var(--s-1);
+}
+
+.agent-confirm-buttons button {
+  min-height: 30px;
+  padding: 0 var(--s-3);
+  font-size: var(--t-2xs);
+}
+
+.agent-undo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  min-height: 26px;
+  margin-top: var(--s-2);
+  padding: 0 var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  color: var(--muted);
+  font-size: var(--t-2xs);
+  font-weight: 550;
+}
+
+.agent-undo:hover { color: var(--ink); border-color: var(--line-strong); }
+
+.ask-tools-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--t-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ask-tools-switch input[type="checkbox"] {
+  appearance: none;
+  position: relative;
+  width: 26px;
+  height: 16px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--ink) 20%, transparent);
+  cursor: pointer;
+  transition: background var(--d-fast);
+}
+
+.ask-tools-switch input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: translate var(--d-fast) var(--ease-out);
+}
+
+.ask-tools-switch input[type="checkbox"]:checked { background: var(--accent); }
+.ask-tools-switch input[type="checkbox"]:checked::after { translate: 10px 0; }
+.ask-tools-switch input[type="checkbox"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* The composer's foot is narrow beside the list of chats: there the switch keeps its icon and says
+   what it is when held over. */
+.composer-foot { container: ask-foot / inline-size; }
+.ask-tools-switch svg { width: 14px; height: 14px; }
+
+@container ask-foot (max-width: 520px) {
+  .ask-tools-switch span { display: none; }
+}

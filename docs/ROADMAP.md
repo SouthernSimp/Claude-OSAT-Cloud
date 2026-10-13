@@ -133,6 +133,13 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 40 | A smarter calculator: units and dates, offline (currency later: it needs the internet) | Merged (PR #70), Oct 8 |
 | 42 | Ask, tidier and honest: where a question goes, Try again, Edit your last question, a calmer box | Merged (PR #72), Oct 8 |
 | 43 | The connector grows, and a plain web API (Phase 34's first step): Claude and other apps can find your stickies and read and write the journal; Shortcuts and scripts reach the same tools by web address | Merged (PR #74), Oct 8 |
+| 44 | Each app has its own key: Can look or Can look and change, with recent changes and Undo in Settings | In review |
+| 45 | More connector tools: change and move stickies, branches, topics, calendar events and find files | In review |
+| 46 | Webhooks: tell a service what happened, or let a service add a sticky to Unsorted | In review |
+| 47 | Siri and Shortcuts: six shortcuts ready to add | In review |
+| 48a | Apps OSAT can use: connect by web address or local command, or import from Claude Desktop | In review |
+| 48b | Ask can act: visible steps, Allow before another app changes, and one Undo for OSAT changes | In review |
+| 49 | An optional morning brief at the top of today’s journal, with Undo | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
