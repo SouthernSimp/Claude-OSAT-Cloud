@@ -191,20 +191,21 @@ test('one bar: commands come right after an app named by the words, and the word
   const ready = { state: 'ready', label: 'Balanced, on this Mac' }
   const rows = buildRows(readTyped('no', settings), { apps, commands }, settings, { now, ai: ready })
   assert.deepEqual(rows.map((row) => [row.section, row.kind, row.title]), [
-    ['Ask', 'ask', 'Ask AI “no”'],
     ['Apps', 'app', 'Notion'],
+    ['Apps', 'app', 'Sticky Notes'],
     ['Commands', 'room', 'Notes'],
     ['Commands', 'room', 'New note'],
     ['Commands', 'room', 'Write a sticky'],
-    ['Apps', 'app', 'Sticky Notes'],
+    ['Ask', 'ask', 'Ask AI “no”'],
     ['Write it down', 'sticky', 'Save as a sticky'],
-  ])
-  assert.equal(rows[0].subtitle, 'Balanced, on this Mac')
-  assert.deepEqual(actionsFor(rows[0]).map((action) => [action.id, action.keys]), [['ask-ai', '↵']])
+  ], 'what was found first, like Raycast; Ask AI waits under it')
+  const askRow = rows.find((row) => row.kind === 'ask')
+  assert.equal(askRow.subtitle, 'Balanced, on this Mac')
+  assert.deepEqual(actionsFor(askRow).map((action) => [action.id, action.keys]), [['ask-ai', '↵']])
   assert.deepEqual(actionsFor(rows.at(-1)).map((action) => [action.id, action.keys]), [['sticky', '↵']])
   assert.equal(rows.at(-1).data.text, 'no')
   // The highlight starts on the first thing found; on Ask for a question, or when nothing else was found.
-  assert.equal(startRow(rows, readTyped('no', settings)), 1)
+  assert.equal(startRow(rows, readTyped('no', settings)), 0)
   const question = readTyped('how do I export a node?', settings)
   assert.equal(startRow(buildRows(question, { apps }, settings, { now, ai: ready }), question), 0)
   const nothing = readTyped('zebra plans', settings)
@@ -256,7 +257,7 @@ test('anything in the bar can be a favorite, or have its own key and word, set f
   assert.deepEqual([start[0].section, start[0].title, start[0].favorite], ['Favorites', 'Notes', true])
   assert.equal(actionsFor(start[0]).find((action) => action.id === 'favorite').label, 'Remove from favorites')
   const byWord = buildRows(readTyped('nn', next), {}, next, { now, ai: { state: 'ready', label: 'AI' } })
-  assert.deepEqual([byWord[1].title, byWord[1].section], ['Notes', 'Your word “nn”'], 'after Ask AI, the thing your word names')
+  assert.deepEqual([byWord[0].title, byWord[0].section], ['Notes', 'Your word “nn”'], 'first, the thing your word names')
 
   // Taking all three away forgets it; an app keeps its key and word with the apps.
   let off = cleanSettings(applyPatch(next, customize(next, room, { favorite: false })), { validHotkey })
@@ -280,4 +281,28 @@ test('Next screen keeps the window as it is, in the same place in proportion, on
   assert.deepEqual(nextScreenFrame({ x: 0, y: 25, width: 800, height: 600 }, [left, right]), { x: 1440, y: 0, width: 800, height: 600 }, 'at the top left, it stays at the top left')
   assert.deepEqual(nextScreenFrame({ x: 1440 + 2560 - 800, y: 1415 - 600, width: 800, height: 600 }, [left, right]), { x: 640, y: 300, width: 800, height: 600 }, 'from the last screen it wraps to the first, bottom right stays bottom right')
   assert.deepEqual(nextScreenFrame({ x: 1440, y: 0, width: 2560, height: 1415 }, [left, right]), { x: 0, y: 25, width: 1440, height: 875 }, 'too big for the next screen: it fits it')
+})
+
+test('apps match like Raycast: initials, word starts, letters in order', () => {
+  const apps = ['Visual Studio Code', 'Google Chrome', 'Spotify', 'Safari', 'System Settings', 'Screenshot', 'Notes', 'VSCodium', 'ChatGPT'].map((name) => ({ name, path: `/Applications/${name}.app` }))
+  const top = (query) => rankApps(apps, query)[0]?.name
+  assert.equal(top('gc'), 'Google Chrome')
+  assert.equal(top('chr'), 'Google Chrome')
+  assert.equal(top('sptfy'), 'Spotify')
+  assert.equal(top('sys set'), 'System Settings')
+  assert.equal(top('cg'), 'ChatGPT')
+  assert.ok(rankApps(apps, 'vsc').some((app) => app.name === 'Visual Studio Code'))
+  assert.equal(rankApps(apps, 'not').some((app) => app.name === 'Screenshot'), false, 'three letters in order are too loose')
+  // A strong match leads the list in Everything.
+  const rows = buildRows(readTyped('gc', settings), { apps }, settings, { now })
+  assert.equal(rows[0].title, 'Google Chrome')
+})
+
+test('System Settings panes are in the bar', () => {
+  const rows = buildRows(readTyped('bluetooth', settings), {}, settings, { now })
+  const pane = rows.find((row) => row.title === 'Bluetooth')
+  assert.equal(pane.section, 'System Settings')
+  assert.equal(pane.data.id, 'pane:com.apple.BluetoothSettings')
+  assert.equal(actionsFor(pane)[0].label, 'Open')
+  assert.ok(buildRows(readTyped('wifi', settings), {}, settings, { now }).some((row) => row.title === 'Wi-Fi'))
 })

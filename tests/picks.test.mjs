@@ -24,10 +24,11 @@ test('the bar learns: what you picked for the words comes first', () => {
   assert.equal(rows[startRow(rows, readTyped('s', settings))].title, 'Slack', 'the highlight starts on it')
   assert.equal(rows.filter((row) => row.title === 'Slack').length, 1, 'moved, not copied')
 
-  // A sum and Ask stay ahead of it.
+  // A question still puts Ask first, ahead of it.
   const ready = { state: 'ready', label: 'AI' }
   const asked = buildRows(readTyped('s', settings), { apps }, settings, { now, picks, ai: ready })
-  assert.deepEqual([asked[0].kind, asked[1].title], ['ask', 'Slack'])
+  assert.equal(asked[0].title, 'Slack')
+  assert.equal(asked.at(-2).kind, 'ask', 'Ask AI waits under what was found')
 })
 
 test('apps used often sort ahead of others that match as well', () => {

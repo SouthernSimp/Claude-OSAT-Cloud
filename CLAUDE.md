@@ -8,14 +8,15 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 12, 2026 (night): Phases 50–51 stacked on #75
+## Resume checkpoint — October 12, 2026 (late night): 44–51 merged, Phase 52 in review
 
-Nate asked for Raycast's best missing pieces (Oct 12). Stacked drafts, each on the one before, so the top one's DMG
-has everything: #75 `claude/power` (44–49) ← #76 `claude/bar-learns` (50: the bar learns what you pick,
-`shared/picks.mjs`, `picks.json`) ← #77 `claude/selected-text` (51: AI on selected text, Hyper T,
-`shared/selection-model.mjs`, `desktop/launcher/selection.cjs`; also backlog #4, the AI says "you"). If Nate likes
-#77's DMG, merge #75, #76, #77 in that order. Next Raycast gaps, not started: script commands / extensions (the
-biggest), a color picker, ask about the screen. REA (`npx rea-agents setup`) can trace how Raycast does one.
+Main has #75 (44–49), #76 (50: the bar learns, `shared/picks.mjs`) and #77 (51: AI on selected text, Hyper T),
+merged at Nate's word. Nate wants the quick bar good enough to stop using Raycast and left the choices to Claude.
+Phase 52 (`claude/bar-usable`): `appTier` in quick-search-model (initials, word starts, letters in order; a strong
+match leads Everything), System Settings panes in `shared/system-commands.mjs` (`pane:<bundle id>`, opened with
+`open x-apple.systempreferences:<id>` in system.cjs), and Ask AI under the results unless the words are a question
+or found nothing. Next Raycast gaps: script commands / extensions (the biggest), a color picker, ask about the
+screen. REA (`npx rea-agents setup`) can trace how Raycast does one.
 
 ## Earlier checkpoint — October 10, 2026: Phases 44–49 in review
 

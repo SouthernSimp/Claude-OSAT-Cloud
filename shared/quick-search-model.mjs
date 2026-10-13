@@ -176,19 +176,36 @@ export function startRow(rows, read) {
   return found < 0 ? ask : found
 }
 
-/* Names that start with the words come first, then words that start a word of the name, then the rest; within each,
-   the apps you pick from the bar most (shared/picks.mjs) first. */
-export function rankApps(apps, query, picks = null, now = Date.now()) {
+/* How well an app's name answers the words, like Raycast (lower is better, 5 is no match): 0 the name starts with
+   them, 1 each word starts a word of the name ("chr" Google Chrome), 2 the letters start its words ("vsc" Visual
+   Studio Code, "gc" Google Chrome), 3 each word is inside it, 4 the letters are in it in order ("sptfy" Spotify). */
+export function appTier(name, query) {
   const words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean)
-  if (!words.length) return [...apps].sort((a, b) => a.name.localeCompare(b.name))
-  const tier = (name) => {
-    const lower = name.toLowerCase()
-    if (lower.startsWith(words.join(' '))) return 0
-    if (words.every((word) => lower.split(/[^a-z0-9]+/).some((part) => part.startsWith(word)))) return 1
-    return words.every((word) => lower.includes(word)) ? 2 : 3
+  if (!words.length) return 5
+  const lower = name.toLowerCase()
+  const joined = words.join('')
+  // "Visual Studio Code", "VSCodium" (its capitals start words too), "zoom.us".
+  const parts = name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
+  if (lower.startsWith(words.join(' '))) return 0
+  if (words.every((word) => parts.some((part) => part.startsWith(word)))) return 1
+  if (joined.length >= 2 && parts.length >= 2 && parts.map((part) => part[0]).join('').startsWith(joined)) return 2
+  if (words.every((word) => lower.includes(word))) return 3
+  // Short words in order match too much ("not" in Screenshot): four letters at least.
+  if (joined.length >= 4) {
+    let at = 0
+    for (const letter of lower) if (letter === joined[at]) at += 1
+    if (at === joined.length) return 4
   }
+  return 5
+}
+
+/* The apps that answer the words, the best match first; within a tier, the apps you pick from the bar most
+   (shared/picks.mjs) first. */
+export function rankApps(apps, query, picks = null, now = Date.now()) {
+  if (!String(query || '').trim()) return [...apps].sort((a, b) => a.name.localeCompare(b.name))
+  const tiers = new Map(apps.map((app) => [app, appTier(app.name, query)]))
   const used = (app) => (picks ? scoreOf(picks, `app:${app.path}`, query, now) : 0)
-  return apps.filter((app) => tier(app.name) < 3).sort((a, b) => tier(a.name) - tier(b.name) || used(b) - used(a) || a.name.localeCompare(b.name))
+  return apps.filter((app) => tiers.get(app) < 5).sort((a, b) => tiers.get(a) - tiers.get(b) || used(b) - used(a) || a.name.localeCompare(b.name))
 }
 
 /* One list from what every source answered. `found` is { files, recentFiles, clipboard, apps, commands, notes }
@@ -237,9 +254,9 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   const more = (scope, count, section) => ({ key: `more:${scope}`, source: 'more', kind: 'more', title: `See all ${count}`, subtitle: section, section, data: { scope } })
   if (has) {
     const [ask, sticky] = ai ? wordRows(read, ai) : []
-    if (ask) rows.unshift(ask)
     const apps = rankApps(found.apps || [], read.query, picks, +now).slice(0, 3)
-    const named = apps.filter((item) => item.name.toLowerCase().startsWith(read.query.toLowerCase()))
+    // A strong match (the name starts with the words, or its words do, or its initials) leads the list.
+    const named = apps.filter((item) => appTier(item.name, read.query) <= 2)
     rows.push(...named.map((item) => appRow(item, 'Apps')))
     rows.push(...(found.commands || []).slice(0, 3).map((item) => noteRow(item, 'Commands')))
     rows.push(...findSystem(read.query).slice(0, 3).map((item) => systemRow(item)))
@@ -258,6 +275,12 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
       rows.splice(rows.indexOf(hit), 1)
       const at = rows.findIndex((row) => !['do', 'calc', 'keyword'].includes(row.source))
       rows.splice(at < 0 ? rows.length : at, 0, { ...hit, section: 'Top hit' })
+    }
+    // Like Raycast: what was found comes first and Ask AI waits under it (Tab or ⌘↵ asks from anywhere); a question,
+    // or words that found nothing, put Ask first.
+    if (ask) {
+      if (looksLikeQuestion(read.typed) || !rows.some((row) => row.source !== 'do')) rows.unshift(ask)
+      else rows.push(ask)
     }
     if (sticky) rows.push(sticky)
   } else {
@@ -338,7 +361,7 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
     case 'sticky': return [{ id: 'sticky', label: 'Save as a sticky', keys: '↵' }]
     case 'ask': return [{ id: 'ask-ai', label: 'Ask', keys: '↵' }]
     case 'more': return [{ id: 'scope', label: 'Show all', keys: '↵' }]
-    case 'system': return [{ id: 'system', label: row.title, keys: '↵' }]
+    case 'system': return [{ id: 'system', label: row.data?.id?.startsWith('pane:') ? 'Open' : row.title, keys: '↵' }]
     case 'snippet': return [{ id: 'paste-snippet', label: 'Paste', keys: '↵' }, { id: 'copy-snippet', label: 'Copy', keys: '⇧↵' }]
     case 'text-action': return [{ id: 'text-ai', label: row.title, keys: '↵' }]
     case 'keyword-app': return [{ id: 'open-app-named', label: 'Open', keys: '↵' }]
@@ -370,7 +393,8 @@ export function detailsFor(row, { now = new Date() } = {}) {
     case 'note': return [['Kind', 'Note'], ['Where', row.subtitle]]
     case 'node': return [['Kind', 'Topic'], ['Where', row.subtitle]]
     case 'snippet': return [['Kind', 'Snippet'], ...(d.keyword ? [['Word', d.keyword]] : []), ['Length', `${d.text.length.toLocaleString('en-US')} characters`]]
-    case 'system': return [['Does', row.title], ['Undo', row.subtitle === 'Can’t be undone' ? 'Can’t be undone' : 'Do it again to switch back']]
+    case 'system': if (row.data?.id?.startsWith('pane:')) return [['Opens', `${row.title} in System Settings`]]
+      return [['Does', row.title], ['Undo', row.subtitle === 'Can’t be undone' ? 'Can’t be undone' : 'Do it again to switch back']]
     default: return []
   }
 }
