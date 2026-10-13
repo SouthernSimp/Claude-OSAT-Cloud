@@ -124,7 +124,7 @@ export function ObsidianView({ workspace, commit }) {
       <div className="content-card stack">
         <div className="section-intro">
           <div>
-            <p className="eyebrow">MANUAL BRIDGE</p>
+            <p className="eyebrow">Manual bridge</p>
             <h2>Move Markdown only after review.</h2>
           </div>
           <span className={`status-pill ${api ? "active" : "parked"}`}>
@@ -168,7 +168,7 @@ export function ObsidianView({ workspace, commit }) {
         </div>
       </div>
       <aside className="bridge-preview">
-        <p className="eyebrow">EXACT MARKDOWN</p>
+        <p className="eyebrow">Exact Markdown</p>
         <textarea
           readOnly
           rows="20"

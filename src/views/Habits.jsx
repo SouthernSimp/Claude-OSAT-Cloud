@@ -24,8 +24,7 @@ export function HabitsView({ workspace, commit, today }) {
       <div className="content-card stack">
         <div className="section-intro">
           <div>
-            <p className="eyebrow">TODAY</p>
-            <h2>Explicit practice, no streak pressure.</h2>
+            <h2>Today</h2>
           </div>
           <span>
             {
@@ -76,8 +75,7 @@ export function HabitsView({ workspace, commit, today }) {
         </div>
       </div>
       <form className="side-form" onSubmit={add}>
-        <p className="eyebrow">ADD HABIT</p>
-        <h2>Name the behavior.</h2>
+        <h2>New habit</h2>
         <label>
           Habit
           <input

@@ -23,7 +23,7 @@
 .settings-search kbd { position: absolute; right: 10px; top: 50%; translate: 0 -50%; font: 560 var(--t-2xs) var(--font); color: var(--faint); pointer-events: none; }
 .settings-nav { min-height: 0; overflow-y: auto; padding: 2px 8px 20px; }
 .settings-nav-group + .settings-nav-group { margin-top: 8px; }
-.settings-nav-group h3 { padding: 12px 10px 6px; font: 650 var(--t-2xs) var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.settings-nav-group h3 { padding: 12px 10px 6px; font: 650 var(--t-2xs) var(--font); letter-spacing: 0; color: var(--faint); }
 .settings-nav button { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 8px; border-radius: 6px; color: var(--ink); font-size: var(--t-md); font-weight: 520; text-align: left; }
 .settings-nav button:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .settings-nav button[aria-current="page"] { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink-strong); font-weight: 620; }

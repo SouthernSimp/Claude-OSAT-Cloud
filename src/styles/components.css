@@ -320,11 +320,10 @@ input[type="radio"] {
 }
 
 .eyebrow {
-  font-size: var(--t-2xs);
-  font-weight: 650;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--faint);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
 }
 
 .modal-close {

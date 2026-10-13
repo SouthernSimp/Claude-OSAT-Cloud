@@ -124,7 +124,7 @@ export function MacCalendarBar({ mac }) {
       {mac.notice && <p className="mac-cal-note" role="status">{mac.notice}</p>}
       {mac.access.events === "allowed" && mac.calendars.length > 0 && (
         <div className="mac-cal-list">
-          <p className="eyebrow">FROM YOUR MAC</p>
+          <p className="eyebrow">From your Mac</p>
           {mac.calendars.map((calendar) => (
             <label key={calendar.id} className="mac-cal-row">
               <input type="checkbox" checked={!mac.hidden.includes(calendar.id)} onChange={() => mac.toggle(calendar.id)} />
@@ -177,7 +177,7 @@ export function MacReminders({ mac, showUndo }) {
 
   return (
     <section className="mac-reminders" aria-label="Reminders">
-      <p className="eyebrow">REMINDERS</p>
+      <p className="eyebrow">Reminders</p>
       {mac.access.reminders === "notAsked" && (
         <button className="outline-button" type="button" disabled={mac.busy} onClick={() => mac.allow("reminders")}>
           Show my Mac’s reminders

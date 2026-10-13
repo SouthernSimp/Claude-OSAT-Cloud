@@ -33,7 +33,7 @@ export function BotsSettings() {
   if (!bridge) {
     return (
       <section className="content-card">
-        <p className="eyebrow">BOTS</p>
+        <p className="eyebrow">Bots</p>
         <h2>Bots reach OSAT in the Mac app.</h2>
         <p>In the Mac app, a bot like Muse saves a topic file in a folder on your Mac, and it appears on your canvas. Cloud models connect there too.</p>
       </section>
@@ -59,7 +59,7 @@ function DropFolderCard({ bridge, nodes }) {
   const last = nodes?.arrived?.[0]
   return (
     <section className="content-card bots-card">
-      <p className="eyebrow">NODES FROM BOTS</p>
+      <p className="eyebrow">Topics from bots</p>
       <h2>Bots save topics in one folder.</h2>
       <p>A topic file saved here appears on your canvas, marked New, a few seconds later. The file then moves to Added in the same folder. Nothing is deleted, and it works offline.</p>
       {nodes?.dir && <p className="settings-path">{nodes.dir}</p>}
@@ -108,7 +108,7 @@ function ModelCard({ bridge, cloud, offline }) {
   const choose = (model) => bridge.chooseModel(model).then(() => setMessage(''), (error) => setMessage(cleanError(error)))
   return (
     <section className="content-card bots-card">
-      <p className="eyebrow">MODEL</p>
+      <p className="eyebrow">Model</p>
       <h2>{cloud?.leavesMac ? `${cloud.leavesMac} answers.` : 'The AI on this Mac answers.'}</h2>
       <p>The model you pick answers the line, Ask, Help me sort and Unpack with AI. Scans (Settings → Data) are always sorted by the AI on this Mac.</p>
       <div className="bots-models" role="radiogroup" aria-label="Which AI answers">
@@ -174,7 +174,7 @@ function CloudCard({ bridge, cloud }) {
 
   return (
     <section className="content-card bots-card">
-      <p className="eyebrow">CLOUD MODELS</p>
+      <p className="eyebrow">Cloud models</p>
       <h2>Connect any AI.</h2>
       <p>Pick the provider, paste its API key, and it’s ready. DeepSeek, OpenAI, xAI (Grok), OpenRouter, Mistral, Groq, or any other that works like OpenAI.</p>
       <form className="bots-connect" onSubmit={connect}>

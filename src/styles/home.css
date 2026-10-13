@@ -380,7 +380,7 @@
 }
 .home.is-raised .home-drawer { max-height: calc(var(--below) + var(--rise) - 20px); }
 @keyframes drawer-in { from { clip-path: inset(0 0 100% 0 round 16px); } to { clip-path: inset(0 0 0 0 round 16px); } }
-.home-drawer-head { margin: 5px 10px 3px; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.home-drawer-head { margin: 5px 10px 3px; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: 0; color: var(--faint); }
 .home-row { position: relative; display: flex; align-items: center; gap: 10px; min-height: 33px; padding: 0 10px; border-radius: 8px; font-size: var(--t-sm); user-select: none; }
 .home-row svg { flex: none; width: 16px; height: 16px; color: var(--muted); }
 .home-row-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

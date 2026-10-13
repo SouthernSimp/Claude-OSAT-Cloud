@@ -474,7 +474,7 @@ html[data-carry-edge="up"] body::after {
 .node-head.is-unsorted small { color: var(--muted); }
 .node-head.is-unsorted:hover { translate: none; }
 .node-head.is-naming { align-content: center; box-shadow: var(--lift-held); }
-.pile-label { margin: 0; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: var(--tr-wide); text-transform: uppercase; color: var(--muted); }
+.pile-label { margin: 0; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: 0; color: var(--muted); }
 
 /* ---- An open node: a mind map, its branches and stickies hung around it --------- */
 
@@ -712,9 +712,6 @@ g:hover > .link-line { stroke-width: 3.5px; opacity: 1; }
 
 /* ---- Pop-outs that fill the screen ------------------------------------------ */
 
-.popout-fill { margin-left: auto; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; color: var(--muted); }
-.popout-fill:hover { color: var(--ink); background: var(--surface-hover); }
-.popout-fill svg { width: 13px; height: 13px; }
 .popout.is-full { resize: none; border-radius: 10px; }
 
 /* A pile looks as thick as it is: a sheet of paper behind for every few stickies. */

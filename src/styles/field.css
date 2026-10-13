@@ -123,7 +123,7 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
 
 .journal-studio { padding: 30px clamp(20px, 4cqi, 56px) 64px; }
 .journal-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; margin-bottom: 30px; }
-.journal-top h1 { margin-top: 8px; font-size: clamp(32px, 3vw, 40px); letter-spacing: -0.035em; }
+.journal-top h1 { margin-top: 4px; font-size: 26px; letter-spacing: -0.02em; }
 .journal-tabs {
   display: inline-flex;
   gap: 1px;
@@ -173,7 +173,7 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
 }
 .journal-sheet > header span:last-child { display: inline-flex; align-items: center; gap: 5px; margin-right: 18px; }
 .journal-sheet > header svg { width: 12px; height: 12px; color: var(--positive); }
-.journal-sheet label { display: block; margin-bottom: 14px; font-family: var(--font-display); font-size: 34px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.1; }
+.journal-sheet label { display: block; margin-bottom: 14px; font-family: var(--font-display); font-size: 28px; font-weight: 600; letter-spacing: -0.022em; line-height: 1.15; }
 .journal-sheet textarea {
   display: block;
   width: 100%;
@@ -209,7 +209,7 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
 .journal-sheet footer button:hover { color: var(--accent); }
 .journal-sheet footer svg { width: 14px; height: 14px; }
 .journal-margin { position: sticky; top: 24px; display: grid; gap: 18px; padding-top: 40px; }
-.journal-margin > span { font-size: var(--t-2xs); font-weight: 650; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+.journal-margin > span { font-size: var(--t-2xs); font-weight: 650; letter-spacing: 0; color: var(--faint); }
 .journal-margin p { font-family: var(--font-display); font-size: 27px; line-height: 1.22; letter-spacing: -0.035em; }
 .journal-margin p em { font-style: normal; color: var(--accent); }
 .journal-margin small { padding-top: 16px; border-top: 1px solid var(--line); font-size: var(--t-sm); line-height: 1.6; color: var(--muted); }

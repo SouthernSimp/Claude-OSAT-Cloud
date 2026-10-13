@@ -210,7 +210,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .menu-popover button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .menu-popover button small { margin-left: auto; color: var(--faint); font-size: var(--t-2xs); }
 
-.pop-kicker { position: relative; z-index: 1; font: 650 10px/1 var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--on-3); }
+.pop-kicker { position: relative; z-index: 1; font: 650 10px/1 var(--font); letter-spacing: 0; color: var(--on-3); }
 .segmented {
   position: relative;
   z-index: 1;

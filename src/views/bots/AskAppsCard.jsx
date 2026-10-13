@@ -86,7 +86,7 @@ export function AskAppsCard({ apps = [], offline = false }) {
 
   return (
     <section className="content-card bots-card ask-apps-card">
-      <p className="eyebrow">APPS</p>
+      <p className="eyebrow">Apps</p>
       <h2>Apps OSAT can use</h2>
       <p>Ask can also read your Google Calendar, Gmail, Notion and other apps you connect here: the same ones Claude uses. Each one stays off until you turn it on.</p>
       <p className="bots-privacy">
