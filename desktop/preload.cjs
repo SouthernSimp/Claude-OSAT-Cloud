@@ -121,6 +121,17 @@ const listen = (channel, listener) => {
   return () => ipcRenderer.removeListener(channel, handler)
 }
 
+// While you sleep (desktop/overnight.cjs): the canvas's ideas and Settings → AI.
+contextBridge.exposeInMainWorld('osatOvernight', Object.freeze({
+  status: () => ipcRenderer.invoke('overnight:status'),
+  set: (patch) => ipcRenderer.invoke('overnight:set', patch),
+  think: () => ipcRenderer.invoke('overnight:think'),
+  done: (id, dismiss) => ipcRenderer.invoke('overnight:done', id, dismiss === true),
+  seen: () => ipcRenderer.invoke('overnight:seen'),
+  onChange: (listener) => listen('overnight:changed', listener),
+}))
+
+
 contextBridge.exposeInMainWorld('osatBrowser', Object.freeze({
   state: () => ipcRenderer.invoke('browser:state'),
   open: (url) => ipcRenderer.invoke('browser:open', url),

@@ -13,6 +13,7 @@ import { DeskKey, useDeskKeys } from "./launcher.jsx";
 import { Group, Legacy, Page, Row, Switch } from "./parts.jsx";
 import { autoFileSettings } from "../../sky/auto-file.js";
 import { MorningBriefSettings } from "./MorningBrief.jsx";
+import { OvernightSettings } from "./Overnight.jsx";
 
 /* The pages of Settings that are about OSAT itself (Phase 13b): the keys that bring it up, how it looks, the AI, bots,
    where the data lives, scans, the iPhone, About. The cards for the AI, scans and the iPhone are the ones they always
@@ -372,6 +373,7 @@ export function AiPage({ page, workspace, commit, showUndo }) {
         </Row>
       </Group>
       <MorningBriefSettings showUndo={showUndo} />
+      <OvernightSettings showUndo={showUndo} />
       <Legacy words="about you model size download lm studio"><AboutYouCard workspace={workspace} commit={commit} /></Legacy>
       <Legacy words="local ai model size download lm studio gemma"><AiCard /></Legacy>
     </Page>
