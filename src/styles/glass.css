@@ -11,23 +11,24 @@
   --spring-soft: cubic-bezier(0.18, 1.12, 0.3, 1);
   --glide: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --glass: color-mix(in srgb, var(--surface-raised) 44%, transparent);
-  --glass-strong: color-mix(in srgb, var(--surface-raised) 64%, transparent);
-  --glass-blur: blur(28px) saturate(1.8);
-  --glass-edge: rgb(255 255 255 / 75%);
-  --glass-edge-dim: rgb(255 255 255 / 10%);
-  --glass-spec: rgb(255 255 255 / 22%);
-  --glass-shadow: 0 18px 40px -22px rgb(0 0 0 / 30%), 0 2px 6px -2px rgb(0 0 0 / 8%);
+  /* Frosted, not clear: words on glass read as well as on paper. */
+  --glass: color-mix(in srgb, var(--surface-raised) 78%, transparent);
+  --glass-strong: color-mix(in srgb, var(--surface-raised) 88%, transparent);
+  --glass-blur: blur(30px) saturate(1.15);
+  --glass-edge: rgb(255 255 255 / 60%);
+  --glass-edge-dim: rgb(255 255 255 / 8%);
+  --glass-spec: rgb(255 255 255 / 12%);
+  --glass-shadow: 0 0 0 0.5px rgb(0 0 0 / 12%), 0 1px 2px rgb(0 0 0 / 6%), 0 12px 30px -18px rgb(0 0 0 / 30%);
   --sheet-glass: rgb(250 250 252 / 70%);
   --wall-filter: blur(var(--wall-blur, 48px)) saturate(0.85) brightness(1.18);
 }
 :root[data-theme="dark"] {
-  --glass: rgb(22 22 24 / 30%);
-  --glass-strong: rgb(22 22 24 / 46%);
-  --glass-edge: rgb(255 255 255 / 26%);
+  --glass: rgb(20 20 23 / 72%);
+  --glass-strong: rgb(20 20 23 / 84%);
+  --glass-edge: rgb(255 255 255 / 16%);
   --glass-edge-dim: rgb(255 255 255 / 4%);
-  --glass-spec: rgb(255 255 255 / 11%);
-  --glass-shadow: 0 20px 44px -20px rgb(0 0 0 / 60%), 0 2px 6px -2px rgb(0 0 0 / 30%);
+  --glass-spec: rgb(255 255 255 / 6%);
+  --glass-shadow: 0 0 0 0.5px rgb(0 0 0 / 60%), 0 1px 2px rgb(0 0 0 / 30%), 0 16px 40px -20px rgb(0 0 0 / 60%);
   --sheet-glass: rgb(24 24 26 / 58%);
   --wall-filter: blur(var(--wall-blur, 48px)) saturate(1.15) brightness(0.86);
 }
@@ -72,8 +73,8 @@
 
 /* Liquid glass bends the edges of what's behind it. */
 .liquid {
-  -webkit-backdrop-filter: blur(12px) saturate(1.9) brightness(1.04) url(#osat-liquid);
-  backdrop-filter: blur(12px) saturate(1.9) brightness(1.04) url(#osat-liquid);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2) url(#osat-liquid);
+  backdrop-filter: blur(16px) saturate(1.2) url(#osat-liquid);
 }
 
 button:active:not(:disabled) { scale: 0.96; }
@@ -123,17 +124,6 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 /* At the foot of the room that asked (the pop-out's glass is what "fixed" measures from). */
 .undo-toasts { position: fixed; z-index: var(--z-pop); left: 50%; bottom: 24px; translate: -50% 0; pointer-events: none; }
 
-/* The greeting catches a slow sweep of light. */
-.home-greeting {
-  background: linear-gradient(100deg, var(--on-1) 40%, color-mix(in srgb, var(--on-1) 55%, #fff) 50%, var(--on-1) 60%) 0 0 / 300% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: none;
-  animation: sheen 9s ease-in-out infinite;
-}
-@keyframes sheen { from { background-position: 100% 0; } 60%, to { background-position: 0 0; } }
-
 .home-composer { transition: box-shadow 600ms var(--glide), translate 500ms var(--spring); }
 .home-composer:focus-within {
   translate: 0 -1px;
@@ -152,7 +142,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   gap: 2px;
   margin: 0;
   padding: 0 10px;
-  border-radius: 26px;
+  border-radius: 16px;
   background: var(--glass);
   animation: dock-in 900ms var(--spring-soft) 200ms both;
 }
@@ -167,7 +157,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   place-items: center;
   align-content: center;
   gap: 3px;
-  border-radius: 16px;
+  border-radius: 10px;
   color: var(--on-2);
   background: none;
   translate: 0 calc((var(--mag, 1) - 1) * -16px);
@@ -186,7 +176,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   left: 0;
   width: var(--pill-w, 58px);
   height: 56px;
-  border-radius: 16px;
+  border-radius: 10px;
   translate: var(--pill-x, 10px) 0;
   background: rgb(255 255 255 / 78%);
   box-shadow: inset 0 1px 0 #fff, 0 8px 20px -10px rgb(0 0 0 / 30%);
@@ -207,7 +197,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 
 .menu-popover {
   border: 0;
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--surface-raised);
   box-shadow: 0 0 0 0.5px var(--line-strong), 0 24px 50px -18px rgb(0 0 0 / 40%);
   transform-origin: top;
@@ -216,11 +206,11 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .dock-more .menu-popover,
 .app-dock .menu-popover { transform-origin: bottom left; }
 @keyframes pop-open { from { opacity: 0; scale: 0.92; translate: 0 4px; } }
-.menu-popover button { border-radius: 9px; transition: background 160ms, color 160ms; }
+.menu-popover button { border-radius: 6px; transition: background 160ms, color 160ms; }
 .menu-popover button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .menu-popover button small { margin-left: auto; color: var(--faint); font-size: var(--t-2xs); }
 
-.pop-kicker { position: relative; z-index: 1; font: 650 10px/1 var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--on-3); }
+.pop-kicker { position: relative; z-index: 1; font: 650 10px/1 var(--font); letter-spacing: 0; color: var(--on-3); }
 .segmented {
   position: relative;
   z-index: 1;
@@ -229,7 +219,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   grid-auto-columns: minmax(0, 1fr);
   gap: 2px;
   padding: 3px;
-  border-radius: 12px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--on-1) 8%, transparent);
 }
 .segmented button {
@@ -239,7 +229,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   justify-content: center;
   gap: 6px;
   padding: 0 10px;
-  border-radius: 9px;
+  border-radius: 6px;
   font-size: var(--t-sm);
   font-weight: 560;
   color: var(--on-2);
@@ -267,7 +257,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
   justify-items: start;
   gap: 12px;
   padding: 30px 36px 26px;
-  border-radius: 26px;
+  border-radius: 16px;
   color: var(--ink);
   background: var(--surface-raised);
   box-shadow: 0 0 0 0.5px var(--line-strong), 0 40px 100px -30px rgb(0 0 0 / 55%);
@@ -276,7 +266,7 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 .welcome-steps { display: flex; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
 .welcome-steps li { width: 16px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 14%, transparent); transition: width 300ms var(--spring), background 300ms var(--glide); }
 .welcome-steps li.is-on { width: 30px; background: var(--accent); }
-.welcome-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 15px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.welcome-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .welcome-icon svg { width: 23px; height: 23px; }
 .welcome h2 { margin: 4px 0 0; color: var(--ink-strong); font-size: 29px; }
 .welcome p { max-width: 54ch; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55; }
@@ -369,10 +359,10 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 :root[data-backdrop="meadow"] .overlay-surface { background: var(--backdrop-meadow); }
 .backdrop-picks { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 10px; }
 .backdrop-picks button { display: grid; justify-items: center; gap: 6px; font-size: var(--t-sm); color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
-.backdrop-picks i { width: 64px; height: 42px; border-radius: 10px; border: 2px solid transparent; background: var(--backdrop-mac, linear-gradient(135deg, #cfd4da, #8a939c)); }
+.backdrop-picks i { width: 64px; height: 42px; border-radius: 8px; border: 2px solid transparent; background: var(--backdrop-mac, linear-gradient(135deg, #cfd4da, #8a939c)); }
 .backdrop-picks [aria-checked="true"] i { border-color: var(--accent); }
 .backdrop-picks [data-swatch="sonoma"] i { background: var(--backdrop-sonoma); }
 .backdrop-picks [data-swatch="dusk"] i { background: var(--backdrop-dusk); }
 .backdrop-picks [data-swatch="sea"] i { background: var(--backdrop-sea); }
 .backdrop-picks [data-swatch="meadow"] i { background: var(--backdrop-meadow); }
-.about-you textarea { width: 100%; resize: vertical; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line, rgba(127,127,127,.3)); background: var(--surface-raised); color: inherit; }
+.about-you textarea { width: 100%; resize: vertical; font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line, rgba(127,127,127,.3)); background: var(--surface-raised); color: inherit; }

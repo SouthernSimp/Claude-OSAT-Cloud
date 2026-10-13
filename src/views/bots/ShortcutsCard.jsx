@@ -27,7 +27,7 @@ export function ShortcutsCard({ bridge, connector }) {
 
   return (
     <section className="content-card bots-card">
-      <p className="eyebrow">SIRI AND SHORTCUTS</p>
+      <p className="eyebrow">Siri and Shortcuts</p>
       <h2>Talk to OSAT with Siri.</h2>
       {!on && <p>Turn on the connector above, and Siri can add to OSAT, read your journal, find stickies and answer from your notes.</p>}
       {on && (

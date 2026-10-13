@@ -98,7 +98,7 @@ function SendCard({ bridge, hooks, offline }) {
 
   return (
     <section className="content-card bots-card">
-      <p className="eyebrow">WEBHOOKS</p>
+      <p className="eyebrow">Webhooks</p>
       <h2>{hooks.length ? 'OSAT tells other services what happens.' : 'Tell other services when something happens.'}</h2>
       <p>Paste a web address from Zapier, Make, IFTTT, Slack, Discord or your own server, and pick the moments. OSAT sends each one there as it happens. Slack and Discord show it as a message with no other setup.</p>
       {hooks.length > 0 && (
@@ -156,7 +156,7 @@ function InboxCard({ bridge, inbox, offline }) {
 
   return (
     <section className="content-card bots-card">
-      <p className="eyebrow">STICKIES FROM SERVICES</p>
+      <p className="eyebrow">Stickies from services</p>
       <h2>{on ? 'Services can add stickies.' : 'Let services add stickies.'}</h2>
       <p>Zapier, IFTTT, a form or a script can add a sticky to Unsorted by sending words to one web address. The words come through ntfy, a free relay OSAT checks every minute, so your Mac stays closed to the internet.</p>
       {inbox?.error && <p className="bots-warning" role="status">{inbox.error}</p>}

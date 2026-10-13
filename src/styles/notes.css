@@ -114,8 +114,7 @@
   color: var(--faint);
   font-size: var(--t-2xs);
   font-weight: 650;
-  letter-spacing: var(--tr-wide);
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .organizer-label .text-button {
@@ -1043,8 +1042,7 @@ button.md-mention:hover {
   color: var(--faint);
   font-size: var(--t-2xs);
   font-weight: 650;
-  letter-spacing: var(--tr-wide);
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .note-inspector h4 small {
@@ -1377,7 +1375,7 @@ textarea.note-title { flex: none; resize: none; overflow: hidden; max-height: 18
 .writing-save { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; }
 .writing-save svg { width: 12px; height: 12px; }
 .writing-save.is-error { color: var(--danger); }
-.writing-recovery { position: fixed; z-index: 1000; left: 50%; top: 12px; translate: -50% 0; width: min(560px, calc(100% - 24px)); border: 1px solid var(--line-strong); border-radius: 14px; padding: 14px 18px; background: var(--surface-raised); color: var(--ink); box-shadow: var(--e-3); }
+.writing-recovery { position: fixed; z-index: 1000; left: 50%; top: 12px; translate: -50% 0; width: min(560px, calc(100% - 24px)); border: 1px solid var(--line-strong); border-radius: 10px; padding: 14px 18px; background: var(--surface-raised); color: var(--ink); box-shadow: var(--e-3); }
 .writing-recovery p { margin: 0 0 10px; font-size: 13px; }
 .writing-recovery > div { display: flex; gap: 16px; }
 .writing-recovery button { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--accent); }
