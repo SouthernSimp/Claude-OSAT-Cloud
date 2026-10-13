@@ -1106,7 +1106,7 @@ async function main() {
   await sleep(200)
   if (!(await bar.evaluate(() => window.__calls)).some(([name, id]) => name === 'pasteSnippet' && id === 'snip-c1')) problems.push(`${room}: Return on a snippet did not paste it`)
   await bar.evaluate(() => window.__shown({}))
-  // ⌥⇧Space (the Ask key) opens it on Ask; ring "sticky" opens it to write bar.
+  // Pop out (from the desk's chat) opens it on Ask; ring "sticky" opens it to write a sticky.
   await bar.evaluate(() => window.__shown({ view: 'chat' }))
   await bar.locator('.qs-chat .composer textarea').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push(`${room}: the Ask key did not open Ask`))
   await bar.evaluate(() => window.__shown({ view: 'sticky' }))

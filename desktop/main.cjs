@@ -57,22 +57,19 @@ const { createMacCalendar } = require('./mac-calendar.cjs')
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
 
-// Ask: the quick bar opened on Ask (it was the quick chat's key before the one bar, Phase 13c).
-const CHAT_HOTKEY = 'Alt+Shift+Space'
-
 let mainWindow
 let quitting = false
 let tray
-let prefs = { hotkey: DEFAULT_HOTKEY, chatHotkey: CHAT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, barSpot: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
-// The three shortcuts: the desk, the quick bar on Ask, and the quick bar. `value` is null when another app has it.
+let prefs = { hotkey: DEFAULT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, barSpot: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
+// The two shortcuts: the desk, and the one bar (search, ask, or write a sticky; it was two keys until Oct 2026).
+// `value` is null when another app has it.
 const shortcuts = {
   layer: { value: null, failed: false, run: () => toggleDesk() },
-  chat: { value: null, failed: false, run: () => launcher?.search.toggle({ view: 'chat' }) },
   search: { value: null, failed: false, run: () => launcher?.search.toggle() },
 }
 // Which prefs.json key keeps each shortcut, and what it opens (for words like "already opens…").
-const HOTKEY_PREF = { layer: 'hotkey', chat: 'chatHotkey', search: 'searchHotkey' }
-const HOTKEY_OPENS = { layer: 'OSAT', chat: 'Ask in the quick bar', search: 'the quick bar' }
+const HOTKEY_PREF = { layer: 'hotkey', search: 'searchHotkey' }
+const HOTKEY_OPENS = { layer: 'OSAT', search: 'Search or Ask' }
 let ai
 let launcher
 let trayAiLine = ''
@@ -293,8 +290,7 @@ function buildMenu() {
         { label: 'New Sticky', accelerator: 'CmdOrCtrl+Shift+N', click: () => command({ view: 'Capture' }) },
         { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => command({ view: 'Notes', detail: { action: 'new' } }) },
         { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
-        { label: 'Quick Bar', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
-        { label: 'Ask', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => launcher?.search.show({ view: 'chat' }) },
+        { label: 'Search or Ask…', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
         { type: 'separator' },
         { label: 'New Browser Tab', accelerator: 'CmdOrCtrl+T', click: () => command({ view: 'Browser', action: 'new-tab' }) },
         ...(terminals?.available ? [{ label: 'New Terminal', accelerator: 'CmdOrCtrl+Shift+T', click: () => command({ view: 'Terminal', action: 'new-terminal' }) }] : []),
@@ -341,8 +337,7 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   app.dock?.setMenu(Menu.buildFromTemplate([
     { label: 'Show OSAT', click: () => showDesk() },
-    { label: 'Quick Bar', click: () => launcher?.search.show() },
-    { label: 'Ask', click: () => launcher?.search.show({ view: 'chat' }) },
+    { label: 'Search or Ask…', click: () => launcher?.search.show() },
     { label: 'New Browser Tab', click: () => command({ view: 'Browser', action: 'new-tab' }) },
   ]))
 }
@@ -401,9 +396,8 @@ function registerBrowserAndTerminal() {
   // Settings → Data and About.
   handleApp('app:about', () => ({ version: app.getVersion(), dataFolder: app.getPath('userData') }))
   // Settings → About: look for a newer build on GitHub, then fetch it and swap the app (desktop/updater.cjs).
-  const updater = createUpdater({ app, dataDir: app.getPath('userData'), quit: () => app.quit() })
-  handleApp('update:check', () => updater.check())
-  handleApp('update:install', (sender) => updater.install((progress) => { if (!sender.isDestroyed()) sender.send('update:progress', progress) }))
+  handleApp('update:check', () => checkForUpdates())
+  handleApp('update:install', (sender) => (updater ?? fail('Check for updates first.')).install((progress) => { if (!sender.isDestroyed()) sender.send('update:progress', progress) }))
   handleApp('app:show-data-folder', async () => {
     if (await shell.openPath(app.getPath('userData'))) fail('Finder could not open the data folder.')
     return true
@@ -501,7 +495,6 @@ async function loadPrefs() {
     const saved = JSON.parse(await fs.readFile(prefsFile(), 'utf8'))
     prefs = {
       hotkey: validHotkey(saved.hotkey) ? saved.hotkey : DEFAULT_HOTKEY,
-      chatHotkey: validHotkey(saved.chatHotkey) ? saved.chatHotkey : CHAT_HOTKEY,
       searchHotkey: validHotkey(saved.searchHotkey) ? saved.searchHotkey : DEFAULT_SEARCH_HOTKEY,
       // Where the quick bar was dragged to (its top middle); the old quick chat's chatBounds is left behind.
       barSpot: Number.isFinite(saved.barSpot?.x) && Number.isFinite(saved.barSpot?.y) ? { x: saved.barSpot.x, y: saved.barSpot.y } : null,
@@ -536,7 +529,7 @@ function savePrefs() {
   return prefsSaving
 }
 
-/* Registers a new shortcut ('layer' or 'chat'), or keeps the old one when the new one is taken. */
+/* Registers a new shortcut ('layer' or 'search'), or keeps the old one when the new one is taken. */
 function useHotkey(which, value) {
   const shortcut = shortcuts[which]
   if (!validHotkey(value)) return false
@@ -592,7 +585,7 @@ function registerDesk() {
     if (process.platform === 'darwin') mainWindow.setVibrancy(clear === true ? null : 'fullscreen-ui')
   })
   // The shortcuts, read on the desk and changed in Settings.
-  handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), chat: shortcutInfo('chat'), search: shortcutInfo('search'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
+  handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), search: shortcutInfo('search'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
   handle('desk:set-hotkey', async (value, which = 'layer') => {
     if (!shortcuts[which]) fail('That isn’t one of OSAT’s shortcuts.')
     if (!validHotkey(value)) fail('Use one or more of ⌘ ⌃ ⌥ ⇧ with one key.')
@@ -721,7 +714,7 @@ async function registerLauncher() {
   launcher.onFocus(claimEscape, releaseEscape)
 }
 
-/* ---- Ask (⌥⇧Space): the quick bar, opened on Ask ---- */
+/* ---- Ask: the one bar, opened on its chat ---- */
 
 function registerAsk() {
   // Pop a chat out of the desk or Ask: { chatId } or { prompt }, or nothing for the last one. It opens in the quick bar.
@@ -753,18 +746,55 @@ function trayIcon(name) {
   return trayIcons[name]
 }
 
-/* The menu-bar icon is a moon while offline, so the state shows with the desk away. */
+/* Settings → About and the menu-bar icon look for a newer build on GitHub, then fetch it and swap the app
+   (desktop/updater.cjs). `updateLine` is what the last look found, shown under the version in the menu. */
+let updater
+let updateLine = ''
+async function checkForUpdates() {
+  updater ??= createUpdater({ app, dataDir: app.getPath('userData'), quit: () => app.quit() })
+  try {
+    const found = await updater.check()
+    updateLine = found.state === 'available' ? `OSAT ${found.version} is ready` : found.state === 'current' ? 'Latest version (just checked)' : found.message
+    return found
+  } catch (error) {
+    updateLine = 'Couldn’t check just now'
+    throw error
+  } finally {
+    updateTray()
+  }
+}
+async function updateFromTray() {
+  try {
+    const found = await checkForUpdates()
+    if (found.state !== 'available') return
+    const { response } = await dialog.showMessageBox({
+      type: 'info', message: `OSAT ${found.version} is ready`, buttons: ['Install and Restart', 'Later'], defaultId: 0, cancelId: 1,
+      detail: 'OSAT downloads it, checks it is signed like this one, and restarts. Your notes stay as they are.',
+    })
+    if (response === 0) await updater.install()
+  } catch (error) {
+    dialog.showErrorBox('Updates', error.message)
+  }
+}
+
+/* The menu-bar icon, like Granola's: open, the bar, a sticky, Settings; the version and Check for Updates; then the
+   quieter switches. It is a moon while offline, so the state shows with the desk away. */
 function updateTray() {
   if (!tray || tray.isDestroyed()) return
   trayAiLine = aiLine()
   tray.setImage(trayIcon(under.on ? 'trayUnderTemplate' : 'trayTemplate'))
   tray.setToolTip(under.on ? 'OSAT · Offline' : 'OSAT')
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Show OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
-    { label: 'Quick Bar', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
-    { label: 'Ask', accelerator: shortcuts.chat.value || undefined, registerAccelerator: false, click: () => launcher?.search.show({ view: 'chat' }) },
-    { label: 'Offline', type: 'checkbox', checked: under.on, accelerator: 'CmdOrCtrl+Shift+U', registerAccelerator: false, click: () => toggleUnder() },
+    { label: 'Open OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
+    { label: 'Search or Ask…', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
+    { label: 'New Sticky', accelerator: 'CmdOrCtrl+Shift+N', registerAccelerator: false, click: () => command({ view: 'Capture' }) },
+    { label: 'Settings…', accelerator: 'CmdOrCtrl+,', registerAccelerator: false, click: () => command({ view: 'Settings' }) },
     { type: 'separator' },
+    { label: `OSAT ${app.getVersion()}`, enabled: false },
+    ...(updateLine ? [{ label: updateLine, enabled: false }] : []),
+    { label: 'Check for Updates…', click: () => updateFromTray() },
+    { type: 'separator' },
+    { label: 'Offline', type: 'checkbox', checked: under.on, accelerator: 'CmdOrCtrl+Shift+U', registerAccelerator: false, click: () => toggleUnder() },
     { label: trayAiLine, click: () => command({ view: 'Settings', detail: { section: 'ai' } }) },
     { label: 'Free AI memory', enabled: Boolean(ai?.status().tiers.some((tier) => tier.state === 'ready')),
       click: async () => {
@@ -776,7 +806,7 @@ function updateTray() {
           })
         } catch (error) { dialog.showErrorBox('AI memory', error.message) }
       } },
-    { label: shortcuts.layer.failed ? 'Shortcut not set · choose one…' : 'Change shortcuts…', click: () => command({ view: 'Settings', detail: { section: 'general' } }) },
+    ...(shortcuts.layer.failed ? [{ label: 'Shortcut not set · choose one…', click: () => command({ view: 'Settings', detail: { section: 'general' } }) }] : []),
     ...(app.isPackaged ? [{
       label: 'Open at Login',
       type: 'checkbox',
@@ -1400,7 +1430,6 @@ app.whenReady().then(async () => {
   launcher.start().catch((error) => console.error('The launcher could not start:', error))
   // If the desk's shortcut is taken by another app, open Settings so a new one can be picked.
   // The quick bar's are quieter: Settings says so when you look.
-  useHotkey('chat', prefs.chatHotkey)
   useHotkey('search', prefs.searchHotkey)
   if (!useHotkey('layer', prefs.hotkey)) command({ view: 'Settings', detail: { section: 'general' } })
   // Clicking the Dock icon brings the desk up.

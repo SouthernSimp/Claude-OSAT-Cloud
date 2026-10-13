@@ -553,6 +553,13 @@ try {
     const lately = (await main.evaluate(() => window.osatBots.status())).connector.recent
     await main.evaluate((at) => window.osatBots.undoConnector(at), lately[0]?.at)
     check(await until(async () => !(await viaMcp()), 5000), 'Undo did not take away what came through the connector')
+    // The same tools as a plain web API (/api/<tool>, GET or POST, text back), with the same key.
+    const api = (tool, init = {}) => fetch(connector.url.replace(/\/mcp$/, `/api/${tool}`), { ...init, headers: { authorization: `Bearer ${connectorKey}`, 'content-type': 'application/json', ...init.headers } })
+    check((await api('search', { headers: { authorization: 'Bearer wrong' } })).status === 401, 'the web API answered without its key')
+    const posted = await api('add_sticky', { method: 'POST', body: JSON.stringify({ text: 'From a script over the API' }) })
+    check(posted.status === 200, `add_sticky over the web API failed: ${posted.status} ${await posted.text()}`)
+    check(await until(async () => JSON.stringify((await main.evaluate(async () => (await window.osat.store.load()).doc.notes))).includes('From a script over the API'), 5000), 'a sticky added over the web API did not reach the windows')
+    check(/From a script over the API/.test(await (await api('search?query=script')).text()), 'search over the web API did not find the new sticky')
     await main.evaluate(() => window.osatBots.connectorOff())
     check(await mcp({ jsonrpc: '2.0', id: 4, method: 'ping' }).then(() => false, () => true), 'the connector still answered after turning it off')
 

@@ -299,11 +299,8 @@ export function GeneralPage({ page }) {
           <Row title="The desk" hint={taken(info, "Brings OSAT up over your desktop. Press it again, or Esc, to put it away.")} words="hotkey open show overlay">
             <DeskKey which="layer" name="the desk" keys={keys} />
           </Row>
-          <Row title="Quick bar" hint={taken(info?.search, "One bar over your other apps: find a file, a copy, an app or a note; ⌘Return asks the AI, ⌥Return saves a sticky.")} words="hotkey spotlight find search raycast">
-            <DeskKey which="search" name="the quick bar" keys={keys} />
-          </Row>
-          <Row title="Ask" hint={taken(info?.chat, "Opens the quick bar on Ask, with the chat you were in.")} words="hotkey ask ai chat quick chat floating">
-            <DeskKey which="chat" name="Ask in the quick bar" keys={keys} />
+          <Row title="Search or Ask" hint={taken(info?.search, "One bar over your other apps, like Spotlight: find a file, a copy, an app or a note, ask the AI (Tab or ⌘Return), or save a sticky (⌥Return).")} words="hotkey spotlight find search raycast quick bar ask ai chat">
+            <DeskKey which="search" name="Search or Ask" keys={keys} />
           </Row>
         </Group>
       )}

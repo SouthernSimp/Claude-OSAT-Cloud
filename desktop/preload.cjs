@@ -313,7 +313,7 @@ contextBridge.exposeInMainWorld('osatMacCalendar', Object.freeze({
 contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   hide: () => ipcRenderer.send('desk:hide'),
   prefs: () => ipcRenderer.invoke('desk:prefs'),
-  // which: 'layer' (⌥Space, the desk), 'search' (⌘⇧Space, the quick bar) or 'chat' (⌥⇧Space, the bar on Ask).
+  // which: 'layer' (⌥Space, the desk) or 'search' (⌘⇧Space, the one bar: Search or Ask).
   setHotkey: (value, which = 'layer') => ipcRenderer.invoke('desk:set-hotkey', value, which),
   addLauncher: () => ipcRenderer.invoke('desk:add-launcher'),
   removeLauncher: (appPath) => ipcRenderer.invoke('desk:remove-launcher', appPath),
