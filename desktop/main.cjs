@@ -1133,6 +1133,8 @@ async function registerBrief(agent, macCalendar) {
     fail,
     offline: () => under.on,
     macToday: macCalendar.today,
+    // Last night's ideas (Phase 53); overnight is registered just after the brief.
+    ideas: async () => (overnight ? overnight.words() : ''),
     onWake: (check) => powerMonitor.on('resume', check),
   })
   brief.start()

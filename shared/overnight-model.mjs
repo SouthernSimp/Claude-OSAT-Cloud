@@ -241,6 +241,15 @@ export function liveIdeas(doc, ideas) {
   })
 }
 
+/* The ideas in a line for the morning brief: “2 ideas: connect “A” and “B”; make Hendrix plumber a topic”. */
+export function ideaWords(doc, ideas) {
+  const live = liveIdeas(doc, ideas)
+  if (!live.length) return ''
+  const name = (key) => describe(doc, key).replace(/ \(.*\)$/, '').slice(0, 70)
+  const parts = live.slice(0, 4).map((idea) => (idea.kind === 'link' ? `connect ${name(idea.a)} and ${name(idea.b)}` : `make ${idea.name} a topic`))
+  return `${live.length} ${live.length === 1 ? 'idea' : 'ideas'}: ${parts.join('; ')}${live.length > 4 ? '; and more' : ''}`
+}
+
 export const linkIdea = (pair, why) => ({ id: `link:${pair.id}`, kind: 'link', a: pair.a, b: pair.b, why })
 export const topicIdea = ({ name, notes }) => ({ id: `topic:${name.toLowerCase()}`, kind: 'topic', name, notes, why: `It comes up in ${notes.length} of this week’s stickies.` })
 

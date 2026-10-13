@@ -139,6 +139,8 @@ async function createOvernight({ store, sharedModule, dataDir, models, chat, han
   return {
     check,
     think,
+    // Last night's ideas in a line, for the morning brief.
+    words: async () => night.ideaWords(store.load().doc, (await read()).ideas),
     start() {
       timer = setInterval(check, EVERY_MS)
       onWake?.(check)

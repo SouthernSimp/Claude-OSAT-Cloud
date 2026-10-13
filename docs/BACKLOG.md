@@ -44,7 +44,7 @@ next sort, so nothing depends on anyone remembering the chat.
 | Idea | Suggested | Rank |
 |---|---|---|
 | OSAT as a business management tool (Nate, Oct 12): grow it toward running his business, not only notes. Builds on what exists: topics as clients and projects, connections (Phase 53) and people cards (Phase 19) for “everything about this customer”, follow-ups as reminders, Ask acting through connected apps. Needs Nate’s list of what he manages day to day before a phase is planned | Oct 12 | Unranked (big; plan first) |
-| The morning brief mentions last night’s ideas (Phase 53): “OSAT left 3 ideas on your canvas” | Oct 12 | Small |
+| The morning brief mentions last night’s ideas (Phase 53) | Oct 12 | Done (PR #79) |
 | Use the DigitalOcean droplet for extra features (Nate, Oct 6, "eventually, idk"). Needs a goal first, e.g. a private sync relay or hosting a bigger model; would have to stay opt-in and keep notes private | Oct 6 | Unranked |
 | UI smoke test flake: "widgets: Esc did not put the tray away" failed once on a pull-request run and passed on rerun (Oct 6). Make the wait explicit so a red check always means a real problem | Oct 6 | Done (PR #67): the tray's Esc listener now attaches before its first paint |
 | Show this ranked list inside OSAT beside the Roadmap (Tools → Roadmap) so Nate reads it in the app | Oct 6 | Unranked |

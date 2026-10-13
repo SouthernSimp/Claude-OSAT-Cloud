@@ -8,7 +8,7 @@ import test from 'node:test'
 import * as storeCore from '../shared/store-core.mjs'
 
 import {
-  candidatePairs, dismissKey, due, liveIdeas, linkIdea, nightOf, pairId, pairMessages, readPairAnswer, readTopicAnswer, recentStickies, topicIdea, topicMessages, wordsOf,
+  candidatePairs, dismissKey, ideaWords, due, liveIdeas, linkIdea, nightOf, pairId, pairMessages, readPairAnswer, readTopicAnswer, recentStickies, topicIdea, topicMessages, wordsOf,
 } from '../shared/overnight-model.mjs'
 
 const NOW = '2026-10-13T08:00:00Z'
@@ -180,4 +180,17 @@ test('the runner thinks once a night, on the charger', async () => {
   await t.ipc('overnight:set', { on: false })
   t.clock = new Date('2026-10-14T07:30:00Z')
   assert.equal(await t.night.check(), null, 'off')
+})
+
+test('the morning brief hears about last night’s ideas in a line', async () => {
+  const doc = sample()
+  const link = linkIdea({ id: pairId('note:n1', 'note:n2'), a: 'note:n1', b: 'note:n2' }, 'why')
+  const topic = topicIdea({ name: 'Dashboards', notes: ['n1', 'n2', 'n5'] })
+  assert.equal(ideaWords(doc, []), '')
+  assert.equal(ideaWords(doc, [link, topic]), '2 ideas: connect “Send the Fortis merchant dashboard mockup to Dana” and “Dana liked the merchant dashboard colours”; make Dashboards a topic')
+  const { briefMessages } = await import('../shared/brief-model.mjs')
+  const [, user] = briefMessages({ day: '2026-10-13', doc, known: { ideas: ideaWords(doc, [topic]) } })
+  assert.match(user.content, /\[Ideas OSAT left on the canvas last night\]\n1 idea: make Dashboards a topic/)
+  const [, none] = briefMessages({ day: '2026-10-13', doc, known: { ideas: '' } })
+  assert.doesNotMatch(none.content, /\[Ideas OSAT left/, 'no section when there are none')
 })

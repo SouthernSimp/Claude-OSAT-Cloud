@@ -1283,7 +1283,8 @@ The wow Claude picked (Oct 12): OSAT’s second brain grows while Nate sleeps, p
 - **On the canvas.** A faint thread for each connection idea (click it: why, Connect them, Show me, Not this) and an
   “Ideas from last night” line above the board. Keeping goes through the canvas’s own Undo; a topic idea makes the
   topic and connects its stickies to it (nothing moves). Not this is remembered so it isn’t offered again.
-- **Next.** The morning brief mentions the ideas; people cards (Phase 19) can use the same connections to show
+- **The morning brief** mentions them in a few words when there are any.
+- **Next.** People cards (Phase 19) can use the same connections to show
   everything about a customer.
 
 
