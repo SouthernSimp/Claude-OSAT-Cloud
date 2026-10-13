@@ -328,7 +328,7 @@ try {
   const fileMenu = (label) => app.evaluate(({ Menu }, name) => Menu.getApplicationMenu().items.find((item) => item.label === 'File').submenu.items.find((item) => item.label === name).click(), label)
   const clipboardNow = () => app.evaluate(({ clipboard }) => clipboard.readText())
   if (searchPage) {
-    await fileMenu('Quick Bar')
+    await fileMenu('Search or Ask…')
     check(await until(() => searchWindow('shown'), 3000), 'Quick Search in the File menu did not show the bar')
     await searchPage.locator('#qs-input').waitFor({ timeout: 5000 })
     check((await searchWindow('bounds')).height < 140, 'the quick search did not open as a small bar')
@@ -390,14 +390,14 @@ try {
     // What OSAT itself puts on the clipboard (the connector's key, later) is never kept; only what was copied is.
     check(!(await kept()).some((words) => /Bearer/.test(words)), 'something OSAT copied itself was kept in the history')
     // Esc backs out a step at a time: the words, then the bar.
-    if (!(await searchWindow('shown'))) await fileMenu('Quick Bar')
+    if (!(await searchWindow('shown'))) await fileMenu('Search or Ask…')
     await searchPage.fill('#qs-input', 'restart')
     await searchPage.keyboard.press('Escape')
     check((await searchPage.inputValue('#qs-input')) === '', 'Esc did not clear the words first')
     await searchPage.keyboard.press('Escape')
     check(await until(async () => !(await searchWindow('shown')), 3000), 'Esc did not put the quick search away')
     // Return on a note opens it on the desk.
-    await fileMenu('Quick Bar')
+    await fileMenu('Search or Ask…')
     await searchPage.fill('#qs-input', 'restart')
     await searchPage.locator('.qs-row', { hasText: 'Saved across a restart' }).waitFor({ timeout: 5000 })
     await searchPage.keyboard.press('Enter')
