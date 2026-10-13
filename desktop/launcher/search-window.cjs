@@ -75,7 +75,7 @@ function createQuickSearch({ BrowserWindow, screen, platform, preload, load, hid
   /* `scope` opens on one source ('clipboard' from Hyper V); `expanded` opens the full view straight away (Settings can
      make that the way it always opens); `text` is words waiting in the field (a quick link's word); `view` is 'chat'
      for Ask (`chat`: { chatId } or { prompt } to open) or 'sticky' to write a sticky. */
-  function show({ scope = 'all', expanded = view() === 'full', text = '', view: page = 'search', chat = null } = {}) {
+  function show({ scope = 'all', expanded = view() === 'full', text = '', view: page = 'search', chat = null, selection = null } = {}) {
     mode = page === 'chat' ? 'chat' : page === 'sticky' ? 'bar' : expanded || scope !== 'all' ? 'full' : 'bar'
     onShow()
     if (!window.isVisible()) place(searchBounds(mode, screen.getAllDisplays(), screen.getCursorScreenPoint(), placed))
@@ -84,7 +84,7 @@ function createQuickSearch({ BrowserWindow, screen, platform, preload, load, hid
     window.show()
     window.focus()
     window.webContents.focus()
-    send('search:shown', { scope, mode, text: String(text).slice(0, 200), view: page, chat })
+    send('search:shown', { scope, mode, text: String(text).slice(0, 200), view: page, chat, ...(selection ? { selection } : {}) })
   }
   function hide() {
     if (window.isDestroyed() || !window.isVisible()) return

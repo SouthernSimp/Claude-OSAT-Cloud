@@ -16,6 +16,7 @@ const PLACE = { desktop: 'Desktop', documents: 'Documents', downloads: 'Download
 const ACTIONS = [
   { key: 'act:sticky', label: 'Write a sticky', hint: 'Straight to Unsorted', also: 'sticky note jot capture thought idea', go: ['Capture'], bar: true },
   { key: 'act:ask', label: 'Ask the AI', hint: 'On this Mac', also: 'ask ai chat question assistant', go: ['Assistant'], bar: true },
+  { key: 'act:selection', label: 'AI on selected text', hint: 'Fix, shorten, translate… Hyper T from any app', also: 'selected selection text fix grammar spelling rewrite shorter summarize translate explain reply', go: ['Assistant'], bar: true },
   { key: 'act:clipboard', label: 'Clipboard history', hint: 'Everything you copied', also: 'clipboard copies copied paste history', go: ['Clipboard'] },
   { key: 'act:tidy-desktop', label: 'Tidy my Desktop', hint: 'Review a plan before moving files', also: 'clean organize files', go: ['Files', { rootId: 'desktop', tidy: true }] },
   { key: 'act:new-note', label: 'New note', also: 'write page', go: ['Notes', { action: 'new' }] },

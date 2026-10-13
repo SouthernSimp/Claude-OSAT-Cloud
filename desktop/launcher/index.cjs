@@ -26,6 +26,7 @@ const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
 const { createSystem } = require('./system.cjs')
 const { createSnippets } = require('./snippets.cjs')
+const { readSelection } = require('./selection.cjs')
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -142,6 +143,7 @@ async function createLauncher({
     const [kind, rest] = at === -1 ? [id, ''] : [id.slice(0, at), id.slice(at + 1)]
     if (kind === 'source') return () => search?.toggle({ scope: rest })
     if (kind === 'ring') return () => ensureRing().toggle()
+    if (kind === 'selection') return () => onSelection().catch(() => {})
     if (kind === 'snap') return () => snapFromKey(rest)
     if (kind === 'app') return () => openAppByName(rest).catch(() => {})
     if (kind === 'link') return () => openLinkKey(rest).catch(() => {})
@@ -167,6 +169,7 @@ async function createLauncher({
     // The bar's own commands open the bar; the rest open in OSAT.
     if (key === 'act:sticky') { search.show({ view: 'sticky' }); return }
     if (key === 'act:ask') { search.show({ view: 'chat' }); return }
+    if (key === 'act:selection') { await onSelection(); return }
     if (key === 'act:clipboard') { search.show({ scope: 'clipboard' }); return }
     if (Array.isArray(d.go) && typeof d.go[0] === 'string') command({ view: d.go[0], detail: d.go[1] && typeof d.go[1] === 'object' ? d.go[1] : null })
   }
@@ -361,8 +364,16 @@ async function createLauncher({
     app.showEmojiPanel()
     return { ok: true }
   })
-  on('search:copy-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return true })
-  on('search:paste-text', (text) => { clipboard.writeText(String(text).slice(0, 2000)); return pasteWhenAble() })
+  on('search:copy-text', (text) => { clipboard.writeText(String(text).slice(0, 20000)); return true })
+  on('search:paste-text', (text) => { clipboard.writeText(String(text).slice(0, 20000)); return pasteWhenAble() })
+  /* AI on selected text (Phase 51): the words selected in the app you were in, then the bar opens on what the AI can
+     do with them. From the bar ("fix grammar", "selected text"), the bar steps aside first so that app is in front. */
+  async function onSelection() {
+    if (search?.window?.isVisible()) { search.hide(); await wait(160) }
+    const found = await readSelection({ exec, platform, trusted, clipboard, history })
+    search.show({ expanded: true, view: 'selection', selection: found })
+  }
+  on('search:selection', () => { onSelection().catch(() => {}); return true })
   /* Snippets from the bar: filled in here ({clipboard} is what is on it now), then pasted or copied. */
   const snippetText = (id) => { const text = snippets.text(id); if (text === null) fail('That snippet is gone.'); return text }
   on('search:paste-snippet', (id) => { clipboard.writeText(snippetText(id)); return pasteWhenAble() })

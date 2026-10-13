@@ -33,6 +33,8 @@ function createClipboardHistory({
   let timer = null
   let saveTimer = null
   let held = null
+  // While OSAT borrows the clipboard (reading a selection with ⌘C), nothing on it is kept.
+  let borrowed = false
   let lookedAtAge = 0
 
   const pictureFile = (id) => path.join(pictures, `${id}.png`)
@@ -139,7 +141,7 @@ function createClipboardHistory({
 
   /* One look. Never throws, and never says what it saw. */
   async function poll() {
-    if (paused || busy || !watching) return
+    if (paused || busy || !watching || borrowed) return
     busy = true
     try {
       const seen = peek()
@@ -299,6 +301,10 @@ function createClipboardHistory({
         saveSoon()
       }
     },
+    /* OSAT borrows the clipboard for a moment (desktop/launcher/selection.cjs): nothing is kept until it gives it back,
+       and what is on it then counts as already seen. */
+    borrow() { borrowed = true },
+    giveBack() { prime(); borrowed = false },
     /* A clipboard that OSAT itself writes to (a key for the connector) and never keeps. */
     quiet: (target) => ({ writeText: (text) => { privateCopies.add(sha(`t:${text}`)); target.writeText(text); prime() }, readText: () => target.readText() }),
   }
