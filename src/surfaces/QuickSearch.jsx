@@ -9,6 +9,8 @@ import { systemCommand } from '../../shared/system-commands.mjs'
 import { comboFrom, labelOf } from '../lib/hotkey.js'
 import { FILE_FILTERS, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
 import { remember } from '../../shared/picks.mjs'
+import { cleanAnswer, replaces, textActionRows, textMessages } from '../../shared/selection-model.mjs'
+import { streamLocalMessage } from '../local-ai.js'
 import { LocalAssistant, modelLabel } from '../assistant/LocalAssistant.jsx'
 import { cleanError, useAi } from '../assistant/useAi.js'
 import { findAll } from '../lib/find.js'
@@ -62,6 +64,11 @@ export function QuickSearchSurface() {
   const [visit, setVisit] = useState(0)
   // What you picked from the bar before (shared/picks.mjs): it comes first next time.
   const [picks, setPicks] = useState({})
+  // AI on selected text (Phase 51): the words selected in the app you were in, and the AI's answer for one action
+  // ({ row, text, done, error }) while it streams and after.
+  const [selected, setSelected] = useState(null)
+  const [answer, setAnswer] = useState(null)
+  const stopAnswer = useRef(null)
   const [opened, setOpened] = useState('bar')
   // A sticky or a question being written in the bar ('sticky' | 'ask'), and Ask: on, kept once opened (so the chat
   // you were in is there next time), and what to hand it ({ chatId } or { prompt, send }).
@@ -94,8 +101,8 @@ export function QuickSearchSurface() {
   const captures = useMemo(() => (shooting && read.scope === 'all' ? findCaptures(read.query, shooting.list || [], { cleanshot: shooting.cleanshot }) : []), [shooting, read.scope, read.query])
   const shots = useMemo(() => (askedRecent ? recentRows(shotList) : []), [askedRecent, shotList])
   const rows = useMemo(
-    () => buildRows(read, { ...found, commands, notes, captures, shots }, settings, { fileFilter, clipFilter, ai, picks }).filter((row) => !gone.has(row.key)),
-    [read, found, commands, notes, captures, shots, settings, fileFilter, clipFilter, gone, picks, ai.state, ai.label, ai.offline], // eslint-disable-line react-hooks/exhaustive-deps
+    () => selected ? textActionRows(text) : buildRows(read, { ...found, commands, notes, captures, shots }, settings, { fileFilter, clipFilter, ai, picks }).filter((row) => !gone.has(row.key)),
+    [read, found, commands, notes, captures, shots, settings, fileFilter, clipFilter, gone, picks, selected, text, ai.state, ai.label, ai.offline], // eslint-disable-line react-hooks/exhaustive-deps
   )
   const active = Math.min(cursor ?? startRow(rows, read), Math.max(0, rows.length - 1))
   const row = rows[active] || null
@@ -162,9 +169,15 @@ export function QuickSearchSurface() {
   }, [])
 
   /* Shown again: a clean bar (or the tab the Hyper key names, a sticky to write, or Ask), ready to type into. */
-  useEffect(() => bridge?.onShown(({ scope: tab = 'all', mode: shape = 'bar', text: waiting = '', view = 'search', chat = null } = {}) => {
+  useEffect(() => bridge?.onShown(({ scope: tab = 'all', mode: shape = 'bar', text: waiting = '', view = 'search', chat = null, selection = null } = {}) => {
+    stopAnswer.current?.(); setAnswer(null)
+    setSelected(view === 'selection' && selection?.text ? selection.text : null)
     setText(waiting); setScope(tab); setFileFilter('all'); setClipFilter('all'); setCursor(null); setMenu(null); setPicker(null)
     setNote(''); setToast(null); setGone(new Set()); setOpened(shape === 'full' ? 'full' : 'bar'); setVisit((value) => value + 1)
+    if (view === 'selection' && !selection?.text) {
+      if (selection?.reason === 'access') setToast({ message: 'To read what you selected, OSAT needs Accessibility.', label: 'Allow…', undo: () => bridge.askAccess().catch(() => {}), at: Date.now() })
+      else setNote(selection?.reason === 'mac' ? 'Selected text works in the Mac app.' : 'Nothing was selected. Select some words in any app, then press the key again.')
+    }
     if (view === 'chat') { openChat(chat); return }
     setChatOn(false)
     setMode(view === 'sticky' ? 'sticky' : null)
@@ -207,6 +220,27 @@ export function QuickSearchSurface() {
     setPicker(null)
   }, [bridge, commit, workspace, said, away, hideLater])
 
+  /* AI on selected text: one action on the words, its answer streaming into the preview. Return then pastes it over
+     the selection (or copies it, for a summary or an explanation). */
+  const runText = useCallback(async (target) => {
+    const words = live.current.selected
+    const model = live.current.models?.[0]
+    if (!words) return
+    if (!model) { said(live.current.models === null ? 'Looking for the AI…' : 'Set up the AI first (Settings → AI)', 3000); return }
+    stopAnswer.current?.()
+    const controller = new AbortController()
+    stopAnswer.current = () => controller.abort()
+    const mine = (change) => setAnswer((now) => (now?.controller === controller ? change(now) : now))
+    setAnswer({ row: target, text: '', done: false, controller })
+    try {
+      const full = await streamLocalMessage({ model: model.id, messages: textMessages(target.data, words), signal: controller.signal, onDelta: (piece) => mine((now) => ({ ...now, text: now.text + piece })) })
+      if (!controller.signal.aborted) mine((now) => ({ ...now, text: cleanAnswer(full || now.text), done: true }))
+    } catch (error) {
+      if (!controller.signal.aborted) mine((now) => ({ ...now, done: true, error: cleanError(error) }))
+    }
+  }, [said])
+  const dropAnswer = useCallback(() => { stopAnswer.current?.(); stopAnswer.current = null; setAnswer(null) }, [])
+
   const run = useCallback(async (id, target) => {
     if (!target) return
     const d = target.data
@@ -218,6 +252,7 @@ export function QuickSearchSurface() {
     }
     try {
       switch (id) {
+        case 'text-ai': runText(target); break
         case 'emoji': { const result = await bridge.emoji(); if (!result.ok) said('The character picker is available on the Mac.'); break }
         case 'open':
           if (target.kind === 'folder') toOSAT('Files', { rootId: d.rootId, relative: d.relative })
@@ -307,6 +342,7 @@ export function QuickSearchSurface() {
           // The bar's own commands happen right here; everything else opens on the desk.
           if (target.key === 'act:sticky') { setText(''); setMode('sticky') }
           else if (target.key === 'act:ask') { setText(''); setMode('ask') }
+          else if (target.key === 'act:selection') bridge.selection()
           else if (target.key === 'act:clipboard') { setText(''); setScope('clipboard'); setCursor(null) }
           else toOSAT(...d.go)
           break
@@ -324,10 +360,10 @@ export function QuickSearchSurface() {
     } catch (error) {
       said(cleanError(error), 4000)
     }
-  }, [bridge, said, away, hideLater, toOSAT, reloadClipboard, addTo, saveSticky, askAi])
+  }, [bridge, said, away, hideLater, toOSAT, reloadClipboard, addTo, saveSticky, askAi, runText])
 
   /* The keys. One listener that reads the latest state, so nothing is stale. */
-  live.current = { query: read.query, rows, active, row, actions, menu, picker, text, scope, tabs, toast, full, offer, mode, chatOn, editing, armed, settings }
+  live.current = { query: read.query, selected, answer, models, rows, active, row, actions, menu, picker, text, scope, tabs, toast, full, offer, mode, chatOn, editing, armed, settings }
 
   /* Set a key… / Set a word…: given to that one row from here (main takes nothing else from the bar). */
   const giveKey = useCallback(async (target, hotkey) => {
@@ -365,11 +401,13 @@ export function QuickSearchSurface() {
     } else if (now.editing) { setEditing(null); requestAnimationFrame(() => input.current?.focus()) }
     else if (now.picker) setPicker(null)
     else if (now.menu) setMenu(null)
+    else if (now.answer) dropAnswer()
     else if (now.mode) setMode(null)
     else if (now.text) { setText(''); setCursor(null) }
+    else if (now.selected) { setSelected(null); setCursor(null) }
     else if (now.scope !== 'all') { setScope('all'); setCursor(null) }
     else away()
-  }, [away])
+  }, [away, dropAnswer])
   useEffect(() => bridge?.onEscape(back), [bridge, back])
   // An Esc nothing in the chat wanted comes back to the bar.
   useEffect(() => {
@@ -396,6 +434,22 @@ export function QuickSearchSurface() {
       }
       if (now.editing) return
       if (now.picker) return
+      // Selected text: ⌘Return asks about it (with any words typed); once an answer is in, Return pastes it over the
+      // selection (or copies it) and ⇧Return copies it.
+      if (now.selected && event.key === 'Enter' && cmd && !event.altKey) {
+        event.preventDefault()
+        askAi(`${now.text.trim() || 'Help me with this text.'}\n\n"""\n${now.selected}\n"""`)
+        return
+      }
+      if (now.answer && !now.menu && event.key === 'Enter' && !cmd && !event.altKey) {
+        event.preventDefault()
+        if (!now.answer.done || now.answer.error) return
+        const plain = now.answer.text
+        if (!event.shiftKey && replaces(now.answer.row.data)) run('paste-text', { data: { plain } })
+        else bridge?.copyText(plain).then(() => { said('Copied'); hideLater(600) }, (error) => said(cleanError(error), 4000))
+        return
+      }
+      if (now.answer && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) dropAnswer()
       // ⌘Return asks, ⌥Return saves a sticky, whatever row is picked.
       if (event.key === 'Enter' && cmd && !event.altKey && !event.shiftKey) { event.preventDefault(); askAi(now.text); return }
       if (event.key === 'Enter' && event.altKey && !cmd) { event.preventDefault(); saveSticky(now.text); return }
@@ -441,7 +495,7 @@ export function QuickSearchSurface() {
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [back, run, askAi, saveSticky, giveKey, said])
+  }, [back, run, askAi, saveSticky, giveKey, said, bridge, hideLater, dropAnswer])
 
   // A toast lasts a while, then goes; its Undo goes with it.
   useEffect(() => {
@@ -456,7 +510,8 @@ export function QuickSearchSurface() {
       : scope === 'files' ? 'Files you use will show up here.' : 'Type to search.'
 
   const ModeIcon = mode === 'sticky' ? NotePencil : mode === 'ask' ? Sparkle : MagnifyingGlass
-  const placeholder = mode === 'sticky' ? 'Write a sticky… Return saves it to Unsorted'
+  const placeholder = selected ? 'What should the AI do with it? Pick one, or type your own…'
+    : mode === 'sticky' ? 'Write a sticky… Return saves it to Unsorted'
     : mode === 'ask' ? 'Ask the AI… Return asks'
       : scope === 'all' ? `Search, ask, or write a sticky…${full ? '' : '  ↓ for what you copied'}` : `Search ${tabs.find(([id]) => id === scope)?.[1] || ''}…`
 
@@ -492,10 +547,15 @@ export function QuickSearchSurface() {
           value={text}
           maxLength={200}
           placeholder={placeholder}
-          onChange={(event) => { setText(event.target.value); setCursor(null) }}
+          onChange={(event) => { setText(event.target.value); setCursor(null); if (live.current.answer) dropAnswer() }}
         />
         {!full && note ? <span className="qs-said" role="status">{note}</span>
           : mode ? <span className="qs-chip">{mode === 'sticky' ? 'Sticky' : 'Ask'}</span>
+            : selected ? (
+              <button type="button" className="qs-chip is-scope" title="Back to everything  esc" onClick={() => { dropAnswer(); setSelected(null); setText(''); setCursor(null); input.current?.focus() }}>
+                Selected text <X weight="bold" aria-hidden="true" />
+              </button>
+            )
             : read.scope !== 'all' && (
               <button type="button" className="qs-chip is-scope" title="Back to everything  esc" onClick={() => { setScope('all'); if (read.scope !== scope) setText(''); setCursor(null); input.current?.focus() }}>
                 {tabs.find(([id]) => id === read.scope)?.[1]} <X weight="bold" aria-hidden="true" />
@@ -552,7 +612,20 @@ export function QuickSearchSurface() {
                   ))}
                 </ul>
               )}
-            <Preview row={picker ? picker.row : row} bridge={bridge} workspace={workspace} offer={picker ? null : offer} now={new Date()} onDragStart={picker ? undefined : dragOut(row)} />
+            {selected && !picker ? (
+              <section className="qs-preview" aria-label={answer ? 'The AI’s answer' : 'Selected text'}>
+                <div className="qs-stage" aria-live="polite"><pre className="qs-text">{answer ? (answer.error || answer.text || 'Thinking…') : selected}</pre></div>
+                <footer className="qs-facts">
+                  <h2>{answer ? answer.row.title : 'Selected text'}</h2>
+                  <dl className="qs-details">
+                    {answer
+                      ? <div><dt>Return</dt><dd>{!answer.done ? 'Wait for the answer' : answer.error ? 'Pick it again to try again' : replaces(answer.row.data) ? 'Pastes it over the selection' : 'Copies it'}</dd></div>
+                      : <div><dt>Length</dt><dd>{selected.length.toLocaleString('en-US')} characters</dd></div>}
+                    <div><dt>AI</dt><dd>{ai.label || 'Not set up'}</dd></div>
+                  </dl>
+                </footer>
+              </section>
+            ) : <Preview row={picker ? picker.row : row} bridge={bridge} workspace={workspace} offer={picker ? null : offer} now={new Date()} onDragStart={picker ? undefined : dragOut(row)} />}
             {menu && row && (
               <div className="qs-actions" role="menu" aria-label="Actions">
                 {actions.map((action, index) => (

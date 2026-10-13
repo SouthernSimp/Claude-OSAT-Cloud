@@ -320,6 +320,8 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   picks: search('picks'),
   picked: search('picked'),
   forgetPicks: search('forget-picks'),
+  // AI on selected text: main reads what is selected in the app you were in, then shows the bar on it.
+  selection: search('selection'),
   // The bar's ⌘K: a favorite, a key or a word for one row (main takes nothing else from the bar).
   customize: search('customize'),
   status: search('status'),

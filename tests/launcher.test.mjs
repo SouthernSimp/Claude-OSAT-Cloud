@@ -92,7 +92,7 @@ test('starting registers a Hyper key for each source and reads what is saved', a
   const t = await setup()
   try {
     await t.launcher.start()
-    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+R', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+V', 'Control+Alt+Shift+Command+W'])
+    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+R', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+T', 'Control+Alt+Shift+Command+V', 'Control+Alt+Shift+Command+W'])
     assert.equal(t.launcher.taken('Control+Alt+Shift+Command+V'), true, 'the desk’s shortcut picker can’t take it')
     assert.equal(t.launcher.hotkeyLabel('Control+Alt+Shift+Command+V'), 'Hyper V')
     assert.equal((await t.ask('search:settings')).sources.clipboard.keyword, 'v')
@@ -305,7 +305,7 @@ test('window keys are off until turned on; then each layout has its key, and a p
     const saved = await t.ask('search:save-settings', { windows: { on: true } })
     assert.equal(saved.windows.on, true)
     assert.equal(t.registered.has('Control+Alt+Left'), true)
-    assert.equal(t.registered.size, 6 + 17, 'a key for each layout, beside the Hyper keys and the ring’s')
+    assert.equal(t.registered.size, 7 + 17, 'a key for each layout, beside the Hyper keys, the ring’s and selected text’s')
     t.registered.get('Control+Alt+Left')()
     await wait(120)
     assert.deepEqual(moves, [[0, 0, 720, 900]])

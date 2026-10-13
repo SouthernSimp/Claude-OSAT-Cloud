@@ -340,6 +340,7 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
     case 'more': return [{ id: 'scope', label: 'Show all', keys: '↵' }]
     case 'system': return [{ id: 'system', label: row.title, keys: '↵' }]
     case 'snippet': return [{ id: 'paste-snippet', label: 'Paste', keys: '↵' }, { id: 'copy-snippet', label: 'Copy', keys: '⇧↵' }]
+    case 'text-action': return [{ id: 'text-ai', label: row.title, keys: '↵' }]
     case 'keyword-app': return [{ id: 'open-app-named', label: 'Open', keys: '↵' }]
     case 'keyword-link': return [{ id: 'open-link', label: 'Open in your browser', keys: '↵' }]
     case 'layout': return [{ id: 'snap', label: row.data?.layout === 'restore' ? 'Put the window back' : 'Move the window', keys: '↵' }]

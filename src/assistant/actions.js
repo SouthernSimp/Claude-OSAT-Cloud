@@ -23,7 +23,7 @@ const MAX_TEXT = 500
 export function systemPrompt(now = new Date(), aboutMe = '', context = '', { acting = false } = {}) {
   const today = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now)
-  return `You are a private thinking partner inside OSAT. Be concise, concrete and warm. Use Markdown.
+  return `You are a private thinking partner inside OSAT. Be concise, concrete and warm. Speak to the person directly as “you”, never “the user”. Use Markdown.
 
 ${OSAT_GUIDE}
 

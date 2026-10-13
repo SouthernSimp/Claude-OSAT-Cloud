@@ -68,6 +68,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   // The ring opens with Hyper + middle-click over any app (`middle`, a small helper: desktop/launcher/middle-click.cjs) or
   // from Hyper R, and with ⌘ + middle-click inside OSAT; null items means the usual eight.
   ring: { on: true, hotkey: hyper('R'), middle: true, items: null },
+  // AI on selected text (Phase 51): select words in any app, press this, pick Fix spelling, Summarize…
+  selection: { hotkey: hyper('T') },
   // What a Hyper key made by another app sends: all four (⌃⌥⇧⌘), or ⌃⌥⌘ (Raycast's, unless "Include Shift").
   hyper: { sends: 'four' },
   // Screenshots and recording (shared/capture-model.mjs): a key for each, off until given one.
@@ -146,6 +148,7 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
       middle: from.ring?.middle !== false,
       items: Array.isArray(from.ring?.items) ? [...new Set(from.ring.items.filter((id) => RING_ITEMS.some((item) => item.id === id)))].slice(0, 8) : null,
     },
+    selection: { hotkey: key(from.selection?.hotkey, hyper('T')) },
     hyper: { sends: from.hyper?.sends === 'three' ? 'three' : 'four' },
     captures: cleanCaptureSettings(from.captures, { validHotkey }),
   }
@@ -173,6 +176,7 @@ export function applyPatch(settings, patch) {
     ask: { ...settings.ask, ...(from.ask || {}) },
     windows: { ...settings.windows, ...(from.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(from.windows?.hotkeys || {}) } },
     ring: { ...settings.ring, ...(from.ring || {}) },
+    selection: { ...settings.selection, ...(from.selection || {}) },
     hyper: { ...(settings.hyper || {}), ...(from.hyper || {}) },
     captures: { ...settings.captures, ...(from.captures || {}), hotkeys: { ...settings.captures?.hotkeys, ...(from.captures?.hotkeys || {}) } },
   }
@@ -188,6 +192,7 @@ export function keysOf(settings, { all = false } = {}) {
     if (own?.hotkey && (all || own.on)) keys[`source:${source.id}`] = own.hotkey
   }
   if (settings.ring?.hotkey && (all || settings.ring.on)) keys.ring = settings.ring.hotkey
+  if (settings.selection?.hotkey) keys.selection = settings.selection.hotkey
   if (all || settings.windows?.on) for (const [id, hotkey] of Object.entries(settings.windows?.hotkeys || {})) if (hotkey) keys[`snap:${id}`] = hotkey
   for (const [name, own] of Object.entries(settings.apps || {})) if (own.hotkey) keys[`app:${name}`] = own.hotkey
   for (const link of settings.links || []) if (link.hotkey && (all || link.on !== false)) keys[`link:${link.id}`] = link.hotkey
@@ -212,6 +217,7 @@ export function nameOf(settings, id) {
   const [kind, rest] = id.includes(':') ? [id.slice(0, id.indexOf(':')), id.slice(id.indexOf(':') + 1)] : [id, '']
   if (kind === 'source') return SOURCES.find((source) => source.id === rest)?.label || rest
   if (kind === 'ring') return 'The ring'
+  if (kind === 'selection') return 'AI on selected text'
   if (kind === 'snap') return LAYOUTS.find((layout) => layout.id === rest)?.label || rest
   if (kind === 'link') return (settings.links || []).find((link) => link.id === rest)?.name || 'A quick link'
   if (kind === 'capture') return CAPTURES.find((item) => item.id === rest)?.label || rest
@@ -235,6 +241,7 @@ export function withKey(settings, id, hotkey) {
   switch (kind) {
     case 'source': return { ...settings, sources: { ...settings.sources, [rest]: { ...settings.sources[rest], hotkey } } }
     case 'ring': return { ...settings, ring: { ...settings.ring, hotkey } }
+    case 'selection': return { ...settings, selection: { ...settings.selection, hotkey } }
     case 'snap': return { ...settings, windows: { ...settings.windows, hotkeys: { ...settings.windows.hotkeys, [rest]: hotkey } } }
     case 'app': return { ...settings, apps: { ...settings.apps, [rest]: { keyword: null, ...(settings.apps?.[rest] || {}), hotkey } } }
     case 'link': return { ...settings, links: (settings.links || []).map((link) => (link.id === rest ? { ...link, hotkey } : link)) }
