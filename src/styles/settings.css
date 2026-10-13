@@ -18,13 +18,13 @@
 .settings-rail { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; border-right: 1px solid var(--line); background: var(--surface); }
 .settings-search { position: relative; margin: 14px 12px 8px; }
 .settings-search svg { position: absolute; left: 11px; top: 50%; width: 15px; height: 15px; translate: 0 -50%; color: var(--faint); pointer-events: none; }
-.settings .settings-search input { height: 32px; min-height: 0; padding: 0 38px 0 33px; border-radius: 9px; background: var(--surface-sunken); font-size: var(--t-sm); -webkit-appearance: none; appearance: none; }
+.settings .settings-search input { height: 32px; min-height: 0; padding: 0 38px 0 33px; border-radius: 6px; background: var(--surface-sunken); font-size: var(--t-sm); -webkit-appearance: none; appearance: none; }
 .settings .settings-search input::-webkit-search-cancel-button { display: none; }
 .settings-search kbd { position: absolute; right: 10px; top: 50%; translate: 0 -50%; font: 560 var(--t-2xs) var(--font); color: var(--faint); pointer-events: none; }
 .settings-nav { min-height: 0; overflow-y: auto; padding: 2px 8px 20px; }
 .settings-nav-group + .settings-nav-group { margin-top: 8px; }
-.settings-nav-group h3 { padding: 12px 10px 6px; font: 650 var(--t-2xs) var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
-.settings-nav button { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 8px; border-radius: 9px; color: var(--ink); font-size: var(--t-md); font-weight: 520; text-align: left; }
+.settings-nav-group h3 { padding: 12px 10px 6px; font: 650 var(--t-2xs) var(--font); letter-spacing: 0; color: var(--faint); }
+.settings-nav button { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 8px; border-radius: 6px; color: var(--ink); font-size: var(--t-md); font-weight: 520; text-align: left; }
 .settings-nav button:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .settings-nav button[aria-current="page"] { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink-strong); font-weight: 620; }
 .settings-nav i { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
@@ -38,11 +38,12 @@
 .settings-message, .settings-none { max-width: 680px; margin: 0 auto 16px; padding: 10px 14px; border-radius: var(--r-md); background: color-mix(in srgb, var(--ink) 5%, transparent); color: var(--ink); font-size: var(--t-sm); line-height: 1.5; }
 .settings-none { margin: 8px auto 0; text-align: center; color: var(--muted); }
 
-.setting-head { display: grid; justify-items: center; gap: 8px; padding: 2px 0 6px; text-align: center; }
-.setting-tile { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 15px; background: var(--accent); color: var(--accent-ink); box-shadow: var(--accent-glow); }
-.setting-tile svg { width: 30px; height: 30px; }
-.setting-head h2 { margin-top: 4px; font-size: var(--t-2xl); }
-.setting-head p { max-width: 50ch; color: var(--muted); font-size: var(--t-md); line-height: 1.5; }
+/* A page's title sits left, like a document's: a small tile, the name, one grey line under it. */
+.setting-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 12px; padding: 0 6px 14px; border-bottom: 1px solid var(--line-soft); }
+.setting-tile { grid-row: span 2; width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--r-md); background: var(--accent); color: var(--accent-ink); }
+.setting-tile svg { width: 19px; height: 19px; }
+.setting-head h2 { font-size: var(--t-xl); }
+.setting-head p { max-width: 60ch; color: var(--muted); font-size: var(--t-sm); line-height: 1.4; }
 .setting-found { display: none; padding: 6px 6px 0; font-size: var(--t-xl); }
 /* Searching: every page's rows that match, each page under its own title; a page or group with none left goes. */
 .settings[data-searching] .setting-head { display: none; }
@@ -79,7 +80,7 @@
 .settings .setting-switch:checked::after { translate: 16px 0; }
 .settings .setting-switch:focus-visible { outline: none; box-shadow: var(--ring); }
 
-.settings .setting-select { width: auto; min-width: 150px; max-width: 100%; min-height: 0; height: 32px; padding-top: 0; padding-bottom: 0; border-radius: 9px; background-color: var(--surface); font-size: var(--t-sm); font-weight: 520; }
+.settings .setting-select { width: auto; min-width: 150px; max-width: 100%; min-height: 0; height: 32px; padding-top: 0; padding-bottom: 0; border-radius: 6px; background-color: var(--surface); font-size: var(--t-sm); font-weight: 520; }
 .settings .outline-button, .settings .primary-button { min-height: 32px; padding: 0 14px; }
 .settings .button-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .settings .segmented { width: max-content; max-width: 100%; }
@@ -101,7 +102,7 @@
 
 .setting-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) 96px auto; gap: 10px; align-items: end; }
 .setting-form label { display: grid; gap: 4px; font-size: var(--t-xs); font-weight: 600; color: var(--muted); }
-.settings .setting-form input { min-height: 0; height: 34px; padding: 0 10px; border-radius: 9px; font-size: var(--t-sm); }
+.settings .setting-form input { min-height: 0; height: 34px; padding: 0 10px; border-radius: 6px; font-size: var(--t-sm); }
 
 /* ---- Older cards kept whole (the AI, bots, scans, the iPhone) ------------------------------------------------ */
 .settings-legacy { display: grid; gap: 14px; }
@@ -161,8 +162,8 @@
 /* Snippets: a word and its text side by side, the text wide. */
 .snippet-edit { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 10px; align-items: start; width: 100%; }
 .snippet-edit label, .snippet-form label { display: grid; gap: 4px; font-size: var(--t-xs); font-weight: 600; color: var(--muted); }
-.settings .snippet-edit input { height: 34px; padding: 0 10px; border-radius: 9px; font-size: var(--t-sm); }
-.settings .snippet-edit textarea, .settings .snippet-form textarea { padding: 8px 10px; border-radius: 9px; font: var(--t-sm)/1.45 var(--font); resize: vertical; }
+.settings .snippet-edit input { height: 34px; padding: 0 10px; border-radius: 6px; font-size: var(--t-sm); }
+.settings .snippet-edit textarea, .settings .snippet-form textarea { padding: 8px 10px; border-radius: 6px; font: var(--t-sm)/1.45 var(--font); resize: vertical; }
 .snippet-form { grid-template-columns: minmax(0, 1fr) 110px; }
 .snippet-form .is-wide { grid-column: 1 / -1; }
 .snippet-form button { justify-self: start; }

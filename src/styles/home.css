@@ -50,7 +50,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
-.widget { min-width: 0; padding: 14px; border-radius: 20px; color: var(--on-1); text-align: left; }
+.widget { min-width: 0; padding: 14px; border-radius: 12px; color: var(--on-1); text-align: left; }
 /* A widget just added (or brought back with Undo) settles in. */
 .widget.is-new { animation: widget-in 460ms var(--spring) both; }
 @keyframes widget-in { from { opacity: 0; scale: 0.94; } }
@@ -61,15 +61,14 @@
   align-items: baseline;
   gap: 6px;
   margin: 0;
-  font: 700 10px/1 var(--font);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent);
+  font: 600 var(--t-2xs)/1 var(--font);
+  letter-spacing: 0.02em;
+  color: var(--on-3);
 }
 .widget-kicker small { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--on-3); }
 /* The title is the button that opens the room (a click anywhere else on the widget presses it). */
 .widget-title { position: relative; z-index: 1; width: 100%; text-align: left; }
-.widget-date { margin-top: 6px; font: 600 34px/1 var(--font-display); letter-spacing: -0.03em; color: var(--on-1); }
+.widget-date { margin-top: 6px; font: 600 30px/1 var(--font-display); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; color: var(--on-1); }
 .widget-empty { font-size: var(--t-2xs); line-height: 1.35; color: var(--on-4); }
 
 /* Hovering or focusing a widget shows a small – at its corner, like the Mac's own widgets. */
@@ -131,14 +130,14 @@
   align-content: start;
   gap: 4px;
   padding: 12px;
-  border-radius: 20px;
+  border-radius: 12px;
   color: var(--ink);
   background: var(--surface-raised);
   box-shadow: 0 0 0 0.5px var(--line-strong), 0 30px 70px -28px rgb(0 0 0 / 55%);
   scrollbar-width: thin;
 }
 .widgets-tray-head { margin: 2px 8px 6px; font-size: var(--t-xs); font-weight: 650; color: var(--muted); }
-.widgets-pick { display: grid; gap: 7px; padding: 8px 8px 6px; border-radius: 16px; cursor: pointer; transition: background 160ms; }
+.widgets-pick { display: grid; gap: 7px; padding: 8px 8px 6px; border-radius: 10px; cursor: pointer; transition: background 160ms; }
 .widgets-pick:hover,
 .widgets-pick:has(:focus-visible) { background: var(--surface-hover); }
 .widgets-pick-line { padding: 0 4px; text-align: left; font-size: var(--t-xs); line-height: 1.35; color: var(--muted); }
@@ -281,9 +280,10 @@
 }
 .home-greeting {
   grid-row: 3;
-  margin: 0 0 26px;
-  font-size: 34px;
-  letter-spacing: -0.03em;
+  margin: 0 0 22px;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.022em;
   line-height: 1.08;
   text-align: center;
   color: var(--on-1);
@@ -297,7 +297,7 @@
   align-items: end;
   gap: 6px 8px;
   padding: 16px 12px 12px 20px;
-  border-radius: 20px;
+  border-radius: 12px;
   transition: box-shadow var(--d-base);
 }
 .home-composer:focus-within { box-shadow: var(--glass-rim), 0 0 0 1px color-mix(in srgb, var(--on-1) 22%, transparent), var(--glass-shadow); }
@@ -322,7 +322,7 @@
   height: 32px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--on-1) 20%, transparent);
   color: var(--on-1);
   transition: background var(--d-fast), color var(--d-fast), transform var(--d-base) var(--ease-spring);
@@ -345,7 +345,7 @@
   height: 32px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--on-3);
   transition: background var(--d-fast), color var(--d-fast);
 }
@@ -369,7 +369,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 1px;
   padding: 6px;
-  border-radius: 16px;
+  border-radius: 10px;
   color: var(--ink);
   background: var(--surface-raised);
   box-shadow: 0 0 0 0.5px var(--line-strong), 0 26px 60px -24px rgb(0 0 0 / 50%);
@@ -380,8 +380,8 @@
 }
 .home.is-raised .home-drawer { max-height: calc(var(--below) + var(--rise) - 20px); }
 @keyframes drawer-in { from { clip-path: inset(0 0 100% 0 round 16px); } to { clip-path: inset(0 0 0 0 round 16px); } }
-.home-drawer-head { margin: 5px 10px 3px; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
-.home-row { position: relative; display: flex; align-items: center; gap: 10px; min-height: 33px; padding: 0 10px; border-radius: 10px; font-size: var(--t-sm); user-select: none; }
+.home-drawer-head { margin: 5px 10px 3px; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: 0; color: var(--faint); }
+.home-row { position: relative; display: flex; align-items: center; gap: 10px; min-height: 33px; padding: 0 10px; border-radius: 8px; font-size: var(--t-sm); user-select: none; }
 .home-row svg { flex: none; width: 16px; height: 16px; color: var(--muted); }
 .home-row-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-row-label em { margin-left: 4px; font-size: var(--t-xs); font-style: normal; color: var(--faint); }
@@ -419,7 +419,7 @@
   gap: 8px;
   margin-top: 14px;
   padding: 12px 12px 10px 18px;
-  border-radius: 20px;
+  border-radius: 12px;
   color: var(--on-1);
   animation: answer-in 460ms var(--spring) both;
 }
@@ -443,7 +443,7 @@
 .home-answer .bubble-notes { justify-content: flex-start; margin: 0; color: var(--on-3); }
 .home-answer .action-cards { margin: 0; }
 .home-answer footer { display: flex; align-items: center; gap: 6px; }
-.home-answer footer :is(button, span) { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border-radius: 10px; font-size: var(--t-sm); font-weight: 550; color: var(--on-2); }
+.home-answer footer :is(button, span) { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border-radius: 8px; font-size: var(--t-sm); font-weight: 550; color: var(--on-2); }
 .home-answer footer button:hover { color: var(--on-1); background: color-mix(in srgb, var(--on-1) 10%, transparent); }
 .home-answer footer button:first-child { color: var(--on-solid-ink); background: var(--on-solid); }
 .home-answer footer svg { width: 14px; height: 14px; }
@@ -482,7 +482,7 @@
   gap: 7px;
   margin: 2px;
   padding: 6px 3px 4px;
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--on-1);
 }
 .icon:hover { background: color-mix(in srgb, var(--on-1) 11%, transparent); }
@@ -523,7 +523,7 @@
   height: 44px;
   display: grid;
   place-items: center;
-  border-radius: 11px;
+  border-radius: 8px;
   color: var(--on-1);
   background: color-mix(in srgb, var(--on-1) 16%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-1) 14%, transparent);
@@ -562,7 +562,7 @@
   height: 54px;
   margin-top: 10px;
   padding: 0 8px;
-  border-radius: 27px;
+  border-radius: 16px;
   background: var(--glass-strong);
 }
 .dock-group { display: flex; align-items: center; gap: 2px; }
@@ -574,7 +574,7 @@
   height: 42px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 8px;
   color: var(--on-2);
   transition: translate 220ms var(--ease-spring), color var(--d-fast), background var(--d-fast);
 }

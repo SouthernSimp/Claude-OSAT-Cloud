@@ -52,7 +52,7 @@ export function ConnectorCard({ bridge, connector }) {
 
   return (
     <section className="content-card bots-card">
-      <p className="eyebrow">CONNECTOR</p>
+      <p className="eyebrow">Connector</p>
       <h2>{on ? 'Apps on this Mac can reach OSAT.' : 'Let apps on this Mac reach OSAT.'}</h2>
       <p>The OSAT connector lets Claude Code, Claude Desktop, Shortcuts and other apps reach your notes. It only listens on this Mac, never on the network. Each app gets its own key, and you choose what it may do:</p>
       <ul className="connector-access">

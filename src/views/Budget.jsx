@@ -83,9 +83,8 @@ export function BudgetView({ workspace, commit }) {
     <section className="money-page">
       <header className="money-hero">
         <div>
-          <p className="money-kicker">A LITTLE FINANCIAL CLARITY</p>
-          <h1>Room to feel on top of it.</h1>
-          <p className="money-note">Your spending, your plans, a little less guesswork. A private manual ledger.</p>
+          <h1>Money</h1>
+          <p className="money-note">A private ledger you keep by hand. It stays on this Mac.</p>
         </div>
         <div className="money-balance">
           <span>All-time recorded net</span>
@@ -94,7 +93,7 @@ export function BudgetView({ workspace, commit }) {
         </div>
       </header>
 
-      <div className="money-period"><h2>A look at the month</h2><input aria-label="Ledger month" type="month" value={month} onChange={(event) => setMonth(event.target.value || localDateKey().slice(0, 7))} /></div>
+      <div className="money-period"><h2>This month</h2><input aria-label="Ledger month" type="month" value={month} onChange={(event) => setMonth(event.target.value || localDateKey().slice(0, 7))} /></div>
       <div className="money-overview"><article><ArrowDownLeft /><span>Money in</span><strong>{formatMinor(income)}</strong></article><article><ArrowUpRight /><span>Money out</span><strong>{formatMinor(spending)}</strong></article><article><Wallet /><span>Recorded net</span><strong>{formatMinor(income - spending)}</strong></article></div>
 
       <div className="money-toolbar">

@@ -277,7 +277,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
 
       <aside className="calendar-agenda">
         <header>
-          <p className="eyebrow">SELECTED DAY</p>
+          <p className="eyebrow">Selected day</p>
           <h3>{DAY_FULL.format(new Date(`${selected}T12:00`))}</h3>
           <span>
             {dayEvents.length
@@ -424,7 +424,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
 
         {upcoming.length > 0 && (
           <section className="agenda-upcoming">
-            <p className="eyebrow">COMING UP</p>
+            <p className="eyebrow">Coming up</p>
             {upcoming.map((event) => (
               <button
                 type="button"

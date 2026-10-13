@@ -27,7 +27,7 @@
 }
 
 .calendar-title h2 {
-  font-size: var(--t-3xl);
+  font-size: 26px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -71,8 +71,7 @@
   color: var(--faint);
   font-size: var(--t-2xs);
   font-weight: 650;
-  letter-spacing: var(--tr-wide);
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .weekday abbr {

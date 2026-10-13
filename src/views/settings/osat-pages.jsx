@@ -51,7 +51,7 @@ function AboutYouCard({ workspace, commit }) {
   const save = () => commit((state) => ({ ...state, settings: { ...(state.settings || {}), aboutMe: text } }));
   return (
     <section className="content-card about-you">
-      <p className="eyebrow">ABOUT YOU</p>
+      <p className="eyebrow">About you</p>
       <h2>Tell the AI who it's helping.</h2>
       <p>Write a few lines: your name, what you do, how you like answers. The AI reads this before every question. It never leaves this Mac.</p>
       <textarea rows={6} value={text} onChange={(event) => setText(event.target.value)} onBlur={save}
@@ -74,11 +74,11 @@ function AiCard() {
 
   if (!bridge?.status) return (
     <section className="content-card">
-      <p className="eyebrow">LOCAL AI</p><h2>The AI lives in the Mac app.</h2>
+      <p className="eyebrow">Local AI</p><h2>The AI lives in the Mac app.</h2>
       <p>In the Mac app, download models, choose one for each conversation, and free AI memory whenever you need it. This browser preview can use LM Studio.</p>
     </section>
   );
-  if (!status) return <section className="content-card"><p className="eyebrow">LOCAL AI</p><h2>Looking at this Mac…</h2></section>;
+  if (!status) return <section className="content-card"><p className="eyebrow">Local AI</p><h2>Looking at this Mac…</h2></section>;
   const download = status.download;
   const percent = download ? Math.floor((download.received / download.total) * 100) : 0;
   const installed = status.tiers.filter((tier) => tier.ready);
@@ -168,7 +168,7 @@ function ScansCard() {
   const folder = status?.dir ? status.dir.split("/").filter(Boolean).at(-1) : "";
   return (
     <section className="content-card">
-      <p className="eyebrow">SCANS</p>
+      <p className="eyebrow">Scans</p>
       {status?.dir ? (
         <>
           <h2>Scans become topics.</h2>
@@ -223,7 +223,7 @@ function PhoneCards() {
   if (!bridge) {
     return (
       <section className="content-card">
-        <p className="eyebrow">IPHONE</p>
+        <p className="eyebrow">iPhone</p>
         <h2>The iPhone link lives in the Mac app.</h2>
         <p>In the Mac app, OSAT can keep a folder in your iCloud Drive for your iPhone.</p>
       </section>
@@ -232,7 +232,7 @@ function PhoneCards() {
   if (!status?.enabled) {
     return (
       <section className="content-card phone-card">
-        <p className="eyebrow">IPHONE</p>
+        <p className="eyebrow">iPhone</p>
         <h2>Reach OSAT from your iPhone.</h2>
         <p>OSAT can keep a folder in your iCloud Drive. Text you drop into it from your iPhone becomes a sticky in Unsorted, and a copy of your notes waits there to read.</p>
         <p className="phone-privacy"><LockSimple /> This is the one thing that leaves this Mac. It goes to your own iCloud Drive, which Apple keeps; turn on Advanced Data Protection in iCloud settings for end-to-end encryption.</p>
@@ -246,7 +246,7 @@ function PhoneCards() {
   return (
     <>
       <section className="content-card phone-card">
-        <p className="eyebrow">IPHONE</p>
+        <p className="eyebrow">iPhone</p>
         <h2>Your iPhone can reach OSAT.</h2>
         <p>
           {status.error || status.sync?.error || (status.lastCapture ? `The last sticky from your iPhone arrived ${formatRelativeTime(status.lastCapture)}.` : "Nothing from your iPhone yet. Stickies land in Unsorted a few seconds after iCloud brings them.")}
@@ -265,7 +265,7 @@ function PhoneCards() {
         {message && <p role="status">{message}</p>}
       </section>
       <section className="content-card">
-        <p className="eyebrow">SEND A THOUGHT</p>
+        <p className="eyebrow">Send a thought</p>
         <h2>Make “Add to OSAT” once.</h2>
         <ol className="phone-steps">
           <li>On your iPhone, open <b>Shortcuts</b> and tap <b>+</b>.</li>
@@ -276,7 +276,7 @@ function PhoneCards() {
         <p>From any app, Share → Save to Files → OSAT → Inbox works too.</p>
       </section>
       <section className="content-card">
-        <p className="eyebrow">READ YOUR NOTES</p>
+        <p className="eyebrow">Read your notes</p>
         <h2>Files → iCloud Drive → OSAT → Notes.</h2>
         <p>A copy that follows your notes as you write, in the same topics. Write in OSAT; changes made to the copy aren’t read back.</p>
       </section>
@@ -436,7 +436,7 @@ export function DataPage({ page, workspace, commit, storage, showUndo }) {
       </Group>
       <Legacy words="obsidian vault export notes">
         <section className="content-card settings-obsidian">
-          <p className="eyebrow">OBSIDIAN</p>
+          <p className="eyebrow">Obsidian</p>
           <h2>Send notes to a vault.</h2>
           <ObsidianView workspace={workspace} commit={commit} />
         </section>

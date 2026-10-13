@@ -492,7 +492,7 @@ export function Desk() {
           <section className="connection-gate" aria-live="polite">
             <div>
               <Database />
-              <span>LOCAL STORAGE</span>
+              <span>Local storage</span>
             </div>
             <h2>{storage.status === 'error' ? 'Your workspace could not be opened.' : 'Opening the room.'}</h2>
             <p>{storage.status === 'error' ? `${storage.message} Nothing has been changed.` : 'Your notes stay on this Mac.'}</p>

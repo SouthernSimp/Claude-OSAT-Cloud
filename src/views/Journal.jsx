@@ -59,6 +59,6 @@ export function JournalView({ workspace, commit, navigate, target }) {
       </aside>
     </div>}
     {tab === 'reflect' && <ReflectionView workspace={workspace} commit={commit} today={today} />}
-    {tab === 'past' && <div className="journal-history"><aside>{previous.map((note) => <button key={note.id} className={selected === note.id ? 'active' : ''} onClick={() => setSelected(note.id)}><BookOpenText /><span>{note.title}<small>{note.date}</small></span></button>)}{!previous.length && <p>Your story starts here. Earlier pages will be waiting whenever you want to revisit them.</p>}</aside><article>{chosen ? <><p className="eyebrow">AN EARLIER PAGE · READ ONLY</p><h2>{chosen.title}</h2><Markdown text={chosen.markdown} /></> : <p className="quiet-empty">Choose a page to return to.</p>}</article></div>}
+    {tab === 'past' && <div className="journal-history"><aside>{previous.map((note) => <button key={note.id} className={selected === note.id ? 'active' : ''} onClick={() => setSelected(note.id)}><BookOpenText /><span>{note.title}<small>{note.date}</small></span></button>)}{!previous.length && <p>Your story starts here. Earlier pages will be waiting whenever you want to revisit them.</p>}</aside><article>{chosen ? <><p className="eyebrow">An earlier page · read only</p><h2>{chosen.title}</h2><Markdown text={chosen.markdown} /></> : <p className="quiet-empty">Choose a page to return to.</p>}</article></div>}
   </section>;
 }

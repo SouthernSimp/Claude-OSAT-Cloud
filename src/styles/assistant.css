@@ -492,8 +492,7 @@
   color: var(--accent);
   font-size: var(--t-2xs);
   font-weight: 700;
-  letter-spacing: var(--tr-wide);
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .action-card {
@@ -1040,7 +1039,7 @@ html:has(.quick-chat) body { background: transparent; }
 .ai-compare-wrap { overflow-x: auto; }
 .ai-compare { width: 100%; min-width: 640px; border-collapse: collapse; font-size: var(--t-sm); }
 .ai-compare th, .ai-compare td { padding: 10px 12px; text-align: left; vertical-align: middle; border-top: 1px solid var(--line); }
-.ai-compare thead th { border-top: 0; padding-top: 4px; color: var(--muted); font-size: var(--t-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.ai-compare thead th { border-top: 0; padding-top: 4px; color: var(--muted); font-size: var(--t-2xs); font-weight: 600; letter-spacing: 0; }
 .ai-compare tbody th { font-weight: 400; }
 .ai-compare tbody th b { display: block; font-weight: 600; color: var(--ink-strong, var(--ink)); }
 .ai-compare tbody th small { color: var(--muted); font-size: var(--t-xs); }
