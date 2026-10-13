@@ -4,7 +4,7 @@
    pieces; main.cjs owns the window. */
 
 const DEFAULT_HOTKEY = 'Alt+Space'
-// The quick bar (Phase 13, one bar since 13c). ⌥Space is the desk and ⌥⇧Space opens the bar on Ask; ⌘⇧Space is free on a Mac.
+// The quick bar (Phase 13, one bar since 13c; one key for it since Oct 2026). ⌥Space is the desk; ⌘⇧Space is free on a Mac.
 const DEFAULT_SEARCH_HOTKEY = 'Command+Shift+Space'
 const MODIFIERS = new Set(['Command', 'Control', 'Alt', 'Shift'])
 

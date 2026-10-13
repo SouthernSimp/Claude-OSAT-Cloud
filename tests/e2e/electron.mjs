@@ -328,7 +328,7 @@ try {
   const fileMenu = (label) => app.evaluate(({ Menu }, name) => Menu.getApplicationMenu().items.find((item) => item.label === 'File').submenu.items.find((item) => item.label === name).click(), label)
   const clipboardNow = () => app.evaluate(({ clipboard }) => clipboard.readText())
   if (searchPage) {
-    await fileMenu('Quick Bar')
+    await fileMenu('Search or Ask…')
     check(await until(() => searchWindow('shown'), 3000), 'Quick Search in the File menu did not show the bar')
     await searchPage.locator('#qs-input').waitFor({ timeout: 5000 })
     check((await searchWindow('bounds')).height < 140, 'the quick search did not open as a small bar')
@@ -390,14 +390,14 @@ try {
     // What OSAT itself puts on the clipboard (the connector's key, later) is never kept; only what was copied is.
     check(!(await kept()).some((words) => /Bearer/.test(words)), 'something OSAT copied itself was kept in the history')
     // Esc backs out a step at a time: the words, then the bar.
-    if (!(await searchWindow('shown'))) await fileMenu('Quick Bar')
+    if (!(await searchWindow('shown'))) await fileMenu('Search or Ask…')
     await searchPage.fill('#qs-input', 'restart')
     await searchPage.keyboard.press('Escape')
     check((await searchPage.inputValue('#qs-input')) === '', 'Esc did not clear the words first')
     await searchPage.keyboard.press('Escape')
     check(await until(async () => !(await searchWindow('shown')), 3000), 'Esc did not put the quick search away')
     // Return on a note opens it on the desk.
-    await fileMenu('Quick Bar')
+    await fileMenu('Search or Ask…')
     await searchPage.fill('#qs-input', 'restart')
     await searchPage.locator('.qs-row', { hasText: 'Saved across a restart' }).waitFor({ timeout: 5000 })
     await searchPage.keyboard.press('Enter')
@@ -553,6 +553,13 @@ try {
     const lately = (await main.evaluate(() => window.osatBots.status())).connector.recent
     await main.evaluate((at) => window.osatBots.undoConnector(at), lately[0]?.at)
     check(await until(async () => !(await viaMcp()), 5000), 'Undo did not take away what came through the connector')
+    // The same tools as a plain web API (/api/<tool>, GET or POST, text back), with the same key.
+    const api = (tool, init = {}) => fetch(connector.url.replace(/\/mcp$/, `/api/${tool}`), { ...init, headers: { authorization: `Bearer ${connectorKey}`, 'content-type': 'application/json', ...init.headers } })
+    check((await api('search', { headers: { authorization: 'Bearer wrong' } })).status === 401, 'the web API answered without its key')
+    const posted = await api('add_sticky', { method: 'POST', body: JSON.stringify({ text: 'From a script over the API' }) })
+    check(posted.status === 200, `add_sticky over the web API failed: ${posted.status} ${await posted.text()}`)
+    check(await until(async () => JSON.stringify((await main.evaluate(async () => (await window.osat.store.load()).doc.notes))).includes('From a script over the API'), 5000), 'a sticky added over the web API did not reach the windows')
+    check(/From a script over the API/.test(await (await api('search?query=script')).text()), 'search over the web API did not find the new sticky')
     await main.evaluate(() => window.osatBots.connectorOff())
     check(await mcp({ jsonrpc: '2.0', id: 4, method: 'ping' }).then(() => false, () => true), 'the connector still answered after turning it off')
 

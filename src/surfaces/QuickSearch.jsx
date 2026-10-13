@@ -31,7 +31,7 @@ import { canAsk } from '../views/Files.jsx'
    Esc backs out one step: the actions, a sticky or a question being written, the words, one source, Ask, then the
    bar itself. One list, no tabs (Oct 2026): Ask AI is the first row (the highlight starts on it for a question, else
    on the first thing found; Tab or ⌘↵ asks), each source shows a few rows and "See all"; a keyword typed first ("v" is
-   the clipboard) or a source's Hyper key shows that source alone, with a chip to come back. ⌥⇧Space opens it on Ask.
+   the clipboard) or a source's Hyper key shows that source alone, with a chip to come back. Pop out from the desk opens it on Ask.
    Drag it by its edges; it opens where it was left.
    The panel asks main for files, copies and apps (`window.osatSearch`); notes, nodes and commands it finds itself. */
 

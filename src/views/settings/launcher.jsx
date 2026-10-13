@@ -108,11 +108,8 @@ export function QuickSearchPage({ page }) {
           <Group title="Open it" note="In the bar: Return opens what is picked, ⌘Return asks the AI about what you typed, ⌥Return saves it to Unsorted as a sticky, ⌘K lists every action, Esc backs out a step. Drag it by its edge and it opens there next time.">
             {keys.bridge && (
               <>
-                <Row title="Shortcut" hint={taken(keys.info?.search, 'Brings it up over any app. Press it again, or Esc, to put it away.')} words="hotkey key open">
-                  <DeskKey which="search" name="the quick bar" keys={keys} />
-                </Row>
-                <Row title="Ask" hint={taken(keys.info?.chat, 'Opens the bar on Ask, with the chat you were in.')} words="hotkey key ask chat ai">
-                  <DeskKey which="chat" name="Ask in the quick bar" keys={keys} />
+                <Row title="Shortcut" hint={taken(keys.info?.search, 'Brings it up over any app, to find or to ask. Press it again, or Esc, to put it away.')} words="hotkey key open ask chat ai">
+                  <DeskKey which="search" name="Search or Ask" keys={keys} />
                 </Row>
               </>
             )}
