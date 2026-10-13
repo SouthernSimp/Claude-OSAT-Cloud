@@ -116,7 +116,7 @@
   display: grid;
   gap: 16px;
   padding: 26px;
-  border-radius: 20px;
+  border-radius: 12px;
 }
 .bridge-preview h2 {
   margin-bottom: 4px;
@@ -162,7 +162,7 @@
 .csv-result {
   margin: 12px 0;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: var(--t-xs);
 }
 .csv-result.ready {
@@ -216,7 +216,7 @@
   gap: 9px;
   padding: 13px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 8px;
   color: var(--muted);
   font-size: var(--t-2xs);
   line-height: 1.4;
@@ -347,7 +347,7 @@
   .ai-sizes { grid-template-columns: minmax(0, 1fr); }
 }
 @container room (max-width: 560px) {
-  .bridge-preview { padding: 20px; border-radius: 16px; }
+  .bridge-preview { padding: 20px; border-radius: 10px; }
   .project-row, .money-row { align-items: flex-start; flex-wrap: wrap; }
   .project-row .row-actions { width: 100%; }
   .project-row .row-actions button { flex: 1; }
@@ -496,7 +496,7 @@
 .money-balance {
   text-align: right;
   padding: 16px 18px;
-  border-radius: 18px;
+  border-radius: 12px;
   background: var(--surface-raised);
   border: 1px solid var(--line-soft);
   box-shadow: var(--e-1);
@@ -532,7 +532,7 @@
   margin-bottom: 22px;
   padding: 14px;
   border: 1px solid var(--line-soft);
-  border-radius: 18px;
+  border-radius: 12px;
   background: var(--surface-raised);
   box-shadow: var(--e-1);
 }
@@ -541,7 +541,7 @@
   min-height: 40px;
   padding: 0 12px;
   border: 1px solid var(--line-soft);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--surface-sunken);
 }
 .money-composer .check-row,
@@ -553,7 +553,7 @@
 .money-ledger {
   display: grid;
   border: 1px solid var(--line-soft);
-  border-radius: 18px;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--surface-raised);
 }
@@ -601,7 +601,7 @@
 .money-import {
   margin-top: 28px;
   padding: 18px;
-  border-radius: 18px;
+  border-radius: 12px;
   border: 1px dashed var(--line);
   background: var(--surface-sunken);
 }
@@ -610,7 +610,7 @@
 .money-import textarea {
   width: 100%;
   border: 1px solid var(--line-soft);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 12px;
   background: var(--surface-raised);
   font-family: var(--font-mono);
@@ -619,13 +619,13 @@
 
 /* The journal and file shelf are connected, quiet destinations from Home. */
 
-.journal-history { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 30px; }.journal-history > aside { display: flex; flex-direction: column; gap: 8px; }.journal-history > aside > button { display: flex; align-items: center; gap: 12px; text-align: left; padding: 16px; border-radius: 12px; background: var(--surface); font-size: var(--t-xs); border: 1px solid var(--line); }.journal-history > aside > button.active { border-color: var(--accent-line); }.journal-history small { display: block; color: var(--faint); font-size: var(--t-2xs); margin-top: 5px; }.journal-history p { color: var(--muted); line-height: 1.8; }.journal-history article { min-width: 0; border-radius: 18px; background: var(--surface); padding: 30px; }.journal-history h2 { margin: 20px 0; font-family: var(--font-display); }
+.journal-history { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 30px; }.journal-history > aside { display: flex; flex-direction: column; gap: 8px; }.journal-history > aside > button { display: flex; align-items: center; gap: 12px; text-align: left; padding: 16px; border-radius: 8px; background: var(--surface); font-size: var(--t-xs); border: 1px solid var(--line); }.journal-history > aside > button.active { border-color: var(--accent-line); }.journal-history small { display: block; color: var(--faint); font-size: var(--t-2xs); margin-top: 5px; }.journal-history p { color: var(--muted); line-height: 1.8; }.journal-history article { min-width: 0; border-radius: 12px; background: var(--surface); padding: 30px; }.journal-history h2 { margin: 20px 0; font-family: var(--font-display); }
 
 /* Earlier pages: the list sits above the page once the room is too narrow for both. */
 @container room (max-width: 760px) { .journal-history { grid-template-columns: minmax(0, 1fr); gap: 18px; } }
 .money-hero h1 { font-family: var(--font-display); font-size: clamp(29px, 3cqi, 42px); }
 .money-period { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin: 28px 0 18px; }.money-period h2 { font-size: 15px; letter-spacing: -.02em; }.money-period input { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: var(--t-xs); padding: 8px 12px; }
-.money-overview { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 28px; }.money-overview article { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }.money-overview article svg { grid-column: 2; grid-row: 1; color: var(--accent); width: 20px; height: 20px; }.money-overview article span { grid-column: 1; grid-row: 1; color: var(--muted); font-size: var(--t-2xs); }.money-overview article strong { grid-column: 1/-1; font-family: var(--font-display); font-size: clamp(23px, 3cqi, 35px); font-weight: 600; margin-top: 19px; }
+.money-overview { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 28px; }.money-overview article { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }.money-overview article svg { grid-column: 2; grid-row: 1; color: var(--accent); width: 20px; height: 20px; }.money-overview article span { grid-column: 1; grid-row: 1; color: var(--muted); font-size: var(--t-2xs); }.money-overview article strong { grid-column: 1/-1; font-family: var(--font-display); font-size: clamp(23px, 3cqi, 35px); font-weight: 600; margin-top: 19px; }
 /* Money in a narrower room: the entry form goes to two columns, then one, and the
    month's three totals become three short lines. */
 @container room (max-width: 760px) {
@@ -649,7 +649,7 @@
 .settings-obsidian .bridge-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .settings-obsidian .bridge-steps span { min-height: 0; padding: 10px 12px; }
 @container room (max-width: 760px) { .settings-obsidian .bridge-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.settings-obsidian .bridge-preview pre { max-height: 240px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+.settings-obsidian .bridge-preview pre { max-height: 240px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
 
 
 /* ---- Roadmap ---------------------------------------------------------------- */

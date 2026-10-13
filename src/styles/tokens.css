@@ -1,6 +1,6 @@
 
-/* OSAT — clean light and dark, neutral greys, and one colour: the Mac's own accent
-   (main.cjs paints --mac-accent from System Settings; the browser preview uses blue).
+/* OSAT — a studio look: cool neutral greys, crisp hairlines, tight corners, solid glass, and one colour: the
+   Mac's own accent (main.cjs paints --mac-accent from System Settings; the browser preview uses blue).
    Stickies keep their paper colours. Every value is defined here once. */
 
 :root {
@@ -13,30 +13,30 @@
   --critical-soft: #fdecec;
 
   /* Ground and surfaces: the desk, the panels on it, the paper on top. */
-  --page: #f5f5f7;
-  --surface: #fafafb;
+  --page: #f4f4f5;
+  --surface: #fafafa;
   --surface-raised: #ffffff;
-  --surface-sunken: #ececef;
-  --surface-hover: #eeeef1;
+  --surface-sunken: #ebebed;
+  --surface-hover: #efeff1;
   /* Solid even where the others are see-through (menus that sit over a panel's content). */
   --surface-solid: #ffffff;
   --scrim: rgb(0 0 0 / 28%);
 
-  --ink: #1d1d1f;
-  --ink-strong: #000000;
-  --muted: #6e6e73;
-  --faint: #98989d;
+  --ink: #18181b;
+  --ink-strong: #09090b;
+  --muted: #63636b;
+  --faint: #8e8e96;
 
-  --line: rgb(0 0 0 / 10%);
-  --line-soft: rgb(0 0 0 / 6%);
-  --line-strong: rgb(0 0 0 / 17%);
+  --line: rgb(9 9 11 / 9%);
+  --line-soft: rgb(9 9 11 / 5.5%);
+  --line-strong: rgb(9 9 11 / 16%);
 
   --accent: var(--mac-accent, #007aff);
   --accent-ink: var(--mac-accent-ink, #ffffff);
   --accent-hover: color-mix(in srgb, var(--accent) 86%, #000);
-  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--surface-raised));
+  --accent-soft: color-mix(in srgb, var(--accent) 9%, var(--surface-raised));
   --accent-line: color-mix(in srgb, var(--accent) 30%, transparent);
-  --accent-glow: 0 8px 22px -12px color-mix(in srgb, var(--accent) 55%, transparent);
+  --accent-glow: 0 1px 2px color-mix(in srgb, var(--accent) 30%, transparent);
 
   /* Notes as paper: the open sheet, the day page. */
   --tabletop: #ececef;
@@ -57,35 +57,36 @@
   --glass-rim: inset 0 0 0 1px rgb(255 255 255 / 55%), 0 0 0 0.5px var(--line);
   --glass-shadow: 0 12px 32px -18px rgb(0 0 0 / 26%);
   --glass-blur: blur(24px) saturate(1.4);
-  --on-1: rgb(29 29 31 / 96%);
-  --on-2: rgb(29 29 31 / 74%);
-  --on-3: rgb(29 29 31 / 58%);
-  --on-4: rgb(29 29 31 / 46%);
+  --on-1: rgb(9 9 11 / 94%);
+  --on-2: rgb(9 9 11 / 72%);
+  --on-3: rgb(9 9 11 / 56%);
+  --on-4: rgb(9 9 11 / 46%);
   --on-solid: var(--ink);
   --on-solid-ink: var(--page);
   --home-folder: oklch(64% 0.12 250);
   --home-text-shadow: 0 0 10px rgb(255 255 255 / 60%);
 
-  --e-1: 0 1px 2px rgb(0 0 0 / 6%);
-  --e-2: 0 2px 8px -2px rgb(0 0 0 / 9%);
-  --e-3: 0 12px 30px -14px rgb(0 0 0 / 20%);
-  --e-4: 0 20px 48px -18px rgb(0 0 0 / 24%);
-  --e-5: 0 32px 70px -24px rgb(0 0 0 / 32%);
-  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+  --e-1: 0 1px 2px rgb(0 0 0 / 5%);
+  --e-2: 0 1px 2px rgb(0 0 0 / 5%), 0 2px 6px -2px rgb(0 0 0 / 8%);
+  --e-3: 0 1px 2px rgb(0 0 0 / 5%), 0 10px 24px -14px rgb(0 0 0 / 22%);
+  --e-4: 0 1px 3px rgb(0 0 0 / 6%), 0 18px 40px -20px rgb(0 0 0 / 28%);
+  --e-5: 0 2px 4px rgb(0 0 0 / 6%), 0 28px 60px -26px rgb(0 0 0 / 36%);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
 
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
-  --font-display: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* Headings in the Mac's own display face, not rounded: a working tool, not a toy. */
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   --t-2xs: 0.6875rem; --t-xs: 0.75rem; --t-sm: 0.8125rem; --t-md: 0.875rem;
   --t-lg: 1rem; --t-xl: 1.125rem; --t-2xl: 1.5rem; --t-3xl: 2rem;
   --lh-tight: 1.1; --lh-snug: 1.3; --lh-normal: 1.5; --lh-relaxed: 1.65;
-  --tr-tight: -0.01em; --tr-display: -0.025em; --tr-wide: 0.06em;
+  --tr-tight: -0.01em; --tr-display: -0.02em; --tr-wide: 0.06em;
 
   --s-1: 0.25rem; --s-2: 0.5rem; --s-3: 0.75rem; --s-4: 1rem; --s-5: 1.25rem;
   --s-6: 1.5rem; --s-8: 2rem; --s-10: 2.5rem; --s-12: 3rem;
 
-  --r-xs: 6px; --r-sm: 8px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px; --r-2xl: 24px; --r-full: 999px;
+  --r-xs: 5px; --r-sm: 6px; --r-md: 8px; --r-lg: 10px; --r-xl: 12px; --r-2xl: 16px; --r-full: 999px;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
@@ -101,26 +102,26 @@
 }
 
 :root[data-theme="dark"] {
-  --page: #161618;
-  --surface: #1c1c1e;
-  --surface-raised: #242427;
-  --surface-sunken: #111113;
-  --surface-hover: #2c2c2f;
-  --surface-solid: #2a2a2e;
+  --page: #121214;
+  --surface: #18181b;
+  --surface-raised: #1f1f23;
+  --surface-sunken: #0d0d0f;
+  --surface-hover: #27272b;
+  --surface-solid: #26262a;
   --scrim: rgb(0 0 0 / 56%);
 
-  --ink: #f2f2f4;
-  --ink-strong: #ffffff;
-  --muted: #a1a1a6;
-  --faint: #6e6e73;
+  --ink: #ededef;
+  --ink-strong: #fafafa;
+  --muted: #a1a1aa;
+  --faint: #71717a;
 
-  --line: rgb(255 255 255 / 9%);
-  --line-soft: rgb(255 255 255 / 5%);
-  --line-strong: rgb(255 255 255 / 16%);
+  --line: rgb(255 255 255 / 8%);
+  --line-soft: rgb(255 255 255 / 4.5%);
+  --line-strong: rgb(255 255 255 / 14%);
 
   --accent: var(--mac-accent, #0a84ff);
   --accent-hover: color-mix(in srgb, var(--accent) 84%, #fff);
-  --accent-soft: color-mix(in srgb, var(--accent) 20%, var(--surface-raised));
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--surface-raised));
   --accent-line: color-mix(in srgb, var(--accent) 38%, transparent);
   --accent-glow: 0 8px 24px -12px color-mix(in srgb, var(--accent) 50%, transparent);
 

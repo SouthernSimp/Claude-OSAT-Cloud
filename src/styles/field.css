@@ -128,7 +128,7 @@ textarea.field-sheet-title::placeholder { color: color-mix(in srgb, var(--sheet-
   display: inline-flex;
   gap: 1px;
   padding: 3px;
-  border-radius: 11px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--ink) 5.5%, transparent);
 }
 .journal-tabs button { height: 30px; padding: 0 13px; border-radius: 8px; color: var(--muted); font-size: var(--t-sm); font-weight: 500; }

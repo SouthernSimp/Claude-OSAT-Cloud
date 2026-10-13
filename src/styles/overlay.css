@@ -26,7 +26,7 @@ html:has(.overlay-surface) body,
   grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   resize: both;
-  border-radius: 16px;
+  border-radius: 10px;
   /* Solid, like a Mac window: nothing on the desk shows through a room. */
   background: var(--page);
   box-shadow: 0 0 0 0.5px var(--line-strong), 0 24px 60px -28px rgb(0 0 0 / 45%);
@@ -98,7 +98,7 @@ html:has(.overlay-surface) body,
   padding: 12px 12px 12px 12px;
 }
 .widget-media img,
-.media-art { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; }
+.media-art { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; }
 .media-art { display: grid; place-items: center; color: var(--on-3); background: color-mix(in srgb, var(--on-1) 10%, transparent); }
 .media-art svg { width: 22px; height: 22px; }
 .media-text { min-width: 0; }
@@ -129,7 +129,7 @@ html:has(.overlay-surface) body,
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 10px;
   object-fit: cover;
   color: var(--faint);
   background: var(--surface-sunken);

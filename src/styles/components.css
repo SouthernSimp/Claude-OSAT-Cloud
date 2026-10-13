@@ -6,16 +6,16 @@
 .outline-button,
 .ghost-button,
 .text-button {
-  min-height: 36px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--s-2);
-  padding: 0 var(--s-4);
+  padding: 0 var(--s-3);
   border: 1px solid transparent;
   border-radius: var(--r-md);
   font-size: var(--t-sm);
-  font-weight: 600;
+  font-weight: 560;
   white-space: nowrap;
   transition: background var(--d-fast), border-color var(--d-fast),
     color var(--d-fast), box-shadow var(--d-fast), translate var(--d-fast);
@@ -32,25 +32,18 @@
 .primary-button {
   background: var(--accent);
   color: var(--accent-ink);
-  border-radius: var(--r-full);
-  box-shadow: var(--accent-glow);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 14%), var(--accent-glow);
 }
 
 .primary-button:hover:not(:disabled) {
   background: var(--accent-hover);
-  translate: 0 -1px;
-  box-shadow: var(--accent-glow), var(--e-2);
-}
-
-.primary-button:active:not(:disabled) {
-  translate: 0 0;
-  box-shadow: var(--e-1);
 }
 
 .outline-button {
-  border-color: var(--line);
-  background: var(--surface);
+  border-color: var(--line-strong);
+  background: var(--surface-raised);
   color: var(--ink);
+  box-shadow: var(--e-1);
 }
 
 .outline-button:hover:not(:disabled) {
@@ -67,16 +60,15 @@
   color: var(--ink);
 }
 
+/* Quiet links: grey until the pointer is on them. Blue is kept for the one main action. */
 .text-button {
   min-height: 0;
   padding: 0;
-  color: var(--accent);
+  color: var(--muted);
 }
 
 .text-button:hover:not(:disabled) {
-  color: var(--accent-hover);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  color: var(--ink-strong);
 }
 
 .danger-button {
