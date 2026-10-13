@@ -121,6 +121,19 @@ const listen = (channel, listener) => {
   return () => ipcRenderer.removeListener(channel, handler)
 }
 
+// Meetings (desktop/meetings/, Phase 57): Tools → Meetings.
+contextBridge.exposeInMainWorld('osatMeetings', Object.freeze({
+  status: () => ipcRenderer.invoke('meeting:status'),
+  getEars: () => ipcRenderer.invoke('meeting:ears-install'),
+  cancelEars: () => ipcRenderer.invoke('meeting:ears-cancel'),
+  start: (options) => ipcRenderer.invoke('meeting:start', { system: options?.system !== false }),
+  stop: () => ipcRenderer.invoke('meeting:stop'),
+  finish: (id) => ipcRenderer.invoke('meeting:finish', id),
+  discard: (id) => ipcRenderer.invoke('meeting:discard', id),
+  undo: () => ipcRenderer.invoke('meeting:undo'),
+  onChange: (listener) => listen('meeting:changed', listener),
+}))
+
 // While you sleep (desktop/overnight.cjs): the canvas's ideas and Settings → AI.
 contextBridge.exposeInMainWorld('osatOvernight', Object.freeze({
   status: () => ipcRenderer.invoke('overnight:status'),

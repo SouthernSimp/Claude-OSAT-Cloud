@@ -127,3 +127,11 @@ Use the existing local runtime only, with Stop and honest unavailable/error stat
 Keep browser verification in the background when a visible tab is unnecessary.
 Installed apps, native testing, networking, merging and deployment remain outside
 this implementation. See docs/NOTES-AI-20261005.md.
+
+## October 13, 2026 — Meetings (Phase 57)
+
+Nate asked for a Granola-style feature: listen to a meeting (up to about 45 minutes) and write it up, with whisper.cpp for the
+words and the AI already on the Mac for the notes. Built from first principles (no copying of another app's code or prompts).
+See "Architecture added in Phase 57" in CLAUDE.md. The listening helper (`desktop/meetings/osat-listen.swift`) and the
+macOS permission prompts have not been run inside the app: native testing stays paused, so Nate's first try of the CI
+build is the check. Leave merging for Nate's instruction.

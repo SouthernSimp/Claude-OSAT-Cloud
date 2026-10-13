@@ -8,19 +8,22 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 12, 2026 (late): Phases 53–55 stacked, waiting on Nate's merge
+## Resume checkpoint — October 13, 2026: Phase 57 (Meetings) in review
 
-Main has everything through Phase 52 (#78). Four PRs are stacked so merging #82 alone lands them all (#82 Phase 56 Put the desk away, `claude/put-away`):
-#79 Phase 53 While you sleep (`claude/overnight`), #80 Phase 54 trust fixes (`claude/trust-fixes`, contains #79), #81 Phase 55
-the GitHub room (`claude/github-room`, contains both). Nate asked for it all to arrive through Check for updates; Claude's
-own `gh pr merge` was blocked by the session's permission rules, so Nate merges (#81 on GitHub, or 79 → 80 → 81).
-Phase 53: `shared/overnight-model.mjs` (pure: `due`, `candidatePairs`, the two questions and readers, `liveIdeas`,
+Main has everything through Phase 56 (#79–#82, merged Oct 13). Phase 57 (`claude/meetings`, a draft PR on main): Tools →
+Meetings, "make Granola for OSAT" (Nate, Oct 13). See "Architecture added in Phase 57". Everything under it was verified by
+unit tests, the browser UI test and a real run of whisper.cpp and the built-in model off the app (`node scripts/meeting-check.mjs`);
+the listening helper and its two macOS permission prompts have NOT been run inside the app (no native testing here): Nate's
+first try is Tools → Meetings → Get the listening model, then a short meeting with the box ticked, then without it.
+Next after 57: the follow-ups in docs/BACKLOG.md.
+
+Older checkpoint, Oct 12 (late), now merged: Phases 53–56 were four stacked PRs. Phase 53: `shared/overnight-model.mjs` (pure: `due`, `candidatePairs`, the two questions and readers, `liveIdeas`,
 `ideaWords` for the brief), `desktop/overnight.cjs` (runner, `overnight.json`, `overnight:*` IPC, local models only,
 `background: true`), `src/sky/useOvernight.js`, faint `is-idea` threads in Board.jsx, "Ideas from last night" and
 `keepIdea`/`ideaItems` in Sky.jsx (through `canvasCommit`, so Undo), Settings → AI → While you sleep.
 Phase 54 and 55: see "Architecture added in Phase 55" and the webhooks/updater lines below.
 Nate's direction (Oct 12): OSAT should grow into a business management tool; see docs/BACKLOG.md (plan with him first).
-Next: Try this build in the GitHub room; Raycast gaps (script commands in Raycast's header format, a color picker).
+Raycast gaps still open: script commands in Raycast's header format, a color picker.
 Older checkpoints are in git history.
 
 ## Working with Nate
@@ -505,6 +508,26 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   desk menu's item in FieldDesk.jsx (`putDeskAway`: one commit, the places cleared, one Undo restoring both through the
   workspace inverse). Unsorted stickies move into the topic or a stack's branch; sorted ones stay home and are connected.
   Paper on the real desk: Tools → Sort a pile → Photo already reads a photo of stickies into a pile kept apart from topics.
+
+## Architecture added in Phase 57
+
+- Meetings (Tools → Meetings, `src/views/Meetings.jsx`, `osatMeetings` in the preload, `meeting:*` in `desktop/meetings/index.cjs`).
+  `shared/meeting-model.mjs` is the pure part: `speechWindows` (only stretches with someone talking go to whisper: it
+  invents words in silence), `cleanSegments` / `collapseRepeats` / `dropEcho` / `mergeTracks` (two sounds, Me and Them, one
+  conversation), `chunkLines` (parts of `CHUNK_WORDS` = 2,600: the built-in model's context is 8,192 tokens), `NOTES_SCHEMA` /
+  `TITLE_SCHEMA` and their questions and forgiving readers, `joinNotes` (lists joined in code), `meetingNotes` (the two notes).
+  `desktop/meetings/`: `capture.cjs` starts/stops `osat-listen` (Swift, `osat-listen.swift`, built by
+  `scripts/build-listen.mjs` to `build/helpers/`, shipped in Resources via `extraResources`; it writes `me.pcm` / `them.pcm`
+  straight into `<data folder>/meetings/<id>/`, 16 kHz mono 16-bit, and ends when OSAT's end of its input closes);
+  `ears.cjs` (the pinned whisper model, resumable, in `<data folder>/models/`); `listen.cjs` (whisper.cpp in a
+  `utilityProcess`, given `windows`, releases the model before it says done); `index.cjs` (the state machine: recording →
+  listening back → writing → two notes; `unfinished` recordings; `meetings.json` holds `last`). The write-up uses
+  `ai.chatStream` (built-in model only, a grammar, `interactive`), commits through the store from main, and Undo moves the
+  two notes to the Bin. Electron's own system-audio capture is Windows-only (its typings say so), which is why the helper exists.
+  The fence in tests/under.test.mjs forbids `modelUrl` in `desktop/meetings/`; `meeting:ears-install` waits offline (under.cjs).
+  `OSAT --osat-listen-test` (CI's mac job) checks the engine and the helper are inside the packaged app. Needs
+  `NSMicrophoneUsageDescription` and the `device.audio-input` entitlement (both added); Screen & System Audio Recording has no
+  plist key, macOS just asks. Real run: `node scripts/meeting-check.mjs [--ears …] [--model …] [--part-words 300]`.
 
 ## Layout traps worth remembering
 

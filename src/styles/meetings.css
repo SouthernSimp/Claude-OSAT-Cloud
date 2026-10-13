@@ -1,0 +1,24 @@
+/* Tools → Meetings (Phase 57): one calm column, the one obvious thing in the middle. */
+.mt-room { display: grid; align-content: start; gap: 14px; height: 100%; min-height: 0; padding: 22px 24px 28px; overflow-y: auto; }
+.mt-main { display: grid; justify-items: center; gap: 10px; padding: 28px 12px 18px; text-align: center; }
+.mt-main h2 { margin: 0; font-size: var(--t-2xl); font-variant-numeric: tabular-nums; }
+.mt-main p { max-width: 52ch; margin: 0; color: var(--ink); font-size: var(--t-sm); line-height: 1.55; }
+.mt-icon { width: 40px; height: 40px; color: var(--muted); }
+.mt-start { margin-top: 6px; }
+.mt-check { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--ink); font-size: var(--t-sm); }
+.mt-quiet { color: var(--muted) !important; }
+
+.mt-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--critical); animation: mt-pulse 1.6s ease-in-out infinite; }
+@keyframes mt-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .mt-dot { animation: none; } }
+
+.mt-progress { display: flex; align-items: center; gap: 12px; font-size: var(--t-sm); }
+.mt-progress progress { width: 220px; height: 8px; }
+
+.mt-said { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--accent-soft); font-size: var(--t-sm); text-align: left; }
+.mt-said.is-problem { background: var(--critical-soft); }
+.mt-said svg { flex: none; width: 16px; height: 16px; margin-top: 1px; }
+
+.mt-card { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); }
+.mt-card > div { flex: 1 1 240px; display: grid; gap: 2px; min-width: 0; }
+.mt-card small { color: var(--muted); font-size: var(--t-xs); }
