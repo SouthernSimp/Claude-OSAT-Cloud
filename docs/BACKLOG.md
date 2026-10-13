@@ -12,7 +12,7 @@ the same day. Last sorted: October 6, 2026 (night).
 | 1 | Build the Mac app (DMG) from main and try it with isolated data | Nothing from Codex's week has run as a real Mac app; Notes AI, Stop and offline use are unproven there | Done: main's Mac build passed and is a release |
 | 2 | Stop the hosted Mac build being cancelled: `ci.yml` had `cancel-in-progress: true`, so any newer run on the same branch killed it | It is why no DMG existed; every future build would fail the same way | Done (PR #45) |
 | 3 | Ask says when it dropped old messages or notes to fit the model's memory | The AI forgets silently today; trust in the AI is the point of the app | Done (PR #46) |
-| 4 | Notes AI speaks to you ("you") instead of "the user" | One-line prompt change; real-model answers read cold | To do |
+| 4 | Notes AI speaks to you ("you") instead of "the user" | One-line prompt change; real-model answers read cold | Done (PR #77) |
 | 4b | Sorting Unsorted is a mess, and the AI says nothing when its model isn't loaded | Nate's own words (Oct 6); silence breaks trust in the AI | In review (PR #49) |
 
 ## Next: save Nate effort

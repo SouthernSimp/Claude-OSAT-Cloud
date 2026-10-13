@@ -31,7 +31,7 @@ export function textMessages(data, text) {
   const action = TEXT_ACTIONS.find((item) => item.id === data?.id)
   const ask = action ? action.ask : String(data?.ask || '').trim()
   return [
-    { role: 'system', content: `You change or answer about a piece of text the user selected. ${RULES}` },
+    { role: 'system', content: `You change or answer about a piece of text the person selected. ${RULES}` },
     { role: 'user', content: `${ask}\n\nThe text:\n"""\n${String(text).slice(0, 20000)}\n"""` },
   ]
 }

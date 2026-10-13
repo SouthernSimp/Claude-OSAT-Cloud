@@ -8,7 +8,16 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 10, 2026: Phases 44–49 in review
+## Resume checkpoint — October 12, 2026 (night): Phases 50–51 stacked on #75
+
+Nate asked for Raycast's best missing pieces (Oct 12). Stacked drafts, each on the one before, so the top one's DMG
+has everything: #75 `claude/power` (44–49) ← #76 `claude/bar-learns` (50: the bar learns what you pick,
+`shared/picks.mjs`, `picks.json`) ← #77 `claude/selected-text` (51: AI on selected text, Hyper T,
+`shared/selection-model.mjs`, `desktop/launcher/selection.cjs`; also backlog #4, the AI says "you"). If Nate likes
+#77's DMG, merge #75, #76, #77 in that order. Next Raycast gaps, not started: script commands / extensions (the
+biggest), a color picker, ask about the screen. REA (`npx rea-agents setup`) can trace how Raycast does one.
+
+## Earlier checkpoint — October 10, 2026: Phases 44–49 in review
 
 Main is `0749003` (through Phase 43, PRs #73 and #74 merged). `claude/power`
 now combines the power work with `claude/ask-acts` (48b and 49), including both
