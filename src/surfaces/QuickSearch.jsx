@@ -313,6 +313,7 @@ export function QuickSearchSurface() {
           if (command?.confirm && live.current.armed !== target.key) { setArmed(target.key); said(command.confirm, 0); break }
           setArmed(null)
           const result = await bridge.system(d.id)
+          if (result.ok && command?.pane) { away(); break }
           if (result.reason === 'access') {
             setToast({ message: `To ${target.title.toLowerCase()}, OSAT needs Accessibility.`, label: 'Allow…', undo: () => bridge.askAccess().catch(() => {}), at: Date.now() })
           } else if (result.reason === 'mac') said('That works in the Mac app.')

@@ -22,7 +22,9 @@ function createSystem({ exec = run, platform = process.platform, trusted = () =>
       if (platform !== 'darwin') return { ok: false, reason: 'mac' }
       if (NEEDS_ACCESS.has(id) && !trusted()) return { ok: false, reason: 'access' }
       try {
-        if (id === 'sleep') await exec('pmset', ['sleepnow'], { timeout: 5000 })
+        const pane = model.systemCommand(id).pane
+        if (pane) await exec('open', [`x-apple.systempreferences:${pane}`], { timeout: 5000 })
+        else if (id === 'sleep') await exec('pmset', ['sleepnow'], { timeout: 5000 })
         else if (id === 'screen-off') await exec('pmset', ['displaysleepnow'], { timeout: 5000 })
         else await exec('osascript', ['-e', OSA[id]], { timeout: 15000 })
         return { ok: true }
