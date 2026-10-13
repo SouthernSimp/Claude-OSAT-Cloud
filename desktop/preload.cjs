@@ -316,6 +316,10 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   ready: search('ready'),
   settings: search('settings'),
   saveSettings: search('save-settings'),
+  // What you pick from the bar comes first next time (picks.json, this Mac only).
+  picks: search('picks'),
+  picked: search('picked'),
+  forgetPicks: search('forget-picks'),
   // The bar's ⌘K: a favorite, a key or a word for one row (main takes nothing else from the bar).
   customize: search('customize'),
   status: search('status'),
