@@ -86,7 +86,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     Model files live in `<data folder>/models`. LM Studio still works through `local-ai.cjs`.
   - `main.cjs`: windows, menu, IPC for the store / local AI / browser / terminal (`handle`, `fail`
     and the trusted-sender checks live here and are passed to the modules that register handlers),
-    the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌘⇧Space,
+    the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌥⇧Space,
     `chat` the bar on Ask, ⌥⇧Space; `chat:show` is Pop out, into the bar); menu-bar icon, app launchers, Esc
     routing (a panel swallows Esc, so OSAT takes it while the bar or the ring has focus), single-instance lock.
     Every `setVisibleOnAllWorkspaces` passes `skipTransformProcessType: true`: without it Electron activates the
@@ -164,7 +164,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     the fence in tests/under.test.mjs.
   - `launcher/` (Phase 13; `index.cjs` wires it, main only calls `createLauncher` and gives it `handle`, `fail`, the
     desk window and Electron's pieces; every `search:*` / `ring:*` channel is checked against the window that may ask,
-    `handle`'s `from` can be a function). `search-window.cjs` (the quick bar, ⌘⇧Space: a floating panel on every
+    `handle`'s `from` can be a function). `search-window.cjs` (the quick bar, ⌥⇧Space (⌘⇧Space until Oct 2026: Apple's AI holds it, so a saved one becomes ⌥⇧Space): a floating panel on every
     Space, a bar that grows to the full view or to Ask (`mode` bar / full / chat); the app you were in keeps focus;
     dragged, it opens where it was left: `barSpot` in prefs.json, only a move after `will-move` counts), `clipboard-history.cjs` (copies
     kept in `<data folder>/clipboard/`, skipping concealed types; pins, limits, Undo; OSAT's own writes go through
@@ -193,7 +193,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     presses ⌫ per letter and pastes through a quiet clipboard write, putting the clipboard back. Settings → Snippets.
     Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
     one way out of the Mac it adds is opening a web address in Nate's own browser (fenced in tests/under.test.mjs,
-    refused offline). ⌘⇧Space is the third shortcut in main's `shortcuts` (`search`).
+    refused offline). ⌥⇧Space is the third shortcut in main's `shortcuts` (`search`).
   - `sync.cjs`: the same switch keeps devices in step through `OSAT/Sync` (see sync-core below).
     It hooks `store.onCommit` to note every change made here (except what sync applied), keeps
     its place in `store/sync.json`, and once set up it notes changes even while the link is

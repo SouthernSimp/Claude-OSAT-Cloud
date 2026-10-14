@@ -22,7 +22,7 @@ import { useSources } from '../search/useSources.js'
 import { useWorkspace } from '../store/useWorkspace.js'
 import { canAsk } from '../views/Files.jsx'
 
-/* The quick bar (Phase 13; one bar since 13c, when it took over the quick chat): a small bar over every app (⌘⇧Space)
+/* The quick bar (Phase 13; one bar since 13c, when it took over the quick chat): a small bar over every app (⌥⇧Space)
    that opens into the full view as you type. Results on the left, a big preview on the right, the details under it.
    Return does the obvious thing (Open; for a copy, Paste into the app you were in); ⌘K lists every other action;
    ⌘Return asks the AI about what is typed (the answer streams in this window and is kept as a chat: Ask, the same

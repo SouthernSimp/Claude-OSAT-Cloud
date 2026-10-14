@@ -46,7 +46,7 @@ const { createBrowser } = require('./browser.cjs')
 const { createSkills } = require('./skills.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = require('./desk.cjs')
+const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, OLD_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = require('./desk.cjs')
 const { createLauncher } = require('./launcher/index.cjs')
 const { extractText } = require('./mac-files.cjs')
 const { TidyError } = require('./file-ops.cjs')
@@ -497,7 +497,7 @@ async function loadPrefs() {
     const saved = JSON.parse(await fs.readFile(prefsFile(), 'utf8'))
     prefs = {
       hotkey: validHotkey(saved.hotkey) ? saved.hotkey : DEFAULT_HOTKEY,
-      searchHotkey: validHotkey(saved.searchHotkey) ? saved.searchHotkey : DEFAULT_SEARCH_HOTKEY,
+      searchHotkey: validHotkey(saved.searchHotkey) && saved.searchHotkey !== OLD_SEARCH_HOTKEY ? saved.searchHotkey : DEFAULT_SEARCH_HOTKEY,
       // Where the quick bar was dragged to (its top middle); the old quick chat's chatBounds is left behind.
       barSpot: Number.isFinite(saved.barSpot?.x) && Number.isFinite(saved.barSpot?.y) ? { x: saved.barSpot.x, y: saved.barSpot.y } : null,
       launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
@@ -655,7 +655,7 @@ function registerDesk() {
   })
 }
 
-/* ---- The launcher (⌘⇧Space): the quick bar, the clipboard history, Hyper keys (desktop/launcher) ---- */
+/* ---- The launcher (⌥⇧Space): the quick bar, the clipboard history, Hyper keys (desktop/launcher) ---- */
 
 /* Putting the desk away hides OSAT (app.hide), and a hidden app's panels never appear: the quick bar, Ask, the
    clipboard and the ring then only worked once OSAT was opened. A panel unhides OSAT first, and when the last one

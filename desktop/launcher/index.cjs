@@ -189,8 +189,13 @@ async function createLauncher({
      → the ids that couldn't have their key. */
   function applyHotkeys(next = settings) {
     const wanted = {}
-    for (const [id, key] of Object.entries(launcherModel.keysOf(next))) wanted[id] = { key: launcherModel.systemKey(key, next.hyper.sends), run: runKey(id) }
-    return hotkeys.sync(wanted)
+    for (const [id, key] of Object.entries(launcherModel.keysOf(next))) {
+      wanted[id] = { key: launcherModel.systemKey(key, next.hyper.sends), run: runKey(id) }
+      // The other spelling of a Hyper key goes along (`~`): it may fail without anyone being told.
+      const alias = launcherModel.hyperAlias(key, next.hyper.sends)
+      if (alias && alias !== wanted[id].key) wanted[`${id}~`] = { key: alias, run: runKey(id) }
+    }
+    return hotkeys.sync(wanted).filter((id) => !id.endsWith('~'))
   }
 
   /* A patch is { view?, sources?: { id: { on?, keyword?, hotkey? } }, apps?, links?, clipboard?, pins?, … }. A key another
@@ -255,7 +260,7 @@ async function createLauncher({
   })
   on('search:status', () => (snippets.sync(), {
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
-    keysFailed: hotkeys.failed(),
+    keysFailed: hotkeys.failed().filter((id) => !id.endsWith('~')),
     // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
     middleClick: middleClick.state(),
     // 'off', 'access', 'starting', 'listening', 'failed' or 'unavailable': the typed snippets' helper.

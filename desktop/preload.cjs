@@ -314,7 +314,7 @@ contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   hide: () => ipcRenderer.send('desk:hide'),
   prefs: () => ipcRenderer.invoke('desk:prefs'),
   keys: () => ipcRenderer.invoke('desk:keys'),
-  // which: 'layer' (⌥Space, the desk) or 'search' (⌘⇧Space, the one bar: Search or Ask).
+  // which: 'layer' (⌥Space, the desk) or 'search' (⌥⇧Space, the one bar: Search or Ask).
   setHotkey: (value, which = 'layer') => ipcRenderer.invoke('desk:set-hotkey', value, which),
   addLauncher: () => ipcRenderer.invoke('desk:add-launcher'),
   removeLauncher: (appPath) => ipcRenderer.invoke('desk:remove-launcher', appPath),
@@ -329,7 +329,7 @@ contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   onShown: (listener) => listen('desk:shown', listener),
 }))
 
-/* The quick bar (⌘⇧Space, desktop/launcher): what its panel and the desk ask of it. Files, the
+/* The quick bar (⌥⇧Space, desktop/launcher): what its panel and the desk ask of it. Files, the
    clipboard history and apps come from main; Return and ⌘K do their work through the calls below
    (each checks what it is given). Only the panel and the desk may ask. */
 const search = (channel) => (...args) => ipcRenderer.invoke(`search:${channel}`, ...args)
