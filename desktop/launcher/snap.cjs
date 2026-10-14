@@ -1,5 +1,6 @@
-/* Window snapping (Phase 13): move and resize the front window to a half, a third, a corner, the whole screen or the
-   middle, and put it back. It asks System Events (AppleScript's JavaScript) for the front window's place and size,
+/* Window snapping (Phase 13, Phase 61): move and resize the front window to a half, a third, a corner, the whole screen
+   or the middle, make it larger or smaller, slide it, send it to another screen, or one of Nate's own rectangles
+   (`windows()` is launcher.json's `windows`, for those), and put it back. It asks System Events (AppleScript's JavaScript) for the front window's place and size,
    works out where the layout goes on the screen it is on (shared/window-layouts.mjs), and sets it. That needs OSAT
    to be allowed in Accessibility; without that nothing is touched and `snap` says why (`reason: 'access'`), so the
    words can say what is waiting. OSAT never moves its own windows, and never changes a setting. `exec` and
@@ -27,7 +28,7 @@ const MOVE = `function run(argv) {
   return "ok"
 }`
 
-function createSnap({ exec = run, platform = process.platform, trusted = () => false, screens = () => [], own = [], layouts }) {
+function createSnap({ exec = run, platform = process.platform, trusted = () => false, screens = () => [], own = [], layouts, windows = () => null }) {
   // Where each app's window was before OSAT moved it, and where OSAT last put it: so Put it back knows.
   const before = new Map()
   const placed = new Map()
@@ -40,7 +41,7 @@ function createSnap({ exec = run, platform = process.platform, trusted = () => f
     async snap(id) {
       if (platform !== 'darwin') return { ok: false, reason: 'mac' }
       if (!trusted()) return { ok: false, reason: 'access' }
-      const layout = layouts.layoutById(id)
+      const layout = layouts.layoutIn(windows(), id)
       if (!layout) return { ok: false, reason: 'nothing' }
       let front
       try {
@@ -52,17 +53,22 @@ function createSnap({ exec = run, platform = process.platform, trusted = () => f
       if (own.includes(front.app)) return { ok: false, reason: 'own', app: front.app }
       const now = { x: front.x, y: front.y, width: front.width, height: front.height }
       let frame
-      if (id === 'restore') {
+      if (layout.op === 'restore') {
         frame = before.get(front.app)
         if (!frame) return { ok: false, reason: 'nothing', app: front.app }
         before.delete(front.app)
       } else {
         const list = screens()
         if (!list.length) return { ok: false, reason: 'failed' }
-        if (id === 'next-display') {
-          frame = layouts.nextScreenFrame(now, list)
+        if (layout.op === 'next-display' || layout.op === 'previous-display') {
+          frame = layouts.nextScreenFrame(now, list, layout.op === 'next-display' ? 1 : -1)
           if (!frame) return { ok: false, reason: 'one-screen', app: front.app }
-        } else frame = layouts.frameFor(id, layouts.screenFor(now, list).workArea || layouts.screenFor(now, list))
+        } else {
+          // One rect-maths function for every command: a place, or (Make larger, Move…) the window as it is now.
+          const screen = layouts.screenFor(now, list)
+          frame = layouts.frameFor(id, screen.workArea || screen, now, windows())
+          if (!frame) return { ok: false, reason: 'nothing', app: front.app }
+        }
         // Only the size it had before OSAT's first move is worth going back to.
         if (!same(now, placed.get(front.app))) before.set(front.app, now)
       }
@@ -71,7 +77,7 @@ function createSnap({ exec = run, platform = process.platform, trusted = () => f
       } catch {
         return { ok: false, reason: 'failed', app: front.app }
       }
-      if (id === 'restore') placed.delete(front.app)
+      if (layout.op === 'restore') placed.delete(front.app)
       else placed.set(front.app, frame)
       return { ok: true, app: front.app, layout: id }
     },

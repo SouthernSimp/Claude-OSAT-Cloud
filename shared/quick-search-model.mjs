@@ -8,11 +8,14 @@ import { groupItems, searchItems, titleOf, whenCopied } from './clipboard-model.
 import { customizable, favoriteRows, keywordAddress, matchKeyword } from './launcher-model.mjs'
 import { findSnippets, snippetRow } from './snippets.mjs'
 import { scoreOf, topHit } from './picks.mjs'
+import { matchApps, processRow, wantsKill } from './process-model.mjs'
 import { findSystem, systemRow } from './system-commands.mjs'
-import { findLayouts } from './window-layouts.mjs'
+import { findLayouts, layoutsOf } from './window-layouts.mjs'
 
 /* One source at a time ("See all", a keyword like "v", or a source's Hyper key). Only the sources that are on. */
 export const SCOPES = [['all', 'Everything'], ['files', 'Files'], ['clipboard', 'Clipboard'], ['apps', 'Apps'], ['notes', 'Notes'], ['windows', 'Windows']]
+// Kill Process is a list of its own, opened from a row (never a tab), so it has a name but no switch.
+export const KILL_SCOPE = 'kill'
 const SCOPE_OF_SOURCE = { files: 'files', clipboard: 'clipboard', apps: 'apps', notes: 'notes', windows: 'windows' }
 
 export function scopesOn(settings) {
@@ -54,6 +57,7 @@ export function wants(read, settings, { fileFilter = 'all' } = {}) {
     recentFiles: on('files') && ((read.scope === 'files' && words.length === 0) || (all && read.query.length === 0)),
     clipboard: on('clipboard') && (all || read.scope === 'clipboard'),
     apps: on('apps') && (read.scope === 'apps' || (all && read.query.length > 0)),
+    processes: read.scope === KILL_SCOPE,
   }
 }
 
@@ -112,7 +116,7 @@ const clipRow = (item, now, section) => ({
   data: item,
 })
 
-const layoutRow = (layout, keys = {}) => ({ key: `layout:${layout.id}`, source: 'windows', kind: 'layout', title: layout.label, subtitle: layout.id === 'restore' ? 'Where the window was before OSAT moved it' : 'Move the window you were in', section: 'Windows', data: { layout: layout.id, key: keys[layout.id] || null } })
+const layoutRow = (layout, keys = {}) => ({ key: `layout:${layout.id}`, source: 'windows', kind: 'layout', title: layout.label, subtitle: layout.id === 'restore' ? 'Where the window was before OSAT moved it' : 'Move the window you were in', section: 'Windows', data: { layout: layout.id, key: keys[layout.id] || null, box: layout.box } })
 const appRow = (item, section) => ({ key: `app:${item.path}`, source: 'apps', kind: 'app', title: item.name, subtitle: 'Application', section, data: item })
 
 /* The desk's own search (lib/find.js) gives notes, nodes, rooms and actions. */
@@ -230,6 +234,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
 
   // Screenshots and recording, and CleanShot's recent captures (shared/capture-model.mjs), only under Everything.
   if (read.scope === 'all') rows.push(...(found.captures || []), ...(found.shots || []))
+  if (read.scope === 'all' && wantsKill(read.query)) rows.push({ key: 'kill', source: 'tools', kind: 'more', title: 'Kill Process', subtitle: 'Quit or force quit a running app', section: 'Tools', data: { scope: KILL_SCOPE } })
   if (read.scope === 'all' && /^(emoji|emojis|symbols?|characters?)$/i.test(read.query)) rows.push({ key: 'emoji', source: 'tools', kind: 'emoji', title: 'Emoji & symbols', subtitle: 'Open the Mac’s character picker', section: 'Tools', data: {} })
 
   const has = read.query.length > 0
@@ -245,9 +250,10 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     else rows.push(...files(pins, 'Pinned'), ...files(found.recentFiles || [], 'Recent files'))
     return dedupe(rows)
   }
+  if (read.scope === KILL_SCOPE) return matchApps(found.processes || [], read.query).map(processRow)
   if (read.scope === 'apps') return [...rows, ...rankApps(found.apps || [], read.query).slice(0, 40).map((item) => appRow(item, 'Apps'))]
   const keys = settings.windows?.on ? settings.windows.hotkeys : {}
-  if (read.scope === 'windows') return [...rows, ...findLayouts(read.query).map((layout) => layoutRow(layout, keys))]
+  if (read.scope === 'windows') return [...rows, ...findLayouts(read.query, layoutsOf(settings.windows)).map((layout) => layoutRow(layout, keys))]
   if (read.scope === 'notes') return [...rows, ...(found.notes || []).map((item) => noteRow(item, 'Notes'))]
 
   // One list, no tabs (Oct 2026): Ask first, then what was found, each source a few rows with "See all" when there's more.
@@ -268,7 +274,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     if (clipFound.length > 4) rows.push(more('clipboard', `${clipFound.length} copies`, 'Clipboard'))
     rows.push(...(found.notes || []).slice(0, 5).map((item) => noteRow(item, 'Notes')))
     // "left half", "max": a layout, when the words are about a window.
-    if (settings.sources.windows?.on && read.query.length >= 3) rows.push(...findLayouts(read.query).slice(0, 2).map((layout) => layoutRow(layout, keys)))
+    if (settings.sources.windows?.on && read.query.length >= 3) rows.push(...findLayouts(read.query, layoutsOf(settings.windows)).slice(0, 2).map((layout) => layoutRow(layout, keys)))
     // What you picked before for these words comes first (after Ask, a sum and your own word).
     const hit = picks && topHit(rows, picks, read.query, +now)
     if (hit) {
@@ -360,7 +366,8 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
     case 'calc': return [{ id: 'copy-text', label: 'Copy the answer', keys: '↵' }, { id: 'paste-text', label: 'Paste the answer', keys: '⇧↵' }]
     case 'sticky': return [{ id: 'sticky', label: 'Save as a sticky', keys: '↵' }]
     case 'ask': return [{ id: 'ask-ai', label: 'Ask', keys: '↵' }]
-    case 'more': return [{ id: 'scope', label: 'Show all', keys: '↵' }]
+    case 'more': return [{ id: 'scope', label: row.data?.scope === KILL_SCOPE ? 'Open' : 'Show all', keys: '↵' }]
+    case 'process': return [{ id: 'kill', label: 'Kill', hint: 'Asks it to quit', keys: '↵' }, { id: 'force-kill', label: 'Force Kill', hint: 'Ends it at once; unsaved work is lost', keys: '⌘↵', danger: true }]
     case 'system': return [{ id: 'system', label: row.data?.id?.startsWith('pane:') ? 'Open' : row.title, keys: '↵' }]
     case 'snippet': return [{ id: 'paste-snippet', label: 'Paste', keys: '↵' }, { id: 'copy-snippet', label: 'Copy', keys: '⇧↵' }]
     case 'text-action': return [{ id: 'text-ai', label: row.title, keys: '↵' }]
@@ -388,6 +395,7 @@ export function detailsFor(row, { now = new Date() } = {}) {
       return [['Kind', { text: 'Text', link: 'Link', email: 'Email address', phone: 'Phone number', number: 'Number' }[row.kind]], ...(d.app ? [['From', d.app]] : []), ['Copied', whenCopied(d.at, now)], ...(d.chars > 1 ? [['Length', `${d.chars.toLocaleString('en-US')} characters`]] : [])]
     case 'layout': return [['Moves', 'the window you were in'], ...(d.key ? [['Key', d.key.split('+').map((part) => ({ Control: '⌃', Alt: '⌥', Shift: '⇧', Command: '⌘' }[part] || part)).join('')]] : [])]
     case 'app': return [['Kind', 'Application'], ['Where', d.path]]
+    case 'process': return [['Kind', 'Running app'], ['Where', d.path], ['Processes', String(d.count)]]
     case 'capture': return [['With', row.subtitle.replace(/^With /, '')]]
     case 'shot': return [['Kind', /\.(mp4|mov|gif)$/i.test(d.name) ? 'Recording' : 'Screenshot'], ['Taken', DAY.format(new Date(d.at))], ['Kept by', 'CleanShot X']]
     case 'note': return [['Kind', 'Note'], ['Where', row.subtitle]]

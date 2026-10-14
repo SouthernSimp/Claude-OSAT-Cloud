@@ -6,6 +6,7 @@ import { mkdir, readFile } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
 import { DEFAULT_SETTINGS } from '../../shared/launcher-model.mjs'
+import { LAYOUTS } from '../../shared/window-layouts.mjs'
 import { installSearchBridge } from './search-bridge.mjs'
 import { createRequire } from 'node:module'
 const { TIERS, fits, pickTier, recommendFor } = createRequire(import.meta.url)('../../desktop/ai/catalog.cjs')
@@ -374,10 +375,57 @@ async function main() {
   await page.getByLabel('What the Hyper key sends').selectOption('three')
   if ((await page.evaluate(() => window.osatSearch.settings())).hyper.sends !== 'three') problems.push('settings: what the Hyper key sends was not saved')
   await page.getByLabel('What the Hyper key sends').selectOption('four')
+  // OSAT's own Hyper key (Phase 63): a real switch, off until turned on; on, it says what it needs and the other app's choice steps aside.
+  const hyperSwitch = page.getByRole('switch', { name: 'Make Caps Lock a Hyper key' })
+  if (await hyperSwitch.isChecked()) problems.push('settings: the built-in Hyper key was on before it was turned on')
+  await hyperSwitch.check()
+  if ((await page.evaluate(() => window.osatSearch.settings())).hyper.own !== true) problems.push('settings: the built-in Hyper key switch did not save')
+  await page.getByText('Needs Accessibility', { exact: false }).first().waitFor({ timeout: 3000 }).catch(() => problems.push('settings: the built-in Hyper key did not say it needs Accessibility'))
+  await page.getByRole('switch', { name: 'A tap of Caps Lock is Esc' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: the Caps Lock tap switch was missing'))
+  if (await page.getByLabel('What the Hyper key sends').count()) problems.push('settings: the other app’s Hyper choice stayed while OSAT’s own was on')
+  await page.screenshot({ path: `${OUT}/settings-keyboard-hyper.png` })
+  await hyperSwitch.uncheck()
+  await page.getByLabel('What the Hyper key sends').waitFor({ timeout: 3000 }).catch(() => problems.push('settings: turning the built-in Hyper key off did not bring back the other app’s choice'))
   await goTo('Window layouts')
   await page.getByRole('switch', { name: 'Use keys to move the window I’m in, from any app' }).check()
   await page.getByRole('button', { name: 'Key for Left half' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: turning window keys on did not list the layouts'))
   await page.screenshot({ path: `${OUT}/settings-window-layouts.png` })
+  // Phase 61: an alias, a command of his own (with Undo on Delete), a command turned off, and the same list in Shortcuts.
+  const waitSetting = (check, said) => page.waitForFunction(check, null, { timeout: 3000 }).catch(() => problems.push(said))
+  await page.getByLabel('Word for Left half').fill('lh')
+  await page.getByLabel('Word for Left half').blur()
+  await waitSetting(() => window.osatSearch.settings().then((value) => value.windows.aliases['left-half'] === 'lh'), 'window layouts: an alias was not saved')
+  await page.getByRole('button', { name: 'Create command' }).click()
+  await page.getByLabel('Name of the command').fill('Bottom Right Ninth')
+  await page.getByLabel('From the left %, percent of the screen').fill('66.7')
+  await page.getByLabel('From the top %, percent of the screen').fill('66.7')
+  await page.getByLabel('Width %, percent of the screen').fill('33.3')
+  await page.getByLabel('Height %, percent of the screen').fill('33.3')
+  await page.screenshot({ path: `${OUT}/settings-window-create.png` })
+  await page.getByRole('button', { name: 'Create', exact: true }).click()
+  await page.getByRole('button', { name: 'Key for Bottom Right Ninth' }).waitFor({ timeout: 3000 }).catch(() => problems.push('window layouts: a command he made did not appear with a key'))
+  await waitSetting(() => window.osatSearch.settings().then((value) => value.windows.custom.length === 1 && value.windows.custom[0].rect.w === 33.3), 'window layouts: the new command was not saved')
+  await page.getByLabel('Word for Bottom Right Ninth', { exact: true }).fill('br')
+  await page.getByLabel('Word for Bottom Right Ninth', { exact: true }).blur()
+  await page.getByLabel('Word for Left half').fill('br')
+  await page.getByLabel('Word for Left half').blur()
+  await page.getByText('“br” is Bottom Right Ninth’s word already.').waitFor({ timeout: 3000 }).catch(() => problems.push('window layouts: a word two commands wanted was not refused, naming who has it'))
+  await page.getByRole('button', { name: 'More for Bottom Right Ninth' }).click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.locator('.undo-toasts .toast', { hasText: 'Deleted “Bottom Right Ninth”' }).getByRole('button', { name: 'Undo' }).click()
+  await page.getByLabel('Word for Bottom Right Ninth', { exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('window layouts: Undo did not bring the command back'))
+  await waitSetting(() => window.osatSearch.settings().then((value) => value.windows.aliases[value.windows.custom[0]?.id] === 'br'), 'window layouts: Undo did not bring its word back')
+  await page.getByRole('button', { name: 'More for Left half' }).click()
+  await page.getByRole('button', { name: 'Turn off', exact: true }).click()
+  await waitSetting(() => window.osatSearch.settings().then((value) => value.windows.off.includes('left-half')), 'window layouts: Turn off was not saved')
+  await page.getByRole('button', { name: 'More for Left half' }).click()
+  await page.getByRole('button', { name: 'Reset', exact: true }).click()
+  await waitSetting(() => window.osatSearch.settings().then((value) => !value.windows.off.includes('left-half') && !value.windows.aliases['left-half']), 'window layouts: Reset did not put the command back as it came')
+  await goTo('Shortcuts')
+  await page.getByLabel('Words and keys').getByRole('button', { name: 'Window layouts', exact: true }).click()
+  await page.getByLabel('Word for Bottom Right Ninth', { exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('shortcuts: his own window command was not in the table'))
+  await page.getByLabel('Words and keys').getByRole('button', { name: 'Window layouts', exact: true }).click()
+  await goTo('Window layouts')
   await goTo('The ring')
   // The ring opens with Hyper + middle click over any app; its switch is on, saves, and the key is still there as the backup.
   const middleSwitch = page.getByRole('switch', { name: 'Open the ring with Hyper and a middle click' })
@@ -417,6 +465,24 @@ async function main() {
   await page.locator('.setting-row', { hasText: 'Waiting for Accessibility' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: typed snippets did not say they wait for Accessibility'))
   await page.screenshot({ path: `${OUT}/settings-snippets.png` })
   await page.getByRole('switch', { name: 'Turn words into text in any app' }).uncheck()
+  // Mouse (Phase 64): the first switch reverses the wheel, per axis; nothing runs until Accessibility is there, and it says so.
+  await goTo('Mouse')
+  const reverseSwitch = page.getByRole('switch', { name: 'Reverse mouse wheel scrolling' })
+  if (await reverseSwitch.isChecked()) problems.push('settings: the mouse wheel was reversed before anyone asked')
+  await reverseSwitch.check()
+  await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.mouse.on && value.mouse.reverse.mouse.vertical && value.mouse.reverse.mouse.horizontal && !value.mouse.reverse.trackpad.vertical), null, { timeout: 3000 }).catch(() => problems.push('settings: reversing the wheel was not saved (mouse only)'))
+  await page.getByRole('radio', { name: 'Up and down', exact: true }).click()
+  await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.mouse.reverse.mouse.vertical && !value.mouse.reverse.mouse.horizontal), null, { timeout: 3000 }).catch(() => problems.push('settings: choosing one direction was not saved'))
+  await page.getByLabel('Mouse wheel speed').fill('2')
+  await page.getByLabel('Mouse wheel speed').dispatchEvent('pointerup')
+  await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.mouse.speed === 2), null, { timeout: 3000 }).catch(() => problems.push('settings: the wheel speed was not saved'))
+  await page.getByLabel('Side button 1').selectOption('back')
+  await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.mouse.buttons[3] === 'back'), null, { timeout: 3000 }).catch(() => problems.push('settings: a side button was not saved'))
+  await page.locator('.setting-row', { hasText: 'Waiting for Accessibility' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: Mouse did not say it waits for Accessibility'))
+  if (!await page.getByRole('button', { name: 'Allow…' }).count()) problems.push('settings: Mouse offered no way to allow Accessibility')
+  await page.screenshot({ path: `${OUT}/settings-mouse.png` })
+  await page.getByRole('switch', { name: 'Use these mouse changes' }).uncheck()
+  await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.mouse.on === false && value.mouse.speed === 2), null, { timeout: 3000 }).catch(() => problems.push('settings: switching Mouse off lost its settings'))
   for (const name of ['General', 'Appearance', 'AI', 'Bots', 'Data', 'Scans', 'iPhone', 'About']) {
     await goTo(name)
     if (!await page.locator('.settings-section .setting-head h2', { hasText: new RegExp(`^${name}$`) }).count()) problems.push(`settings: the ${name} page did not open`)
@@ -1113,7 +1179,7 @@ async function main() {
   await bar.locator('.qs-chip', { hasText: 'Sticky' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the ring's sticky did not open the bar to write one`))
   await bar.close()
 
-  // The quick search (⌘⇧Space in the Mac app), with a stand-in for what the Mac app gives it: a bar; typing opens
+  // The quick search (⌥⇧Space in the Mac app), with a stand-in for what the Mac app gives it: a bar; typing opens
   // the full view with a big preview; Return, ⌘K and Esc; the clipboard and a sum. Light, then dark.
   for (const scheme of ['light', 'dark']) {
     room = `quick search (${scheme})`
@@ -1196,7 +1262,7 @@ async function main() {
     if (!(await search.evaluate(() => window.__calls)).some(([name, layout]) => name === 'snap' && layout === 'left-half')) problems.push(`${room}: Return on a layout did not ask for it`)
     await search.fill('#qs-input', 'w')
     await search.locator('.qs-row', { hasText: 'Put it back' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: w did not list every layout`))
-    if ((await search.locator('.qs-row').count()) !== 17) problems.push(`${room}: the Windows tab did not list all seventeen layouts`)
+    if ((await search.locator('.qs-row').count()) !== LAYOUTS.length) problems.push(`${room}: the Windows tab did not list all ${LAYOUTS.length} layouts`)
     if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-windows.png` })
     await search.locator('.qs-chip.is-scope').click()
     await search.fill('#qs-input', 'canvas')

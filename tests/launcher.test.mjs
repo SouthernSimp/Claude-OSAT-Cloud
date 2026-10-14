@@ -92,7 +92,8 @@ test('starting registers a Hyper key for each source and reads what is saved', a
   const t = await setup()
   try {
     await t.launcher.start()
-    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+R', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+T', 'Control+Alt+Shift+Command+V', 'Control+Alt+Shift+Command+W'])
+    const letters = ['A', 'N', 'R', 'S', 'T', 'V', 'W']
+    assert.deepEqual([...t.registered.keys()].sort(), [...letters.map((letter) => `Control+Alt+Command+${letter}`), ...letters.map((letter) => `Control+Alt+Shift+Command+${letter}`)], 'each Hyper key is heard with ⇧ and without')
     assert.equal(t.launcher.taken('Control+Alt+Shift+Command+V'), true, 'the desk’s shortcut picker can’t take it')
     assert.equal(t.launcher.hotkeyLabel('Control+Alt+Shift+Command+V'), 'Hyper V')
     assert.equal((await t.ask('search:settings')).sources.clipboard.keyword, 'v')
@@ -305,7 +306,7 @@ test('window keys are off until turned on; then each layout has its key, and a p
     const saved = await t.ask('search:save-settings', { windows: { on: true } })
     assert.equal(saved.windows.on, true)
     assert.equal(t.registered.has('Control+Alt+Left'), true)
-    assert.equal(t.registered.size, 7 + 17, 'a key for each layout, beside the Hyper keys, the ring’s and selected text’s')
+    assert.equal(t.registered.size, 7 + 17 + 7, 'a key for each layout, beside the Hyper keys (each heard two ways), the ring’s and selected text’s')
     t.registered.get('Control+Alt+Left')()
     await wait(120)
     assert.deepEqual(moves, [[0, 0, 720, 900]])
@@ -531,8 +532,8 @@ test('a Hyper key made by another app that leaves ⇧ out: the Mac is asked for 
     assert.equal(t.registered.has(HYPER('V')), true)
     const saved = await t.ask('search:save-settings', { hyper: { sends: 'three' } })
     assert.equal(saved.sources.clipboard.hotkey, HYPER('V'), 'stored as Hyper V')
-    assert.equal(t.registered.has(HYPER('V')), false)
     assert.equal(t.registered.has('Control+Alt+Command+V'), true, 'registered as the Mac hears it')
+    assert.equal(t.registered.has(HYPER('V')), true, 'and still as all four: either spelling works')
     assert.equal(t.launcher.hotkeyLabel(HYPER('V')), 'Hyper V')
     await t.ask('search:save-settings', { hyper: { sends: 'four' } })
     assert.equal(t.registered.has(HYPER('V')), true)
@@ -608,5 +609,38 @@ test('Ask finds copies and files for a question: secrets stay out, and the switc
     assert.equal(await t.ask('ask:switch', false), false)
     assert.deepEqual(await t.ask('ask:find', 'taxes'), { off: true, copies: [], files: [], text: '' })
     assert.equal(t.handlers.get('ask:find').from({ id: 'x' }), false, 'only the panel and the desk may ask')
+  } finally { await t.done() }
+})
+
+test('a window command of his own gets a key and runs from it and from the bar; off or deleted, its key goes (Phase 61)', async () => {
+  const moves = []
+  const t = await setup({ trusted: true, script: macScript(moves) })
+  try {
+    await t.launcher.start()
+    const custom = [{ id: 'custom-ninth', name: 'Bottom Right Ninth', rect: { x: 66.7, y: 66.7, w: 33.3, h: 33.3 } }]
+    await t.ask('search:save-settings', { windows: { on: true, custom, hotkeys: { 'custom-ninth': 'Control+Alt+Shift+Command+9', 'first-fourth': 'Control+Alt+1' }, aliases: { 'custom-ninth': 'br' } } })
+    assert.equal(t.registered.has('Control+Alt+1'), true)
+    assert.equal(t.registered.has('Control+Alt+Shift+Command+9'), true)
+    t.registered.get('Control+Alt+1')()
+    await wait(120)
+    assert.deepEqual(moves.at(-1), [0, 0, 360, 900], 'a new built-in command, from its key')
+    t.registered.get('Control+Alt+Shift+Command+9')()
+    await wait(120)
+    assert.deepEqual(moves.at(-1), [960, 600, 480, 300], 'his own, from its key')
+    moves.length = 0
+    assert.deepEqual(await t.ask('search:snap', 'custom-ninth'), { ok: true, app: 'Safari', layout: 'custom-ninth' }, 'and from the bar')
+    assert.deepEqual(moves, [[960, 600, 480, 300]])
+    assert.equal((await t.ask('search:settings')).windows.aliases['custom-ninth'], 'br')
+    // A key already held by another command is refused by name, and the old one stays.
+    await assert.rejects(t.ask('search:save-settings', { windows: { hotkeys: { 'first-fourth': 'Control+Alt+Shift+Command+9' } } }), /First fourth keeps its old one/)
+    assert.equal((await t.ask('search:settings')).windows.hotkeys['first-fourth'], 'Control+Alt+1')
+    await t.ask('search:save-settings', { windows: { off: ['first-fourth'] } })
+    assert.equal(t.registered.has('Control+Alt+1'), false, 'switched off, its key goes')
+    await t.ask('search:save-settings', { windows: { off: [] } })
+    assert.equal(t.registered.has('Control+Alt+1'), true, 'and comes back')
+    await t.ask('search:save-settings', { windows: { custom: [] } })
+    assert.equal(t.registered.has('Control+Alt+Shift+Command+9'), false, 'deleted, its key goes')
+    assert.equal((await t.ask('search:settings')).windows.aliases['custom-ninth'], undefined)
+    await assert.rejects(t.ask('search:snap', 'custom-ninth'), /isn’t a layout/)
   } finally { await t.done() }
 })

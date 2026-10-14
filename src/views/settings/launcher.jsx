@@ -4,9 +4,10 @@ import { ArrowDown, ArrowUp, LockSimple, Plus, X } from '@phosphor-icons/react'
 import { DAY_CHOICES, ITEM_CHOICES } from '../../../shared/clipboard-model.mjs'
 import { SOURCES, hostOf, holderOf, validAddress, validKeyword } from '../../../shared/launcher-model.mjs'
 import { MAX_RING, RING_ITEMS, ringItems } from '../../../shared/ring-model.mjs'
-import { validSnippetWord } from '../../../shared/snippets.mjs'
-import { LAYOUTS } from '../../../shared/window-layouts.mjs'
+import { describe as describeHyper } from '../../../shared/hyper-model.mjs'
+import { SNIPPET_WORD_HELP, validSnippetWord } from '../../../shared/snippets.mjs'
 import { AddRingTool } from './screenshots.jsx'
+import { WindowCommands } from './WindowCommands.jsx'
 import { Choice, Group, KeyRecorder, OnlyInTheMacApp, Page, Row, Select, Switch, WordField } from './parts.jsx'
 
 /* Settings' launcher pages (Phase 13b). One provider gives every page the same picture of the launcher: its settings
@@ -140,19 +141,41 @@ export function QuickSearchPage({ page }) {
 export function KeyboardPage({ page }) {
   return (
     <LauncherPage page={page} what="In the Mac app, OSAT’s Hyper keys and its shortcuts work from any app.">
-      {({ settings, save }) => (
-        <>
-          <Group title="Hyper key" note="OSAT never changes a setting on your Mac for you. This is where the two things only you can change live.">
-            <Row title="Make Caps Lock a Hyper key" hint="Hyper is ⌃⌥⇧⌘ held together, and OSAT already listens for it with a letter (V for the clipboard, S for files). macOS can’t turn Caps Lock into all four by itself; a free app such as Hyperkey or Karabiner-Elements can. Set it up there, or just hold the four keys." words="caps lock karabiner hyperkey raycast" />
-            <Row title="Another app makes my Hyper key" hint="If it leaves ⇧ out (Raycast’s does, unless “Include Shift” is on), choose ⌃⌥⌘ so OSAT’s Hyper keys still work." words="raycast shift modifier">
-              <Select label="What the Hyper key sends" value={settings.hyper.sends} onChange={(sends) => save({ hyper: { sends } })} options={[['four', '⌃⌥⇧⌘ (all four)'], ['three', '⌃⌥⌘ (without ⇧)']]} />
-            </Row>
-          </Group>
-          <Group title="Spotlight">
-            <Row title="Use ⌘Space for the quick bar" hint="In System Settings → Keyboard → Keyboard Shortcuts → Spotlight, untick “Show Spotlight search”. Then pick ⌘Space for the quick bar in Quick bar." words="command space spotlight replace" />
-          </Group>
-        </>
-      )}
+      {({ settings, save, status, bridge, look }) => {
+        const own = settings.hyper.own === true
+        const state = status?.hyper || 'starting'
+        return (
+          <>
+            <Group title="Hyper key" note="Hyper is ⌃⌥⇧⌘ held together, and OSAT’s Hyper keys use it with a letter (V for the clipboard, S for files). With this on, OSAT turns Caps Lock into Hyper itself, for the whole Mac, with nothing else installed. Turning it off, or quitting OSAT, gives Caps Lock back.">
+              <Row
+                title="Make Caps Lock a Hyper key"
+                hint={own ? describeHyper(state) : 'Off. Turn it on, then hold Caps Lock and press a letter: Hyper V opens the clipboard.'}
+                words="caps lock hyper karabiner hyperkey raycast"
+              >
+                <Switch label="Make Caps Lock a Hyper key" checked={own} onChange={(on) => save({ hyper: { own: on } }).then(() => setTimeout(look, 800))} />
+              </Row>
+              {own && state === 'access' && status?.accessibility === 'needed' && (
+                <Row title="Allow OSAT in Accessibility" hint="macOS asks once. OSAT asks only when you press the button." words="accessibility allow caps lock hyper">
+                  <button className="outline-button" type="button" onClick={() => bridge.askAccess().then(() => setTimeout(look, 1500), () => {})}><LockSimple /> Allow…</button>
+                </Row>
+              )}
+              {own && (
+                <Row title="A tap of Caps Lock is Esc" hint="Press and let go of Caps Lock on its own and it sends Esc. Off by default." words="caps lock tap escape esc">
+                  <Switch label="A tap of Caps Lock is Esc" checked={settings.hyper.tap === true} onChange={(tap) => save({ hyper: { tap } })} />
+                </Row>
+              )}
+              {!own && (
+                <Row title="Another app makes my Hyper key" hint="If it leaves ⇧ out (Raycast’s does, unless “Include Shift” is on), choose ⌃⌥⌘ so OSAT’s Hyper keys still work." words="raycast shift modifier">
+                  <Select label="What the Hyper key sends" value={settings.hyper.sends} onChange={(sends) => save({ hyper: { sends } })} options={[['four', '⌃⌥⇧⌘ (all four)'], ['three', '⌃⌥⌘ (without ⇧)']]} />
+                </Row>
+              )}
+            </Group>
+            <Group title="Spotlight">
+              <Row title="Use ⌘Space for the quick bar" hint="In System Settings → Keyboard → Keyboard Shortcuts → Spotlight, untick “Show Spotlight search”. Then pick ⌘Space for the quick bar in Quick bar." words="command space spotlight replace" />
+            </Group>
+          </>
+        )
+      }}
     </LauncherPage>
   )
 }
@@ -323,7 +346,7 @@ function Snippets({ settings, save, showUndo, status, bridge, look }) {
         {settings.snippets.map((snippet) => (
           <Row key={snippet.id} title={snippet.name} hint={snippet.text.length > 120 ? `${snippet.text.slice(0, 120)}…` : snippet.text} words={`${snippet.keyword || ''} ${snippet.text}`} stacked>
             <div className="snippet-edit">
-              <label><span>Word</span><input defaultValue={snippet.keyword || ''} maxLength={13} placeholder=";word" spellCheck={false} aria-label={`Word for ${snippet.name}`}
+              <label><span>Word</span><input defaultValue={snippet.keyword || ''} maxLength={14} placeholder=";word" spellCheck={false} aria-label={`Word for ${snippet.name}`}
                 onBlur={(event) => {
                   const next = event.target.value.trim().toLowerCase() || null
                   if (next === snippet.keyword) return
@@ -339,15 +362,15 @@ function Snippets({ settings, save, showUndo, status, bridge, look }) {
         {settings.snippets.length === 0 && <Row title="No snippets yet" hint="Add one below, or press ⌘K on something you copied in the quick bar and choose Save as a snippet…" />}
       </Group>
       <Group title="Add a snippet">
-        <Row title="A new snippet" hint="A name, a word to type (a sign first keeps it out of your sentences: ;addr), and its text." stacked words="add new snippet text expand">
+        <Row title="A new snippet" hint="A name, a word to type (signs first keep it out of your sentences: ;addr or ..pp), and its text." stacked words="add new snippet text expand">
           <form className="setting-form snippet-form" onSubmit={add}>
             <label><span>Name</span><input value={name} maxLength={60} placeholder="Home address" aria-label="Name of the snippet" onChange={(event) => setName(event.target.value)} /></label>
-            <label><span>Word</span><input value={word} maxLength={13} placeholder=";addr" spellCheck={false} aria-label="Word for the snippet" onChange={(event) => setWord(event.target.value)} /></label>
+            <label><span>Word</span><input value={word} maxLength={14} placeholder=";addr" spellCheck={false} aria-label="Word for the snippet" onChange={(event) => setWord(event.target.value)} /></label>
             <label className="is-wide"><span>Text</span><textarea value={text} rows={3} placeholder={'12 Oak Lane\nSpringfield'} aria-label="Text of the snippet" onChange={(event) => setText(event.target.value)} /></label>
             <button className="outline-button" type="submit" disabled={!ready}><Plus /> Add</button>
           </form>
           {taken && <small className="setting-inline" role="status">“{w}” is {taken}’s word already. Pick another.</small>}
-          {w && !validSnippetWord(w) && <small className="setting-inline" role="status">A word is one to twelve letters or numbers, after one sign if you like: ;addr</small>}
+          {w && !validSnippetWord(w) && <small className="setting-inline" role="status">{SNIPPET_WORD_HELP}</small>}
         </Row>
       </Group>
       <Group title="In any app" note="A small helper watches what you type for these words only. It keeps the last few letters in memory, writes nothing down, never sees a password field, and stops when OSAT quits.">
@@ -372,28 +395,17 @@ function Snippets({ settings, save, showUndo, status, bridge, look }) {
 export function WindowLayoutsPage({ page }) {
   return (
     <LauncherPage page={page} what="In the Mac app, a layout snaps the window you were in to a half, a third or a corner.">
-      {({ settings, save, status }) => {
-        const { key } = holders(settings)
-        return (
-          <>
-            <Group title="Keys" note="Or type “left half” in the quick bar (or w and a word), and the window you were in moves there.">
-              <Row title="Move the window I’m in with keys" hint="Keys that work from any app are off until you turn them on." words="hotkeys global any app">
-                <Switch label="Use keys to move the window I’m in, from any app" checked={settings.windows.on} onChange={(on) => save({ windows: { on } })} />
-              </Row>
-            </Group>
-            {settings.windows.on && (
-              <Group title="Layouts">
-                {LAYOUTS.map((layout) => (
-                  <Row key={layout.id} title={layout.label} hint={layout.id === 'restore' ? 'Where the window was before OSAT moved it' : ''} words={layout.words || ''}>
-                    <KeyRecorder value={settings.windows.hotkeys[layout.id]} name={layout.label} holder={key(`snap:${layout.id}`)} sends={settings.hyper.sends} failed={status?.keysFailed?.includes(`snap:${layout.id}`)} onSet={(hotkey) => save({ windows: { hotkeys: { [layout.id]: hotkey } } })} />
-                  </Row>
-                ))}
-              </Group>
-            )}
-            <Permission />
-          </>
-        )
-      }}
+      {(launcher) => (
+        <>
+          <Group title="Keys" note="Each command can have an alias (type it in the quick bar and press Return) and a key. Or type “left half” in the quick bar (or w and a word), and the window you were in moves there.">
+            <Row title="Move the window I’m in with keys" hint="Keys that work from any app are off until you turn them on." words="hotkeys global any app">
+              <Switch label="Use keys to move the window I’m in, from any app" checked={launcher.settings.windows.on} onChange={(on) => launcher.save({ windows: { on } })} />
+            </Row>
+          </Group>
+          <WindowCommands launcher={launcher} />
+          <Permission />
+        </>
+      )}
     </LauncherPage>
   )
 }

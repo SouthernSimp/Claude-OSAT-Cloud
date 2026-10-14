@@ -106,6 +106,40 @@ contextBridge.exposeInMainWorld('osatGitHub', Object.freeze({
   open: (url) => ipcRenderer.invoke('github:open', url),
 }))
 
+// Tools → Mail (desktop/mac-mail.cjs): the Mac's own Mail app, read-first. Nothing here sends.
+contextBridge.exposeInMainWorld('osatMail', Object.freeze({
+  status: () => ipcRenderer.invoke('mail:status'),
+  allow: () => ipcRenderer.invoke('mail:allow'),
+  list: () => ipcRenderer.invoke('mail:list'),
+  search: (query, inside) => ipcRenderer.invoke('mail:search', query, inside === true),
+  read: (id) => ipcRenderer.invoke('mail:read', id),
+  reply: (id) => ipcRenderer.invoke('mail:reply', id),
+  open: (id) => ipcRenderer.invoke('mail:open', id),
+}))
+
+// Tools → Passwords (desktop/passwords.cjs): locked until the master password. The window gets titles and usernames;
+// a password comes only from reveal (shown for ten seconds) or copy (done in main).
+contextBridge.exposeInMainWorld('osatPasswords', Object.freeze({
+  status: () => ipcRenderer.invoke('passwords:status'),
+  create: (password, again) => ipcRenderer.invoke('passwords:create', password, again),
+  unlock: (password) => ipcRenderer.invoke('passwords:unlock', password),
+  lock: () => ipcRenderer.invoke('passwords:lock'),
+  touch: () => ipcRenderer.invoke('passwords:touch'),
+  list: () => ipcRenderer.invoke('passwords:list'),
+  save: (entry) => ipcRenderer.invoke('passwords:save', entry),
+  remove: (id) => ipcRenderer.invoke('passwords:remove', id),
+  restore: (id) => ipcRenderer.invoke('passwords:restore', id),
+  reveal: (id) => ipcRenderer.invoke('passwords:reveal', id),
+  copy: (id) => ipcRenderer.invoke('passwords:copy', id),
+  generate: (options) => ipcRenderer.invoke('passwords:generate', options),
+  setAutoLock: (minutes) => ipcRenderer.invoke('passwords:set-auto-lock', minutes),
+  changeMaster: (current, next, again) => ipcRenderer.invoke('passwords:change-master', current, next, again),
+  exportBackup: () => ipcRenderer.invoke('passwords:export'),
+  pickBackup: () => ipcRenderer.invoke('passwords:import-pick'),
+  importBackup: (password) => ipcRenderer.invoke('passwords:import', password),
+  onLocked: (listener) => listen('passwords:locked', listener),
+}))
+
 // The morning brief (desktop/brief.cjs): Settings → AI and the desk's one line.
 contextBridge.exposeInMainWorld('osatBrief', Object.freeze({
   status: () => ipcRenderer.invoke('brief:status'),
@@ -120,6 +154,19 @@ const listen = (channel, listener) => {
   ipcRenderer.on(channel, handler)
   return () => ipcRenderer.removeListener(channel, handler)
 }
+
+// Meetings (desktop/meetings/, Phase 57): Tools → Meetings.
+contextBridge.exposeInMainWorld('osatMeetings', Object.freeze({
+  status: () => ipcRenderer.invoke('meeting:status'),
+  getEars: () => ipcRenderer.invoke('meeting:ears-install'),
+  cancelEars: () => ipcRenderer.invoke('meeting:ears-cancel'),
+  start: (options) => ipcRenderer.invoke('meeting:start', { system: options?.system !== false }),
+  stop: () => ipcRenderer.invoke('meeting:stop'),
+  finish: (id) => ipcRenderer.invoke('meeting:finish', id),
+  discard: (id) => ipcRenderer.invoke('meeting:discard', id),
+  undo: () => ipcRenderer.invoke('meeting:undo'),
+  onChange: (listener) => listen('meeting:changed', listener),
+}))
 
 // While you sleep (desktop/overnight.cjs): the canvas's ideas and Settings → AI.
 contextBridge.exposeInMainWorld('osatOvernight', Object.freeze({
@@ -313,7 +360,8 @@ contextBridge.exposeInMainWorld('osatMacCalendar', Object.freeze({
 contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   hide: () => ipcRenderer.send('desk:hide'),
   prefs: () => ipcRenderer.invoke('desk:prefs'),
-  // which: 'layer' (⌥Space, the desk) or 'search' (⌘⇧Space, the one bar: Search or Ask).
+  keys: () => ipcRenderer.invoke('desk:keys'),
+  // which: 'layer' (⌥Space, the desk) or 'search' (⌥⇧Space, the one bar: Search or Ask).
   setHotkey: (value, which = 'layer') => ipcRenderer.invoke('desk:set-hotkey', value, which),
   addLauncher: () => ipcRenderer.invoke('desk:add-launcher'),
   removeLauncher: (appPath) => ipcRenderer.invoke('desk:remove-launcher', appPath),
@@ -328,7 +376,7 @@ contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   onShown: (listener) => listen('desk:shown', listener),
 }))
 
-/* The quick bar (⌘⇧Space, desktop/launcher): what its panel and the desk ask of it. Files, the
+/* The quick bar (⌥⇧Space, desktop/launcher): what its panel and the desk ask of it. Files, the
    clipboard history and apps come from main; Return and ⌘K do their work through the calls below
    (each checks what it is given). Only the panel and the desk may ask. */
 const search = (channel) => (...args) => ipcRenderer.invoke(`search:${channel}`, ...args)
@@ -349,6 +397,8 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   files: search('files'),
   preview: search('preview'),
   apps: search('apps'),
+  processes: search('processes'),
+  kill: search('kill'),
   appIcon: search('app-icon'),
   clipboard: search('clipboard'),
   clipboardImage: search('clipboard-image'),

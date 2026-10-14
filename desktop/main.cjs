@@ -38,14 +38,20 @@ const { createBots } = require('./bots/index.cjs')
 const { createAgent } = require('./agent.cjs')
 const { createBrief } = require('./brief.cjs')
 const { createGitHub } = require('./github.cjs')
+const { createMacKeys } = require('./mac-keys.cjs')
+const { createPasswords } = require('./passwords.cjs')
+const { writeConcealed } = require('./conceal.cjs')
 const { createOvernight } = require('./overnight.cjs')
+const { createMeetings } = require('./meetings/index.cjs')
+const { createEars } = require('./meetings/ears.cjs')
+const { createCapture } = require('./meetings/capture.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
 const { createSkills } = require('./skills.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = require('./desk.cjs')
+const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, OLD_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = require('./desk.cjs')
 const { createLauncher } = require('./launcher/index.cjs')
 const { extractText } = require('./mac-files.cjs')
 const { TidyError } = require('./file-ops.cjs')
@@ -53,6 +59,7 @@ const { NOT_ALLOWED, createFiles } = require('./files.cjs')
 const { createMedia } = require('./media.cjs')
 const { createUpdater } = require('./updater.cjs')
 const { createMacCalendar } = require('./mac-calendar.cjs')
+const { createMacMail } = require('./mac-mail.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
@@ -63,6 +70,7 @@ let tray
 let prefs = { hotkey: DEFAULT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, barSpot: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
 // The two shortcuts: the desk, and the one bar (search, ask, or write a sticky; it was two keys until Oct 2026).
 // `value` is null when another app has it.
+const macKeys = createMacKeys({ sharedModule })
 const shortcuts = {
   layer: { value: null, failed: false, run: () => toggleDesk() },
   search: { value: null, failed: false, run: () => launcher?.search.toggle() },
@@ -77,6 +85,7 @@ const browsers = new Map()
 let terminals
 let store
 let files
+let passwords = null
 const storeClients = new Map()
 
 // Real notes live in "OSAT"; running from source uses "OSAT Dev" so development
@@ -181,6 +190,10 @@ function createWindow() {
     event.preventDefault()
     hideDesk()
   })
+  // Passwords lock whenever the desk goes (put away, hidden with the app) and when its page reloads or dies.
+  window.on('hide', () => passwords?.lock())
+  window.webContents.on('did-start-loading', () => passwords?.lock())
+  window.webContents.on('render-process-gone', () => passwords?.lock())
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (!under.on && /^https:\/\//i.test(url)) shell.openExternal(url)
     return { action: 'deny' }
@@ -239,6 +252,7 @@ function showDesk() {
 /* Put away, and the app you were in has focus again (unless the quick bar is up). */
 function hideDesk() {
   if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return
+  passwords?.lock()
   mainWindow.hide()
   if (process.platform === 'darwin' && !launcher?.search.window.isVisible()) app.hide()
 }
@@ -319,6 +333,8 @@ function buildMenu() {
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         room('Roadmap', 'Roadmap'),
         room('GitHub', 'GitHub'),
+        room('Mail', 'Mail'),
+        room('Passwords', 'Passwords'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
@@ -495,7 +511,7 @@ async function loadPrefs() {
     const saved = JSON.parse(await fs.readFile(prefsFile(), 'utf8'))
     prefs = {
       hotkey: validHotkey(saved.hotkey) ? saved.hotkey : DEFAULT_HOTKEY,
-      searchHotkey: validHotkey(saved.searchHotkey) ? saved.searchHotkey : DEFAULT_SEARCH_HOTKEY,
+      searchHotkey: validHotkey(saved.searchHotkey) && saved.searchHotkey !== OLD_SEARCH_HOTKEY ? saved.searchHotkey : DEFAULT_SEARCH_HOTKEY,
       // Where the quick bar was dragged to (its top middle); the old quick chat's chatBounds is left behind.
       barSpot: Number.isFinite(saved.barSpot?.x) && Number.isFinite(saved.barSpot?.y) ? { x: saved.barSpot.x, y: saved.barSpot.y } : null,
       launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
@@ -586,12 +602,20 @@ function registerDesk() {
   })
   // The shortcuts, read on the desk and changed in Settings.
   handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), search: shortcutInfo('search'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
+  // Settings → Shortcuts → Keys in use: what the desk's two keys are, and the Mac's own shortcuts (the launcher's come from its settings).
+  handle('desk:keys', async () => ({
+    desk: Object.entries(shortcuts).map(([id, shortcut]) => ({ name: HOTKEY_OPENS[id] === 'OSAT' ? 'Show OSAT' : 'Search or Ask', combo: shortcut.value || prefs[HOTKEY_PREF[id]] })),
+    mac: await macKeys.read(),
+  }), { from: 'app' })
   handle('desk:set-hotkey', async (value, which = 'layer') => {
     if (!shortcuts[which]) fail('That isn’t one of OSAT’s shortcuts.')
     if (!validHotkey(value)) fail('Use one or more of ⌘ ⌃ ⌥ ⇧ with one key.')
     const clash = Object.entries(shortcuts).find(([id, other]) => id !== which && other.value === value)
     if (clash) fail(`${hotkeyLabel(value)} already opens ${HOTKEY_OPENS[clash[0]]}.`)
     if (launcher?.taken(value)) fail(`${hotkeyLabel(value)} is one of the launcher’s keys (Settings → Launcher).`)
+    const { holdersOf, keyGroups } = await sharedModule('keys-model.mjs')
+    const heldByMac = holdersOf(keyGroups({ mac: await macKeys.read() }), value)[0]
+    if (heldByMac) fail(`${hotkeyLabel(value)} is ${heldByMac.name}’s key on this Mac. Turn it off in System Settings → Keyboard → Keyboard Shortcuts, or try a different one.`)
     if (!useHotkey(which, value)) fail(`${hotkeyLabel(value)} is taken by another app. Try a different one.`)
     prefs = { ...prefs, [HOTKEY_PREF[which]]: value }
     await savePrefs()
@@ -645,7 +669,7 @@ function registerDesk() {
   })
 }
 
-/* ---- The launcher (⌘⇧Space): the quick bar, the clipboard history, Hyper keys (desktop/launcher) ---- */
+/* ---- The launcher (⌥⇧Space): the quick bar, the clipboard history, Hyper keys (desktop/launcher) ---- */
 
 /* Putting the desk away hides OSAT (app.hide), and a hidden app's panels never appear: the quick bar, Ask, the
    clipboard and the ring then only worked once OSAT was opened. A panel unhides OSAT first, and when the last one
@@ -779,11 +803,15 @@ async function updateFromTray() {
 
 /* The menu-bar icon, like Granola's: open, the bar, a sticky, Settings; the version and Check for Updates; then the
    quieter switches. It is a moon while offline, so the state shows with the desk away. */
+/* The menu-bar icon is a moon while offline, so the state shows with the desk away. */
+let listeningNow = false
 function updateTray() {
   if (!tray || tray.isDestroyed()) return
   trayAiLine = aiLine()
   tray.setImage(trayIcon(under.on ? 'trayUnderTemplate' : 'trayTemplate'))
   tray.setToolTip(under.on ? 'OSAT · Offline' : 'OSAT')
+  // Whenever a meeting is being heard, the menu bar says so.
+  tray.setTitle(listeningNow ? 'Listening' : '')
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
     { label: 'Search or Ask…', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
@@ -1192,6 +1220,46 @@ async function registerOvernight() {
   overnight.start()
 }
 
+/* ---- Meetings: OSAT listens to a meeting on this Mac and writes it up (desktop/meetings/, Phase 57) ---- */
+
+let meetings = null
+async function registerMeetings() {
+  const { normalizeNote } = await sharedModule('note-core.mjs')
+  const client = store.connect(() => {})
+  const ears = createEars({
+    dir: path.join(app.getPath('userData'), 'models'),
+    emit: () => meetings?.status().then((status) => sendToAllWindows('meeting:changed', status)),
+  })
+  meetings = await createMeetings({
+    dataDir: app.getPath('userData'),
+    sharedModule,
+    ears,
+    fork: () => utilityProcess.fork(path.join(__dirname, 'meetings', 'listen.cjs'), [], { serviceName: 'OSAT Listening' }),
+    // A small program of its own hears the microphone and the Mac's sound; from source it is built by scripts/build-listen.mjs.
+    capture: createCapture({ helperPath: app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-listen') : path.join(__dirname, '..', 'build', 'helpers', 'osat-listen') }),
+    // The write-up reads everything that was said, so only the AI on this Mac does it, never a cloud model.
+    hasAi: () => ai.models().length > 0,
+    chat: (messages, schema) => ai.chatStream({ messages, schema }, () => {}, undefined, { interactive: true }),
+    // The write-up lands in Unsorted, like any thought that arrives without a home; the transcript is a plain note beside it.
+    commitNotes: async (made) => {
+      const now = new Date().toISOString()
+      const notes = made.map((item, index) => normalizeNote({ id: `note-${randomUUID()}`, title: item.title, markdown: item.markdown, createdAt: now, updatedAt: now, unsorted: item.unsorted, source: 'Meeting' }, index))
+      store.commit(client, notes.map((note) => ({ t: 'add', c: 'notes', v: note, at: 0 })))
+      return notes.map((note) => note.id)
+    },
+    // Undo puts them in the Bin (Notes can bring them back), rather than deleting them.
+    removeNotes: async (ids) => {
+      const trashedAt = new Date().toISOString()
+      store.commit(client, ids.map((id) => ({ t: 'patch', c: 'notes', id, v: { trashedAt, pinned: false } })))
+    },
+    handle,
+    fail,
+    send: sendToAllWindows,
+    notify: (options) => { if (Notification.isSupported()) new Notification(options).show() },
+    listening: (on) => { listeningNow = on; updateTray() },
+  })
+}
+
 /* ---- Scans: the folder a scanner saves to; each new scan becomes a node (scans.cjs) ---- */
 
 let scans = null
@@ -1382,8 +1450,35 @@ function selfTest(modelPath) {
   child.postMessage({ type: 'probe' })
 }
 
+/* `OSAT --osat-listen-test`: Meetings' listening engine loads inside the packaged app, and so does its helper (CI's check). */
+function listenTest() {
+  const child = utilityProcess.fork(path.join(__dirname, 'meetings', 'listen.cjs'), [], { serviceName: 'OSAT Listening' })
+  const helper = app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-listen') : path.join(__dirname, '..', 'build', 'helpers', 'osat-listen')
+  let finished = false
+  const finish = (ok, line) => {
+    if (finished) return
+    finished = true
+    console.log(`OSAT listen-test: ${line}`)
+    child.kill()
+    app.exit(ok ? 0 : 1)
+  }
+  setTimeout(() => finish(false, 'timed out'), 60000).unref()
+  child.on('message', (message) => {
+    if (message.type !== 'probe') return
+    if (!message.ok) finish(false, message.message)
+    else if (process.platform === 'darwin' && !require('node:fs').existsSync(helper)) finish(false, `the helper is missing (${helper})`)
+    else finish(true, 'listening engine ok')
+  })
+  child.on('exit', (code) => finish(false, `engine stopped (${code})`))
+  child.postMessage({ type: 'probe' })
+}
+
 app.whenReady().then(async () => {
   if (!primaryInstance) return
+  if (app.commandLine.hasSwitch('osat-listen-test')) {
+    listenTest()
+    return
+  }
   if (app.commandLine.hasSwitch('osat-self-test')) {
     selfTest(app.commandLine.getSwitchValue('osat-self-test'))
     return
@@ -1422,7 +1517,18 @@ app.whenReady().then(async () => {
   await registerBrief(agent, createMacCalendar({ handle, fail }))
   // Tools → GitHub (desktop/github.cjs, Phase 55): through the gh signed in on this Mac.
   await createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on })
+  // Tools → Mail (desktop/mac-mail.cjs, Phase 59): the Mac's own Mail app. Local to this Mac, so it works Offline too.
+  await createMacMail({ sharedModule, handle, fail })
+  // Tools → Passwords (desktop/passwords.cjs, Phase 58): locked at every launch; locks on sleep, screen lock, the desk
+  // put away, and quit. Its sealed file is read by nothing else.
+  passwords = await createPasswords({
+    dataDir: app.getPath('userData'), sharedModule, handle, fail, dialog, mainWindow: () => mainWindow, clipboard: require('electron').clipboard, writeConcealed,
+    send: (channel) => send(channel),
+  })
+  for (const event of ['suspend', 'lock-screen']) powerMonitor.on(event, () => passwords.lock())
   await registerOvernight()
+  // Meetings can fail on their own (no helper in a source build); OSAT still opens.
+  await registerMeetings().catch((error) => console.error('Meetings could not start:', error))
   registerDesk()
   registerAsk()
   createWindow()
@@ -1436,7 +1542,7 @@ app.whenReady().then(async () => {
   app.on('activate', () => showDesk())
 })
 
-app.on('before-quit', () => { quitting = true })
+app.on('before-quit', () => { quitting = true; passwords?.lock() })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
@@ -1452,6 +1558,8 @@ app.on('will-quit', () => {
   bots?.stop()
   brief?.stop()
   overnight?.stop()
+  passwords?.stop()
+  meetings?.stopNow()
   files?.stop()
   launcher?.stop()
 })

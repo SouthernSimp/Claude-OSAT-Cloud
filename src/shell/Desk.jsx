@@ -35,6 +35,9 @@ import { NowPlayingView } from '../views/NowPlaying.jsx'
 import { PileView } from '../views/Pile.jsx'
 import { RoadmapView } from '../views/Roadmap.jsx'
 import { GitHubView } from '../views/GitHub.jsx'
+import { MailView } from '../views/Mail.jsx'
+import { PasswordsView } from '../views/Passwords.jsx'
+import { MeetingsView } from '../views/Meetings.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { GlassDefs, useAlive } from './glass.jsx'
 import { DOCK_KEY, cleanSide, fullBox } from './dock-model.js'
@@ -71,6 +74,9 @@ const ROOMS = {
   NowPlaying: [520, 660],
   Roadmap: [900, 760],
   GitHub: [1040, 740],
+  Mail: [1080, 740],
+  Passwords: [860, 640],
+  Meetings: [720, 620],
   Pile: [1200, 820],
   note: [600, 640],
 }
@@ -670,6 +676,9 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Settings': return <SettingsView {...room} storage={storage} target={pop.detail?.section ? target : null} />
     case 'Roadmap': return <RoadmapView />
     case 'GitHub': return <GitHubView />
+    case 'Mail': return <MailView {...room} />
+    case 'Passwords': return <PasswordsView />
+    case 'Meetings': return <MeetingsView {...room} />
     case 'Pile': return <PileView {...room} onClose={onClose} />
     case 'NowPlaying': return <NowPlayingView {...room} media={window.osatDesk?.nowPlaying ? window.osatDesk : null} />
     default: return null

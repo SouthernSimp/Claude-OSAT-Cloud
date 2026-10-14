@@ -7,7 +7,7 @@ import { KIND_FILTERS } from '../../shared/clipboard-model.mjs'
 import { DEFAULT_SETTINGS, canonicalKey, customizable, ownKeyOf, ownWordOf, validKeyword } from '../../shared/launcher-model.mjs'
 import { systemCommand } from '../../shared/system-commands.mjs'
 import { comboFrom, labelOf } from '../lib/hotkey.js'
-import { FILE_FILTERS, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
+import { FILE_FILTERS, KILL_SCOPE, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
 import { remember } from '../../shared/picks.mjs'
 import { cleanAnswer, replaces, textActionRows, textMessages } from '../../shared/selection-model.mjs'
 import { streamLocalMessage } from '../local-ai.js'
@@ -22,7 +22,7 @@ import { useSources } from '../search/useSources.js'
 import { useWorkspace } from '../store/useWorkspace.js'
 import { canAsk } from '../views/Files.jsx'
 
-/* The quick bar (Phase 13; one bar since 13c, when it took over the quick chat): a small bar over every app (⌘⇧Space)
+/* The quick bar (Phase 13; one bar since 13c, when it took over the quick chat): a small bar over every app (⌥⇧Space)
    that opens into the full view as you type. Results on the left, a big preview on the right, the details under it.
    Return does the obvious thing (Open; for a copy, Paste into the app you were in); ⌘K lists every other action;
    ⌘Return asks the AI about what is typed (the answer streams in this window and is kept as a chat: Ask, the same
@@ -85,7 +85,7 @@ export function QuickSearchSurface() {
   const ai = models === null ? { state: 'checking' } : models.length ? { state: 'ready', label: modelLabel(models[0]), offline } : { state: offline ? 'waits' : 'none' }
 
   const read = useMemo(() => readTyped(text, settings, scope), [text, settings, scope])
-  const { found, looking, reloadClipboard } = useSources({ bridge, read, settings, fileFilter, visit })
+  const { found, looking, reloadClipboard, reloadProcesses } = useSources({ bridge, read, settings, fileFilter, visit })
   // Commands always; notes and nodes when that source is on.
   const wantsFind = Boolean(workspace) && (read.scope === 'notes' || (read.scope === 'all' && read.query.length > 0))
   const looked = useMemo(() => (wantsFind ? findAll(workspace, read.query, { limit: 30, bar: true }) : []), [wantsFind, workspace, read.query])
@@ -307,7 +307,15 @@ export function QuickSearchSurface() {
           else if (!result.ok && result.reason === 'mac') { said('Moving windows works in the Mac app.') }
           break
         }
-        case 'scope': setScope(d.scope); setCursor(null); input.current?.focus(); break
+        case 'scope': setScope(d.scope); if (d.scope === KILL_SCOPE) setText(''); setCursor(null); input.current?.focus(); break
+        case 'kill':
+        case 'force-kill': {
+          const force = id === 'force-kill'
+          const sent = await bridge.kill(d.path, force)
+          said(sent ? (force ? `Force killed ${d.name}` : `Asked ${d.name} to quit`) : `${d.name} isn’t running any more`)
+          setTimeout(reloadProcesses, 700)
+          break
+        }
         case 'system': {
           const command = systemCommand(d.id)
           if (command?.confirm && live.current.armed !== target.key) { setArmed(target.key); said(command.confirm, 0); break }
@@ -361,7 +369,7 @@ export function QuickSearchSurface() {
     } catch (error) {
       said(cleanError(error), 4000)
     }
-  }, [bridge, said, away, hideLater, toOSAT, reloadClipboard, addTo, saveSticky, askAi, runText])
+  }, [bridge, said, away, hideLater, toOSAT, reloadClipboard, reloadProcesses, addTo, saveSticky, askAi, runText])
 
   /* The keys. One listener that reads the latest state, so nothing is stale. */
   live.current = { query: read.query, selected, answer, models, rows, active, row, actions, menu, picker, text, scope, tabs, toast, full, offer, mode, chatOn, editing, armed, settings }
@@ -514,7 +522,7 @@ export function QuickSearchSurface() {
   const placeholder = selected ? 'What should the AI do with it? Pick one, or type your own…'
     : mode === 'sticky' ? 'Write a sticky… Return saves it to Unsorted'
     : mode === 'ask' ? 'Ask the AI… Return asks'
-      : scope === 'all' ? `Search, ask, or write a sticky…${full ? '' : '  ↓ for what you copied'}` : `Search ${tabs.find(([id]) => id === scope)?.[1] || ''}…`
+      : scope === 'all' ? `Search, ask, or write a sticky…${full ? '' : '  ↓ for what you copied'}` : scope === KILL_SCOPE ? 'Filter running apps…' : `Search ${tabs.find(([id]) => id === scope)?.[1] || ''}…`
 
   return (
     <>
@@ -559,7 +567,7 @@ export function QuickSearchSurface() {
             )
             : read.scope !== 'all' && (
               <button type="button" className="qs-chip is-scope" title="Back to everything  esc" onClick={() => { setScope('all'); if (read.scope !== scope) setText(''); setCursor(null); input.current?.focus() }}>
-                {tabs.find(([id]) => id === read.scope)?.[1]} <X weight="bold" aria-hidden="true" />
+                {read.scope === KILL_SCOPE ? 'Kill Process' : tabs.find(([id]) => id === read.scope)?.[1]} <X weight="bold" aria-hidden="true" />
               </button>
             )}
       </header>
@@ -601,7 +609,7 @@ export function QuickSearchSurface() {
                         draggable={Boolean(dragOut(item))}
                         onDragStart={dragOut(item)}
                       >
-                        {item.kind === 'app' ? <AppIcon bridge={bridge} row={item} />
+                        {item.kind === 'app' || item.kind === 'process' ? <AppIcon bridge={bridge} row={item} />
                           : item.kind === 'image' && item.data.thumb ? <img className="qs-row-icon qs-thumb" src={item.data.thumb} alt="" draggable={false} />
                             : <RowIcon row={item} />}
                         <span className="qs-row-text"><b>{item.title}</b><small>{item.subtitle}</small></span>
@@ -657,7 +665,7 @@ export function QuickSearchSurface() {
               ) : (
                 <form className="qs-editor" onSubmit={(event) => { event.preventDefault(); (editing.what === 'snippet' ? saveSnippet : giveWord)(editing.row, editing.value) }}>
                   <label>{editing.what === 'snippet' ? <>Save as a snippet, with a word to type for it (optional)</> : <>A word for <b>{editing.row.title}</b></>}
-                    <input autoFocus value={editing.value} maxLength={13} placeholder={editing.what === 'snippet' ? 'like ;addr' : 'like nn'} aria-label={editing.what === 'snippet' ? 'A word for the snippet' : `A word for ${editing.row.title}`} onChange={(event) => setEditing({ ...editing, value: event.target.value })} />
+                    <input autoFocus value={editing.value} maxLength={14} placeholder={editing.what === 'snippet' ? 'like ;addr' : 'like nn'} aria-label={editing.what === 'snippet' ? 'A word for the snippet' : `A word for ${editing.row.title}`} onChange={(event) => setEditing({ ...editing, value: event.target.value })} />
                   </label>
                   <button type="submit">Save</button>
                   <button type="button" onClick={() => { setEditing(null); input.current?.focus() }}>Cancel</button>

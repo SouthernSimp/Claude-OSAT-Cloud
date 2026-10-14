@@ -12,7 +12,7 @@ export function Welcome({ onDone }) {
   const [ai, setAi] = useState(null)
   const [tier, setTier] = useState(null)
   const [hotkey, setHotkey] = useState('⌥Space')
-  const [bar, setBar] = useState('⌘⇧Space')
+  const [bar, setBar] = useState('⌥⇧Space')
 
   const done = useRef(onDone)
   done.current = onDone

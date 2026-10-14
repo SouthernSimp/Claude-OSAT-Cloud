@@ -1,4 +1,4 @@
-/* The quick bar (⌘⇧Space): a bar over every app that opens into results and a big preview, and into Ask (the
+/* The quick bar (⌥⇧Space): a bar over every app that opens into results and a big preview, and into Ask (the
    `.quick-chat` styles in assistant.css). It is a panel over the Mac's frosting, so it wears the see-through tokens
    (glass.css); anything that sits over other content (the actions) is solid. It is dragged by its bar, its tabs and
    its foot (`-webkit-app-region`), and opens where it was left. */

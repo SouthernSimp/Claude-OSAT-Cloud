@@ -2,12 +2,13 @@ import { useContext, useEffect, useState } from 'react'
 import { AppWindow, CaretDown, CaretRight, Calculator, ClipboardText, Files, Link, NotePencil, SquaresFour, Target, X } from '@phosphor-icons/react'
 
 import { SOURCES, holderOf } from '../../../shared/launcher-model.mjs'
-import { LAYOUTS } from '../../../shared/window-layouts.mjs'
 import { CAPTURES } from '../../../shared/capture-model.mjs'
 import { CAPTURE_ICONS } from '../../search/icons.jsx'
+import { KeysInUse } from './KeysInUse.jsx'
 import { LauncherPage } from './launcher.jsx'
 import { useCaptureStatus } from './screenshots.jsx'
 import { Choice, KeyRecorder, QueryContext, Switch, WordField } from './parts.jsx'
+import { windowRows } from './WindowCommands.jsx'
 
 /* Settings → Shortcuts (Phase 13b): every word and every key, in one table, the way Raycast's Shortcuts tab does it:
    Name, Word, Key, On. Groups fold; a filter narrows to what has a key, a word, or is off. Nothing here is a second copy:
@@ -67,10 +68,8 @@ function Table({ launcher }) {
     setKey: (hotkey) => editLink(link.id, { hotkey }),
     setOn: (on) => editLink(link.id, { on }),
   }))
-  const layouts = LAYOUTS.map((layout) => ({
-    id: `snap:${layout.id}`, icon: SquaresFour, name: layout.label, hint: layout.id === 'restore' ? 'Where the window was before OSAT moved it' : 'Moves the window you were in', word: null, hotkey: settings.windows.hotkeys[layout.id], on: settings.windows.on, canWord: false,
-    setKey: (hotkey) => save({ windows: { hotkeys: { [layout.id]: hotkey } } }),
-  }))
+  // Window layouts (Phase 61): Nate's own commands and the built-in ones, from the one list Settings → Window layouts shows.
+  const layouts = windowRows(settings, save, status).all
   const ring = [{
     id: 'ring', icon: Target, name: 'The ring', hint: 'Quick tools around your pointer. Hyper + middle click opens it too', word: null, hotkey: settings.ring.hotkey, on: settings.ring.on, canWord: false,
     setKey: (hotkey) => save({ ring: { hotkey } }), setOn: (on) => save({ ring: { on } }),
@@ -116,6 +115,7 @@ function Table({ launcher }) {
           )
         })}
       </div>
+      <KeysInUse settings={settings} />
     </section>
   )
 }

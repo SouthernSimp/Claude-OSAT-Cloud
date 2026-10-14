@@ -36,7 +36,7 @@ export function Preview({ row, bridge, workspace, offer = null, now, onDragStart
   else if (row.kind === 'shot' && own.thumb) body = <img className="qs-picture" src={own.thumb} alt="" draggable={false} />
   else if (row.kind === 'app' && own.thumb) body = <img className="qs-app-icon" src={own.thumb} alt="" draggable={false} />
   else if (row.kind === 'calc') body = <p className="qs-big">{row.title}</p>
-  else if (row.kind === 'layout') body = <LayoutPreview id={d.layout} />
+  else if (row.kind === 'layout') body = <LayoutPreview id={d.layout} box={d.box} />
   else if (COPIED_WORDS.has(row.kind)) body = <pre className={`qs-text ${row.kind === 'link' ? 'is-link' : ''}`}>{own.text ?? d.text}</pre>
   // Save as a sticky / Ask the AI: the words that would go.
   else if (row.kind === 'sticky' || row.kind === 'ask' || row.kind === 'snippet') body = <pre className="qs-text">{d.text}</pre>
@@ -62,8 +62,8 @@ export function Preview({ row, bridge, workspace, offer = null, now, onDragStart
 }
 
 /* A screen, and the part of it the window will take. */
-function LayoutPreview({ id }) {
-  const box = layoutById(id)?.box
+function LayoutPreview({ id, box: own }) {
+  const box = own || layoutById(id)?.box
   return (
     <div className="qs-screen" aria-hidden="true">
       <i className={box ? '' : id === 'next-display' ? 'is-next' : 'is-back'} style={box ? { left: `${box[0] * 100}%`, top: `${box[1] * 100}%`, width: `${box[2] * 100}%`, height: `${box[3] * 100}%` } : undefined} />

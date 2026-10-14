@@ -8,19 +8,15 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 12, 2026 (late): Phases 53–55 stacked, waiting on Nate's merge
+## Resume checkpoint — October 13, 2026 (night): one big update, merged from `claude/release-oct13`
 
-Main has everything through Phase 52 (#78). Four PRs are stacked so merging #82 alone lands them all (#82 Phase 56 Put the desk away, `claude/put-away`):
-#79 Phase 53 While you sleep (`claude/overnight`), #80 Phase 54 trust fixes (`claude/trust-fixes`, contains #79), #81 Phase 55
-the GitHub room (`claude/github-room`, contains both). Nate asked for it all to arrive through Check for updates; Claude's
-own `gh pr merge` was blocked by the session's permission rules, so Nate merges (#81 on GitHub, or 79 → 80 → 81).
-Phase 53: `shared/overnight-model.mjs` (pure: `due`, `candidatePairs`, the two questions and readers, `liveIdeas`,
-`ideaWords` for the brief), `desktop/overnight.cjs` (runner, `overnight.json`, `overnight:*` IPC, local models only,
-`background: true`), `src/sky/useOvernight.js`, faint `is-idea` threads in Board.jsx, "Ideas from last night" and
-`keepIdea`/`ideaItems` in Sky.jsx (through `canvasCommit`, so Undo), Settings → AI → While you sleep.
-Phase 54 and 55: see "Architecture added in Phase 55" and the webhooks/updater lines below.
-Nate's direction (Oct 12): OSAT should grow into a business management tool; see docs/BACKLOG.md (plan with him first).
-Next: Try this build in the GitHub room; Raycast gaps (script commands in Raycast's header format, a color picker).
+Everything Nate asked for on Oct 13 was merged into one release branch (PRs #83 Meetings, #86 Keys in use + Search or Ask on ⌥⇧Space + Hyper keys
+heard with and without ⇧ + Kill Process, #87 snippet words with two signs, #88 Mail, #89 Passwords, #90 Window management, #91 a Hyper key built
+into OSAT, #92 Mouse). The native helpers (`desktop/helpers/*.swift`, `desktop/meetings/osat-listen.swift`) all ship in `Resources/helpers/`.
+None of the Mac-only behavior (Hyper key, Mouse, Mail, Passwords' copy, Meetings) has been run on the real Mac by Claude: Nate tries it through
+Settings → About → Check for updates, and the PRs' Mac checklists say what to look at. Reconciled in the merge: one `extraResources` entry
+(`build/helpers` → `helpers`), one `build:helpers` script beside `build-listen.mjs`, one CI helper-check step.
+Next: whatever Nate finds on the Mac; pointer speed/acceleration and per-app profiles (Mouse), Create Layout (windows), sending (Mail).
 Older checkpoints are in git history.
 
 ## Working with Nate
@@ -86,7 +82,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     Model files live in `<data folder>/models`. LM Studio still works through `local-ai.cjs`.
   - `main.cjs`: windows, menu, IPC for the store / local AI / browser / terminal (`handle`, `fail`
     and the trusted-sender checks live here and are passed to the modules that register handlers),
-    the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌘⇧Space,
+    the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌥⇧Space,
     `chat` the bar on Ask, ⌥⇧Space; `chat:show` is Pop out, into the bar); menu-bar icon, app launchers, Esc
     routing (a panel swallows Esc, so OSAT takes it while the bar or the ring has focus), single-instance lock.
     Every `setVisibleOnAllWorkspaces` passes `skipTransformProcessType: true`: without it Electron activates the
@@ -119,7 +115,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `shared/mac-calendar-model.mjs` (shapes, merging, reminder words) and `src/views/MacCalendar.jsx` (hook and the
     two panels in the Calendar room). Needs four usage strings in `package.json` `build.mac.extendInfo`
     (`NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription`, `NSRemindersFullAccessUsageDescription`,
-    `NSRemindersUsageDescription`). Mail, Gmail, Outlook and Messages are later steps.
+    `NSRemindersUsageDescription`). Mail is `mac-mail.cjs` (Phase 59, below); Gmail, Outlook and Messages are later steps.
   - `file-ops.cjs`: tidying (Phase 21 step 2): New folder, rename, move / copy, the Bin, all on absolute
     paths files.cjs has already checked (`sourcePath`/`folderPath`: never a root, never hidden, never
     a link); each returns `undo`, a function kept in files.cjs's `undos` map so the window holds only a token
@@ -164,7 +160,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     the fence in tests/under.test.mjs.
   - `launcher/` (Phase 13; `index.cjs` wires it, main only calls `createLauncher` and gives it `handle`, `fail`, the
     desk window and Electron's pieces; every `search:*` / `ring:*` channel is checked against the window that may ask,
-    `handle`'s `from` can be a function). `search-window.cjs` (the quick bar, ⌘⇧Space: a floating panel on every
+    `handle`'s `from` can be a function). `search-window.cjs` (the quick bar, ⌥⇧Space (⌘⇧Space until Oct 2026: Apple's AI holds it, so a saved one becomes ⌥⇧Space): a floating panel on every
     Space, a bar that grows to the full view or to Ask (`mode` bar / full / chat); the app you were in keeps focus;
     dragged, it opens where it was left: `barSpot` in prefs.json, only a move after `will-move` counts), `clipboard-history.cjs` (copies
     kept in `<data folder>/clipboard/`, skipping concealed types; pins, limits, Undo; OSAT's own writes go through
@@ -193,7 +189,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     presses ⌫ per letter and pastes through a quiet clipboard write, putting the clipboard back. Settings → Snippets.
     Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
     one way out of the Mac it adds is opening a web address in Nate's own browser (fenced in tests/under.test.mjs,
-    refused offline). ⌘⇧Space is the third shortcut in main's `shortcuts` (`search`).
+    refused offline). ⌥⇧Space is the third shortcut in main's `shortcuts` (`search`).
   - `sync.cjs`: the same switch keeps devices in step through `OSAT/Sync` (see sync-core below).
     It hooks `store.onCommit` to note every change made here (except what sync applied), keeps
     its place in `store/sync.json`, and once set up it notes changes even while the link is
@@ -505,6 +501,121 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   desk menu's item in FieldDesk.jsx (`putDeskAway`: one commit, the places cleared, one Undo restoring both through the
   workspace inverse). Unsorted stickies move into the topic or a stack's branch; sorted ones stay home and are connected.
   Paper on the real desk: Tools → Sort a pile → Photo already reads a photo of stickies into a pile kept apart from topics.
+
+## Architecture added in Phase 60
+
+- Keys in use (Settings → Shortcuts): `shared/keys-model.mjs` (pure: Carbon key codes → OSAT's key names, `fromSymbolic`,
+  `keyGroups`, `holdersOf`, the few keys that work only inside OSAT) + `desktop/mac-keys.cjs` (reads
+  `com.apple.symbolichotkeys` with `plutil`, read-only, empty off the Mac) + `desk:keys` (`osatDesk.keys`) +
+  `src/views/settings/KeysInUse.jsx`. `desk:set-hotkey` refuses a key the Mac holds, by name. Not listed anywhere macOS
+  shares: Siri/Dictation holds, other apps' own keys; a key that does nothing is one of those.
+
+## Architecture added in Phase 62
+
+- Kill Process: `shared/process-model.mjs` (pure: `groupApps` of `ps` output by .app, own user only, never OSAT's own pid, nothing under /System except
+  /System/Applications and Finder; `wantsKill`, `processRow`) + `desktop/launcher/processes.cjs` (`ps`, then SIGTERM or SIGKILL for every pid a
+  fresh listing finds for the app *path* the bar sent; a made-up path kills nothing) + `search:processes` / `search:kill`. In the bar, typing kill/quit
+  offers a `kill` row (scope `KILL_SCOPE`, not a tab); inside it ↵ Kill, ⌘↵ Force Kill. Restart and Kill All are not built.
+- Hyper keys are registered in both spellings (⌃⌥⇧⌘ and ⌃⌥⌘, `hyperAlias`; the alias id ends in `~` and never reports failure).
+## Architecture added in Phase 59
+
+- `shared/mail-model.mjs` + `desktop/mac-mail.cjs` + `src/views/Mail.jsx` (Tools → Mail): the Mac's own Mail app through
+  `osascript -l JavaScript`, the mac-calendar pattern, so OSAT never holds a mail password, token or OAuth client
+  (Gmail direct would need Google Cloud sign-in and stored credentials: a later step). `createMacMail({ sharedModule,
+  handle, fail })` registers `mail:status | allow | list | search | read | reply | open` (`from: 'app'`; `osatMail` in the
+  preload). One fixed script, the command and its JSON on argv (`osascriptArgs`), never joined into the script; ids pass
+  `validMessageId` and search words `cleanQuery` in main first. Read-only plus Reply (`reply … openingWindow`: a draft
+  in Mail's own window, never sent) and Open in Mail (`message://` link). It never sends, deletes, moves, marks read or
+  asks Mail to fetch; tests/mac-mail.test.mjs runs the script in a vm against a stand-in Mail and bars those verbs.
+  A status check never asks macOS (it only says whether Mail is installed); `allow` is the one thing that prompts
+  (Automation, `NSAppleEventsUsageDescription` in `package.json`); the room remembers "allowed" in localStorage and
+  reads the list straight away next time. A refusal (`-1743`) and "no accounts" come back as `explainMail`'s plain lines
+  (`NOT_ALLOWED`, `NOT_SET_UP`), which the room turns into states.
+- Mail text is untrusted data: shown as plain text in a `<pre>` (`cleanBody` drops control/zero-width/right-to-left
+  override characters, caps at 20,000), never HTML, no remote content, nothing linkified. It is **never** put in an AI
+  prompt automatically: Ask, the agent, the connector, overnight and the brief have no mail path. The one exception is
+  the room's "Ask about this message" button (`askMessages`: the email quoted line by line as data, a system line saying
+  it is untrusted, no tools, `askLocalModel` so only a model on this Mac). A sticky made from a message has source
+  `Mail`, and `auto-file.js` never files that source by itself. Mail reading is local, so it works Offline (not in
+  `WAITS`); its one `execFile('osascript'…)` line is in tests/under.test.mjs's fence.
+- Not yet: sending, Gmail/Outlook direct, attachments, HTML, folders other than the inbox, a non-prompting
+  "is Automation allowed?" check (the AEDeterminePermissionToAutomateTarget call is hard to make from JXA).
+## Architecture added in Phase 58
+
+- `shared/password-model.mjs` (pure, no imports; the window uses it too: strength hint, entry cleaning, `listing` = the only fields a window
+  gets, the generator with an injected `randomInt`, `waitFor` backoff) + `shared/vault-format.mjs` (node:crypto only: scrypt N=2^17 r=8 p=1
+  -> AES-256-GCM over the whole vault, a fresh nonce per seal, the header bound as AAD, params read from the header, `wipe`) +
+  `desktop/passwords.cjs` (all `passwords:*` IPC, `{ from: 'app' }`; session in memory only; locks on idle, sleep, screen lock, the desk
+  hidden, a page reload, leaving the room and quit) + `desktop/conceal.cjs` (Copy: one AppKit call in `osascript -l JavaScript`, the words on
+  stdin, type `org.nspasteboard.ConcealedType`) + `src/views/Passwords.jsx` (Tools → Passwords). The file is `vault.json` in the data folder:
+  this Mac only, 0600, never in workspace.json, sync, snapshots, the iPhone folder, Ask, the connector, the agent, webhooks or the
+  overnight/brief jobs; `tests/vault-fence.test.mjs` fails if any other source mentions it. No new dependency and no network.
+- Rules to keep: the master password is never stored; no recovery; a password leaves main only for Reveal (10 s) or Copy (30 s, cleared
+  only if the clipboard still holds it); errors that reach the window are the module's own calm sentences, nothing secret is logged;
+  there is no plain-text or CSV export on purpose. Not yet: autofill, browser extension, TOTP, phone or Mac-to-Mac sync.
+## Architecture added in Phase 61
+
+- Window management you can shape: `shared/window-layouts.mjs` is the one list (`LAYOUTS`, grouped by `LAYOUT_GROUPS`: a `box` of
+  fractions of the screen's work area, or an `op`: restore, next/previous-display, larger, smaller, move) and the one rect-maths
+  (`frameFor(id, area, now, windows)`; edges are rounded, not sizes, so neighbours tile; `now` is the window as it is, for larger,
+  smaller and move). Old ids and usual keys stay; new commands start with no key. Nate's own commands are `windows.custom`
+  (`{ id: 'custom-…', name, rect: { x, y, w, h } in percent, centered? }`, `cleanCustom`/`cleanRect`: at most 50, ids checked, a number
+  that isn't one drops the command, out-of-range is pulled onto the screen). `windows` in launcher.json is now `{ on, hotkeys, aliases, off,
+  custom }`, cleaned by `cleanWindows` (called inside `cleanSettings` so an alias goes through the same `word()` as every other word and
+  never clashes; `keysOf`/`wordsOf`/`holderOf`/`nameOf` know `snap:<id>` for built-in and custom alike). An alias typed alone in the bar
+  is `matchKeyword`'s `snap:` branch (a `layout` row, no change to quick-search-model but `layoutsOf` for the bar's rows).
+  `desktop/launcher/snap.cjs` takes `windows: () => settings.windows` and branches on `layout.op`; it still runs only through the
+  injected `exec`. UI: `src/views/settings/WindowCommands.jsx` (`windowRows` feeds Settings → Shortcuts' Window layouts group, `WindowCommands`
+  is Settings → Window layouts: Your commands + Create command form with a live preview, every built-in group, "…" for
+  Duplicate / Reset / Turn off, Delete and Reset with Undo). The bar's own ⌘K word/key for a layout row still lives in `custom`.
+  Not yet: Create Layout (several apps at once), per-display fine-tuning, a key repeat that cycles sizes.
+## Architecture added in Phase 63
+
+- The Hyper key, built in (Settings → Keyboard → Make Caps Lock a Hyper key; `hyper: { sends, own, tap }` in launcher.json, `own`
+  forces `sends: 'four'`): `desktop/helpers/osat-hyper.swift` (one file, built by `scripts/build-helpers.mjs`, which compiles every
+  `desktop/helpers/*.swift` to `build/helpers/<name>`, arm64 + x86_64 when it can; run by `dist:mac`, `start:mac` and CI; shipped through
+  `build.extraResources` into the app's Resources) + `desktop/launcher/hyper.cjs` (`createHyper`: starts the helper only on a Mac, with
+  the switch on and Accessibility allowed; `createCapsMapping`: Caps Lock → F20 with `hidutil`, merged with the mappings already there,
+  only OSAT's own entry removed (note in `hyper.json`), and only while the helper says `ready`) + `shared/hyper-model.mjs` (pure: the
+  state machine `step` the Swift mirrors line for line, `readHelperLine`, the hidutil reading/merging, the Settings words).
+  The helper is a CGEventTap (session, head insert; keys, flags and mouse buttons): while F20 (key code 90) is down every other key and
+  click carries ⌃⌥⇧⌘, the trigger is swallowed, a tap alone does nothing (or Esc), and the tap being switched off, sleep, wake and a
+  trigger the keyboard no longer has down all clear the hold. It writes only `ready`, `denied` or `stopped`, never what is typed, touches
+  no files and no network. If it ends, `hyper.cjs` removes the Caps Lock mapping at once. Never run it or `hidutil --set` while testing
+  (it rewrites the live keyboard); `tests/hyper*.test.mjs` use a pretend hidutil and a pretend helper.
+## Architecture added in Phase 64
+
+- Mouse (Settings → Mouse, Launcher group): `shared/mouse-model.mjs` (pure: `cleanMouse`/`mergeMouse` for `mouse` in launcher.json, `deviceOf`
+  (any scroll phase or momentum = trackpad, else mouse wheel), `scrollAxis`/`scrollEvent` (reverse per axis per device, wheel-only speed with a
+  residual so 0.5x gives every second notch), `buttonAction`, `configLine`, `readHelperLine`) + `desktop/helpers/osat-mouse.swift` (a CGEventTap on
+  scrollWheel and the other mouse buttons; writes only `ready`/`denied`/`stopped`; takes its settings as JSON lines on stdin; leaves on stdin EOF,
+  SIGTERM or a changed parent; re-enables the tap when macOS disables it; changes nothing that outlives it) + `desktop/launcher/mouse.cjs`
+  (`createMouse`: starts it only while `mouse.on` has something to change, OSAT is trusted in Accessibility and the file exists; `search:status` reports
+  `mouse`: off/access/starting/listening/denied/missing/failed/unavailable; `denied` is not retried until off and on) + `src/views/settings/mouse.jsx`.
+  The helper is compiled by `scripts/build-helpers.mjs` (every `desktop/helpers/*.swift` into `build/helpers/`, Mac only; `npm run build:helpers`;
+  shipped as `Resources/helpers` through `extraResources`; the CI mac job runs it). The Swift mirrors the model's rules by hand, like `typedStep` in
+  snippets: tests/mouse.test.mjs checks the model, the lifecycle (a pretend process) and what the helper's source may say; the helper itself is never run
+  in tests. Not built: pointer speed/acceleration (needs IOHIDServiceClient properties, which outlive a crash; keys are in docs/MOUSE-FINDINGS.md) and
+  per-app profiles. See docs/MOUSE-FINDINGS.md for what was learned from LinearMouse (MIT) and how the mouse is told from the trackpad.
+## Architecture added in Phase 57
+
+- Meetings (Tools → Meetings, `src/views/Meetings.jsx`, `osatMeetings` in the preload, `meeting:*` in `desktop/meetings/index.cjs`).
+  `shared/meeting-model.mjs` is the pure part: `speechWindows` (only stretches with someone talking go to whisper: it
+  invents words in silence), `cleanSegments` / `collapseRepeats` / `dropEcho` / `mergeTracks` (two sounds, Me and Them, one
+  conversation), `chunkLines` (parts of `CHUNK_WORDS` = 2,600: the built-in model's context is 8,192 tokens), `NOTES_SCHEMA` /
+  `TITLE_SCHEMA` and their questions and forgiving readers, `joinNotes` (lists joined in code), `meetingNotes` (the two notes).
+  `desktop/meetings/`: `capture.cjs` starts/stops `osat-listen` (Swift, `osat-listen.swift`, built by
+  `scripts/build-listen.mjs` to `build/helpers/`, shipped in Resources via `extraResources`; it writes `me.pcm` / `them.pcm`
+  straight into `<data folder>/meetings/<id>/`, 16 kHz mono 16-bit, and ends when OSAT's end of its input closes);
+  `ears.cjs` (the pinned whisper model, resumable, in `<data folder>/models/`); `listen.cjs` (whisper.cpp in a
+  `utilityProcess`, given `windows`, releases the model before it says done); `index.cjs` (the state machine: recording →
+  listening back → writing → two notes; `unfinished` recordings; `meetings.json` holds `last`). The write-up uses
+  `ai.chatStream` (built-in model only, a grammar, `interactive`), commits through the store from main, and Undo moves the
+  two notes to the Bin. Electron's own system-audio capture is Windows-only (its typings say so), which is why the helper exists.
+  The fence in tests/under.test.mjs forbids `modelUrl` in `desktop/meetings/`; `meeting:ears-install` waits offline (under.cjs).
+  `OSAT --osat-listen-test` (CI's mac job) checks the engine and the helper are inside the packaged app. Needs
+  `NSMicrophoneUsageDescription` and the `device.audio-input` entitlement (both added); Screen & System Audio Recording has no
+  plist key, macOS just asks. Real run: `node scripts/meeting-check.mjs [--ears …] [--model …] [--part-words 300]`.
 
 ## Layout traps worth remembering
 

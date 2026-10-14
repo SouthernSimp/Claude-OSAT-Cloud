@@ -94,7 +94,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 13g | Screenshots and screen recording from the launcher: CleanShot X when it's on the Mac (every capture, recent captures to drag out), else the Mac's own screenshots | Merged (PR #48) |
 | 13h | Quick bar fixes: the bar, Ask, the clipboard and the ring work over other apps; Paste lands in the right app; right-click for actions; drag from the preview; Copy text from the screen without CleanShot (the Mac's own text recognition); Ask's model menu solid | Merged (PR #51) |
 | 13i | The ring opens with Hyper + middle-click over any app (a small helper on this Mac watches the mouse buttons; Hyper R stays as the backup) | In review (PR #54) |
-| 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
+| 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders; Apple Mail is Phase 59) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
 | 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | Merged (PR #18) |
@@ -147,6 +147,18 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 54 | Trust fixes: an update must be signed by the same certificate as the OSAT you have; webhooks waiting offline survive a quit; old caches out of the repo | In review |
 | 55 | A GitHub room (Tools → GitHub): your repositories, and in each what waits for you (each pull request in its own words, whether its checks passed, Merge, asked once more) and what changed lately; through the gh signed in on your Mac | In review |
 | 56 | Put the desk away: right-click the desk → Put the desk away. Every sticky and stack goes into one topic on the canvas (“Put away · Oct 12”, each stack a branch with its name); stickies already in a topic stay there and are connected. One Undo puts it all back | In review |
+| 60 | Keys in use (Settings → Shortcuts): every key already taken — OSAT's, the launcher's, and the Mac's own shortcuts read from System Settings — and a box to press a key and hear who has it. A new OSAT key that the Mac already holds is refused by name. Search or Ask moves from ⌘⇧Space (Apple's AI holds it) to ⌥⇧Space, and each Hyper key is heard with and without ⇧ so Hyper V opens the clipboard whichever way the Mac's Hyper key is made | In review |
+| 62 | Kill Process (Raycast's command): type kill in the bar, then pick a running app, with its memory; Return asks it to quit, ⌘Return force quits. Only your own apps; never OSAT or what would log you out | In review |
+| 59 | Mail (Tools → Mail): your inbox, read through the Mail app already on your Mac. Newest first, Unread, one message as plain text (never a web page, nothing loads), search, Reply (opens a draft in Mail; OSAT never sends), Make a sticky with Undo, Open in Mail, and a button to Ask about one message (the AI on your Mac only) | In review |
+| 58 | Passwords (Tools → Passwords): an encrypted password manager that is locked every time OSAT starts. You choose one master password (it can’t be recovered if forgotten). It locks itself when idle, when the Mac sleeps or locks, when the desk is put away and at quit; copying a password keeps it out of the clipboard history and clears it after 30 seconds; a password maker; an encrypted backup; Undo for Delete. It lives only on this Mac: never synced, never read by Ask, the connector or any bot | In review |
+| 61 | Window management you can shape (Raycast-style): about fifty window commands (halves, quarters, thirds, fourths, sixths, ninths, the middle in four sizes, almost maximize, make larger or smaller, move to an edge, next and previous screen); each can have an alias you type in the quick bar and a key, and can be switched off; make your own from a name and a rectangle in percent (Create command), duplicate any built-in one as your own, reset it. Settings → Window layouts and Settings → Shortcuts show the same list | In review |
+| 63 | Hyper key, built in | In review |
+| 64 | Mouse (Settings → Mouse): the mouse wheel can scroll the opposite way from the trackpad (up and down, left and right, each on its own), faster or slower, and the side buttons can go back or forward; no LinearMouse needed. A small helper does it, only while it is on and OSAT is allowed in Accessibility | In review |
+| 57 | Meetings (Tools → Meetings): OSAT listens to a meeting on your Mac (you, and the other people through what your Mac plays) and writes it up when you stop: a summary, what was decided, a to-do list, and the words themselves, as two notes. The listening and the writing happen on your Mac; the sound is deleted once it is written up | In review |
+
+**Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
+extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
+against known leaks. Each needs its own careful plan: none of them is built, and none of them is needed to use the room.
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -751,7 +763,7 @@ update.
 - Everything is read on the Mac and goes nowhere else, works offline, and is never copied into `calendar.events`.
 - Built with EventKit through `osascript -l JavaScript` (`desktop/mac-calendar.cjs`); the pure rules are in
   `shared/mac-calendar-model.mjs`. The browser preview has no Mac, so the room shows only OSAT's events there.
-- Next steps of Phase 14 (not started): Apple Mail, Gmail in the browser, Outlook, and Messages beside OSAT.
+- Next steps of Phase 14 (not started): Gmail in the browser, Outlook, and Messages beside OSAT. Apple Mail is Phase 59.
 
 ### Phase 15: Paper in (merged, PR #17)
 Nate's goal: scan something at the printer, walk over to the Mac, and a new node is waiting, already
@@ -1268,6 +1280,19 @@ calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
 | Quick search like Raycast: files and the clipboard with a preview, one key, straight to work | 13 |
 | A Raycast feel; business and customer management over time | 13, 19 |
 
+### Phase 63: A Hyper key built into OSAT (in review)
+Nate's Hyper key (Caps Lock held as ⌃⌥⇧⌘) used to come from Raycast, so with Raycast closed OSAT's Hyper keys did nothing.
+OSAT must not need any other app for it.
+- **Settings → Keyboard → Make Caps Lock a Hyper key** is a real switch, off until Nate turns it on. On, OSAT turns Caps Lock
+  into F20 itself (the Mac's own `hidutil`, added to whatever mappings are there) and a tiny native helper makes F20 hold
+  ⌃⌥⇧⌘ for every other key and click while it is down. Off, or when OSAT quits, Caps Lock is given back.
+- **Needs Accessibility** (OSAT's usual Allow button). Without it Settings says so and nothing else changes.
+- **A tap of Caps Lock alone does nothing** (an optional switch makes it Esc). The helper reads key codes and flags only; it
+  never records, stores or sends what is typed.
+- **If the helper stops** the keyboard behaves normally. A Caps Lock → F20 that another app already set (Raycast leaves one)
+  is used as it is and never removed.
+- **Not built:** a live "Try it" readout in Settings; for now the line under the switch says what to press.
+
 ### Later (after the MVP)
 - Files become "Linked folders" in Notes. (Projects became nodes in Phase 12.)
 - "Tidy Unsorted": AI proposes a folder, tags and links, and Nate accepts or declines each.
@@ -1289,6 +1314,43 @@ The wow Claude picked (Oct 12): OSAT’s second brain grows while Nate sleeps, p
 - **The morning brief** mentions them in a few words when there are any.
 - **Next.** People cards (Phase 19) can use the same connections to show
   everything about a customer.
+
+### Phase 59: Mail (in review)
+Nate wanted to reach his email from OSAT. It goes through the Mail app already on his Mac, so his accounts are
+already signed in and OSAT never holds a mail password, token or sign-in.
+- **What he gets.** Tools → Mail: “Allow OSAT to read Mail” (macOS asks once), then the newest 50 messages from every
+  account, Unread, a search box (subject and sender; “Look inside messages too” for the text), and one message at a
+  time as plain text. Reply opens a draft in Mail’s own window and sends nothing. Make a sticky puts the subject, who
+  from, when and a short quote into Unsorted (with Undo). Open in Mail shows it there.
+- **What it never does.** Send, delete, move, mark read or fetch mail. Show a message as a page, load a picture or open
+  a link. Let the AI, Ask, the agent, the connector, the overnight ideas or the morning brief read mail on their own:
+  only “Ask about this message”, when pressed, asks the AI on this Mac (never a cloud model), with the email quoted as
+  data and no tools. A sticky made from an email is never filed by the AI on its own.
+- **Works offline** (Mail on this Mac is local), though Mail itself may fetch an older message when it is opened.
+- **Not yet:** sending, Gmail straight from Google (needs a Google Cloud sign-in OSAT would have to keep), attachments,
+  HTML messages, other folders than the inbox, Outlook, Messages.
+### Phase 57: Meetings (in review)
+Nate (Oct 13): “make Granola for OSAT”, with whisper.cpp for the words and an offline model for the AI, meetings up to
+about 45 minutes. Built from first principles (nothing taken from Granola’s app); the AI is the one OSAT already runs.
+- **Listening.** Tools → Meetings → Start listening. A small helper program of its own (`osat-listen`, Swift, built
+  from `desktop/meetings/osat-listen.swift`) hears the microphone and, if you leave the box ticked, the sound your Mac
+  plays (ScreenCaptureKit), and writes each to a file. The desk can be put away while it listens; the menu bar says
+  “Listening”. The first time, macOS asks for the microphone and for Screen & System Audio Recording; without the second,
+  OSAT hears only you and says so. A forgotten meeting is written up after 3 hours.
+- **Words.** whisper.cpp (large-v3-turbo, 574 MB, one download that checks its SHA-256 and works resumed; then no internet
+  needed) through `@fugood/whisper.node`, in its own process. Only the stretches with someone talking are heard
+  (whisper makes words up in silence), your microphone and the Mac’s sound are two voices (“Me” and “Them”), and
+  the microphone’s echo of the speakers is dropped. A 45-minute meeting takes a couple of minutes on Apple silicon.
+- **Writing it up.** The built-in AI (never a cloud model) reads the conversation in parts of about 2,600 words (it
+  reads about 8,000 tokens at once), writes notes for each part under a grammar, and the lists are joined in code so no
+  action item is lost to a second summary; then one short question names the meeting. A 45-minute meeting is about
+  20 seconds of AI. With no AI set up, the words alone are kept.
+- **Result.** Two notes: the write-up (summary, Decided, To do as `- [ ]` tasks Today picks up, Still open) lands in
+  Unsorted, and the transcript beside it, linked both ways with `[[ ]]`, both tagged `#meeting`. Undo puts them in the Bin.
+  A meeting that could not be finished (a quit, a crash, the AI not answering) keeps its sound and is offered again
+  (Write it up / Delete it); nothing is thrown away on its own.
+- **Not yet.** Real names for the other people (they are all “Them”), a quick-bar command and shortcut to start, notes
+  while the meeting is still going, linking a meeting to a Calendar event. See docs/BACKLOG.md.
 
 
 - `main` always works.

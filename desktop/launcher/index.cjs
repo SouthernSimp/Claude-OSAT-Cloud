@@ -20,10 +20,13 @@ const { createCapture } = require('./capture.cjs')
 const { createClipboardHistory } = require('./clipboard-history.cjs')
 const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
+const { createCapsMapping, createHyper } = require('./hyper.cjs')
 const { createMiddleClick } = require('./middle-click.cjs')
+const { createMouse, helperPath } = require('./mouse.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
+const { createProcesses } = require('./processes.cjs')
 const { createSystem } = require('./system.cjs')
 const { createSnippets } = require('./snippets.cjs')
 const { readSelection } = require('./selection.cjs')
@@ -43,9 +46,11 @@ async function createLauncher({
   // The apps on this Mac (tests hand in a short list).
   apps = createApps(),
 }) {
-  const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind, systemModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs'), sharedModule('system-commands.mjs')])
+  const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind, systemModel, processModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs'), sharedModule('system-commands.mjs'), sharedModule('process-model.mjs')])
   const snippetModel = await sharedModule('snippets.mjs')
   const pickModel = await sharedModule('picks.mjs')
+  const hyperModel = await sharedModule('hyper-model.mjs')
+  const mouseModel = await sharedModule('mouse-model.mjs')
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -64,14 +69,32 @@ async function createLauncher({
   const hotkeys = createHotkeys({ globalShortcut, isTaken })
   const trusted = () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(false)
   // Window snapping: it needs Accessibility, and OSAT never moves its own windows.
-  const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel })
+  const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel, windows: () => settings.windows })
   // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
   const system = createSystem({ exec, platform, trusted, model: systemModel })
+  const processes = createProcesses({ exec, platform, model: processModel })
   // Snippets: pasted from the bar, and (once turned on) typed in any app: snippets.cjs.
   const snippets = createSnippets({
     spawn: spawnHelper, exec, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
     clipboard, quiet: history.quiet, paste: () => pasteInto({ exec, platform, trusted: () => true }),
     log: (text) => console.error('The snippets helper:', text),
+  })
+  // The Hyper key built in (Phase 63): Caps Lock → F20 and a helper that holds ⌃⌥⇧⌘ while it is down: hyper.cjs.
+  const hyper = createHyper({
+    spawn: spawnHelper, platform, model: hyperModel, trusted,
+    helperPath: app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-hyper') : path.join(__dirname, '..', '..', 'build', 'helpers', 'osat-hyper'),
+    mapping: createCapsMapping({
+      model: hyperModel, platform, file: path.join(dataDir, 'hyper.json'),
+      run: (args) => require('node:child_process').execFileSync('/usr/bin/hidutil', args, { encoding: 'utf8', timeout: 4000 }),
+      log: (text) => console.error('The Hyper key:', text),
+    }),
+    log: (text) => console.error('The Hyper key’s helper:', text),
+  })
+  const listenForHyper = () => hyper.sync(settings.hyper.own === true, { tap: settings.hyper.tap === true })
+  // Mouse (Phase 64): the wheel's direction and speed, through a small helper: mouse.cjs.
+  const mouse = createMouse({
+    spawn: spawnHelper, platform, model: mouseModel, helper: helperPath({ packaged: app?.isPackaged === true }), mouse: () => settings.mouse, trusted,
+    log: (text) => console.error('The mouse helper:', text),
   })
   // A layout key pressed while OSAT isn't allowed says so once, calmly, and then leaves it alone.
   let told = false
@@ -189,8 +212,13 @@ async function createLauncher({
      → the ids that couldn't have their key. */
   function applyHotkeys(next = settings) {
     const wanted = {}
-    for (const [id, key] of Object.entries(launcherModel.keysOf(next))) wanted[id] = { key: launcherModel.systemKey(key, next.hyper.sends), run: runKey(id) }
-    return hotkeys.sync(wanted)
+    for (const [id, key] of Object.entries(launcherModel.keysOf(next))) {
+      wanted[id] = { key: launcherModel.systemKey(key, next.hyper.sends), run: runKey(id) }
+      // The other spelling of a Hyper key goes along (`~`): it may fail without anyone being told.
+      const alias = launcherModel.hyperAlias(key, next.hyper.sends)
+      if (alias && alias !== wanted[id].key) wanted[`${id}~`] = { key: alias, run: runKey(id) }
+    }
+    return hotkeys.sync(wanted).filter((id) => !id.endsWith('~'))
   }
 
   /* A patch is { view?, sources?: { id: { on?, keyword?, hotkey? } }, apps?, links?, clipboard?, pins?, … }. A key another
@@ -205,7 +233,9 @@ async function createLauncher({
     settings = next
     applyHotkeys()
     listenForMiddle()
+    listenForHyper()
     snippets.sync()
+    mouse.sync()
     await writeSettings()
     history.limitsChanged()
     history.watch(settings.sources.clipboard.on)
@@ -253,13 +283,17 @@ async function createLauncher({
     }
     return save(launcherModel.customize(settings, row, { [allowed[0]]: value }))
   })
-  on('search:status', () => (snippets.sync(), {
+  on('search:status', () => (snippets.sync(), listenForHyper(), mouse.sync(), {
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
-    keysFailed: hotkeys.failed(),
+    keysFailed: hotkeys.failed().filter((id) => !id.endsWith('~')),
     // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
     middleClick: middleClick.state(),
     // 'off', 'access', 'starting', 'listening', 'failed' or 'unavailable': the typed snippets' helper.
     snippets: snippets.state(),
+    // 'off', 'access', 'starting', 'working', 'denied', 'failed' or 'unavailable': the built-in Hyper key.
+    hyper: hyper.state(),
+    // 'off', 'access', 'starting', 'listening', 'denied', 'missing', 'failed' or 'unavailable': the mouse helper.
+    mouse: mouse.state(),
   }), ofDesk)
   // OSAT asks macOS for Accessibility only when a button is pressed (Settings → Launcher, or "Allow…" in the bar's
   // note after a paste that couldn't happen), never by itself.
@@ -279,6 +313,12 @@ async function createLauncher({
     return { text, thumb: text ? null : await files.thumbnail(target, 640).catch(() => null) }
   })
   on('search:apps', async () => (settings.sources.apps.on ? apps.list() : []))
+  // Kill Process: the running apps, and ending one (by the path the list gave; main finds its processes again).
+  on('search:processes', async () => processes.list())
+  on('search:kill', async (appPath, force) => {
+    if (typeof appPath !== 'string' || appPath.length > 1024) fail('That isn’t a running app.')
+    return processes.end(appPath, { force: force === true })
+  })
   on('search:app-icon', async (appPath) => ((await apps.has(appPath)) ? files.thumbnail(appPath, 128).catch(() => null) : null))
   on('search:clipboard', () => (settings.sources.clipboard.on ? history.list() : { paused: false, watching: false, items: [] }))
   on('search:clipboard-image', (id) => history.image(id))
@@ -420,7 +460,7 @@ async function createLauncher({
   /* A layout for the window you were in: the panel goes away first, so that window is in front again. Without
      Accessibility nothing is touched, and the panel stays to say so. */
   on('search:snap', async (id) => {
-    if (!layoutModel.layoutById(id)) fail('That isn’t a layout OSAT knows.')
+    if (!layoutModel.layoutIn(settings.windows, id)) fail('That isn’t a layout OSAT knows.')
     if (!snap.allowed()) return { ok: false, reason: platform === 'darwin' ? 'access' : 'mac' }
     search.hide()
     await wait(140)
@@ -521,7 +561,9 @@ async function createLauncher({
       history.watch(settings.sources.clipboard.on)
       applyHotkeys()
       listenForMiddle()
+      listenForHyper()
       snippets.sync()
+      mouse.sync()
     },
     stop() {
       if (picksTimer) writePicks()
@@ -529,6 +571,8 @@ async function createLauncher({
       hotkeys.stop()
       middleClick.stop()
       snippets.stop()
+      hyper.stop()
+      mouse.stop()
     },
   }
 }
