@@ -38,6 +38,7 @@ const { createBots } = require('./bots/index.cjs')
 const { createAgent } = require('./agent.cjs')
 const { createBrief } = require('./brief.cjs')
 const { createGitHub } = require('./github.cjs')
+const { createMacKeys } = require('./mac-keys.cjs')
 const { createOvernight } = require('./overnight.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
@@ -63,6 +64,7 @@ let tray
 let prefs = { hotkey: DEFAULT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, barSpot: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
 // The two shortcuts: the desk, and the one bar (search, ask, or write a sticky; it was two keys until Oct 2026).
 // `value` is null when another app has it.
+const macKeys = createMacKeys({ sharedModule })
 const shortcuts = {
   layer: { value: null, failed: false, run: () => toggleDesk() },
   search: { value: null, failed: false, run: () => launcher?.search.toggle() },
@@ -586,12 +588,20 @@ function registerDesk() {
   })
   // The shortcuts, read on the desk and changed in Settings.
   handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), search: shortcutInfo('search'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
+  // Settings → Shortcuts → Keys in use: what the desk's two keys are, and the Mac's own shortcuts (the launcher's come from its settings).
+  handle('desk:keys', async () => ({
+    desk: Object.entries(shortcuts).map(([id, shortcut]) => ({ name: HOTKEY_OPENS[id] === 'OSAT' ? 'Show OSAT' : 'Search or Ask', combo: shortcut.value || prefs[HOTKEY_PREF[id]] })),
+    mac: await macKeys.read(),
+  }), { from: 'app' })
   handle('desk:set-hotkey', async (value, which = 'layer') => {
     if (!shortcuts[which]) fail('That isn’t one of OSAT’s shortcuts.')
     if (!validHotkey(value)) fail('Use one or more of ⌘ ⌃ ⌥ ⇧ with one key.')
     const clash = Object.entries(shortcuts).find(([id, other]) => id !== which && other.value === value)
     if (clash) fail(`${hotkeyLabel(value)} already opens ${HOTKEY_OPENS[clash[0]]}.`)
     if (launcher?.taken(value)) fail(`${hotkeyLabel(value)} is one of the launcher’s keys (Settings → Launcher).`)
+    const { holdersOf, keyGroups } = await sharedModule('keys-model.mjs')
+    const heldByMac = holdersOf(keyGroups({ mac: await macKeys.read() }), value)[0]
+    if (heldByMac) fail(`${hotkeyLabel(value)} is ${heldByMac.name}’s key on this Mac. Turn it off in System Settings → Keyboard → Keyboard Shortcuts, or try a different one.`)
     if (!useHotkey(which, value)) fail(`${hotkeyLabel(value)} is taken by another app. Try a different one.`)
     prefs = { ...prefs, [HOTKEY_PREF[which]]: value }
     await savePrefs()

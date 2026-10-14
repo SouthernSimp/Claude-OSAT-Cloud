@@ -506,6 +506,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   workspace inverse). Unsorted stickies move into the topic or a stack's branch; sorted ones stay home and are connected.
   Paper on the real desk: Tools → Sort a pile → Photo already reads a photo of stickies into a pile kept apart from topics.
 
+## Architecture added in Phase 60
+
+- Keys in use (Settings → Shortcuts): `shared/keys-model.mjs` (pure: Carbon key codes → OSAT's key names, `fromSymbolic`,
+  `keyGroups`, `holdersOf`, the few keys that work only inside OSAT) + `desktop/mac-keys.cjs` (reads
+  `com.apple.symbolichotkeys` with `plutil`, read-only, empty off the Mac) + `desk:keys` (`osatDesk.keys`) +
+  `src/views/settings/KeysInUse.jsx`. `desk:set-hotkey` refuses a key the Mac holds, by name. Not listed anywhere macOS
+  shares: Siri/Dictation holds, other apps' own keys; a key that does nothing is one of those.
+
 ## Layout traps worth remembering
 
 - The desk (`.overlay-surface`) is `100dvh` and never scrolls; each pop-out's body is a
