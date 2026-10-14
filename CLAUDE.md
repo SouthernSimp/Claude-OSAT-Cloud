@@ -8,22 +8,15 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 13, 2026: Phase 57 (Meetings) in review
+## Resume checkpoint — October 13, 2026 (night): one big update, merged from `claude/release-oct13`
 
-Main has everything through Phase 56 (#79–#82, merged Oct 13). Phase 57 (`claude/meetings`, a draft PR on main): Tools →
-Meetings, "make Granola for OSAT" (Nate, Oct 13). See "Architecture added in Phase 57". Everything under it was verified by
-unit tests, the browser UI test and a real run of whisper.cpp and the built-in model off the app (`node scripts/meeting-check.mjs`);
-the listening helper and its two macOS permission prompts have NOT been run inside the app (no native testing here): Nate's
-first try is Tools → Meetings → Get the listening model, then a short meeting with the box ticked, then without it.
-Next after 57: the follow-ups in docs/BACKLOG.md.
-
-Older checkpoint, Oct 12 (late), now merged: Phases 53–56 were four stacked PRs. Phase 53: `shared/overnight-model.mjs` (pure: `due`, `candidatePairs`, the two questions and readers, `liveIdeas`,
-`ideaWords` for the brief), `desktop/overnight.cjs` (runner, `overnight.json`, `overnight:*` IPC, local models only,
-`background: true`), `src/sky/useOvernight.js`, faint `is-idea` threads in Board.jsx, "Ideas from last night" and
-`keepIdea`/`ideaItems` in Sky.jsx (through `canvasCommit`, so Undo), Settings → AI → While you sleep.
-Phase 54 and 55: see "Architecture added in Phase 55" and the webhooks/updater lines below.
-Nate's direction (Oct 12): OSAT should grow into a business management tool; see docs/BACKLOG.md (plan with him first).
-Raycast gaps still open: script commands in Raycast's header format, a color picker.
+Everything Nate asked for on Oct 13 was merged into one release branch (PRs #83 Meetings, #86 Keys in use + Search or Ask on ⌥⇧Space + Hyper keys
+heard with and without ⇧ + Kill Process, #87 snippet words with two signs, #88 Mail, #89 Passwords, #90 Window management, #91 a Hyper key built
+into OSAT, #92 Mouse). The native helpers (`desktop/helpers/*.swift`, `desktop/meetings/osat-listen.swift`) all ship in `Resources/helpers/`.
+None of the Mac-only behavior (Hyper key, Mouse, Mail, Passwords' copy, Meetings) has been run on the real Mac by Claude: Nate tries it through
+Settings → About → Check for updates, and the PRs' Mac checklists say what to look at. Reconciled in the merge: one `extraResources` entry
+(`build/helpers` → `helpers`), one `build:helpers` script beside `build-listen.mjs`, one CI helper-check step.
+Next: whatever Nate finds on the Mac; pointer speed/acceleration and per-app profiles (Mouse), Create Layout (windows), sending (Mail).
 Older checkpoints are in git history.
 
 ## Working with Nate
