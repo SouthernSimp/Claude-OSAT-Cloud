@@ -147,6 +147,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 54 | Trust fixes: an update must be signed by the same certificate as the OSAT you have; webhooks waiting offline survive a quit; old caches out of the repo | In review |
 | 55 | A GitHub room (Tools → GitHub): your repositories, and in each what waits for you (each pull request in its own words, whether its checks passed, Merge, asked once more) and what changed lately; through the gh signed in on your Mac | In review |
 | 56 | Put the desk away: right-click the desk → Put the desk away. Every sticky and stack goes into one topic on the canvas (“Put away · Oct 12”, each stack a branch with its name); stickies already in a topic stay there and are connected. One Undo puts it all back | In review |
+| 61 | Window management you can shape (Raycast-style): about fifty window commands (halves, quarters, thirds, fourths, sixths, ninths, the middle in four sizes, almost maximize, make larger or smaller, move to an edge, next and previous screen); each can have an alias you type in the quick bar and a key, and can be switched off; make your own from a name and a rectangle in percent (Create command), duplicate any built-in one as your own, reset it. Settings → Window layouts and Settings → Shortcuts show the same list | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
