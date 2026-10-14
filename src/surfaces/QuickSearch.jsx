@@ -657,7 +657,7 @@ export function QuickSearchSurface() {
               ) : (
                 <form className="qs-editor" onSubmit={(event) => { event.preventDefault(); (editing.what === 'snippet' ? saveSnippet : giveWord)(editing.row, editing.value) }}>
                   <label>{editing.what === 'snippet' ? <>Save as a snippet, with a word to type for it (optional)</> : <>A word for <b>{editing.row.title}</b></>}
-                    <input autoFocus value={editing.value} maxLength={13} placeholder={editing.what === 'snippet' ? 'like ;addr' : 'like nn'} aria-label={editing.what === 'snippet' ? 'A word for the snippet' : `A word for ${editing.row.title}`} onChange={(event) => setEditing({ ...editing, value: event.target.value })} />
+                    <input autoFocus value={editing.value} maxLength={14} placeholder={editing.what === 'snippet' ? 'like ;addr' : 'like nn'} aria-label={editing.what === 'snippet' ? 'A word for the snippet' : `A word for ${editing.row.title}`} onChange={(event) => setEditing({ ...editing, value: event.target.value })} />
                   </label>
                   <button type="submit">Save</button>
                   <button type="button" onClick={() => { setEditing(null); input.current?.focus() }}>Cancel</button>
