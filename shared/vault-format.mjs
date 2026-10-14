@@ -19,7 +19,7 @@ const scrypt = promisify(crypto.scrypt)
 export const FORMAT = 'osat-passwords'
 export const VERSION = 1
 export const CIPHER = 'aes-256-gcm'
-// Today's cost: 128 MiB and about half a second on a Mac. Raising it later is a change of this one line.
+// Today's cost: 128 MiB and a fraction of a second on a Mac. Raising it later is a change of this one line.
 export const DEFAULT_KDF = Object.freeze({ name: 'scrypt', N: 2 ** 17, r: 8, p: 1, keyLength: 32 })
 export const MIN_N = 2 ** 17
 export const MAX_N = 2 ** 19

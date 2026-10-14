@@ -8,7 +8,7 @@ import {
 const PASSWORD = 'correct horse battery staple'
 const data = () => ({ entries: [{ id: 'id-11111111', title: 'Bank', username: 'nate', url: 'bank.example', password: 'S3CR3T-VALUE-ONE', createdAt: 'a', updatedAt: 'b' }], settings: { autoLockMinutes: 5 } })
 
-// The key derivation costs real time on purpose (128 MiB, about half a second), so one file is made and reused.
+// The key derivation costs real time on purpose (128 MiB, a fraction of a second), so one file is made and reused.
 const made = await create(PASSWORD, data())
 const file = () => JSON.parse(made.text)
 const flip = (text) => (text[0] === 'A' ? 'B' : 'A') + text.slice(1)
