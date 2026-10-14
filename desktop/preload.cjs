@@ -106,6 +106,17 @@ contextBridge.exposeInMainWorld('osatGitHub', Object.freeze({
   open: (url) => ipcRenderer.invoke('github:open', url),
 }))
 
+// Tools → Mail (desktop/mac-mail.cjs): the Mac's own Mail app, read-first. Nothing here sends.
+contextBridge.exposeInMainWorld('osatMail', Object.freeze({
+  status: () => ipcRenderer.invoke('mail:status'),
+  allow: () => ipcRenderer.invoke('mail:allow'),
+  list: () => ipcRenderer.invoke('mail:list'),
+  search: (query, inside) => ipcRenderer.invoke('mail:search', query, inside === true),
+  read: (id) => ipcRenderer.invoke('mail:read', id),
+  reply: (id) => ipcRenderer.invoke('mail:reply', id),
+  open: (id) => ipcRenderer.invoke('mail:open', id),
+}))
+
 // The morning brief (desktop/brief.cjs): Settings → AI and the desk's one line.
 contextBridge.exposeInMainWorld('osatBrief', Object.freeze({
   status: () => ipcRenderer.invoke('brief:status'),

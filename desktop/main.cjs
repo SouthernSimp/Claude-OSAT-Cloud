@@ -53,6 +53,7 @@ const { NOT_ALLOWED, createFiles } = require('./files.cjs')
 const { createMedia } = require('./media.cjs')
 const { createUpdater } = require('./updater.cjs')
 const { createMacCalendar } = require('./mac-calendar.cjs')
+const { createMacMail } = require('./mac-mail.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
@@ -319,6 +320,7 @@ function buildMenu() {
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         room('Roadmap', 'Roadmap'),
         room('GitHub', 'GitHub'),
+        room('Mail', 'Mail'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
@@ -1422,6 +1424,8 @@ app.whenReady().then(async () => {
   await registerBrief(agent, createMacCalendar({ handle, fail }))
   // Tools → GitHub (desktop/github.cjs, Phase 55): through the gh signed in on this Mac.
   await createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on })
+  // Tools → Mail (desktop/mac-mail.cjs, Phase 59): the Mac's own Mail app. Local to this Mac, so it works Offline too.
+  await createMacMail({ sharedModule, handle, fail })
   await registerOvernight()
   registerDesk()
   registerAsk()

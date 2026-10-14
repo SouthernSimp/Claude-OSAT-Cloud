@@ -5,6 +5,9 @@ import {
   ASK_BODY_MAX, BODY_MAX, GONE, LIST_MAX, NOT_ALLOWED, NOT_SET_UP, QUERY_MAX, SLOW, COULD_NOT, STICKY_QUOTE_MAX,
   askMessages, cleanBody, cleanQuery, dateLabel, explainMail, messageFull, messageRow, messageRows, senderOf, snippetOf, stickyText, validMessageId,
 } from '../shared/mail-model.mjs'
+import { addSticky } from '../src/nodes-model.js'
+import { purgeNotes } from '../src/notes-model.js'
+import { createDefaultWorkspace } from '../src/osat-data.js'
 
 test('only whole message numbers reach the Mac', () => {
   for (const good of [1, 42, 123456789]) assert.equal(validMessageId(good), true, String(good))
@@ -103,6 +106,18 @@ test('a sticky from a message says what, who, when and a short quote; it makes n
   assert.doesNotMatch(text, /old reply/)
   assert.equal(stickyText({ id: 'bad' }), '')
   assert.equal(stickyText({ id: 5, subject: 'No body', sender: 'a@b.co' }).split('\n').length, 2)
+})
+
+test('the sticky goes into Unsorted from Mail through the normal path, and Undo takes it away again', () => {
+  const state = createDefaultWorkspace()
+  const text = stickyText({ id: 5, subject: 'Quote', sender: 'Sam <sam@example.com>', date: '2026-10-13T15:00:00Z', body: 'The price is 4200.' })
+  const { state: next, note } = addSticky(state, text, null, { source: 'Mail' })
+  assert.equal(note.source, 'Mail')
+  assert.equal(note.unsorted, true)
+  assert.equal(note.folderId ?? null, null)
+  assert.match(note.markdown, /^Email: Quote\nFrom Sam <sam@example\.com>/)
+  assert.equal(next.notes.length, state.notes.length + 1)
+  assert.deepEqual(purgeNotes(next, [note.id]).notes.map((item) => item.id), state.notes.map((item) => item.id))
 })
 
 test('asking about a message quotes it as data, line by line, and gives the AI no way to act', () => {
