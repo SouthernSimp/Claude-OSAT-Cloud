@@ -4,9 +4,10 @@
    (desktop/launcher/snippets.cjs) keeps only the last few letters typed, in its own memory, and says only "this word
    was typed" (`hit <n>`); these are the rules it and the bar share. Pure. */
 
-/* A snippet's word: one to twelve letters or numbers, after one sign if you like (";addr", "!sig"), so a word you also
+/* A snippet's word: one to twelve letters or numbers, after one or two signs if you like (";addr", "..pp"), so a word you also
    type in sentences never turns into text by accident. */
-export const SNIPPET_WORD = /^[;:!@#/.,=~-]?[a-z0-9]{1,12}$/
+export const SNIPPET_WORD = /^[;:!@#/.,=~-]{0,2}[a-z0-9]{1,12}$/
+export const SNIPPET_WORD_HELP = 'A word is one to twelve letters or numbers, after one or two signs if you like: ;addr or ..pp'
 export const validSnippetWord = (value) => SNIPPET_WORD.test(String(value ?? '').trim().toLowerCase())
 
 /* What a saved list may hold: { id, name, keyword, text }, a word only once (and never one the bar already uses). */

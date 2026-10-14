@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, LockSimple, Plus, X } from '@phosphor-icons/react'
 import { DAY_CHOICES, ITEM_CHOICES } from '../../../shared/clipboard-model.mjs'
 import { SOURCES, hostOf, holderOf, validAddress, validKeyword } from '../../../shared/launcher-model.mjs'
 import { MAX_RING, RING_ITEMS, ringItems } from '../../../shared/ring-model.mjs'
-import { validSnippetWord } from '../../../shared/snippets.mjs'
+import { SNIPPET_WORD_HELP, validSnippetWord } from '../../../shared/snippets.mjs'
 import { LAYOUTS } from '../../../shared/window-layouts.mjs'
 import { AddRingTool } from './screenshots.jsx'
 import { Choice, Group, KeyRecorder, OnlyInTheMacApp, Page, Row, Select, Switch, WordField } from './parts.jsx'
@@ -323,7 +323,7 @@ function Snippets({ settings, save, showUndo, status, bridge, look }) {
         {settings.snippets.map((snippet) => (
           <Row key={snippet.id} title={snippet.name} hint={snippet.text.length > 120 ? `${snippet.text.slice(0, 120)}…` : snippet.text} words={`${snippet.keyword || ''} ${snippet.text}`} stacked>
             <div className="snippet-edit">
-              <label><span>Word</span><input defaultValue={snippet.keyword || ''} maxLength={13} placeholder=";word" spellCheck={false} aria-label={`Word for ${snippet.name}`}
+              <label><span>Word</span><input defaultValue={snippet.keyword || ''} maxLength={14} placeholder=";word" spellCheck={false} aria-label={`Word for ${snippet.name}`}
                 onBlur={(event) => {
                   const next = event.target.value.trim().toLowerCase() || null
                   if (next === snippet.keyword) return
@@ -339,15 +339,15 @@ function Snippets({ settings, save, showUndo, status, bridge, look }) {
         {settings.snippets.length === 0 && <Row title="No snippets yet" hint="Add one below, or press ⌘K on something you copied in the quick bar and choose Save as a snippet…" />}
       </Group>
       <Group title="Add a snippet">
-        <Row title="A new snippet" hint="A name, a word to type (a sign first keeps it out of your sentences: ;addr), and its text." stacked words="add new snippet text expand">
+        <Row title="A new snippet" hint="A name, a word to type (signs first keep it out of your sentences: ;addr or ..pp), and its text." stacked words="add new snippet text expand">
           <form className="setting-form snippet-form" onSubmit={add}>
             <label><span>Name</span><input value={name} maxLength={60} placeholder="Home address" aria-label="Name of the snippet" onChange={(event) => setName(event.target.value)} /></label>
-            <label><span>Word</span><input value={word} maxLength={13} placeholder=";addr" spellCheck={false} aria-label="Word for the snippet" onChange={(event) => setWord(event.target.value)} /></label>
+            <label><span>Word</span><input value={word} maxLength={14} placeholder=";addr" spellCheck={false} aria-label="Word for the snippet" onChange={(event) => setWord(event.target.value)} /></label>
             <label className="is-wide"><span>Text</span><textarea value={text} rows={3} placeholder={'12 Oak Lane\nSpringfield'} aria-label="Text of the snippet" onChange={(event) => setText(event.target.value)} /></label>
             <button className="outline-button" type="submit" disabled={!ready}><Plus /> Add</button>
           </form>
           {taken && <small className="setting-inline" role="status">“{w}” is {taken}’s word already. Pick another.</small>}
-          {w && !validSnippetWord(w) && <small className="setting-inline" role="status">A word is one to twelve letters or numbers, after one sign if you like: ;addr</small>}
+          {w && !validSnippetWord(w) && <small className="setting-inline" role="status">{SNIPPET_WORD_HELP}</small>}
         </Row>
       </Group>
       <Group title="In any app" note="A small helper watches what you type for these words only. It keeps the last few letters in memory, writes nothing down, never sees a password field, and stops when OSAT quits.">
