@@ -92,7 +92,8 @@ test('starting registers a Hyper key for each source and reads what is saved', a
   const t = await setup()
   try {
     await t.launcher.start()
-    assert.deepEqual([...t.registered.keys()].sort(), ['Control+Alt+Shift+Command+A', 'Control+Alt+Shift+Command+N', 'Control+Alt+Shift+Command+R', 'Control+Alt+Shift+Command+S', 'Control+Alt+Shift+Command+T', 'Control+Alt+Shift+Command+V', 'Control+Alt+Shift+Command+W'])
+    const letters = ['A', 'N', 'R', 'S', 'T', 'V', 'W']
+    assert.deepEqual([...t.registered.keys()].sort(), [...letters.map((letter) => `Control+Alt+Command+${letter}`), ...letters.map((letter) => `Control+Alt+Shift+Command+${letter}`)], 'each Hyper key is heard with ⇧ and without')
     assert.equal(t.launcher.taken('Control+Alt+Shift+Command+V'), true, 'the desk’s shortcut picker can’t take it')
     assert.equal(t.launcher.hotkeyLabel('Control+Alt+Shift+Command+V'), 'Hyper V')
     assert.equal((await t.ask('search:settings')).sources.clipboard.keyword, 'v')
@@ -305,7 +306,7 @@ test('window keys are off until turned on; then each layout has its key, and a p
     const saved = await t.ask('search:save-settings', { windows: { on: true } })
     assert.equal(saved.windows.on, true)
     assert.equal(t.registered.has('Control+Alt+Left'), true)
-    assert.equal(t.registered.size, 7 + 17, 'a key for each layout, beside the Hyper keys, the ring’s and selected text’s')
+    assert.equal(t.registered.size, 7 + 17 + 7, 'a key for each layout, beside the Hyper keys (each heard two ways), the ring’s and selected text’s')
     t.registered.get('Control+Alt+Left')()
     await wait(120)
     assert.deepEqual(moves, [[0, 0, 720, 900]])
@@ -531,8 +532,8 @@ test('a Hyper key made by another app that leaves ⇧ out: the Mac is asked for 
     assert.equal(t.registered.has(HYPER('V')), true)
     const saved = await t.ask('search:save-settings', { hyper: { sends: 'three' } })
     assert.equal(saved.sources.clipboard.hotkey, HYPER('V'), 'stored as Hyper V')
-    assert.equal(t.registered.has(HYPER('V')), false)
     assert.equal(t.registered.has('Control+Alt+Command+V'), true, 'registered as the Mac hears it')
+    assert.equal(t.registered.has(HYPER('V')), true, 'and still as all four: either spelling works')
     assert.equal(t.launcher.hotkeyLabel(HYPER('V')), 'Hyper V')
     await t.ask('search:save-settings', { hyper: { sends: 'four' } })
     assert.equal(t.registered.has(HYPER('V')), true)

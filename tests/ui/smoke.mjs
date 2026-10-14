@@ -1113,7 +1113,7 @@ async function main() {
   await bar.locator('.qs-chip', { hasText: 'Sticky' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the ring's sticky did not open the bar to write one`))
   await bar.close()
 
-  // The quick search (⌘⇧Space in the Mac app), with a stand-in for what the Mac app gives it: a bar; typing opens
+  // The quick search (⌥⇧Space in the Mac app), with a stand-in for what the Mac app gives it: a bar; typing opens
   // the full view with a big preview; Return, ⌘K and Esc; the clipboard and a sum. Light, then dark.
   for (const scheme of ['light', 'dark']) {
     room = `quick search (${scheme})`

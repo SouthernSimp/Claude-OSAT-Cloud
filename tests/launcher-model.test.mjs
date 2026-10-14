@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import test from 'node:test'
 
 import {
-  DEFAULT_SETTINGS, SEARCH_HOTKEY, activeSources, applyPatch, botJob, canonicalKey, cleanSettings, handOff, holderOf, hyper, hyperLabel, keysOf, keywordAddress, matchKeyword, readLine, systemKey,
+  DEFAULT_SETTINGS, SEARCH_HOTKEY, hyperAlias, activeSources, applyPatch, botJob, canonicalKey, cleanSettings, handOff, holderOf, hyper, hyperLabel, keysOf, keywordAddress, matchKeyword, readLine, systemKey,
   validAddress, validKeyword, withKey, wordsOf,
 } from '../shared/launcher-model.mjs'
 
@@ -173,6 +173,11 @@ test('another app that makes the Hyper key may leave ⇧ out: the Mac is asked f
   assert.equal(systemKey(hyper('V'), 'three'), 'Control+Alt+Command+V')
   assert.equal(systemKey('Alt+Space', 'three'), 'Alt+Space')
   assert.equal(systemKey(null, 'three'), null)
+  // A Hyper key is also heard in its other spelling, so it works whichever the Mac's maker of it sends.
+  assert.equal(hyperAlias(hyper('V')), 'Control+Alt+Command+V')
+  assert.equal(hyperAlias(hyper('V'), 'three'), hyper('V'))
+  assert.equal(hyperAlias('Alt+Space'), null)
+  assert.equal(hyperAlias(null), null)
   assert.equal(canonicalKey('Control+Alt+Command+V', 'three'), hyper('V'))
   assert.equal(canonicalKey('Control+Alt+Command+V', 'four'), 'Control+Alt+Command+V')
   assert.equal(canonicalKey('Control+Alt+Left', 'three'), 'Control+Alt+Left')

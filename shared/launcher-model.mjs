@@ -11,7 +11,7 @@ import { RING_ITEMS } from './ring-model.mjs'
 import { cleanSnippets } from './snippets.mjs'
 import { LAYOUTS, cleanWindowKeys } from './window-layouts.mjs'
 
-export const SEARCH_HOTKEY = 'Command+Shift+Space'
+export const SEARCH_HOTKEY = 'Alt+Shift+Space'
 export const HYPER = ['Control', 'Alt', 'Shift', 'Command']
 
 /* The places the launcher looks. `letter` is the Hyper key that opens the quick search on it. */
@@ -257,6 +257,15 @@ export function systemKey(accelerator, sends = 'four') {
   const parts = String(accelerator || '').split('+')
   const isHyper = parts.length === 5 && HYPER.every((part) => parts.includes(part))
   return isHyper && sends === 'three' ? ['Control', 'Alt', 'Command', parts[4]].join('+') : accelerator
+}
+
+/* The Hyper key's other spelling (⌃⌥⇧⌘V ↔ ⌃⌥⌘V), registered too so a Hyper key works whichever of the two the Mac's maker
+   of it sends, with no setting to get right. null for any key that isn't Hyper + one key. */
+export function hyperAlias(accelerator, sends = 'four') {
+  const parts = String(accelerator || '').split('+')
+  return parts.length === 5 && HYPER.every((part) => parts.includes(part))
+    ? (sends === 'three' ? accelerator : ['Control', 'Alt', 'Command', parts[4]].join('+'))
+    : null
 }
 
 /* A recorded key: ⌃⌥⌘ and a key is the Hyper key when that is what the Hyper key sends. */

@@ -38,6 +38,7 @@ const { createBots } = require('./bots/index.cjs')
 const { createAgent } = require('./agent.cjs')
 const { createBrief } = require('./brief.cjs')
 const { createGitHub } = require('./github.cjs')
+const { createMacKeys } = require('./mac-keys.cjs')
 const { createOvernight } = require('./overnight.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
@@ -45,7 +46,7 @@ const { createBrowser } = require('./browser.cjs')
 const { createSkills } = require('./skills.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = require('./desk.cjs')
+const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, OLD_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = require('./desk.cjs')
 const { createLauncher } = require('./launcher/index.cjs')
 const { extractText } = require('./mac-files.cjs')
 const { TidyError } = require('./file-ops.cjs')
@@ -63,6 +64,7 @@ let tray
 let prefs = { hotkey: DEFAULT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, barSpot: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
 // The two shortcuts: the desk, and the one bar (search, ask, or write a sticky; it was two keys until Oct 2026).
 // `value` is null when another app has it.
+const macKeys = createMacKeys({ sharedModule })
 const shortcuts = {
   layer: { value: null, failed: false, run: () => toggleDesk() },
   search: { value: null, failed: false, run: () => launcher?.search.toggle() },
@@ -495,7 +497,7 @@ async function loadPrefs() {
     const saved = JSON.parse(await fs.readFile(prefsFile(), 'utf8'))
     prefs = {
       hotkey: validHotkey(saved.hotkey) ? saved.hotkey : DEFAULT_HOTKEY,
-      searchHotkey: validHotkey(saved.searchHotkey) ? saved.searchHotkey : DEFAULT_SEARCH_HOTKEY,
+      searchHotkey: validHotkey(saved.searchHotkey) && saved.searchHotkey !== OLD_SEARCH_HOTKEY ? saved.searchHotkey : DEFAULT_SEARCH_HOTKEY,
       // Where the quick bar was dragged to (its top middle); the old quick chat's chatBounds is left behind.
       barSpot: Number.isFinite(saved.barSpot?.x) && Number.isFinite(saved.barSpot?.y) ? { x: saved.barSpot.x, y: saved.barSpot.y } : null,
       launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
@@ -586,12 +588,20 @@ function registerDesk() {
   })
   // The shortcuts, read on the desk and changed in Settings.
   handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), search: shortcutInfo('search'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
+  // Settings → Shortcuts → Keys in use: what the desk's two keys are, and the Mac's own shortcuts (the launcher's come from its settings).
+  handle('desk:keys', async () => ({
+    desk: Object.entries(shortcuts).map(([id, shortcut]) => ({ name: HOTKEY_OPENS[id] === 'OSAT' ? 'Show OSAT' : 'Search or Ask', combo: shortcut.value || prefs[HOTKEY_PREF[id]] })),
+    mac: await macKeys.read(),
+  }), { from: 'app' })
   handle('desk:set-hotkey', async (value, which = 'layer') => {
     if (!shortcuts[which]) fail('That isn’t one of OSAT’s shortcuts.')
     if (!validHotkey(value)) fail('Use one or more of ⌘ ⌃ ⌥ ⇧ with one key.')
     const clash = Object.entries(shortcuts).find(([id, other]) => id !== which && other.value === value)
     if (clash) fail(`${hotkeyLabel(value)} already opens ${HOTKEY_OPENS[clash[0]]}.`)
     if (launcher?.taken(value)) fail(`${hotkeyLabel(value)} is one of the launcher’s keys (Settings → Launcher).`)
+    const { holdersOf, keyGroups } = await sharedModule('keys-model.mjs')
+    const heldByMac = holdersOf(keyGroups({ mac: await macKeys.read() }), value)[0]
+    if (heldByMac) fail(`${hotkeyLabel(value)} is ${heldByMac.name}’s key on this Mac. Turn it off in System Settings → Keyboard → Keyboard Shortcuts, or try a different one.`)
     if (!useHotkey(which, value)) fail(`${hotkeyLabel(value)} is taken by another app. Try a different one.`)
     prefs = { ...prefs, [HOTKEY_PREF[which]]: value }
     await savePrefs()
@@ -645,7 +655,7 @@ function registerDesk() {
   })
 }
 
-/* ---- The launcher (⌘⇧Space): the quick bar, the clipboard history, Hyper keys (desktop/launcher) ---- */
+/* ---- The launcher (⌥⇧Space): the quick bar, the clipboard history, Hyper keys (desktop/launcher) ---- */
 
 /* Putting the desk away hides OSAT (app.hide), and a hidden app's panels never appear: the quick bar, Ask, the
    clipboard and the ring then only worked once OSAT was opened. A panel unhides OSAT first, and when the last one

@@ -147,6 +147,8 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 54 | Trust fixes: an update must be signed by the same certificate as the OSAT you have; webhooks waiting offline survive a quit; old caches out of the repo | In review |
 | 55 | A GitHub room (Tools → GitHub): your repositories, and in each what waits for you (each pull request in its own words, whether its checks passed, Merge, asked once more) and what changed lately; through the gh signed in on your Mac | In review |
 | 56 | Put the desk away: right-click the desk → Put the desk away. Every sticky and stack goes into one topic on the canvas (“Put away · Oct 12”, each stack a branch with its name); stickies already in a topic stay there and are connected. One Undo puts it all back | In review |
+| 60 | Keys in use (Settings → Shortcuts): every key already taken — OSAT's, the launcher's, and the Mac's own shortcuts read from System Settings — and a box to press a key and hear who has it. A new OSAT key that the Mac already holds is refused by name. Search or Ask moves from ⌘⇧Space (Apple's AI holds it) to ⌥⇧Space, and each Hyper key is heard with and without ⇧ so Hyper V opens the clipboard whichever way the Mac's Hyper key is made | In review |
+| 62 | Kill Process (Raycast's command): type kill in the bar, then pick a running app, with its memory; Return asks it to quit, ⌘Return force quits. Only your own apps; never OSAT or what would log you out | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

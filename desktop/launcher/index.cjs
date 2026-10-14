@@ -24,6 +24,7 @@ const { createMiddleClick } = require('./middle-click.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
+const { createProcesses } = require('./processes.cjs')
 const { createSystem } = require('./system.cjs')
 const { createSnippets } = require('./snippets.cjs')
 const { readSelection } = require('./selection.cjs')
@@ -43,7 +44,7 @@ async function createLauncher({
   // The apps on this Mac (tests hand in a short list).
   apps = createApps(),
 }) {
-  const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind, systemModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs'), sharedModule('system-commands.mjs')])
+  const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind, systemModel, processModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs'), sharedModule('system-commands.mjs'), sharedModule('process-model.mjs')])
   const snippetModel = await sharedModule('snippets.mjs')
   const pickModel = await sharedModule('picks.mjs')
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
@@ -67,6 +68,7 @@ async function createLauncher({
   const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel })
   // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
   const system = createSystem({ exec, platform, trusted, model: systemModel })
+  const processes = createProcesses({ exec, platform, model: processModel })
   // Snippets: pasted from the bar, and (once turned on) typed in any app: snippets.cjs.
   const snippets = createSnippets({
     spawn: spawnHelper, exec, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
@@ -189,8 +191,13 @@ async function createLauncher({
      → the ids that couldn't have their key. */
   function applyHotkeys(next = settings) {
     const wanted = {}
-    for (const [id, key] of Object.entries(launcherModel.keysOf(next))) wanted[id] = { key: launcherModel.systemKey(key, next.hyper.sends), run: runKey(id) }
-    return hotkeys.sync(wanted)
+    for (const [id, key] of Object.entries(launcherModel.keysOf(next))) {
+      wanted[id] = { key: launcherModel.systemKey(key, next.hyper.sends), run: runKey(id) }
+      // The other spelling of a Hyper key goes along (`~`): it may fail without anyone being told.
+      const alias = launcherModel.hyperAlias(key, next.hyper.sends)
+      if (alias && alias !== wanted[id].key) wanted[`${id}~`] = { key: alias, run: runKey(id) }
+    }
+    return hotkeys.sync(wanted).filter((id) => !id.endsWith('~'))
   }
 
   /* A patch is { view?, sources?: { id: { on?, keyword?, hotkey? } }, apps?, links?, clipboard?, pins?, … }. A key another
@@ -255,7 +262,7 @@ async function createLauncher({
   })
   on('search:status', () => (snippets.sync(), {
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
-    keysFailed: hotkeys.failed(),
+    keysFailed: hotkeys.failed().filter((id) => !id.endsWith('~')),
     // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
     middleClick: middleClick.state(),
     // 'off', 'access', 'starting', 'listening', 'failed' or 'unavailable': the typed snippets' helper.
@@ -279,6 +286,12 @@ async function createLauncher({
     return { text, thumb: text ? null : await files.thumbnail(target, 640).catch(() => null) }
   })
   on('search:apps', async () => (settings.sources.apps.on ? apps.list() : []))
+  // Kill Process: the running apps, and ending one (by the path the list gave; main finds its processes again).
+  on('search:processes', async () => processes.list())
+  on('search:kill', async (appPath, force) => {
+    if (typeof appPath !== 'string' || appPath.length > 1024) fail('That isn’t a running app.')
+    return processes.end(appPath, { force: force === true })
+  })
   on('search:app-icon', async (appPath) => ((await apps.has(appPath)) ? files.thumbnail(appPath, 128).catch(() => null) : null))
   on('search:clipboard', () => (settings.sources.clipboard.on ? history.list() : { paused: false, watching: false, items: [] }))
   on('search:clipboard-image', (id) => history.image(id))

@@ -5,6 +5,7 @@ import { SOURCES, holderOf } from '../../../shared/launcher-model.mjs'
 import { LAYOUTS } from '../../../shared/window-layouts.mjs'
 import { CAPTURES } from '../../../shared/capture-model.mjs'
 import { CAPTURE_ICONS } from '../../search/icons.jsx'
+import { KeysInUse } from './KeysInUse.jsx'
 import { LauncherPage } from './launcher.jsx'
 import { useCaptureStatus } from './screenshots.jsx'
 import { Choice, KeyRecorder, QueryContext, Switch, WordField } from './parts.jsx'
@@ -116,6 +117,7 @@ function Table({ launcher }) {
           )
         })}
       </div>
+      <KeysInUse settings={settings} />
     </section>
   )
 }

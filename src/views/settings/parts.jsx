@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { X } from '@phosphor-icons/react'
 
 import { HYPER, canonicalKey, validKeyword } from '../../../shared/launcher-model.mjs'
@@ -142,6 +142,13 @@ export function WordField({ value, name, onSave, holder, empty = 'Add word' }) {
 export function KeyRecorder({ value, name, onSet, holder, failed = false, status = '', sends = 'four', clearable = true, empty = 'Record key' }) {
   const [recording, setRecording] = useState(false)
   const [note, setNote] = useState('')
+  const sawMods = useRef(false)
+  // Modifiers went down and came up with no key between: say so, because a key another app holds never reaches OSAT.
+  function release() {
+    if (!recording || !sawMods.current) return
+    sawMods.current = false
+    setNote('Only the modifier keys reached OSAT. Hold them and press a key. If you did, another app (Raycast?) may already use that key.')
+  }
   function press(event) {
     if (!recording) return
     event.preventDefault()
@@ -149,7 +156,8 @@ export function KeyRecorder({ value, name, onSet, holder, failed = false, status
     if (event.key === 'Escape') { setRecording(false); return }
     if (clearable && (event.key === 'Backspace' || event.key === 'Delete')) { setRecording(false); onSet(null); return }
     const heard = comboFrom(event)
-    if (!heard) return
+    if (!heard) { if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) sawMods.current = true; return }
+    sawMods.current = false
     if (heard.error) { setNote(heard.error); return }
     const combo = canonicalKey(heard.combo, sends)
     const other = holder?.(combo)
@@ -167,6 +175,7 @@ export function KeyRecorder({ value, name, onSet, holder, failed = false, status
           onClick={() => { setNote(''); setRecording((on) => !on) }}
           onBlur={() => setRecording(false)}
           onKeyDown={press}
+          onKeyUp={release}
         >
           {recording ? 'Press the keys…' : value ? <Caps value={value} /> : empty}
         </button>

@@ -131,6 +131,12 @@
 .short-name b { font-size: var(--t-md); font-weight: 600; }
 .short-name small { overflow: hidden; font-size: var(--t-xs); color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .short-on { display: flex; align-items: center; justify-content: flex-end; }
+/* Keys in use: what is already taken, and a box to check one */
+.keys-card summary { display: flex; align-items: center; height: 38px; padding: 0 16px; font-size: var(--t-sm); font-weight: 650; cursor: pointer; }
+.keys-check { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; border-top: 1px solid var(--line-soft); font-size: var(--t-sm); }
+.keys-check small { color: var(--muted); font-size: var(--t-xs); }
+.keys-group h4 { margin: 0; padding: 8px 16px; border-top: 1px solid var(--line-soft); background: color-mix(in srgb, var(--ink) 3%, transparent); font-size: var(--t-xs); font-weight: 600; color: var(--faint); }
+.keys-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 4px 16px; font-size: var(--t-sm); }
 .short-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; border-top: 1px solid var(--line-soft); font-size: var(--t-xs); color: var(--muted); }
 
 /* ---- Room-sized layouts: Settings follows its pop-out, not the screen ----------------------------------------- */

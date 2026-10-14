@@ -86,7 +86,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     Model files live in `<data folder>/models`. LM Studio still works through `local-ai.cjs`.
   - `main.cjs`: windows, menu, IPC for the store / local AI / browser / terminal (`handle`, `fail`
     and the trusted-sender checks live here and are passed to the modules that register handlers),
-    the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌘⇧Space,
+    the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌥⇧Space,
     `chat` the bar on Ask, ⌥⇧Space; `chat:show` is Pop out, into the bar); menu-bar icon, app launchers, Esc
     routing (a panel swallows Esc, so OSAT takes it while the bar or the ring has focus), single-instance lock.
     Every `setVisibleOnAllWorkspaces` passes `skipTransformProcessType: true`: without it Electron activates the
@@ -164,7 +164,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     the fence in tests/under.test.mjs.
   - `launcher/` (Phase 13; `index.cjs` wires it, main only calls `createLauncher` and gives it `handle`, `fail`, the
     desk window and Electron's pieces; every `search:*` / `ring:*` channel is checked against the window that may ask,
-    `handle`'s `from` can be a function). `search-window.cjs` (the quick bar, ⌘⇧Space: a floating panel on every
+    `handle`'s `from` can be a function). `search-window.cjs` (the quick bar, ⌥⇧Space (⌘⇧Space until Oct 2026: Apple's AI holds it, so a saved one becomes ⌥⇧Space): a floating panel on every
     Space, a bar that grows to the full view or to Ask (`mode` bar / full / chat); the app you were in keeps focus;
     dragged, it opens where it was left: `barSpot` in prefs.json, only a move after `will-move` counts), `clipboard-history.cjs` (copies
     kept in `<data folder>/clipboard/`, skipping concealed types; pins, limits, Undo; OSAT's own writes go through
@@ -193,7 +193,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     presses ⌫ per letter and pastes through a quiet clipboard write, putting the clipboard back. Settings → Snippets.
     Settings are `launcher.json` in the data folder (`shared/launcher-model.mjs`), never in `workspace.json`. The
     one way out of the Mac it adds is opening a web address in Nate's own browser (fenced in tests/under.test.mjs,
-    refused offline). ⌘⇧Space is the third shortcut in main's `shortcuts` (`search`).
+    refused offline). ⌥⇧Space is the third shortcut in main's `shortcuts` (`search`).
   - `sync.cjs`: the same switch keeps devices in step through `OSAT/Sync` (see sync-core below).
     It hooks `store.onCommit` to note every change made here (except what sync applied), keeps
     its place in `store/sync.json`, and once set up it notes changes even while the link is
@@ -505,6 +505,22 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   desk menu's item in FieldDesk.jsx (`putDeskAway`: one commit, the places cleared, one Undo restoring both through the
   workspace inverse). Unsorted stickies move into the topic or a stack's branch; sorted ones stay home and are connected.
   Paper on the real desk: Tools → Sort a pile → Photo already reads a photo of stickies into a pile kept apart from topics.
+
+## Architecture added in Phase 60
+
+- Keys in use (Settings → Shortcuts): `shared/keys-model.mjs` (pure: Carbon key codes → OSAT's key names, `fromSymbolic`,
+  `keyGroups`, `holdersOf`, the few keys that work only inside OSAT) + `desktop/mac-keys.cjs` (reads
+  `com.apple.symbolichotkeys` with `plutil`, read-only, empty off the Mac) + `desk:keys` (`osatDesk.keys`) +
+  `src/views/settings/KeysInUse.jsx`. `desk:set-hotkey` refuses a key the Mac holds, by name. Not listed anywhere macOS
+  shares: Siri/Dictation holds, other apps' own keys; a key that does nothing is one of those.
+
+## Architecture added in Phase 62
+
+- Kill Process: `shared/process-model.mjs` (pure: `groupApps` of `ps` output by .app, own user only, never OSAT's own pid, nothing under /System except
+  /System/Applications and Finder; `wantsKill`, `processRow`) + `desktop/launcher/processes.cjs` (`ps`, then SIGTERM or SIGKILL for every pid a
+  fresh listing finds for the app *path* the bar sent; a made-up path kills nothing) + `search:processes` / `search:kill`. In the bar, typing kill/quit
+  offers a `kill` row (scope `KILL_SCOPE`, not a tab); inside it ↵ Kill, ⌘↵ Force Kill. Restart and Kill All are not built.
+- Hyper keys are registered in both spellings (⌃⌥⇧⌘ and ⌃⌥⌘, `hyperAlias`; the alias id ends in `~` and never reports failure).
 
 ## Layout traps worth remembering
 
