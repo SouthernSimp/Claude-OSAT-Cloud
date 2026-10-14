@@ -43,11 +43,23 @@ const KEYWORD = /^[a-z0-9]{1,12}$/
 const clean = (value) => String(value ?? '').trim().toLowerCase()
 export const validKeyword = (value) => KEYWORD.test(clean(value))
 
-/* http(s) only, and only an address that can be opened; `{query}` is where the words go. */
+/* What a quick link can be (Raycast's Quicklinks): a web address, an app's own link (cleanshot://, obsidian://, spotify:// …;
+   never javascript:, data: or file:) or a folder or file on this Mac (~/Desktop, /Applications). `{query}` is where typed
+   words go, in a web or app link. */
+export const APP_LINK = /^(?!(?:javascript|data|file|vbscript|about|blob|http|https|ftp|sftp|smb|afp|ssh|telnet):)[a-z][a-z0-9+.-]{1,30}:\/\/[^\s]*$/i
+export function linkKind(value) {
+  const text = String(value || '').trim()
+  if (/^https?:\/\/[^\s]+$/i.test(text)) return 'web'
+  if (APP_LINK.test(text)) return 'app'
+  if (/^~?\/[^\0\n]*$/.test(text) && !text.includes('{query}') && !/(^|\/)\.\.(\/|$)/.test(text)) return 'path'
+  return null
+}
 export function validAddress(value) {
   const text = String(value || '').trim()
-  if (text.length > 300 || !/^https?:\/\/[^\s]+$/i.test(text)) return false
-  try { return Boolean(new URL(text.replace('{query}', 'x')).host) } catch { return false }
+  if (text.length > 300) return false
+  const kind = linkKind(text)
+  if (kind === 'web') { try { return Boolean(new URL(text.replace('{query}', 'x')).host) } catch { return false } }
+  return kind !== null
 }
 
 export const DEFAULT_SETTINGS = Object.freeze({
@@ -164,6 +176,9 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
 }
 
 export const hostOf = (url) => {
+  const kind = linkKind(url)
+  if (kind === 'path') return String(url).replace(/\/+$/, '').split('/').pop() || String(url)
+  if (kind === 'app') return String(url).split(':')[0]
   try { return new URL(String(url).replace('{query}', 'x')).host.replace(/^www\./, '') } catch { return '' }
 }
 
@@ -364,7 +379,7 @@ export function handOff(job, takers = []) {
 
 /* What can be a favorite, or have a key or a word of its own, from ⌘K in the bar: rooms and commands, notes, topics,
    the Mac's commands, apps, Emoji & symbols and window layouts. Files keep their pins, copies theirs. */
-export const CUSTOM_KINDS = ['room', 'note', 'node', 'system', 'app', 'emoji', 'layout']
+export const CUSTOM_KINDS = ['room', 'note', 'node', 'system', 'app', 'emoji', 'layout', 'more']
 export const customizable = (row) => Boolean(row && CUSTOM_KINDS.includes(row.kind) && typeof row.key === 'string' && !/^(do|more|kw):/.test(row.key))
 
 /* A row kept as it was shown: its key, kind, words and what doing it needs (small, plain data only). */

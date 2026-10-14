@@ -14,7 +14,7 @@ const fs = require('node:fs')
 const fsp = require('node:fs/promises')
 const path = require('node:path')
 const { hotkeyLabel, validHotkey } = require('../desk.cjs')
-const { isSafeTextPreviewName, readTextFile } = require('../text-files.cjs')
+const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile } = require('../text-files.cjs')
 const { createApps } = require('./apps.cjs')
 const { createCapture } = require('./capture.cjs')
 const { createClipboardHistory } = require('./clipboard-history.cjs')
@@ -203,6 +203,7 @@ async function createLauncher({
     if (key === 'act:ask') { search.show({ view: 'chat' }); return }
     if (key === 'act:selection') { await onSelection(); return }
     if (key === 'act:clipboard') { search.show({ scope: 'clipboard' }); return }
+    if (entry.kind === 'more' && typeof d.scope === 'string') { search.show({ scope: d.scope }); return }
     if (Array.isArray(d.go) && typeof d.go[0] === 'string') command({ view: d.go[0], detail: d.go[1] && typeof d.go[1] === 'object' ? d.go[1] : null })
   }
   /* A key on an app opens it. A key on a link opens it, or, when it wants words, opens the search with its word waiting. */
@@ -459,9 +460,31 @@ async function createLauncher({
     return true
   })
   // A web address opens in Nate's own browser, only while OSAT is online (the one way out: a link, or a key on a quick link).
+  /* A web address opens in Nate's browser (any, from the bar: a copied link too). An app's own link or a folder or file
+     opens only when it is one of his saved quick links (`url` is then the saved address with any words put in). A file
+     that could run (an app, a script) is shown in Finder, never opened. */
   async function openLink(url) {
-    if (typeof url !== 'string' || url.length > 2000 || !/^https?:\/\/[^\s]+$/i.test(url)) fail('That isn’t a web address OSAT can open.')
-    if (!offline() && /^https?:\/\//i.test(url)) await shell.openExternal(url)
+    if (typeof url !== 'string' || url.length > 2000) fail('That isn’t a link OSAT can open.')
+    const kind = launcherModel.linkKind(url)
+    if (kind === 'web') {
+      if (!offline() && /^https?:\/\//i.test(url)) await shell.openExternal(url)
+      return true
+    }
+    // The saved address, or it with words in place of {query} (keywordAddress: encoded, so no spaces).
+    const fits = (link) => {
+      const [head, tail = ''] = link.url.split('{query}')
+      return link.url === url || (link.url.includes('{query}') && url.startsWith(head) && url.endsWith(tail) && !/\s/.test(url))
+    }
+    const saved = settings.links.some((link) => link.on !== false && fits(link))
+    if (!kind || !saved) fail('That isn’t a link OSAT can open.')
+    if (kind === 'app') {
+      if (!offline() && launcherModel.APP_LINK.test(url)) await shell.openExternal(url)
+      return true
+    }
+    const file = url.replace(/^~(?=\/)/, require('node:os').homedir())
+    if (!require('node:fs').existsSync(file)) fail('That folder or file isn’t there any more.')
+    const folder = require('node:fs').statSync(file).isDirectory() && !/\.(app|bundle|pkg|mpkg)$/i.test(file)
+    if (folder || isSafeOpenFilename(file)) { const error = await shell.openPath(file); if (error) fail(error) } else shell.showItemInFolder(file)
     return true
   }
   on('search:open-link', openLink)

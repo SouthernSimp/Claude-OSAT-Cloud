@@ -258,8 +258,10 @@ test('apps and links open only what is on the list or a web address, and links w
     await online.launcher.start()
     await assert.rejects(online.ask('search:open-app', '/Applications/NotAnApp.app'), /isn’t in the list/)
     await assert.rejects(online.ask('search:open-app-named', 'Definitely Not Installed 9'), /isn’t installed on this Mac/)
-    await assert.rejects(online.ask('search:open-link', 'javascript:alert(1)'), /isn’t a web address/)
-    await assert.rejects(online.ask('search:open-link', 'file:///etc/passwd'), /isn’t a web address/)
+    await assert.rejects(online.ask('search:open-link', 'javascript:alert(1)'), /isn’t a link OSAT can open/)
+    await assert.rejects(online.ask('search:open-link', 'file:///etc/passwd'), /isn’t a link OSAT can open/)
+    await assert.rejects(online.ask('search:open-link', 'cleanshot://capture-area'), /isn’t a link OSAT can open/, 'an app link only when it is saved')
+    await assert.rejects(online.ask('search:open-link', '/etc/hosts'), /isn’t a link OSAT can open/, 'a file only when it is saved')
     await online.ask('search:open-link', 'https://www.google.com/search?q=cats')
     assert.deepEqual(online.calls.external, ['https://www.google.com/search?q=cats'])
   } finally { await online.done() }
