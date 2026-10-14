@@ -70,7 +70,7 @@ async function createLauncher({
   const hotkeys = createHotkeys({ globalShortcut, isTaken })
   const trusted = () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(false)
   // Window snapping: it needs Accessibility, and OSAT never moves its own windows.
-  const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel, windows: () => settings.windows })
+  const snap = createSnap({ exec, platform, trusted, helper: app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-window') : path.join(__dirname, '..', '..', 'build', 'helpers', 'osat-window'), screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel, windows: () => settings.windows })
   // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
   const system = createSystem({ exec, platform, trusted, model: systemModel })
   const processes = createProcesses({ exec, platform, model: processModel })
