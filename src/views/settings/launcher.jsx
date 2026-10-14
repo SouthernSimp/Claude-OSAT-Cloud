@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, LockSimple, Plus, X } from '@phosphor-icons/react'
 import { DAY_CHOICES, ITEM_CHOICES } from '../../../shared/clipboard-model.mjs'
 import { SOURCES, hostOf, holderOf, validAddress, validKeyword } from '../../../shared/launcher-model.mjs'
 import { MAX_RING, RING_ITEMS, ringItems } from '../../../shared/ring-model.mjs'
+import { describe as describeHyper } from '../../../shared/hyper-model.mjs'
 import { SNIPPET_WORD_HELP, validSnippetWord } from '../../../shared/snippets.mjs'
 import { AddRingTool } from './screenshots.jsx'
 import { WindowCommands } from './WindowCommands.jsx'
@@ -140,19 +141,41 @@ export function QuickSearchPage({ page }) {
 export function KeyboardPage({ page }) {
   return (
     <LauncherPage page={page} what="In the Mac app, OSAT’s Hyper keys and its shortcuts work from any app.">
-      {({ settings, save }) => (
-        <>
-          <Group title="Hyper key" note="OSAT never changes a setting on your Mac for you. This is where the two things only you can change live.">
-            <Row title="Make Caps Lock a Hyper key" hint="Hyper is ⌃⌥⇧⌘ held together, and OSAT already listens for it with a letter (V for the clipboard, S for files). macOS can’t turn Caps Lock into all four by itself; a free app such as Hyperkey or Karabiner-Elements can. Set it up there, or just hold the four keys." words="caps lock karabiner hyperkey raycast" />
-            <Row title="Another app makes my Hyper key" hint="If it leaves ⇧ out (Raycast’s does, unless “Include Shift” is on), choose ⌃⌥⌘ so OSAT’s Hyper keys still work." words="raycast shift modifier">
-              <Select label="What the Hyper key sends" value={settings.hyper.sends} onChange={(sends) => save({ hyper: { sends } })} options={[['four', '⌃⌥⇧⌘ (all four)'], ['three', '⌃⌥⌘ (without ⇧)']]} />
-            </Row>
-          </Group>
-          <Group title="Spotlight">
-            <Row title="Use ⌘Space for the quick bar" hint="In System Settings → Keyboard → Keyboard Shortcuts → Spotlight, untick “Show Spotlight search”. Then pick ⌘Space for the quick bar in Quick bar." words="command space spotlight replace" />
-          </Group>
-        </>
-      )}
+      {({ settings, save, status, bridge, look }) => {
+        const own = settings.hyper.own === true
+        const state = status?.hyper || 'starting'
+        return (
+          <>
+            <Group title="Hyper key" note="Hyper is ⌃⌥⇧⌘ held together, and OSAT’s Hyper keys use it with a letter (V for the clipboard, S for files). With this on, OSAT turns Caps Lock into Hyper itself, for the whole Mac, with nothing else installed. Turning it off, or quitting OSAT, gives Caps Lock back.">
+              <Row
+                title="Make Caps Lock a Hyper key"
+                hint={own ? describeHyper(state) : 'Off. Turn it on, then hold Caps Lock and press a letter: Hyper V opens the clipboard.'}
+                words="caps lock hyper karabiner hyperkey raycast"
+              >
+                <Switch label="Make Caps Lock a Hyper key" checked={own} onChange={(on) => save({ hyper: { own: on } }).then(() => setTimeout(look, 800))} />
+              </Row>
+              {own && state === 'access' && status?.accessibility === 'needed' && (
+                <Row title="Allow OSAT in Accessibility" hint="macOS asks once. OSAT asks only when you press the button." words="accessibility allow caps lock hyper">
+                  <button className="outline-button" type="button" onClick={() => bridge.askAccess().then(() => setTimeout(look, 1500), () => {})}><LockSimple /> Allow…</button>
+                </Row>
+              )}
+              {own && (
+                <Row title="A tap of Caps Lock is Esc" hint="Press and let go of Caps Lock on its own and it sends Esc. Off by default." words="caps lock tap escape esc">
+                  <Switch label="A tap of Caps Lock is Esc" checked={settings.hyper.tap === true} onChange={(tap) => save({ hyper: { tap } })} />
+                </Row>
+              )}
+              {!own && (
+                <Row title="Another app makes my Hyper key" hint="If it leaves ⇧ out (Raycast’s does, unless “Include Shift” is on), choose ⌃⌥⌘ so OSAT’s Hyper keys still work." words="raycast shift modifier">
+                  <Select label="What the Hyper key sends" value={settings.hyper.sends} onChange={(sends) => save({ hyper: { sends } })} options={[['four', '⌃⌥⇧⌘ (all four)'], ['three', '⌃⌥⌘ (without ⇧)']]} />
+                </Row>
+              )}
+            </Group>
+            <Group title="Spotlight">
+              <Row title="Use ⌘Space for the quick bar" hint="In System Settings → Keyboard → Keyboard Shortcuts → Spotlight, untick “Show Spotlight search”. Then pick ⌘Space for the quick bar in Quick bar." words="command space spotlight replace" />
+            </Group>
+          </>
+        )
+      }}
     </LauncherPage>
   )
 }

@@ -26,3 +26,5 @@ outputs/unsorted-concepts-20261004/
 # Old caches and backups (kept on disk, not in git)
 .vite-osat-field/
 .design-backups/
+# Native helpers, built by scripts/build-helpers.mjs
+build/helpers/

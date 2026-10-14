@@ -72,7 +72,9 @@ export const DEFAULT_SETTINGS = Object.freeze({
   // AI on selected text (Phase 51): select words in any app, press this, pick Fix spelling, Summarize…
   selection: { hotkey: hyper('T') },
   // What a Hyper key made by another app sends: all four (⌃⌥⇧⌘), or ⌃⌥⌘ (Raycast's, unless "Include Shift").
-  hyper: { sends: 'four' },
+  // `own`: OSAT makes Caps Lock the Hyper key itself (Phase 63, desktop/launcher/hyper.cjs): then it sends all four.
+  // `tap`: a quick tap of Caps Lock alone is Esc.
+  hyper: { sends: 'four', own: false, tap: false },
   // Screenshots and recording (shared/capture-model.mjs): a key for each, off until given one.
   captures: cleanCaptureSettings(undefined),
 })
@@ -152,7 +154,7 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
       items: Array.isArray(from.ring?.items) ? [...new Set(from.ring.items.filter((id) => RING_ITEMS.some((item) => item.id === id)))].slice(0, 8) : null,
     },
     selection: { hotkey: key(from.selection?.hotkey, hyper('T')) },
-    hyper: { sends: from.hyper?.sends === 'three' ? 'three' : 'four' },
+    hyper: { sends: from.hyper?.own !== true && from.hyper?.sends === 'three' ? 'three' : 'four', own: from.hyper?.own === true, tap: from.hyper?.tap === true },
     captures: cleanCaptureSettings(from.captures, { validHotkey }),
   }
 }

@@ -152,6 +152,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 59 | Mail (Tools → Mail): your inbox, read through the Mail app already on your Mac. Newest first, Unread, one message as plain text (never a web page, nothing loads), search, Reply (opens a draft in Mail; OSAT never sends), Make a sticky with Undo, Open in Mail, and a button to Ask about one message (the AI on your Mac only) | In review |
 | 58 | Passwords (Tools → Passwords): an encrypted password manager that is locked every time OSAT starts. You choose one master password (it can’t be recovered if forgotten). It locks itself when idle, when the Mac sleeps or locks, when the desk is put away and at quit; copying a password keeps it out of the clipboard history and clears it after 30 seconds; a password maker; an encrypted backup; Undo for Delete. It lives only on this Mac: never synced, never read by Ask, the connector or any bot | In review |
 | 61 | Window management you can shape (Raycast-style): about fifty window commands (halves, quarters, thirds, fourths, sixths, ninths, the middle in four sizes, almost maximize, make larger or smaller, move to an edge, next and previous screen); each can have an alias you type in the quick bar and a key, and can be switched off; make your own from a name and a rectangle in percent (Create command), duplicate any built-in one as your own, reset it. Settings → Window layouts and Settings → Shortcuts show the same list | In review |
+| 63 | Hyper key, built in | In review |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
@@ -1276,6 +1277,19 @@ calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
 | The roadmap, viewable inside OSAT | 12c |
 | Quick search like Raycast: files and the clipboard with a preview, one key, straight to work | 13 |
 | A Raycast feel; business and customer management over time | 13, 19 |
+
+### Phase 63: A Hyper key built into OSAT (in review)
+Nate's Hyper key (Caps Lock held as ⌃⌥⇧⌘) used to come from Raycast, so with Raycast closed OSAT's Hyper keys did nothing.
+OSAT must not need any other app for it.
+- **Settings → Keyboard → Make Caps Lock a Hyper key** is a real switch, off until Nate turns it on. On, OSAT turns Caps Lock
+  into F20 itself (the Mac's own `hidutil`, added to whatever mappings are there) and a tiny native helper makes F20 hold
+  ⌃⌥⇧⌘ for every other key and click while it is down. Off, or when OSAT quits, Caps Lock is given back.
+- **Needs Accessibility** (OSAT's usual Allow button). Without it Settings says so and nothing else changes.
+- **A tap of Caps Lock alone does nothing** (an optional switch makes it Esc). The helper reads key codes and flags only; it
+  never records, stores or sends what is typed.
+- **If the helper stops** the keyboard behaves normally. A Caps Lock → F20 that another app already set (Raycast leaves one)
+  is used as it is and never removed.
+- **Not built:** a live "Try it" readout in Settings; for now the line under the switch says what to press.
 
 ### Later (after the MVP)
 - Files become "Linked folders" in Notes. (Projects became nodes in Phase 12.)

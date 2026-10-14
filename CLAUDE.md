@@ -573,6 +573,20 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   is Settings → Window layouts: Your commands + Create command form with a live preview, every built-in group, "…" for
   Duplicate / Reset / Turn off, Delete and Reset with Undo). The bar's own ⌘K word/key for a layout row still lives in `custom`.
   Not yet: Create Layout (several apps at once), per-display fine-tuning, a key repeat that cycles sizes.
+## Architecture added in Phase 63
+
+- The Hyper key, built in (Settings → Keyboard → Make Caps Lock a Hyper key; `hyper: { sends, own, tap }` in launcher.json, `own`
+  forces `sends: 'four'`): `desktop/helpers/osat-hyper.swift` (one file, built by `scripts/build-helpers.mjs`, which compiles every
+  `desktop/helpers/*.swift` to `build/helpers/<name>`, arm64 + x86_64 when it can; run by `dist:mac`, `start:mac` and CI; shipped through
+  `build.extraResources` into the app's Resources) + `desktop/launcher/hyper.cjs` (`createHyper`: starts the helper only on a Mac, with
+  the switch on and Accessibility allowed; `createCapsMapping`: Caps Lock → F20 with `hidutil`, merged with the mappings already there,
+  only OSAT's own entry removed (note in `hyper.json`), and only while the helper says `ready`) + `shared/hyper-model.mjs` (pure: the
+  state machine `step` the Swift mirrors line for line, `readHelperLine`, the hidutil reading/merging, the Settings words).
+  The helper is a CGEventTap (session, head insert; keys, flags and mouse buttons): while F20 (key code 90) is down every other key and
+  click carries ⌃⌥⇧⌘, the trigger is swallowed, a tap alone does nothing (or Esc), and the tap being switched off, sleep, wake and a
+  trigger the keyboard no longer has down all clear the hold. It writes only `ready`, `denied` or `stopped`, never what is typed, touches
+  no files and no network. If it ends, `hyper.cjs` removes the Caps Lock mapping at once. Never run it or `hidutil --set` while testing
+  (it rewrites the live keyboard); `tests/hyper*.test.mjs` use a pretend hidutil and a pretend helper.
 
 ## Layout traps worth remembering
 
