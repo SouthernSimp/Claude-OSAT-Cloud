@@ -86,6 +86,8 @@ jobs:
           key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       - run: npm run build
+      - name: Compile the small Mac helpers (desktop/helpers)
+        run: node scripts/build-helpers.mjs
       - name: Check keys go in and out of the Keychain
         run: node scripts/keychain-check.cjs
       - name: Check OSAT reads the words on a scan
