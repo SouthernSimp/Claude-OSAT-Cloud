@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ErrorBoundary } from '../lib/ErrorBoundary.jsx'
 import { AppWindow, ArrowsIn, ArrowsOut, Database, Plus, TreeStructure, X } from '@phosphor-icons/react'
 
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
@@ -752,7 +753,7 @@ function PopOut({ pop, z, top, dock, title, onRaise, onClose, onGone, onChange, 
           {pop.full ? <ArrowsIn weight="bold" /> : <ArrowsOut weight="bold" />}
         </button>
       </header>
-      <div className="popout-body workspace-content is-filled" data-view={pop.view}>{children}</div>
+      <div className="popout-body workspace-content is-filled" data-view={pop.view}><ErrorBoundary where={title}>{children}</ErrorBoundary></div>
     </section>
   )
 }

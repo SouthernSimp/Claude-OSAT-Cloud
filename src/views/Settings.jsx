@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MagnifyingGlass } from "@phosphor-icons/react";
 import { useUndoToast } from "../lib/UndoToast.jsx";
+import { ErrorBoundary } from "../lib/ErrorBoundary.jsx";
 import { ClipboardPage, KeyboardPage, LauncherProvider, QuickLinksPage, QuickSearchPage, RingPage, SnippetsPage, WindowLayoutsPage } from "./settings/launcher.jsx";
 import { AboutPage, AiPage, AppearancePage, BotsPage, DataPage, GeneralPage, PhonePage, ScansPage } from "./settings/osat-pages.jsx";
 import { SETTINGS_GROUPS, SETTINGS_PAGES, pageById, sectionFor } from "./settings/pages.js";
@@ -117,7 +118,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
             <div className="settings-page" key={searching ? "search" : section}>
               {shown.map((page) => {
                 const PageBody = PAGES[page.id];
-                return <PageBody key={page.id} page={page} workspace={workspace} commit={commit} storage={storage} showUndo={showUndo} />;
+                return <ErrorBoundary key={page.id} where={page.label}><PageBody page={page} workspace={workspace} commit={commit} storage={storage} showUndo={showUndo} /></ErrorBoundary>;
               })}
               {searching && none && <p className="settings-none" role="status">Nothing in Settings matches “{text.trim()}”.</p>}
             </div>

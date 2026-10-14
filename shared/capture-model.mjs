@@ -20,7 +20,7 @@ export const CAPTURES = [
   { id: 'record', label: 'Record screen', words: 'record recording video screen movie gif', cleanshot: 'record-screen' },
   { id: 'text', label: 'Copy text from the screen', words: 'text ocr copy read words recognize screenshot', cleanshot: 'capture-text', mac: ['-i'] },
   { id: 'history', label: 'Past screenshots', words: 'screenshot history recent past captures recordings', cleanshot: 'open-history' },
-  { id: 'from-clipboard', label: 'Mark up the copied picture', words: 'clipboard picture image annotate open copied markup', cleanshot: 'open-from-clipboard' },
+  { id: 'from-clipboard', label: 'Mark up the copied picture', words: 'markup annotate copied picture image cleanshot', cleanshot: 'open-from-clipboard' },
 ]
 
 export const captureById = (id) => CAPTURES.find((item) => item.id === id) || null
