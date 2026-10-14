@@ -159,8 +159,10 @@ jobs:
       - name: Check the Hyper key's helper is inside the app
         run: |
           APP="$(ls -d release/mac-arm64/OSAT.app)"
-          test -x "$APP/Contents/Resources/osat-hyper"
-          codesign --verify --strict "$APP/Contents/Resources/osat-hyper"
+          test -x "$APP/Contents/Resources/helpers/osat-hyper"
+          codesign --verify --strict "$APP/Contents/Resources/helpers/osat-hyper"
+          test -x "$APP/Contents/Resources/helpers/osat-mouse"
+          codesign --verify --strict "$APP/Contents/Resources/helpers/osat-mouse"
       - uses: actions/upload-artifact@v4
         with:
           name: OSAT-mac-dmg

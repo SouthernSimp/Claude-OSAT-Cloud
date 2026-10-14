@@ -6,6 +6,7 @@ import { AboutPage, AiPage, AppearancePage, BotsPage, DataPage, GeneralPage, Pho
 import { SETTINGS_GROUPS, SETTINGS_PAGES, pageById, sectionFor } from "./settings/pages.js";
 import { QueryContext } from "./settings/parts.jsx";
 import { ShortcutsPage } from "./settings/Shortcuts.jsx";
+import { MousePage } from "./settings/mouse.jsx";
 import { ScreenshotsPage } from "./settings/screenshots.jsx";
 import "../styles/settings.css";
 
@@ -34,6 +35,7 @@ const PAGES = {
   snippets: SnippetsPage,
   windows: WindowLayoutsPage,
   ring: RingPage,
+  mouse: MousePage,
   screenshots: ScreenshotsPage,
 };
 

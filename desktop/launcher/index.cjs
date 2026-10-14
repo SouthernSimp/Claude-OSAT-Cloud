@@ -22,6 +22,7 @@ const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
 const { createCapsMapping, createHyper } = require('./hyper.cjs')
 const { createMiddleClick } = require('./middle-click.cjs')
+const { createMouse, helperPath } = require('./mouse.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
@@ -49,6 +50,7 @@ async function createLauncher({
   const snippetModel = await sharedModule('snippets.mjs')
   const pickModel = await sharedModule('picks.mjs')
   const hyperModel = await sharedModule('hyper-model.mjs')
+  const mouseModel = await sharedModule('mouse-model.mjs')
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -80,7 +82,7 @@ async function createLauncher({
   // The Hyper key built in (Phase 63): Caps Lock → F20 and a helper that holds ⌃⌥⇧⌘ while it is down: hyper.cjs.
   const hyper = createHyper({
     spawn: spawnHelper, platform, model: hyperModel, trusted,
-    helperPath: app.isPackaged ? path.join(process.resourcesPath, 'osat-hyper') : path.join(__dirname, '..', '..', 'build', 'helpers', 'osat-hyper'),
+    helperPath: app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-hyper') : path.join(__dirname, '..', '..', 'build', 'helpers', 'osat-hyper'),
     mapping: createCapsMapping({
       model: hyperModel, platform, file: path.join(dataDir, 'hyper.json'),
       run: (args) => require('node:child_process').execFileSync('/usr/bin/hidutil', args, { encoding: 'utf8', timeout: 4000 }),
@@ -89,6 +91,11 @@ async function createLauncher({
     log: (text) => console.error('The Hyper key’s helper:', text),
   })
   const listenForHyper = () => hyper.sync(settings.hyper.own === true, { tap: settings.hyper.tap === true })
+  // Mouse (Phase 64): the wheel's direction and speed, through a small helper: mouse.cjs.
+  const mouse = createMouse({
+    spawn: spawnHelper, platform, model: mouseModel, helper: helperPath({ packaged: app?.isPackaged === true }), mouse: () => settings.mouse, trusted,
+    log: (text) => console.error('The mouse helper:', text),
+  })
   // A layout key pressed while OSAT isn't allowed says so once, calmly, and then leaves it alone.
   let told = false
   async function snapFromKey(id) {
@@ -228,6 +235,7 @@ async function createLauncher({
     listenForMiddle()
     listenForHyper()
     snippets.sync()
+    mouse.sync()
     await writeSettings()
     history.limitsChanged()
     history.watch(settings.sources.clipboard.on)
@@ -275,7 +283,7 @@ async function createLauncher({
     }
     return save(launcherModel.customize(settings, row, { [allowed[0]]: value }))
   })
-  on('search:status', () => (snippets.sync(), listenForHyper(), {
+  on('search:status', () => (snippets.sync(), listenForHyper(), mouse.sync(), {
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
     keysFailed: hotkeys.failed().filter((id) => !id.endsWith('~')),
     // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
@@ -284,6 +292,8 @@ async function createLauncher({
     snippets: snippets.state(),
     // 'off', 'access', 'starting', 'working', 'denied', 'failed' or 'unavailable': the built-in Hyper key.
     hyper: hyper.state(),
+    // 'off', 'access', 'starting', 'listening', 'denied', 'missing', 'failed' or 'unavailable': the mouse helper.
+    mouse: mouse.state(),
   }), ofDesk)
   // OSAT asks macOS for Accessibility only when a button is pressed (Settings → Launcher, or "Allow…" in the bar's
   // note after a paste that couldn't happen), never by itself.
@@ -553,6 +563,7 @@ async function createLauncher({
       listenForMiddle()
       listenForHyper()
       snippets.sync()
+      mouse.sync()
     },
     stop() {
       if (picksTimer) writePicks()
@@ -561,6 +572,7 @@ async function createLauncher({
       middleClick.stop()
       snippets.stop()
       hyper.stop()
+      mouse.stop()
     },
   }
 }

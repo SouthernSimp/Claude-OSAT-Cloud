@@ -306,19 +306,21 @@ test('a line of noise from the helper changes nothing', async () => {
 
 test('the build script lists every Swift file in desktop/helpers', () => {
   const helpers = listHelpers(repo)
-  assert.deepEqual(helpers.map((helper) => helper.name), ['osat-hyper'])
-  assert.equal(helpers[0].out, path.join(repo, 'build', 'helpers', 'osat-hyper'))
-  assert.equal(existsSync(helpers[0].source), true)
+  assert.deepEqual(helpers.map((helper) => helper.name), ['osat-hyper', 'osat-mouse'])
+  const hyper = helpers.find((helper) => helper.name === 'osat-hyper')
+  assert.equal(hyper.out, path.join(repo, 'build', 'helpers', 'osat-hyper'))
+  assert.equal(existsSync(hyper.source), true)
 })
 
 test('the helper is built before the app runs or is packaged, shipped in Resources, and checked in CI', async () => {
   const pkg = JSON.parse(await readFile(path.join(repo, 'package.json'), 'utf8'))
-  assert.match(pkg.scripts['dist:mac'], /scripts\/build-helpers\.mjs/)
-  assert.match(pkg.scripts['start:mac'], /scripts\/build-helpers\.mjs/)
-  assert.ok(pkg.build.extraResources.some((item) => item.from === 'build/helpers/osat-hyper' && item.to === 'osat-hyper'))
+  assert.match(pkg.scripts['dist:mac'], /build:helpers/)
+  assert.match(pkg.scripts['start:mac'], /build:helpers/)
+  assert.match(pkg.scripts['build:helpers'], /scripts\/build-helpers\.mjs/)
+  assert.ok(pkg.build.extraResources.some((item) => item.from === 'build/helpers' && item.to === 'helpers'))
   const ci = await readFile(path.join(repo, '.github', 'workflows', 'ci.yml'), 'utf8')
   assert.match(ci, /node scripts\/build-helpers\.mjs/)
-  assert.match(ci, /Resources\/osat-hyper/)
+  assert.match(ci, /Resources\/helpers\/osat-hyper/)
   assert.match(await readFile(path.join(repo, '.gitignore'), 'utf8'), /^build\/helpers\/$/m)
 })
 

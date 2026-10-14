@@ -587,6 +587,20 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   trigger the keyboard no longer has down all clear the hold. It writes only `ready`, `denied` or `stopped`, never what is typed, touches
   no files and no network. If it ends, `hyper.cjs` removes the Caps Lock mapping at once. Never run it or `hidutil --set` while testing
   (it rewrites the live keyboard); `tests/hyper*.test.mjs` use a pretend hidutil and a pretend helper.
+## Architecture added in Phase 64
+
+- Mouse (Settings → Mouse, Launcher group): `shared/mouse-model.mjs` (pure: `cleanMouse`/`mergeMouse` for `mouse` in launcher.json, `deviceOf`
+  (any scroll phase or momentum = trackpad, else mouse wheel), `scrollAxis`/`scrollEvent` (reverse per axis per device, wheel-only speed with a
+  residual so 0.5x gives every second notch), `buttonAction`, `configLine`, `readHelperLine`) + `desktop/helpers/osat-mouse.swift` (a CGEventTap on
+  scrollWheel and the other mouse buttons; writes only `ready`/`denied`/`stopped`; takes its settings as JSON lines on stdin; leaves on stdin EOF,
+  SIGTERM or a changed parent; re-enables the tap when macOS disables it; changes nothing that outlives it) + `desktop/launcher/mouse.cjs`
+  (`createMouse`: starts it only while `mouse.on` has something to change, OSAT is trusted in Accessibility and the file exists; `search:status` reports
+  `mouse`: off/access/starting/listening/denied/missing/failed/unavailable; `denied` is not retried until off and on) + `src/views/settings/mouse.jsx`.
+  The helper is compiled by `scripts/build-helpers.mjs` (every `desktop/helpers/*.swift` into `build/helpers/`, Mac only; `npm run build:helpers`;
+  shipped as `Resources/helpers` through `extraResources`; the CI mac job runs it). The Swift mirrors the model's rules by hand, like `typedStep` in
+  snippets: tests/mouse.test.mjs checks the model, the lifecycle (a pretend process) and what the helper's source may say; the helper itself is never run
+  in tests. Not built: pointer speed/acceleration (needs IOHIDServiceClient properties, which outlive a crash; keys are in docs/MOUSE-FINDINGS.md) and
+  per-app profiles. See docs/MOUSE-FINDINGS.md for what was learned from LinearMouse (MIT) and how the mouse is told from the trackpad.
 
 ## Layout traps worth remembering
 

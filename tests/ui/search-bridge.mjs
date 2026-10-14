@@ -39,6 +39,13 @@ export function installSearchBridge(defaults) {
       hyper: one('hyper'),
       captures: { ...settings.captures, ...(patch.captures || {}), hotkeys: { ...settings.captures?.hotkeys, ...(patch.captures?.hotkeys || {}) } },
       windows: { ...settings.windows, ...(patch.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(patch.windows?.hotkeys || {}) }, aliases: dropNulls({ ...settings.windows.aliases, ...(patch.windows?.aliases || {}) }) },
+      // shared/mouse-model.mjs `mergeMouse`, short (this function runs in the page, where nothing can be imported).
+      mouse: (() => {
+        const own = patch.mouse || {}
+        const buttons = { ...settings.mouse.buttons }
+        for (const [button, action] of Object.entries(own.buttons || {})) { if (action === 'default') delete buttons[button]; else buttons[button] = action }
+        return { ...settings.mouse, ...own, reverse: { mouse: { ...settings.mouse.reverse.mouse, ...(own.reverse?.mouse || {}) }, trackpad: { ...settings.mouse.reverse.trackpad, ...(own.reverse?.trackpad || {}) } }, buttons }
+      })(),
     }
   }
   const known = {
@@ -67,7 +74,8 @@ export function installSearchBridge(defaults) {
       return snippet
     },
     onSettings: (listener) => { heard.add(listener); return () => heard.delete(listener) },
-    status: async () => ({ accessibility: 'needed', keysFailed: [], middleClick: 'listening', snippets: settings.snippetsTyped ? 'access' : 'off', hyper: settings.hyper?.own ? 'access' : 'off' }),
+    status: async () => ({ accessibility: 'needed', keysFailed: [], middleClick: 'listening', snippets: settings.snippetsTyped ? 'access' : 'off', hyper: settings.hyper?.own ? 'access' : 'off', mouse: settings.mouse.on && (settings.mouse.speed !== 1 || Object.keys(settings.mouse.buttons).length || ['mouse', 'trackpad'].some((kind) => settings.mouse.reverse[kind].vertical || settings.mouse.reverse[kind].horizontal)) ? 'access' : 'off' }),
+
     pauseClipboard: async (on) => { paused = on === true; return paused },
     clearClipboard: async () => 'undo-clear',
     onShown: (listener) => { window.__shown = listener; return () => {} },

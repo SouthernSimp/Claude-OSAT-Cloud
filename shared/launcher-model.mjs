@@ -7,6 +7,7 @@
 
 import { calculate } from './calc.mjs'
 import { CAPTURES, cleanCaptureSettings } from './capture-model.mjs'
+import { cleanMouse, mergeMouse } from './mouse-model.mjs'
 import { RING_ITEMS } from './ring-model.mjs'
 import { cleanSnippets } from './snippets.mjs'
 import { cleanWindowKeys, cleanWindows, layoutIn } from './window-layouts.mjs'
@@ -77,6 +78,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   hyper: { sends: 'four', own: false, tap: false },
   // Screenshots and recording (shared/capture-model.mjs): a key for each, off until given one.
   captures: cleanCaptureSettings(undefined),
+  // The mouse wheel's direction and speed, and the side buttons (shared/mouse-model.mjs; the helper is desktop/launcher/mouse.cjs). Off until turned on.
+  mouse: cleanMouse(undefined),
 })
 
 /* What a saved file may hold: only the fields OSAT writes; anything broken falls back to the default.
@@ -156,6 +159,7 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     selection: { hotkey: key(from.selection?.hotkey, hyper('T')) },
     hyper: { sends: from.hyper?.own !== true && from.hyper?.sends === 'three' ? 'three' : 'four', own: from.hyper?.own === true, tap: from.hyper?.tap === true },
     captures: cleanCaptureSettings(from.captures, { validHotkey }),
+    mouse: cleanMouse(from.mouse),
   }
 }
 
@@ -184,6 +188,7 @@ export function applyPatch(settings, patch) {
     selection: { ...settings.selection, ...(from.selection || {}) },
     hyper: { ...(settings.hyper || {}), ...(from.hyper || {}) },
     captures: { ...settings.captures, ...(from.captures || {}), hotkeys: { ...settings.captures?.hotkeys, ...(from.captures?.hotkeys || {}) } },
+    mouse: mergeMouse(settings.mouse, from.mouse),
   }
 }
 
