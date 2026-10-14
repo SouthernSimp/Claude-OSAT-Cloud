@@ -439,6 +439,9 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   capture: search('capture'),
   captureStatus: search('capture-status'),
   captureRecent: search('capture-recent'),
+  // A screenshot for the sticky being written (true: an area you drag), and a sticky's picture to show.
+  stickyPicture: search('sticky-picture'),
+  picture: search('picture'),
   captureThumb: search('capture-thumb'),
   captureOpen: search('capture-open'),
   captureReveal: search('capture-reveal'),

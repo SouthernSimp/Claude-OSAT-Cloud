@@ -206,3 +206,4 @@
 .snippet-form .is-wide { grid-column: 1 / -1; }
 .snippet-form button { justify-self: start; }
 .snippet-edit .icon-plain { margin-top: 22px; }
+.setting-list { margin: 4px 0 0; padding-left: 1.1em; display: grid; gap: 3px; }

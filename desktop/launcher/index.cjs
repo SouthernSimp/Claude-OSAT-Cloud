@@ -147,6 +147,9 @@ async function createLauncher({
     model: await sharedModule('capture-model.mjs'), shell, clipboard, nativeImage, systemPreferences, exec, platform, notify, fail, on,
     settings: () => settings.captures, thumbnail: files.thumbnail, panel: () => search?.window, from: { panel: (sender) => Boolean(search?.owns(sender)) },
     hidePanels: async () => { search?.hide(); ring?.hide(); await wait(150) },
+    picturesDir: path.join(dataDir, 'pictures'),
+    screenRegion: () => { const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds; return `${area.x},${area.y},${area.width},${area.height}` },
+    reshow: async () => search?.reshow(),
   })
 
   /* ---- Settings ---- */

@@ -18,6 +18,7 @@ import { addSticky, linkMentions } from '../nodes-model.js'
 import { captureThought, folderPath } from '../notes-model.js'
 import { AppIcon, RowIcon } from '../search/icons.jsx'
 import { Preview } from '../search/Preview.jsx'
+import { QuickSticky } from '../search/QuickSticky.jsx'
 import { useSources } from '../search/useSources.js'
 import { useWorkspace } from '../store/useWorkspace.js'
 import { canAsk } from '../views/Files.jsx'
@@ -110,7 +111,7 @@ export function QuickSearchSurface() {
   const offer = useMemo(() => (row && ['text', 'email', 'phone'].includes(row.kind) && settings.clipboard.offers !== false ? offerFor(row.data, workspace || {}) : null), [row, settings, workspace])
   const actions = useMemo(() => actionsFor(row, { offer, canAsk: row?.kind === 'file' && canAsk({ kind: 'file', name: row.title }) }), [row, offer])
   const full = !mode && (opened === 'full' || text.trim().length > 0 || scope !== 'all' || Boolean(picker))
-  const size = chatOn ? 'chat' : full ? 'full' : 'bar'
+  const size = chatOn ? 'chat' : full || mode === 'sticky' ? 'full' : 'bar'
   const tabs = scopesOn(settings)
 
   useEffect(() => { bridge?.mode(size) }, [bridge, size])
@@ -188,7 +189,7 @@ export function QuickSearchSurface() {
   /* ⌥Return: the words go straight to Unsorted as a sticky, as on the desk's line. Nothing typed: write one. */
   const saveSticky = useCallback((words) => {
     const value = String(words || '').trim()
-    if (!value) { setMode('sticky'); requestAnimationFrame(() => input.current?.focus()); return }
+    if (!value) { setText(''); setMode('sticky'); return }
     if (!workspace) { said('Opening your notes… try again in a moment.'); return }
     let made = null
     commit((state) => {
@@ -430,6 +431,8 @@ export function QuickSearchSurface() {
       if (event.isComposing) return
       const now = live.current
       if (now.chatOn) return
+      // The quick sticky (QuickSticky) has its own keys; Esc still backs out, keeping what was written.
+      if (now.mode === 'sticky' && event.key !== 'Escape') return
       const cmd = event.metaKey || event.ctrlKey
       if (event.key === 'Escape') { event.preventDefault(); back(); return }
       // Set a key…: the next keys pressed are the key (⌫ takes it away); Set a word… types in its own field.
@@ -538,11 +541,13 @@ export function QuickSearchSurface() {
           </div>
         </section>
       )}
-    <main className="quick-search" hidden={chatOn} data-mode={full ? 'full' : 'bar'}>
+    <main className="quick-search" hidden={chatOn} data-mode={full || mode === 'sticky' ? 'full' : 'bar'} data-sticky={mode === 'sticky' ? '' : undefined}>
       <header className="qs-bar">
         <ModeIcon weight="bold" aria-hidden="true" />
+        {mode === 'sticky' && <span className="qs-title">A quick sticky</span>}
         <input
           ref={input}
+          hidden={mode === 'sticky'}
           id="qs-input"
           className="qs-input"
           role="combobox"
@@ -559,7 +564,7 @@ export function QuickSearchSurface() {
           onChange={(event) => { setText(event.target.value); setCursor(null); if (live.current.answer) dropAnswer() }}
         />
         {!full && note ? <span className="qs-said" role="status">{note}</span>
-          : mode ? <span className="qs-chip">{mode === 'sticky' ? 'Sticky' : 'Ask'}</span>
+          : mode === 'ask' ? <span className="qs-chip">Ask</span>
             : selected ? (
               <button type="button" className="qs-chip is-scope" title="Back to everything  esc" onClick={() => { dropAnswer(); setSelected(null); setText(''); setCursor(null); input.current?.focus() }}>
                 Selected text <X weight="bold" aria-hidden="true" />
@@ -571,6 +576,8 @@ export function QuickSearchSurface() {
               </button>
             )}
       </header>
+
+      {mode === 'sticky' && <QuickSticky bridge={bridge} said={said} onBack={back} onSave={saveSticky} />}
 
       {full && (
         <>
