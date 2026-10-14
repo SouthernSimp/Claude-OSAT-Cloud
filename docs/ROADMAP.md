@@ -147,6 +147,11 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 54 | Trust fixes: an update must be signed by the same certificate as the OSAT you have; webhooks waiting offline survive a quit; old caches out of the repo | In review |
 | 55 | A GitHub room (Tools → GitHub): your repositories, and in each what waits for you (each pull request in its own words, whether its checks passed, Merge, asked once more) and what changed lately; through the gh signed in on your Mac | In review |
 | 56 | Put the desk away: right-click the desk → Put the desk away. Every sticky and stack goes into one topic on the canvas (“Put away · Oct 12”, each stack a branch with its name); stickies already in a topic stay there and are connected. One Undo puts it all back | In review |
+| 58 | Passwords (Tools → Passwords): an encrypted password manager that is locked every time OSAT starts. You choose one master password (it can’t be recovered if forgotten). It locks itself when idle, when the Mac sleeps or locks, when the desk is put away and at quit; copying a password keeps it out of the clipboard history and clears it after 30 seconds; a password maker; an encrypted backup; Undo for Delete. It lives only on this Mac: never synced, never read by Ask, the connector or any bot | In review |
+
+**Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
+extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
+against known leaks. Each needs its own careful plan: none of them is built, and none of them is needed to use the room.
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.

@@ -506,6 +506,20 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   workspace inverse). Unsorted stickies move into the topic or a stack's branch; sorted ones stay home and are connected.
   Paper on the real desk: Tools → Sort a pile → Photo already reads a photo of stickies into a pile kept apart from topics.
 
+## Architecture added in Phase 58
+
+- `shared/password-model.mjs` (pure, no imports; the window uses it too: strength hint, entry cleaning, `listing` = the only fields a window
+  gets, the generator with an injected `randomInt`, `waitFor` backoff) + `shared/vault-format.mjs` (node:crypto only: scrypt N=2^17 r=8 p=1
+  -> AES-256-GCM over the whole vault, a fresh nonce per seal, the header bound as AAD, params read from the header, `wipe`) +
+  `desktop/passwords.cjs` (all `passwords:*` IPC, `{ from: 'app' }`; session in memory only; locks on idle, sleep, screen lock, the desk
+  hidden, a page reload, leaving the room and quit) + `desktop/conceal.cjs` (Copy: one AppKit call in `osascript -l JavaScript`, the words on
+  stdin, type `org.nspasteboard.ConcealedType`) + `src/views/Passwords.jsx` (Tools → Passwords). The file is `vault.json` in the data folder:
+  this Mac only, 0600, never in workspace.json, sync, snapshots, the iPhone folder, Ask, the connector, the agent, webhooks or the
+  overnight/brief jobs; `tests/vault-fence.test.mjs` fails if any other source mentions it. No new dependency and no network.
+- Rules to keep: the master password is never stored; no recovery; a password leaves main only for Reveal (10 s) or Copy (30 s, cleared
+  only if the clipboard still holds it); errors that reach the window are the module's own calm sentences, nothing secret is logged;
+  there is no plain-text or CSV export on purpose. Not yet: autofill, browser extension, TOTP, phone or Mac-to-Mac sync.
+
 ## Layout traps worth remembering
 
 - The desk (`.overlay-surface`) is `100dvh` and never scrolls; each pop-out's body is a
