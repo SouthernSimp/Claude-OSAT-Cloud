@@ -20,7 +20,7 @@ export function Page({ page, children }) {
     <PageContext.Provider value={page}>
       <article className="settings-section" data-page={page.id} aria-label={page.label}>
         <header className="setting-head">
-          <span className="setting-tile" aria-hidden="true"><Icon weight="fill" /></span>
+          <span className="setting-tile" aria-hidden="true" data-tint={page.tint}><Icon weight="fill" /></span>
           <h2>{page.label}</h2>
           <p>{page.blurb}</p>
         </header>

@@ -102,7 +102,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
                 const on = !searching && section === page.id;
                 return (
                   <button key={page.id} type="button" aria-current={on ? "page" : undefined} onClick={() => go(page.id)}>
-                    <i aria-hidden="true"><Icon weight={on ? "fill" : "regular"} /></i>
+                    <i aria-hidden="true" data-tint={page.tint}><Icon weight="fill" /></i>
                     <span>{page.label}</span>
                   </button>
                 );

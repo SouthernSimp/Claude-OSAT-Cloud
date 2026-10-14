@@ -49,8 +49,8 @@ export function Preview({ row, bridge, workspace, offer = null, now, onDragStart
   return (
     <section className="qs-preview" aria-label="Preview">
       {/* A copy or a capture drags out from here too (`onDragStart` starts the Mac's own drag). */}
-      <div className="qs-stage" data-kind={row.kind} draggable={Boolean(onDragStart)} onDragStart={onDragStart}>{body}</div>
-      <footer className="qs-facts">
+      <div key={row.key} className="qs-stage" data-kind={row.kind} draggable={Boolean(onDragStart)} onDragStart={onDragStart}>{body}</div>
+      <footer key={`facts:${row.key}`} className="qs-facts">
         <h2>{row.kind === 'calc' ? row.subtitle : row.title}</h2>
         {details.length > 0 && (
           <dl className="qs-details">

@@ -116,6 +116,12 @@ export function QuickSearchSurface() {
   const tabs = scopesOn(settings)
 
   useEffect(() => { bridge?.mode(size) }, [bridge, size])
+  // Each time it is shown, it rises in a little (Reduce Motion: it just appears).
+  const shell = useRef(null)
+  useEffect(() => {
+    if (!visit || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    shell.current?.animate([{ opacity: 0, transform: 'translateY(-4px) scale(0.99)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' })
+  }, [visit])
   // A second Return arms only the row it was asked on.
   useEffect(() => { setArmed(null) }, [row?.key])
   // Offline, Ask says whether it waits (a cloud model does; the AI on this Mac still answers).
@@ -576,7 +582,7 @@ export function QuickSearchSurface() {
           </div>
         </section>
       )}
-    <main className="quick-search" hidden={chatOn} data-mode={full || mode === 'sticky' ? 'full' : 'bar'} data-sticky={mode === 'sticky' ? '' : undefined}>
+    <main ref={shell} className="quick-search" hidden={chatOn} data-mode={full || mode === 'sticky' ? 'full' : 'bar'} data-sticky={mode === 'sticky' ? '' : undefined}>
       <header className="qs-bar">
         <ModeIcon weight="bold" aria-hidden="true" />
         {mode === 'sticky' && <span className="qs-title">A quick sticky</span>}
@@ -633,7 +639,7 @@ export function QuickSearchSurface() {
             {picker
               ? <NodePicker workspace={workspace} onPick={(folderId) => addTo(picker.row, folderId)} onClose={() => { setPicker(null); input.current?.focus() }} />
               : (
-                <ul id="qs-list" className="qs-list" role="listbox" aria-label="Results">
+                <ul key={read.scope} id="qs-list" className="qs-list" role="listbox" aria-label="Results">
                   {rows.length === 0 && <li className="qs-empty" role="presentation">{empty}</li>}
                   {rows.map((item, index) => (
                     <li key={item.key} role="presentation">

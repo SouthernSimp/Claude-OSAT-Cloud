@@ -169,11 +169,11 @@ html[data-carry-edge="up"] body::after {
   max-width: 300px;
   max-height: 72vh;
   overflow: auto;
-  padding: 5px;
-  border-radius: 8px;
+  padding: 6px;
+  border-radius: var(--r-xl);
   background: var(--surface-raised);
   box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-5);
-  animation: context-in 120ms var(--ease-out) both;
+  animation: context-in 140ms var(--ease-out) both;
 }
 @keyframes context-in { from { opacity: 0; scale: 0.97; } }
 .context-menu > button {

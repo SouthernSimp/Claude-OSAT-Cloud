@@ -424,8 +424,8 @@
   height: 14px;
 }
 
-/* Streaming caret */
-.caret {
+/* Streaming caret (its own name: a bare .caret also painted Notes' folder arrows blue) */
+.typing-caret {
   display: inline-block;
   width: 7px;
   height: 15px;
