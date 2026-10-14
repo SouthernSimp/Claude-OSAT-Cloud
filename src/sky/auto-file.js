@@ -31,8 +31,9 @@ export function autoFileSettings(settings) {
 
 /* A sticky that arrived without a home (the line, the quick bar, the iPhone, the Sky's
    Unsorted…) and still has none: not set free on the Sky, not pinned. A note written in the
-   Notes room is never one: that is Nate writing, not dumping. */
-const dumped = (note) => note.unsorted === true && !note.at && !note.pinned
+   Notes room is never one: that is Nate writing, not dumping. A sticky made from an email (source 'Mail',
+   Phase 59) is never read by the AI on its own, so it waits in Unsorted for Nate. */
+const dumped = (note) => note.unsorted === true && !note.at && !note.pinned && note.source !== 'Mail'
 
 /* The dumped stickies written since `since` and not already tried. { ready, wait }: `ready`
    once they've all been quiet for QUIET_MS, else `wait` ms until they will be (0: nothing to do). */

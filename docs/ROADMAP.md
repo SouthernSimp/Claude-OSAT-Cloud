@@ -94,7 +94,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 13g | Screenshots and screen recording from the launcher: CleanShot X when it's on the Mac (every capture, recent captures to drag out), else the Mac's own screenshots | Merged (PR #48) |
 | 13h | Quick bar fixes: the bar, Ask, the clipboard and the ring work over other apps; Paste lands in the right app; right-click for actions; drag from the preview; Copy text from the screen without CleanShot (the Mac's own text recognition); Ask's model menu solid | Merged (PR #51) |
 | 13i | The ring opens with Hyper + middle-click over any app (a small helper on this Mac watches the mouse buttons; Hyper R stays as the backup) | In review (PR #54) |
-| 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders) |
+| 14 | Connectors: Apple Mail, Gmail in the browser, Outlook; Calendar and Reminders; Messages beside OSAT | In review (step one: Calendar and Reminders; Apple Mail is Phase 59) |
 | 15 | Paper in: a scan (the Brother, or the iPhone's Scan Documents) becomes a sorted node; dates are offered to the Calendar | Merged (PR #17, done before 13 and 14) |
 | 17 | Make it yours: backdrops, About you (lines the AI reads first), the Browser on the dock as Web | Merged (PR #20) |
 | 18 | Bots in: Muse (and Grok Bot, Claude) put nodes into OSAT through a drop folder; packed nodes to unpack; cloud models (DeepSeek first, any provider); a Timeline in the Roadmap; OSAT's connector with a key | Merged (PR #18) |
@@ -149,6 +149,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 56 | Put the desk away: right-click the desk → Put the desk away. Every sticky and stack goes into one topic on the canvas (“Put away · Oct 12”, each stack a branch with its name); stickies already in a topic stay there and are connected. One Undo puts it all back | In review |
 | 60 | Keys in use (Settings → Shortcuts): every key already taken — OSAT's, the launcher's, and the Mac's own shortcuts read from System Settings — and a box to press a key and hear who has it. A new OSAT key that the Mac already holds is refused by name. Search or Ask moves from ⌘⇧Space (Apple's AI holds it) to ⌥⇧Space, and each Hyper key is heard with and without ⇧ so Hyper V opens the clipboard whichever way the Mac's Hyper key is made | In review |
 | 62 | Kill Process (Raycast's command): type kill in the bar, then pick a running app, with its memory; Return asks it to quit, ⌘Return force quits. Only your own apps; never OSAT or what would log you out | In review |
+| 59 | Mail (Tools → Mail): your inbox, read through the Mail app already on your Mac. Newest first, Unread, one message as plain text (never a web page, nothing loads), search, Reply (opens a draft in Mail; OSAT never sends), Make a sticky with Undo, Open in Mail, and a button to Ask about one message (the AI on your Mac only) | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -753,7 +754,7 @@ update.
 - Everything is read on the Mac and goes nowhere else, works offline, and is never copied into `calendar.events`.
 - Built with EventKit through `osascript -l JavaScript` (`desktop/mac-calendar.cjs`); the pure rules are in
   `shared/mac-calendar-model.mjs`. The browser preview has no Mac, so the room shows only OSAT's events there.
-- Next steps of Phase 14 (not started): Apple Mail, Gmail in the browser, Outlook, and Messages beside OSAT.
+- Next steps of Phase 14 (not started): Gmail in the browser, Outlook, and Messages beside OSAT. Apple Mail is Phase 59.
 
 ### Phase 15: Paper in (merged, PR #17)
 Nate's goal: scan something at the printer, walk over to the Mac, and a new node is waiting, already
@@ -1291,6 +1292,21 @@ The wow Claude picked (Oct 12): OSAT’s second brain grows while Nate sleeps, p
 - **The morning brief** mentions them in a few words when there are any.
 - **Next.** People cards (Phase 19) can use the same connections to show
   everything about a customer.
+
+### Phase 59: Mail (in review)
+Nate wanted to reach his email from OSAT. It goes through the Mail app already on his Mac, so his accounts are
+already signed in and OSAT never holds a mail password, token or sign-in.
+- **What he gets.** Tools → Mail: “Allow OSAT to read Mail” (macOS asks once), then the newest 50 messages from every
+  account, Unread, a search box (subject and sender; “Look inside messages too” for the text), and one message at a
+  time as plain text. Reply opens a draft in Mail’s own window and sends nothing. Make a sticky puts the subject, who
+  from, when and a short quote into Unsorted (with Undo). Open in Mail shows it there.
+- **What it never does.** Send, delete, move, mark read or fetch mail. Show a message as a page, load a picture or open
+  a link. Let the AI, Ask, the agent, the connector, the overnight ideas or the morning brief read mail on their own:
+  only “Ask about this message”, when pressed, asks the AI on this Mac (never a cloud model), with the email quoted as
+  data and no tools. A sticky made from an email is never filed by the AI on its own.
+- **Works offline** (Mail on this Mac is local), though Mail itself may fetch an older message when it is opened.
+- **Not yet:** sending, Gmail straight from Google (needs a Google Cloud sign-in OSAT would have to keep), attachments,
+  HTML messages, other folders than the inbox, Outlook, Messages.
 
 
 - `main` always works.

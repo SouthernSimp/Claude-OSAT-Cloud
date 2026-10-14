@@ -84,3 +84,11 @@ test('a long sticky gets a gist; its title only when the title was just its firs
   const asked = fileRequests(next, [next.notes.find((note) => note.id === 'l')]).batches[0].messages[1].content
   assert.match(asked, /Clear the garage\./, 'the model reads the gist, not the long text')
 })
+
+test('a sticky made from an email is never read by the AI on its own', () => {
+  const withMail = space([sticky('a', 'Send Jordan the quote'), sticky('m', 'Email: Quote for the deck\nFrom Sam', { source: 'Mail' })])
+  assert.deepEqual(readyToFile(withMail, { since: iso(T0), now: T0 + QUIET_MS }).ready.map((note) => note.id), ['a'])
+  const onlyMail = space([sticky('m', 'Email: Quote', { source: 'Mail' })])
+  assert.deepEqual(readyToFile(onlyMail, { since: iso(T0), now: T0 + QUIET_MS }), { ready: [], wait: 0 })
+  assert.equal(waitingFromBefore(space([sticky('m', 'Email: Old', { source: 'Mail', createdAt: iso(T0 - 86400000) })]), iso(T0)), 0)
+})
