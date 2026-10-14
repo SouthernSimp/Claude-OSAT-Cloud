@@ -10,7 +10,7 @@ import { findSnippets, snippetRow } from './snippets.mjs'
 import { scoreOf, topHit } from './picks.mjs'
 import { matchApps, processRow, wantsKill } from './process-model.mjs'
 import { findSystem, systemRow } from './system-commands.mjs'
-import { findLayouts } from './window-layouts.mjs'
+import { findLayouts, layoutsOf } from './window-layouts.mjs'
 
 /* One source at a time ("See all", a keyword like "v", or a source's Hyper key). Only the sources that are on. */
 export const SCOPES = [['all', 'Everything'], ['files', 'Files'], ['clipboard', 'Clipboard'], ['apps', 'Apps'], ['notes', 'Notes'], ['windows', 'Windows']]
@@ -116,7 +116,7 @@ const clipRow = (item, now, section) => ({
   data: item,
 })
 
-const layoutRow = (layout, keys = {}) => ({ key: `layout:${layout.id}`, source: 'windows', kind: 'layout', title: layout.label, subtitle: layout.id === 'restore' ? 'Where the window was before OSAT moved it' : 'Move the window you were in', section: 'Windows', data: { layout: layout.id, key: keys[layout.id] || null } })
+const layoutRow = (layout, keys = {}) => ({ key: `layout:${layout.id}`, source: 'windows', kind: 'layout', title: layout.label, subtitle: layout.id === 'restore' ? 'Where the window was before OSAT moved it' : 'Move the window you were in', section: 'Windows', data: { layout: layout.id, key: keys[layout.id] || null, box: layout.box } })
 const appRow = (item, section) => ({ key: `app:${item.path}`, source: 'apps', kind: 'app', title: item.name, subtitle: 'Application', section, data: item })
 
 /* The desk's own search (lib/find.js) gives notes, nodes, rooms and actions. */
@@ -253,7 +253,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   if (read.scope === KILL_SCOPE) return matchApps(found.processes || [], read.query).map(processRow)
   if (read.scope === 'apps') return [...rows, ...rankApps(found.apps || [], read.query).slice(0, 40).map((item) => appRow(item, 'Apps'))]
   const keys = settings.windows?.on ? settings.windows.hotkeys : {}
-  if (read.scope === 'windows') return [...rows, ...findLayouts(read.query).map((layout) => layoutRow(layout, keys))]
+  if (read.scope === 'windows') return [...rows, ...findLayouts(read.query, layoutsOf(settings.windows)).map((layout) => layoutRow(layout, keys))]
   if (read.scope === 'notes') return [...rows, ...(found.notes || []).map((item) => noteRow(item, 'Notes'))]
 
   // One list, no tabs (Oct 2026): Ask first, then what was found, each source a few rows with "See all" when there's more.
@@ -274,7 +274,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     if (clipFound.length > 4) rows.push(more('clipboard', `${clipFound.length} copies`, 'Clipboard'))
     rows.push(...(found.notes || []).slice(0, 5).map((item) => noteRow(item, 'Notes')))
     // "left half", "max": a layout, when the words are about a window.
-    if (settings.sources.windows?.on && read.query.length >= 3) rows.push(...findLayouts(read.query).slice(0, 2).map((layout) => layoutRow(layout, keys)))
+    if (settings.sources.windows?.on && read.query.length >= 3) rows.push(...findLayouts(read.query, layoutsOf(settings.windows)).slice(0, 2).map((layout) => layoutRow(layout, keys)))
     // What you picked before for these words comes first (after Ask, a sum and your own word).
     const hit = picks && topHit(rows, picks, read.query, +now)
     if (hit) {

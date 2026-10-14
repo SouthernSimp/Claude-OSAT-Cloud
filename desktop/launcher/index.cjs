@@ -65,7 +65,7 @@ async function createLauncher({
   const hotkeys = createHotkeys({ globalShortcut, isTaken })
   const trusted = () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(false)
   // Window snapping: it needs Accessibility, and OSAT never moves its own windows.
-  const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel })
+  const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel, windows: () => settings.windows })
   // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
   const system = createSystem({ exec, platform, trusted, model: systemModel })
   const processes = createProcesses({ exec, platform, model: processModel })
@@ -433,7 +433,7 @@ async function createLauncher({
   /* A layout for the window you were in: the panel goes away first, so that window is in front again. Without
      Accessibility nothing is touched, and the panel stays to say so. */
   on('search:snap', async (id) => {
-    if (!layoutModel.layoutById(id)) fail('That isn’t a layout OSAT knows.')
+    if (!layoutModel.layoutIn(settings.windows, id)) fail('That isn’t a layout OSAT knows.')
     if (!snap.allowed()) return { ok: false, reason: platform === 'darwin' ? 'access' : 'mac' }
     search.hide()
     await wait(140)

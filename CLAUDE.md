@@ -557,6 +557,22 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Rules to keep: the master password is never stored; no recovery; a password leaves main only for Reveal (10 s) or Copy (30 s, cleared
   only if the clipboard still holds it); errors that reach the window are the module's own calm sentences, nothing secret is logged;
   there is no plain-text or CSV export on purpose. Not yet: autofill, browser extension, TOTP, phone or Mac-to-Mac sync.
+## Architecture added in Phase 61
+
+- Window management you can shape: `shared/window-layouts.mjs` is the one list (`LAYOUTS`, grouped by `LAYOUT_GROUPS`: a `box` of
+  fractions of the screen's work area, or an `op`: restore, next/previous-display, larger, smaller, move) and the one rect-maths
+  (`frameFor(id, area, now, windows)`; edges are rounded, not sizes, so neighbours tile; `now` is the window as it is, for larger,
+  smaller and move). Old ids and usual keys stay; new commands start with no key. Nate's own commands are `windows.custom`
+  (`{ id: 'custom-…', name, rect: { x, y, w, h } in percent, centered? }`, `cleanCustom`/`cleanRect`: at most 50, ids checked, a number
+  that isn't one drops the command, out-of-range is pulled onto the screen). `windows` in launcher.json is now `{ on, hotkeys, aliases, off,
+  custom }`, cleaned by `cleanWindows` (called inside `cleanSettings` so an alias goes through the same `word()` as every other word and
+  never clashes; `keysOf`/`wordsOf`/`holderOf`/`nameOf` know `snap:<id>` for built-in and custom alike). An alias typed alone in the bar
+  is `matchKeyword`'s `snap:` branch (a `layout` row, no change to quick-search-model but `layoutsOf` for the bar's rows).
+  `desktop/launcher/snap.cjs` takes `windows: () => settings.windows` and branches on `layout.op`; it still runs only through the
+  injected `exec`. UI: `src/views/settings/WindowCommands.jsx` (`windowRows` feeds Settings → Shortcuts' Window layouts group, `WindowCommands`
+  is Settings → Window layouts: Your commands + Create command form with a live preview, every built-in group, "…" for
+  Duplicate / Reset / Turn off, Delete and Reset with Undo). The bar's own ⌘K word/key for a layout row still lives in `custom`.
+  Not yet: Create Layout (several apps at once), per-display fine-tuning, a key repeat that cycles sizes.
 
 ## Layout traps worth remembering
 

@@ -138,6 +138,38 @@
 .keys-group h4 { margin: 0; padding: 8px 16px; border-top: 1px solid var(--line-soft); background: color-mix(in srgb, var(--ink) 3%, transparent); font-size: var(--t-xs); font-weight: 600; color: var(--faint); }
 .keys-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 4px 16px; font-size: var(--t-sm); }
 .short-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; border-top: 1px solid var(--line-soft); font-size: var(--t-xs); color: var(--muted); }
+/* Window commands (Phase 61): the same table, with a picture of the place, a “…” and Create command. */
+.window-table .short-head, .window-table .short-row { grid-template-columns: minmax(0, 1fr) 118px 172px 82px; }
+.window-table .short-group-title { font-size: var(--t-sm); font-weight: 650; color: var(--ink); padding-left: 6px; }
+.window-table .short-group-head .outline-button { min-height: 28px; padding: 0 10px; gap: 4px; }
+.window-table .short-group-head .outline-button svg { width: 12px; height: 12px; }
+.window-table .short-on { gap: 8px; }
+.window-table .icon-plain svg { width: 16px; height: 16px; }
+.window-table .short-name i { width: 34px; }
+.window-table .short-name i svg { width: 20px; height: 20px; }
+.window-table .short-name i .region { width: 22px; height: 15px; }
+.region-screen { fill: none; stroke: currentColor; stroke-width: 1.5; vector-effect: non-scaling-stroke; opacity: 0.45; }
+.region-fill { fill: var(--accent); }
+.short-more { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 10px 60px; }
+.short-more .outline-button { min-height: 28px; padding: 0 12px; }
+.window-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; padding: 12px 16px 14px; border-top: 1px solid var(--line-soft); }
+.window-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.window-fields label { display: grid; gap: 4px; font-size: var(--t-xs); font-weight: 600; color: var(--muted); }
+.window-fields .is-wide { grid-column: 1 / -1; }
+.settings .window-fields input:not([type="checkbox"]) { min-height: 0; height: 34px; padding: 0 10px; border-radius: 6px; font-size: var(--t-sm); }
+.window-fields .window-check { display: flex; align-items: center; gap: 8px; font-size: var(--t-sm); font-weight: 500; color: var(--ink); }
+.window-buttons { grid-column: span 2; display: flex; gap: 8px; justify-content: flex-end; }
+.window-fields .setting-inline { grid-column: 1 / -1; }
+.window-preview { display: grid; gap: 6px; justify-items: center; color: var(--ink); }
+.window-preview .region { width: 150px; height: 105px; }
+.window-preview small { font-size: var(--t-xs); color: var(--muted); }
+@container room (max-width: 860px) {
+  .window-table .short-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .window-form { grid-template-columns: minmax(0, 1fr); }
+  .window-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .window-buttons { grid-column: 1 / -1; justify-content: flex-start; }
+  .short-more { padding-left: 16px; }
+}
 
 /* ---- Room-sized layouts: Settings follows its pop-out, not the screen ----------------------------------------- */
 @container room (max-width: 860px) {

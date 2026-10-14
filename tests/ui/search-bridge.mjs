@@ -20,6 +20,7 @@ export function installSearchBridge(defaults) {
   let settings = defaults
   const heard = new Set()
   // What main does with a patch (shared/launcher-model.mjs `applyPatch`): one level down, an app set to null goes.
+  const dropNulls = (object) => Object.fromEntries(Object.entries(object).filter(([, value]) => value))
   const merge = (patch) => {
     const one = (key) => ({ ...(settings[key] || {}), ...(patch[key] || {}) })
     const apps = { ...(settings.apps || {}) }
@@ -37,7 +38,7 @@ export function installSearchBridge(defaults) {
       ring: one('ring'),
       hyper: one('hyper'),
       captures: { ...settings.captures, ...(patch.captures || {}), hotkeys: { ...settings.captures?.hotkeys, ...(patch.captures?.hotkeys || {}) } },
-      windows: { ...settings.windows, ...(patch.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(patch.windows?.hotkeys || {}) } },
+      windows: { ...settings.windows, ...(patch.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(patch.windows?.hotkeys || {}) }, aliases: dropNulls({ ...settings.windows.aliases, ...(patch.windows?.aliases || {}) }) },
     }
   }
   const known = {
