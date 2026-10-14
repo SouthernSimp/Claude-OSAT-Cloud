@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import test from 'node:test'
 
+import { actionsFor, buildRows, readTyped } from '../shared/quick-search-model.mjs'
 import { applyPatch, cleanSettings, holderOf, keysOf, matchKeyword, nameOf, wordsOf, withKey } from '../shared/launcher-model.mjs'
 import {
   LAYOUTS, LAYOUT_GROUPS, MAX_CUSTOM, allLayouts, cleanCustom, cleanRect, cleanWindows, findLayouts, frameFor, layoutIn, layoutsOf, nextScreenFrame, rectOfLayout,
@@ -287,6 +288,19 @@ test('typing an alias in the bar offers that command; a command switched off doe
   assert.equal(matchKeyword(settings, 'mid', { rows: true }), null, 'off')
   assert.equal(matchKeyword(settings, 'lh', {}), null, 'the desk’s line leaves it alone')
   assert.equal(matchKeyword(settings, 'lh and more', { rows: true }), null, 'only on its own')
+})
+
+test('the bar finds his own commands and the new ones by name, shows an alias as its command, and skips what is off', () => {
+  const settings = clean({ windows: { on: true, custom, aliases: { 'custom-br': 'br', 'last-fourth': 'lf' }, off: ['first-fourth'], hotkeys: { 'custom-br': 'Control+Alt+Shift+Command+9' } } })
+  const titles = (text, scope) => buildRows(readTyped(text, settings, scope), {}, settings, { now: new Date(2026, 8, 29, 9, 30) }).map((row) => row.title)
+  assert.deepEqual(titles('bottom right nin', 'windows').slice(0, 2), ['Bottom Right Ninth', 'Bottom right ninth'], 'his own, then the built-in one')
+  assert.equal(titles('', 'windows').length, LAYOUTS.length, 'one off, one of his own')
+  assert.equal(titles('', 'windows').includes('First fourth'), false)
+  assert.equal(titles('last fourth')[0], 'Last fourth', 'from Everything too')
+  const rows = buildRows(readTyped('br', settings), {}, settings, { now: new Date(2026, 8, 29, 9, 30) })
+  assert.deepEqual([rows[0].kind, rows[0].title, rows[0].data.layout, rows[0].data.key, rows[0].section], ['layout', 'Bottom Right Ninth', 'custom-br', 'Control+Alt+Shift+Command+9', 'Your word “br”'])
+  assert.deepEqual(actionsFor(rows[0]).map((action) => action.id).slice(0, 1), ['snap'], 'Return moves the window')
+  assert.equal(buildRows(readTyped('lf', settings), {}, settings, { now: new Date(2026, 8, 29, 9, 30) })[0].data.layout, 'last-fourth')
 })
 
 /* ---- The mover ---- */

@@ -610,3 +610,36 @@ test('Ask finds copies and files for a question: secrets stay out, and the switc
     assert.equal(t.handlers.get('ask:find').from({ id: 'x' }), false, 'only the panel and the desk may ask')
   } finally { await t.done() }
 })
+
+test('a window command of his own gets a key and runs from it and from the bar; off or deleted, its key goes (Phase 61)', async () => {
+  const moves = []
+  const t = await setup({ trusted: true, script: macScript(moves) })
+  try {
+    await t.launcher.start()
+    const custom = [{ id: 'custom-ninth', name: 'Bottom Right Ninth', rect: { x: 66.7, y: 66.7, w: 33.3, h: 33.3 } }]
+    await t.ask('search:save-settings', { windows: { on: true, custom, hotkeys: { 'custom-ninth': 'Control+Alt+Shift+Command+9', 'first-fourth': 'Control+Alt+1' }, aliases: { 'custom-ninth': 'br' } } })
+    assert.equal(t.registered.has('Control+Alt+1'), true)
+    assert.equal(t.registered.has('Control+Alt+Shift+Command+9'), true)
+    t.registered.get('Control+Alt+1')()
+    await wait(120)
+    assert.deepEqual(moves.at(-1), [0, 0, 360, 900], 'a new built-in command, from its key')
+    t.registered.get('Control+Alt+Shift+Command+9')()
+    await wait(120)
+    assert.deepEqual(moves.at(-1), [960, 600, 480, 300], 'his own, from its key')
+    moves.length = 0
+    assert.deepEqual(await t.ask('search:snap', 'custom-ninth'), { ok: true, app: 'Safari', layout: 'custom-ninth' }, 'and from the bar')
+    assert.deepEqual(moves, [[960, 600, 480, 300]])
+    assert.equal((await t.ask('search:settings')).windows.aliases['custom-ninth'], 'br')
+    // A key already held by another command is refused by name, and the old one stays.
+    await assert.rejects(t.ask('search:save-settings', { windows: { hotkeys: { 'first-fourth': 'Control+Alt+Shift+Command+9' } } }), /First fourth keeps its old one/)
+    assert.equal((await t.ask('search:settings')).windows.hotkeys['first-fourth'], 'Control+Alt+1')
+    await t.ask('search:save-settings', { windows: { off: ['first-fourth'] } })
+    assert.equal(t.registered.has('Control+Alt+1'), false, 'switched off, its key goes')
+    await t.ask('search:save-settings', { windows: { off: [] } })
+    assert.equal(t.registered.has('Control+Alt+1'), true, 'and comes back')
+    await t.ask('search:save-settings', { windows: { custom: [] } })
+    assert.equal(t.registered.has('Control+Alt+Shift+Command+9'), false, 'deleted, its key goes')
+    assert.equal((await t.ask('search:settings')).windows.aliases['custom-ninth'], undefined)
+    await assert.rejects(t.ask('search:snap', 'custom-ninth'), /isn’t a layout/)
+  } finally { await t.done() }
+})
