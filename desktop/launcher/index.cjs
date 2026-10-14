@@ -20,6 +20,7 @@ const { createCapture } = require('./capture.cjs')
 const { createClipboardHistory } = require('./clipboard-history.cjs')
 const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
+const { createCapsMapping, createHyper } = require('./hyper.cjs')
 const { createMiddleClick } = require('./middle-click.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
@@ -46,6 +47,7 @@ async function createLauncher({
   const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind, systemModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs'), sharedModule('system-commands.mjs')])
   const snippetModel = await sharedModule('snippets.mjs')
   const pickModel = await sharedModule('picks.mjs')
+  const hyperModel = await sharedModule('hyper-model.mjs')
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -73,6 +75,18 @@ async function createLauncher({
     clipboard, quiet: history.quiet, paste: () => pasteInto({ exec, platform, trusted: () => true }),
     log: (text) => console.error('The snippets helper:', text),
   })
+  // The Hyper key built in (Phase 63): Caps Lock → F20 and a helper that holds ⌃⌥⇧⌘ while it is down: hyper.cjs.
+  const hyper = createHyper({
+    spawn: spawnHelper, platform, model: hyperModel, trusted,
+    helperPath: app.isPackaged ? path.join(process.resourcesPath, 'osat-hyper') : path.join(__dirname, '..', '..', 'build', 'helpers', 'osat-hyper'),
+    mapping: createCapsMapping({
+      model: hyperModel, platform, file: path.join(dataDir, 'hyper.json'),
+      run: (args) => require('node:child_process').execFileSync('/usr/bin/hidutil', args, { encoding: 'utf8', timeout: 4000 }),
+      log: (text) => console.error('The Hyper key:', text),
+    }),
+    log: (text) => console.error('The Hyper key’s helper:', text),
+  })
+  const listenForHyper = () => hyper.sync(settings.hyper.own === true, { tap: settings.hyper.tap === true })
   // A layout key pressed while OSAT isn't allowed says so once, calmly, and then leaves it alone.
   let told = false
   async function snapFromKey(id) {
@@ -205,6 +219,7 @@ async function createLauncher({
     settings = next
     applyHotkeys()
     listenForMiddle()
+    listenForHyper()
     snippets.sync()
     await writeSettings()
     history.limitsChanged()
@@ -253,13 +268,15 @@ async function createLauncher({
     }
     return save(launcherModel.customize(settings, row, { [allowed[0]]: value }))
   })
-  on('search:status', () => (snippets.sync(), {
+  on('search:status', () => (snippets.sync(), listenForHyper(), {
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
     keysFailed: hotkeys.failed(),
     // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
     middleClick: middleClick.state(),
     // 'off', 'access', 'starting', 'listening', 'failed' or 'unavailable': the typed snippets' helper.
     snippets: snippets.state(),
+    // 'off', 'access', 'starting', 'working', 'denied', 'failed' or 'unavailable': the built-in Hyper key.
+    hyper: hyper.state(),
   }), ofDesk)
   // OSAT asks macOS for Accessibility only when a button is pressed (Settings → Launcher, or "Allow…" in the bar's
   // note after a paste that couldn't happen), never by itself.
@@ -521,6 +538,7 @@ async function createLauncher({
       history.watch(settings.sources.clipboard.on)
       applyHotkeys()
       listenForMiddle()
+      listenForHyper()
       snippets.sync()
     },
     stop() {
@@ -529,6 +547,7 @@ async function createLauncher({
       hotkeys.stop()
       middleClick.stop()
       snippets.stop()
+      hyper.stop()
     },
   }
 }
