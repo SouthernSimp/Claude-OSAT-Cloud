@@ -350,6 +350,8 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   files: search('files'),
   preview: search('preview'),
   apps: search('apps'),
+  processes: search('processes'),
+  kill: search('kill'),
   appIcon: search('app-icon'),
   clipboard: search('clipboard'),
   clipboardImage: search('clipboard-image'),

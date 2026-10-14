@@ -514,6 +514,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `src/views/settings/KeysInUse.jsx`. `desk:set-hotkey` refuses a key the Mac holds, by name. Not listed anywhere macOS
   shares: Siri/Dictation holds, other apps' own keys; a key that does nothing is one of those.
 
+## Architecture added in Phase 62
+
+- Kill Process: `shared/process-model.mjs` (pure: `groupApps` of `ps` output by .app, own user only, never OSAT's own pid, nothing under /System except
+  /System/Applications and Finder; `wantsKill`, `processRow`) + `desktop/launcher/processes.cjs` (`ps`, then SIGTERM or SIGKILL for every pid a
+  fresh listing finds for the app *path* the bar sent; a made-up path kills nothing) + `search:processes` / `search:kill`. In the bar, typing kill/quit
+  offers a `kill` row (scope `KILL_SCOPE`, not a tab); inside it ↵ Kill, ⌘↵ Force Kill. Restart and Kill All are not built.
+- Hyper keys are registered in both spellings (⌃⌥⇧⌘ and ⌃⌥⌘, `hyperAlias`; the alias id ends in `~` and never reports failure).
+
 ## Layout traps worth remembering
 
 - The desk (`.overlay-surface`) is `100dvh` and never scrolls; each pop-out's body is a

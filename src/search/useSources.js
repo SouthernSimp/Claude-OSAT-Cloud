@@ -13,6 +13,7 @@ export function useSources({ bridge, read, settings, fileFilter, visit }) {
   const [recent, setRecent] = useState([])
   const [clipboard, setClipboard] = useState({ items: [], paused: false })
   const [apps, setApps] = useState([])
+  const [processes, setProcesses] = useState([])
   const [looking, setLooking] = useState(false)
 
   useEffect(() => {
@@ -46,5 +47,9 @@ export function useSources({ bridge, read, settings, fileFilter, visit }) {
     return () => { live = false }
   }, [bridge, want.apps, visit])
 
-  return { found: { files, recentFiles: recent, clipboard, apps }, looking, reloadClipboard: loadClipboard }
+  // Running apps (Kill Process): looked at again on every visit and after one is ended.
+  const loadProcesses = useCallback(() => bridge?.processes?.().then((list) => setProcesses(Array.isArray(list) ? list : []), () => {}), [bridge])
+  useEffect(() => { if (want.processes) loadProcesses() }, [want.processes, visit, loadProcesses])
+
+  return { found: { files, recentFiles: recent, clipboard, apps, processes }, looking, reloadClipboard: loadClipboard, reloadProcesses: loadProcesses }
 }
