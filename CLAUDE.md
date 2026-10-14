@@ -8,15 +8,17 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 13, 2026 (night): one big update, merged from `claude/release-oct13`
+## Resume checkpoint — October 14, 2026: Phase 65, OSAT as Nate's Raycast (`claude/raycast-home`)
 
-Everything Nate asked for on Oct 13 was merged into one release branch (PRs #83 Meetings, #86 Keys in use + Search or Ask on ⌥⇧Space + Hyper keys
-heard with and without ⇧ + Kill Process, #87 snippet words with two signs, #88 Mail, #89 Passwords, #90 Window management, #91 a Hyper key built
-into OSAT, #92 Mouse). The native helpers (`desktop/helpers/*.swift`, `desktop/meetings/osat-listen.swift`) all ship in `Resources/helpers/`.
-None of the Mac-only behavior (Hyper key, Mouse, Mail, Passwords' copy, Meetings) has been run on the real Mac by Claude: Nate tries it through
-Settings → About → Check for updates, and the PRs' Mac checklists say what to look at. Reconciled in the merge: one `extraResources` entry
-(`build/helpers` → `helpers`), one `build:helpers` script beside `build-listen.mjs`, one CI helper-check step.
-Next: whatever Nate finds on the Mac; pointer speed/acceleration and per-app profiles (Mouse), Create Layout (windows), sending (Mail).
+Nate's Hyper key did nothing with Raycast quit. Found on his Mac: the helper started and said `ready`, but macOS sent it no
+keys because OSAT's own Input Monitoring entry was stored for an older build (a stale entry blocks, even with Accessibility
+granted); and quitting Raycast removes the Caps Lock → F20 mapping OSAT had relied on. Fixed in code (helper self-check →
+`deaf` → `tccutil reset ListenEvent ai.mccreery.osat` once; `caps`/`woke` put the mapping back). Also on this branch: window
+moves and pressed keys go through two new helpers (Accessibility only, no System Events/Automation), Bring in from Raycast,
+Hyper N quick sticky, Uninstall, Keys for this app, and a polish pass. Raycast's `.rayconfig` export is password-encrypted;
+Nate's keys were read off Raycast's Settings → Shortcuts page and live in `shared/raycast-import.mjs`.
+Next: Nate presses Settings → Keyboard → Bring in from Raycast → Use them, and imports his Snippets/Quicklinks JSON from
+~/Desktop; he asked for "the project view" to take "a different direction" (not yet defined: ask him what he means).
 Older checkpoints are in git history.
 
 ## Working with Nate
@@ -597,6 +599,27 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   snippets: tests/mouse.test.mjs checks the model, the lifecycle (a pretend process) and what the helper's source may say; the helper itself is never run
   in tests. Not built: pointer speed/acceleration (needs IOHIDServiceClient properties, which outlive a crash; keys are in docs/MOUSE-FINDINGS.md) and
   per-app profiles. See docs/MOUSE-FINDINGS.md for what was learned from LinearMouse (MIT) and how the mouse is told from the trackpad.
+## Architecture added in Phase 65
+
+- Helpers (`desktop/helpers/*.swift`, all built by `scripts/build-helpers.mjs`, paths via `helperFile(name)` in launcher/index.cjs):
+  `osat-hyper` now self-checks (a marked F20 key-up must come back through its tap, else `deaf`) and says `caps` (Caps Lock seen
+  as itself: the mapping is gone) and `woke`; hyper.cjs repairs once with `tccutil reset ListenEvent` and re-adds the mapping.
+  `osat-window` (`front`, `move x y w h`, `menus`, `press <titles…>`) replaces System Events for snap.cjs and reads/presses the
+  menus of the app behind the bar (OSAT itself skipped for menus only). `osat-keys` (`cmd+v`, `backspace*5`, `ctrl+cmd+q`) posts
+  keys for paste (front.cjs), ⌘C (selection.cjs), a snippet's ⌫s and Lock Screen. None of them need Automation permission.
+- Snippets: words up to 24 chars with `- / + _` inside (`!1/2`), 500 snippets, `{datetime}`; a word that starts a longer one
+  waits for a space (`typedStep` returns `extra: 1`; the helper says `hit <n> 1`).
+- `shared/raycast-import.mjs` (+ `src/views/settings/RaycastImport.jsx`, Settings → Keyboard): `RAYCAST_KEYS` patch, Raycast's
+  Snippets/Quicklinks JSON exports → OSAT's, `mergeImport` skips what's there, one Undo each. Quick links may be a folder/file
+  path or an app link (`linkKind`, `APP_LINK`); main opens those only when saved, and runs nothing (apps/scripts shown in Finder).
+- Hyper N: custom row `act:sticky`; the bar's sticky mode is `src/search/QuickSticky.jsx` (contentEditable, `rich-text.js`
+  `toMarkdown`, Screen/Area through `search:sticky-picture` → capture.cjs `picture()` into `<data>/pictures/`, shown by
+  `src/lib/Picture.jsx` via `search:picture`; a sticky's Markdown carries `![Screenshot](osat-picture:<uuid>.png)` lines,
+  `pictureOf` in capture-model; Sticky.jsx and markdown.jsx draw them). Pictures are this Mac only, never synced.
+- Uninstall: `shared/uninstall-model.mjs` + `desktop/launcher/uninstall.cjs` (`search:uninstall-plan | uninstall | uninstall-undo`);
+  ⌘K → Uninstall… on an app row, Return twice; leftovers matched by exact bundle id or name in ~/Library only.
+- Keys for this app: `MENUS_SCOPE`/`menuRows` in quick-search-model, `search:menus` / `search:press-menu`.
+
 ## Architecture added in Phase 57
 
 - Meetings (Tools → Meetings, `src/views/Meetings.jsx`, `osatMeetings` in the preload, `meeting:*` in `desktop/meetings/index.cjs`).
