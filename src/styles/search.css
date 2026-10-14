@@ -25,15 +25,15 @@ html:has(.quick-search) body { background: transparent; }
 .quick-search[hidden],
 .qs-chat[hidden] { display: none; }
 
-.qs-bar { display: flex; align-items: center; gap: 12px; height: 76px; padding: 0 22px; -webkit-app-region: drag; }
-.qs-bar svg { width: 22px; height: 22px; color: var(--muted); }
+.qs-bar { display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 18px; -webkit-app-region: drag; }
+.qs-bar svg { width: 20px; height: 20px; color: var(--faint); }
 .quick-search .qs-input {
   flex: 1;
   min-width: 0;
   height: 100%;
   border: 0;
   outline: 0;
-  font: 500 22px/1 var(--font);
+  font: 400 19px/1 var(--font);
   letter-spacing: var(--tr-tight);
   color: var(--ink-strong);
   background: transparent;
@@ -60,26 +60,34 @@ html:has(.quick-search) body { background: transparent; }
 .qs-filters [aria-pressed="true"] { color: var(--ink-strong); background: color-mix(in srgb, var(--accent) 15%, transparent); }
 .qs-filters button { font-weight: 500; }
 
-.qs-body { position: relative; display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); min-height: 0; border-top: 1px solid var(--line); }
+.qs-body { position: relative; display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); min-height: 0; border-top: 1px solid var(--line); }
+/* Apps and commands only: one clean list, the whole width (Raycast's root). */
+.qs-body[data-preview="off"] { grid-template-columns: minmax(0, 1fr); }
+.qs-body[data-preview="off"] .qs-list { border-right: 0; }
 .qs-list,
 .qs-picker ul { list-style: none; margin: 0; padding: 6px 8px 10px; overflow-y: auto; overscroll-behavior: contain; }
 .qs-list,
 .qs-picker { border-right: 1px solid var(--line); min-height: 0; }
-.qs-head { margin: 10px 10px 4px; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: 0; color: var(--faint); }
+.qs-head { margin: 12px 10px 5px; font: 600 11.5px/1 var(--font); letter-spacing: 0.01em; color: var(--faint); }
 .qs-empty { margin: 18px 12px; font-size: var(--t-sm); line-height: 1.5; color: var(--muted); }
 
-.qs-row { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 10px; border-radius: var(--r-md); user-select: none; transition: background-color 120ms var(--ease-out); }
+.qs-row { display: flex; align-items: center; gap: 11px; min-height: 40px; padding: 0 10px; border-radius: 8px; user-select: none; transition: background-color 90ms var(--ease-out); }
 .qs-row > svg { transition: color 120ms var(--ease-out), transform 160ms var(--ease-spring); }
 .qs-row[aria-selected="true"] > svg { transform: scale(1.06); }
 .qs-list { animation: qs-fade 180ms var(--ease-out); }
 .qs-row > svg,
-.qs-row-icon { flex: none; width: 26px; height: 26px; color: var(--muted); object-fit: contain; }
-.qs-row-text { flex: 1; min-width: 0; display: grid; gap: 3px; }
-.qs-row-text b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 560 var(--t-md)/1.2 var(--font); color: var(--ink); }
-.qs-row-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-xs)/1.2 var(--font); color: var(--faint); }
-.qs-row:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
-.qs-row[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-.qs-row[aria-selected="true"] > svg { color: var(--accent); }
+.qs-row-icon { flex: none; width: 24px; height: 24px; color: var(--muted); object-fit: contain; }
+.qs-row > svg { width: 20px; height: 20px; margin: 0 2px; }
+/* Each kind of row wears a small app-style tile (icons.jsx `RowTile`), so the list reads at a glance. */
+.qs-tile { width: 22px; height: 22px; margin: 0 1px; border-radius: 6px; }
+.qs-tile svg { width: 14px; height: 14px; }
+.qs-row-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.qs-row-text b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 14px/1.3 var(--font); color: var(--ink-strong); }
+.qs-row-text small { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 13px/1.3 var(--font); color: var(--faint); }
+.qs-type { flex: none; font: 12.5px/1 var(--font); color: var(--faint); }
+.qs-row:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.qs-row[aria-selected="true"] { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.qs-row[aria-selected="true"] > svg { color: var(--ink-strong); }
 /* Ask AI and Save as a sticky show their own keys while another row is picked. */
 .qs-row kbd.is-quiet { background: none; opacity: .75; }
 /* Ask AI, the first row: the AI's sparkle in the accent. */
@@ -97,6 +105,8 @@ html:has(.quick-search) body { background: transparent; }
 .qs-picture { max-width: 100%; max-height: 100%; object-fit: contain; }
 .qs-app-icon { width: 120px; height: 120px; object-fit: contain; }
 .qs-glyph svg { width: 72px; height: 72px; color: var(--faint); }
+.qs-glyph .qs-big-tile { width: 96px; height: 96px; border-radius: 24px; box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 25%), 0 18px 40px -18px var(--tint); animation: qs-pop var(--d-base) var(--ease-spring) both; }
+.qs-glyph .qs-big-tile svg { width: 50px; height: 50px; color: #fff; }
 .qs-text { box-sizing: border-box; width: 100%; height: 100%; margin: 0; padding: 14px 16px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--t-sm)/1.55 var(--font); color: var(--ink); align-self: start; }
 .qs-text.is-link { color: var(--accent); }
 .qs-big { margin: 0; padding: 0 16px; overflow-wrap: anywhere; text-align: center; font: 600 clamp(28px, 5vw, 46px)/1.1 var(--font-display); letter-spacing: var(--tr-display); color: var(--ink-strong); }
@@ -115,9 +125,15 @@ html:has(.quick-search) body { background: transparent; }
 .qs-details dt { color: var(--faint); }
 .qs-details dd { margin: 0; overflow-wrap: anywhere; color: var(--ink); }
 
-.qs-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 0 18px; border-top: 1px solid var(--line); font: var(--t-xs)/1.3 var(--font); color: var(--muted); -webkit-app-region: drag; }
+.qs-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 0 10px 0 16px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--ink) 3%, transparent); font: 12.5px/1.3 var(--font); color: var(--muted); -webkit-app-region: drag; }
 .qs-foot p { margin: 0; }
-.qs-keys { display: flex; gap: 16px; }
+.qs-keys { display: flex; gap: 14px; color: var(--faint); }
+/* Raycast's foot: the main action and its key, a hairline, then every other action under ⌘K. */
+.qs-act { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.qs-act span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; }
+.qs-primary { font-weight: 600; color: var(--ink-strong); }
+.qs-sep { width: 1px; height: 14px; background: var(--line-strong); }
+.qs-foot kbd { padding: 2px 6px; border-radius: 5px; font: 560 11px/1.3 var(--font); color: var(--muted); background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .qs-toast button { margin-left: 10px; padding: 3px 10px; border-radius: var(--r-full); font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
 .qs-wait { color: var(--faint); }
 

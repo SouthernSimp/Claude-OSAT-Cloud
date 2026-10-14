@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { detailsFor } from '../../shared/quick-search-model.mjs'
 import { layoutById } from '../../shared/window-layouts.mjs'
-import { RowIcon } from './icons.jsx'
+import { RowIcon, RowTile } from './icons.jsx'
 
 const COPIED_WORDS = new Set(['text', 'link', 'email', 'phone', 'number'])
 
@@ -44,7 +44,7 @@ export function Preview({ row, bridge, workspace, offer = null, now, onDragStart
   else if (row.kind === 'sticky' || row.kind === 'ask' || row.kind === 'snippet') body = <pre className="qs-text">{d.text}</pre>
   else if (row.kind === 'note') body = <NotePreview workspace={workspace} id={d.go?.[1]?.noteId} />
   else if (row.kind === 'node') body = <NodePreview workspace={workspace} id={d.go?.[1]?.folderId} />
-  else body = <div className="qs-glyph"><RowIcon row={row} weight="light" /></div>
+  else body = <div className="qs-glyph"><RowTile row={row} className="qs-big-tile" /></div>
 
   return (
     <section className="qs-preview" aria-label="Preview">

@@ -146,11 +146,12 @@ export function Desk() {
   const [filedToast, showFiled] = useUndoToast()
   useAutoFile({ workspace, commit, hydrated, onFiled: (noteId) => offDesk(noteId), onToast: showFiled })
 
-  /* Blur at zero means a clear desk: the Mac's frosting comes off entirely. */
-  const clear = workspace?.settings?.blur === 0
+  /* Blur (Settings → Appearance): main blurs what's behind the desk by this much; zero is a clear desk. */
+  const blurAmount = Number.isFinite(workspace?.settings?.blur) ? workspace.settings.blur : 60
   useEffect(() => {
-    bridge?.setClear?.(clear)
-  }, [bridge, clear])
+    bridge?.setClear?.(blurAmount === 0)
+    bridge?.setBlur?.(blurAmount)
+  }, [bridge, blurAmount])
 
   /* Main decides; the page only shows it, whoever asked: the line's switch, ⇧⌘U in the Go
      menu or the menu-bar icon. When one of those didn't work, the status says why. */
@@ -580,7 +581,7 @@ export function Desk() {
 
       {sky && (
         <div className={`sky-shell ${sky === 'leaving' ? 'is-leaving' : ''}`} inert={sky === 'leaving' || welcome || undefined}>
-          <Sky
+          <ErrorBoundary where="The canvas"><Sky
             ref={skyRef}
             workspace={workspace}
             commit={commit}
@@ -595,7 +596,7 @@ export function Desk() {
               place(key, null)
               return () => place(key, spot)
             }}
-          />
+          /></ErrorBoundary>
         </div>
       )}
 

@@ -445,7 +445,14 @@ async function main() {
   await page.screenshot({ path: `${OUT}/settings-ring.png` })
   // Screenshots: CleanShot X is on the stand-in Mac; recent captures are off until turned on; each capture can have a key.
   await goTo('Screenshots')
-  await page.getByText('With CleanShot X', { exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: Screenshots did not say CleanShot X takes them'))
+  await page.getByRole('radio', { name: 'CleanShot X' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: Screenshots did not offer CleanShot X'))
+  if (await page.getByRole('radio', { name: 'CleanShot X' }).getAttribute('aria-checked').catch(() => null) !== 'true') problems.push('settings: CleanShot X was not the tool while it is installed')
+  // CleanShot is never forced: the Mac's own can take them instead, and Recent captures (CleanShot's) step aside.
+  await page.getByRole('radio', { name: 'The Mac’s own' }).click()
+  await page.getByText('Save to', { exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: picking the Mac’s own did not offer where to save'))
+  if ((await page.evaluate(() => window.osatSearch.settings())).captures?.using !== 'mac') problems.push('settings: the Mac’s own screenshots were not saved as the choice')
+  await page.getByRole('radio', { name: 'CleanShot X' }).click()
+  await page.getByText('Recent captures in the quick bar', { exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: going back to CleanShot X did not bring Recent captures back'))
   const recentSwitch = page.getByRole('switch', { name: 'Show recent captures in the quick search' })
   await recentSwitch.check()
   await sleep(400)

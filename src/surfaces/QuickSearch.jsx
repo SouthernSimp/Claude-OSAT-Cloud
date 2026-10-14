@@ -17,7 +17,7 @@ import { cleanError, useAi } from '../assistant/useAi.js'
 import { findAll } from '../lib/find.js'
 import { addSticky, linkMentions } from '../nodes-model.js'
 import { captureThought, folderPath } from '../notes-model.js'
-import { AppIcon, RowIcon } from '../search/icons.jsx'
+import { AppIcon, RowTile, typeOf } from '../search/icons.jsx'
 import { Preview } from '../search/Preview.jsx'
 import { QuickSticky } from '../search/QuickSticky.jsx'
 import { useSources } from '../search/useSources.js'
@@ -43,6 +43,8 @@ const comboOf = (event) => {
 }
 
 // What counts as picking a row (so it comes first next time): opening, pasting or running it, not ⌘K's other actions.
+/* Rows worth a big preview beside the list (a file, a copy, a note, a layout…); apps and commands stay one clean list. */
+const PREVIEWS = new Set(['file', 'folder', 'text', 'link', 'email', 'phone', 'number', 'image', 'shot', 'note', 'node', 'snippet', 'layout', 'menu', 'calc'])
 const PICKED = new Set(['open', 'go', 'open-app', 'open-app-named', 'paste', 'copy', 'paste-snippet', 'copy-snippet', 'system', 'snap', 'open-link', 'shot-open', 'capture', 'emoji'])
 
 export function QuickSearchSurface() {
@@ -568,6 +570,9 @@ export function QuickSearchSurface() {
     : mode === 'ask' ? 'Ask the AI… Return asks'
       : scope === 'all' ? `Search, ask, or write a sticky…${full ? '' : '  ↓ for what you copied'}` : scope === KILL_SCOPE ? 'Filter running apps…' : scope === MENUS_SCOPE ? `Search ${found.menus?.app || 'this app'}’s menus…` : `Search ${tabs.find(([id]) => id === scope)?.[1] || ''}…`
 
+  // Raycast-style: a plain list for apps and commands; the preview only where there is something to look at.
+  const previewing = Boolean(selected || picker) || rows.some((item) => PREVIEWS.has(item.kind))
+
   return (
     <>
       {chatKept && workspace && (
@@ -635,7 +640,7 @@ export function QuickSearchSurface() {
             )}
           </nav>}
 
-          <div className="qs-body">
+          <div className="qs-body" data-preview={previewing ? undefined : 'off'}>
             {picker
               ? <NodePicker workspace={workspace} onPick={(folderId) => addTo(picker.row, folderId)} onClose={() => { setPicker(null); input.current?.focus() }} />
               : (
@@ -659,8 +664,9 @@ export function QuickSearchSurface() {
                       >
                         {item.kind === 'app' || item.kind === 'process' ? <AppIcon bridge={bridge} row={item} />
                           : item.kind === 'image' && item.data.thumb ? <img className="qs-row-icon qs-thumb" src={item.data.thumb} alt="" draggable={false} />
-                            : <RowIcon row={item} />}
+                            : <RowTile row={item} />}
                         <span className="qs-row-text"><b>{item.title}</b><small>{item.subtitle}</small></span>
+                        {read.scope === 'all' && typeOf(item) && <span className="qs-type">{typeOf(item)}</span>}
                         {(item.pinned || item.data?.pinned) && <PushPin weight="fill" className="qs-pin" aria-label="Pinned" />}
                         {item.kind === 'menu' && item.data.keys && <kbd className="qs-menu-key" title="Its keys in this app">{item.data.keys}</kbd>}
                         {index === active ? <kbd>↵</kbd> : item.kind === 'ask' ? <kbd className="is-quiet">⌘↵</kbd> : item.kind === 'sticky' ? <kbd className="is-quiet">⌥↵</kbd>
@@ -683,7 +689,7 @@ export function QuickSearchSurface() {
                   </dl>
                 </footer>
               </section>
-            ) : <Preview row={picker ? picker.row : row} bridge={bridge} workspace={workspace} offer={picker ? null : offer} now={new Date()} onDragStart={picker ? undefined : dragOut(row)} />}
+            ) : previewing && <Preview row={picker ? picker.row : row} bridge={bridge} workspace={workspace} offer={picker ? null : offer} now={new Date()} onDragStart={picker ? undefined : dragOut(row)} />}
             {menu && row && (
               <div className="qs-actions" role="menu" aria-label="Actions">
                 {actions.map((action, index) => (
@@ -723,13 +729,16 @@ export function QuickSearchSurface() {
             ) : toast ? (
               <p role="status" className="qs-toast">{toast.message}<button type="button" onClick={() => { const undo = toast.undo; setToast(null); undo() }}>{toast.label || 'Undo'}</button></p>
             ) : note ? <p role="status">{note}</p> : (
-              <p className="qs-keys">
-                {actions[0] && !['sticky', 'ask-ai'].includes(actions[0].id) && <span><kbd>↵</kbd> {actions[0].label}</span>}
-                <span><kbd>⇥</kbd> Ask AI</span>
-                <span><kbd>⌥↵</kbd> Save as a sticky</span>
-                {actions.length > 1 && <span><kbd>⌘K</kbd> More</span>}
-                <span><kbd>esc</kbd> Back</span>
-              </p>
+              <>
+                <p className="qs-keys">
+                  <span><kbd>⇥</kbd> Ask AI</span>
+                  <span><kbd>⌥↵</kbd> Save as a sticky</span>
+                </p>
+                <p className="qs-act">
+                  {actions[0] && !['sticky', 'ask-ai'].includes(actions[0].id) && <span className="qs-primary">{actions[0].label} <kbd>↵</kbd></span>}
+                  {actions.length > 1 && <><i className="qs-sep" aria-hidden="true" /><span>Actions <kbd>⌘K</kbd></span></>}
+                </p>
+              </>
             )}
             {!ready && <span className="qs-wait">Opening your notes…</span>}
           </footer>

@@ -6,8 +6,8 @@
    away (on the Mac). */
 const { displayAt } = require('../desk.cjs')
 
-const BAR = { width: 700, height: 76 }
-const FULL = { width: 1000, height: 580 }
+const BAR = { width: 760, height: 60 }
+const FULL = { width: 820, height: 520 }
 const CHAT = { width: 700, height: 620 }
 const SIZES = { bar: BAR, full: FULL, chat: CHAT }
 

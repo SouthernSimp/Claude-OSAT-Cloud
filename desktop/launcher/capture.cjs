@@ -35,9 +35,11 @@ function createCapture({
   const detect = () => (found = look())
   const screen = () => (mac && systemPreferences?.getMediaAccessStatus ? systemPreferences.getMediaAccessStatus('screen') : 'unavailable')
 
+  /* `installed`: CleanShot X is on this Mac; `cleanshot`: OSAT uses it (installed, and not switched to the Mac's own). */
   async function status() {
-    const cleanshot = await (found || detect())
-    return { cleanshot, mac, list: model.available({ cleanshot, mac }), recent: settings().recent, saveTo: settings().saveTo, screen: cleanshot ? null : screen() }
+    const installed = await (found || detect())
+    const cleanshot = installed && settings().using !== 'mac'
+    return { cleanshot, installed, mac, list: model.available({ cleanshot, mac }), recent: settings().recent, saveTo: settings().saveTo, using: settings().using || 'cleanshot', screen: cleanshot ? null : screen() }
   }
 
   const folderFor = (to) => path.join(home, to === 'pictures' ? 'Pictures' : 'Desktop', model.FOLDER_NAME)
@@ -48,7 +50,7 @@ function createCapture({
   async function take(id, { tell = false } = {}) {
     const now = await status()
     if (!model.captureById(id) || !now.list.includes(id)) {
-      if (tell && mac) notify({ title: 'OSAT', body: `${model.captureById(id)?.label || 'That'} needs CleanShot X, and it isn’t on this Mac.` })
+      if (tell && mac) notify({ title: 'OSAT', body: `${model.captureById(id)?.label || 'That'} needs CleanShot X${now.installed ? ': pick it in Settings → Screenshots.' : ', and it isn’t on this Mac.'}` })
       return { ok: false, reason: mac ? 'cleanshot' : 'mac' }
     }
     await hidePanels()
@@ -138,7 +140,7 @@ function createCapture({
   /* ---- Recent captures: CleanShot's history folder, read only ---- */
 
   async function recent(limit = 12) {
-    if (!settings().recent || !(await (found || detect()))) return []
+    if (!settings().recent || settings().using === 'mac' || !(await (found || detect()))) return []
     const folders = await fsp.readdir(mediaDir, { withFileTypes: true }).catch(() => [])
     // ponytail: the newest 40 folders by date; CleanShot makes one per capture, so that is plenty for 12.
     const dated = await Promise.all(folders.filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))

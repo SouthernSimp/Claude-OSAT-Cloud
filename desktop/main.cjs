@@ -224,6 +224,38 @@ app.on('web-contents-created', (_event, contents) => contents.on('did-finish-loa
   accents.delete(contents)
   paintAccent(contents)
 }))
+/* One of OSAT's own pages (the desk, the quick bar, the ring) whose page process died comes straight back, so a crash
+   never leaves a grey window that only quitting fixes. Web pages in the Browser are left alone; at most once in 10 s. */
+const revived = new WeakMap()
+app.on('render-process-gone', (_event, contents, details) => {
+  if (quitting || details?.reason === 'clean-exit' || contents.isDestroyed() || !contents.getURL().startsWith('file:')) return
+  if (Date.now() - (revived.get(contents) || 0) < 10000) return
+  revived.set(contents, Date.now())
+  setTimeout(() => { if (!contents.isDestroyed()) contents.reload() }, 300)
+})
+
+/* The desk's blur. macOS's vibrancy has one fixed blur, so the Appearance slider only tinted it; osat-blur
+   (desktop/helpers/osat-blur.m) sets the window server's own blur radius on the desk instead, so the slider is a real
+   blur, 0 (clear) to deep. Without the module (an older build, not a Mac) the desk keeps the fixed frosting. */
+const deskLook = { amount: 60, clear: false }
+let blurLoaded
+function blurModule() {
+  if (blurLoaded !== undefined) return blurLoaded
+  blurLoaded = null
+  if (process.platform !== 'darwin') return null
+  const file = app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-blur.node') : path.join(__dirname, '..', 'build', 'helpers', 'osat-blur.node')
+  try { blurLoaded = require(file) } catch (error) { console.warn('OSAT: the blur module did not load; the fixed frosting stays.', error?.message) }
+  return blurLoaded
+}
+function applyDeskBlur() {
+  if (process.platform !== 'darwin' || !mainWindow || mainWindow.isDestroyed()) return
+  const amount = deskLook.clear ? 0 : deskLook.amount
+  const blur = blurModule()
+  let real = false
+  if (blur) { try { real = blur.setBlur(mainWindow.getNativeWindowHandle(), Math.round(amount * 0.6)) === true } catch { real = false } }
+  // With the real blur the vibrancy comes off (it would blur twice); without it, frosting unless the desk is clear.
+  mainWindow.setVibrancy(real || amount === 0 ? null : 'fullscreen-ui')
+}
 
 function showDesk() {
   if (!mainWindow || mainWindow.isDestroyed()) return createWindow()
@@ -239,6 +271,7 @@ function showDesk() {
   // Dock slid up and down and the desk blinked behind it (Phase 13c).
   if (mac) window.setVisibleOnAllWorkspaces(true, { skipTransformProcessType: true })
   window.show()
+  applyDeskBlur()
   if (mac) {
     app.focus({ steal: true })
     window.setVisibleOnAllWorkspaces(false, { skipTransformProcessType: true })
@@ -598,7 +631,14 @@ function registerDesk() {
   // Blur set to zero in Appearance: no frosting, the desktop shows through clear.
   ipcMain.on('desk:clear', (event, clear) => {
     try { fromDesk(event) } catch { return }
-    if (process.platform === 'darwin') mainWindow.setVibrancy(clear === true ? null : 'fullscreen-ui')
+    deskLook.clear = clear === true
+    applyDeskBlur()
+  })
+  // Appearance → Blur (0…100): a real blur of what's behind the desk, as strong as asked.
+  ipcMain.on('desk:blur', (event, amount) => {
+    try { fromDesk(event) } catch { return }
+    if (Number.isFinite(amount)) deskLook.amount = Math.min(Math.max(Math.round(amount), 0), 100)
+    applyDeskBlur()
   })
   // The shortcuts, read on the desk and changed in Settings.
   handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), search: shortcutInfo('search'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
@@ -1434,7 +1474,7 @@ function selfTest(modelPath) {
   setTimeout(() => finish(false, 'timed out'), 180000).unref()
   child.on('message', (message) => {
     if (message.type === 'probe') {
-      if (!modelPath) finish(true, `engine ok (${message.gpu})`)
+      if (!modelPath) finish(true, `engine ok (${message.gpu})${process.platform === 'darwin' ? (blurModule() ? ', blur ok' : ', blur missing') : ''}`)
       else child.postMessage({ type: 'load', modelPath })
     } else if (message.type === 'loaded') {
       child.postMessage({ type: 'chat', id: 'self-test', messages: [{ role: 'user', content: 'Say hello in three words.' }], maxTokens: 24 })

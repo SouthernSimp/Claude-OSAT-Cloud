@@ -304,9 +304,12 @@ test('a line of noise from the helper changes nothing', async () => {
 
 /* ---- the helper, built and shipped ---- */
 
-test('the build script lists every Swift file in desktop/helpers', () => {
+test('the build script lists every Swift file in desktop/helpers, and the blur module', () => {
   const helpers = listHelpers(repo)
-  assert.deepEqual(helpers.map((helper) => helper.name), ['osat-hyper', 'osat-keys', 'osat-mouse', 'osat-window'])
+  assert.deepEqual(helpers.map((helper) => helper.name), ['osat-blur', 'osat-hyper', 'osat-keys', 'osat-mouse', 'osat-window'])
+  const blur = helpers.find((helper) => helper.name === 'osat-blur')
+  assert.equal(blur.module, true)
+  assert.equal(blur.out, path.join(repo, 'build', 'helpers', 'osat-blur.node'))
   const hyper = helpers.find((helper) => helper.name === 'osat-hyper')
   assert.equal(hyper.out, path.join(repo, 'build', 'helpers', 'osat-hyper'))
   assert.equal(existsSync(hyper.source), true)
