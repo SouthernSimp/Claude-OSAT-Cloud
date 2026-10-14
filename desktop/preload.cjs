@@ -439,6 +439,16 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   capture: search('capture'),
   captureStatus: search('capture-status'),
   captureRecent: search('capture-recent'),
+  // A screenshot for the sticky being written (true: an area you drag), and a sticky's picture to show.
+  stickyPicture: search('sticky-picture'),
+  // Uninstall an app: what would go, then the Bin, then Undo (desktop/launcher/uninstall.cjs).
+  uninstallPlan: search('uninstall-plan'),
+  // Keys for this app: the menus of the app you were in, and pressing one item (desktop/helpers/osat-window.swift).
+  menus: search('menus'),
+  pressMenu: search('press-menu'),
+  uninstall: search('uninstall'),
+  uninstallUndo: search('uninstall-undo'),
+  picture: search('picture'),
   captureThumb: search('capture-thumb'),
   captureOpen: search('capture-open'),
   captureReveal: search('capture-reveal'),

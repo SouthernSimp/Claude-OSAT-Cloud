@@ -24,12 +24,27 @@
 .settings-nav { min-height: 0; overflow-y: auto; padding: 2px 8px 20px; }
 .settings-nav-group + .settings-nav-group { margin-top: 8px; }
 .settings-nav-group h3 { padding: 12px 10px 6px; font: 650 var(--t-2xs) var(--font); letter-spacing: 0; color: var(--faint); }
-.settings-nav button { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 8px; border-radius: 6px; color: var(--ink); font-size: var(--t-md); font-weight: 520; text-align: left; }
+/* Every page has its own tile, as in the Mac's System Settings: one cool hue each (pages.js `tint`), a white glyph, a
+   little light from above. The page you are on is a soft accent row, not a louder tile. */
+.settings [data-tint] { --tint: var(--accent); }
+.settings [data-tint="blue"] { --tint: oklch(60% 0.17 256); }
+.settings [data-tint="sky"] { --tint: oklch(66% 0.13 232); }
+.settings [data-tint="indigo"] { --tint: oklch(55% 0.18 277); }
+.settings [data-tint="violet"] { --tint: oklch(57% 0.19 300); }
+.settings [data-tint="pink"] { --tint: oklch(63% 0.19 350); }
+.settings [data-tint="rose"] { --tint: oklch(60% 0.2 15); }
+.settings [data-tint="slate"] { --tint: oklch(56% 0.03 255); }
+.settings [data-tint="graphite"] { --tint: oklch(42% 0.015 260); }
+.settings-nav button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: 32px; padding: 0 8px; border-radius: 8px; color: var(--ink); font-size: var(--t-md); font-weight: 520; text-align: left; transition: background var(--d-fast) var(--ease-out), color var(--d-fast); }
 .settings-nav button:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
-.settings-nav button[aria-current="page"] { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink-strong); font-weight: 620; }
-.settings-nav i { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
-.settings-nav i svg { width: 15px; height: 15px; }
-.settings-nav [aria-current="page"] i { background: var(--accent); color: var(--accent-ink); }
+.settings-nav button:active i { transform: scale(0.92); }
+.settings-nav button[aria-current="page"] { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--ink-strong); font-weight: 620; }
+.settings-nav i, .setting-tile {
+  background: var(--tint) linear-gradient(180deg, rgb(255 255 255 / 20%), rgb(255 255 255 / 0%) 60%); color: #fff;
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 22%), 0 1px 1.5px rgb(0 0 0 / 16%);
+}
+.settings-nav i { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; transition: transform var(--d-fast) var(--ease-spring); }
+.settings-nav i svg { width: 13px; height: 13px; }
 
 /* ---- The page ------------------------------------------------------------------------------------------------- */
 .settings-main { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 30px clamp(16px, 4cqi, 40px) 64px; }
@@ -40,8 +55,9 @@
 
 /* A page's title sits left, like a document's: a small tile, the name, one grey line under it. */
 .setting-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 12px; padding: 0 6px 14px; border-bottom: 1px solid var(--line-soft); }
-.setting-tile { grid-row: span 2; width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--r-md); background: var(--accent); color: var(--accent-ink); }
-.setting-tile svg { width: 19px; height: 19px; }
+.setting-tile { grid-row: span 2; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; animation: tile-in 420ms var(--ease-spring) both; }
+.setting-tile svg { width: 20px; height: 20px; }
+@keyframes tile-in { from { opacity: 0; transform: scale(0.7) rotate(-8deg); } }
 .setting-head h2 { font-size: var(--t-xl); }
 .setting-head p { max-width: 60ch; color: var(--muted); font-size: var(--t-sm); line-height: 1.4; }
 .setting-found { display: none; padding: 6px 6px 0; font-size: var(--t-xl); }
@@ -57,11 +73,12 @@
 .settings-legacy > .ai-management { display: grid; gap: var(--set-gap); }
 .setting-group:not(:has(.setting-row)) { display: none; }
 .setting-group > h3 { padding: 0 6px; font: 600 var(--t-xs) var(--font); letter-spacing: 0; color: var(--muted); }
-.setting-card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); }
+.setting-card { border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface-raised); box-shadow: var(--e-1); overflow: clip; }
 .setting-card.is-padded { padding: 18px 20px; }
 .setting-note { padding: 0 6px; font-size: var(--t-xs); line-height: 1.5; color: var(--faint); }
 
-.setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; min-height: 58px; padding: 12px 16px; }
+.setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 18px; min-height: 50px; padding: 10px 16px; transition: background var(--d-fast); }
+.setting-row:hover { background: color-mix(in srgb, var(--ink) 2%, transparent); }
 .setting-row + .setting-row { border-top: 1px solid var(--line-soft); }
 .setting-text { display: grid; flex: 1 1 260px; gap: 3px; min-width: 0; }
 .setting-text b { font-size: var(--t-md); font-weight: 620; line-height: 1.3; color: var(--ink-strong); }
@@ -70,7 +87,7 @@
 .setting-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 12px; }
 .setting-row.is-stacked { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .setting-row.is-stacked .setting-control { display: grid; justify-content: stretch; gap: 8px; }
-.setting-kbd { padding: 3px 9px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 7%, transparent); font: 600 var(--t-sm) var(--font); color: var(--ink); }
+.setting-kbd { padding: 3px 9px; border-radius: 6px; background: var(--surface-sunken); box-shadow: inset 0 -1px 0 var(--line-strong); font: 600 var(--t-sm) var(--font); color: var(--ink); }
 .setting-inline { font-size: var(--t-xs); color: var(--muted); }
 
 /* ---- Controls ------------------------------------------------------------------------------------------------- */
@@ -206,3 +223,4 @@
 .snippet-form .is-wide { grid-column: 1 / -1; }
 .snippet-form button { justify-self: start; }
 .snippet-edit .icon-plain { margin-top: 22px; }
+.setting-list { margin: 4px 0 0; padding-left: 1.1em; display: grid; gap: 3px; }

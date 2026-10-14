@@ -16,6 +16,21 @@ import { findLayouts, layoutsOf } from './window-layouts.mjs'
 export const SCOPES = [['all', 'Everything'], ['files', 'Files'], ['clipboard', 'Clipboard'], ['apps', 'Apps'], ['notes', 'Notes'], ['windows', 'Windows']]
 // Kill Process is a list of its own, opened from a row (never a tab), so it has a name but no switch.
 export const KILL_SCOPE = 'kill'
+/* Keys for this app (Oct 2026, CheatSheet's and Raycast's Search Menu Items): the menus of the app you were in, read by
+   the osat-window helper. Nothing typed: every shortcut it has; words: every menu item, and Return presses it. */
+export const MENUS_SCOPE = 'menus'
+const WANTS_MENUS = /^(keys?|shortcuts?|keyboard shortcuts|hotkeys|keybinds?|menus?|menu items?|cheat ?sheet|keys for this app)$/i
+export function menuRows(menus, query) {
+  const words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean)
+  const items = (menus?.items || []).filter((item) => Array.isArray(item.path) && item.path.length > 1)
+  const shown = words.length
+    ? items.filter((item) => words.every((word) => `${item.path.join(' ')} ${item.key || ''}`.toLowerCase().includes(word)))
+    : items.filter((item) => item.key)
+  return shown.slice(0, 300).map((item) => ({
+    key: `menu:${item.path.join('\u203a')}`, source: 'menus', kind: 'menu', title: item.path.at(-1), subtitle: item.path.slice(0, -1).join(' › '),
+    section: menus.app || 'This app', data: { path: item.path, keys: item.key || null, plain: item.key || '' },
+  }))
+}
 const SCOPE_OF_SOURCE = { files: 'files', clipboard: 'clipboard', apps: 'apps', notes: 'notes', windows: 'windows' }
 
 export function scopesOn(settings) {
@@ -58,6 +73,7 @@ export function wants(read, settings, { fileFilter = 'all' } = {}) {
     clipboard: on('clipboard') && (all || read.scope === 'clipboard'),
     apps: on('apps') && (read.scope === 'apps' || (all && read.query.length > 0)),
     processes: read.scope === KILL_SCOPE,
+    menus: read.scope === MENUS_SCOPE,
   }
 }
 
@@ -235,6 +251,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   // Screenshots and recording, and CleanShot's recent captures (shared/capture-model.mjs), only under Everything.
   if (read.scope === 'all') rows.push(...(found.captures || []), ...(found.shots || []))
   if (read.scope === 'all' && wantsKill(read.query)) rows.push({ key: 'kill', source: 'tools', kind: 'more', title: 'Kill Process', subtitle: 'Quit or force quit a running app', section: 'Tools', data: { scope: KILL_SCOPE } })
+  if (read.scope === 'all' && WANTS_MENUS.test(read.query)) rows.push({ key: 'menus', source: 'tools', kind: 'more', title: 'Keys for this app', subtitle: 'Every shortcut and menu item of the app you’re in', section: 'Tools', data: { scope: MENUS_SCOPE } })
   if (read.scope === 'all' && /^(emoji|emojis|symbols?|characters?)$/i.test(read.query)) rows.push({ key: 'emoji', source: 'tools', kind: 'emoji', title: 'Emoji & symbols', subtitle: 'Open the Mac’s character picker', section: 'Tools', data: {} })
 
   const has = read.query.length > 0
@@ -251,6 +268,7 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
     return dedupe(rows)
   }
   if (read.scope === KILL_SCOPE) return matchApps(found.processes || [], read.query).map(processRow)
+  if (read.scope === MENUS_SCOPE) return menuRows(found.menus, read.query)
   if (read.scope === 'apps') return [...rows, ...rankApps(found.apps || [], read.query).slice(0, 40).map((item) => appRow(item, 'Apps'))]
   const keys = settings.windows?.on ? settings.windows.hotkeys : {}
   if (read.scope === 'windows') return [...rows, ...findLayouts(read.query, layoutsOf(settings.windows)).map((layout) => layoutRow(layout, keys))]
@@ -359,14 +377,16 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
       { id: 'shot-reveal', label: 'Show in Finder', keys: '⇧↵' },
       ...(/\.(mp4|mov|gif)$/i.test(row.title) ? [] : [{ id: 'shot-copy', label: 'Copy', keys: '⇧⌘C' }]),
     ]
-    case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⇧↵' }]
+    case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⇧↵' },
+      ...(/^\/System\//.test(String(row.data?.path)) ? [] : [{ id: 'uninstall', label: 'Uninstall…', hint: 'The app and what it left behind go to the Bin', keys: '⌘⌫', danger: true }])]
     case 'note': return [{ id: 'go', label: 'Open', keys: '↵' }]
     case 'node': return [{ id: 'go', label: 'Open on the canvas', keys: '↵' }]
     case 'room': return [{ id: 'go', label: 'Open', keys: '↵' }]
     case 'calc': return [{ id: 'copy-text', label: 'Copy the answer', keys: '↵' }, { id: 'paste-text', label: 'Paste the answer', keys: '⇧↵' }]
     case 'sticky': return [{ id: 'sticky', label: 'Save as a sticky', keys: '↵' }]
     case 'ask': return [{ id: 'ask-ai', label: 'Ask', keys: '↵' }]
-    case 'more': return [{ id: 'scope', label: row.data?.scope === KILL_SCOPE ? 'Open' : 'Show all', keys: '↵' }]
+    case 'more': return [{ id: 'scope', label: [KILL_SCOPE, MENUS_SCOPE].includes(row.data?.scope) ? 'Open' : 'Show all', keys: '↵' }]
+    case 'menu': return [{ id: 'press-menu', label: 'Do it', hint: 'Presses this menu item in the app', keys: '↵' }, ...(row.data?.keys ? [{ id: 'copy-text', label: 'Copy its keys', keys: '⌘C' }] : [])]
     case 'process': return [{ id: 'kill', label: 'Kill', hint: 'Asks it to quit', keys: '↵' }, { id: 'force-kill', label: 'Force Kill', hint: 'Ends it at once; unsaved work is lost', keys: '⌘↵', danger: true }]
     case 'system': return [{ id: 'system', label: row.data?.id?.startsWith('pane:') ? 'Open' : row.title, keys: '↵' }]
     case 'snippet': return [{ id: 'paste-snippet', label: 'Paste', keys: '↵' }, { id: 'copy-snippet', label: 'Copy', keys: '⇧↵' }]
@@ -396,6 +416,7 @@ export function detailsFor(row, { now = new Date() } = {}) {
     case 'layout': return [['Moves', 'the window you were in'], ...(d.key ? [['Key', d.key.split('+').map((part) => ({ Control: '⌃', Alt: '⌥', Shift: '⇧', Command: '⌘' }[part] || part)).join('')]] : [])]
     case 'app': return [['Kind', 'Application'], ['Where', d.path]]
     case 'process': return [['Kind', 'Running app'], ['Where', d.path], ['Processes', String(d.count)]]
+    case 'menu': return [['In', `${row.section} › ${d.path.slice(0, -1).join(' › ')}`], ['Keys', d.keys || 'None; Return still does it']]
     case 'capture': return [['With', row.subtitle.replace(/^With /, '')]]
     case 'shot': return [['Kind', /\.(mp4|mov|gif)$/i.test(d.name) ? 'Recording' : 'Screenshot'], ['Taken', DAY.format(new Date(d.at))], ['Kept by', 'CleanShot X']]
     case 'note': return [['Kind', 'Note'], ['Where', row.subtitle]]

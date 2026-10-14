@@ -577,7 +577,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                   {streaming ? (
                     <>
                       <Markdown text={streaming} headingOffset={2} />
-                      <span className="caret" aria-hidden="true" />
+                      <span className="typing-caret" aria-hidden="true" />
                     </>
                   ) : !agent.asking && (
                     <p className="thinking"><CircleNotch className="spin" /> Thinking on this Mac…</p>

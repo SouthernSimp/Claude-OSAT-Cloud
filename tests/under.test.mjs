@@ -215,6 +215,9 @@ const ALLOWED = {
     // A web address Nate chose in the quick search (a keyword like `g cats`, or a link he copied) opens in his own
     // browser. Refused offline on the same line (and search:open-link answers "the web waits").
     'if (!offline() && /^https?:\\/\\//i.test(url)) await shell.openExternal(url)',
+    // An app's own link (cleanshot://, obsidian://) that is one of Nate's saved quick links; never javascript:, data:,
+    // file: or http (shared/launcher-model.mjs APP_LINK). Refused offline on the same line: the app might go online.
+    'if (!offline() && launcherModel.APP_LINK.test(url)) await shell.openExternal(url)',
   ],
   'desktop/launcher/capture.cjs': [
     // A screenshot or recording by CleanShot X, an app on this Mac: only cleanshot:// commands OSAT builds itself, and

@@ -1,22 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from '@phosphor-icons/react'
 
+import { pictureLine, pictureOf } from '../../shared/capture-model.mjs'
 import { carryable } from '../lib/carry.js'
+import { Picture } from '../lib/Picture.jsx'
 import { linkMentions } from '../nodes-model.js'
 import { relinkRenamedNote, updateNote } from '../notes-model.js'
 
 /* The title (the first line) and what's under it, as a sticky shows them: steps as boxes,
    bullets as dots, tags left as written (#N2D is how Nate writes on paper). */
 export function stickyText(note) {
-  const lines = String(note.markdown || note.title || '').split('\n')
+  const all = String(note.markdown || note.title || '').split('\n')
+  // Screenshots (Hyper N's sticky) are drawn under the words, not written out.
+  const pictures = all.map(pictureOf).filter(Boolean)
+  const lines = all.filter((line) => !pictureOf(line))
   const first = lines.findIndex((line) => line.trim())
   const boxes = (text) => text
     .replace(/^\s*[-*+]\s+\[[xX]\]\s+/gm, '☑ ')
     .replace(/^\s*[-*+]\s+\[ \]\s+/gm, '☐ ')
-    .replace(/^\s*[-*+]\s+/gm, '• ')
-  const title = first < 0 ? note.title || '' : boxes(lines[first].replace(/^#{1,6}\s+/, '').trim())
-  const body = boxes(lines.slice(first + 1).join('\n').trim())
-  return { title, body }
+    .replace(/^(\s*)[-*+]\s+/gm, '$1• ')
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1$2')
+  const title = first < 0 ? (pictures.length ? 'Screenshot' : note.title || '') : boxes(lines[first].replace(/^#{1,6}\s+/, '').trim())
+  const body = first < 0 ? '' : boxes(lines.slice(first + 1).join('\n').trim())
+  return { title, body, pictures }
 }
 
 /* Saves what was written on a sticky: its first line is its title, and its @s point at
@@ -51,7 +58,7 @@ export function Sticky({
 }) {
   const [editing, setEditing] = useState(startEditing)
   const field = useRef(null)
-  const { title, body } = stickyText(note)
+  const { title, body, pictures } = stickyText(note)
 
   useEffect(() => {
     if (!editing) return
@@ -64,8 +71,9 @@ export function Sticky({
     const text = field.current?.value ?? ''
     setEditing(false)
     if (save) {
-      if (!text.trim()) onToss?.()
-      else writeSticky(commit, note, text)
+      // Its screenshots aren't in the field; they stay, under the words.
+      if (!text.trim() && !pictures.length) onToss?.()
+      else writeSticky(commit, note, [text.replace(/\s+$/, '') || 'Screenshot', ...pictures.map(pictureLine)].join('\n'))
     }
     onEditingDone?.()
   }
@@ -92,7 +100,7 @@ export function Sticky({
         <textarea
           ref={field}
           className="sticky-field"
-          defaultValue={note.markdown || note.title}
+          defaultValue={pictures.length ? String(note.markdown || '').split('\n').filter((line) => !pictureOf(line)).join('\n').trim() : note.markdown || note.title}
           aria-label="Write on the sticky"
           maxLength={8000}
           onBlur={() => done(true)}
@@ -108,6 +116,7 @@ export function Sticky({
         <>
           <h4><Words text={title || 'Untitled'} note={note} mentions={mentions} /></h4>
           {body && <p><Words text={body} note={note} mentions={mentions} /></p>}
+          {pictures.length > 0 && <div className="sticky-pictures">{pictures.slice(0, 3).map((name) => <Picture key={name} name={name} width={360} />)}</div>}
         </>
       )}
       {!editing && onToss && (

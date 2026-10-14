@@ -4,7 +4,7 @@ import test from 'node:test'
 
 import {
   DEFAULT_SETTINGS, SEARCH_HOTKEY, hyperAlias, activeSources, applyPatch, botJob, canonicalKey, cleanSettings, handOff, holderOf, hyper, hyperLabel, keysOf, keywordAddress, matchKeyword, readLine, systemKey,
-  validAddress, validKeyword, withKey, wordsOf,
+  hostOf, validAddress, validKeyword, withKey, wordsOf,
 } from '../shared/launcher-model.mjs'
 
 const { DEFAULT_SEARCH_HOTKEY, hotkeyLabel, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
@@ -61,6 +61,10 @@ test('what is saved is read carefully: a bad hotkey, keyword or address falls ba
   assert.equal(validKeyword('two words'), false)
   assert.equal(validAddress('https://example.com/?q={query}'), true)
   assert.equal(validAddress('ftp://example.com'), false)
+  // Raycast's Quicklinks: folders and files, and apps' own links.
+  for (const ok of ['~/Desktop', '/Applications', '~/Library/CloudStorage/OneDrive-UNTSystem/Assignment Calendar Fall 2025.xlsx', 'cleanshot://open-history', 'obsidian://open?vault=x', 'raycast://extensions/x']) assert.equal(validAddress(ok), true, ok)
+  for (const bad of ['javascript://x', 'data://x', 'file:///etc', '~/../../etc', 'Desktop', '~/{query}']) assert.equal(validAddress(bad), false, bad)
+  assert.deepEqual(['~/Desktop/UNT Fall 2025/BAAS 3020', 'cleanshot://x', 'https://www.bypass.city/'].map(hostOf), ['BAAS 3020', 'cleanshot', 'bypass.city'])
   assert.equal(validAddress('https://'), false)
 })
 

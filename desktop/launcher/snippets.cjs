@@ -10,10 +10,12 @@
      snippet has a word; it stops with OSAT, and leaves if OSAT dies (its parent changed). Nothing goes on the network.
    `spawn` and `exec` are passed in, so the tests never start a process. */
 const { run } = require('../mac-files.cjs')
+const BUFFER = 32 // shared/snippets.mjs BUFFER: the letters the helper keeps
 
 /* The helper, for the OSAT process `owner`, watching `words` (lowercase). 1024 is NSEventMaskKeyDown. A key with ⌘ or ⌃
-   held, Return, Tab, Escape or an arrow starts the buffer again; ⌫ (51) takes one letter off. Its rules are
-   shared/snippets.mjs `typedStep`, written out here because the helper can't import it. */
+   held, Return, Tab, Escape or an arrow starts the buffer again; ⌫ (51) takes one letter off; a word that starts a
+   longer word waits for a space. Its rules are shared/snippets.mjs `typedStep`, written out here because the helper
+   can't import it. */
 const script = (owner, words) => `ObjC.import('Cocoa')
 ObjC.import('stdlib')
 ObjC.import('unistd')
@@ -22,6 +24,7 @@ const say = (line) => out.writeData($(line + '\\n').dataUsingEncoding($.NSUTF8St
 const words = ${JSON.stringify(words)}
 const RESET = [36, 48, 53, 76, 123, 124, 125, 126]
 let buffer = ''
+const wordOf = (text) => text.slice(text.search(/\\S*$/))
 $.NSApplication.sharedApplication
 $.NSApp.setActivationPolicy(1)
 $.NSEvent.addGlobalMonitorForEventsMatchingMaskHandler(1024, (event) => {
@@ -31,11 +34,14 @@ $.NSEvent.addGlobalMonitorForEventsMatchingMaskHandler(1024, (event) => {
   if (RESET.includes(code) || (flags & ((1 << 20) | (1 << 18)))) { buffer = ''; return }
   const typed = ObjC.unwrap(event.characters) || ''
   if (typed.length !== 1) { buffer = ''; return }
-  buffer = (buffer + typed.toLowerCase()).slice(-16)
-  for (let index = 0; index < words.length; index += 1) {
-    const word = words[index]
-    if (buffer.endsWith(word) && (buffer.length === word.length || /\\s/.test(buffer[buffer.length - word.length - 1]))) { buffer = ''; say('hit ' + index); return }
+  if (typed === ' ') {
+    const waiting = words.indexOf(wordOf(buffer))
+    if (waiting >= 0) { buffer = ''; say('hit ' + waiting + ' 1'); return }
   }
+  buffer = (buffer + typed.toLowerCase()).slice(-${BUFFER})
+  const word = wordOf(buffer)
+  const index = words.indexOf(word)
+  if (index >= 0 && !words.some((other) => other.length > word.length && other.startsWith(word))) { buffer = ''; say('hit ' + index) }
 })
 $.NSTimer.scheduledTimerWithTimeIntervalRepeatsBlock(2, true, () => { if ($.getppid() !== ${Number(owner) || 0}) $.exit(0) })
 say('ready')
@@ -43,7 +49,7 @@ $.NSApp.run`
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-function createSnippets({ spawn = null, exec = run, platform = process.platform, owner = process.pid, model, list = () => [], typedOn = () => false, trusted = () => false, clipboard, quiet = (target) => target, paste, log = () => {} }) {
+function createSnippets({ spawn = null, exec = run, keys = 'osat-keys', platform = process.platform, owner = process.pid, model, list = () => [], typedOn = () => false, trusted = () => false, clipboard, quiet = (target) => target, paste, log = () => {} }) {
   let child = null
   let words = []
   // 'unavailable' (not a Mac), 'off', 'access' (waiting for Accessibility), 'starting', 'listening', or 'failed'.
@@ -54,15 +60,15 @@ function createSnippets({ spawn = null, exec = run, platform = process.platform,
 
   /* Turns the n-th trigger just typed into its text: ⌫ for each letter of the word, then the text, through the
      clipboard, which is put back as it was. */
-  async function expand(index) {
+  async function expand(index, extra = 0) {
     const trigger = triggers[index]
     const snippet = trigger && list().find((item) => item.id === trigger.id)
     if (!snippet || !trusted()) return
-    const text = fill(snippet)
+    const text = fill(snippet) + (extra ? ' ' : '')
     const before = clipboard.readText()
     const quietly = quiet(clipboard)
     try {
-      await exec('osascript', ['-e', `tell application "System Events" to repeat ${trigger.keyword.length} times\nkey code 51\nend repeat`], { timeout: 4000 })
+      await exec(keys, [`backspace*${trigger.keyword.length + extra}`], { timeout: 4000 })
       quietly.writeText(text)
       await paste()
       await wait(400)
@@ -92,7 +98,7 @@ function createSnippets({ spawn = null, exec = run, platform = process.platform,
       for (const line of lines) {
         const said = model.readSnippetLine(line)
         if (said?.kind === 'ready') state = 'listening'
-        else if (said?.kind === 'hit') expand(said.index).catch(() => {})
+        else if (said?.kind === 'hit') expand(said.index, said.extra).catch(() => {})
       }
     })
     proc.stderr.on('data', (chunk) => log(String(chunk).trim().split('\n')[0]))

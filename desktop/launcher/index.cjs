@@ -14,19 +14,22 @@ const fs = require('node:fs')
 const fsp = require('node:fs/promises')
 const path = require('node:path')
 const { hotkeyLabel, validHotkey } = require('../desk.cjs')
-const { isSafeTextPreviewName, readTextFile } = require('../text-files.cjs')
+const { isSafeOpenFilename, isSafeTextPreviewName, readTextFile } = require('../text-files.cjs')
 const { createApps } = require('./apps.cjs')
 const { createCapture } = require('./capture.cjs')
 const { createClipboardHistory } = require('./clipboard-history.cjs')
 const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
 const { createCapsMapping, createHyper } = require('./hyper.cjs')
+const HYPER_APP_ID = 'ai.mccreery.osat' // package.json build.appId (the packaged package.json drops `build`)
 const { createMiddleClick } = require('./middle-click.cjs')
 const { createMouse, helperPath } = require('./mouse.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
 const { createProcesses } = require('./processes.cjs')
+const { createUninstall } = require('./uninstall.cjs')
+const { restoreItem, trashItem } = require('../mac-files.cjs')
 const { createSystem } = require('./system.cjs')
 const { createSnippets } = require('./snippets.cjs')
 const { readSelection } = require('./selection.cjs')
@@ -69,25 +72,35 @@ async function createLauncher({
   const hotkeys = createHotkeys({ globalShortcut, isTaken })
   const trusted = () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(false)
   // Window snapping: it needs Accessibility, and OSAT never moves its own windows.
-  const snap = createSnap({ exec, platform, trusted, screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel, windows: () => settings.windows })
+  // OSAT's small native helpers (desktop/helpers/*.swift): in the app's Resources, or build/helpers from source.
+  const helperFile = (name) => (app.isPackaged ? path.join(process.resourcesPath, 'helpers', name) : path.join(__dirname, '..', '..', 'build', 'helpers', name))
+  // Keys OSAT presses (paste, copy, a snippet's ⌫s, Lock Screen): the osat-keys helper, Accessibility only.
+  const keys = helperFile('osat-keys')
+  const snap = createSnap({ exec, platform, trusted, helper: helperFile('osat-window'), screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel, windows: () => settings.windows })
   // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
-  const system = createSystem({ exec, platform, trusted, model: systemModel })
+  const system = createSystem({ exec, keys, platform, trusted, model: systemModel })
   const processes = createProcesses({ exec, platform, model: processModel })
+  // Uninstall (uninstall.cjs): an app and what it left in ~/Library, to the Bin, with Undo.
+  const uninstall = createUninstall({ model: await sharedModule('uninstall-model.mjs'), apps, processes, exec, platform, fail, trash: (file) => trashItem(file), restore: (bin, to) => restoreItem(bin, to) })
   // Snippets: pasted from the bar, and (once turned on) typed in any app: snippets.cjs.
   const snippets = createSnippets({
-    spawn: spawnHelper, exec, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
-    clipboard, quiet: history.quiet, paste: () => pasteInto({ exec, platform, trusted: () => true }),
+    spawn: spawnHelper, exec, keys, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
+    clipboard, quiet: history.quiet, paste: () => pasteInto({ exec, keys, platform, trusted: () => true }),
     log: (text) => console.error('The snippets helper:', text),
   })
   // The Hyper key built in (Phase 63): Caps Lock → F20 and a helper that holds ⌃⌥⇧⌘ while it is down: hyper.cjs.
   const hyper = createHyper({
     spawn: spawnHelper, platform, model: hyperModel, trusted,
-    helperPath: app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-hyper') : path.join(__dirname, '..', '..', 'build', 'helpers', 'osat-hyper'),
+    helperPath: helperFile('osat-hyper'),
     mapping: createCapsMapping({
       model: hyperModel, platform, file: path.join(dataDir, 'hyper.json'),
       run: (args) => require('node:child_process').execFileSync('/usr/bin/hidutil', args, { encoding: 'utf8', timeout: 4000 }),
       log: (text) => console.error('The Hyper key:', text),
     }),
+    // OSAT's own Input Monitoring entry, cleared when it is stale (hyper.cjs says why). Only ever OSAT's own app id.
+    repair: () => {
+      try { require('node:child_process').execFileSync('/usr/bin/tccutil', ['reset', 'ListenEvent', HYPER_APP_ID], { timeout: 4000 }); return true } catch { return false }
+    },
     log: (text) => console.error('The Hyper key’s helper:', text),
   })
   const listenForHyper = () => hyper.sync(settings.hyper.own === true, { tap: settings.hyper.tap === true })
@@ -138,6 +151,9 @@ async function createLauncher({
     model: await sharedModule('capture-model.mjs'), shell, clipboard, nativeImage, systemPreferences, exec, platform, notify, fail, on,
     settings: () => settings.captures, thumbnail: files.thumbnail, panel: () => search?.window, from: { panel: (sender) => Boolean(search?.owns(sender)) },
     hidePanels: async () => { search?.hide(); ring?.hide(); await wait(150) },
+    picturesDir: path.join(dataDir, 'pictures'),
+    screenRegion: () => { const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds; return `${area.x},${area.y},${area.width},${area.height}` },
+    reshow: async () => search?.reshow(),
   })
 
   /* ---- Settings ---- */
@@ -194,6 +210,7 @@ async function createLauncher({
     if (key === 'act:ask') { search.show({ view: 'chat' }); return }
     if (key === 'act:selection') { await onSelection(); return }
     if (key === 'act:clipboard') { search.show({ scope: 'clipboard' }); return }
+    if (entry.kind === 'more' && typeof d.scope === 'string') { search.show({ scope: d.scope }); return }
     if (Array.isArray(d.go) && typeof d.go[0] === 'string') command({ view: d.go[0], detail: d.go[1] && typeof d.go[1] === 'object' ? d.go[1] : null })
   }
   /* A key on an app opens it. A key on a link opens it, or, when it wants words, opens the search with its word waiting. */
@@ -315,6 +332,18 @@ async function createLauncher({
   on('search:apps', async () => (settings.sources.apps.on ? apps.list() : []))
   // Kill Process: the running apps, and ending one (by the path the list gave; main finds its processes again).
   on('search:processes', async () => processes.list())
+  // Keys for this app: the menus of the app behind the bar, and pressing one of its items (osat-window, Accessibility).
+  const frontHelper = (args) => exec(helperFile('osat-window'), args, { timeout: 8000 }).then((out) => JSON.parse(out), () => ({ error: 'FAILED' }))
+  on('search:menus', async () => (platform === 'darwin' ? frontHelper(['menus']) : { error: 'MAC', items: [] }))
+  on('search:press-menu', async (titles) => {
+    if (!Array.isArray(titles) || titles.length < 2 || titles.length > 6 || !titles.every((title) => typeof title === 'string' && title.length > 0 && title.length <= 200)) fail('That isn’t a menu item.')
+    if (platform !== 'darwin') return { error: 'MAC' }
+    search.hide()
+    return frontHelper(['press', ...titles])
+  })
+  on('search:uninstall-plan', async (appPath) => uninstall.plan(appPath))
+  on('search:uninstall', async (appPath) => uninstall.run(appPath))
+  on('search:uninstall-undo', async (token) => uninstall.undo(String(token)))
   on('search:kill', async (appPath, force) => {
     if (typeof appPath !== 'string' || appPath.length > 1024) fail('That isn’t a running app.')
     return processes.end(appPath, { force: force === true })
@@ -387,7 +416,7 @@ async function createLauncher({
     if (!trusted) return { pasted: false, reason: platform === 'darwin' ? 'access' : 'mac' }
     search.hide()
     await wait(140)
-    return pasteInto({ exec, platform, trusted: () => true })
+    return pasteInto({ exec, keys, platform, trusted: () => true })
   }
   on('search:paste-clip', async (id) => {
     if (!history.use(id)) fail('That copy is gone.')
@@ -410,7 +439,7 @@ async function createLauncher({
      do with them. From the bar ("fix grammar", "selected text"), the bar steps aside first so that app is in front. */
   async function onSelection() {
     if (search?.window?.isVisible()) { search.hide(); await wait(160) }
-    const found = await readSelection({ exec, platform, trusted, clipboard, history })
+    const found = await readSelection({ exec, keys, platform, trusted, clipboard, history })
     search.show({ expanded: true, view: 'selection', selection: found })
   }
   on('search:selection', () => { onSelection().catch(() => {}); return true })
@@ -450,9 +479,31 @@ async function createLauncher({
     return true
   })
   // A web address opens in Nate's own browser, only while OSAT is online (the one way out: a link, or a key on a quick link).
+  /* A web address opens in Nate's browser (any, from the bar: a copied link too). An app's own link or a folder or file
+     opens only when it is one of his saved quick links (`url` is then the saved address with any words put in). A file
+     that could run (an app, a script) is shown in Finder, never opened. */
   async function openLink(url) {
-    if (typeof url !== 'string' || url.length > 2000 || !/^https?:\/\/[^\s]+$/i.test(url)) fail('That isn’t a web address OSAT can open.')
-    if (!offline() && /^https?:\/\//i.test(url)) await shell.openExternal(url)
+    if (typeof url !== 'string' || url.length > 2000) fail('That isn’t a link OSAT can open.')
+    const kind = launcherModel.linkKind(url)
+    if (kind === 'web') {
+      if (!offline() && /^https?:\/\//i.test(url)) await shell.openExternal(url)
+      return true
+    }
+    // The saved address, or it with words in place of {query} (keywordAddress: encoded, so no spaces).
+    const fits = (link) => {
+      const [head, tail = ''] = link.url.split('{query}')
+      return link.url === url || (link.url.includes('{query}') && url.startsWith(head) && url.endsWith(tail) && !/\s/.test(url))
+    }
+    const saved = settings.links.some((link) => link.on !== false && fits(link))
+    if (!kind || !saved) fail('That isn’t a link OSAT can open.')
+    if (kind === 'app') {
+      if (!offline() && launcherModel.APP_LINK.test(url)) await shell.openExternal(url)
+      return true
+    }
+    const file = url.replace(/^~(?=\/)/, require('node:os').homedir())
+    if (!require('node:fs').existsSync(file)) fail('That folder or file isn’t there any more.')
+    const folder = require('node:fs').statSync(file).isDirectory() && !/\.(app|bundle|pkg|mpkg)$/i.test(file)
+    if (folder || isSafeOpenFilename(file)) { const error = await shell.openPath(file); if (error) fail(error) } else shell.showItemInFolder(file)
     return true
   }
   on('search:open-link', openLink)

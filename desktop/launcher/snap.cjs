@@ -1,34 +1,14 @@
 /* Window snapping (Phase 13, Phase 61): move and resize the front window to a half, a third, a corner, the whole screen
    or the middle, make it larger or smaller, slide it, send it to another screen, or one of Nate's own rectangles
-   (`windows()` is launcher.json's `windows`, for those), and put it back. It asks System Events (AppleScript's JavaScript) for the front window's place and size,
-   works out where the layout goes on the screen it is on (shared/window-layouts.mjs), and sets it. That needs OSAT
+   (`windows()` is launcher.json's `windows`, for those), and put it back. It asks the osat-window helper (Accessibility, like Raycast) for the front window's place and
+   size, works out where the layout goes on the screen it is on (shared/window-layouts.mjs), and sets it. That needs OSAT
    to be allowed in Accessibility; without that nothing is touched and `snap` says why (`reason: 'access'`), so the
    words can say what is waiting. OSAT never moves its own windows, and never changes a setting. `exec` and
    `trusted` are passed in, so the tests use stand-ins. */
 const { run } = require('../mac-files.cjs')
 
-const FRONT = `function run() {
-  const se = Application("System Events")
-  const found = se.processes.whose({ frontmost: true })
-  if (found.length === 0) return JSON.stringify({ error: "NOFRONT" })
-  const front = found[0]
-  const windows = front.windows()
-  if (windows.length === 0) return JSON.stringify({ error: "NOWINDOW", app: front.name() })
-  const at = windows[0].position()
-  const size = windows[0].size()
-  return JSON.stringify({ app: front.name(), x: at[0], y: at[1], width: size[0], height: size[1] })
-}`
-const MOVE = `function run(argv) {
-  const [x, y, width, height] = argv.map(Number)
-  const se = Application("System Events")
-  const win = se.processes.whose({ frontmost: true })[0].windows[0]
-  win.size = [width, height]
-  win.position = [x, y]
-  win.size = [width, height]
-  return "ok"
-}`
-
-function createSnap({ exec = run, platform = process.platform, trusted = () => false, screens = () => [], own = [], layouts, windows = () => null }) {
+/* `helper` is desktop/helpers/osat-window (Accessibility only, no System Events): `front` → the window as JSON, `move x y w h`. */
+function createSnap({ exec = run, helper = 'osat-window', platform = process.platform, trusted = () => false, screens = () => [], own = [], layouts, windows = () => null }) {
   // Where each app's window was before OSAT moved it, and where OSAT last put it: so Put it back knows.
   const before = new Map()
   const placed = new Map()
@@ -45,11 +25,11 @@ function createSnap({ exec = run, platform = process.platform, trusted = () => f
       if (!layout) return { ok: false, reason: 'nothing' }
       let front
       try {
-        front = JSON.parse(await exec('osascript', ['-l', 'JavaScript', '-e', FRONT], { timeout: 5000 }))
+        front = JSON.parse(await exec(helper, ['front'], { timeout: 5000 }))
       } catch {
         return { ok: false, reason: 'failed' }
       }
-      if (front.error) return { ok: false, reason: front.error === 'NOWINDOW' ? 'nowindow' : 'nothing', app: front.app }
+      if (front.error) return { ok: false, reason: front.error === 'NOWINDOW' ? 'nowindow' : front.error === 'ACCESS' ? 'access' : 'nothing', app: front.app }
       if (own.includes(front.app)) return { ok: false, reason: 'own', app: front.app }
       const now = { x: front.x, y: front.y, width: front.width, height: front.height }
       let frame
@@ -73,7 +53,7 @@ function createSnap({ exec = run, platform = process.platform, trusted = () => f
         if (!same(now, placed.get(front.app))) before.set(front.app, now)
       }
       try {
-        await exec('osascript', ['-l', 'JavaScript', '-e', MOVE, String(frame.x), String(frame.y), String(frame.width), String(frame.height)], { timeout: 5000 })
+        await exec(helper, ['move', String(Math.round(frame.x)), String(Math.round(frame.y)), String(Math.round(frame.width)), String(Math.round(frame.height))], { timeout: 5000 })
       } catch {
         return { ok: false, reason: 'failed', app: front.app }
       }
@@ -84,4 +64,4 @@ function createSnap({ exec = run, platform = process.platform, trusted = () => f
   }
 }
 
-module.exports = { FRONT, MOVE, createSnap }
+module.exports = { createSnap }

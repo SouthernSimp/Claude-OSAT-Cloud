@@ -9,6 +9,7 @@
    The quick search and the ring are put away first, so they are never in the picture.
    Recent captures (opt-in in Settings → Launcher → Screenshots) are read from CleanShot's own history folder,
    never written to. Nothing here leaves the Mac. */
+const crypto = require('node:crypto')
 const fs = require('node:fs')
 const fsp = require('node:fs/promises')
 const os = require('node:os')
@@ -18,6 +19,7 @@ const { extractText, run } = require('../mac-files.cjs')
 function createCapture({
   model, shell, clipboard, nativeImage, systemPreferences, exec = run, readText = extractText, platform = process.platform, home = os.homedir(), appPath = model.CLEANSHOT_APP,
   settings, hidePanels = async () => {}, notify = () => {}, thumbnail = async () => null, panel = () => null, on, from = {}, fail = (message) => { throw new Error(message) },
+  picturesDir = null, screenRegion = () => null, reshow = async () => {},
 }) {
   const mac = platform === 'darwin'
   const mediaDir = path.join(home, 'Library', 'Application Support', 'CleanShot', 'media')
@@ -100,6 +102,39 @@ function createCapture({
     }
   }
 
+  /* ---- A picture for a sticky (Hyper N) ----
+     The Mac's own screencapture, CleanShot or not: the whole screen the pointer is on, or an area you drag (Esc stops
+     it). Kept in the data folder's pictures/ (0600), named by a random id; the bar comes back with the sticky as it was.
+     → { ok: true, name } or { ok: false, reason: 'mac' | 'cancelled' }. */
+  async function picture({ area = false } = {}) {
+    if (!mac || !picturesDir) return { ok: false, reason: 'mac' }
+    await fsp.mkdir(picturesDir, { recursive: true, mode: 0o700 })
+    const name = `${crypto.randomUUID()}.png`
+    const file = path.join(picturesDir, name)
+    const region = area ? null : screenRegion()
+    await hidePanels()
+    try {
+      await exec('screencapture', ['-x', ...(area ? ['-i'] : region ? ['-R', region] : []), file], { timeout: 10 * 60000 }).catch(() => {})
+    } finally {
+      await reshow()
+    }
+    if (!fs.existsSync(file)) return { ok: false, reason: 'cancelled' }
+    await fsp.chmod(file, 0o600).catch(() => {})
+    if (!toldScreen && screen() === 'denied') {
+      toldScreen = true
+      notify({ title: 'OSAT', body: 'The picture shows only your desktop until OSAT is allowed in System Settings → Privacy & Security → Screen Recording.' })
+    }
+    return { ok: true, name }
+  }
+
+  /* A sticky's picture to show, at most `width` wide, as a data URL; null when it isn't on this Mac. */
+  function pictureUrl(name, width = 1200) {
+    if (typeof name !== 'string' || !model.PICTURE_NAME.test(name) || !picturesDir) return null
+    const image = nativeImage.createFromPath(path.join(picturesDir, name))
+    if (image.isEmpty()) return null
+    return (image.getSize().width > width ? image.resize({ width: Math.round(width), quality: 'good' }) : image).toDataURL()
+  }
+
   /* ---- Recent captures: CleanShot's history folder, read only ---- */
 
   async function recent(limit = 12) {
@@ -131,6 +166,8 @@ function createCapture({
     on('search:capture', async (id) => take(String(id)))
     on('search:capture-status', async (again) => { if (again === true) detect(); return status() })
     on('search:capture-recent', () => recent())
+    on('search:sticky-picture', async (area) => picture({ area: area === true }), from.panel)
+    on('search:picture', async (name, width) => pictureUrl(name, Math.min(Math.max(Number(width) || 1200, 64), 2400)))
     on('search:capture-thumb', async (id) => thumbnail(await fileOf(id), 640).catch(() => null))
     on('search:capture-open', async (id) => { if (await shell.openPath(await fileOf(id))) fail('macOS could not open that capture.'); return true })
     on('search:capture-reveal', async (id) => { shell.showItemInFolder(await fileOf(id)); return true })
@@ -150,7 +187,7 @@ function createCapture({
     }, from.panel)
   }
 
-  return { detect, status, take, recent, fileOf }
+  return { detect, status, take, recent, fileOf, picture, pictureUrl }
 }
 
 module.exports = { createCapture }

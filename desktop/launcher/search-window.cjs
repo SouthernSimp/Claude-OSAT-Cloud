@@ -104,7 +104,16 @@ function createQuickSearch({ BrowserWindow, screen, platform, preload, load, hid
 
   window.on('blur', () => { if (hideOnBlur && Date.now() - shownAt > 400) hide() })
 
-  return { window, show, hide, toggle, setMode, owns: (contents) => !window.isDestroyed() && contents === window.webContents, send }
+  /* Back after a screenshot for a sticky: as it was, nothing reset. */
+  function reshow() {
+    if (window.isDestroyed()) return
+    shownAt = Date.now()
+    window.show()
+    window.focus()
+    window.webContents.focus()
+  }
+
+  return { window, show, hide, toggle, setMode, reshow, owns: (contents) => !window.isDestroyed() && contents === window.webContents, send }
 }
 
 module.exports = { BAR, FULL, CHAT, createQuickSearch, fitAt, searchBounds }

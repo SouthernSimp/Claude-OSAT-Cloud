@@ -3,7 +3,10 @@
    headings, nested lists with task items, quotes, rules, tables, plus inline
    code/bold/italic/strike/links, [[wikilinks]], #tags and @node mentions.
 
-   Task items keep their source line so a click can flip `[ ]` in the note. */
+   Task items keep their source line so a click can flip `[ ]` in the note. A line that is only a sticky's screenshot
+   (![Screenshot](osat-picture:<name>)) is drawn as that picture. */
+import { pictureOf } from "../../shared/capture-model.mjs";
+import { Picture } from "./Picture.jsx";
 
 const INLINE =
   /(`[^`\n]+`)|(\*\*[^*\n]+\*\*|__[^_\n]+__)|(\*[^*\n]+\*|(?<![A-Za-z0-9])_[^_\n]+_(?![A-Za-z0-9]))|(~~[^~\n]+~~)|(\[\[[^\]\n]+\]\])|(\[[^\]\n]+\]\([^)\s]+\))|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])|((?:^|(?<=[^\p{L}\p{N}_/#-]))#[\p{L}\p{N}_-]*\p{L}[\p{L}\p{N}_-]*)/gu;
@@ -159,6 +162,9 @@ export function renderMarkdown(text, handlers = {}) {
 
     if (RULE.test(line)) { blocks.push(<hr key={key++} />); i += 1; continue; }
 
+    const picture = pictureOf(line);
+    if (picture) { blocks.push(<Picture key={key++} name={picture} width={900} className="md-picture" />); i += 1; continue; }
+
     const heading = line.match(HEADING);
     if (heading) {
       const level = heading[1].length;
@@ -201,7 +207,7 @@ export function renderMarkdown(text, handlers = {}) {
     const paragraph = [];
     while (
       i < lines.length && lines[i].trim() && !FENCE.test(lines[i]) && !HEADING.test(lines[i]) &&
-      !QUOTE.test(lines[i]) && !RULE.test(lines[i]) && !LIST.test(lines[i])
+      !QUOTE.test(lines[i]) && !RULE.test(lines[i]) && !LIST.test(lines[i]) && !pictureOf(lines[i])
     ) paragraph.push(lines[i++]);
     const parts = [];
     paragraph.forEach((part, index) => {

@@ -41,14 +41,14 @@ test('the tabs are the sources that are on', () => {
 
 test('each source is asked only what it can answer', () => {
   const ask = (text, scope, options) => wants(readTyped(text, settings, scope), settings, options)
-  assert.deepEqual(ask('t', 'all'), { files: false, recentFiles: false, clipboard: true, apps: true, processes: false })
-  assert.deepEqual(ask('tax', 'all'), { files: true, recentFiles: false, clipboard: true, apps: true, processes: false })
-  assert.deepEqual(ask('', 'all'), { files: false, recentFiles: true, clipboard: true, apps: false, processes: false })
-  assert.deepEqual(ask('', 'files'), { files: false, recentFiles: true, clipboard: false, apps: false, processes: false })
-  assert.deepEqual(ask('', 'files', { fileFilter: 'pdf' }), { files: true, recentFiles: false, clipboard: false, apps: false, processes: false }, 'a kind alone is a search')
-  assert.deepEqual(ask('x', 'clipboard'), { files: false, recentFiles: false, clipboard: true, apps: false, processes: false })
+  assert.deepEqual(ask('t', 'all'), { files: false, recentFiles: false, clipboard: true, apps: true, processes: false, menus: false })
+  assert.deepEqual(ask('tax', 'all'), { files: true, recentFiles: false, clipboard: true, apps: true, processes: false, menus: false })
+  assert.deepEqual(ask('', 'all'), { files: false, recentFiles: true, clipboard: true, apps: false, processes: false, menus: false })
+  assert.deepEqual(ask('', 'files'), { files: false, recentFiles: true, clipboard: false, apps: false, processes: false, menus: false })
+  assert.deepEqual(ask('', 'files', { fileFilter: 'pdf' }), { files: true, recentFiles: false, clipboard: false, apps: false, processes: false, menus: false }, 'a kind alone is a search')
+  assert.deepEqual(ask('x', 'clipboard'), { files: false, recentFiles: false, clipboard: true, apps: false, processes: false, menus: false })
   const off = cleanSettings({ sources: { files: { on: false }, clipboard: { on: false } } }, { validHotkey })
-  assert.deepEqual(wants(readTyped('tax', off), off), { files: false, recentFiles: false, clipboard: false, apps: true, processes: false })
+  assert.deepEqual(wants(readTyped('tax', off), off), { files: false, recentFiles: false, clipboard: false, apps: true, processes: false, menus: false })
   assert.equal(fileWords('taxes', 'pdf'), 'pdf taxes')
   assert.equal(fileWords('', 'all'), '')
   assert.equal(fileWords('  ', 'picture'), 'photos')
@@ -306,4 +306,18 @@ test('System Settings panes are in the bar', () => {
   assert.equal(pane.data.id, 'pane:com.apple.BluetoothSettings')
   assert.equal(actionsFor(pane)[0].label, 'Open')
   assert.ok(buildRows(readTyped('wifi', settings), {}, settings, { now }).some((row) => row.title === 'Wi-Fi'))
+})
+
+test('Keys for this app: the app’s shortcuts first, words find any menu item, and "keys" offers it', async () => {
+  const { MENUS_SCOPE, menuRows, buildRows, readTyped, actionsFor } = await import('../shared/quick-search-model.mjs')
+  const { DEFAULT_SETTINGS } = await import('../shared/launcher-model.mjs')
+  const menus = { app: 'Gemini', items: [{ path: ['File', 'New Chat'], key: '⇧⌘O' }, { path: ['File', 'Export…'] }, { path: ['Edit', 'Next Model'], key: '⇧⌘]' }, { path: ['Bad'] }] }
+  assert.deepEqual(menuRows(menus, '').map((row) => row.title), ['New Chat', 'Next Model'], 'nothing typed: only those with keys')
+  assert.deepEqual(menuRows(menus, 'export').map((row) => [row.title, row.subtitle, row.section]), [['Export…', 'File', 'Gemini']])
+  assert.deepEqual(menuRows(menus, '⇧⌘]').map((row) => row.title), ['Next Model'], 'keys can be searched too')
+  assert.deepEqual(actionsFor(menuRows(menus, '')[0]).map((action) => action.id), ['press-menu', 'copy-text'])
+  assert.deepEqual(menuRows(null, 'x'), [])
+  for (const word of ['keys', 'shortcuts', 'keybinds', 'menu items', 'cheat sheet']) {
+    assert.ok(buildRows(readTyped(word, DEFAULT_SETTINGS), {}, DEFAULT_SETTINGS, { now: new Date() }).some((row) => row.key === 'menus' && row.data.scope === MENUS_SCOPE), word)
+  }
 })

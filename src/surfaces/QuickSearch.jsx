@@ -6,8 +6,9 @@ import { offerFor } from '../../shared/clipboard-offer.mjs'
 import { KIND_FILTERS } from '../../shared/clipboard-model.mjs'
 import { DEFAULT_SETTINGS, canonicalKey, customizable, ownKeyOf, ownWordOf, validKeyword } from '../../shared/launcher-model.mjs'
 import { systemCommand } from '../../shared/system-commands.mjs'
+import { describePlan } from '../../shared/uninstall-model.mjs'
 import { comboFrom, labelOf } from '../lib/hotkey.js'
-import { FILE_FILTERS, KILL_SCOPE, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
+import { FILE_FILTERS, KILL_SCOPE, MENUS_SCOPE, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
 import { remember } from '../../shared/picks.mjs'
 import { cleanAnswer, replaces, textActionRows, textMessages } from '../../shared/selection-model.mjs'
 import { streamLocalMessage } from '../local-ai.js'
@@ -18,6 +19,7 @@ import { addSticky, linkMentions } from '../nodes-model.js'
 import { captureThought, folderPath } from '../notes-model.js'
 import { AppIcon, RowIcon } from '../search/icons.jsx'
 import { Preview } from '../search/Preview.jsx'
+import { QuickSticky } from '../search/QuickSticky.jsx'
 import { useSources } from '../search/useSources.js'
 import { useWorkspace } from '../store/useWorkspace.js'
 import { canAsk } from '../views/Files.jsx'
@@ -110,10 +112,16 @@ export function QuickSearchSurface() {
   const offer = useMemo(() => (row && ['text', 'email', 'phone'].includes(row.kind) && settings.clipboard.offers !== false ? offerFor(row.data, workspace || {}) : null), [row, settings, workspace])
   const actions = useMemo(() => actionsFor(row, { offer, canAsk: row?.kind === 'file' && canAsk({ kind: 'file', name: row.title }) }), [row, offer])
   const full = !mode && (opened === 'full' || text.trim().length > 0 || scope !== 'all' || Boolean(picker))
-  const size = chatOn ? 'chat' : full ? 'full' : 'bar'
+  const size = chatOn ? 'chat' : full || mode === 'sticky' ? 'full' : 'bar'
   const tabs = scopesOn(settings)
 
   useEffect(() => { bridge?.mode(size) }, [bridge, size])
+  // Each time it is shown, it rises in a little (Reduce Motion: it just appears).
+  const shell = useRef(null)
+  useEffect(() => {
+    if (!visit || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    shell.current?.animate([{ opacity: 0, transform: 'translateY(-4px) scale(0.99)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' })
+  }, [visit])
   // A second Return arms only the row it was asked on.
   useEffect(() => { setArmed(null) }, [row?.key])
   // Offline, Ask says whether it waits (a cloud model does; the AI on this Mac still answers).
@@ -188,7 +196,7 @@ export function QuickSearchSurface() {
   /* ⌥Return: the words go straight to Unsorted as a sticky, as on the desk's line. Nothing typed: write one. */
   const saveSticky = useCallback((words) => {
     const value = String(words || '').trim()
-    if (!value) { setMode('sticky'); requestAnimationFrame(() => input.current?.focus()); return }
+    if (!value) { setText(''); setMode('sticky'); return }
     if (!workspace) { said('Opening your notes… try again in a moment.'); return }
     let made = null
     commit((state) => {
@@ -300,6 +308,28 @@ export function QuickSearchSurface() {
         case 'open-link': await bridge.openLink(target.kind === 'link' ? (await bridge.clipboardText(d.id)) || d.text : d.url); away(); break
         case 'open-app': await bridge.openApp(d.path); away(); break
         case 'reveal-app': await bridge.revealApp(d.path); away(); break
+        case 'uninstall': {
+          // The first time says what would go and how big it is; Return again does it, with Undo.
+          const key = `uninstall:${target.key}`
+          if (live.current.armed !== key) {
+            const plan = await bridge.uninstallPlan(d.path)
+            if (plan.refused) { said(plan.refused, 4000); break }
+            setArmed(key)
+            said(describePlan(plan), 0)
+            break
+          }
+          setArmed(null)
+          said(`Uninstalling ${target.title}…`, 0)
+          const done = await bridge.uninstall(d.path)
+          if (!done.ok) {
+            said(done.reason, 6000)
+            if (done.reveal) bridge.revealApp(d.path).catch(() => {})
+            break
+          }
+          setGone((now) => new Set(now).add(target.key))
+          undoable(`${target.title} is in the Bin`, async () => { await bridge.uninstallUndo(done.token); setGone((now) => { const next = new Set(now); next.delete(target.key); return next }); said(`${target.title} is back`) })
+          break
+        }
         case 'open-app-named': await bridge.openAppNamed(d.app); away(); break
         case 'snap': {
           const result = await bridge.snap(d.layout)
@@ -307,7 +337,13 @@ export function QuickSearchSurface() {
           else if (!result.ok && result.reason === 'mac') { said('Moving windows works in the Mac app.') }
           break
         }
-        case 'scope': setScope(d.scope); if (d.scope === KILL_SCOPE) setText(''); setCursor(null); input.current?.focus(); break
+        case 'scope': setScope(d.scope); if (d.scope === KILL_SCOPE || d.scope === MENUS_SCOPE) setText(''); setCursor(null); input.current?.focus(); break
+        case 'press-menu': {
+          const done = await bridge.pressMenu(d.path)
+          if (done?.error === 'NOTFOUND') said(`${target.section} doesn’t have “${target.title}” right now.`, 3000)
+          else if (done?.error) said('The app didn’t take it. Try it from its menu.', 3000)
+          break
+        }
         case 'kill':
         case 'force-kill': {
           const force = id === 'force-kill'
@@ -430,6 +466,8 @@ export function QuickSearchSurface() {
       if (event.isComposing) return
       const now = live.current
       if (now.chatOn) return
+      // The quick sticky (QuickSticky) has its own keys; Esc still backs out, keeping what was written.
+      if (now.mode === 'sticky' && event.key !== 'Escape') return
       const cmd = event.metaKey || event.ctrlKey
       if (event.key === 'Escape') { event.preventDefault(); back(); return }
       // Set a key…: the next keys pressed are the key (⌫ takes it away); Set a word… types in its own field.
@@ -497,6 +535,8 @@ export function QuickSearchSurface() {
         if (now.text.trim() && now.scope === 'all' && !event.shiftKey) askAi(now.text)
         return
       }
+      // An uninstall waiting for its second Return.
+      if (event.key === 'Enter' && !cmd && now.row && now.armed === `uninstall:${now.row.key}`) { event.preventDefault(); run('uninstall', now.row); return }
       // Return, and the keys ⌘K lists next to each action.
       const combo = comboOf(event)
       const choice = now.actions.find((action) => action.keys === combo)
@@ -513,7 +553,11 @@ export function QuickSearchSurface() {
     return () => window.clearTimeout(timer)
   }, [toast])
 
-  const empty = looking ? 'Looking…' : read.typed
+  const menusEmpty = scope === MENUS_SCOPE && (!found.menus ? 'Reading the menus…'
+    : found.menus.error === 'ACCESS' ? 'To read an app’s menus, OSAT needs Accessibility. Settings → Launcher shows how.'
+      : found.menus.error === 'MAC' ? 'Keys for this app works in the Mac app.'
+        : found.menus.error ? 'Open the app you want, then ask again.' : null)
+  const empty = menusEmpty ? menusEmpty : looking ? 'Looking…' : read.typed
     ? `Nothing found for “${read.typed}”.`
     : scope === 'clipboard' ? 'Nothing copied yet. Whatever you copy from now on shows up here, and stays on this Mac.'
       : scope === 'files' ? 'Files you use will show up here.' : 'Type to search.'
@@ -522,7 +566,7 @@ export function QuickSearchSurface() {
   const placeholder = selected ? 'What should the AI do with it? Pick one, or type your own…'
     : mode === 'sticky' ? 'Write a sticky… Return saves it to Unsorted'
     : mode === 'ask' ? 'Ask the AI… Return asks'
-      : scope === 'all' ? `Search, ask, or write a sticky…${full ? '' : '  ↓ for what you copied'}` : scope === KILL_SCOPE ? 'Filter running apps…' : `Search ${tabs.find(([id]) => id === scope)?.[1] || ''}…`
+      : scope === 'all' ? `Search, ask, or write a sticky…${full ? '' : '  ↓ for what you copied'}` : scope === KILL_SCOPE ? 'Filter running apps…' : scope === MENUS_SCOPE ? `Search ${found.menus?.app || 'this app'}’s menus…` : `Search ${tabs.find(([id]) => id === scope)?.[1] || ''}…`
 
   return (
     <>
@@ -538,11 +582,13 @@ export function QuickSearchSurface() {
           </div>
         </section>
       )}
-    <main className="quick-search" hidden={chatOn} data-mode={full ? 'full' : 'bar'}>
+    <main ref={shell} className="quick-search" hidden={chatOn} data-mode={full || mode === 'sticky' ? 'full' : 'bar'} data-sticky={mode === 'sticky' ? '' : undefined}>
       <header className="qs-bar">
         <ModeIcon weight="bold" aria-hidden="true" />
+        {mode === 'sticky' && <span className="qs-title">A quick sticky</span>}
         <input
           ref={input}
+          hidden={mode === 'sticky'}
           id="qs-input"
           className="qs-input"
           role="combobox"
@@ -559,7 +605,7 @@ export function QuickSearchSurface() {
           onChange={(event) => { setText(event.target.value); setCursor(null); if (live.current.answer) dropAnswer() }}
         />
         {!full && note ? <span className="qs-said" role="status">{note}</span>
-          : mode ? <span className="qs-chip">{mode === 'sticky' ? 'Sticky' : 'Ask'}</span>
+          : mode === 'ask' ? <span className="qs-chip">Ask</span>
             : selected ? (
               <button type="button" className="qs-chip is-scope" title="Back to everything  esc" onClick={() => { dropAnswer(); setSelected(null); setText(''); setCursor(null); input.current?.focus() }}>
                 Selected text <X weight="bold" aria-hidden="true" />
@@ -567,10 +613,12 @@ export function QuickSearchSurface() {
             )
             : read.scope !== 'all' && (
               <button type="button" className="qs-chip is-scope" title="Back to everything  esc" onClick={() => { setScope('all'); if (read.scope !== scope) setText(''); setCursor(null); input.current?.focus() }}>
-                {read.scope === KILL_SCOPE ? 'Kill Process' : tabs.find(([id]) => id === read.scope)?.[1]} <X weight="bold" aria-hidden="true" />
+                {read.scope === KILL_SCOPE ? 'Kill Process' : read.scope === MENUS_SCOPE ? `Keys for ${found.menus?.app || 'this app'}` : tabs.find(([id]) => id === read.scope)?.[1]} <X weight="bold" aria-hidden="true" />
               </button>
             )}
       </header>
+
+      {mode === 'sticky' && <QuickSticky bridge={bridge} said={said} onBack={back} onSave={saveSticky} />}
 
       {full && (
         <>
@@ -591,7 +639,7 @@ export function QuickSearchSurface() {
             {picker
               ? <NodePicker workspace={workspace} onPick={(folderId) => addTo(picker.row, folderId)} onClose={() => { setPicker(null); input.current?.focus() }} />
               : (
-                <ul id="qs-list" className="qs-list" role="listbox" aria-label="Results">
+                <ul key={read.scope} id="qs-list" className="qs-list" role="listbox" aria-label="Results">
                   {rows.length === 0 && <li className="qs-empty" role="presentation">{empty}</li>}
                   {rows.map((item, index) => (
                     <li key={item.key} role="presentation">
@@ -614,6 +662,7 @@ export function QuickSearchSurface() {
                             : <RowIcon row={item} />}
                         <span className="qs-row-text"><b>{item.title}</b><small>{item.subtitle}</small></span>
                         {(item.pinned || item.data?.pinned) && <PushPin weight="fill" className="qs-pin" aria-label="Pinned" />}
+                        {item.kind === 'menu' && item.data.keys && <kbd className="qs-menu-key" title="Its keys in this app">{item.data.keys}</kbd>}
                         {index === active ? <kbd>↵</kbd> : item.kind === 'ask' ? <kbd className="is-quiet">⌘↵</kbd> : item.kind === 'sticky' ? <kbd className="is-quiet">⌥↵</kbd>
                           : customizable(item) && ownKeyOf(settings, item) ? <kbd className="is-quiet" title="Its key, from any app">{labelOf(ownKeyOf(settings, item))}</kbd> : null}
                       </div>

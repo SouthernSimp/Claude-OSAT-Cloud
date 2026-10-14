@@ -20,9 +20,21 @@ export const CAPTURES = [
   { id: 'record', label: 'Record screen', words: 'record recording video screen movie gif', cleanshot: 'record-screen' },
   { id: 'text', label: 'Copy text from the screen', words: 'text ocr copy read words recognize screenshot', cleanshot: 'capture-text', mac: ['-i'] },
   { id: 'history', label: 'Past screenshots', words: 'screenshot history recent past captures recordings', cleanshot: 'open-history' },
+  { id: 'from-clipboard', label: 'Mark up the copied picture', words: 'clipboard picture image annotate open copied markup', cleanshot: 'open-from-clipboard' },
 ]
 
 export const captureById = (id) => CAPTURES.find((item) => item.id === id) || null
+
+/* Pictures in a sticky (Hyper N, Oct 2026): a screenshot kept in the data folder's `pictures/` (this Mac only, never
+   synced), named by a random id, and written into the sticky's Markdown as its own line: ![Screenshot](osat-picture:<name>). */
+export const PICTURE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.png$/
+export const pictureLine = (name) => `![Screenshot](osat-picture:${name})`
+const PICTURE_LINE = /^!\[[^\]\n]*\]\(osat-picture:([^)\s]+)\)$/
+/* The picture a line of Markdown is, or null. */
+export function pictureOf(line) {
+  const name = PICTURE_LINE.exec(String(line || '').trim())?.[1]
+  return name && PICTURE_NAME.test(name) ? name : null
+}
 
 /* What CleanShot may do after a screenshot. Never `upload`: that would send it to CleanShot Cloud. */
 export const ACTIONS = ['copy', 'save', 'annotate', 'pin']

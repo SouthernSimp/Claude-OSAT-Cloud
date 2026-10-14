@@ -10,7 +10,7 @@ import {
 import * as layouts from '../shared/window-layouts.mjs'
 
 const require = createRequire(import.meta.url)
-const { FRONT, MOVE, createSnap } = require('../desktop/launcher/snap.cjs')
+const { createSnap } = require('../desktop/launcher/snap.cjs')
 const { validHotkey } = require('../desktop/desk.cjs')
 
 const clean = (saved) => cleanSettings(saved, { validHotkey })
@@ -308,9 +308,9 @@ test('the bar finds his own commands and the new ones by name, shows an alias as
 function fakeMac(window, { screens = [{ workArea: AREAS[0] }], windows = null } = {}) {
   const state = { window: { app: 'Safari', ...window }, moves: [] }
   const exec = async (command, args) => {
-    if (args[3] === FRONT) return JSON.stringify(state.window)
-    if (args[3] === MOVE) {
-      const [x, y, width, height] = args.slice(4).map(Number)
+    if (args[0] === 'front') return JSON.stringify(state.window)
+    if (args[0] === 'move') {
+      const [x, y, width, height] = args.slice(1).map(Number)
       state.moves.push({ x, y, width, height })
       Object.assign(state.window, { x, y, width, height })
       return 'ok'

@@ -47,5 +47,20 @@ test('typed in any app: the helper’s rules, a word only after a space, a line 
   assert.equal(type([...'design']).hit, -1, 'inside a word it is just typing')
   assert.equal(type([...';adx', 'backspace', 'd', 'r']).hit, 0, '⌫ takes a letter off')
   assert.equal(type([...';ad', 'return', ...'dr']).hit, -1, 'Return starts again')
-  assert.deepEqual([readSnippetLine('ready'), readSnippetLine('hit 1'), readSnippetLine('hit secret')], [{ kind: 'ready' }, { kind: 'hit', index: 1 }, null])
+  assert.deepEqual([readSnippetLine('ready'), readSnippetLine('hit 1'), readSnippetLine('hit 2 1'), readSnippetLine('hit secret'), readSnippetLine('hit 1 7')],
+    [{ kind: 'ready' }, { kind: 'hit', index: 1, extra: 0 }, { kind: 'hit', index: 2, extra: 1 }, null, null])
+})
+
+test('Raycast’s words: long ones, signs inside, and a word that starts a longer one waits for a space', () => {
+  for (const word of ['!horizontal-ellipsis', '!7/8', '!1/', '!+-', '!xmlprompt', '.em', ';addr', '..pp']) assert.ok(validSnippetWord(word), word)
+  for (const word of ['--', '...', 'a'.repeat(25), 'two words', '!']) assert.ok(!validSnippetWord(word), word)
+  const triggers = ['!date', '!datetime', '!1/', '!1/2', '!x', '!xmlprompt'].map((keyword, index) => ({ id: `s${index}`, keyword }))
+  const type = (keys) => keys.reduce((state, key) => (state.hit >= 0 ? state : typedStep(state.buffer, key, triggers)), { buffer: '', hit: -1 })
+  assert.deepEqual(type([...'!datetime']), { buffer: '', hit: 1, extra: 0 }, 'the longer word is reachable')
+  assert.deepEqual(type([...'!date ']), { buffer: '', hit: 0, extra: 1 }, 'the shorter one on a space, which is kept')
+  assert.deepEqual(type([...'!1/2']), { buffer: '', hit: 3, extra: 0 })
+  assert.deepEqual(type([...'say !1/ ']), { buffer: '', hit: 2, extra: 1 })
+  assert.equal(type([...'!dat', 'return']).hit, -1)
+  assert.equal(type([...'a really long sentence before !xmlprompt']).hit, 5, 'only the last 32 letters are kept, which is enough')
+  assert.match(fillSnippet('{datetime}', { now: new Date(2026, 9, 14, 13, 5) }), /^October 14, 2026 at 1:05/)
 })

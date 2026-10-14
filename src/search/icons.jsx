@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   AppWindow, Calculator, Clipboard, EnvelopeSimple, File, FileAudio, FileDoc, FileImage, FilePdf, FileText, FileVideo, FileXls, FileZip,
   ArrowRight, FolderSimple, Power, TextAlignLeft, Globe, Hash, Image, Layout, Link, NotePencil, Phone, Sparkle, TreeStructure,
-  Aperture, ClockCounterClockwise, Monitor, Record, Scroll, Selection, TextAa,
+  Aperture, ClockCounterClockwise, Keyboard, Monitor, Record, Scroll, Selection, TextAa,
 } from '@phosphor-icons/react'
 
 /* Screenshots and recording (shared/capture-model.mjs), on the ring and in the quick search. */
@@ -16,7 +16,7 @@ const FILE_ICONS = [
 ]
 const BY_KIND = {
   folder: FolderSimple, text: Clipboard, link: Link, email: EnvelopeSimple, phone: Phone, number: Hash, image: Image, app: AppWindow,
-  note: NotePencil, sticky: NotePencil, ask: Sparkle, node: TreeStructure, room: Sparkle, calc: Calculator, 'keyword-app': AppWindow, 'keyword-link': Globe, layout: Layout, more: ArrowRight, snippet: TextAlignLeft, system: Power,
+  note: NotePencil, sticky: NotePencil, ask: Sparkle, node: TreeStructure, room: Sparkle, calc: Calculator, 'keyword-app': AppWindow, 'keyword-link': Globe, layout: Layout, more: ArrowRight, snippet: TextAlignLeft, system: Power, menu: Keyboard,
 }
 
 export function RowIcon({ row, weight = 'regular' }) {

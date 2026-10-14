@@ -6,7 +6,6 @@
 const { run } = require('../mac-files.cjs')
 
 const OSA = {
-  lock: 'tell application "System Events" to keystroke "q" using {control down, command down}',
   'dark-mode': 'tell application "System Events" to tell appearance preferences to set dark mode to not dark mode',
   mute: 'set volume output muted not (output muted of (get volume settings))',
   'hide-others': 'tell application "System Events" to set visible of (every process whose visible is true and frontmost is false) to false',
@@ -14,7 +13,7 @@ const OSA = {
 }
 const NEEDS_ACCESS = new Set(['lock', 'hide-others'])
 
-function createSystem({ exec = run, platform = process.platform, trusted = () => false, model }) {
+function createSystem({ exec = run, keys = 'osat-keys', platform = process.platform, trusted = () => false, model }) {
   return {
     /* → { ok: true } or { ok: false, reason: 'mac' | 'access' | 'nothing' | 'failed' }. */
     async run(id) {
@@ -24,6 +23,7 @@ function createSystem({ exec = run, platform = process.platform, trusted = () =>
       try {
         const pane = model.systemCommand(id).pane
         if (pane) await exec('open', [`x-apple.systempreferences:${pane}`], { timeout: 5000 })
+        else if (id === 'lock') await exec(keys, ['ctrl+cmd+q'], { timeout: 5000 })
         else if (id === 'sleep') await exec('pmset', ['sleepnow'], { timeout: 5000 })
         else if (id === 'screen-off') await exec('pmset', ['displaysleepnow'], { timeout: 5000 })
         else await exec('osascript', ['-e', OSA[id]], { timeout: 15000 })

@@ -6,7 +6,7 @@ import { LAYOUTS, cleanWindowKeys, findLayouts, frameFor, layoutById, screenFor 
 import * as layouts from '../shared/window-layouts.mjs'
 
 const require = createRequire(import.meta.url)
-const { FRONT, MOVE, createSnap } = require('../desktop/launcher/snap.cjs')
+const { createSnap } = require('../desktop/launcher/snap.cjs')
 const { validHotkey } = require('../desktop/desk.cjs')
 
 const area = { x: 0, y: 25, width: 1440, height: 875 }
@@ -71,25 +71,30 @@ test('every layout has a usual key OSAT can register, and none is used twice', (
   assert.equal(cleanWindowKeys(undefined, validHotkey)['top-half'], 'Control+Alt+Up')
 })
 
-test('the scripts are valid JavaScript for System Events', () => {
-  for (const script of [FRONT, MOVE]) assert.doesNotThrow(() => new Function('Application', `${script}\nreturn run`))
+test('the window helper moves windows through Accessibility only: no System Events, no network, no files', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const swift = await readFile(new URL('../desktop/helpers/osat-window.swift', import.meta.url), 'utf8')
+  const code = swift.split('\n').filter((line) => !line.trim().startsWith('//')).join('\n')
+  assert.doesNotMatch(code, /System Events|NSAppleScript|URLSession|import Network|FileManager|fopen|NSLog/)
+  for (const needle of ['AXIsProcessTrusted', 'kAXFocusedWindowAttribute', 'kAXPositionAttribute', 'kAXSizeAttribute', '"ACCESS"', '"NOWINDOW"']) assert.ok(code.includes(needle), needle)
 })
 
 /* A Mac whose front window is where the test says, and which remembers where it was told to put it. */
 function fakeMac({ trusted = true, window = { app: 'Safari', x: 100, y: 120, width: 900, height: 600 } } = {}) {
   const state = { window: { ...window }, scripts: [], moves: [] }
   const exec = async (command, args) => {
-    state.scripts.push(args[3])
-    if (args[3] === FRONT) return JSON.stringify(state.window)
-    if (args[3] === MOVE) {
-      const [x, y, width, height] = args.slice(4).map(Number)
+    assert.equal(command, '/App/helpers/osat-window')
+    state.scripts.push(args[0])
+    if (args[0] === 'front') return JSON.stringify(state.window)
+    if (args[0] === 'move') {
+      const [x, y, width, height] = args.slice(1).map(Number)
       state.moves.push({ x, y, width, height })
       Object.assign(state.window, { x, y, width, height })
       return 'ok'
     }
     throw new Error('unexpected script')
   }
-  const snap = createSnap({ exec, platform: 'darwin', trusted: () => trusted, screens: () => [{ workArea: area }], own: ['OSAT', 'Electron'], layouts })
+  const snap = createSnap({ exec, helper: '/App/helpers/osat-window', platform: 'darwin', trusted: () => trusted, screens: () => [{ workArea: area }], own: ['OSAT', 'Electron'], layouts })
   return { state, snap, exec }
 }
 
@@ -132,7 +137,7 @@ test('without Accessibility nothing is touched, and the reason is said; OSAT’s
 test('a window on a second screen snaps inside that screen', async () => {
   const second = { x: 1440, y: 0, width: 1920, height: 1080 }
   const mac = fakeMac({ window: { app: 'Notes', x: 1600, y: 100, width: 800, height: 600 } })
-  const snap = createSnap({ exec: mac.exec, platform: 'darwin', trusted: () => true, screens: () => [{ workArea: area }, { workArea: second }], layouts })
+  const snap = createSnap({ exec: mac.exec, helper: '/App/helpers/osat-window', platform: 'darwin', trusted: () => true, screens: () => [{ workArea: area }, { workArea: second }], layouts })
   await snap.snap('right-half')
   assert.deepEqual(mac.state.moves.at(-1), { x: 2400, y: 0, width: 960, height: 1080 })
 })

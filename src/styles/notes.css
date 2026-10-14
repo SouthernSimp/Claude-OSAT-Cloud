@@ -87,10 +87,9 @@
 
 .organizer-row.active,
 .folder-row.active {
-  background: var(--surface);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--ink-strong);
   font-weight: 600;
-  box-shadow: var(--e-1);
 }
 
 .organizer-row.active > svg,

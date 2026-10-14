@@ -37,6 +37,8 @@ export function Preview({ row, bridge, workspace, offer = null, now, onDragStart
   else if (row.kind === 'app' && own.thumb) body = <img className="qs-app-icon" src={own.thumb} alt="" draggable={false} />
   else if (row.kind === 'calc') body = <p className="qs-big">{row.title}</p>
   else if (row.kind === 'layout') body = <LayoutPreview id={d.layout} box={d.box} />
+  // A menu item: its keys, large, one cap each (🌐⌃⇧⌘ and the key).
+  else if (row.kind === 'menu') body = d.keys ? <p className="qs-keycaps">{[...d.keys.matchAll(/🌐|[⌃⌥⇧⌘]|.+$/gu)].map((part, index) => <kbd key={index}>{part[0]}</kbd>)}</p> : <div className="qs-glyph"><RowIcon row={row} weight="light" /></div>
   else if (COPIED_WORDS.has(row.kind)) body = <pre className={`qs-text ${row.kind === 'link' ? 'is-link' : ''}`}>{own.text ?? d.text}</pre>
   // Save as a sticky / Ask the AI: the words that would go.
   else if (row.kind === 'sticky' || row.kind === 'ask' || row.kind === 'snippet') body = <pre className="qs-text">{d.text}</pre>
@@ -47,8 +49,8 @@ export function Preview({ row, bridge, workspace, offer = null, now, onDragStart
   return (
     <section className="qs-preview" aria-label="Preview">
       {/* A copy or a capture drags out from here too (`onDragStart` starts the Mac's own drag). */}
-      <div className="qs-stage" data-kind={row.kind} draggable={Boolean(onDragStart)} onDragStart={onDragStart}>{body}</div>
-      <footer className="qs-facts">
+      <div key={row.key} className="qs-stage" data-kind={row.kind} draggable={Boolean(onDragStart)} onDragStart={onDragStart}>{body}</div>
+      <footer key={`facts:${row.key}`} className="qs-facts">
         <h2>{row.kind === 'calc' ? row.subtitle : row.title}</h2>
         {details.length > 0 && (
           <dl className="qs-details">

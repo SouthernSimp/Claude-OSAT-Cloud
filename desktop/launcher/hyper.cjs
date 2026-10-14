@@ -51,8 +51,12 @@ function createCapsMapping({ run, file, model, platform = process.platform, log 
   }
 }
 
-function createHyper({ spawn = null, platform = process.platform, owner = process.pid, helperPath, model, mapping, trusted = () => false, log = () => {}, retryMs = 2000 }) {
+/* `repair()` clears OSAT's own Input Monitoring entry (`tccutil reset ListenEvent <app id>`). An entry stored for an older
+   build of OSAT doesn't match it any more, and macOS then lets the helper listen but sends it no keys, even with
+   Accessibility allowed (Accessibility alone is enough; seen on Nate's Mac, Oct 14). Tried once per run of OSAT. */
+function createHyper({ spawn = null, platform = process.platform, owner = process.pid, helperPath, model, mapping, trusted = () => false, repair = () => false, log = () => {}, retryMs = 2000 }) {
   let child = null
+  let repaired = false
   let timer = null
   let tries = 0
   let startedAt = 0
@@ -68,6 +72,17 @@ function createHyper({ spawn = null, platform = process.platform, owner = proces
       else { state = 'failed'; end() }
     } else if (said?.kind === 'denied') {
       state = 'denied'
+    } else if (said?.kind === 'deaf') {
+      // The helper leaves by itself after saying this; it is let go here (its exit is then ignored) and, once the entry
+      // is cleared, a new one starts.
+      const proc = child
+      child = null
+      proc?.kill()
+      if (!repaired && repair()) { state = 'starting'; timer = setTimeout(start, retryMs) } else state = 'denied'
+      repaired = true
+    } else if ((said?.kind === 'caps' || said?.kind === 'woke') && state === 'working') {
+      // Something took the Caps Lock mapping away (another app quitting, a keyboard plugged in): put it back.
+      mapping.add()
     }
   }
 

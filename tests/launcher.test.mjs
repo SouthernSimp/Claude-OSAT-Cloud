@@ -180,7 +180,7 @@ test('Return on a copy: it goes back on the clipboard; without Accessibility not
     t.board.text = 'something else'
     assert.deepEqual(await t.ask('search:paste-clip', item.id), { pasted: false, reason: 'access' })
     assert.equal(t.board.text, 'Quote for Jordan')
-    assert.ok(!t.calls.exec.some((call) => Array.isArray(call) && call[0] === 'osascript'), 'no keystroke was sent')
+    assert.ok(!t.calls.exec.some((call) => Array.isArray(call) && String(call[0]).endsWith('/osat-keys')), 'no keystroke was sent')
     await assert.rejects(t.ask('search:paste-clip', 'not-an-id'), /That copy is gone/)
     // Asking macOS for Accessibility happens only through its own button, and never sends anything.
     assert.equal(t.calls.exec.includes('trusted?true'), false)
@@ -199,7 +199,7 @@ test('with Accessibility the panel goes away and ⌘V is sent to the app you wer
     const [item] = (await t.ask('search:clipboard')).items
     assert.deepEqual(await t.ask('search:paste-clip', item.id), { pasted: true })
     assert.equal(t.launcher.search.window.isVisible(), false)
-    assert.equal(t.calls.exec.filter((call) => Array.isArray(call) && call[0] === 'osascript').length, 1)
+    assert.deepEqual(t.calls.exec.filter((call) => Array.isArray(call) && String(call[0]).endsWith('/osat-keys')).map((call) => call.slice(1)), [['cmd+v']])
   } finally { await t.done() }
 })
 
@@ -258,8 +258,10 @@ test('apps and links open only what is on the list or a web address, and links w
     await online.launcher.start()
     await assert.rejects(online.ask('search:open-app', '/Applications/NotAnApp.app'), /isn’t in the list/)
     await assert.rejects(online.ask('search:open-app-named', 'Definitely Not Installed 9'), /isn’t installed on this Mac/)
-    await assert.rejects(online.ask('search:open-link', 'javascript:alert(1)'), /isn’t a web address/)
-    await assert.rejects(online.ask('search:open-link', 'file:///etc/passwd'), /isn’t a web address/)
+    await assert.rejects(online.ask('search:open-link', 'javascript:alert(1)'), /isn’t a link OSAT can open/)
+    await assert.rejects(online.ask('search:open-link', 'file:///etc/passwd'), /isn’t a link OSAT can open/)
+    await assert.rejects(online.ask('search:open-link', 'cleanshot://capture-area'), /isn’t a link OSAT can open/, 'an app link only when it is saved')
+    await assert.rejects(online.ask('search:open-link', '/etc/hosts'), /isn’t a link OSAT can open/, 'a file only when it is saved')
     await online.ask('search:open-link', 'https://www.google.com/search?q=cats')
     assert.deepEqual(online.calls.external, ['https://www.google.com/search?q=cats'])
   } finally { await online.done() }
@@ -292,8 +294,8 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /* A Mac whose front window is a Safari window, and which records where it was told to put it. */
 const macScript = (moves) => (command, args) => {
-  if (command !== 'osascript') return 'nothing'
-  if (args[3].includes('const [x, y, width, height]')) { moves.push(args.slice(4).map(Number)); return 'ok' }
+  if (!String(command).endsWith('/osat-window')) return 'nothing'
+  if (args[0] === 'move') { moves.push(args.slice(1).map(Number)); return 'ok' }
   return JSON.stringify({ app: 'Safari', x: 100, y: 120, width: 900, height: 600 })
 }
 
@@ -341,7 +343,7 @@ test('a layout from the panel puts the panel away first, then moves the window; 
     locked.launcher.search.show()
     assert.deepEqual(await locked.ask('search:snap', 'left-half'), { ok: false, reason: 'access' })
     assert.equal(locked.launcher.search.window.isVisible(), true, 'the panel stays, to say what is waiting')
-    assert.ok(!locked.calls.exec.some((call) => Array.isArray(call) && call[0] === 'osascript'), 'no script ran')
+    assert.ok(!locked.calls.exec.some((call) => Array.isArray(call) && String(call[0]).endsWith('/osat-window')), 'nothing ran')
   } finally { await locked.done() }
 })
 
@@ -355,7 +357,7 @@ test('a layout key pressed without Accessibility says so once, calmly, and never
     await wait(160)
     assert.equal(t.calls.notified.length, 1, 'once, not on every press')
     assert.match(t.calls.notified[0].body, /allowed in Accessibility/)
-    assert.ok(!t.calls.exec.some((call) => Array.isArray(call) && call[0] === 'osascript'))
+    assert.ok(!t.calls.exec.some((call) => Array.isArray(call) && String(call[0]).endsWith('/osat-window')))
   } finally { await t.done() }
 })
 

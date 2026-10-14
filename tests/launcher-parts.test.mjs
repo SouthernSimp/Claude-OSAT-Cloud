@@ -81,8 +81,7 @@ test('the app in front is found without any permission, and pasting needs Access
   assert.deepEqual(sent, [], 'without permission nothing is sent')
   assert.deepEqual(await pasteInto({ exec: osascript, platform: 'linux', trusted: () => true }), { pasted: false, reason: 'mac' })
   assert.deepEqual(await pasteInto({ exec: osascript, platform: 'darwin', trusted: () => true }), { pasted: true })
-  assert.equal(sent[0][0], 'osascript')
-  assert.match(sent[0][2], /keystroke "v" using command down/)
+  assert.deepEqual(sent[0], ['osat-keys', 'cmd+v'], '⌘V through the keys helper, never System Events')
   assert.deepEqual(await pasteInto({ exec: async () => { throw new Error('not allowed') }, platform: 'darwin', trusted: () => true }), { pasted: false, reason: 'failed' })
 })
 

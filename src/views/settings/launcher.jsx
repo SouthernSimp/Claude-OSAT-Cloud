@@ -7,6 +7,7 @@ import { MAX_RING, RING_ITEMS, ringItems } from '../../../shared/ring-model.mjs'
 import { describe as describeHyper } from '../../../shared/hyper-model.mjs'
 import { SNIPPET_WORD_HELP, validSnippetWord } from '../../../shared/snippets.mjs'
 import { AddRingTool } from './screenshots.jsx'
+import { RaycastImport } from './RaycastImport.jsx'
 import { WindowCommands } from './WindowCommands.jsx'
 import { Choice, Group, KeyRecorder, OnlyInTheMacApp, Page, Row, Select, Switch, WordField } from './parts.jsx'
 
@@ -141,7 +142,7 @@ export function QuickSearchPage({ page }) {
 export function KeyboardPage({ page }) {
   return (
     <LauncherPage page={page} what="In the Mac app, OSAT’s Hyper keys and its shortcuts work from any app.">
-      {({ settings, save, status, bridge, look }) => {
+      {({ settings, save, status, bridge, look, showUndo }) => {
         const own = settings.hyper.own === true
         const state = status?.hyper || 'starting'
         return (
@@ -170,6 +171,7 @@ export function KeyboardPage({ page }) {
                 </Row>
               )}
             </Group>
+            <RaycastImport settings={settings} save={save} showUndo={showUndo} />
             <Group title="Spotlight">
               <Row title="Use ⌘Space for the quick bar" hint="In System Settings → Keyboard → Keyboard Shortcuts → Spotlight, untick “Show Spotlight search”. Then pick ⌘Space for the quick bar in Quick bar." words="command space spotlight replace" />
             </Group>
