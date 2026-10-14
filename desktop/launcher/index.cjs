@@ -21,6 +21,7 @@ const { createClipboardHistory } = require('./clipboard-history.cjs')
 const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
 const { createCapsMapping, createHyper } = require('./hyper.cjs')
+const HYPER_APP_ID = 'ai.mccreery.osat' // package.json build.appId (the packaged package.json drops `build`)
 const { createMiddleClick } = require('./middle-click.cjs')
 const { createMouse, helperPath } = require('./mouse.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
@@ -88,6 +89,10 @@ async function createLauncher({
       run: (args) => require('node:child_process').execFileSync('/usr/bin/hidutil', args, { encoding: 'utf8', timeout: 4000 }),
       log: (text) => console.error('The Hyper key:', text),
     }),
+    // OSAT's own Input Monitoring entry, cleared when it is stale (hyper.cjs says why). Only ever OSAT's own app id.
+    repair: () => {
+      try { require('node:child_process').execFileSync('/usr/bin/tccutil', ['reset', 'ListenEvent', HYPER_APP_ID], { timeout: 4000 }); return true } catch { return false }
+    },
     log: (text) => console.error('The Hyper key’s helper:', text),
   })
   const listenForHyper = () => hyper.sync(settings.hyper.own === true, { tap: settings.hyper.tap === true })

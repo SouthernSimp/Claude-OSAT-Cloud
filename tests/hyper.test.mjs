@@ -155,13 +155,13 @@ function fakeProcess() {
   return proc
 }
 
-async function controller({ trusted = true, platform = 'darwin', hid = fakeHidutil([FOREIGN]), noSpawn = false } = {}) {
+async function controller({ trusted = true, platform = 'darwin', hid = fakeHidutil([FOREIGN]), noSpawn = false, repair = () => false } = {}) {
   const procs = []
   const calls = []
   const { mapping } = await mapped(hid)
   const hyper = createHyper({
     spawn: noSpawn ? null : (file, args) => { calls.push([file, args]); const proc = fakeProcess(); procs.push(proc); return proc },
-    platform, owner: 4242, helperPath: '/App/Resources/osat-hyper', model, mapping, trusted: () => trusted, retryMs: 5,
+    platform, owner: 4242, helperPath: '/App/Resources/osat-hyper', model, mapping, trusted: () => trusted, retryMs: 5, repair,
   })
   return { hyper, procs, calls, hid }
 }
@@ -328,9 +328,12 @@ test('the helper only reads key codes and flags: no network, no files, nothing t
   const swift = await readFile(path.join(repo, 'desktop', 'helpers', 'osat-hyper.swift'), 'utf8')
   const code = swift.split('\n').filter((line) => !line.trim().startsWith('//')).join('\n')
   assert.doesNotMatch(code, /URLSession|NWConnection|CFNetwork|import Network|socket\(|URL\(|FileManager|fopen|write\(|NSLog|os_log|Logger|\.characters|keyboardGetUnicodeString|stderr/)
-  // Every word it says is one of three.
+  // Every word it says is one the model reads.
   const said = [...code.matchAll(/say\("([^"]*)"\)/g)].map((match) => match[1])
-  assert.deepEqual([...new Set(said)].sort(), ['denied', 'ready', 'stopped'])
+  assert.deepEqual([...new Set(said)].sort(), ['caps', 'deaf', 'denied', 'ready', 'stopped', 'woke'])
+  for (const word of said) assert.deepEqual(model.readHelperLine(word), { kind: word })
+  // The only keys it posts: Esc for a tap, and its own marked F20 key-up for the self-check.
+  assert.equal((code.match(/\.post\(tap:/g) || []).length, 2)
   assert.match(code, /print\(line\)/)
 })
 
@@ -344,7 +347,9 @@ test('the Swift rules are the JS rules: the same codes, time and flags', async (
   // It restarts what it holds on each thing the JS model calls a reset, and swallows the trigger by returning nil.
   for (const needle of ['tapDisabledByTimeout', 'tapDisabledByUserInput', 'willSleepNotification', 'didWakeNotification', 'return nil', '.headInsertEventTap', '.cgSessionEventTap']) assert.ok(swift.includes(needle), needle)
   assert.match(swift, /case \.leftMouseDown[^\n]*\.otherMouseUp:/)
-  assert.match(swift, /default:\n\s*break \/\/ flagsChanged/)
+  // flagsChanged passes through as it was; it is only looked at for Caps Lock arriving as itself.
+  assert.match(swift, /case \.flagsChanged:[\s\S]*?capsCode[\s\S]*?default:\n\s*break/)
+  assert.equal(Number(/let capsCode: Int64 = (\d+)/.exec(swift)[1]), 57)
 })
 
 /* ---- Settings ---- */
@@ -365,4 +370,46 @@ test('recording a key with Hyper held reads as Hyper + the key; a bare F20 says 
   assert.deepEqual(comboFrom(held), { combo: 'Control+Alt+Shift+Command+V' })
   assert.match(comboFrom({ code: 'F20' }).error, /Make Caps Lock a Hyper key/)
   assert.match(comboFrom({ code: 'KeyV' }).error, /Hold ⌘/)
+})
+
+test('a deaf helper (a stale privacy entry): the entry is cleared once and a new helper starts; deaf again is denied', async () => {
+  let repairs = 0
+  const { hyper, procs, hid } = await controller({ repair: () => { repairs += 1; return true } })
+  hyper.sync(true)
+  say(procs[0], 'deaf')
+  assert.equal(repairs, 1)
+  assert.equal(procs[0].killed, true)
+  assert.deepEqual(hid.box.list, [FOREIGN], 'the keyboard is never changed for a deaf helper')
+  procs[0].emit('exit', 0)
+  assert.equal(hyper.state(), 'starting', 'its own exit is ignored')
+  await settle()
+  assert.equal(procs.length, 2)
+  say(procs[1], 'deaf')
+  assert.equal(repairs, 1, 'cleared only once')
+  assert.equal(hyper.state(), 'denied')
+  await settle()
+  assert.equal(procs.length, 2, 'and not started again')
+})
+
+test('a repair that fails says denied at once', async () => {
+  const { hyper, procs } = await controller({ repair: () => false })
+  hyper.sync(true)
+  say(procs[0], 'deaf')
+  assert.equal(hyper.state(), 'denied')
+})
+
+test('Caps Lock seen as itself (or a wake) puts a lost mapping back; while not working it changes nothing', async () => {
+  const { hyper, procs, hid } = await controller()
+  hyper.sync(true)
+  say(procs[0], 'caps')
+  assert.deepEqual(hid.box.list, [FOREIGN], 'not before ready')
+  say(procs[0], 'ready')
+  hid.box.list = [FOREIGN] // another app quit and took it
+  say(procs[0], 'caps')
+  assert.deepEqual(hid.box.list, [FOREIGN, OURS])
+  hid.box.list = []
+  say(procs[0], 'woke')
+  assert.deepEqual(hid.box.list, [OURS])
+  hyper.stop()
+  assert.deepEqual(hid.box.list, [], 'and it is OSAT’s to take out again')
 })

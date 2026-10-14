@@ -48,11 +48,13 @@ export function step(state, event, { tapEscape = false } = {}) {
 /* The flags an event leaves with. */
 export const withHyper = (flags) => (Number(flags) | HYPER_FLAGS) >>> 0
 
-/* One line from the helper: `ready` (it listens), `denied` (macOS has not allowed it) or `stopped` (it is leaving).
-   → { kind } | null. It says nothing else, and never what was typed. */
+/* One line from the helper: `ready` (it listens, and its self-check came back), `denied` (macOS has not allowed it),
+   `deaf` (macOS let it listen but sends it no keys), `caps` (Caps Lock arrived as itself: the mapping has gone),
+   `woke` (the Mac woke) or `stopped` (it is leaving). → { kind } | null. It says nothing else, and never what was typed. */
+const HELPER_WORDS = new Set(['ready', 'denied', 'deaf', 'caps', 'woke', 'stopped'])
 export function readHelperLine(line) {
   const word = String(line || '').trim()
-  return word === 'ready' || word === 'denied' || word === 'stopped' ? { kind: word } : null
+  return HELPER_WORDS.has(word) ? { kind: word } : null
 }
 
 /* ---- Caps Lock → F20, with the Mac's `hidutil` ---------------------------------------------------------------------
@@ -98,7 +100,7 @@ export function describe(state) {
     case 'working': return 'Working. Hold Caps Lock and press a letter.'
     case 'starting': return 'Starting…'
     case 'access': return 'Needs Accessibility. OSAT can’t hold the Hyper key until you allow it.'
-    case 'denied': return 'macOS didn’t let OSAT watch the keyboard. In System Settings → Privacy & Security, allow OSAT in Accessibility (and in Input Monitoring if it is listed), then turn this off and on.'
+    case 'denied': return 'macOS isn’t sending OSAT the keyboard. In System Settings → Privacy & Security, allow OSAT in Accessibility, remove OSAT from Input Monitoring if it is listed there, then turn this off and on.'
     case 'failed': return 'OSAT couldn’t start it. Turn this off and on to try again.'
     case 'unavailable': return 'Not on this Mac. It works in the Mac app.'
     default: return ''
