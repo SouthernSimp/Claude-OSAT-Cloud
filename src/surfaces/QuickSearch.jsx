@@ -8,7 +8,7 @@ import { DEFAULT_SETTINGS, canonicalKey, customizable, ownKeyOf, ownWordOf, vali
 import { systemCommand } from '../../shared/system-commands.mjs'
 import { describePlan } from '../../shared/uninstall-model.mjs'
 import { comboFrom, labelOf } from '../lib/hotkey.js'
-import { FILE_FILTERS, KILL_SCOPE, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
+import { FILE_FILTERS, KILL_SCOPE, MENUS_SCOPE, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
 import { remember } from '../../shared/picks.mjs'
 import { cleanAnswer, replaces, textActionRows, textMessages } from '../../shared/selection-model.mjs'
 import { streamLocalMessage } from '../local-ai.js'
@@ -331,7 +331,13 @@ export function QuickSearchSurface() {
           else if (!result.ok && result.reason === 'mac') { said('Moving windows works in the Mac app.') }
           break
         }
-        case 'scope': setScope(d.scope); if (d.scope === KILL_SCOPE) setText(''); setCursor(null); input.current?.focus(); break
+        case 'scope': setScope(d.scope); if (d.scope === KILL_SCOPE || d.scope === MENUS_SCOPE) setText(''); setCursor(null); input.current?.focus(); break
+        case 'press-menu': {
+          const done = await bridge.pressMenu(d.path)
+          if (done?.error === 'NOTFOUND') said(`${target.section} doesn’t have “${target.title}” right now.`, 3000)
+          else if (done?.error) said('The app didn’t take it. Try it from its menu.', 3000)
+          break
+        }
         case 'kill':
         case 'force-kill': {
           const force = id === 'force-kill'
@@ -541,7 +547,11 @@ export function QuickSearchSurface() {
     return () => window.clearTimeout(timer)
   }, [toast])
 
-  const empty = looking ? 'Looking…' : read.typed
+  const menusEmpty = scope === MENUS_SCOPE && (!found.menus ? 'Reading the menus…'
+    : found.menus.error === 'ACCESS' ? 'To read an app’s menus, OSAT needs Accessibility. Settings → Launcher shows how.'
+      : found.menus.error === 'MAC' ? 'Keys for this app works in the Mac app.'
+        : found.menus.error ? 'Open the app you want, then ask again.' : null)
+  const empty = menusEmpty ? menusEmpty : looking ? 'Looking…' : read.typed
     ? `Nothing found for “${read.typed}”.`
     : scope === 'clipboard' ? 'Nothing copied yet. Whatever you copy from now on shows up here, and stays on this Mac.'
       : scope === 'files' ? 'Files you use will show up here.' : 'Type to search.'
@@ -550,7 +560,7 @@ export function QuickSearchSurface() {
   const placeholder = selected ? 'What should the AI do with it? Pick one, or type your own…'
     : mode === 'sticky' ? 'Write a sticky… Return saves it to Unsorted'
     : mode === 'ask' ? 'Ask the AI… Return asks'
-      : scope === 'all' ? `Search, ask, or write a sticky…${full ? '' : '  ↓ for what you copied'}` : scope === KILL_SCOPE ? 'Filter running apps…' : `Search ${tabs.find(([id]) => id === scope)?.[1] || ''}…`
+      : scope === 'all' ? `Search, ask, or write a sticky…${full ? '' : '  ↓ for what you copied'}` : scope === KILL_SCOPE ? 'Filter running apps…' : scope === MENUS_SCOPE ? `Search ${found.menus?.app || 'this app'}’s menus…` : `Search ${tabs.find(([id]) => id === scope)?.[1] || ''}…`
 
   return (
     <>
@@ -597,7 +607,7 @@ export function QuickSearchSurface() {
             )
             : read.scope !== 'all' && (
               <button type="button" className="qs-chip is-scope" title="Back to everything  esc" onClick={() => { setScope('all'); if (read.scope !== scope) setText(''); setCursor(null); input.current?.focus() }}>
-                {read.scope === KILL_SCOPE ? 'Kill Process' : tabs.find(([id]) => id === read.scope)?.[1]} <X weight="bold" aria-hidden="true" />
+                {read.scope === KILL_SCOPE ? 'Kill Process' : read.scope === MENUS_SCOPE ? `Keys for ${found.menus?.app || 'this app'}` : tabs.find(([id]) => id === read.scope)?.[1]} <X weight="bold" aria-hidden="true" />
               </button>
             )}
       </header>
@@ -646,6 +656,7 @@ export function QuickSearchSurface() {
                             : <RowIcon row={item} />}
                         <span className="qs-row-text"><b>{item.title}</b><small>{item.subtitle}</small></span>
                         {(item.pinned || item.data?.pinned) && <PushPin weight="fill" className="qs-pin" aria-label="Pinned" />}
+                        {item.kind === 'menu' && item.data.keys && <kbd className="qs-menu-key" title="Its keys in this app">{item.data.keys}</kbd>}
                         {index === active ? <kbd>↵</kbd> : item.kind === 'ask' ? <kbd className="is-quiet">⌘↵</kbd> : item.kind === 'sticky' ? <kbd className="is-quiet">⌥↵</kbd>
                           : customizable(item) && ownKeyOf(settings, item) ? <kbd className="is-quiet" title="Its key, from any app">{labelOf(ownKeyOf(settings, item))}</kbd> : null}
                       </div>

@@ -100,6 +100,13 @@ export function installSearchBridge(defaults) {
     // Hyper N's sticky: a screenshot is a made-up picture by a made-up name.
     stickyPicture: async (area) => { window.__calls.push(['stickyPicture', area]); return { ok: true, name: '0f8fad5b-d9cb-469f-a165-70867728950e.png' } },
     picture: async () => picture('c6d7e8', 'A screenshot'),
+    // Keys for this app: a stand-in app's menus.
+    menus: async () => ({ app: 'Gemini', items: [
+      { path: ['File', 'New Chat'], key: '⇧⌘O' }, { path: ['File', 'New Temporary Chat'], key: '⇧⌘N' }, { path: ['File', 'Export…'] },
+      { path: ['Edit', 'Next Model'], key: '⇧⌘]' }, { path: ['Edit', 'Previous Model'], key: '⇧⌘[' }, { path: ['View', 'Toggle Sidebar'], key: '⌃⌘S' },
+      { path: ['View', 'Toggle Mini Chat'], key: '⌘\\' }, { path: ['Window', 'Move & Resize', 'Left'], key: '🌐⌃←' },
+    ] }),
+    pressMenu: async (path) => { window.__calls.push(['pressMenu', path]); return { ok: true } },
     dragClip: async (id) => { window.__calls.push(['dragClip', id]); return true },
     hide: async () => { window.__calls.push(['hide']); return true },
     // Without Accessibility the Mac app answers that it can't move a window (and touches nothing).

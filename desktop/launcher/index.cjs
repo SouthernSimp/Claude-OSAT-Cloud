@@ -332,6 +332,15 @@ async function createLauncher({
   on('search:apps', async () => (settings.sources.apps.on ? apps.list() : []))
   // Kill Process: the running apps, and ending one (by the path the list gave; main finds its processes again).
   on('search:processes', async () => processes.list())
+  // Keys for this app: the menus of the app behind the bar, and pressing one of its items (osat-window, Accessibility).
+  const frontHelper = (args) => exec(helperFile('osat-window'), args, { timeout: 8000 }).then((out) => JSON.parse(out), () => ({ error: 'FAILED' }))
+  on('search:menus', async () => (platform === 'darwin' ? frontHelper(['menus']) : { error: 'MAC', items: [] }))
+  on('search:press-menu', async (titles) => {
+    if (!Array.isArray(titles) || titles.length < 2 || titles.length > 6 || !titles.every((title) => typeof title === 'string' && title.length > 0 && title.length <= 200)) fail('That isn’t a menu item.')
+    if (platform !== 'darwin') return { error: 'MAC' }
+    search.hide()
+    return frontHelper(['press', ...titles])
+  })
   on('search:uninstall-plan', async (appPath) => uninstall.plan(appPath))
   on('search:uninstall', async (appPath) => uninstall.run(appPath))
   on('search:uninstall-undo', async (token) => uninstall.undo(String(token)))

@@ -14,6 +14,7 @@ export function useSources({ bridge, read, settings, fileFilter, visit }) {
   const [clipboard, setClipboard] = useState({ items: [], paused: false })
   const [apps, setApps] = useState([])
   const [processes, setProcesses] = useState([])
+  const [menus, setMenus] = useState(null)
   const [looking, setLooking] = useState(false)
 
   useEffect(() => {
@@ -50,6 +51,14 @@ export function useSources({ bridge, read, settings, fileFilter, visit }) {
   // Running apps (Kill Process): looked at again on every visit and after one is ended.
   const loadProcesses = useCallback(() => bridge?.processes?.().then((list) => setProcesses(Array.isArray(list) ? list : []), () => {}), [bridge])
   useEffect(() => { if (want.processes) loadProcesses() }, [want.processes, visit, loadProcesses])
+  // Keys for this app: its menus, read again each time the view opens (the app behind the bar may have changed).
+  useEffect(() => {
+    if (!want.menus) return undefined
+    let live = true
+    setMenus(null)
+    bridge?.menus?.().then((value) => { if (live) setMenus(value?.items ? value : { app: value?.app || '', items: [], error: value?.error || 'NONE' }) }, () => { if (live) setMenus({ app: '', items: [], error: 'FAILED' }) })
+    return () => { live = false }
+  }, [want.menus, visit, bridge])
 
-  return { found: { files, recentFiles: recent, clipboard, apps, processes }, looking, reloadClipboard: loadClipboard, reloadProcesses: loadProcesses }
+  return { found: { files, recentFiles: recent, clipboard, apps, processes, menus }, looking, reloadClipboard: loadClipboard, reloadProcesses: loadProcesses }
 }

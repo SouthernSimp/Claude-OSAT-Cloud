@@ -1175,6 +1175,21 @@ async function main() {
   // Pop out (from the desk's chat) opens it on Ask; ring "sticky" opens it to write a sticky.
   await bar.evaluate(() => window.__shown({ view: 'chat' }))
   await bar.locator('.qs-chat .composer textarea').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push(`${room}: the Ask key did not open Ask`))
+  // Keys for this app: "keys" offers it; inside, every shortcut of the app behind the bar, and words find any menu item.
+  await bar.evaluate(() => window.__shown({}))
+  await bar.fill('#qs-input', 'keys')
+  await bar.locator('.qs-row', { hasText: 'Keys for this app' }).first().click().catch(() => problems.push(`${room}: "keys" did not offer Keys for this app`))
+  await bar.keyboard.press('Enter')
+  await bar.locator('.qs-row[data-kind="menu"] .qs-menu-key', { hasText: '⇧⌘O' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the app's shortcuts did not show`))
+  if (await bar.locator('.qs-row[data-kind="menu"]', { hasText: 'Export' }).count()) problems.push(`${room}: a menu item without keys showed before anything was typed`)
+  if (await bar.locator('.qs-keycaps kbd').count() !== 3) problems.push(`${room}: the picked menu item's keys were not drawn as three caps`)
+  await sleep(400)
+  await bar.screenshot({ path: `${OUT}/QuickBar-app-keys.png` })
+  await bar.fill('#qs-input', 'model next')
+  await bar.locator('.qs-row[data-kind="menu"][aria-selected="true"]', { hasText: 'Next Model' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: words did not find a menu item`))
+  await bar.keyboard.press('Enter')
+  await sleep(200)
+  if (!(await bar.evaluate(() => window.__calls)).some(([name, path]) => name === 'pressMenu' && path?.join('/') === 'Edit/Next Model')) problems.push(`${room}: Return did not press the menu item`)
   await bar.evaluate(() => window.__shown({ view: 'sticky' }))
   // Hyper N's quick sticky: "- " starts a list, ⌘B bolds, Area adds a screenshot, ⌘Return saves it with all of that.
   const field = bar.locator('.quick-sticky-field')

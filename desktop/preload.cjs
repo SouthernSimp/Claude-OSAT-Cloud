@@ -443,6 +443,9 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   stickyPicture: search('sticky-picture'),
   // Uninstall an app: what would go, then the Bin, then Undo (desktop/launcher/uninstall.cjs).
   uninstallPlan: search('uninstall-plan'),
+  // Keys for this app: the menus of the app you were in, and pressing one item (desktop/helpers/osat-window.swift).
+  menus: search('menus'),
+  pressMenu: search('press-menu'),
   uninstall: search('uninstall'),
   uninstallUndo: search('uninstall-undo'),
   picture: search('picture'),

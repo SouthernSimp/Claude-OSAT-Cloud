@@ -37,6 +37,8 @@ export function Preview({ row, bridge, workspace, offer = null, now, onDragStart
   else if (row.kind === 'app' && own.thumb) body = <img className="qs-app-icon" src={own.thumb} alt="" draggable={false} />
   else if (row.kind === 'calc') body = <p className="qs-big">{row.title}</p>
   else if (row.kind === 'layout') body = <LayoutPreview id={d.layout} box={d.box} />
+  // A menu item: its keys, large, one cap each (🌐⌃⇧⌘ and the key).
+  else if (row.kind === 'menu') body = d.keys ? <p className="qs-keycaps">{[...d.keys.matchAll(/🌐|[⌃⌥⇧⌘]|.+$/gu)].map((part, index) => <kbd key={index}>{part[0]}</kbd>)}</p> : <div className="qs-glyph"><RowIcon row={row} weight="light" /></div>
   else if (COPIED_WORDS.has(row.kind)) body = <pre className={`qs-text ${row.kind === 'link' ? 'is-link' : ''}`}>{own.text ?? d.text}</pre>
   // Save as a sticky / Ask the AI: the words that would go.
   else if (row.kind === 'sticky' || row.kind === 'ask' || row.kind === 'snippet') body = <pre className="qs-text">{d.text}</pre>
