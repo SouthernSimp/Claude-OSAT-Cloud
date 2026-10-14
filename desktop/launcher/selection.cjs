@@ -14,7 +14,6 @@ const ASK_APP = `tell application "System Events"
     return ""
   end try
 end tell`
-const COPY = 'tell application "System Events" to keystroke "c" using command down'
 // What OSAT can put back exactly. Anything else on the clipboard (files from Finder, say) means no ⌘C: nothing is lost.
 const PUT_BACK = new Set(['text/plain', 'text/html', 'text/rtf', 'image/png'])
 const MAX = 20000
@@ -22,7 +21,7 @@ const MAX = 20000
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /* → { text } or { text: '', reason: 'access' | 'mac' | 'none' }. */
-async function readSelection({ exec = run, platform = process.platform, trusted = () => false, clipboard, history } = {}) {
+async function readSelection({ exec = run, keys = 'osat-keys', platform = process.platform, trusted = () => false, clipboard, history } = {}) {
   if (platform !== 'darwin') return { text: '', reason: 'mac' }
   if (!trusted()) return { text: '', reason: 'access' }
   const asked = await exec('osascript', ['-e', ASK_APP], { timeout: 2000 }).catch(() => '')
@@ -34,7 +33,7 @@ async function readSelection({ exec = run, platform = process.platform, trusted 
   history?.borrow()
   try {
     clipboard.writeText(marker)
-    await exec('osascript', ['-e', COPY], { timeout: 2000 })
+    await exec(keys, ['cmd+c'], { timeout: 2000 })
     for (let waited = 0; waited < 800; waited += 50) {
       await wait(50)
       const now = clipboard.readText()

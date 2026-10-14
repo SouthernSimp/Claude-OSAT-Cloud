@@ -70,20 +70,24 @@ async function createLauncher({
   const hotkeys = createHotkeys({ globalShortcut, isTaken })
   const trusted = () => platform === 'darwin' && systemPreferences.isTrustedAccessibilityClient(false)
   // Window snapping: it needs Accessibility, and OSAT never moves its own windows.
-  const snap = createSnap({ exec, platform, trusted, helper: app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-window') : path.join(__dirname, '..', '..', 'build', 'helpers', 'osat-window'), screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel, windows: () => settings.windows })
+  // OSAT's small native helpers (desktop/helpers/*.swift): in the app's Resources, or build/helpers from source.
+  const helperFile = (name) => (app.isPackaged ? path.join(process.resourcesPath, 'helpers', name) : path.join(__dirname, '..', '..', 'build', 'helpers', name))
+  // Keys OSAT presses (paste, copy, a snippet's ⌫s, Lock Screen): the osat-keys helper, Accessibility only.
+  const keys = helperFile('osat-keys')
+  const snap = createSnap({ exec, platform, trusted, helper: helperFile('osat-window'), screens: () => screen.getAllDisplays(), own: ['OSAT', 'Electron'], layouts: layoutModel, windows: () => settings.windows })
   // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
-  const system = createSystem({ exec, platform, trusted, model: systemModel })
+  const system = createSystem({ exec, keys, platform, trusted, model: systemModel })
   const processes = createProcesses({ exec, platform, model: processModel })
   // Snippets: pasted from the bar, and (once turned on) typed in any app: snippets.cjs.
   const snippets = createSnippets({
-    spawn: spawnHelper, exec, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
-    clipboard, quiet: history.quiet, paste: () => pasteInto({ exec, platform, trusted: () => true }),
+    spawn: spawnHelper, exec, keys, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
+    clipboard, quiet: history.quiet, paste: () => pasteInto({ exec, keys, platform, trusted: () => true }),
     log: (text) => console.error('The snippets helper:', text),
   })
   // The Hyper key built in (Phase 63): Caps Lock → F20 and a helper that holds ⌃⌥⇧⌘ while it is down: hyper.cjs.
   const hyper = createHyper({
     spawn: spawnHelper, platform, model: hyperModel, trusted,
-    helperPath: app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-hyper') : path.join(__dirname, '..', '..', 'build', 'helpers', 'osat-hyper'),
+    helperPath: helperFile('osat-hyper'),
     mapping: createCapsMapping({
       model: hyperModel, platform, file: path.join(dataDir, 'hyper.json'),
       run: (args) => require('node:child_process').execFileSync('/usr/bin/hidutil', args, { encoding: 'utf8', timeout: 4000 }),
@@ -392,7 +396,7 @@ async function createLauncher({
     if (!trusted) return { pasted: false, reason: platform === 'darwin' ? 'access' : 'mac' }
     search.hide()
     await wait(140)
-    return pasteInto({ exec, platform, trusted: () => true })
+    return pasteInto({ exec, keys, platform, trusted: () => true })
   }
   on('search:paste-clip', async (id) => {
     if (!history.use(id)) fail('That copy is gone.')
@@ -415,7 +419,7 @@ async function createLauncher({
      do with them. From the bar ("fix grammar", "selected text"), the bar steps aside first so that app is in front. */
   async function onSelection() {
     if (search?.window?.isVisible()) { search.hide(); await wait(160) }
-    const found = await readSelection({ exec, platform, trusted, clipboard, history })
+    const found = await readSelection({ exec, keys, platform, trusted, clipboard, history })
     search.show({ expanded: true, view: 'selection', selection: found })
   }
   on('search:selection', () => { onSelection().catch(() => {}); return true })

@@ -46,7 +46,8 @@ function fakeMac({ asked = '', selected = 'from copy', formats = ['text/plain'],
     writeText: (value) => { text = value }, write: ({ text: value }) => { text = value ?? '' }, clear: () => { text = '' },
   }
   const exec = async (command, args) => {
-    if (args[1].includes('AXSelectedText')) return asked
+    if (command === 'osascript' && args[1].includes('AXSelectedText')) return asked
+    assert.deepEqual([command, ...args], ['osat-keys', 'cmd+c'], '⌘C through the keys helper, never System Events')
     text = selected
     return ''
   }
