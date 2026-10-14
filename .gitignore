@@ -29,4 +29,6 @@ outputs/unsorted-concepts-20261004/
 .vite-osat-field/
 .design-backups/
 # Native helpers, built by scripts/build-helpers.mjs
+
+# The listening helper, built from desktop/meetings/osat-listen.swift (scripts/build-listen.mjs)
 build/helpers/

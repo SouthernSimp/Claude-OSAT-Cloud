@@ -154,6 +154,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 61 | Window management you can shape (Raycast-style): about fifty window commands (halves, quarters, thirds, fourths, sixths, ninths, the middle in four sizes, almost maximize, make larger or smaller, move to an edge, next and previous screen); each can have an alias you type in the quick bar and a key, and can be switched off; make your own from a name and a rectangle in percent (Create command), duplicate any built-in one as your own, reset it. Settings → Window layouts and Settings → Shortcuts show the same list | In review |
 | 63 | Hyper key, built in | In review |
 | 64 | Mouse (Settings → Mouse): the mouse wheel can scroll the opposite way from the trackpad (up and down, left and right, each on its own), faster or slower, and the side buttons can go back or forward; no LinearMouse needed. A small helper does it, only while it is on and OSAT is allowed in Accessibility | In review |
+| 57 | Meetings (Tools → Meetings): OSAT listens to a meeting on your Mac (you, and the other people through what your Mac plays) and writes it up when you stop: a summary, what was decided, a to-do list, and the words themselves, as two notes. The listening and the writing happen on your Mac; the sound is deleted once it is written up | In review |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
@@ -1328,6 +1329,28 @@ already signed in and OSAT never holds a mail password, token or sign-in.
 - **Works offline** (Mail on this Mac is local), though Mail itself may fetch an older message when it is opened.
 - **Not yet:** sending, Gmail straight from Google (needs a Google Cloud sign-in OSAT would have to keep), attachments,
   HTML messages, other folders than the inbox, Outlook, Messages.
+### Phase 57: Meetings (in review)
+Nate (Oct 13): “make Granola for OSAT”, with whisper.cpp for the words and an offline model for the AI, meetings up to
+about 45 minutes. Built from first principles (nothing taken from Granola’s app); the AI is the one OSAT already runs.
+- **Listening.** Tools → Meetings → Start listening. A small helper program of its own (`osat-listen`, Swift, built
+  from `desktop/meetings/osat-listen.swift`) hears the microphone and, if you leave the box ticked, the sound your Mac
+  plays (ScreenCaptureKit), and writes each to a file. The desk can be put away while it listens; the menu bar says
+  “Listening”. The first time, macOS asks for the microphone and for Screen & System Audio Recording; without the second,
+  OSAT hears only you and says so. A forgotten meeting is written up after 3 hours.
+- **Words.** whisper.cpp (large-v3-turbo, 574 MB, one download that checks its SHA-256 and works resumed; then no internet
+  needed) through `@fugood/whisper.node`, in its own process. Only the stretches with someone talking are heard
+  (whisper makes words up in silence), your microphone and the Mac’s sound are two voices (“Me” and “Them”), and
+  the microphone’s echo of the speakers is dropped. A 45-minute meeting takes a couple of minutes on Apple silicon.
+- **Writing it up.** The built-in AI (never a cloud model) reads the conversation in parts of about 2,600 words (it
+  reads about 8,000 tokens at once), writes notes for each part under a grammar, and the lists are joined in code so no
+  action item is lost to a second summary; then one short question names the meeting. A 45-minute meeting is about
+  20 seconds of AI. With no AI set up, the words alone are kept.
+- **Result.** Two notes: the write-up (summary, Decided, To do as `- [ ]` tasks Today picks up, Still open) lands in
+  Unsorted, and the transcript beside it, linked both ways with `[[ ]]`, both tagged `#meeting`. Undo puts them in the Bin.
+  A meeting that could not be finished (a quit, a crash, the AI not answering) keeps its sound and is offered again
+  (Write it up / Delete it); nothing is thrown away on its own.
+- **Not yet.** Real names for the other people (they are all “Them”), a quick-bar command and shortcut to start, notes
+  while the meeting is still going, linking a meeting to a Calendar event. See docs/BACKLOG.md.
 
 
 - `main` always works.

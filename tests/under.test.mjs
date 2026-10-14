@@ -57,11 +57,12 @@ test('under, a loopback answer can’t send the main process fetch anywhere else
 })
 
 test('what reaches out answers in plain words while offline; the rest works', () => {
-  for (const channel of ['browser:open', 'browser:navigate', 'skills:record-start', 'skills:run', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'ai:install', 'phone:enable', 'phone:disable', 'askapps:call', 'askapps:check', 'github:status', 'github:repos', 'github:repo', 'github:merge', 'github:open']) {
+  for (const channel of ['browser:open', 'browser:navigate', 'skills:record-start', 'skills:run', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'ai:install', 'meeting:ears-install', 'phone:enable', 'phone:disable', 'askapps:call', 'askapps:check', 'github:status', 'github:repos', 'github:repo', 'github:merge', 'github:open']) {
     assert.match(refusal(channel), /when you’re back online|until you’re back online/, channel)
   }
   // Files on this Mac still list, show and search; the desk shows the Desktop while offline.
   for (const channel of ['skills:list', 'skills:state', 'skills:stop', 'files:list', 'files:thumb', 'files:search', 'files:quick-look', 'browser:state', 'browser:close', 'terminal:list', 'terminal:attach', 'ai:status', 'ai:cancel', 'ai:choose', 'phone:status', 'desk:prefs', 'store:load', 'under:set', 'local-ai:models', 'search:files', 'search:clipboard', 'search:apps', 'search:reveal-file', 'search:paste-clip', 'search:trash-file', 'askapps:status', 'askapps:tools', 'askapps:add', 'askapps:toggle', 'askapps:remove', 'askapps:import', 'askapps:claude-config', 'mail:status', 'mail:allow', 'mail:list', 'mail:search', 'mail:read', 'mail:reply', 'mail:open']) {
+  for (const channel of ['skills:list', 'skills:state', 'skills:stop', 'files:list', 'files:thumb', 'files:search', 'files:quick-look', 'browser:state', 'browser:close', 'terminal:list', 'terminal:attach', 'ai:status', 'ai:cancel', 'ai:choose', 'meeting:status', 'meeting:start', 'meeting:stop', 'meeting:finish', 'meeting:undo', 'phone:status', 'desk:prefs', 'store:load', 'under:set', 'local-ai:models', 'search:files', 'search:clipboard', 'search:apps', 'search:reveal-file', 'search:paste-clip', 'search:trash-file', 'askapps:status', 'askapps:tools', 'askapps:add', 'askapps:toggle', 'askapps:remove', 'askapps:import', 'askapps:claude-config']) {
     assert.equal(refusal(channel), null, channel)
   }
 })
@@ -185,7 +186,7 @@ const FENCE = [
   // GitHub's gh tool talks to github.com on its own, where the fetch lock doesn't reach.
   [/\brun\(file, args/, 'GitHub’s gh tool', (file) => file === 'desktop/github.cjs'],
   // The Mac's Mail app is another program, which fetches mail on its own where the fetch lock doesn't reach.
-  [/\bexecFile\('osascript'/, 'a script run in the Mac’s Mail app', (file) => file === 'desktop/mac-mail.cjs'],
+  ['osascript', 'a script run in the Mac’s Mail app', 'desktop/mac-mail.cjs', 'the listening engine fetching a model itself', 'desktop/meetings/'],
 ]
 const ALLOWED = {
   'desktop/mac-mail.cjs': [
@@ -265,4 +266,5 @@ test('no new way out of the Mac slips past Offline', async () => {
   assert.ok(!caught("fetch('https://x')", 'desktop/media.cjs'), 'the main process fetch is locked already')
   assert.ok(caught("spawn('curl', [url])", 'desktop/bots/x.cjs'))
   assert.ok(caught("execFile('osascript', args, {})", 'desktop/mac-mail.cjs'))
+  assert.ok(caught('initWhisper({ filePath, modelUrl })', 'desktop/meetings/listen.cjs'))
 })

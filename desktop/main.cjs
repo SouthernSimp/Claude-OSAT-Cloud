@@ -42,6 +42,9 @@ const { createMacKeys } = require('./mac-keys.cjs')
 const { createPasswords } = require('./passwords.cjs')
 const { writeConcealed } = require('./conceal.cjs')
 const { createOvernight } = require('./overnight.cjs')
+const { createMeetings } = require('./meetings/index.cjs')
+const { createEars } = require('./meetings/ears.cjs')
+const { createCapture } = require('./meetings/capture.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -800,11 +803,15 @@ async function updateFromTray() {
 
 /* The menu-bar icon, like Granola's: open, the bar, a sticky, Settings; the version and Check for Updates; then the
    quieter switches. It is a moon while offline, so the state shows with the desk away. */
+/* The menu-bar icon is a moon while offline, so the state shows with the desk away. */
+let listeningNow = false
 function updateTray() {
   if (!tray || tray.isDestroyed()) return
   trayAiLine = aiLine()
   tray.setImage(trayIcon(under.on ? 'trayUnderTemplate' : 'trayTemplate'))
   tray.setToolTip(under.on ? 'OSAT · Offline' : 'OSAT')
+  // Whenever a meeting is being heard, the menu bar says so.
+  tray.setTitle(listeningNow ? 'Listening' : '')
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open OSAT', accelerator: shortcuts.layer.value || undefined, registerAccelerator: false, click: () => showDesk() },
     { label: 'Search or Ask…', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
@@ -1213,6 +1220,46 @@ async function registerOvernight() {
   overnight.start()
 }
 
+/* ---- Meetings: OSAT listens to a meeting on this Mac and writes it up (desktop/meetings/, Phase 57) ---- */
+
+let meetings = null
+async function registerMeetings() {
+  const { normalizeNote } = await sharedModule('note-core.mjs')
+  const client = store.connect(() => {})
+  const ears = createEars({
+    dir: path.join(app.getPath('userData'), 'models'),
+    emit: () => meetings?.status().then((status) => sendToAllWindows('meeting:changed', status)),
+  })
+  meetings = await createMeetings({
+    dataDir: app.getPath('userData'),
+    sharedModule,
+    ears,
+    fork: () => utilityProcess.fork(path.join(__dirname, 'meetings', 'listen.cjs'), [], { serviceName: 'OSAT Listening' }),
+    // A small program of its own hears the microphone and the Mac's sound; from source it is built by scripts/build-listen.mjs.
+    capture: createCapture({ helperPath: app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-listen') : path.join(__dirname, '..', 'build', 'helpers', 'osat-listen') }),
+    // The write-up reads everything that was said, so only the AI on this Mac does it, never a cloud model.
+    hasAi: () => ai.models().length > 0,
+    chat: (messages, schema) => ai.chatStream({ messages, schema }, () => {}, undefined, { interactive: true }),
+    // The write-up lands in Unsorted, like any thought that arrives without a home; the transcript is a plain note beside it.
+    commitNotes: async (made) => {
+      const now = new Date().toISOString()
+      const notes = made.map((item, index) => normalizeNote({ id: `note-${randomUUID()}`, title: item.title, markdown: item.markdown, createdAt: now, updatedAt: now, unsorted: item.unsorted, source: 'Meeting' }, index))
+      store.commit(client, notes.map((note) => ({ t: 'add', c: 'notes', v: note, at: 0 })))
+      return notes.map((note) => note.id)
+    },
+    // Undo puts them in the Bin (Notes can bring them back), rather than deleting them.
+    removeNotes: async (ids) => {
+      const trashedAt = new Date().toISOString()
+      store.commit(client, ids.map((id) => ({ t: 'patch', c: 'notes', id, v: { trashedAt, pinned: false } })))
+    },
+    handle,
+    fail,
+    send: sendToAllWindows,
+    notify: (options) => { if (Notification.isSupported()) new Notification(options).show() },
+    listening: (on) => { listeningNow = on; updateTray() },
+  })
+}
+
 /* ---- Scans: the folder a scanner saves to; each new scan becomes a node (scans.cjs) ---- */
 
 let scans = null
@@ -1403,8 +1450,35 @@ function selfTest(modelPath) {
   child.postMessage({ type: 'probe' })
 }
 
+/* `OSAT --osat-listen-test`: Meetings' listening engine loads inside the packaged app, and so does its helper (CI's check). */
+function listenTest() {
+  const child = utilityProcess.fork(path.join(__dirname, 'meetings', 'listen.cjs'), [], { serviceName: 'OSAT Listening' })
+  const helper = app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-listen') : path.join(__dirname, '..', 'build', 'helpers', 'osat-listen')
+  let finished = false
+  const finish = (ok, line) => {
+    if (finished) return
+    finished = true
+    console.log(`OSAT listen-test: ${line}`)
+    child.kill()
+    app.exit(ok ? 0 : 1)
+  }
+  setTimeout(() => finish(false, 'timed out'), 60000).unref()
+  child.on('message', (message) => {
+    if (message.type !== 'probe') return
+    if (!message.ok) finish(false, message.message)
+    else if (process.platform === 'darwin' && !require('node:fs').existsSync(helper)) finish(false, `the helper is missing (${helper})`)
+    else finish(true, 'listening engine ok')
+  })
+  child.on('exit', (code) => finish(false, `engine stopped (${code})`))
+  child.postMessage({ type: 'probe' })
+}
+
 app.whenReady().then(async () => {
   if (!primaryInstance) return
+  if (app.commandLine.hasSwitch('osat-listen-test')) {
+    listenTest()
+    return
+  }
   if (app.commandLine.hasSwitch('osat-self-test')) {
     selfTest(app.commandLine.getSwitchValue('osat-self-test'))
     return
@@ -1453,6 +1527,8 @@ app.whenReady().then(async () => {
   })
   for (const event of ['suspend', 'lock-screen']) powerMonitor.on(event, () => passwords.lock())
   await registerOvernight()
+  // Meetings can fail on their own (no helper in a source build); OSAT still opens.
+  await registerMeetings().catch((error) => console.error('Meetings could not start:', error))
   registerDesk()
   registerAsk()
   createWindow()
@@ -1483,6 +1559,7 @@ app.on('will-quit', () => {
   brief?.stop()
   overnight?.stop()
   passwords?.stop()
+  meetings?.stopNow()
   files?.stop()
   launcher?.stop()
 })
