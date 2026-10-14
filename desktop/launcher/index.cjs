@@ -28,6 +28,8 @@ const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
 const { createProcesses } = require('./processes.cjs')
+const { createUninstall } = require('./uninstall.cjs')
+const { restoreItem, trashItem } = require('../mac-files.cjs')
 const { createSystem } = require('./system.cjs')
 const { createSnippets } = require('./snippets.cjs')
 const { readSelection } = require('./selection.cjs')
@@ -78,6 +80,8 @@ async function createLauncher({
   // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
   const system = createSystem({ exec, keys, platform, trusted, model: systemModel })
   const processes = createProcesses({ exec, platform, model: processModel })
+  // Uninstall (uninstall.cjs): an app and what it left in ~/Library, to the Bin, with Undo.
+  const uninstall = createUninstall({ model: await sharedModule('uninstall-model.mjs'), apps, processes, exec, platform, fail, trash: (file) => trashItem(file), restore: (bin, to) => restoreItem(bin, to) })
   // Snippets: pasted from the bar, and (once turned on) typed in any app: snippets.cjs.
   const snippets = createSnippets({
     spawn: spawnHelper, exec, keys, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
@@ -328,6 +332,9 @@ async function createLauncher({
   on('search:apps', async () => (settings.sources.apps.on ? apps.list() : []))
   // Kill Process: the running apps, and ending one (by the path the list gave; main finds its processes again).
   on('search:processes', async () => processes.list())
+  on('search:uninstall-plan', async (appPath) => uninstall.plan(appPath))
+  on('search:uninstall', async (appPath) => uninstall.run(appPath))
+  on('search:uninstall-undo', async (token) => uninstall.undo(String(token)))
   on('search:kill', async (appPath, force) => {
     if (typeof appPath !== 'string' || appPath.length > 1024) fail('That isn’t a running app.')
     return processes.end(appPath, { force: force === true })

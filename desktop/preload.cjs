@@ -441,6 +441,10 @@ contextBridge.exposeInMainWorld('osatSearch', Object.freeze({
   captureRecent: search('capture-recent'),
   // A screenshot for the sticky being written (true: an area you drag), and a sticky's picture to show.
   stickyPicture: search('sticky-picture'),
+  // Uninstall an app: what would go, then the Bin, then Undo (desktop/launcher/uninstall.cjs).
+  uninstallPlan: search('uninstall-plan'),
+  uninstall: search('uninstall'),
+  uninstallUndo: search('uninstall-undo'),
   picture: search('picture'),
   captureThumb: search('capture-thumb'),
   captureOpen: search('capture-open'),

@@ -6,6 +6,7 @@ import { offerFor } from '../../shared/clipboard-offer.mjs'
 import { KIND_FILTERS } from '../../shared/clipboard-model.mjs'
 import { DEFAULT_SETTINGS, canonicalKey, customizable, ownKeyOf, ownWordOf, validKeyword } from '../../shared/launcher-model.mjs'
 import { systemCommand } from '../../shared/system-commands.mjs'
+import { describePlan } from '../../shared/uninstall-model.mjs'
 import { comboFrom, labelOf } from '../lib/hotkey.js'
 import { FILE_FILTERS, KILL_SCOPE, actionsFor, buildRows, rankCommands, readTyped, scopesOn, startRow } from '../../shared/quick-search-model.mjs'
 import { remember } from '../../shared/picks.mjs'
@@ -301,6 +302,28 @@ export function QuickSearchSurface() {
         case 'open-link': await bridge.openLink(target.kind === 'link' ? (await bridge.clipboardText(d.id)) || d.text : d.url); away(); break
         case 'open-app': await bridge.openApp(d.path); away(); break
         case 'reveal-app': await bridge.revealApp(d.path); away(); break
+        case 'uninstall': {
+          // The first time says what would go and how big it is; Return again does it, with Undo.
+          const key = `uninstall:${target.key}`
+          if (live.current.armed !== key) {
+            const plan = await bridge.uninstallPlan(d.path)
+            if (plan.refused) { said(plan.refused, 4000); break }
+            setArmed(key)
+            said(describePlan(plan), 0)
+            break
+          }
+          setArmed(null)
+          said(`Uninstalling ${target.title}…`, 0)
+          const done = await bridge.uninstall(d.path)
+          if (!done.ok) {
+            said(done.reason, 6000)
+            if (done.reveal) bridge.revealApp(d.path).catch(() => {})
+            break
+          }
+          setGone((now) => new Set(now).add(target.key))
+          undoable(`${target.title} is in the Bin`, async () => { await bridge.uninstallUndo(done.token); setGone((now) => { const next = new Set(now); next.delete(target.key); return next }); said(`${target.title} is back`) })
+          break
+        }
         case 'open-app-named': await bridge.openAppNamed(d.app); away(); break
         case 'snap': {
           const result = await bridge.snap(d.layout)
@@ -500,6 +523,8 @@ export function QuickSearchSurface() {
         if (now.text.trim() && now.scope === 'all' && !event.shiftKey) askAi(now.text)
         return
       }
+      // An uninstall waiting for its second Return.
+      if (event.key === 'Enter' && !cmd && now.row && now.armed === `uninstall:${now.row.key}`) { event.preventDefault(); run('uninstall', now.row); return }
       // Return, and the keys ⌘K lists next to each action.
       const combo = comboOf(event)
       const choice = now.actions.find((action) => action.keys === combo)

@@ -359,7 +359,8 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
       { id: 'shot-reveal', label: 'Show in Finder', keys: '⇧↵' },
       ...(/\.(mp4|mov|gif)$/i.test(row.title) ? [] : [{ id: 'shot-copy', label: 'Copy', keys: '⇧⌘C' }]),
     ]
-    case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⇧↵' }]
+    case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⇧↵' },
+      ...(/^\/System\//.test(String(row.data?.path)) ? [] : [{ id: 'uninstall', label: 'Uninstall…', hint: 'The app and what it left behind go to the Bin', keys: '⌘⌫', danger: true }])]
     case 'note': return [{ id: 'go', label: 'Open', keys: '↵' }]
     case 'node': return [{ id: 'go', label: 'Open on the canvas', keys: '↵' }]
     case 'room': return [{ id: 'go', label: 'Open', keys: '↵' }]
