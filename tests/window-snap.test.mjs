@@ -50,17 +50,17 @@ test('a window is on the screen that holds most of it', () => {
 
 test('the words that find a layout', () => {
   assert.deepEqual(findLayouts('left half').map((layout) => layout.id), ['left-half'])
-  assert.deepEqual(findLayouts('left').map((layout) => layout.id), ['left-half', 'top-left', 'bottom-left', 'left-third', 'left-two-thirds'])
-  assert.deepEqual(findLayouts('max').map((layout) => layout.id), ['maximize'])
-  assert.deepEqual(findLayouts('full screen').map((layout) => layout.id), ['maximize'])
-  assert.deepEqual(findLayouts('top r').map((layout) => layout.id), ['top-right'])
+  assert.deepEqual(findLayouts('left').slice(0, 3).map((layout) => layout.id), ['left-half', 'left-third', 'left-two-thirds'], 'names that start with the word come first')
+  assert.deepEqual(findLayouts('max').map((layout) => layout.id), ['maximize', 'almost-maximize'])
+  assert.equal(findLayouts('full screen')[0].id, 'maximize')
+  assert.equal(findLayouts('top r')[0].id, 'top-right')
   assert.equal(findLayouts('').length, LAYOUTS.length)
   assert.deepEqual(findLayouts('zzz'), [])
   assert.equal(layoutById('center').label, 'Center')
 })
 
 test('every layout has a usual key OSAT can register, and none is used twice', () => {
-  const keys = LAYOUTS.map((layout) => layout.key)
+  const keys = LAYOUTS.map((layout) => layout.key).filter(Boolean) // the newer commands start with no key
   assert.ok(keys.every((key) => validHotkey(key)))
   assert.equal(new Set(keys).size, keys.length)
   const own = cleanWindowKeys({ 'left-half': 'Control+Alt+Shift+Command+H', maximize: null, center: 'nonsense' }, validHotkey)

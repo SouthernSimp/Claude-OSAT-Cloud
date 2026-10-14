@@ -9,7 +9,7 @@ import { calculate } from './calc.mjs'
 import { CAPTURES, cleanCaptureSettings } from './capture-model.mjs'
 import { RING_ITEMS } from './ring-model.mjs'
 import { cleanSnippets } from './snippets.mjs'
-import { LAYOUTS, cleanWindowKeys } from './window-layouts.mjs'
+import { cleanWindowKeys, cleanWindows, layoutIn } from './window-layouts.mjs'
 
 export const SEARCH_HOTKEY = 'Command+Shift+Space'
 export const HYPER = ['Control', 'Alt', 'Shift', 'Command']
@@ -64,7 +64,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   snippets: [],
   snippetsTyped: false,
   // Window keys (Control+Option+Arrow…) are off until turned on: they are global, and moving windows needs Accessibility.
-  windows: { on: false, hotkeys: cleanWindowKeys(undefined) },
+  // Phase 61: each command can also have a word (`aliases`), be switched off (`off`), and Nate can make his own (`custom`).
+  windows: { on: false, hotkeys: cleanWindowKeys(undefined), aliases: {}, off: [], custom: [] },
   // The ring opens with Hyper + middle-click over any app (`middle`, a small helper: desktop/launcher/middle-click.cjs) or
   // from Hyper R, and with ⌘ + middle-click inside OSAT; null items means the usual eight.
   ring: { on: true, hotkey: hyper('R'), middle: true, items: null },
@@ -124,6 +125,8 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     const entry = { ...row, favorite: item.favorite === true, hotkey: key(item.hotkey ?? null), keyword: word(item.keyword ?? null) }
     if (entry.favorite || entry.hotkey || entry.keyword) custom.push(entry)
   }
+  // Window commands' words (Nate's own, then the built-in ones) after those, before snippets.
+  const windows = cleanWindows(from.windows, { validHotkey, word })
   // Snippets' words come last: one the bar already uses goes.
   const snippets = cleanSnippets(from.snippets, used)
   const pins = (Array.isArray(from.pins) ? from.pins : []).filter((pin) => pin && typeof pin.rootId === 'string' && typeof pin.relative === 'string' && typeof pin.name === 'string' && ['file', 'folder'].includes(pin.kind))
@@ -141,7 +144,7 @@ export function cleanSettings(saved, { validHotkey = () => true } = {}) {
     snippets,
     snippetsTyped: from.snippetsTyped === true,
     ask: { sources: from.ask?.sources !== false },
-    windows: { on: from.windows?.on === true, hotkeys: cleanWindowKeys(from.windows?.hotkeys, validHotkey) },
+    windows,
     ring: {
       on: from.ring?.on !== false,
       hotkey: key(from.ring?.hotkey, hyper('R')),
@@ -174,7 +177,7 @@ export function applyPatch(settings, patch) {
     apps,
     clipboard: { ...settings.clipboard, ...(from.clipboard || {}) },
     ask: { ...settings.ask, ...(from.ask || {}) },
-    windows: { ...settings.windows, ...(from.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(from.windows?.hotkeys || {}) } },
+    windows: { ...settings.windows, ...(from.windows || {}), hotkeys: { ...settings.windows.hotkeys, ...(from.windows?.hotkeys || {}) }, aliases: { ...settings.windows.aliases, ...(from.windows?.aliases || {}) } },
     ring: { ...settings.ring, ...(from.ring || {}) },
     selection: { ...settings.selection, ...(from.selection || {}) },
     hyper: { ...(settings.hyper || {}), ...(from.hyper || {}) },
@@ -193,7 +196,8 @@ export function keysOf(settings, { all = false } = {}) {
   }
   if (settings.ring?.hotkey && (all || settings.ring.on)) keys.ring = settings.ring.hotkey
   if (settings.selection?.hotkey) keys.selection = settings.selection.hotkey
-  if (all || settings.windows?.on) for (const [id, hotkey] of Object.entries(settings.windows?.hotkeys || {})) if (hotkey) keys[`snap:${id}`] = hotkey
+  // A window command that is switched off holds its key only for Settings' checks (`all`), like a quick link that is off.
+  if (all || settings.windows?.on) for (const [id, hotkey] of Object.entries(settings.windows?.hotkeys || {})) if (hotkey && (all || !(settings.windows.off || []).includes(id))) keys[`snap:${id}`] = hotkey
   for (const [name, own] of Object.entries(settings.apps || {})) if (own.hotkey) keys[`app:${name}`] = own.hotkey
   for (const link of settings.links || []) if (link.hotkey && (all || link.on !== false)) keys[`link:${link.id}`] = link.hotkey
   for (const [id, hotkey] of Object.entries(settings.captures?.hotkeys || {})) if (hotkey) keys[`capture:${id}`] = hotkey
@@ -207,6 +211,7 @@ export function wordsOf(settings) {
   for (const source of SOURCES) if (settings.sources[source.id]?.keyword) words[`source:${source.id}`] = settings.sources[source.id].keyword
   for (const [name, own] of Object.entries(settings.apps || {})) if (own.keyword) words[`app:${name}`] = own.keyword
   for (const link of settings.links || []) if (link.keyword) words[`link:${link.id}`] = link.keyword
+  for (const [id, alias] of Object.entries(settings.windows?.aliases || {})) words[`snap:${id}`] = alias
   for (const entry of settings.custom || []) if (entry.keyword) words[`row:${entry.key}`] = entry.keyword
   for (const snippet of settings.snippets || []) if (snippet.keyword) words[`snip:${snippet.id}`] = snippet.keyword
   return words
@@ -218,7 +223,7 @@ export function nameOf(settings, id) {
   if (kind === 'source') return SOURCES.find((source) => source.id === rest)?.label || rest
   if (kind === 'ring') return 'The ring'
   if (kind === 'selection') return 'AI on selected text'
-  if (kind === 'snap') return LAYOUTS.find((layout) => layout.id === rest)?.label || rest
+  if (kind === 'snap') return layoutIn(settings.windows, rest)?.label || rest
   if (kind === 'link') return (settings.links || []).find((link) => link.id === rest)?.name || 'A quick link'
   if (kind === 'capture') return CAPTURES.find((item) => item.id === rest)?.label || rest
   if (kind === 'row') return (settings.custom || []).find((entry) => entry.key === rest)?.title || 'Something in the bar'
@@ -292,6 +297,13 @@ export function matchKeyword(settings, text, { rows = false } = {}) {
   // Your own word for something in the bar (the bar only; the desk's line keeps to apps and links).
   const entry = rows && !query ? (settings.custom || []).find((item) => item.keyword === word) : null
   if (entry) return { keyword: { id: `row:${entry.key}`, keyword: word, label: entry.title, row: entry }, query: '' }
+  // A window command's alias ("lh" is Left half): the bar only, on its own, unless the command is switched off.
+  const snapId = rows && !query ? Object.keys(settings.windows?.aliases || {}).find((id) => settings.windows.aliases[id] === word && !(settings.windows.off || []).includes(id)) : null
+  const layout = snapId && layoutIn(settings.windows, snapId)
+  if (layout) {
+    const hotkey = settings.windows.on ? settings.windows.hotkeys?.[snapId] || null : null
+    return { keyword: { id: `snap:${snapId}`, keyword: word, label: layout.label, row: { key: `layout:${snapId}`, kind: 'layout', title: layout.label, subtitle: 'Move the window you were in', data: { layout: snapId, key: hotkey, box: layout.box }, favorite: false } }, query: '' }
+  }
   const snippet = rows && !query ? (settings.snippets || []).find((item) => item.keyword === word) : null
   return snippet ? { keyword: { id: `snip:${snippet.id}`, keyword: word, label: snippet.name, snippet }, query: '' } : null
 }
