@@ -150,6 +150,11 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 60 | Keys in use (Settings → Shortcuts): every key already taken — OSAT's, the launcher's, and the Mac's own shortcuts read from System Settings — and a box to press a key and hear who has it. A new OSAT key that the Mac already holds is refused by name. Search or Ask moves from ⌘⇧Space (Apple's AI holds it) to ⌥⇧Space, and each Hyper key is heard with and without ⇧ so Hyper V opens the clipboard whichever way the Mac's Hyper key is made | In review |
 | 62 | Kill Process (Raycast's command): type kill in the bar, then pick a running app, with its memory; Return asks it to quit, ⌘Return force quits. Only your own apps; never OSAT or what would log you out | In review |
 | 59 | Mail (Tools → Mail): your inbox, read through the Mail app already on your Mac. Newest first, Unread, one message as plain text (never a web page, nothing loads), search, Reply (opens a draft in Mail; OSAT never sends), Make a sticky with Undo, Open in Mail, and a button to Ask about one message (the AI on your Mac only) | In review |
+| 58 | Passwords (Tools → Passwords): an encrypted password manager that is locked every time OSAT starts. You choose one master password (it can’t be recovered if forgotten). It locks itself when idle, when the Mac sleeps or locks, when the desk is put away and at quit; copying a password keeps it out of the clipboard history and clears it after 30 seconds; a password maker; an encrypted backup; Undo for Delete. It lives only on this Mac: never synced, never read by Ask, the connector or any bot | In review |
+
+**Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
+extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
+against known leaks. Each needs its own careful plan: none of them is built, and none of them is needed to use the room.
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
