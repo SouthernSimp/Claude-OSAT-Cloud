@@ -66,7 +66,7 @@ export function installSearchBridge(defaults) {
       return snippet
     },
     onSettings: (listener) => { heard.add(listener); return () => heard.delete(listener) },
-    status: async () => ({ accessibility: 'needed', keysFailed: [], middleClick: 'listening', snippets: settings.snippetsTyped ? 'access' : 'off' }),
+    status: async () => ({ accessibility: 'needed', keysFailed: [], middleClick: 'listening', snippets: settings.snippetsTyped ? 'access' : 'off', hyper: settings.hyper?.own ? 'access' : 'off' }),
     pauseClipboard: async (on) => { paused = on === true; return paused },
     clearClipboard: async () => 'undo-clear',
     onShown: (listener) => { window.__shown = listener; return () => {} },

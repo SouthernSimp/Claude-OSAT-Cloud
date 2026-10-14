@@ -15,6 +15,8 @@ export function comboFrom(event) {
   const key = keyName(event.code)
   if (!key) return null
   const modifiers = [event.metaKey && 'Command', event.ctrlKey && 'Control', event.altKey && 'Alt', event.shiftKey && 'Shift'].filter(Boolean)
+  // Caps Lock turned into F20 with nothing holding Hyper for it (Settings → Keyboard, or another app, does that).
+  if (!modifiers.length && key === 'F20') return { error: 'Caps Lock is sending F20. Turn on “Make Caps Lock a Hyper key” in Keyboard, then hold it and press the key.' }
   if (!modifiers.length) return { error: 'Hold ⌘, ⌃, ⌥ or ⇧ together with a key.' }
   // All four is Hyper, always written the one way, so it is the same key wherever it is compared.
   return { combo: [...(modifiers.length === 4 ? ['Control', 'Alt', 'Shift', 'Command'] : modifiers), key].join('+') }

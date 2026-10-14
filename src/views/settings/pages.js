@@ -24,7 +24,7 @@ export const SETTINGS_PAGES = [
 
   { id: 'quick-search', group: 'launcher', label: 'Quick bar', icon: MagnifyingGlass, blurb: 'One bar over every app: find a file, something you copied, an app or a note, ask the AI, or save a sticky.', words: 'spotlight search quick search bar full view places files apps notes calculator ask chat sticky raycast' },
   { id: 'shortcuts', group: 'launcher', label: 'Shortcuts', icon: Keyboard, blurb: 'Every word and every key, in one table.', words: 'word alias hotkey key hyper table keyword' },
-  { id: 'keyboard', group: 'launcher', label: 'Keyboard', icon: Command, blurb: 'The Hyper key, and the two things only you can change on your Mac.', words: 'hyper caps lock karabiner hyperkey spotlight command space shift' },
+  { id: 'keyboard', group: 'launcher', label: 'Keyboard', icon: Command, blurb: 'Caps Lock as a Hyper key, built into OSAT, and giving the quick bar ⌘Space.', words: 'hyper caps lock karabiner hyperkey raycast spotlight command space shift' },
   { id: 'clipboard', group: 'launcher', label: 'Clipboard', icon: ClipboardText, blurb: 'Everything you copy, kept only on this Mac, searchable, with pins for the things you paste often.', words: 'history copies paste pin pause clear limits password privacy' },
   { id: 'snippets', group: 'launcher', label: 'Snippets', icon: TextAlignLeft, blurb: 'Text you paste often, with a short word: from the quick bar, or typed in any app.', words: 'snippet text expand expansion template address signature reply word' },
   { id: 'quick-links', group: 'launcher', label: 'Quick links', icon: Link, blurb: 'A web address with a short word: type it, and it opens, or searches for what you typed after it.', words: 'web address url search google github bookmark query' },

@@ -147,6 +147,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 54 | Trust fixes: an update must be signed by the same certificate as the OSAT you have; webhooks waiting offline survive a quit; old caches out of the repo | In review |
 | 55 | A GitHub room (Tools → GitHub): your repositories, and in each what waits for you (each pull request in its own words, whether its checks passed, Merge, asked once more) and what changed lately; through the gh signed in on your Mac | In review |
 | 56 | Put the desk away: right-click the desk → Put the desk away. Every sticky and stack goes into one topic on the canvas (“Put away · Oct 12”, each stack a branch with its name); stickies already in a topic stay there and are connected. One Undo puts it all back | In review |
+| 63 | Hyper key, built in | In review |
 
 **Paused (Sep 26):** the iPhone/iPad app is parked for now; work is on the Mac app only. Its code and
 CI build stay as they are, ready to pick up again.
@@ -1267,6 +1268,19 @@ calendar), #BS (brainstorm), #Questions, #Ideas. OSAT learns it.
 | The roadmap, viewable inside OSAT | 12c |
 | Quick search like Raycast: files and the clipboard with a preview, one key, straight to work | 13 |
 | A Raycast feel; business and customer management over time | 13, 19 |
+
+### Phase 63: A Hyper key built into OSAT (in review)
+Nate's Hyper key (Caps Lock held as ⌃⌥⇧⌘) used to come from Raycast, so with Raycast closed OSAT's Hyper keys did nothing.
+OSAT must not need any other app for it.
+- **Settings → Keyboard → Make Caps Lock a Hyper key** is a real switch, off until Nate turns it on. On, OSAT turns Caps Lock
+  into F20 itself (the Mac's own `hidutil`, added to whatever mappings are there) and a tiny native helper makes F20 hold
+  ⌃⌥⇧⌘ for every other key and click while it is down. Off, or when OSAT quits, Caps Lock is given back.
+- **Needs Accessibility** (OSAT's usual Allow button). Without it Settings says so and nothing else changes.
+- **A tap of Caps Lock alone does nothing** (an optional switch makes it Esc). The helper reads key codes and flags only; it
+  never records, stores or sends what is typed.
+- **If the helper stops** the keyboard behaves normally. A Caps Lock → F20 that another app already set (Raycast leaves one)
+  is used as it is and never removed.
+- **Not built:** a live "Try it" readout in Settings; for now the line under the switch says what to press.
 
 ### Later (after the MVP)
 - Files become "Linked folders" in Notes. (Projects became nodes in Phase 12.)
