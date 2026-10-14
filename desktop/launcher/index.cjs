@@ -21,6 +21,7 @@ const { createClipboardHistory } = require('./clipboard-history.cjs')
 const { frontApp, pasteInto } = require('./front.cjs')
 const { createHotkeys } = require('./hotkeys.cjs')
 const { createMiddleClick } = require('./middle-click.cjs')
+const { createMouse, helperPath } = require('./mouse.cjs')
 const { createQuickSearch } = require('./search-window.cjs')
 const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
@@ -46,6 +47,7 @@ async function createLauncher({
   const [clipModel, launcherModel, layoutModel, ringModel, clickModel, askFind, systemModel] = await Promise.all([sharedModule('clipboard-model.mjs'), sharedModule('launcher-model.mjs'), sharedModule('window-layouts.mjs'), sharedModule('ring-model.mjs'), sharedModule('ring-click.mjs'), sharedModule('ask-find.mjs'), sharedModule('system-commands.mjs')])
   const snippetModel = await sharedModule('snippets.mjs')
   const pickModel = await sharedModule('picks.mjs')
+  const mouseModel = await sharedModule('mouse-model.mjs')
   const clean = (saved) => launcherModel.cleanSettings(saved, { validHotkey })
   const settingsFile = path.join(dataDir, 'launcher.json')
   let settings = clean(undefined)
@@ -72,6 +74,11 @@ async function createLauncher({
     spawn: spawnHelper, exec, platform, model: snippetModel, list: () => settings.snippets, typedOn: () => settings.snippetsTyped, trusted,
     clipboard, quiet: history.quiet, paste: () => pasteInto({ exec, platform, trusted: () => true }),
     log: (text) => console.error('The snippets helper:', text),
+  })
+  // Mouse (Phase 64): the wheel's direction and speed, through a small helper: mouse.cjs.
+  const mouse = createMouse({
+    spawn: spawnHelper, platform, model: mouseModel, helper: helperPath({ packaged: app?.isPackaged === true }), mouse: () => settings.mouse, trusted,
+    log: (text) => console.error('The mouse helper:', text),
   })
   // A layout key pressed while OSAT isn't allowed says so once, calmly, and then leaves it alone.
   let told = false
@@ -206,6 +213,7 @@ async function createLauncher({
     applyHotkeys()
     listenForMiddle()
     snippets.sync()
+    mouse.sync()
     await writeSettings()
     history.limitsChanged()
     history.watch(settings.sources.clipboard.on)
@@ -253,13 +261,15 @@ async function createLauncher({
     }
     return save(launcherModel.customize(settings, row, { [allowed[0]]: value }))
   })
-  on('search:status', () => (snippets.sync(), {
+  on('search:status', () => (snippets.sync(), mouse.sync(), {
     accessibility: platform !== 'darwin' ? 'unavailable' : systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'needed',
     keysFailed: hotkeys.failed(),
     // 'listening', 'starting', 'off', 'failed' or 'unavailable': Settings says calmly when the helper can't listen.
     middleClick: middleClick.state(),
     // 'off', 'access', 'starting', 'listening', 'failed' or 'unavailable': the typed snippets' helper.
     snippets: snippets.state(),
+    // 'off', 'access', 'starting', 'listening', 'denied', 'missing', 'failed' or 'unavailable': the mouse helper.
+    mouse: mouse.state(),
   }), ofDesk)
   // OSAT asks macOS for Accessibility only when a button is pressed (Settings → Launcher, or "Allow…" in the bar's
   // note after a paste that couldn't happen), never by itself.
@@ -522,6 +532,7 @@ async function createLauncher({
       applyHotkeys()
       listenForMiddle()
       snippets.sync()
+      mouse.sync()
     },
     stop() {
       if (picksTimer) writePicks()
@@ -529,6 +540,7 @@ async function createLauncher({
       hotkeys.stop()
       middleClick.stop()
       snippets.stop()
+      mouse.stop()
     },
   }
 }
