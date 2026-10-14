@@ -29,7 +29,7 @@ const text = (name) => all.find((item) => item.file === name)?.text ?? assert.fa
 const WHO = [
   [/vault-format/, ['desktop/passwords.cjs', 'shared/password-model.mjs', 'shared/vault-format.mjs'], 'the sealed file’s code: only the room’s main side loads it (the model’s only mention is a comment)'],
   [/vault\.json/, ['desktop/passwords.cjs'], 'the file itself'],
-  [/passwords\.cjs/, ['desktop/main.cjs', 'desktop/passwords.cjs', 'desktop/conceal.cjs', 'shared/password-model.mjs', 'shared/vault-format.mjs'], 'the room’s main side: only main’s wiring requires it'],
+  [/passwords\.cjs/, ['desktop/main.cjs', 'desktop/preload.cjs', 'desktop/passwords.cjs', 'desktop/conceal.cjs', 'shared/password-model.mjs', 'shared/vault-format.mjs'], 'the room’s main side: only main’s wiring requires it'],
   [/conceal\.cjs/, ['desktop/main.cjs', 'desktop/conceal.cjs', 'desktop/passwords.cjs'], 'the concealed clipboard write'],
   [/passwords:/, ['desktop/passwords.cjs', 'desktop/preload.cjs', 'desktop/main.cjs', 'src/views/Passwords.jsx'], 'the room’s channels'],
   [/osatPasswords/, ['desktop/preload.cjs', 'src/views/Passwords.jsx'], 'the room’s bridge'],

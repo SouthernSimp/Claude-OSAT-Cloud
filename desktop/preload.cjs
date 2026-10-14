@@ -106,6 +106,29 @@ contextBridge.exposeInMainWorld('osatGitHub', Object.freeze({
   open: (url) => ipcRenderer.invoke('github:open', url),
 }))
 
+// Tools → Passwords (desktop/passwords.cjs): locked until the master password. The window gets titles and usernames;
+// a password comes only from reveal (shown for ten seconds) or copy (done in main).
+contextBridge.exposeInMainWorld('osatPasswords', Object.freeze({
+  status: () => ipcRenderer.invoke('passwords:status'),
+  create: (password, again) => ipcRenderer.invoke('passwords:create', password, again),
+  unlock: (password) => ipcRenderer.invoke('passwords:unlock', password),
+  lock: () => ipcRenderer.invoke('passwords:lock'),
+  touch: () => ipcRenderer.invoke('passwords:touch'),
+  list: () => ipcRenderer.invoke('passwords:list'),
+  save: (entry) => ipcRenderer.invoke('passwords:save', entry),
+  remove: (id) => ipcRenderer.invoke('passwords:remove', id),
+  restore: (id) => ipcRenderer.invoke('passwords:restore', id),
+  reveal: (id) => ipcRenderer.invoke('passwords:reveal', id),
+  copy: (id) => ipcRenderer.invoke('passwords:copy', id),
+  generate: (options) => ipcRenderer.invoke('passwords:generate', options),
+  setAutoLock: (minutes) => ipcRenderer.invoke('passwords:set-auto-lock', minutes),
+  changeMaster: (current, next, again) => ipcRenderer.invoke('passwords:change-master', current, next, again),
+  exportBackup: () => ipcRenderer.invoke('passwords:export'),
+  pickBackup: () => ipcRenderer.invoke('passwords:import-pick'),
+  importBackup: (password) => ipcRenderer.invoke('passwords:import', password),
+  onLocked: (listener) => listen('passwords:locked', listener),
+}))
+
 // The morning brief (desktop/brief.cjs): Settings → AI and the desk's one line.
 contextBridge.exposeInMainWorld('osatBrief', Object.freeze({
   status: () => ipcRenderer.invoke('brief:status'),

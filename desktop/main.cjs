@@ -38,6 +38,8 @@ const { createBots } = require('./bots/index.cjs')
 const { createAgent } = require('./agent.cjs')
 const { createBrief } = require('./brief.cjs')
 const { createGitHub } = require('./github.cjs')
+const { createPasswords } = require('./passwords.cjs')
+const { writeConcealed } = require('./conceal.cjs')
 const { createOvernight } = require('./overnight.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
@@ -77,6 +79,7 @@ const browsers = new Map()
 let terminals
 let store
 let files
+let passwords = null
 const storeClients = new Map()
 
 // Real notes live in "OSAT"; running from source uses "OSAT Dev" so development
@@ -181,6 +184,10 @@ function createWindow() {
     event.preventDefault()
     hideDesk()
   })
+  // Passwords lock whenever the desk goes (put away, hidden with the app) and when its page reloads or dies.
+  window.on('hide', () => passwords?.lock())
+  window.webContents.on('did-start-loading', () => passwords?.lock())
+  window.webContents.on('render-process-gone', () => passwords?.lock())
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (!under.on && /^https:\/\//i.test(url)) shell.openExternal(url)
     return { action: 'deny' }
@@ -239,6 +246,7 @@ function showDesk() {
 /* Put away, and the app you were in has focus again (unless the quick bar is up). */
 function hideDesk() {
   if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return
+  passwords?.lock()
   mainWindow.hide()
   if (process.platform === 'darwin' && !launcher?.search.window.isVisible()) app.hide()
 }
@@ -319,6 +327,7 @@ function buildMenu() {
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         room('Roadmap', 'Roadmap'),
         room('GitHub', 'GitHub'),
+        room('Passwords', 'Passwords'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
@@ -1422,6 +1431,13 @@ app.whenReady().then(async () => {
   await registerBrief(agent, createMacCalendar({ handle, fail }))
   // Tools → GitHub (desktop/github.cjs, Phase 55): through the gh signed in on this Mac.
   await createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on })
+  // Tools → Passwords (desktop/passwords.cjs, Phase 58): locked at every launch; locks on sleep, screen lock, the desk
+  // put away, and quit. Its sealed file is read by nothing else.
+  passwords = await createPasswords({
+    dataDir: app.getPath('userData'), sharedModule, handle, fail, dialog, mainWindow: () => mainWindow, clipboard: require('electron').clipboard, writeConcealed,
+    send: (channel) => send(channel),
+  })
+  for (const event of ['suspend', 'lock-screen']) powerMonitor.on(event, () => passwords.lock())
   await registerOvernight()
   registerDesk()
   registerAsk()
@@ -1436,7 +1452,7 @@ app.whenReady().then(async () => {
   app.on('activate', () => showDesk())
 })
 
-app.on('before-quit', () => { quitting = true })
+app.on('before-quit', () => { quitting = true; passwords?.lock() })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
@@ -1452,6 +1468,7 @@ app.on('will-quit', () => {
   bots?.stop()
   brief?.stop()
   overnight?.stop()
+  passwords?.stop()
   files?.stop()
   launcher?.stop()
 })
