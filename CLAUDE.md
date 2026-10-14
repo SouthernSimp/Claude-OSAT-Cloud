@@ -119,7 +119,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `shared/mac-calendar-model.mjs` (shapes, merging, reminder words) and `src/views/MacCalendar.jsx` (hook and the
     two panels in the Calendar room). Needs four usage strings in `package.json` `build.mac.extendInfo`
     (`NSCalendarsFullAccessUsageDescription`, `NSCalendarsUsageDescription`, `NSRemindersFullAccessUsageDescription`,
-    `NSRemindersUsageDescription`). Mail, Gmail, Outlook and Messages are later steps.
+    `NSRemindersUsageDescription`). Mail is `mac-mail.cjs` (Phase 59, below); Gmail, Outlook and Messages are later steps.
   - `file-ops.cjs`: tidying (Phase 21 step 2): New folder, rename, move / copy, the Bin, all on absolute
     paths files.cjs has already checked (`sourcePath`/`folderPath`: never a root, never hidden, never
     a link); each returns `undo`, a function kept in files.cjs's `undos` map so the window holds only a token
@@ -505,6 +505,30 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   desk menu's item in FieldDesk.jsx (`putDeskAway`: one commit, the places cleared, one Undo restoring both through the
   workspace inverse). Unsorted stickies move into the topic or a stack's branch; sorted ones stay home and are connected.
   Paper on the real desk: Tools → Sort a pile → Photo already reads a photo of stickies into a pile kept apart from topics.
+
+## Architecture added in Phase 59
+
+- `shared/mail-model.mjs` + `desktop/mac-mail.cjs` + `src/views/Mail.jsx` (Tools → Mail): the Mac's own Mail app through
+  `osascript -l JavaScript`, the mac-calendar pattern, so OSAT never holds a mail password, token or OAuth client
+  (Gmail direct would need Google Cloud sign-in and stored credentials: a later step). `createMacMail({ sharedModule,
+  handle, fail })` registers `mail:status | allow | list | search | read | reply | open` (`from: 'app'`; `osatMail` in the
+  preload). One fixed script, the command and its JSON on argv (`osascriptArgs`), never joined into the script; ids pass
+  `validMessageId` and search words `cleanQuery` in main first. Read-only plus Reply (`reply … openingWindow`: a draft
+  in Mail's own window, never sent) and Open in Mail (`message://` link). It never sends, deletes, moves, marks read or
+  asks Mail to fetch; tests/mac-mail.test.mjs runs the script in a vm against a stand-in Mail and bars those verbs.
+  A status check never asks macOS (it only says whether Mail is installed); `allow` is the one thing that prompts
+  (Automation, `NSAppleEventsUsageDescription` in `package.json`); the room remembers "allowed" in localStorage and
+  reads the list straight away next time. A refusal (`-1743`) and "no accounts" come back as `explainMail`'s plain lines
+  (`NOT_ALLOWED`, `NOT_SET_UP`), which the room turns into states.
+- Mail text is untrusted data: shown as plain text in a `<pre>` (`cleanBody` drops control/zero-width/right-to-left
+  override characters, caps at 20,000), never HTML, no remote content, nothing linkified. It is **never** put in an AI
+  prompt automatically: Ask, the agent, the connector, overnight and the brief have no mail path. The one exception is
+  the room's "Ask about this message" button (`askMessages`: the email quoted line by line as data, a system line saying
+  it is untrusted, no tools, `askLocalModel` so only a model on this Mac). A sticky made from a message has source
+  `Mail`, and `auto-file.js` never files that source by itself. Mail reading is local, so it works Offline (not in
+  `WAITS`); its one `execFile('osascript'…)` line is in tests/under.test.mjs's fence.
+- Not yet: sending, Gmail/Outlook direct, attachments, HTML, folders other than the inbox, a non-prompting
+  "is Automation allowed?" check (the AEDeterminePermissionToAutomateTarget call is hard to make from JXA).
 
 ## Layout traps worth remembering
 
