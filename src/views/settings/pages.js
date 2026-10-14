@@ -1,6 +1,6 @@
 import {
   ClipboardText, Command, Database, DeviceMobile, GearSix, Info, Keyboard, Link, MagnifyingGlass, Palette, Printer, Robot,
-  Sparkle, SquaresFour, Target, Camera, TextAlignLeft,
+  Sparkle, SquaresFour, Target, Camera, TextAlignLeft, Mouse,
 } from '@phosphor-icons/react'
 
 /* Settings' pages (Phase 13b), in the order the sidebar shows them. Plain data: the sidebar, ⌘K and the older links
@@ -30,6 +30,7 @@ export const SETTINGS_PAGES = [
   { id: 'quick-links', group: 'launcher', label: 'Quick links', icon: Link, blurb: 'A web address with a short word: type it, and it opens, or searches for what you typed after it.', words: 'web address url search google github bookmark query' },
   { id: 'windows', group: 'launcher', label: 'Window layouts', icon: SquaresFour, blurb: 'Snap the window you were in to a half, a third or a corner.', words: 'snap halves thirds corners maximize center accessibility move resize rectangle' },
   { id: 'screenshots', group: 'launcher', label: 'Screenshots', icon: Camera, blurb: 'Screenshots and screen recording from the ring, the quick search or a key: with CleanShot X when it’s here.', words: 'screenshot capture record recording video cleanshot ocr text scrolling' },
+  { id: 'mouse', group: 'launcher', label: 'Mouse', icon: Mouse, blurb: 'Make the mouse wheel scroll the opposite way from the trackpad, scroll faster or slower, and change what the side buttons do.', words: 'scroll reverse natural wheel direction trackpad speed button back forward linearmouse windows' },
   { id: 'ring', group: 'launcher', label: 'The ring', icon: Target, blurb: 'Quick tools in a circle around your pointer.', words: 'circle middle click radial pie menu tools' },
 ]
 
