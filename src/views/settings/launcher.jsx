@@ -5,8 +5,8 @@ import { DAY_CHOICES, ITEM_CHOICES } from '../../../shared/clipboard-model.mjs'
 import { SOURCES, hostOf, holderOf, validAddress, validKeyword } from '../../../shared/launcher-model.mjs'
 import { MAX_RING, RING_ITEMS, ringItems } from '../../../shared/ring-model.mjs'
 import { validSnippetWord } from '../../../shared/snippets.mjs'
-import { LAYOUTS } from '../../../shared/window-layouts.mjs'
 import { AddRingTool } from './screenshots.jsx'
+import { WindowCommands } from './WindowCommands.jsx'
 import { Choice, Group, KeyRecorder, OnlyInTheMacApp, Page, Row, Select, Switch, WordField } from './parts.jsx'
 
 /* Settings' launcher pages (Phase 13b). One provider gives every page the same picture of the launcher: its settings
@@ -372,28 +372,17 @@ function Snippets({ settings, save, showUndo, status, bridge, look }) {
 export function WindowLayoutsPage({ page }) {
   return (
     <LauncherPage page={page} what="In the Mac app, a layout snaps the window you were in to a half, a third or a corner.">
-      {({ settings, save, status }) => {
-        const { key } = holders(settings)
-        return (
-          <>
-            <Group title="Keys" note="Or type “left half” in the quick bar (or w and a word), and the window you were in moves there.">
-              <Row title="Move the window I’m in with keys" hint="Keys that work from any app are off until you turn them on." words="hotkeys global any app">
-                <Switch label="Use keys to move the window I’m in, from any app" checked={settings.windows.on} onChange={(on) => save({ windows: { on } })} />
-              </Row>
-            </Group>
-            {settings.windows.on && (
-              <Group title="Layouts">
-                {LAYOUTS.map((layout) => (
-                  <Row key={layout.id} title={layout.label} hint={layout.id === 'restore' ? 'Where the window was before OSAT moved it' : ''} words={layout.words || ''}>
-                    <KeyRecorder value={settings.windows.hotkeys[layout.id]} name={layout.label} holder={key(`snap:${layout.id}`)} sends={settings.hyper.sends} failed={status?.keysFailed?.includes(`snap:${layout.id}`)} onSet={(hotkey) => save({ windows: { hotkeys: { [layout.id]: hotkey } } })} />
-                  </Row>
-                ))}
-              </Group>
-            )}
-            <Permission />
-          </>
-        )
-      }}
+      {(launcher) => (
+        <>
+          <Group title="Keys" note="Each command can have an alias (type it in the quick bar and press Return) and a key. Or type “left half” in the quick bar (or w and a word), and the window you were in moves there.">
+            <Row title="Move the window I’m in with keys" hint="Keys that work from any app are off until you turn them on." words="hotkeys global any app">
+              <Switch label="Use keys to move the window I’m in, from any app" checked={launcher.settings.windows.on} onChange={(on) => launcher.save({ windows: { on } })} />
+            </Row>
+          </Group>
+          <WindowCommands launcher={launcher} />
+          <Permission />
+        </>
+      )}
     </LauncherPage>
   )
 }
