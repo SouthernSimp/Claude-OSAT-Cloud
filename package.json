@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start:mac": "npm run build && electron .",
-    "dist:mac": "npm run build && electron-builder --mac dmg zip --arm64",
+    "start:mac": "node scripts/build-helpers.mjs && npm run build && electron .",
+    "dist:mac": "node scripts/build-helpers.mjs && npm run build && electron-builder --mac dmg zip --arm64",
     "preview": "vite preview",
     "test": "node --test tests/*.test.mjs",
     "test:ui": "node tests/ui/smoke.mjs && node tests/ui/auto-file.mjs && node tests/ui/ask.mjs && node tests/ui/overnight.mjs && node tests/ui/github.mjs && node tests/ui/put-away.mjs",
@@ -88,6 +88,9 @@
       "entitlements": "build/entitlements.mas.plist",
       "entitlementsInherit": "build/entitlements.mas.inherit.plist"
     },
+    "extraResources": [
+      { "from": "build/helpers/osat-hyper", "to": "osat-hyper" }
+    ],
     "asarUnpack": [
       "node_modules/node-pty/**",
       "shared/**",

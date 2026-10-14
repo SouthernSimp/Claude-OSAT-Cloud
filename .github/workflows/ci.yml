@@ -96,6 +96,11 @@ jobs:
         run: node scripts/bin-check.cjs
       - name: Check the ready-made shortcuts read as property lists and sign
         run: node scripts/shortcuts-check.cjs
+      - name: Build the native helpers (the Hyper key)
+        run: |
+          node scripts/build-helpers.mjs
+          # Not run: it would listen to the runner's keyboard. Only check it is a real program for this Mac.
+          lipo -info build/helpers/osat-hyper | grep -q arm64
       - name: Build the DMG
         env:
           # electron-builder skips all signing on pull requests by default, which
@@ -151,6 +156,11 @@ jobs:
           APP="$(ls -d release/mac-arm64/OSAT.app)"
           "$APP/Contents/MacOS/OSAT" --osat-self-test 2>&1 | tee self-test.log
           grep -q "OSAT self-test: engine ok" self-test.log
+      - name: Check the Hyper key's helper is inside the app
+        run: |
+          APP="$(ls -d release/mac-arm64/OSAT.app)"
+          test -x "$APP/Contents/Resources/osat-hyper"
+          codesign --verify --strict "$APP/Contents/Resources/osat-hyper"
       - uses: actions/upload-artifact@v4
         with:
           name: OSAT-mac-dmg
