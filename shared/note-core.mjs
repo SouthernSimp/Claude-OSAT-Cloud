@@ -89,6 +89,8 @@ export function normalizeNote(value, index = 0) {
     ...(WHATS.includes(value.what) ? { what: value.what } : {}),
     ...(typeof value.doneAt === 'string' && !Number.isNaN(Date.parse(value.doneAt)) ? { doneAt: value.doneAt } : {}),
     ...calOf(value.cal),
+    // Schema 14 (Phase 68): where it is on its board's Board view (Done is `doneAt`).
+    ...(['later', 'next', 'doing'].includes(value.stage) ? { stage: value.stage } : {}),
   }
 }
 

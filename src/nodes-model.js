@@ -5,7 +5,7 @@
 
 import { freeNodeName, nodeRecords, nodeTree } from '../shared/node-file.mjs'
 import { rankOf } from './note-core.js'
-import { canMoveFolder, createFolder, createNote, deleteFolder, folderChildren, folderSubtree, isActiveNote, relatedNotes, uid } from './notes-model.js'
+import { canMoveFolder, createFolder, createNote, deleteFolder, folderChildren, folderSubtree, isActiveNote, uid } from './notes-model.js'
 
 export { rankOf }
 
@@ -170,39 +170,6 @@ export function moveToItems(folders, onPick, { skip, unsorted = true } = {}) {
     ]),
   ].filter(Boolean)
   return items.length ? items : [{ note: 'No topics yet.' }]
-}
-
-/* ---------- sorting help ---------- */
-
-const plainKey = (name) => String(name || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
-
-/* Where each sticky still to sort in a node might go: the branch named like one of its
-   #tags first, then the branch whose name and stickies share the most words with it.
-   Stickies with no good fit are left out. */
-export function suggestBranches(state, nodeId) {
-  const branches = folderChildren(state.folders, nodeId)
-  if (!branches.length) return []
-  const faces = branches.map((branch) => ({
-    id: branch.id,
-    title: branch.name,
-    markdown: pileOf(state.notes, branch.id).map((note) => `${note.title}\n${note.markdown}`).join('\n').slice(0, 20000),
-    updatedAt: '',
-  }))
-  return pileOf(state.notes, nodeId).flatMap((note) => {
-    const tagged = branches.find((branch) => note.tags.some((tag) => plainKey(tag) === plainKey(branch.name)))
-    if (tagged) return [{ noteId: note.id, folderId: tagged.id }]
-    const [best] = relatedNotes(faces, `${note.title}\n${note.markdown}`, 1)
-    return best ? [{ noteId: note.id, folderId: best.id }] : []
-  })
-}
-
-/* The same suggestions, one group per branch, in the branches' order:
-   [{ folderId, noteIds }]. */
-export function suggestionGroups(state, nodeId) {
-  const found = suggestBranches(state, nodeId)
-  return folderChildren(state.folders, nodeId)
-    .map((branch) => ({ folderId: branch.id, noteIds: found.filter((item) => item.folderId === branch.id).map((item) => item.noteId) }))
-    .filter((group) => group.noteIds.length)
 }
 
 /* ---------- @ in a note ---------- */
@@ -407,49 +374,4 @@ export function addAskedEvent(state, noteId) {
 /* Not now: the sticky stops asking. */
 export function skipAsk(state, noteId) {
   return { ...state, notes: state.notes.map((note) => (note.id === noteId && note.ask ? (({ ask, ...rest }) => rest)(note) : note)) }
-}
-
-/* ---------- the whiteboard ---------- */
-
-export const CARD = { w: 240, h: 150, gap: 64 }
-
-/* Where each node sits on the Sky's board ({ x, y } of its top-left corner, by id): where
-   it was put, or else on the ground row after everything before it in rank order. `sizes`
-   are the cards as last measured. Unsorted (key null) waits left of the leftmost node. */
-export function boardSpots(folders, sizes = new Map()) {
-  const spots = new Map()
-  let right = null
-  let left = 0
-  nodesOf(folders).forEach(({ folder }) => {
-    const size = sizes.get(folder.id) || CARD
-    const spot = folder.at || { x: right === null ? 0 : right + CARD.gap, y: 0 }
-    spots.set(folder.id, spot)
-    right = Math.max(right ?? -Infinity, spot.x + size.w)
-    left = Math.min(left, spot.x)
-  })
-  spots.set(null, { x: left - (sizes.get(null) || CARD).w - CARD.gap, y: 0 })
-  return spots
-}
-
-/* Nodes set down on the board (`changes`, by id): every node keeps where it shows now, so
-   nothing else jumps, and their order follows them left to right. */
-export function placeNodes(state, spots, changes) {
-  const order = nodesOf(state.folders).map(({ folder }) => folder.id)
-  const at = new Map(order.map((id) => [id, changes.get(id) || spots.get(id) || { x: 0, y: 0 }]))
-  const sorted = [...order].sort((a, b) => at.get(a).x - at.get(b).x || at.get(a).y - at.get(b).y)
-  const renumber = sorted.some((id, index) => id !== order[index])
-  const folders = state.folders.map((folder) => {
-    if (!at.has(folder.id)) return folder
-    const point = { x: Math.round(at.get(folder.id).x), y: Math.round(at.get(folder.id).y) }
-    const rank = renumber ? (sorted.indexOf(folder.id) + 1) * GAP : folder.rank
-    if (folder.at?.x === point.x && folder.at?.y === point.y && rank === folder.rank) return folder
-    return { ...folder, at: point, ...(rank === undefined ? {} : { rank }) }
-  })
-  return { ...state, folders }
-}
-
-/* Back into one row, in rank order. */
-export function tidyBoard(state) {
-  if (!state.folders.some((folder) => folder.at)) return state
-  return { ...state, folders: state.folders.map(({ at, ...folder }) => folder) }
 }

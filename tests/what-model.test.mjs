@@ -95,7 +95,7 @@ test('the AI’s or Nate’s pick wins over code; a day page is no kind at all',
 })
 
 test('schema 13: a sticky keeps what it is, when it was done and its calendar event; nothing else', () => {
-  assert.equal(SCHEMA, 13)
+  assert.ok(SCHEMA >= 13)
   const old = { ...createEmptyDoc(), schema: 12, rev: 4, notes: [sticky('kept')] }
   assert.deepEqual(migrate(old).notes, old.notes)
   const kept = sticky('x', { what: 'buy', doneAt: '2026-10-15T10:00:00.000Z', cal: { id: 'E1', where: 'mac', start: '2026-10-15T18:00:00.000Z' } })
