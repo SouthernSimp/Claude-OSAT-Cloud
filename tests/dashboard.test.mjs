@@ -30,7 +30,7 @@ test('the dashboard counts what waits, the topics, this week against last, and n
   assert.equal(card('written').note, '+200%')
   assert.equal(card('steps').value, 2)
   assert.equal(board.sorted, 50, 'two of four stickies have a home')
-  assert.deepEqual(board.habits, { done: 1, total: 2 })
+  assert.deepEqual(board.habits, { done: 1, total: 2, streak: 1 }, 'kept today, and the longest run going')
   assert.deepEqual(board.biggest.map(({ name, count }) => [name, count]), [['House', 1], ['Work', 1]], 'a branch counts for its topic')
   assert.deepEqual(board.soon.map((event) => event.title), ['Dentist'])
 })

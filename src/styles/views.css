@@ -10,7 +10,7 @@
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   box-shadow: var(--e-2);
 }
-.check-row input, .habit-row input, .bridge-source-list input {
+.check-row input, .bridge-source-list input {
   accent-color: var(--accent);
 }
 .project-row, .money-row {
@@ -104,7 +104,7 @@
 .phone-steps { display: grid; gap: 8px; margin: 12px 0; padding-left: 20px; color: var(--muted); font-size: var(--t-md); line-height: 1.5; }
 .phone-steps b { color: var(--ink); font-weight: 600; }
 
-.practice-layout, .obsidian-layout {
+.obsidian-layout {
   max-width: 1320px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
@@ -172,35 +172,6 @@
 .csv-result.blocked {
   background: color-mix(in srgb, var(--critical) 10%, var(--surface));
   color: var(--critical);
-}
-
-.habit-groups {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px;
-  padding-top: 12px;
-}
-.habit-groups h3 {
-  font-size: var(--t-sm);
-  letter-spacing: 0;
-}
-.habit-row {
-  min-height: 58px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  border-top: 1px solid var(--line);
-}
-.habit-row span {
-  display: grid;
-  gap: 3px;
-}
-.habit-row small {
-  color: var(--muted);
-}
-.empty-copy {
-  color: var(--muted);
 }
 
 .bridge-steps {
@@ -335,12 +306,12 @@
 /* ---- In a pop-out ------------------------------------------------------- */
 /* Page rooms scroll inside their pop-out and keep a page's margins (the pop-out
    body is "filled", which takes both away). The full-bleed rooms scroll themselves. */
-.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"]) { overflow-y: auto; }
-.popout-body:is([data-view="Journal"], [data-view="Habits"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"]) > * { height: auto; padding: 28px clamp(16px, 5cqi, 44px) 56px; }
+.popout-body:is([data-view="Journal"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"]) { overflow-y: auto; }
+.popout-body:is([data-view="Journal"], [data-view="Reflection"], [data-view="Budget"], [data-view="Projects"]) > * { height: auto; padding: 28px clamp(16px, 5cqi, 44px) 56px; }
 
 /* Rooms lay themselves out for their own pop-out (the "room" container), not the screen. */
 @container room (max-width: 760px) {
-  .practice-layout, .obsidian-layout { grid-template-columns: minmax(0, 1fr); }
+  .obsidian-layout { grid-template-columns: minmax(0, 1fr); }
   .bridge-preview { grid-row: auto; }
   /* Settings' page column is narrow here, beside its rail. */
   .ai-sizes { grid-template-columns: minmax(0, 1fr); }
@@ -350,7 +321,7 @@
   .project-row, .money-row { align-items: flex-start; flex-wrap: wrap; }
   .project-row .row-actions { width: 100%; }
   .project-row .row-actions button { flex: 1; }
-  .habit-groups, .bridge-steps { grid-template-columns: minmax(0, 1fr); }
+  .bridge-steps { grid-template-columns: minmax(0, 1fr); }
   .bridge-steps span { min-height: 52px; }
   .bridge-diff { grid-template-columns: minmax(0, 1fr); }
 }
