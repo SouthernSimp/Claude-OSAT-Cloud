@@ -8,19 +8,15 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 14, 2026: Phase 66, the big polish pass (`claude/polish-oct14`)
+## Resume checkpoint — October 15, 2026: the rework plan (`claude/rework-plan`)
 
-Nate (Oct 14): the Settings → Shortcuts fix never reached him (PR #95 passed CI but was never merged, so no release went
-out; this branch carries it); Shortcuts grey-screened the whole desk; CleanShot felt forced; Settings had too much text;
-the quick bar should look like Raycast's; Appearance → Blur "isn't really a blur"; nobody can tell GitHub, Mail… exist
-until they open Tools; "make it feel made by a real team". Done on this branch: root and per-room error boundaries plus a
-main-process reload of a crashed page (`render-process-gone`), startup parts that fail on their own (`part()` in
-`whenReady`), a background update check with a desk pill (`UpdateNote`), the Raycast-style bar (`RowTile`, `PREVIEWS`,
-`qs-act`), app icons in Shortcuts, `captures.using` (CleanShot X or the Mac's own), a real blur (`osat-blur.node`), the
-Dashboard (`views/Dashboard.jsx`, `dashboard-model.js`, ⌘6), Tools as a launchpad of tiles, `.tile` + global `data-tint`,
-shorter Settings words with group notes behind ⓘ, and the canvas in the dashboard's navy. Next: Nate tries it and says
-"merge" (the auto-mode classifier blocks Claude merging without that); the real blur and the update pill can only be
-seen on the Mac.
+Phase 66 (PR #96) and the Shortcuts fix (PR #95) are merged and shipped as build 0.1.271. Nate (Oct 14): the canvas
+"does not look visually easy to understand"; intake is the real strain (a few stickies some days, fifty others, and
+sorting them is the chore); he handed over the design ("I'm no longer in creative control"). The plan is
+docs/REWORK-20261015.md with a clickable mockup (https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48): boards instead
+of topics/branches/stacks, a kind on every sticky, Lists OSAT keeps (Questions, Groceries, Coming up), Just in with
+Undo instead of the six sorting screens, Flows (n8n-style, the intake first), SOUL/MEMORY/RULES.md, one Connections
+screen. Phases 67–71 in the roadmap. Next: Nate reacts to the mockup, then Phase 67 (kinds and boards) on its own branch.
 Older checkpoints are in git history.
 
 ## Working with Nate
