@@ -516,13 +516,18 @@ function UpdateRow() {
   );
 }
 
-export function AboutPage({ page }) {
+export function AboutPage({ page, navigate }) {
   const about = useAbout();
   return (
     <Page page={page}>
       <Group>
         <Row title={`OSAT${about?.version ? ` ${about.version}` : ""}`} hint="A calm layer over your Mac. Everything, the AI included, stays on this Mac unless you pick a cloud model." words="version privacy" />
         <UpdateRow />
+        {navigate && (
+          <Row title="What’s new" hint="Every build of OSAT in plain words, and how a change gets to you." words="changelog changes release notes build">
+            <button type="button" className="outline-button" onClick={() => navigate("Roadmap", { tab: "news" })}>See what’s new</button>
+          </Row>
+        )}
         {about?.dataFolder && <Row title="Data folder" hint={about.dataFolder} words="path where" />}
       </Group>
     </Page>

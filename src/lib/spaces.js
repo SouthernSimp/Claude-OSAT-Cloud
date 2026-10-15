@@ -29,7 +29,7 @@ export const TOOLS = [
   { id: 'Budget', tint: 'green', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },
   { id: 'Browser', tint: 'blue', label: 'Browser', icon: Globe, hint: 'The web, with a clipper into Notes' },
   { id: 'Terminal', tint: 'graphite', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
-  { id: 'Roadmap', tint: 'indigo', label: 'Roadmap', icon: MapTrifold, hint: 'Where OSAT is going' },
+  { id: 'Roadmap', tint: 'indigo', label: 'Roadmap', icon: MapTrifold, hint: 'What’s new, what’s coming next, and where OSAT is going' },
   { id: 'Meetings', tint: 'pink', label: 'Meetings', icon: Microphone, hint: 'Listen to a meeting on this Mac; it is written up for you' },
   { id: 'GitHub', tint: 'graphite', label: 'GitHub', icon: GithubLogo, hint: 'Your repositories: what waits for you, and Merge' },
   { id: 'Mail', tint: 'blue', label: 'Mail', icon: EnvelopeSimple, hint: 'Your inbox, read here' },

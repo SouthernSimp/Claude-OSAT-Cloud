@@ -49,7 +49,7 @@ test('the real roadmap: every row shows, in order, and a phase finds its own par
   assert.ok(phases.length >= 20, `${phases.length} phases`)
   assert.equal(phases[0].id, '0')
   assert.ok(phases.some((phase) => phase.id === '16'))
-  assert.ok(phases.every((phase) => phase.what && phase.label && ['done', 'now', 'planned'].includes(phase.state)))
+  assert.ok(phases.every((phase) => phase.what && phase.label && ['done', 'now', 'planned', 'dropped'].includes(phase.state)))
   // The Markdown room gives a heading the id md-<slug>-<line>; the anchor is its start, and
   // Phase 12 never lands on Phase 12b.
   const slug = (words) => words.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '')

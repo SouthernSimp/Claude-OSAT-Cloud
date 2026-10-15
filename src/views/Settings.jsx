@@ -40,7 +40,7 @@ const PAGES = {
   screenshots: ScreenshotsPage,
 };
 
-export function SettingsView({ workspace, commit, storage, target }) {
+export function SettingsView({ workspace, commit, storage, target, navigate }) {
   const [toast, showUndo] = useUndoToast();
   const [section, setSection] = useState(() => sectionFor(target?.section));
   const [text, setText] = useState("");
@@ -118,7 +118,7 @@ export function SettingsView({ workspace, commit, storage, target }) {
             <div className="settings-page" key={searching ? "search" : section}>
               {shown.map((page) => {
                 const PageBody = PAGES[page.id];
-                return <ErrorBoundary key={page.id} where={page.label}><PageBody page={page} workspace={workspace} commit={commit} storage={storage} showUndo={showUndo} /></ErrorBoundary>;
+                return <ErrorBoundary key={page.id} where={page.label}><PageBody page={page} workspace={workspace} commit={commit} storage={storage} showUndo={showUndo} navigate={navigate} /></ErrorBoundary>;
               })}
               {searching && none && <p className="settings-none" role="status">Nothing in Settings matches “{text.trim()}”.</p>}
             </div>
