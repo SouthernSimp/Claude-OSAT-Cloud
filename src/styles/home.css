@@ -227,26 +227,44 @@
 .focus-text strong { font-size: var(--t-sm); font-weight: 650; color: var(--on-1); }
 .focus-text span { overflow: hidden; font-size: var(--t-xs); color: var(--on-3); text-overflow: ellipsis; white-space: nowrap; }
 
-/* Habits: chips, filled once kept today. */
+/* Habits: chips with the room's circle in small (or the habit's emoji), filled once kept today; a run shows its count. */
 .habit-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .habit-chip {
   position: relative;
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 11px;
+  gap: 6px;
+  height: 28px;
+  max-width: 100%;
+  padding: 0 11px 0 4px;
   border-radius: 999px;
   font-size: var(--t-xs);
   font-weight: 560;
+  white-space: nowrap;
   color: var(--on-1);
   background: color-mix(in srgb, var(--on-1) 7%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-1) 12%, transparent);
 }
 .habit-chip:hover { background: color-mix(in srgb, var(--on-1) 14%, transparent); }
+.habit-chip > i {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-style: normal;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--on-1) 28%, transparent);
+}
+.habit-chip small { font-size: var(--t-2xs); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--on-3); }
 .habit-chip[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); box-shadow: none; }
+.habit-chip[aria-pressed="true"] > i { box-shadow: none; background: color-mix(in srgb, var(--accent-ink) 22%, transparent); animation: chip-kept 460ms var(--spring); }
+.habit-chip[aria-pressed="true"] small { color: inherit; opacity: 0.8; }
 .habit-chip svg { width: 11px; height: 11px; }
+@keyframes chip-kept { 0% { scale: 0.6; } 60% { scale: 1.15; } 100% { scale: 1; } }
+@media (prefers-reduced-motion: reduce) { .habit-chip[aria-pressed="true"] > i { animation: none; } }
 .widget-habits .widget-empty { margin: 8px 0 0; }
 
 /* From before: an older note, its first words, and Not now. */

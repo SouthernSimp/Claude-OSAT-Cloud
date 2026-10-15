@@ -1,4 +1,4 @@
-import { localDateKey, isHabitDone } from '../daily-practice.js'
+import { habitStreak, localDateKey, isHabitDone } from '../daily-practice.js'
 import { nextSteps } from '../next-steps.js'
 import { isActiveNote, isUnsorted } from '../notes-model.js'
 
@@ -62,6 +62,8 @@ export function dashboard(workspace, now = new Date()) {
 
   const habits = (workspace?.habits || []).filter((habit) => habit && !habit.archived)
   const habitsDone = habits.filter((habit) => isHabitDone(habit, today)).length
+  // The longest run going: encouragement, where a count of what's left would nag.
+  const streak = habits.reduce((longest, habit) => Math.max(longest, habitStreak(habit, today).current), 0)
 
   const sorted = stickies.length ? Math.round(((stickies.length - unsorted.length) / stickies.length) * 100) : 100
 
@@ -78,7 +80,7 @@ export function dashboard(workspace, now = new Date()) {
       { id: 'steps', label: 'Next steps', value: open.length, note: `${steps.length - open.length} done`, up: true, go: ['Journal'] },
     ],
     sorted,
-    habits: { done: habitsDone, total: habits.length },
+    habits: { done: habitsDone, total: habits.length, streak },
     week,
     thisWeek,
     lastWeek,

@@ -676,7 +676,7 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Terminal': return <TerminalView command={command} />
     case 'Journal': return <JournalView {...room} target={target} />
     case 'Calendar': return <CalendarView {...room} initialDate={pop.detail?.date || null} />
-    case 'Habits': return <HabitsView {...room} today={today} />
+    case 'Habits': return <HabitsView {...room} />
     case 'Budget': return <BudgetView {...room} />
     case 'Settings': return <SettingsView {...room} storage={storage} target={pop.detail?.section ? target : null} />
     case 'Roadmap': return <RoadmapView />

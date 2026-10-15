@@ -125,7 +125,7 @@ function Habits({ habits, onOpen }) {
       <div className="dash-habits-body">
         <div className="dash-mini">
           <div><small>Kept</small><b>{habits.done}</b></div>
-          <div><small>To go</small><b>{Math.max(habits.total - habits.done, 0)}</b></div>
+          <div><small>In a row</small><b>{habits.streak} {habits.streak === 1 ? 'day' : 'days'}</b></div>
         </div>
         <div className="dash-ring">
           <svg viewBox="0 0 130 130" aria-hidden="true">
