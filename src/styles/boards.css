@@ -1,0 +1,238 @@
+/* The canvas (Phase 68): boards down the side, the open one as a Map (a column per kind), a Board (Later, Next,
+   Doing, Done) or a List, and the line to write a sticky at the bottom. It fills the layer above the desk. */
+
+.boards {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  background: var(--sky-canvas);
+  color: var(--ink);
+}
+
+/* ---- The side: Just in, your boards, the lists OSAT keeps ------------------------------------------------ */
+.boards-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--s-4) var(--s-3);
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+.boards-down { align-self: flex-start; margin-bottom: var(--s-3); }
+.boards-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin: var(--s-4) var(--s-2) var(--s-1);
+  color: var(--faint);
+  font-size: var(--t-2xs);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.boards-label .text-button { font-size: var(--t-xs); letter-spacing: 0; text-transform: none; }
+.boards-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 32px;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font-size: var(--t-sm);
+  text-align: left;
+  transition: background var(--d-fast);
+}
+.boards-row:hover { background: var(--surface-hover); }
+.boards-row.is-active { background: var(--accent-soft); color: var(--ink-strong); font-weight: 600; }
+.boards-row > svg { flex: none; width: 16px; height: 16px; color: var(--muted); }
+.boards-row.is-active > svg { color: var(--accent); }
+.boards-row > span:not(.boards-dot) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.boards-row small { color: var(--faint); font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
+.boards-row em { padding: 0 6px; border-radius: var(--r-full); background: var(--accent); color: var(--accent-ink); font-size: var(--t-2xs); font-style: normal; font-weight: 650; }
+/* A dropped sticky lands on the row under it. */
+.boards-row[data-over] { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.boards-dot { flex: none; width: 10px; height: 10px; border-radius: var(--r-full); background: var(--paper-bg, var(--paper-bone)); box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 18%); }
+/* The app's `input:not([type])` outranks a bare class, so the canvas's fields are scoped to it. */
+.boards .boards-naming input { width: 100%; min-height: 32px; padding: 0 var(--s-2); border: 1px solid var(--accent); border-radius: var(--r-md); background: var(--surface-raised); font-size: var(--t-sm); }
+.boards-empty { display: flex; align-items: center; gap: var(--s-2); min-height: 32px; padding: 0 var(--s-2); border: 1px dashed var(--line-strong); border-radius: var(--r-md); color: var(--muted); font-size: var(--t-sm); }
+.boards-empty:hover { color: var(--ink); border-color: var(--accent-line); }
+
+/* ---- The open board --------------------------------------------------------------------------------------- */
+/* A column: the head, any suggestion, the board (it takes the room left), the line to write. */
+.boards-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.boards-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-5) var(--s-6) var(--s-3);
+}
+.boards-title { flex: 1 1 220px; min-width: 0; }
+.boards-title h1 { margin: 0; font-family: var(--font-display); font-size: var(--t-2xl); font-weight: 700; letter-spacing: -0.01em; }
+.boards-title p { margin: 2px 0 0; color: var(--muted); font-size: var(--t-sm); }
+.boards-find {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: min(260px, 100%);
+  min-height: 32px;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  color: var(--faint);
+}
+.boards-find:focus-within { border-color: var(--accent); box-shadow: var(--ring); }
+.boards-find > svg { flex: none; width: 15px; height: 15px; }
+.boards .boards-find input { flex: 1; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink); font-size: var(--t-sm); outline: none; }
+.boards-find button { display: grid; place-items: center; color: var(--faint); }
+.boards-views button { display: inline-flex; align-items: center; gap: 6px; }
+.boards-views button svg { width: 14px; height: 14px; }
+.boards-views button[aria-selected="true"] { background: var(--surface); color: var(--ink-strong); box-shadow: var(--e-1); }
+
+/* A suggestion over the board: an overnight idea, or a summary to unpack. */
+.boards-note {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin: 0 var(--s-6) var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-lg);
+  background: var(--accent-soft);
+  font-size: var(--t-sm);
+}
+.boards-note > svg { flex: none; width: 16px; height: 16px; color: var(--accent); }
+.boards-note p { flex: 1; margin: 0; }
+.boards-note p span { color: var(--muted); }
+
+.boards-body { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--s-6) var(--s-4); }
+
+/* ---- Map and Board: columns side by side, each scrolling on its own ------------------------------------------ */
+.boards-map,
+.boards-kanban {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(236px, 1fr);
+  gap: var(--s-3);
+  height: 100%;
+  min-height: 280px;
+}
+.boards-kanban { grid-auto-columns: minmax(220px, 1fr); }
+.map-column,
+.stage-column {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-xl);
+  background: color-mix(in oklab, var(--surface) 70%, transparent);
+  transition: background var(--d-fast), box-shadow var(--d-fast);
+}
+/* The column a carried sticky would land in. */
+.map-column[data-over],
+.stage-column[data-over] { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent-line); }
+.map-column h2,
+.stage-column h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-3) var(--s-3) var(--s-2);
+  font-size: var(--t-sm);
+  font-weight: 650;
+}
+.map-column h2 small,
+.stage-column h2 small { margin-left: auto; color: var(--faint); font-size: var(--t-xs); font-weight: 500; font-variant-numeric: tabular-nums; }
+.map-cards { display: flex; flex-direction: column; gap: var(--s-2); min-height: 0; overflow-y: auto; padding: 2px var(--s-2) var(--s-3); }
+
+/* A sticky: its kind's paper, its words, and a quiet line of where it's from. */
+.boards-card {
+  flex: none;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--paper-bg, var(--paper-bone)) calc(100% - var(--sky-sticky-tint)), var(--surface-raised));
+  color: var(--paper-ink);
+  box-shadow: var(--sheet-shadow);
+  font-size: var(--t-sm);
+  line-height: 1.4;
+  cursor: grab;
+  transition: box-shadow var(--d-fast), translate var(--d-fast), opacity var(--d-fast);
+}
+.boards-card:hover { box-shadow: var(--sheet-lift); translate: 0 -1px; }
+.boards-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.boards-card p { display: -webkit-box; margin: 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 6; white-space: pre-line; overflow-wrap: anywhere; }
+.boards-card footer { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: var(--s-2); color: color-mix(in oklab, var(--paper-ink) 62%, transparent); font-size: var(--t-2xs); font-weight: 560; }
+.boards-card footer:empty { display: none; }
+.boards-card-from { margin-left: auto; }
+.boards-card.is-carried { opacity: 0.35; }
+.boards-card.is-done p { text-decoration: line-through; opacity: 0.6; }
+.boards-card.is-lit { animation: boards-lit 2.2s var(--ease-out); }
+.boards-card.is-editing { cursor: auto; }
+.boards .boards-card textarea { display: block; width: 100%; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: inherit; font: inherit; resize: vertical; outline: none; }
+@keyframes boards-lit {
+  0%, 60% { box-shadow: 0 0 0 3px var(--accent), var(--sheet-lift); }
+  100% { box-shadow: var(--sheet-shadow); }
+}
+
+/* ---- List ---------------------------------------------------------------------------------------------------- */
+.boards-list { border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface-raised); overflow: hidden; }
+.boards-list-head,
+.boards-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 110px 72px;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-4);
+  font-size: var(--t-sm);
+}
+.boards-list-head { border-bottom: 1px solid var(--line); color: var(--faint); font-size: var(--t-2xs); font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+.boards-list-row + .boards-list-row { border-top: 1px solid var(--line-soft); }
+.boards-list-row:hover { background: var(--surface-hover); }
+.boards-list-row > span:not(:first-child) { color: var(--muted); }
+.boards-list-words { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- The line to write a sticky ---------------------------------------------------------------------------- */
+.boards-write {
+  flex: none;
+  display: flex;
+  gap: var(--s-2);
+  margin: 0 var(--s-6) var(--s-5);
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface-raised);
+  box-shadow: var(--sheet-shadow);
+}
+.boards-write:focus-within { border-color: var(--accent-line); }
+.boards .boards-write input { flex: 1; min-width: 0; min-height: 0; padding: 0 var(--s-2); border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink); font-size: var(--t-md); outline: none; }
+
+/* Narrow screens: the side becomes a strip along the top. */
+@media (max-width: 900px) {
+  .boards { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .boards-side { flex-direction: row; flex-wrap: nowrap; align-items: center; overflow-x: auto; padding: var(--s-2) var(--s-3); border-right: 0; border-bottom: 1px solid var(--line); }
+  .boards-side > * { flex: none; }
+  .boards-down { margin: 0; }
+  .boards-label { margin: 0 var(--s-1) 0 var(--s-3); }
+  .boards-head, .boards-body { padding-inline: var(--s-4); }
+  .boards-note, .boards-write { margin-inline: var(--s-4); }
+  .boards-list-head, .boards-list-row { grid-template-columns: minmax(0, 1fr) 96px; }
+  .boards-list-head > :nth-child(n + 3), .boards-list-row > :nth-child(n + 3) { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boards-card, .map-column, .stage-column { transition: none; }
+  .boards-card:hover { translate: none; }
+  .boards-card.is-lit { animation: none; box-shadow: 0 0 0 3px var(--accent), var(--sheet-lift); }
+}

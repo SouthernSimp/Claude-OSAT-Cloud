@@ -79,16 +79,6 @@
 .sticky-mention:hover { background: rgb(0 0 0 / 8%); }
 .sticky.is-found { animation: sticky-found 1.6s var(--ease-out); }
 @keyframes sticky-found { 0%, 60% { box-shadow: var(--lift-hover), 0 0 0 4px var(--accent); } }
-
-.sticky-list { display: grid; align-content: start; gap: 10px; min-height: 40px; border-radius: 8px; }
-.sticky-list.is-x { display: flex; align-items: flex-start; gap: 12px; overflow-x: auto; padding: 4px 4px 14px; min-height: 96px; }
-.sticky-list.is-x > .sticky, .sticky-list.is-x > .add-sticky { flex: none; width: 196px; }
-
-/* Freely placed stickies use the same paper and editor as the desk and branches. */
-.board-sticky { position: absolute; width: 208px; }
-.board-sticky > .sticky { min-height: 150px; }
-.board-sticky:is(:hover, :focus-within), .board-sticky-draft > .desk-sticky { z-index: 3; }
-.sticky-empty { margin: 0; padding: 10px 4px; font-size: var(--t-sm); color: var(--muted); }
 .add-sticky {
   display: inline-flex;
   align-items: center;
@@ -116,7 +106,6 @@
   box-shadow: 0 0 0 2px var(--accent);
   outline: none;
 }
-:root[data-theme="dark"] .name-field:not(.node-head .name-field, .branch-card .name-field) { background: var(--surface-sunken); color: var(--ink); }
 
 /* ---- Carrying things ------------------------------------------------------ */
 
@@ -129,10 +118,7 @@
 :is(.desk-sticky, .desk-stack):is(.is-moving, :has(> .is-lifted)) { z-index: 6; pointer-events: none; transition: none; rotate: 0deg; }
 :is(.desk-sticky, .desk-stack).is-moving > :is(.sticky, .stack-head) { box-shadow: var(--lift-held); }
 html[data-carrying] { cursor: grabbing; user-select: none; }
-:is(.sticky:not(.is-editing), .node-head, .branch-head, .node-list-item) { user-select: none; -webkit-user-select: none; }
 html[data-carrying] * { cursor: grabbing !important; }
-:is(.sticky-list, .node-above, .node-head, .branch-head, .node-list-item, .sky-toss, .icon, .app-dock button)[data-over] { outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 4px; }
-.sticky-list.is-x[data-over], .node-grid[data-over] { outline: none; }
 /* Held at the top of the screen: up to the Sky. */
 html[data-carrying="note"] body::before,
 html[data-carrying="folder"] body::before {
@@ -217,93 +203,6 @@ html[data-carry-edge="up"] body::after {
 /* A note or Ask opened from the Sky opens over it. */
 .overlay-surface[data-sky] .popouts { z-index: 14; }
 
-.sky-layer {
-  position: absolute;
-  inset: 0;
-  overflow: clip;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  color: var(--ink);
-  background: var(--sky-ground);
-}
-.sky-bar {
-  position: relative;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 22px;
-  border-bottom: 1px solid var(--line-soft);
-}
-.sky-down {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 13px 0 11px;
-  border-radius: 999px;
-  font-size: var(--t-sm);
-  font-weight: 650;
-  color: var(--ink);
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-1);
-}
-.sky-down svg { width: 13px; height: 13px; }
-.sky-down:hover { background: var(--surface-hover); }
-.sky-new { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px 0 12px; border-radius: 999px; font-size: var(--t-sm); font-weight: 650; color: var(--accent-ink); background: var(--accent); box-shadow: var(--e-1); }
-.sky-new:hover { background: var(--accent-hover); }
-.sky-new svg { width: 12px; height: 12px; }
-.sky-import { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 13px 0 11px; border-radius: 999px; font-size: var(--t-sm); font-weight: 650; color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-1); }
-.sky-import:hover { background: var(--surface-hover); }
-.sky-import svg { width: 13px; height: 13px; }
-.sky-find { position: relative; margin-left: auto; width: min(320px, 36vw); }
-.sky-find > svg { position: absolute; left: 11px; top: 50%; translate: 0 -50%; width: 14px; height: 14px; color: var(--muted); pointer-events: none; }
-.sky-find input {
-  width: 100%;
-  height: 34px;
-  padding: 0 12px 0 32px;
-  border: 0;
-  border-radius: 999px;
-  font-size: var(--t-sm);
-  color: var(--ink);
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 0.5px var(--line-strong);
-}
-.sky-find input:focus { outline: none; box-shadow: 0 0 0 2px var(--accent); }
-.sky-found {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  left: 0;
-  display: grid;
-  padding: 5px;
-  border-radius: 8px;
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-4);
-}
-.sky-found button { display: grid; gap: 1px; padding: 7px 10px; border-radius: 8px; text-align: left; }
-.sky-found button:hover { background: var(--accent); color: var(--accent-ink); }
-.sky-found strong { font-size: var(--t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sky-found small { font-size: var(--t-xs); opacity: 0.7; }
-.sky-body { position: relative; min-height: 0; min-width: 0; overflow: clip; }
-.sky-toss {
-  position: absolute;
-  z-index: 4;
-  right: 24px;
-  bottom: 24px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border-radius: 10px;
-  font-weight: 650;
-  color: var(--muted);
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-3);
-  animation: context-in 160ms var(--ease-out) both;
-}
-.sky-toss[data-over] { color: #fff; background: var(--critical); outline: none; }
-
 /* ---- The whiteboard --------------------------------------------------------- */
 
 /* The camera: where the board's origin is on screen, and the zoom. Registered, so a
@@ -322,8 +221,6 @@ html[data-carry-edge="up"] body::after {
   background-size: var(--dot, 28px) var(--dot, 28px);
   background-position: var(--cx) var(--cy);
 }
-.board.is-panning { cursor: grabbing; }
-.board.is-flying { transition: --cx 720ms var(--glide), --cy 720ms var(--glide), --z 720ms var(--glide); }
 /* A slow glow drifting across the sky, in the Mac's accent. */
 .board::before {
   content: "";
@@ -341,257 +238,10 @@ html[data-carry-edge="up"] body::after {
   50% { translate: 3% 4%; rotate: 5deg; scale: 1.08; }
   100% { translate: 5% -3%; rotate: -3deg; scale: 1.02; }
 }
-.board-world { position: absolute; top: 0; left: 0; width: 0; height: 0; transform-origin: 0 0; transform: translate(var(--cx), var(--cy)) scale(var(--z)); }
-
-/* Lines between nodes flow, slowly: a link solid, an @mention dotted. */
-.board-lines { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
-.board-lines path {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-opacity: 0.6;
-  stroke-dasharray: 12 10;
-  animation: line-flow 1.6s linear infinite;
-}
-.board-lines path.is-mention { stroke-width: 2; stroke-opacity: 0.45; stroke-dasharray: 1 9; animation-duration: 2.6s; }
 @keyframes line-flow { to { stroke-dashoffset: -44; } }
-
-/* A node: its paper on top (the handle), and when open, what's in it underneath. */
-.board-card {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: grid;
-  justify-items: start;
-  gap: 12px;
-  width: max-content;
-  cursor: default;
-  transition: translate 560ms var(--glide), opacity 240ms;
-  animation: card-in 640ms var(--spring) both;
-  animation-delay: calc(min(var(--i, 0), 12) * 45ms);
-}
 @keyframes card-in { from { opacity: 0; scale: 0.86; } }
-.board-card:is(:hover, :focus-within, .is-open) { z-index: 2; }
-/* While a node is open the others step back, still there and one look away. */
-.board:has(.board-card.is-open) .board-card:not(.is-open, :hover, :focus-within, .is-dragging) { opacity: 0.4; }
-.board-card > .node-head { width: 240px; cursor: grab; }
-.board-card > .node-head.is-unsorted { cursor: default; }
-/* Resting nodes breathe a little, each in its own time. */
-.board-card:not(.is-open, .is-dragging) > .node-head { animation: card-drift 7s ease-in-out infinite alternate; animation-delay: var(--drift, 0s); }
 @keyframes card-drift { from { transform: translateY(-3px) rotate(-0.5deg); } to { transform: translateY(3px) rotate(0.5deg); } }
-.board-card.is-dragging { z-index: 5; transition: none; }
-.board-card.is-dragging > .node-head { cursor: grabbing; scale: 1.04; rotate: var(--tilt); box-shadow: var(--lift-held); transition: rotate 140ms var(--ease-out), scale 180ms var(--ease-out); }
-.card-body {
-  display: grid;
-  gap: 12px;
-  min-width: 240px;
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-2);
-  transform-origin: top left;
-  transition: opacity 240ms;
-  animation: body-in 440ms var(--glide) both;
-}
 @keyframes body-in { from { opacity: 0; translate: 0 -10px; scale: 0.96; } }
-.board-card.is-unsorted .card-body { width: 264px; }
-.card-mentions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 560px; padding-top: 10px; border-top: 1px solid var(--line-soft); font-size: var(--t-xs); }
-.card-mentions > span { display: inline-flex; align-items: center; gap: 4px; font-weight: 650; color: var(--muted); }
-.card-mentions svg { width: 12px; height: 12px; }
-.card-mentions button { padding: 3px 9px; border-radius: 999px; font-weight: 600; color: var(--ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.card-mentions button:hover { color: var(--accent-ink); background: var(--accent); }
-
-/* Far out, a node's name is written large over it and what's in it fades. */
-.card-far {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: max-content;
-  max-width: calc(300px / var(--z));
-  font: 800 calc(20px / var(--z))/1.05 var(--font-display);
-  letter-spacing: var(--tr-display);
-  color: var(--ink);
-  translate: 0 calc(-100% - 14px);
-  opacity: 0;
-  pointer-events: none;
-  text-wrap: balance;
-  transition: opacity 260ms;
-}
-.board[data-far] .card-far { opacity: 1; }
-.board[data-far] .card-body { opacity: 0.4; }
-
-.board-naming { position: absolute; top: 0; left: 0; z-index: 6; width: 240px; animation: card-in 420ms var(--spring) both; }
-.board-hint { position: absolute; left: 22px; bottom: 24px; max-width: calc(50% - 100px); margin: 0; font-size: var(--t-xs); color: var(--muted); pointer-events: none; }
-.board-zoom {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 8px;
-  cursor: default;
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-2);
-}
-.board-zoom button { min-width: 30px; height: 28px; display: grid; place-items: center; padding: 0 6px; border-radius: 6px; font: 650 var(--t-xs)/1 var(--font); font-variant-numeric: tabular-nums; color: var(--muted); }
-.board-zoom button:hover { color: var(--ink); background: var(--surface-hover); }
-.board-zoom svg { width: 12px; height: 12px; }
-
-.node-head {
-  position: relative;
-  min-height: 132px;
-  display: grid;
-  align-content: space-between;
-  gap: 8px;
-  padding: 16px 16px 14px;
-  border-radius: 4px 4px 18px 4px;
-  background: linear-gradient(180deg, var(--paper-gloss), transparent 30%), var(--paper-bg, var(--paper-canary));
-  color: var(--paper-ink);
-  box-shadow: var(--lift-rest);
-  text-align: left;
-  outline: none;
-  transition: translate 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
-}
-.node-head:hover { translate: 0 -3px; }
-.node-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.node-head strong { padding-right: 34px; font: 750 var(--t-xl)/1.15 var(--font-display); letter-spacing: var(--tr-display); overflow-wrap: anywhere; }
-.node-head small { font-size: var(--t-xs); color: var(--paper-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.node-peek { display: grid; gap: 3px; margin: 0; padding: 0 30px 0 0; list-style: none; font-size: var(--t-xs); color: var(--paper-ink-2); }
-.node-peek li { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.node-peek li::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--paper-bg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper-ink) 30%, transparent); }
-.node-peek li.is-more::before { visibility: hidden; }
-.board-card.is-open > .node-head { box-shadow: var(--lift-hover), 0 0 0 2px color-mix(in srgb, var(--paper-ink) 14%, transparent); }
-.node-tools { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 2px; opacity: 0; transition: opacity 140ms; }
-.node-head:is(:hover, :focus-within) .node-tools { opacity: 1; }
-.node-tools button { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; color: var(--paper-ink-2); }
-.node-tools button:hover { color: var(--paper-ink); background: rgb(0 0 0 / 8%); }
-.node-tools svg { width: 14px; height: 14px; }
-.node-head.is-unsorted { --paper-bg: var(--surface-raised); color: var(--ink); background: var(--surface-raised); border: 1.5px dashed var(--line-strong); box-shadow: none; }
-.node-head.is-unsorted[data-layers] { --pile: var(--surface-sunken); --paper-edge: var(--line); }
-.node-head.is-unsorted small { color: var(--muted); }
-.node-head.is-unsorted:hover { translate: none; }
-.node-head.is-naming { align-content: center; box-shadow: var(--lift-held); }
-.pile-label { margin: 0; font: 650 var(--t-2xs)/1 var(--font); letter-spacing: 0; color: var(--muted); }
-
-/* ---- An open node: a mind map, its branches and stickies hung around it --------- */
-
-/* The lines: a map's branches (quiet, solid), connections (the accent), @mentions (dotted). */
-.board-lines path.is-tree { stroke: color-mix(in srgb, var(--ink) 34%, transparent); stroke-width: 2; stroke-opacity: 1; stroke-dasharray: none; animation: none; }
-.board-lines path.is-link { stroke: var(--accent); stroke-width: 2.5; stroke-opacity: 0.9; stroke-dasharray: none; animation: none; }
-.board-lines path.is-link.is-drawing { stroke-dasharray: 6 6; }
-.board-lines .link-hit { stroke: transparent; stroke-width: 16; stroke-dasharray: none; animation: none; pointer-events: stroke; cursor: pointer; }
-.board-lines g:hover > path.is-link { stroke-width: 3.5; stroke-opacity: 1; }
-/* An idea from overnight (Phase 53): a faint, slow thread until it is kept or waved away. */
-.board-lines path.is-idea { stroke: var(--accent); stroke-width: 2; stroke-opacity: 0.35; stroke-dasharray: 2 9; animation: line-flow 3.2s linear infinite; }
-.board-lines g:hover > path.is-idea { stroke-opacity: 0.85; stroke-width: 3; }
-
-/* A card in a map: laid out by the map, gliding when the map changes. */
-.map-card { position: absolute; top: 0; left: 0; display: grid; gap: 8px; width: max-content; transition: translate 460ms var(--glide); animation: card-in 420ms var(--spring) both; }
-.map-card:is(:hover, :focus-within) { z-index: 3; }
-:is(.map-card, .board-sticky).is-moving, .board-card.is-dragging { z-index: 6; transition: none; pointer-events: none; }
-.map-sticky { width: 200px; }
-.map-sticky > .sticky { min-height: 64px; }
-.board-sticky { transition: translate 200ms var(--ease-out); }
-/* A branch: its name on its paper, a little pile when folded. */
-.branch-card {
-  position: relative;
-  min-width: 150px;
-  max-width: 240px;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 58px 9px 12px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, var(--paper-gloss), transparent 40%), var(--paper-bg, var(--paper-bone));
-  color: var(--paper-ink);
-  box-shadow: var(--lift-rest);
-  cursor: grab;
-  outline: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.branch-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.branch-card strong { min-width: 0; font: 700 var(--t-md)/1.25 var(--font-display); letter-spacing: var(--tr-display); overflow-wrap: anywhere; }
-.branch-card .name-field { flex: 1; min-width: 0; }
-.branch-card[data-over] { outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 4px; }
-.branch-fold { flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-left: -4px; border-radius: 6px; color: var(--paper-ink-2); }
-.branch-fold:hover { color: var(--paper-ink); background: rgb(0 0 0 / 8%); }
-.branch-fold svg { width: 12px; height: 12px; transition: rotate 160ms var(--ease-out); }
-.branch-fold[aria-expanded="false"] svg { rotate: -90deg; }
-.map-tools { position: absolute; right: 6px; top: 50%; translate: 0 -50%; display: flex; gap: 2px; opacity: 0; transition: opacity 140ms; }
-.branch-card:is(:hover, :focus-within) .map-tools, .map-tools:focus-within { opacity: 1; }
-.map-tools button { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; color: var(--paper-ink-2); }
-.map-tools button:hover { color: var(--paper-ink); background: rgb(0 0 0 / 8%); }
-.map-tools svg { width: 13px; height: 13px; }
-.map-folder > :is(.sort-help, .sticky) { max-width: 280px; }
-.map-folder > .sticky.is-new { width: 200px; }
-
-/* Focus: one node alone, and a way back. */
-.board-focus {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  translate: -50% 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 6px 6px 16px;
-  border-radius: 999px;
-  font-size: var(--t-sm);
-  color: var(--ink);
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-3);
-  cursor: default;
-}
-.board-focus button { height: 30px; padding: 0 16px; border-radius: 999px; font: 650 var(--t-sm)/1 var(--font); color: var(--accent-ink); background: var(--accent); }
-.board-focus button:hover { background: var(--accent-hover); }
-
-/* How the Sky works: a solid card over the board, bottom left. */
-.sky-guide {
-  position: absolute;
-  z-index: 5;
-  left: 22px;
-  bottom: 56px;
-  display: grid;
-  gap: 14px;
-  width: min(400px, calc(100% - 44px));
-  padding: 20px 20px 18px;
-  border-radius: 12px;
-  color: var(--ink);
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-3);
-  animation: body-in 440ms var(--glide) both;
-}
-.sky-guide h2 { margin: 0; font: 750 var(--t-lg)/1.2 var(--font-display); letter-spacing: var(--tr-display); }
-.sky-guide ol { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
-.sky-guide li { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 14px; }
-.sky-guide li p, .sky-guide-foot { margin: 0; font-size: var(--t-sm); line-height: 1.4; color: var(--muted); }
-.sky-guide li strong, .sky-guide-foot strong { color: var(--ink); }
-.guide-pic { justify-self: center; display: grid; font: 650 var(--t-2xs)/1.2 var(--font); color: var(--paper-ink); }
-.guide-pic.is-sticky { width: 64px; height: 44px; padding: 6px; border-radius: 2px 2px 9px 2px; background: var(--paper-bg); box-shadow: var(--lift-rest); rotate: -3deg; }
-.guide-pic.is-node { width: 76px; height: 48px; padding: 7px; border-radius: 3px 3px 11px 3px; font: 750 var(--t-sm)/1 var(--font-display); background: var(--paper-bg); box-shadow: 3px 4px 0 -1px color-mix(in srgb, var(--paper-bg) 88%, #000), var(--lift-rest); }
-.guide-pic.is-branch { gap: 6px; padding-left: 12px; border-left: 2px solid var(--line-strong); color: var(--ink); }
-.guide-pic.is-branch i { display: flex; align-items: center; gap: 5px; font-style: normal; }
-.guide-pic.is-branch i::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--paper-bg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent); }
-.sky-guide button { justify-self: start; height: 32px; padding: 0 16px; border-radius: 999px; font-size: var(--t-sm); font-weight: 650; color: var(--accent-ink); background: var(--accent); }
-.sky-guide button:hover { background: var(--accent-hover); }
-
-/* Help me sort: a line per branch, with Move and Dismiss, under the node's Unsorted. */
-.sort-help { grid-column: 1 / -1; display: grid; gap: 8px; max-width: 560px; }
-.sort-help > p, .sort-suggestion { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 8px; font-size: var(--t-sm); color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-1); }
-.sort-help > p { flex: 1; }
-.sort-help > p + button { justify-self: start; }
-.sort-suggestion p { flex: 1 1 260px; margin: 0; }
-.sort-help button { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: var(--t-xs); font-weight: 650; color: var(--ink); background: var(--surface-sunken); }
-.sort-help button:hover { background: var(--surface-hover); }
-.sort-help button.is-primary { color: var(--accent-ink); background: var(--accent); }
-.sort-help button.is-primary:hover { background: var(--accent-hover); }
-.sort-help svg { width: 12px; height: 12px; }
 
 /* ---- Stickies on the desk ------------------------------------------------------ */
 
@@ -671,11 +321,9 @@ html[data-carry-edge="up"] body::after {
   transition: opacity 140ms, scale 160ms var(--ease-out);
 }
 .stack-item > .link-dot { right: 4px; }
-:is(.desk-sticky, .stack-item, .map-card, .board-sticky, .board-card):is(:hover, :focus-within) > .link-dot,
 .link-dot:focus-visible { opacity: 1; scale: 1; }
 .link-dot:hover { scale: 1.2; }
 .link-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-[data-link-over] > :is(.sticky, .node-head) { box-shadow: var(--lift-held), 0 0 0 2px var(--accent); }
 .link-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .link-line { fill: none; stroke: color-mix(in srgb, var(--accent) 78%, var(--ink)); stroke-width: 2.5px; stroke-linecap: round; opacity: 0.85; }
 .link-line.is-drawing { stroke-dasharray: 6 6; opacity: 1; }
@@ -722,131 +370,9 @@ g:hover > .link-line { stroke-width: 3.5px; opacity: 1; }
 .board [data-layers="4"] { box-shadow: 4px 5px 0 -1px var(--pile), 4px 5px 0 -0.5px var(--paper-edge), 8px 10px 0 -2px var(--pile), 8px 10px 0 -1.5px var(--paper-edge), 12px 14px 0 -3px var(--pile), 12px 14px 0 -2.5px var(--paper-edge), 16px 18px 0 -4px var(--pile), 16px 18px 0 -3.5px var(--paper-edge), var(--lift-rest); }
 
 @media (prefers-reduced-motion: reduce) {
-  .sky-shell, .sky-shell.is-leaving, .context-menu, .sky-toss, .board::before, .board-card, .board-card > .node-head, .card-body,
-  .board-lines path, .board-naming { animation: none !important; }
-  .board.is-flying, .board-card { transition: none; }
+  .sky-shell,
+.sky-shell.is-leaving,
+.context-menu,
+.board::before { animation: none !important; }
   .overlay-surface > .workspace-content { transition: none; }
 }
-
-/* A node that arrived (the drop folder, a scan, the connector): New until opened, who sent
-   it, and packed while it is only a summary. Quiet: the Mac's accent, never a count. */
-.node-origin { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--t-2xs); color: var(--paper-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.node-origin em { flex: none; padding: 2px 7px; border-radius: 999px; font: 700 var(--t-2xs)/1.2 var(--font); font-style: normal; color: var(--accent-ink); background: var(--accent); }
-.packed-bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 560px; padding: 10px 12px; border-radius: 8px; font-size: var(--t-sm); color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-1); }
-.packed-bar p { flex: 1 1 240px; margin: 0; }
-.packed-bar button { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: var(--t-xs); font-weight: 650; color: var(--ink); background: var(--surface-sunken); }
-.packed-bar button:hover { background: var(--surface-hover); }
-.packed-bar button.is-primary { color: var(--accent-ink); background: var(--accent); }
-.packed-bar svg { width: 12px; height: 12px; }
-.packed-bar button:disabled { opacity: 0.6; }
-.sort-help > .sort-asking { color: var(--muted); background: transparent; box-shadow: none; padding: 2px 12px; }
-
-/* ---- The AI in the Sky: a pill at the bottom, a small card, and what folds ------------------ */
-
-.sky-ask-pill {
-  position: absolute; z-index: 4; right: 0; bottom: 22px; left: 0; width: max-content; margin-inline: auto;
-  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 16px 0 13px; border-radius: 999px;
-  font-size: var(--t-sm); font-weight: 650; color: var(--ink); background: var(--surface-raised);
-  box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-3);
-}
-.sky-ask-pill svg { width: 14px; height: 14px; color: var(--accent); }
-.sky-ask-pill:hover { background: var(--surface-hover); }
-.sky-ask {
-  position: absolute; z-index: 5; right: 0; bottom: 22px; left: 0; width: min(560px, calc(100% - 44px)); max-height: min(72%, 600px); margin-inline: auto;
-  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto auto; gap: 8px; padding: 12px 14px 10px; border-radius: 12px;
-  color: var(--ink); background: var(--surface-raised); box-shadow: 0 0 0 0.5px var(--line-strong), var(--e-4);
-  animation: context-in 160ms var(--ease-out) both;
-}
-.sky-ask header { display: flex; align-items: center; gap: 8px; font-size: var(--t-sm); }
-.sky-ask header svg { flex: none; width: 14px; height: 14px; color: var(--accent); }
-.sky-ask header strong { flex: 1; min-width: 0; font-weight: 650; }
-.sky-ask header button { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: var(--muted); }
-.sky-ask header button:hover { color: var(--ink); background: var(--surface-hover); }
-.sky-ask-lead, .sky-ask-wait, .sky-ask-error, .sort-more { margin: 0; font-size: var(--t-sm); color: var(--muted); }
-.sky-ask-error { color: var(--critical); }
-.sky-ask-body { min-height: 0; display: grid; gap: 8px; align-content: start; overflow-y: auto; overscroll-behavior: contain; font-size: 14px; line-height: 1.5; }
-.sky-ask-body:empty { display: none; }
-.sky-ask-question { margin: 0; font-weight: 650; }
-.sky-ask .sort-help { max-width: none; }
-.sky-ask .sort-help > p, .sky-ask .sort-suggestion { background: var(--surface-sunken); box-shadow: none; }
-.sky-ask .sort-all { justify-self: start; }
-.sky-ask-form { display: flex; gap: 8px; }
-.sky-ask-form input { flex: 1; min-width: 0; height: 36px; padding: 0 14px; border: 0; border-radius: 999px; font-size: var(--t-sm); color: var(--ink); background: var(--surface-sunken); box-shadow: 0 0 0 0.5px var(--line-strong); }
-.sky-ask-form input:focus { outline: none; box-shadow: 0 0 0 2px var(--accent); }
-.sky-ask-form button { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: var(--accent-ink); background: var(--accent); }
-.sky-ask-form button:disabled { opacity: 0.4; }
-.sky-ask footer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.sky-ask footer > button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; font-size: var(--t-xs); font-weight: 650; color: var(--ink); background: var(--surface-sunken); }
-.sky-ask footer > button:hover:not(:disabled) { background: var(--surface-hover); }
-.sky-ask footer > button:disabled { opacity: 0.5; }
-.sky-ask footer small { flex: 1 1 100%; font-size: var(--t-xs); color: var(--muted); }
-.sky-ask footer small button { color: inherit; text-decoration: underline; }
-
-/* Folding: Unsorted's name and each branch's arrow. */
-.fold-name { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-align: left; }
-.fold-caret { flex: none; width: 12px; height: 12px; transition: rotate 160ms var(--ease-out); }
-.fold-name[aria-expanded="false"] .fold-caret { rotate: -90deg; }
-.fold-pile { display: grid; gap: 4px; width: 100%; padding: 0; text-align: left; }
-.fold-strip { display: block; padding: 7px 10px; border-radius: 4px; font-size: var(--t-xs); color: var(--paper-ink); background: var(--paper-bg, var(--paper-canary)); box-shadow: var(--e-1); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.fold-more { padding: 2px 4px; font-size: var(--t-xs); color: var(--muted); }
-
-/* Topics are anchors; only thoughts use paper. Unsorted lives outside the camera. */
-.board-card > .node-head:not(.is-naming) {
-  min-height: 110px;
-  padding: 18px 18px 48px;
-  border: 1px solid var(--line-strong);
-  border-top: 3px solid var(--paper-bg, var(--accent));
-  border-radius: 10px;
-  color: var(--ink);
-  background: var(--surface-raised);
-  box-shadow: var(--e-2);
-  animation: none;
-}
-.board-card .node-peek { color: var(--muted); }
-.board-card .node-summary { color: var(--muted); font-size: 12px; padding-right: 0; }
-.board-card .node-tools { opacity: 1; bottom: 10px; right: 10px; }
-.board-card .node-tools button { color: var(--muted); width: 30px; height: 30px; }
-.board-card .node-tools button:hover { color: var(--ink); background: var(--surface-sunken); }
-.board[data-far] .card-far { display: none; }
-.board[data-far] .node-head > strong { font-size: calc(12px / var(--z)); line-height: 1.2; }
-.board[data-far] .node-peek, .board[data-far] .node-tools, .board[data-far] .node-origin { visibility: hidden; }
-.board[data-far] .node-summary { font-size: calc(8px / var(--z)); white-space: normal; }
-.board[data-far] .map-sticky .sticky p { display: none; }
-.sky-unsorted-toggle span { padding: 1px 5px; font-variant-numeric: tabular-nums; color: var(--muted); }
-.sky-unsorted-toggle[aria-expanded="true"] { background: var(--surface-sunken); box-shadow: inset 0 0 0 1px var(--line-strong); }
-.sky-unsorted-drawer {
-  position: absolute; z-index: 12; inset: 14px auto 72px 14px; width: min(330px, calc(100% - 28px));
-  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto;
-  border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface-raised); box-shadow: var(--e-3);
-  overflow: hidden;
-}
-.sky-unsorted-drawer > header { padding: 18px 16px 12px; display: flex; align-items: start; justify-content: space-between; gap: 12px; }
-.sky-unsorted-drawer h2 { margin: 0; font: 650 17px/1.3 var(--font); }
-.sky-unsorted-drawer h2 span { margin-left: 5px; color: var(--muted); font: 500 13px/1 var(--font); }
-.sky-unsorted-drawer header p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
-.sky-unsorted-drawer header button { padding: 6px; border-radius: 8px; }
-.sky-unsorted-drawer button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sky-drawer-search { display: flex; align-items: center; gap: 8px; margin: 0 14px 12px; padding: 8px 10px; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 8px; }
-.sky-drawer-search svg { flex: none; color: var(--muted); width: 16px; }
-.sky-drawer-search input { width: 100%; min-width: 0; border: 0; padding: 0; background: transparent; font-size: 13px; }
-.sky-drawer-scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px 16px 16px; }
-.sky-unsorted-drawer footer { border-top: 1px solid var(--line); padding: 12px 16px; display: grid; gap: 8px; font-size: 12px; color: var(--muted); }
-.sky-unsorted-drawer footer button { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); justify-self: start; }
-.sky-drawer-more { width: 100%; padding: 14px 8px; font-size: 13px; color: var(--muted); }
-.sky-find-empty { margin: 0; padding: 14px; font-size: 13px; color: var(--muted); }
-.sky-found [aria-selected="true"] { background: var(--surface-sunken); }
-.sky-empty-canvas { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 14px; pointer-events: none; text-align: center; padding: 24px; }
-.sky-empty-canvas h2, .sky-empty-canvas p { margin: 0; }
-.sky-empty-canvas p { color: var(--muted); max-width: 340px; }
-.sky-empty-canvas button { pointer-events: auto; padding: 10px 18px; border-radius: 8px; }
-.sky-ask-scope { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
-.sky-ask-scope select { min-width: 0; flex: 1; padding: 5px 8px; font-size: 12px; background: var(--surface-sunken); }
-.sky-ask-sources { display: flex; flex-wrap: wrap; gap: 5px; padding-top: 14px; border-top: 1px solid var(--line); }
-.sky-ask-sources small { flex-basis: 100%; color: var(--muted); }
-.sky-ask-sources button { padding: 4px 7px; border-radius: 6px; background: var(--surface-sunken); color: var(--ink); font-size: 12px; text-align: left; }
-.sky-ask-sources em { color: var(--muted); font-style: normal; margin-right: 3px; }
-.sky-ask-gone { padding: 4px 7px; color: var(--muted); font-size: 12px; }
-.unpack-proposal { display: grid; gap: 10px; }
-.unpack-proposal textarea { min-height: 150px; width: 100%; resize: vertical; font: 13px/1.5 var(--font); }
-.unpack-proposal > div { display: flex; flex-wrap: wrap; gap: 8px; }
-@media (max-width: 660px) { .sky-bar { flex-wrap: wrap; gap: 5px; padding: 8px; } .sky-find { flex-basis: 100%; max-width: none; } .sky-bar .sky-import:not(.sky-unsorted-toggle) { display: none; } .board-hint { display: none; } }

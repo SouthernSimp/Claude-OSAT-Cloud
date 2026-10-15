@@ -17,7 +17,7 @@ import { changes, setDown } from '../field/stacks.js'
 import { clamp, inputActive } from '../lib/ui.js'
 import { SETTINGS, spaceForKey, titleFor } from '../lib/spaces.js'
 import { NotesView } from '../notes/NotesView.jsx'
-import { Sky } from '../sky/Sky.jsx'
+import { Boards } from '../boards/Boards.jsx'
 import { useAutoFile } from '../sky/useAutoFile.js'
 import { useDates } from '../intake/useDates.js'
 import { useUndoToast } from '../lib/UndoToast.jsx'
@@ -55,8 +55,8 @@ import { needsTour, Tour } from './Tour.jsx'
    it. ⌥Space brings it up and puts it away (Esc never does). ⌘K, ⇧⌘N and Find in the
    menu all land in the desk's line. Esc backs out of the line first (see Line.jsx), then
    closes the top pop-out.
-   Two layers: the Sky above the desk (Sky.jsx, your nodes: ⌘3, ⌥⌘↑, or a sticky held
-   at the top of the screen) and the desk. Esc comes back to the desk from the Sky.
+   Two layers: the canvas above the desk (boards/Boards.jsx, your boards: ⌘3, ⌥⌘↑, or a sticky
+   held at the top of the screen) and the desk. Esc comes back to the desk from the canvas.
    Offline is a switch at the end of the line (and ⇧⌘U, the menu-bar icon): main turns the
    internet off for OSAT; the desk stays as it is, and only rooms that need the internet wait. */
 
@@ -140,7 +140,6 @@ export function Desk() {
   const [arrived, setArrived] = useState([])
   // The Sky, above the desk: null (the desk), 'sky', or 'leaving' while it goes.
   const [sky, setSky] = useState(null)
-  const skyHistory = useRef({ past: [], future: [] })
   const [skyTarget, setSkyTarget] = useState(null)
   const skyRef = useRef(null)
   const on = offline.on === true
@@ -305,8 +304,10 @@ export function Desk() {
         close(open.at(-1).key)
       } else if (up === 'sky') {
         event.preventDefault()
-        if (inputActive() && active?.closest?.('.sky-layer')) { active.blur(); return }
-        if (!skyRef.current?.back()) latest.current.step('down')
+        // The canvas's own step first (an edit, Find's words, a board being named), then a field lets go, then down.
+        if (skyRef.current?.back()) return
+        if (inputActive() && active?.closest?.('.boards')) { active.blur(); return }
+        latest.current.step('down')
       }
     }
     window.addEventListener('keydown', onKey)
@@ -588,11 +589,10 @@ export function Desk() {
 
       {sky && (
         <div className={`sky-shell ${sky === 'leaving' ? 'is-leaving' : ''}`} inert={sky === 'leaving' || welcome || undefined}>
-          <ErrorBoundary where="The canvas"><Sky
+          <ErrorBoundary where="The canvas"><Boards
             ref={skyRef}
             workspace={workspace}
             commit={commit}
-            history={skyHistory}
             navigate={navigate}
             target={skyTarget}
             onClose={goDown}

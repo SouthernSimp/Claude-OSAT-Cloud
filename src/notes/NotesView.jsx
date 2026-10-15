@@ -253,7 +253,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       openCanvas(folderId = null) {
         navigate("Mindmap", folderId ? { folderId, open: true } : {});
       },
-      // Unsorted's "Sort by hand": the sorter, one sticky at a time.
+      // "Sort by hand": Just in on the canvas, where each sticky can be carried onto a board.
       sortByHand() {
         navigate("Mindmap", { action: "sort" });
       },

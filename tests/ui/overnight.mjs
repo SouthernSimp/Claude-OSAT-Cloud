@@ -1,6 +1,7 @@
 // While you sleep (Phase 53) on the canvas, in the built preview with the Mac's overnight bridge faked:
-// an idea shows as a faint thread and under "Ideas from last night"; Connect them draws the line (Undo
-// takes it back), a topic idea makes the topic, and each is reported to main. Fails on page errors or a
+// one idea at a time over the board; a link idea names both stickies, Connect them connects them (Undo
+// takes it back), a topic idea makes the board with its stickies on it (Undo puts them back), and each is
+// reported to main. Fails on page errors or a
 // step that didn't happen; screenshots land in test-results/ui/overnight/. Run `npm run build` first.
 import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
@@ -84,48 +85,47 @@ async function main() {
   await page.goto(url)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
   await page.locator('.app-dock [data-space="Mindmap"]').click()
-  await page.locator('.sky-shell').waitFor({ timeout: 5000 })
-  await page.getByRole('button', { name: 'Fit view' }).click()
-  await sleep(900)
+  await page.locator('.boards').waitFor({ timeout: 5000 })
+  const readDoc = () => page.evaluate(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    const db = await new Promise((resolve) => { const request = indexedDB.open('osat-preview', 1); request.onsuccess = () => resolve(request.result) })
+    return new Promise((resolve) => { const request = db.transaction('workspace').objectStore('workspace').get('doc'); request.onsuccess = () => resolve(request.result) })
+  })
+  const linked = async () => (await readDoc()).notes.filter((note) => note.links?.length).map((note) => [note.id, note.links])
 
-  // The idea is a faint thread between the two topics, and the line under the header offers both.
-  await page.locator('.board-lines path.is-idea').waitFor({ timeout: 5000 }).catch(() => problems.push('no faint thread for the link idea'))
-  check(await page.locator('.board-lines path.is-link').count() === 0, 'a connection was drawn before anything was kept')
-  await page.screenshot({ path: `${OUT}/thread.png` })
+  // One idea at a time, over the board: the link idea names both stickies and says why.
+  const idea = page.locator('.boards-note')
+  await idea.waitFor({ timeout: 5000 }).catch(() => problems.push('no idea showed on the canvas'))
+  const words = await idea.innerText()
+  check(words.includes('Send Dana the merchant dashboard mockup') && words.includes('Dana liked the dashboard colours'), `the link idea didn’t name both stickies: ${words}`)
+  check(words.includes('both are about Dana and the merchant dashboard'), 'the idea didn’t say why')
+  await sleep(500)
+  await page.screenshot({ path: `${OUT}/link-idea.png` })
 
-  // Clicking the thread says why and offers to connect.
-  await page.locator('.board-lines g:has(path.is-idea) .link-hit').dispatchEvent('click')
-  await page.locator('.context-note', { hasText: 'both are about Dana and the merchant dashboard' }).waitFor({ timeout: 3000 }).catch(() => problems.push('the thread’s menu didn’t say why'))
-  await page.screenshot({ path: `${OUT}/thread-menu.png` })
-  await page.getByRole('menuitem', { name: 'Connect them' }).click()
-  await sleep(400)
-  check(await page.locator('.board-lines path.is-link').count() === 1, 'Connect them didn’t draw the connection')
-  check(await page.locator('.board-lines path.is-idea').count() === 0, 'the faint thread stayed after it was kept')
+  // Connect them keeps it (reported to the Mac); Undo takes the connection back.
+  await idea.getByRole('button', { name: 'Connect them' }).click()
+  check(JSON.stringify(await linked()) === JSON.stringify([['n1', ['note:n2']]]), 'Connect them didn’t connect the two stickies')
   check(JSON.stringify(await page.evaluate(() => window.__done)) === JSON.stringify([[IDEAS[0].id, false]]), 'keeping it wasn’t reported to the Mac')
   const toast = page.locator('.undo-toasts .toast').filter({ hasText: /^Connected / })
   check(await toast.count() === 1, 'no “Connected …” line with Undo')
   await toast.getByRole('button', { name: 'Undo' }).click()
-  await sleep(400)
-  check(await page.locator('.board-lines path.is-link').count() === 0, 'Undo didn’t take the connection back')
+  check((await linked()).length === 0, 'Undo didn’t take the connection back')
 
-  // The topic idea, from "Ideas from last night".
-  await page.getByRole('button', { name: 'Ideas from last night' }).click()
-  await page.getByRole('menuitem', { name: /A new topic: Hendrix plumber/ }).click()
-  await page.screenshot({ path: `${OUT}/ideas-menu.png` })
-  await page.getByRole('menuitem', { name: 'Make “Hendrix plumber” a topic' }).click()
-  await sleep(600)
-  check(await page.locator('.board-card').filter({ has: page.getByText('Hendrix plumber', { exact: true }) }).count() === 1, 'the topic wasn’t made')
-  check(await page.getByRole('button', { name: 'Ideas from last night' }).count() === 0, 'the ideas line stayed with nothing left')
-  const stickies = await page.evaluate(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 600))
-    const db = await new Promise((resolve) => { const request = indexedDB.open('osat-preview', 1); request.onsuccess = () => resolve(request.result) })
-    const doc = await new Promise((resolve) => { const request = db.transaction('workspace').objectStore('workspace').get('doc'); request.onsuccess = () => resolve(request.result) })
-    const topic = doc.folders.find((folder) => folder.name === 'Hendrix plumber')
-    return { links: topic?.links || [], homes: doc.notes.filter((note) => note.id.startsWith('p')).map((note) => note.folderId) }
-  })
-  check(JSON.stringify(stickies.links) === JSON.stringify(['note:p1', 'note:p2', 'note:p3']), `the topic connected ${stickies.links.join(', ')}`)
-  check(JSON.stringify(stickies.homes) === JSON.stringify(['home', 'fortis', 'home']), 'a sticky moved; a topic idea only connects')
-  await page.screenshot({ path: `${OUT}/topic-made.png` })
+  // The topic idea is next: Make the board makes it with the stickies it is about on it, and opens it; Undo puts them back.
+  await idea.filter({ hasText: '“Hendrix plumber” could be a board.' }).waitFor({ timeout: 3000 }).catch(() => problems.push('the board idea didn’t come next'))
+  await page.screenshot({ path: `${OUT}/board-idea.png` })
+  await idea.getByRole('button', { name: 'Make the board' }).click()
+  await page.locator('.boards-title h1', { hasText: 'Hendrix plumber' }).waitFor({ timeout: 3000 }).catch(() => problems.push('the board wasn’t made'))
+  check(await idea.count() === 0, 'an idea stayed with nothing left')
+  const doc = await readDoc()
+  const topic = doc.folders.find((folder) => folder.name === 'Hendrix plumber')
+  const homes = (state) => JSON.stringify(state.notes.filter((note) => note.id.startsWith('p')).map((note) => note.folderId))
+  check(homes(doc) === JSON.stringify([topic?.id, topic?.id, topic?.id]), `the stickies it is about weren’t put on the board: ${homes(doc)}`)
+  check(await page.locator('.boards-card').count() === 3, 'the new board didn’t show its three stickies')
+  await page.screenshot({ path: `${OUT}/board-made.png` })
+  await page.locator('.undo-toasts .toast').filter({ hasText: /^Made the board/ }).getByRole('button', { name: 'Undo' }).click()
+  const undone = await readDoc()
+  check(homes(undone) === JSON.stringify(['home', 'fortis', 'home']) && !undone.folders.some((folder) => folder.name === 'Hendrix plumber'), 'Undo didn’t put the stickies back and take the board away')
 
   await browser.close()
 }

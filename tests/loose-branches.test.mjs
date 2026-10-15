@@ -2,12 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { createEmptyDoc, migrate, SCHEMA } from '../shared/store-core.mjs'
-import { readWhereAnswer, whereMessages } from '../shared/ai-tasks.mjs'
 import { boardMap } from '../src/assistant/board-context.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import { isBranch } from '../src/notes-model.js'
 import { moveFolder, nodesOf } from '../src/nodes-model.js'
-import { branchWords, wherePlaces } from '../src/sky/where.js'
 
 const at = new Date(Date.UTC(2026, 8, 29, 9)).toISOString()
 const folder = (id, extra = {}) => ({ id, name: id, createdAt: at, ...extra })
@@ -57,32 +55,6 @@ test('schema 8 changes nothing in the data; a newer OSAT is refused', () => {
   assert.deepEqual(migrate(old), { ...old, schema: SCHEMA })
   assert.ok(SCHEMA >= 8)
   assert.throws(() => migrate({ schema: SCHEMA + 1 }), /newer OSAT/)
-})
-
-test('where a branch could go: every topic and branch except itself, what is in it and where it is now', () => {
-  const state = space([
-    folder('Clients'), folder('Tommy', { parentId: 'Clients' }), folder('Projects'), folder('Plans', { parentId: 'Projects' }),
-    folder('Mine', { kind: 'branch' }), folder('Deep', { parentId: 'Mine' }),
-  ], [note('call Tommy', 'Mine'), note('x', 'Deep')])
-  assert.deepEqual(wherePlaces(state, 'Mine').map((place) => place.name), ['Clients', 'Clients / Tommy', 'Projects', 'Projects / Plans'])
-  assert.deepEqual(wherePlaces(state, 'Tommy').map((place) => place.name).sort(), ['Mine', 'Mine / Deep', 'Projects', 'Projects / Plans'], 'not its own topic, not itself')
-  assert.deepEqual(branchWords(state, 'Mine'), ['call Tommy', 'Deep'])
-})
-
-test('the model’s answer: a number and a reason, a name, none, or nothing usable', () => {
-  const names = ['Clients', 'Clients / Tommy', 'Projects']
-  assert.deepEqual(readWhereAnswer('2: both are about Tommy', names), { place: 1, why: 'both are about Tommy' })
-  // The name is what the prompt asks for: the longest name wins, and a name with a colon in it still counts.
-  assert.deepEqual(readWhereAnswer('Clients / Tommy: both are about Tommy', names), { place: 1, why: 'both are about Tommy' })
-  assert.deepEqual(readWhereAnswer('**Clients**: it mentions clients', names), { place: 0, why: 'it mentions clients' })
-  assert.deepEqual(readWhereAnswer('Trip: Ohio - hotels and packing', ['Clients', 'Trip: Ohio']), { place: 1, why: 'hotels and packing' })
-  assert.deepEqual(readWhereAnswer('2 Clients / Tommy: the number came first', names), { place: 1, why: 'the number came first' })
-  assert.deepEqual(readWhereAnswer('Here is my answer\n**Clients** - it mentions clients', names), { place: 0, why: 'it mentions clients' })
-  assert.deepEqual(readWhereAnswer('3', names), { place: 2, why: '' })
-  assert.equal(readWhereAnswer('none', names), null)
-  assert.equal(readWhereAnswer('9: somewhere else', names), null, 'a place that does not exist is nothing')
-  assert.equal(readWhereAnswer('', names), null)
-  assert.match(whereMessages({ branch: 'Tommy stuff', peek: ['call Tommy'], places: [{ name: 'Clients', peek: ['a'] }] })[1].content, /1\. Clients \(has: a\)/)
 })
 
 test('the AI is told about branches on their own, apart from the topics', () => {

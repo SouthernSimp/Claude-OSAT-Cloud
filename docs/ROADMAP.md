@@ -10,6 +10,13 @@ The Sky's mind map and the six sorting screens go. Phases 67–71.
 Phase 67 (in review): every sticky now says what it is, Notes keeps Questions, To buy and Coming up for you,
 dates go on your calendar by themselves (Settings → AI picks which one), and Just in shows what came in and where it went.
 
+Phase 68 (in review): the canvas is boards now. Your boards down the side (Just in first), the open one as a Map
+(a column for each kind, so nothing tangles), a Board (Later, Next, Doing, Done) or a List. Write a sticky at the
+bottom and it lands in its column; carry one to another column, stage or board; right-click a board to rename or
+delete it (its stickies go back to Just in). Every change has Undo. The old mind map, its sorter and its layouts are
+gone (about 3,000 lines). Still here for now: Sort a pile (it is the only way in for a photo of paper stickies until
+Just in reads photos) and Put the desk away.
+
 ## October 6 (evening): the AI files stickies for you
 
 Nate's biggest problem: writing down a pile of stickies, then having to sort them. Now, like Mem,
@@ -168,7 +175,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 66 | A big polish pass (Oct 14): a Dashboard (dock, ⌘6) with your numbers, a week of writing, the biggest topics, what's next and every part of OSAT as an app tile; Tools as a launchpad of app tiles; the quick bar redrawn like Raycast (app-style icons, one clean list, the main action and ⌘K in its foot); app icons in Settings → Shortcuts; screenshots with CleanShot X or the Mac's own, your choice; Appearance → Blur is a real blur; Settings says less (the longer words behind ⓘ); OSAT looks for updates by itself; nothing can grey out the whole desk again, and one part that can't start no longer stops OSAT opening | In review |
 | 57 | Meetings (Tools → Meetings): OSAT listens to a meeting on your Mac (you, and the other people through what your Mac plays) and writes it up when you stop: a summary, what was decided, a to-do list, and the words themselves, as two notes. The listening and the writing happen on your Mac; the sound is deleted once it is written up | In review |
 | 67 | What it is, and the lists OSAT keeps for you: every sticky reads as an Idea, Question, Problem, To-do, Date or To buy (code at once and offline, the AI for the unclear ones, your pick wins); Notes → Questions, To buy and Coming up; a date goes on your calendar on its own (a Mac one passes it to Google), with Undo; Just in takes in Unsorted and Filed for you; opening a window no longer lays out the old boards (seconds with many stickies) | In review |
-| 68 | Boards and the new canvas: topics become boards (OSAT, Fortis, Home…); each board as a Map (one column per kind), a Board (Later, Next, Doing, Done) and a List; the old Sky and the sorting screens go | Planned |
+| 68 | Boards and the new canvas: topics become boards (OSAT, Fortis, Home…); each board as a Map (one column per kind), a Board (Later, Next, Doing, Done) and a List; write, carry and right-click with Undo; starter boards (Personal, Home, Work) one tap away; the old Sky, its sorter and layouts go | In review |
 | 69 | Flows (n8n-style, on this Mac): watch each sticky go through the intake step by step; then Meeting → to-dos and the Morning brief as flows | Planned |
 | 70 | Soul and memory: SOUL.md, MEMORY.md and RULES.md, plain files you can read and change; RULES.md says what the AI may do on its own | Planned |
 | 71 | Connections: one screen for the AI (built in, Claude, ChatGPT, a key, a tool server) and your accounts (Google, Microsoft 365, Granola, Slack, Notion); one Offline switch | Planned |

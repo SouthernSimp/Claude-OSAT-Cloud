@@ -4,9 +4,7 @@ import test from 'node:test'
 import { readSortUnsortedAnswer, sortUnsortedMessages } from '../shared/ai-tasks.mjs'
 import { pileOf } from '../src/nodes-model.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
-import {
-  asksToSort, BATCH, modelSuggestions, sortGroups, sortPlaces, sortRequests, stillToSort, unsortedStickies, wordNodes, wordSuggestions,
-} from '../src/sky/sort-unsorted.js'
+import { BATCH, modelSuggestions, sortGroups, sortPlaces, sortRequests, stillToSort, unsortedStickies, wordNodes, wordSuggestions } from '../src/sky/sort-unsorted.js'
 import { fileUnsorted, undoFiling } from '../src/sky/sort-review.js'
 
 // What Unsorted's sorter does with a group: the same filing as one sticky.
@@ -133,7 +131,3 @@ test('what is still to sort: only stickies still in Unsorted, and a new node nee
   assert.deepEqual(stillToSort(groups, state).map((group) => group.key), ['move:ideas', 'make:cats'])
 })
 
-test('"sort these" is a request to sort, and a question about sorting is still a question', () => {
-  for (const yes of ['sort these', 'Sort my unsorted stickies', 'can you sort them?', 'Please sort out the mess', 'help me sort everything!']) assert.equal(asksToSort(yes), true, yes)
-  for (const no of ['sort of a hard question', 'how do I sort my closet', 'what should I sort first', 'Sorting hat', '', undefined]) assert.equal(asksToSort(no), false, String(no))
-})
