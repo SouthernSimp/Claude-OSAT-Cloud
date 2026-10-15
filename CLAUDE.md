@@ -27,6 +27,10 @@ Older checkpoints are in git history.
   Mac checklist. Nate tries the DMG that CI builds and says "merge"; then Claude merges.
 - Explain in plain words. Nate would rather see the result than the internals.
 - Display the name `OSAT` only and never spell out the letters.
+- Nate wants a changelog for every version. After a merge to main publishes a build (`gh release list`), add its
+  entry at the top of CHANGELOG.md: `## Build N · <date> — <short name>`, plain words, one line per change ending
+  with its PR number (rebuilds of the same commit share an entry: `Builds N–M`). Commit it straight to main with
+  `[skip ci]` in the message, so the changelog itself doesn't start another build.
 - Before finishing a working session, commit and push completed changes to GitHub.
   Keep this resume checkpoint and the roadmap current so Nate can switch between
   Claude and Codex without losing progress. Leave merging for Nate's instruction.

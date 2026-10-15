@@ -1,0 +1,150 @@
+# What's new in OSAT
+
+Every time work is merged, GitHub builds a new version of OSAT. Settings → About shows which one you have (0.1.280 is
+build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
+
+## Build 280 · October 15, 2026 — Boards, a kind for every sticky, Habits, pictures
+
+- **The canvas is boards.** Your boards (OSAT, Fortis, Home…) down the side with Just in on top. Each board shows as
+  a Map (a column per kind), a Board (Later, Next, Doing, Done) or a List. Write at the bottom and it lands in the
+  right column; drag a sticky to another column, stage or board; right-click to rename or delete a board (its
+  stickies go back to Just in). Every change has Undo. The old mind map and its sorting screens are gone. (#102)
+- **Every sticky says what it is:** Idea, Question, Problem, To-do, Date or To buy, worked out right away and offline,
+  with the AI deciding the unclear ones. Notes keeps Questions, To buy and Coming up for you. A date goes on your
+  calendar by itself, with Undo. Just in replaces Unsorted. (#98)
+- **Habits, redesigned:** tap to keep a habit today, "9 days in a row · Best: 20", a week strip to fix a past day, a
+  month of history, and one-tap ideas to start. Never scolds. (#101)
+- **Every AI model downloads whole,** its picture part included, and the AI on this Mac reads pictures: paste, drop
+  or attach one in Ask. Settings → AI says what each model can do (pictures, thinking, code). (#100)
+- **Mail** is fast on a big inbox, never pops the Mail app open, and has one button to add Gmail. (#99)
+- The plan for the rework: write it down, OSAT puts it where it goes (Phases 67–71). (#97)
+
+## Builds 270–271 · October 15, 2026 — OSAT, polished
+
+- **A Dashboard** (dock, ⌘6): your numbers, a week of writing, your biggest topics, what's next.
+- **Tools is a launchpad** of app tiles, and the quick bar is redrawn like Raycast.
+- **A real blur** behind the desk (Appearance → Blur). Settings says less, with the longer words behind ⓘ.
+- OSAT looks for updates by itself, and nothing can grey out the whole desk any more. (#96)
+- Fixed: opening Settings → Shortcuts blanked the desk. (#95)
+
+## Build 267 · October 14, 2026 — OSAT as your Raycast
+
+- The Hyper key checks itself and repairs itself; your own keys; a quick sticky on Hyper N (with screenshots in it);
+  uninstall apps from the bar; every menu shortcut of the app you're in; a more polished look. (#94)
+
+## Build 265 · October 14, 2026 — Meetings, Mail, Passwords and more
+
+- **Meetings:** OSAT listens to a meeting and writes it up, on this Mac. (#83)
+- **Mail:** read your email in OSAT, reply in Mail, make a sticky from a message. (#88)
+- **Passwords:** an encrypted password manager, locked until you open it. (#89)
+- **Window management you can shape:** your own layouts, words and keys. (#90)
+- **A Hyper key built in** (Caps Lock), and **Mouse** settings: reverse scrolling per direction, speed, side buttons. (#91, #92)
+- **Keys in use:** see which keys your Mac already holds; Kill Process from the bar; snippet words like `..pp`. (#86, #87)
+- All of it arrived together in the October 13 update. (#93)
+
+## Build 253 · October 13, 2026
+
+- Search or Ask is one bar, and OSAT has a Granola-style menu in the menu bar. (#85)
+
+## Build 251 · October 13, 2026
+
+- A polished look: crisper, calmer, more professional. (#84)
+
+## Build 246 · October 13, 2026 — While you sleep
+
+- **While you sleep:** once a night OSAT thinks over your stickies and leaves ideas on the canvas. (#79)
+- **Trust fixes:** an update must be signed the same way as the app you have; webhooks waiting to go survive a quit. (#80)
+- **A GitHub room** (Tools → GitHub): your repositories and pull requests, and Merge. (#81)
+- **Put the desk away:** right-click the desk and every sticky on it goes home. (#82)
+
+## Build 237 · October 13, 2026
+
+- A quick bar you can use instead of Raycast. (#78)
+
+## Builds 233–235 · October 13, 2026 — OSAT works with your apps
+
+- **Apps OSAT can use** (tool servers through MCP), and **Ask can act**: it shows its steps, asks before another app
+  changes anything, and has one Undo. Each app gets its own key.
+- **Siri and Shortcuts:** six ready-made shortcuts. **Webhooks:** stickies from services come in, with Undo.
+- **The morning brief:** a short plan for the day on top of today's journal. (#75)
+- The quick bar learns what you pick. (#76)
+- The AI on selected text, in any app. (#77)
+
+## Builds 225–227 · October 8, 2026 — The AI files for you
+
+- **The AI files your stickies for you,** and says so with Undo.
+- **One bar, one list:** no tabs, Ask AI first. Change it from the bar: favorites, keys, words, Mac commands.
+- **Choose your AI:** the best one for this Mac, and nine models compared.
+- **Notes is home,** the Sky becomes the Canvas, and "topic" instead of node.
+- A smarter calculator (units and dates, offline); snippets; Ask is honest about the cloud, with Try again and Edit. (#73)
+- Claude and other apps can search your notes and write in the journal; a plain web API. (#74)
+
+## Builds 204–206 · October 7, 2026
+
+- Clipboard history: Return pastes, or offers Allow… when macOS has forgotten OSAT. (#58)
+- Every build is signed with one steady identity, so Accessibility survives updates. (#60)
+
+## Builds 200–202 · October 6, 2026
+
+- Record a skill: do it once in the browser, run it again by name. (#63)
+
+## Build 196 · October 6, 2026
+
+- Ask across everything, step two: it can read your copies and files. (#61)
+
+## Build 191 · October 6, 2026
+
+- Ask across everything, step one: times, topic names, and sources that say what they are. (#57)
+
+## Build 181 · October 6, 2026
+
+- Hyper + middle-click opens the ring over any app. (#54)
+- Right-click the desk's files; Sort them all handles a whole pile; edit a sticky while sorting. (#53, #55)
+
+## Builds 173–174 · October 6, 2026
+
+- The quick bar works over other apps: right-click, drag from the preview, copy text off the screen. (#51)
+- Sorting asks one question with one obvious answer. (#52)
+
+## Build 166 · October 6, 2026
+
+- Fixed: the second update in a row failed. (#50)
+
+## Build 163 · October 6, 2026
+
+- Sorting Unsorted, redone: one sticky at a time, its likely homes ranked, Return moves it. (#49)
+
+## Build 161 · October 6, 2026
+
+- Screenshots and screen recording from the launcher. (#48)
+
+## Build 158 · October 6, 2026
+
+- One quick bar for search and Ask; clipboard polish; a Dock fix. (#47)
+
+## Build 144 · October 6, 2026
+
+- Ask says when it left out older messages. (#46)
+
+## Build 139 · October 6, 2026 — The first build you can update to
+
+- **Check for updates** inside OSAT (Settings → About). (#45)
+- Focused AI help inside Notes. (#43)
+
+## Before numbered builds · September 24 – October 5, 2026
+
+OSAT was installed from each pull request's DMG. Grouped by day:
+
+- **September 25:** the app becomes OSAT, with one safe place for your notes; the ⌥Space layer; glass sheets over the
+  desk. (#1–#3)
+- **September 26:** a calm evening and Undo in Notes; the AI sets itself up and Ask works everywhere; your iPhone
+  reaches OSAT through iCloud Drive and stays in step; OSAT on your iPhone; Undo everywhere. (#4–#9)
+- **September 27–28:** your Mac's files in OSAT and a quick chat; one desk; a living desk. (#10–#12)
+- **September 29:** topics and the Sky, stickies on the desk; Make it simple; one Offline switch; a scan becomes a sorted
+  topic; bots (Muse, cloud models, the connector); topics drawn as trees; Make it yours; Sort a pile; find your files in
+  plain words, tidy them, and drag them in and out of Finder; the AI in the Sky. (#13–#28)
+- **September 30:** topics no longer push each other away; branches and stickies placed freely on the Sky; Mac powers:
+  quick search, a launcher line, a clipboard that files itself, window snapping, the ring, a movable dock. (#29–#33)
+- **October 1:** connections, desk stacks and a first tour; Tidy my Desktop; your Mac's Calendar and Reminders. (#34–#38)
+- **October 4–5:** choose chat models and free the AI's memory; focused writing and save recovery; guided sorting;
+  Undo for every move on the Sky. (#39–#42)
