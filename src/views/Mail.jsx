@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowBendUpLeft, ArrowClockwise, ArrowSquareOut, CaretLeft, EnvelopeSimple, MagnifyingGlass, NotePencil, Sparkle, Warning } from '@phosphor-icons/react'
+import { ArrowBendUpLeft, ArrowClockwise, ArrowSquareOut, CaretLeft, EnvelopeSimple, GoogleLogo, MagnifyingGlass, NotePencil, Sparkle, Warning } from '@phosphor-icons/react'
 
 import { cleanError } from '../assistant/useAi.js'
 import { useUndoToast } from '../lib/UndoToast.jsx'
@@ -37,6 +37,9 @@ function MailRoom({ bridge, commit }) {
   const [problem, setProblem] = useState('')
   const [said, setSaid] = useState('')
   const [asking, setAsking] = useState(null)
+  // The accounts Mail reads ([{ name, address, gmail }]), and whether Nate went off to add Gmail.
+  const [accounts, setAccounts] = useState(null)
+  const [adding, setAdding] = useState(false)
   const [toast, showUndo] = useUndoToast()
   const latest = useRef(0)
 
@@ -65,12 +68,36 @@ function MailRoom({ bridge, commit }) {
     }
   }, [bridge, explain])
 
+  const lookAtAccounts = useCallback(() => bridge.accounts?.().then(setAccounts, () => {}), [bridge])
+
   useEffect(() => {
     bridge.status().then((next) => {
       setAvailable(next?.available === true)
-      if (next?.available === true && wasAllowed()) load()
+      if (next?.available === true && wasAllowed()) { load(); lookAtAccounts() }
     }, () => setAvailable(false))
-  }, [bridge, load])
+  }, [bridge, load, lookAtAccounts])
+
+  /* Gmail is a Google account added to the Mac: System Settings signs in to Google itself, so OSAT never sees a
+     password or a token, and the same sign-in brings Google Calendar to the Mac's Calendar. Coming back to OSAT
+     looks again. */
+  async function addGmail() {
+    setProblem('')
+    try {
+      await bridge.addAccount()
+      setAdding(true)
+    } catch (error) {
+      setProblem(cleanError(error))
+    }
+  }
+  useEffect(() => {
+    if (!adding) return undefined
+    const again = () => {
+      if (access === 'allowed') { load(); lookAtAccounts() } else allow()
+    }
+    window.addEventListener('focus', again)
+    return () => window.removeEventListener('focus', again)
+  }, [adding, access]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (accounts?.some((account) => account.gmail)) setAdding(false) }, [accounts])
 
   async function allow() {
     setBusy(true)
@@ -79,6 +106,7 @@ function MailRoom({ bridge, commit }) {
       await bridge.allow()
       keepAllowed(true)
       setAccess('allowed')
+      lookAtAccounts()
       await load()
     } catch (error) {
       explain(error)
@@ -190,6 +218,7 @@ function MailRoom({ bridge, commit }) {
             <p>OSAT reads your inbox through the Mail app on this Mac, where your accounts are already signed in. It never sends anything and never keeps a password.</p>
             <button type="button" className="primary-button" disabled={busy} onClick={allow}>{busy ? 'Waiting for your Mac…' : 'Allow OSAT to read Mail'}</button>
             <p className="mail-quiet">Your Mac asks once.</p>
+            <GmailHint adding={adding} onAdd={addGmail} />
           </>
         )}
         {access === 'denied' && (
@@ -201,9 +230,13 @@ function MailRoom({ bridge, commit }) {
         )}
         {access === 'noAccounts' && (
           <>
-            <h2>Mail isn’t set up yet</h2>
+            <h2>Add your email</h2>
             <p>{NOT_SET_UP}</p>
-            <button type="button" className="primary-button" disabled={busy} onClick={allow}>Look again</button>
+            <div className="mail-setup-actions">
+              <button type="button" className="primary-button" onClick={addGmail}><GoogleLogo weight="bold" /> Add Gmail to this Mac</button>
+              <button type="button" className="outline-button" disabled={busy} onClick={allow}>Look again</button>
+            </div>
+            {adding && <p className="mail-said" role="status">{ADDING}</p>}
           </>
         )}
         {problem && <p className="mail-said is-problem" role="alert"><Warning /> {problem}</p>}
@@ -226,6 +259,13 @@ function MailRoom({ bridge, commit }) {
           <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>All</button>
           <button type="button" aria-pressed={filter === 'unread'} onClick={() => setFilter('unread')}>Unread</button>
         </div>
+        {accounts && (
+          <p className="mail-quiet mail-accounts">
+            {accounts.length ? <>Reading {accounts.map((account) => account.gmail ? `Gmail${account.address ? ` (${account.address})` : ''}` : account.name).join(', ')}</> : 'No account is turned on in Mail.'}
+            {!accounts.some((account) => account.gmail) && <> · <button type="button" className="mail-link" onClick={addGmail}>Add Gmail</button></>}
+          </p>
+        )}
+        {adding && <p className="mail-said" role="status">{ADDING}</p>}
         {searched && (
           <p className="mail-quiet mail-searched">
             Results for “{searched.words}”
@@ -295,4 +335,13 @@ function AskBox({ asking, onAsk, onClose }) {
       {asking.text && <p className="mail-answer" role="status">{asking.text}</p>}
     </section>
   )
+}
+
+const ADDING = 'System Settings is open on Internet Accounts. Choose Add Account → Google, sign in, and leave Mail turned on (Calendars too, for your Google Calendar). Then come back here: OSAT looks again.'
+
+/* Before Mail is allowed: Gmail is one sign-in on the Mac away. */
+function GmailHint({ adding, onAdd }) {
+  return adding
+    ? <p className="mail-said" role="status">{ADDING}</p>
+    : <p className="mail-quiet">Use Gmail? <button type="button" className="mail-link" onClick={onAdd}>Add Gmail to this Mac</button>. One sign-in brings your Google Calendar too.</p>
 }

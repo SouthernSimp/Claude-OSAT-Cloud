@@ -103,12 +103,29 @@ export function dateLabel(iso, now = new Date()) {
 /* Long, above an opened message. */
 export const fullDate = (iso) => (validIso(iso) ? `${DATE_YEAR.format(new Date(iso))}, ${TIME.format(new Date(iso))}` : '')
 
+/* ---- The accounts Mail reads ---- */
+
+/* Gmail, or Google mail on a company's own domain (it is served by gmail.com either way). */
+export const isGmail = (row) => /(^|\.)(gmail|googlemail)\.com$/i.test(String(row?.server || ''))
+  || (Array.isArray(row?.emails) && row.emails.some((address) => /@(gmail|googlemail)\.com$/i.test(String(address))))
+
+/* [{ name, address, gmail }] for the accounts that are on; nothing else about them leaves the Mac script. */
+export function accountRows(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => row && row.enabled !== false && oneLine(row.name, 80))
+    .map((row) => ({
+      name: oneLine(row.name, 80),
+      address: oneLine(Array.isArray(row.emails) ? String(row.emails[0] || '') : '', 120),
+      gmail: isGmail(row),
+    }))
+}
+
 /* ---- Access and plain words ---- */
 
 const STATUSES = new Set(['allowed', 'notAsked', 'denied', 'unavailable'])
 export const accessOf = (value) => (STATUSES.has(value) ? value : 'unavailable')
 
-export const NOT_SET_UP = 'Mail isn’t set up on this Mac. Open Mail, add an account, then come back.'
+export const NOT_SET_UP = 'Mail has no accounts on this Mac yet. Add Gmail (or any account) to the Mac, then come back.'
 export const NOT_ALLOWED = 'OSAT isn’t allowed to control Mail. You can turn it on in System Settings → Privacy & Security → Automation → OSAT → Mail.'
 export const NOT_THERE = 'Mail isn’t on this Mac.'
 export const GONE = 'That message isn’t in your inbox any more.'

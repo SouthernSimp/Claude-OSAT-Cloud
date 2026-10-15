@@ -12,7 +12,7 @@ import { chromium } from 'playwright'
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/mail`
 const PORT = Number(process.env.OSAT_PORT || 4327)
 
-function fakeMail(denied) {
+function fakeMail({ denied = false, empty = false } = {}) {
   const minutes = (n) => new Date(Date.now() - n * 60000).toISOString()
   const rows = [
     { id: 301, subject: 'Quote for the deck', from: { name: 'Sam Lee', address: 'sam@example.com' }, date: minutes(20), unread: true, snippet: 'Here is the price we talked about.' },
@@ -24,7 +24,7 @@ function fakeMail(denied) {
     302: 'Are you free at noon on Friday?',
     303: 'Your invoice for October is ready.',
   }
-  window.__mail = { list: 0, searches: [], replies: [], opened: [], allowed: 0 }
+  window.__mail = { list: 0, searches: [], replies: [], opened: [], allowed: 0, added: 0, gmail: false }
   window.__asked = []
   const wrap = (message) => new Error(`Error invoking remote method 'mail:x': Error: ${message}`)
   window.osatMail = {
@@ -32,8 +32,15 @@ function fakeMail(denied) {
     allow: async () => {
       window.__mail.allowed += 1
       if (denied) throw wrap('OSAT isn’t allowed to control Mail. You can turn it on in System Settings → Privacy & Security → Automation → OSAT → Mail.')
+      if (empty && !window.__mail.gmail) throw wrap('Mail has no accounts on this Mac yet. Add Gmail (or any account) to the Mac, then come back.')
       return { status: 'allowed' }
     },
+    // Adding Gmail opens Internet Accounts on the Mac; here the "sign-in" simply makes a Google account appear.
+    accounts: async () => [
+      ...(empty ? [] : [{ name: 'iCloud', address: 'nate@icloud.com', gmail: false }]),
+      ...(window.__mail.gmail ? [{ name: 'Google', address: 'nate@gmail.com', gmail: true }] : []),
+    ],
+    addAccount: async () => { window.__mail.added += 1; window.__mail.gmail = true; return true },
     list: async () => { window.__mail.list += 1; return rows },
     search: async (query, inside) => { window.__mail.searches.push([query, inside]); return rows.filter((row) => row.subject.toLowerCase().includes(query.toLowerCase())) },
     read: async (id) => ({ ...rows.find((row) => row.id === id), body: bodies[id], truncated: false }),
@@ -70,10 +77,10 @@ async function start() {
 const problems = []
 const check = (ok, what) => { if (!ok) problems.push(what) }
 
-async function openRoom(browser, url, { theme, denied = false }) {
+async function openRoom(browser, url, { theme, denied = false, empty = false }) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: theme })
   page.on('pageerror', (error) => problems.push(`${theme}: ${error.message}`))
-  await page.addInitScript(fakeMail, denied)
+  await page.addInitScript(fakeMail, { denied, empty })
   await page.addInitScript(() => { for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen') })
   await page.goto(`${url}?fresh=1`)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
@@ -105,6 +112,17 @@ async function main() {
 
     const text = await page.locator('.mail-room').innerText()
     check(!/\d+\s+unread|unread\s*\(\d+\)/i.test(text), 'an unread count showed')
+
+    // Gmail: the room says which accounts it reads and offers Gmail; Add Gmail opens Internet Accounts on the Mac,
+    // and coming back to OSAT looks again.
+    await page.locator('.mail-accounts', { hasText: 'Reading iCloud' }).waitFor({ timeout: 3000 }).catch(() => problems.push('the room didn’t say which accounts it reads'))
+    await page.locator('.mail-accounts').getByRole('button', { name: 'Add Gmail' }).click()
+    check(await page.evaluate(() => window.__mail.added) === 1, 'Add Gmail didn’t open Internet Accounts')
+    await page.getByText('Choose Add Account → Google', { exact: false }).first().waitFor({ timeout: 3000 }).catch(() => problems.push('Add Gmail didn’t say what to do in System Settings'))
+    await page.screenshot({ path: `${OUT}/adding-gmail.png` })
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await page.locator('.mail-accounts', { hasText: 'Gmail (nate@gmail.com)' }).waitFor({ timeout: 3000 }).catch(() => problems.push('coming back didn’t find Gmail'))
+    check(await page.locator('.mail-accounts').getByRole('button', { name: 'Add Gmail' }).count() === 0, 'Add Gmail stayed once Gmail was there')
     check(await page.locator('.mail-list li').count() === 3, 'the inbox didn’t list three messages')
     check(await page.locator('.mail-list li button.is-unread').count() === 1, 'unread wasn’t marked')
 
@@ -165,6 +183,17 @@ async function main() {
     await page.waitForFunction(() => document.querySelectorAll('.mail-list li').length === 3, null, { timeout: 3000 }).catch(() => problems.push('Clear didn’t bring the inbox back'))
     await page.close()
   }
+
+  // A Mac whose Mail has no accounts: Add Gmail is the way in, and coming back reads it.
+  const empty = await openRoom(browser, url, { theme: 'light', empty: true })
+  await empty.getByText('Add Gmail to this Mac', { exact: false }).first().waitFor({ timeout: 3000 }).catch(() => problems.push('no Gmail hint before Allow'))
+  await empty.getByRole('button', { name: 'Allow OSAT to read Mail' }).click()
+  await empty.getByRole('heading', { name: 'Add your email' }).waitFor({ timeout: 3000 }).catch(() => problems.push('no accounts wasn’t explained'))
+  await empty.screenshot({ path: `${OUT}/no-accounts.png` })
+  await empty.locator('.mail-setup-actions').getByRole('button', { name: 'Add Gmail to this Mac' }).click()
+  await empty.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await empty.locator('.mail-list li').first().waitFor({ timeout: 5000 }).catch(() => problems.push('after adding Gmail the inbox didn’t open'))
+  await empty.close()
 
   // A Mac that says no: calm words and a way forward, not an error.
   const denied = await openRoom(browser, url, { theme: 'light', denied: true })

@@ -92,7 +92,7 @@ test('what went wrong, in plain words and never the raw error', () => {
   assert.equal(explainMail('timed out '), SLOW)
   assert.equal(explainMail('Error: Can’t get message 1. (-1728)'), GONE)
   assert.equal(explainMail('something strange: /Users/nate/secret'), COULD_NOT)
-  assert.match(NOT_SET_UP, /Mail isn’t set up on this Mac/)
+  assert.match(NOT_SET_UP, /no accounts on this Mac yet/)
   assert.match(NOT_ALLOWED, /OSAT isn’t allowed to control Mail/)
 })
 
@@ -136,4 +136,19 @@ test('asking about a message quotes it as data, line by line, and gives the AI n
   assert.match(askMessages({ id: 5, subject: 's', body: 'b' }, '   ')[1].content, /does it need a reply/)
   const capped = askMessages({ id: 5, subject: 's', body: 'y'.repeat(30000) }, 'q')[1].content
   assert.ok(capped.length < ASK_BODY_MAX + 800, 'a long email is cut before it is read')
+})
+
+test('which account is Gmail: gmail.com, googlemail.com, or Google mail on a company’s own domain', async () => {
+  const { accountRows, isGmail } = await import('../shared/mail-model.mjs')
+  assert.equal(isGmail({ server: 'imap.gmail.com', emails: ['nate@mccreery.ai'] }), true, 'Google Workspace is served by gmail.com')
+  assert.equal(isGmail({ server: '', emails: ['nate@googlemail.com'] }), true)
+  assert.equal(isGmail({ server: 'imap.gmail.com.evil.example', emails: ['x@gmail.com.evil.example'] }), false)
+  assert.equal(isGmail({ server: 'p00-imap.mail.me.com', emails: ['nate@icloud.com'] }), false)
+  assert.deepEqual(accountRows([
+    { name: 'Google‮', emails: ['nate@gmail.com'], server: 'imap.gmail.com', enabled: true },
+    { name: '', emails: [], server: '' },
+    { name: 'Off', emails: ['a@b.co'], server: 'x', enabled: false },
+    null,
+  ]), [{ name: 'Google', address: 'nate@gmail.com', gmail: true }])
+  assert.deepEqual(accountRows('nonsense'), [])
 })
