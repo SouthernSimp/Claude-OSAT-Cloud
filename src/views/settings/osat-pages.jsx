@@ -125,8 +125,8 @@ function AiCard() {
           </div>
         </Row>
       </Group>}
-      <Group title="Compare models" note="Speed and smarts are compared with each other. Every model stays on this Mac; nothing you ask leaves it.">
-        <Row title="Every model OSAT can set up" hint="Smaller ones answer faster; bigger ones think more carefully. One that needs more memory than this Mac has says so." words="compare models qwen gemma ministral download speed smarts" stacked>
+      <Group title="Compare models" note="Every model runs on this Mac; nothing you ask leaves it.">
+        <Row title="Every model OSAT can set up" hint="Smaller is faster; bigger thinks harder." words="compare models qwen gemma ministral download speed smarts" stacked>
           <ModelTable status={status} download={download} working={working} onInstall={(id) => act(id, () => bridge.install(id))} />
         </Row>
       </Group>
@@ -365,7 +365,7 @@ export function AiPage({ page, workspace, commit, showUndo }) {
   return (
     <Page page={page}>
       <Group title="Sorting" note="Only the AI's own picks move. What it isn't sure of stays in Unsorted for you, and Notes → Filed for you shows where everything went.">
-        <Row title="File new stickies for me" hint="Write as many as you like. Once you stop for a moment, the AI puts each one in its topic and gives long ones a short version. Undo takes a whole run back." words="auto sort file organize unsorted summarize shorten">
+        <Row title="File new stickies for me" hint="When you pause, the AI files each sticky into its topic. Undo takes a run back." words="auto sort file organize unsorted summarize shorten">
           <Switch label="File new stickies for me" checked={filing.on} onChange={setFiling} />
         </Row>
       </Group>
@@ -415,7 +415,7 @@ export function DataPage({ page, workspace, commit, storage, showUndo }) {
   }
   return (
     <Page page={page}>
-      <Group title="On this Mac" note="Saved a moment after every change, with 14 daily copies kept. No account, and nothing leaves this Mac unless you link your iPhone or pick a cloud model in Bots.">
+      <Group title="On this Mac" note="Saved as you go, with 14 daily copies. Nothing leaves this Mac unless you choose.">
         <Row title={storage.status === "error" ? "Saving needs attention." : "Your workspace stays here."} hint={storage.message} words="saved storage folder">
           {window.osatApp?.showDataFolder && (
             <button className="outline-button" type="button" onClick={() => window.osatApp.showDataFolder().catch(() => {})}><FolderOpen /> Show the data folder</button>
@@ -447,7 +447,7 @@ export function ScansPage({ page }) {
     <Page page={page}>
       {window.osatScans
         ? <Legacy words="scanner folder brother paper"><ScansCard /></Legacy>
-        : <Group><Row title="Scans live in the Mac app" hint="In the Mac app, choose the folder your scanner saves to, and each new scan is read on this Mac and sorted into a topic." /></Group>}
+        : <Group><Row title="Scans live in the Mac app" hint="Pick your scanner’s folder; each new scan becomes a topic." /></Group>}
     </Page>
   );
 }
@@ -473,7 +473,7 @@ function UpdateRow() {
   const line = {
     idle: "Look for a newer OSAT. Your notes stay exactly where they are.",
     "checking-for-update": "Looking…",
-    current: "OSAT is up to date.",
+    current: `You have the newest OSAT${status.version ? ` (${status.version})` : ""}. It also looks by itself every few hours.`,
     available: `A newer OSAT is ready (${mb(status.size)}). OSAT will restart; your notes aren’t touched, and the old app is kept.`,
     downloading: `Downloading… ${status.size ? Math.round((status.done / status.size) * 100) : 0}%`,
     checking: "Making sure the download is the real OSAT…",
@@ -496,7 +496,7 @@ export function AboutPage({ page }) {
   return (
     <Page page={page}>
       <Group>
-        <Row title={`OSAT${about?.version ? ` ${about.version}` : ""}`} hint="A calm layer over your Mac. Everything, the AI included, stays on this Mac unless you pick a cloud model in Settings → Bots. Cloud accounts, provider calendars and automatic filing are off by design." words="version privacy" />
+        <Row title={`OSAT${about?.version ? ` ${about.version}` : ""}`} hint="A calm layer over your Mac. Everything, the AI included, stays on this Mac unless you pick a cloud model." words="version privacy" />
         <UpdateRow />
         {about?.dataFolder && <Row title="Data folder" hint={about.dataFolder} words="path where" />}
       </Group>

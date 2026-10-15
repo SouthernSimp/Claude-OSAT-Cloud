@@ -165,14 +165,14 @@
 
 /* The Sky, the layer above the desk: a calm sky, dotted like a whiteboard, with a slow glow. */
 :root {
-  --sky-ground: radial-gradient(130% 90% at 50% -20%, #ffffff 0%, #f0f3f8 48%, #e8ecf3 100%);
+  --sky-ground: radial-gradient(60% 50% at 88% -8%, rgb(0 117 255 / 12%), transparent 70%), radial-gradient(55% 45% at -6% 108%, rgb(33 212 253 / 10%), transparent 70%), radial-gradient(130% 90% at 50% -20%, #ffffff 0%, #f1f4fb 48%, #e8edf6 100%);
   --board-dot: rgb(60 70 90 / 16%);
   --board-glow: rgb(255 255 255 / 85%);
   --sky-canvas: #f5f6f8;
   --sky-sticky-tint: 38%;
 }
 :root[data-theme="dark"] {
-  --sky-ground: radial-gradient(130% 90% at 50% -20%, #1f2430 0%, #15181f 50%, #0f1115 100%);
+  --sky-ground: radial-gradient(70% 60% at 92% -12%, rgb(0 117 255 / 26%), transparent 65%), radial-gradient(60% 50% at -8% 110%, rgb(33 212 253 / 11%), transparent 70%), linear-gradient(160deg, #0d1535 0%, #0a0f2a 55%, #070b20 100%);
   --board-dot: rgb(200 210 230 / 13%);
   --board-glow: rgb(150 170 210 / 10%);
   --sky-canvas: #181a1e;

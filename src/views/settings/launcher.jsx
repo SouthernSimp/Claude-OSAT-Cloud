@@ -104,10 +104,10 @@ const taken = (one, otherwise) => (one?.failed ? `${one.label} is already used b
 export function QuickSearchPage({ page }) {
   const keys = useDeskKeys()
   return (
-    <LauncherPage page={page} what="In the Mac app, one bar opens over your other apps to find a file, something you copied, an app or a note, ask the AI, or save a sticky.">
+    <LauncherPage page={page} what="In the Mac app: one bar over every app.">
       {({ bridge, settings, save, setMessage }) => (
         <>
-          <Group title="Open it" note="In the bar: Return opens what is picked, ⌘Return asks the AI about what you typed, ⌥Return saves it to Unsorted as a sticky, ⌘K lists every action, Esc backs out a step. Drag it by its edge and it opens there next time.">
+          <Group title="Open it" note="↵ opens, ⌘↵ asks the AI, ⌥↵ saves a sticky, ⌘K shows every action, Esc backs out. Drag it by its edge to move it.">
             {keys.bridge && (
               <>
                 <Row title="Shortcut" hint={taken(keys.info?.search, 'Brings it up over any app, to find or to ask. Press it again, or Esc, to put it away.')} words="hotkey key open ask chat ai">
@@ -119,14 +119,14 @@ export function QuickSearchPage({ page }) {
               <Choice label="How the quick bar opens" value={settings.view} onChange={(view) => save({ view })} options={[['bar', 'A small bar'], ['full', 'The full view']]} />
             </Row>
           </Group>
-          <Group title="Where it looks" note="Each place can have its own word (type it first, in the search or in the line) and a Hyper key that opens the search right there. They are in Shortcuts.">
+          <Group title="Where it looks" note="Each place can have its own word and Hyper key, in Shortcuts.">
             {SOURCES.map((source) => (
               <Row key={source.id} title={source.label} hint={source.blurb}>
                 <Switch label={`Look in ${source.label}`} checked={settings.sources[source.id].on} onChange={(on) => save({ sources: { [source.id]: { on } } })} />
               </Row>
             ))}
           </Group>
-          <Group title="What it learns" note="What you open or paste from the bar comes first the next time you type the same thing, like Raycast. It stays on this Mac.">
+          <Group title="What it learns" note="What you pick comes first next time you type the same thing.">
             <Row title="Forget what the bar learned" hint="Results go back to their plain order." words="learn top hit ranking frecency forget reset">
               <button className="outline-button" type="button" onClick={() => bridge.forgetPicks().then(() => setMessage('The bar forgot what you picked.'), (error) => setMessage(explain(error)))}>Forget</button>
             </Row>
@@ -147,7 +147,7 @@ export function KeyboardPage({ page }) {
         const state = status?.hyper || 'starting'
         return (
           <>
-            <Group title="Hyper key" note="Hyper is ⌃⌥⇧⌘ held together, and OSAT’s Hyper keys use it with a letter (V for the clipboard, S for files). With this on, OSAT turns Caps Lock into Hyper itself, for the whole Mac, with nothing else installed. Turning it off, or quitting OSAT, gives Caps Lock back.">
+            <Group title="Hyper key" note="Hyper is ⌃⌥⇧⌘ held together. With this on, Caps Lock becomes Hyper for the whole Mac; turning it off, or quitting OSAT, gives Caps Lock back.">
               <Row
                 title="Make Caps Lock a Hyper key"
                 hint={own ? describeHyper(state) : 'Off. Turn it on, then hold Caps Lock and press a letter: Hyper V opens the clipboard.'}
@@ -166,7 +166,7 @@ export function KeyboardPage({ page }) {
                 </Row>
               )}
               {!own && (
-                <Row title="Another app makes my Hyper key" hint="If it leaves ⇧ out (Raycast’s does, unless “Include Shift” is on), choose ⌃⌥⌘ so OSAT’s Hyper keys still work." words="raycast shift modifier">
+                <Row title="Another app makes my Hyper key" hint="Choose ⌃⌥⌘ if your Hyper key leaves ⇧ out." words="raycast shift modifier">
                   <Select label="What the Hyper key sends" value={settings.hyper.sends} onChange={(sends) => save({ hyper: { sends } })} options={[['four', '⌃⌥⇧⌘ (all four)'], ['three', '⌃⌥⌘ (without ⇧)']]} />
                 </Row>
               )}
@@ -206,7 +206,7 @@ function Permission() {
 
 export function ClipboardPage({ page }) {
   return (
-    <LauncherPage page={page} what="In the Mac app, everything you copy is kept on this Mac, searchable, with pins for what you paste often.">
+    <LauncherPage page={page} what="In the Mac app: everything you copy, searchable.">
       {({ bridge, settings, board, setBoard, save, showUndo, setMessage }) => (
         <>
           <Group title="History">
@@ -220,9 +220,9 @@ export function ClipboardPage({ page }) {
               <Switch label="Pause the clipboard history" checked={board?.paused === true} onChange={(paused) => bridge.pauseClipboard(paused).then((now) => setBoard({ paused: now }), (error) => setMessage(explain(error)))} />
             </Row>
           </Group>
-          <Group title="Privacy" note="Search it with v (or type “clipboard”) in the quick bar, paste from it, or drag a copy into another app.">
+          <Group title="Privacy" note="Type v in the quick bar to search, paste or drag a copy.">
             <Row title="Password managers" hint="Copies from password managers are never kept, and neither is anything OSAT copies for itself." words="1password bitwarden concealed secret" />
-            <Row title="Ask" hint="Ask can look at what you copied, and at files in the places OSAT may see, to answer you. It happens only when the AI answering is on this Mac; a cloud model never gets copies or files. Anything that looks like a password or a key is left out." words="ask ai copies files look private">
+            <Row title="Ask" hint="Ask can read your copies and files to answer. Only with an AI on this Mac; passwords are left out." words="ask ai copies files look private">
               <Switch label="Ask can look at copies and files" checked={settings.ask?.sources !== false} onChange={(sources) => save({ ask: { sources } })} />
             </Row>
             <Row title="Add to a topic" hint="Offer to add a copied email address or phone number to its topic, once, when that topic already exists." words="offer jordan customer contact">
@@ -281,7 +281,7 @@ function QuickLinks({ settings, save, showUndo }) {
 
   return (
     <>
-      <Group title="Your links" note="An address with {query} in it searches for the words you type after its word: g best CRMs. Without {query}, its word just opens it.">
+      <Group title="Your links" note="Put {query} in an address to search with it: g best CRMs.">
         {settings.links.map((link) => (
           <Row key={link.id} title={link.name} hint={link.url} words={link.keyword || ''}>
             <div className="setting-controls">
@@ -375,7 +375,7 @@ function Snippets({ settings, save, showUndo, status, bridge, look }) {
           {w && !validSnippetWord(w) && <small className="setting-inline" role="status">{SNIPPET_WORD_HELP}</small>}
         </Row>
       </Group>
-      <Group title="In any app" note="A small helper watches what you type for these words only. It keeps the last few letters in memory, writes nothing down, never sees a password field, and stops when OSAT quits.">
+      <Group title="In any app" note="A small helper listens only for these words. It writes nothing down and never sees password fields.">
         <Row title="Turn words into text in any app" hint={!settings.snippetsTyped ? 'Off: snippets paste from the quick bar only.'
           : helper === 'listening' ? 'On: type a snippet’s word after a space or on a new line, and it becomes its text.'
             : helper === 'access' || !allowed ? 'Waiting for Accessibility: allow OSAT below, then come back here.'
@@ -399,7 +399,7 @@ export function WindowLayoutsPage({ page }) {
     <LauncherPage page={page} what="In the Mac app, a layout snaps the window you were in to a half, a third or a corner.">
       {(launcher) => (
         <>
-          <Group title="Keys" note="Each command can have an alias (type it in the quick bar and press Return) and a key. Or type “left half” in the quick bar (or w and a word), and the window you were in moves there.">
+          <Group title="Keys" note="Give a command a word or a key, or just type “left half” in the quick bar.">
             <Row title="Move the window I’m in with keys" hint="Keys that work from any app are off until you turn them on." words="hotkeys global any app">
               <Switch label="Use keys to move the window I’m in, from any app" checked={launcher.settings.windows.on} onChange={(on) => launcher.save({ windows: { on } })} />
             </Row>
@@ -429,7 +429,7 @@ export function RingPage({ page }) {
         }
         return (
           <>
-            <Group title="The ring" note="Hold Hyper and middle-click anywhere on your Mac, or press its key. Inside OSAT, ⌘ and a middle-click works too.">
+            <Group title="The ring" note="Hyper + middle-click anywhere, or its key.">
               <Row title="Use the ring" hint="Quick tools in a circle around your pointer.">
                 <Switch label="Use the ring" checked={settings.ring.on} onChange={(on) => save({ ring: { on } })} />
               </Row>

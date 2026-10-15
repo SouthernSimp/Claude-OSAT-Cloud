@@ -26,15 +26,24 @@
 .settings-nav-group h3 { padding: 12px 10px 6px; font: 650 var(--t-2xs) var(--font); letter-spacing: 0; color: var(--faint); }
 /* Every page has its own tile, as in the Mac's System Settings: one cool hue each (pages.js `tint`), a white glyph, a
    little light from above. The page you are on is a soft accent row, not a louder tile. */
-.settings [data-tint] { --tint: var(--accent); }
-.settings [data-tint="blue"] { --tint: oklch(60% 0.17 256); }
-.settings [data-tint="sky"] { --tint: oklch(66% 0.13 232); }
-.settings [data-tint="indigo"] { --tint: oklch(55% 0.18 277); }
-.settings [data-tint="violet"] { --tint: oklch(57% 0.19 300); }
-.settings [data-tint="pink"] { --tint: oklch(63% 0.19 350); }
-.settings [data-tint="rose"] { --tint: oklch(60% 0.2 15); }
-.settings [data-tint="slate"] { --tint: oklch(56% 0.03 255); }
-.settings [data-tint="graphite"] { --tint: oklch(42% 0.015 260); }
+[data-tint] { --tint: var(--accent); }
+[data-tint="blue"] { --tint: oklch(60% 0.17 256); }
+[data-tint="sky"] { --tint: oklch(66% 0.13 232); }
+[data-tint="indigo"] { --tint: oklch(55% 0.18 277); }
+[data-tint="violet"] { --tint: oklch(57% 0.19 300); }
+[data-tint="pink"] { --tint: oklch(63% 0.19 350); }
+[data-tint="rose"] { --tint: oklch(60% 0.2 15); }
+[data-tint="slate"] { --tint: oklch(56% 0.03 255); }
+[data-tint="graphite"] { --tint: oklch(42% 0.015 260); }
+/* App-icon hues (the quick bar's rows and the launchpad): pictures, not chrome, so warmer hues are fine here. */
+[data-tint="teal"] { --tint: oklch(66% 0.12 200); }
+[data-tint="green"] { --tint: oklch(65% 0.16 150); }
+[data-tint="yellow"] { --tint: oklch(78% 0.15 85); }
+[data-tint="orange"] { --tint: oklch(68% 0.17 50); }
+[data-tint="red"] { --tint: oklch(60% 0.2 25); }
+/* One app-style tile anywhere: a hue, a white glyph, a little light from above. */
+.tile { display: inline-grid; place-items: center; flex: none; border-radius: 22%; color: #fff; background: var(--tint) linear-gradient(180deg, rgb(255 255 255 / 22%), rgb(255 255 255 / 0%) 60%); box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 22%), 0 1px 1.5px rgb(0 0 0 / 18%); }
+.tile svg { width: 60%; height: 60%; }
 .settings-nav button { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: 32px; padding: 0 8px; border-radius: 8px; color: var(--ink); font-size: var(--t-md); font-weight: 520; text-align: left; transition: background var(--d-fast) var(--ease-out), color var(--d-fast); }
 .settings-nav button:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .settings-nav button:active i { transform: scale(0.92); }
@@ -72,7 +81,11 @@
 /* Groups gathered in one older card (the AI's models) keep the page's spacing between them. */
 .settings-legacy > .ai-management { display: grid; gap: var(--set-gap); }
 .setting-group:not(:has(.setting-row)) { display: none; }
-.setting-group > h3 { padding: 0 6px; font: 600 var(--t-xs) var(--font); letter-spacing: 0; color: var(--muted); }
+.setting-group > h3 { display: flex; align-items: center; gap: 6px; min-height: 18px; padding: 0 6px; font: 600 var(--t-xs) var(--font); letter-spacing: 0; color: var(--muted); }
+/* ⓘ: the group's longer words, one click away. */
+.setting-more { display: inline-grid; place-items: center; width: 16px; height: 16px; padding: 0; border-radius: 50%; font: italic 700 10px/1 Georgia, serif; color: var(--faint); box-shadow: inset 0 0 0 1px var(--line-strong); transition: color var(--d-fast), background var(--d-fast); }
+.setting-more:hover, .setting-more[aria-expanded="true"] { color: var(--accent-ink, #fff); background: var(--accent); box-shadow: none; }
+.setting-group > .setting-note { animation: body-in 260ms var(--glide) both; }
 .setting-card { border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface-raised); box-shadow: var(--e-1); overflow: clip; }
 .setting-card.is-padded { padding: 18px 20px; }
 .setting-note { padding: 0 6px; font-size: var(--t-xs); line-height: 1.5; color: var(--faint); }
@@ -82,7 +95,7 @@
 .setting-row + .setting-row { border-top: 1px solid var(--line-soft); }
 .setting-text { display: grid; flex: 1 1 260px; gap: 3px; min-width: 0; }
 .setting-text b { font-size: var(--t-md); font-weight: 620; line-height: 1.3; color: var(--ink-strong); }
-.setting-text small { max-width: 62ch; font-size: var(--t-sm); line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.setting-text small { max-width: 62ch; font-size: var(--t-sm); line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .setting-control { display: flex; flex: 0 1 auto; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
 .setting-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 12px; }
 .setting-row.is-stacked { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -142,8 +155,12 @@
 .short-group-head + .short-row { border-top: 0; }
 .short-row.is-off .short-name { opacity: 0.55; }
 .short-name { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.short-name i { flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
-.short-name i svg { width: 15px; height: 15px; }
+.short-name .short-tile { width: 26px; height: 26px; border-radius: 7px; }
+.short-name .short-tile svg { width: 15px; height: 15px; }
+/* An app's own icon, as Finder draws it. */
+.short-app { flex: none; display: grid; place-items: center; width: 26px; height: 26px; }
+.short-app .qs-row-icon { width: 28px; height: 28px; object-fit: contain; }
+.short-app .qs-tile { width: 26px; height: 26px; }
 .short-name > span { display: grid; min-width: 0; }
 .short-name b { font-size: var(--t-md); font-weight: 600; }
 .short-name small { overflow: hidden; font-size: var(--t-xs); color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }

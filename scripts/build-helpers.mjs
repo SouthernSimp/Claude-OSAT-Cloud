@@ -1,5 +1,6 @@
 // Builds OSAT's small native helpers: every desktop/helpers/*.swift becomes build/helpers/<name> (arm64 and x86_64 in
-// one file when both can be built). On anything but a Mac there is nothing to build and it ends quietly.
+// one file when both can be built), and every desktop/helpers/*.m a Node-API module, build/helpers/<name>.node, that the
+// main process loads itself (osat-blur). On anything but a Mac there is nothing to build and it ends quietly.
 // `npm run dist:mac` and `npm run start:mac` run it first (it needs the Command Line Tools: `xcode-select --install`);
 // package.json's build.extraResources puts the result inside the app.
 import { execFileSync } from 'node:child_process'
@@ -14,8 +15,18 @@ const ARCHS = ['arm64', 'x86_64']
 export function listHelpers(base = root) {
   const dir = join(base, 'desktop', 'helpers')
   if (!existsSync(dir)) return []
-  return readdirSync(dir).filter((file) => file.endsWith('.swift')).sort()
-    .map((file) => ({ name: basename(file, '.swift'), source: join(dir, file), out: join(base, 'build', 'helpers', basename(file, '.swift')) }))
+  return readdirSync(dir).filter((file) => file.endsWith('.swift') || file.endsWith('.m')).sort().map((file) => {
+    const name = basename(file).replace(/\.(swift|m)$/, '')
+    const module = file.endsWith('.m')
+    return { name, module, source: join(dir, file), out: join(base, 'build', 'helpers', module ? `${name}.node` : name) }
+  })
+}
+
+/* A Node-API module: one bundle for both architectures; its napi_* calls are found in Electron when it is loaded. */
+function buildModule({ source, out }) {
+  execFileSync('clang', ['-bundle', '-fobjc-arc', '-O2', '-arch', 'arm64', '-arch', 'x86_64', '-mmacosx-version-min=13.0',
+    '-framework', 'Cocoa', '-framework', 'CoreGraphics', '-undefined', 'dynamic_lookup', source, '-o', out], { stdio: 'inherit' })
+  execFileSync('codesign', ['--force', '--sign', '-', out], { stdio: 'inherit' })
 }
 
 function build({ source, out }) {
@@ -39,7 +50,7 @@ function build({ source, out }) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.platform === 'darwin') {
   mkdirSync(join(root, 'build', 'helpers'), { recursive: true })
   try {
-    for (const helper of listHelpers()) build(helper)
+    for (const helper of listHelpers()) (helper.module ? buildModule : build)(helper)
   } catch (error) {
     console.error(`${error.message} Install the Command Line Tools (xcode-select --install) and try again.`)
     process.exit(1)

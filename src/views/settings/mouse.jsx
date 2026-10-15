@@ -32,7 +32,7 @@ function SpeedSlider({ value, onCommit }) {
 
 export function MousePage({ page }) {
   return (
-    <LauncherPage page={page} what="In the Mac app, your mouse wheel can scroll the opposite way from your trackpad, faster or slower, and the side buttons can do something else.">
+    <LauncherPage page={page} what="In the Mac app: scroll direction, speed and side buttons.">
       {(launcher) => <Mouse {...launcher} />}
     </LauncherPage>
   )
@@ -56,7 +56,7 @@ function Mouse({ settings, save, status, bridge, look }) {
 
   return (
     <>
-      <Group title="Scrolling" note="Only the mouse wheel changes. Your trackpad keeps scrolling the way System Settings says, unless you change it below.">
+      <Group title="Scrolling" note="Only the mouse wheel changes; the trackpad stays as it is.">
         <Row title="Reverse mouse wheel scrolling" hint={reversing ? (mouse.on ? 'The wheel scrolls the opposite way. Your trackpad stays as it is.' : 'Set, but paused: Mouse changes are off below.') : 'Turn on to make the wheel scroll the opposite way from your trackpad.'} words="reverse invert natural wheel opposite direction windows">
           <Switch label="Reverse mouse wheel scrolling" checked={reversing} onChange={(on) => set({ ...(on ? { on: true } : {}), reverse: { mouse: axesOf(on ? 'both' : 'none') } })} />
         </Row>
@@ -72,14 +72,14 @@ function Mouse({ settings, save, status, bridge, look }) {
           <Select label="Trackpad scrolling" value={directionOf(mouse.reverse.trackpad)} options={TRACKPAD} onChange={(direction) => set({ reverse: { trackpad: axesOf(direction) } })} />
         </Row>
       </Group>
-      <Group title="Side buttons" note="Back and forward press ⌘[ and ⌘], which Safari, Finder, Chrome and most editors take. If your buttons already go back and forward, leave them as they are. The middle button is not changed.">
+      <Group title="Side buttons" note="Back and forward press ⌘[ and ⌘]. The middle button is left alone.">
         {BUTTONS.map(({ button, label }) => (
           <Row key={button} title={label} hint="What this button does" words="button back forward mouse side thumb remap">
             <Select label={label} value={mouse.buttons[button] || 'default'} options={BUTTON_ACTIONS} onChange={(action) => set({ buttons: { [button]: action } })} />
           </Row>
         ))}
       </Group>
-      <Group title="Mouse changes" note="A small helper changes the wheel and button events as they pass. It keeps no record of what you do, changes nothing that stays after OSAT quits, and stops when this is off. It needs OSAT to be allowed in Accessibility.">
+      <Group title="Mouse changes" note="A small helper adjusts the wheel as it passes. It keeps no record and stops when this is off. Needs Accessibility.">
         <Row title="Use these mouse changes" hint={state} words="on off master switch pause accessibility helper">
           <Switch label="Use these mouse changes" checked={mouse.on} onChange={(on) => set({ on })} />
         </Row>

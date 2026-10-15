@@ -85,7 +85,7 @@ export function installSearchBridge(defaults) {
     files: async (query) => (query ? [files.taxes] : [files.trip]),
     preview: async (root, relative) => (relative.endsWith('.md') ? { text: '# Trip\nLeave Friday\nBring the tent', thumb: null } : { text: null, thumb: picture('f9c6cc', 'Taxes 2025') }),
     apps: async () => [{ name: 'Notes', path: '/Applications/Notes.app' }, { name: 'Spotify', path: '/Applications/Spotify.app' }],
-    appIcon: async () => null,
+    appIcon: async (path) => `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect x="4" y="4" width="56" height="56" rx="13" fill="%23${/Spotify/.test(path) ? '1db954' : 'f5c542'}"/></svg>`,
     clipboard: async () => ({ paused, watching: true, items: clipboard }),
     clipboardImage: async (id) => clipboard.find((item) => item.id === id).thumb,
     clipboardText: async (id) => clipboard.find((item) => item.id === id).text,
@@ -93,7 +93,7 @@ export function installSearchBridge(defaults) {
     askSwitch: async (on) => on,
     mode: async () => true,
     // CleanShot X is on this stand-in Mac, with two recent captures (Settings → Screenshots turns them on).
-    captureStatus: async () => ({ cleanshot: true, mac: true, list: ['area', 'window', 'fullscreen', 'scrolling', 'all-in-one', 'record', 'text', 'history', 'from-clipboard'], recent: settings.captures?.recent === true, saveTo: 'desktop', screen: null }),
+    captureStatus: async () => ({ cleanshot: settings.captures?.using !== 'mac', installed: true, using: settings.captures?.using || 'cleanshot', mac: true, list: ['area', 'window', 'fullscreen', 'scrolling', 'all-in-one', 'record', 'text', 'history', 'from-clipboard'], recent: settings.captures?.recent === true, saveTo: 'desktop', screen: null }),
     captureRecent: async () => [{ id: 'media_a/CleanShot 1.png', name: 'CleanShot 1.png', at: Date.now() - 60000 }, { id: 'media_b/CleanShot 2.mp4', name: 'CleanShot 2.mp4', at: Date.now() - 7200000 }],
     captureThumb: async () => picture('d7e8c6', 'A screenshot'),
     capture: async (id) => { window.__calls.push(['capture', id]); return { ok: true } },

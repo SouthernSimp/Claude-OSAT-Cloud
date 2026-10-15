@@ -128,7 +128,7 @@
 }
 @media (prefers-reduced-motion: reduce) { .sorter *, .sorter *::before, .sorter *::after { animation: none !important; transition: none !important; } }
 .sky-unsorted-drawer footer .is-primary { padding: 10px 14px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); justify-self: stretch; justify-content: center; }
-.sky-workspace { grid-template-columns: minmax(0, 1fr); background: var(--sky-canvas); }
+.sky-workspace { grid-template-columns: minmax(0, 1fr); background: var(--sky-ground, var(--sky-canvas)); }
 .sky-workspace .sky-bar { gap: 16px; padding: 14px 20px; min-height: 64px; background: var(--surface-raised); border-bottom: 1px solid var(--line); }
 .sky-workspace .sky-down { height: 32px; padding: 0 10px; border-radius: var(--r-sm); background: transparent; box-shadow: none; font-weight: 500; color: var(--muted); }
 .sky-workspace .sky-down:hover { color: var(--ink); background: var(--surface-hover); }
@@ -221,3 +221,13 @@
 @media (prefers-reduced-motion: reduce) {
   .sky-workspace .board.is-flying, .sky-workspace .map-card, .sky-workspace .board-sticky, .sky-workspace .sticky, .sky-workspace .node-head { animation: none; transition: none; }
 }
+
+/* ---- The canvas wears the Dashboard's look (Oct 2026): deep navy with a blue glow in the dark, soft blue in the light;
+   topic cards are lit glass with a blue edge when the pointer is on them. Only colours and light change here. */
+.sky-workspace .sky-location, .sky-workspace .sky-bar { background: color-mix(in srgb, var(--surface-raised) 55%, transparent); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); }
+.sky-workspace .board-card > .node-head:not(.is-naming) { border-color: color-mix(in srgb, var(--line-strong) 70%, transparent); border-radius: 18px; background: linear-gradient(127deg, var(--surface-raised) 20%, color-mix(in srgb, var(--surface-raised) 82%, transparent) 80%); box-shadow: 0 1px 2px rgb(0 0 0 / 5%), 0 18px 40px -26px rgb(20 40 120 / 35%); transition: border-color 180ms, box-shadow 180ms, translate 180ms var(--ease-out); }
+.sky-workspace .board-card > .node-head:not(.is-naming):hover { translate: 0 -2px; border-color: color-mix(in srgb, oklch(62% 0.2 258) 55%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, oklch(62% 0.2 258) 14%, transparent), 0 22px 44px -24px rgb(20 60 200 / 45%); }
+:root[data-theme="dark"] .sky-workspace { --board-dot: rgb(160 180 255 / 13%); }
+:root[data-theme="dark"] .sky-workspace .board-card > .node-head:not(.is-naming) { border-color: rgb(255 255 255 / 8%); background: linear-gradient(127deg, rgb(6 11 40 / 94%) 20%, rgb(26 31 70 / 70%) 80%); box-shadow: 0 1px 0 rgb(255 255 255 / 5%) inset, 0 24px 50px -28px rgb(0 0 0 / 85%); }
+:root[data-theme="dark"] .sky-workspace .node-kind i { box-shadow: 0 0 10px var(--paper-bg); }
+:root[data-theme="dark"] .sky-workspace .branch-card { border-top-color: rgb(255 255 255 / 8%); border-right-color: rgb(255 255 255 / 8%); border-bottom-color: rgb(255 255 255 / 8%); background: linear-gradient(127deg, rgb(6 11 40 / 90%), rgb(26 31 70 / 66%)); }

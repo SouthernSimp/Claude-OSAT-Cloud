@@ -1,43 +1,45 @@
 import {
   BookOpenText, CalendarBlank, CurrencyDollar, EnvelopeSimple, Files, GearSix, GithubLogo, Globe, House, Key, ListChecks,
-  MapTrifold, Microphone, MusicNotes, NotePencil, Sparkle, Stack, TerminalWindow, TreeStructure, UploadSimple,
+  MapTrifold, Microphone, MusicNotes, NotePencil, Sparkle, SquaresFour, Stack, TerminalWindow, TreeStructure, UploadSimple,
 } from '@phosphor-icons/react'
 
 /* The one definition of where things live. The dock, the sheet titles, ⌘K and
    the keyboard all read from here. Room ids stay what the code already calls
-   them; the labels are what Nate sees. */
+   them; the labels are what Nate sees; `tint` colours each one's app-style tile (the launchpad, the quick bar). */
 
 export const SPACES = [
-  { id: 'Today', label: 'Desk', icon: House, hint: 'The desk and your day' },
+  { id: 'Today', tint: 'indigo', label: 'Desk', icon: House, hint: 'The desk and your day' },
   // Notes is home: your topics and stickies (Oct 2026).
-  { id: 'Notes', label: 'Notes', icon: NotePencil, hint: 'Your topics and stickies' },
+  { id: 'Notes', tint: 'yellow', label: 'Notes', icon: NotePencil, hint: 'Your topics and stickies' },
   // The canvas, the layer above the desk (it was the Sky, and before that the Map): room to think.
-  { id: 'Mindmap', label: 'Canvas', icon: TreeStructure, hint: 'An open board to think on  ⌥⌘↑' },
+  { id: 'Mindmap', tint: 'teal', label: 'Canvas', icon: TreeStructure, hint: 'An open board to think on  ⌥⌘↑' },
   // Ask lives in the desk's line; its room (every chat) is under Tools and ⌘4.
-  { id: 'Assistant', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac', dock: false },
-  { id: 'Files', label: 'Files', icon: Files, hint: 'Your Desktop, Documents and Downloads' },
+  { id: 'Assistant', tint: 'violet', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac', dock: false },
+  { id: 'Files', tint: 'sky', label: 'Files', icon: Files, hint: 'Your Desktop, Documents and Downloads' },
+  // Everything at a glance, and every part of OSAT as an app tile (Oct 2026).
+  { id: 'Dashboard', tint: 'blue', label: 'Dashboard', icon: SquaresFour, hint: 'Everything at a glance' },
 ]
 
 export const TOOLS = [
   // A table of its own for a pile of paper stickies, until it's sorted and goes to the Sky.
-  { id: 'Pile', label: 'Sort a pile', icon: Stack, hint: 'Toss a pile of stickies down, group them, send it to the canvas' },
-  { id: 'Journal', label: 'Journal', icon: BookOpenText, hint: 'A page for every day' },
-  { id: 'Calendar', label: 'Calendar', icon: CalendarBlank, hint: 'The month, and the day in it' },
-  { id: 'Habits', label: 'Habits', icon: ListChecks, hint: 'Small things, kept daily' },
-  { id: 'Budget', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },
-  { id: 'Browser', label: 'Browser', icon: Globe, hint: 'The web, with a clipper into Notes' },
-  { id: 'Terminal', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
-  { id: 'Roadmap', label: 'Roadmap', icon: MapTrifold, hint: 'Where OSAT is going' },
-  { id: 'Meetings', label: 'Meetings', icon: Microphone, hint: 'Listen to a meeting on this Mac; it is written up for you' },
-  { id: 'GitHub', label: 'GitHub', icon: GithubLogo, hint: 'Your repositories: what waits for you, and Merge' },
-  { id: 'Mail', label: 'Mail', icon: EnvelopeSimple, hint: 'Your inbox, read here' },
-  { id: 'Passwords', label: 'Passwords', icon: Key, hint: 'Locked until you unlock them with your master password' },
+  { id: 'Pile', tint: 'orange', label: 'Sort a pile', icon: Stack, hint: 'Toss a pile of stickies down, group them, send it to the canvas' },
+  { id: 'Journal', tint: 'orange', label: 'Journal', icon: BookOpenText, hint: 'A page for every day' },
+  { id: 'Calendar', tint: 'red', label: 'Calendar', icon: CalendarBlank, hint: 'The month, and the day in it' },
+  { id: 'Habits', tint: 'green', label: 'Habits', icon: ListChecks, hint: 'Small things, kept daily' },
+  { id: 'Budget', tint: 'green', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },
+  { id: 'Browser', tint: 'blue', label: 'Browser', icon: Globe, hint: 'The web, with a clipper into Notes' },
+  { id: 'Terminal', tint: 'graphite', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
+  { id: 'Roadmap', tint: 'indigo', label: 'Roadmap', icon: MapTrifold, hint: 'Where OSAT is going' },
+  { id: 'Meetings', tint: 'pink', label: 'Meetings', icon: Microphone, hint: 'Listen to a meeting on this Mac; it is written up for you' },
+  { id: 'GitHub', tint: 'graphite', label: 'GitHub', icon: GithubLogo, hint: 'Your repositories: what waits for you, and Merge' },
+  { id: 'Mail', tint: 'blue', label: 'Mail', icon: EnvelopeSimple, hint: 'Your inbox, read here' },
+  { id: 'Passwords', tint: 'slate', label: 'Passwords', icon: Key, hint: 'Locked until you unlock them with your master password' },
 ]
 
-export const SETTINGS = { id: 'Settings', label: 'Settings', icon: GearSix, hint: 'Appearance, data, the shortcut' }
+export const SETTINGS = { id: 'Settings', tint: 'graphite', label: 'Settings', icon: GearSix, hint: 'Appearance, data, the shortcut' }
 export const HIDDEN = [
-  { id: 'Obsidian', label: 'Export to Obsidian', icon: UploadSimple, hint: 'In Settings → Data' },
-  { id: 'NowPlaying', label: 'Now playing', icon: MusicNotes, hint: 'Spotify, bigger' },
+  { id: 'Obsidian', tint: 'violet', label: 'Export to Obsidian', icon: UploadSimple, hint: 'In Settings → Data' },
+  { id: 'NowPlaying', tint: 'green', label: 'Now playing', icon: MusicNotes, hint: 'Spotify, bigger' },
 ]
 
 const ALL = [...SPACES, ...TOOLS, SETTINGS, ...HIDDEN]
@@ -54,7 +56,7 @@ export function titleFor(view) {
   return spaceFor(view)?.label || view
 }
 
-/* ⌘1–5 go to the five spaces. */
+/* ⌘1–6 go to the six spaces. */
 export function spaceForKey(key) {
   return SPACES[Number(key) - 1]?.id || null
 }

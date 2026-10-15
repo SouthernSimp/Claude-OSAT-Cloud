@@ -39,7 +39,7 @@ export function OvernightSettings({ showUndo }) {
   const noAi = status && !status.ai
   return (
     <Group title="While you sleep" note={problem || (noAi ? 'It needs an AI on this Mac: choose a size below, or start LM Studio. It never uses a cloud model.' : 'Only the AI on this Mac reads for it, and nothing changes until you keep an idea.')}>
-      <Row title="Think it over at night" hint="Once a night, while your Mac is on its charger, OSAT looks over the week’s stickies and leaves a few ideas on your canvas: things to connect, and subjects that could be a topic." words="overnight night sleep ideas connect suggest links topics dream">
+      <Row title="Think it over at night" hint="Each night, on the charger, OSAT leaves a few ideas on your canvas." words="overnight night sleep ideas connect suggest links topics dream">
         <Switch label="Think it over at night" checked={status?.on === true} disabled={!status} onChange={(on) => set({ on })} />
       </Row>
       <Row title="Think now" hint="Looks over this week right away, in place of last night’s ideas." words="overnight think now ideas">

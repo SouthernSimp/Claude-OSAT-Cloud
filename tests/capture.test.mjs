@@ -72,7 +72,7 @@ test('recent captures: pictures and videos, newest first, ids that stay inside C
 
 test('capture keys live with the launcher’s: saved, cleaned, named, and refused when another has them', () => {
   const settings = cleanSettings({ captures: { hotkeys: { area: 'Control+Alt+Shift+Command+4', bogus: 'X' }, recent: 'yes', saveTo: 'nowhere' } })
-  assert.deepEqual(settings.captures, { hotkeys: { ...Object.fromEntries(model.CAPTURES.map((item) => [item.id, null])), area: 'Control+Alt+Shift+Command+4' }, recent: false, saveTo: 'desktop' })
+  assert.deepEqual(settings.captures, { hotkeys: { ...Object.fromEntries(model.CAPTURES.map((item) => [item.id, null])), area: 'Control+Alt+Shift+Command+4' }, recent: false, saveTo: 'desktop', using: 'cleanshot' })
   assert.equal(keysOf(settings)['capture:area'], 'Control+Alt+Shift+Command+4')
   assert.equal(holderOf(settings, { key: 'Control+Alt+Shift+Command+4' }), 'Screenshot an area')
   const moved = withKey(settings, 'capture:record', 'Control+Alt+Shift+Command+5')

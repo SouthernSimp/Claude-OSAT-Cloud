@@ -224,6 +224,38 @@ app.on('web-contents-created', (_event, contents) => contents.on('did-finish-loa
   accents.delete(contents)
   paintAccent(contents)
 }))
+/* One of OSAT's own pages (the desk, the quick bar, the ring) whose page process died comes straight back, so a crash
+   never leaves a grey window that only quitting fixes. Web pages in the Browser are left alone; at most once in 10 s. */
+const revived = new WeakMap()
+app.on('render-process-gone', (_event, contents, details) => {
+  if (quitting || details?.reason === 'clean-exit' || contents.isDestroyed() || !contents.getURL().startsWith('file:')) return
+  if (Date.now() - (revived.get(contents) || 0) < 10000) return
+  revived.set(contents, Date.now())
+  setTimeout(() => { if (!contents.isDestroyed()) contents.reload() }, 300)
+})
+
+/* The desk's blur. macOS's vibrancy has one fixed blur, so the Appearance slider only tinted it; osat-blur
+   (desktop/helpers/osat-blur.m) sets the window server's own blur radius on the desk instead, so the slider is a real
+   blur, 0 (clear) to deep. Without the module (an older build, not a Mac) the desk keeps the fixed frosting. */
+const deskLook = { amount: 60, clear: false }
+let blurLoaded
+function blurModule() {
+  if (blurLoaded !== undefined) return blurLoaded
+  blurLoaded = null
+  if (process.platform !== 'darwin') return null
+  const file = app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-blur.node') : path.join(__dirname, '..', 'build', 'helpers', 'osat-blur.node')
+  try { blurLoaded = require(file) } catch (error) { console.warn('OSAT: the blur module did not load; the fixed frosting stays.', error?.message) }
+  return blurLoaded
+}
+function applyDeskBlur() {
+  if (process.platform !== 'darwin' || !mainWindow || mainWindow.isDestroyed()) return
+  const amount = deskLook.clear ? 0 : deskLook.amount
+  const blur = blurModule()
+  let real = false
+  if (blur) { try { real = blur.setBlur(mainWindow.getNativeWindowHandle(), Math.round(amount * 0.6)) === true } catch { real = false } }
+  // With the real blur the vibrancy comes off (it would blur twice); without it, frosting unless the desk is clear.
+  mainWindow.setVibrancy(real || amount === 0 ? null : 'fullscreen-ui')
+}
 
 function showDesk() {
   if (!mainWindow || mainWindow.isDestroyed()) return createWindow()
@@ -239,6 +271,7 @@ function showDesk() {
   // Dock slid up and down and the desk blinked behind it (Phase 13c).
   if (mac) window.setVisibleOnAllWorkspaces(true, { skipTransformProcessType: true })
   window.show()
+  applyDeskBlur()
   if (mac) {
     app.focus({ steal: true })
     window.setVisibleOnAllWorkspaces(false, { skipTransformProcessType: true })
@@ -324,6 +357,7 @@ function buildMenu() {
         room('Canvas', 'Mindmap', 'CmdOrCtrl+3'),
         room('Ask', 'Assistant', 'CmdOrCtrl+4'),
         room('Files', 'Files', 'CmdOrCtrl+5'),
+        room('Dashboard', 'Dashboard', 'CmdOrCtrl+6'),
         { type: 'separator' },
         room('Journal', 'Journal'),
         room('Calendar', 'Calendar'),
@@ -598,7 +632,14 @@ function registerDesk() {
   // Blur set to zero in Appearance: no frosting, the desktop shows through clear.
   ipcMain.on('desk:clear', (event, clear) => {
     try { fromDesk(event) } catch { return }
-    if (process.platform === 'darwin') mainWindow.setVibrancy(clear === true ? null : 'fullscreen-ui')
+    deskLook.clear = clear === true
+    applyDeskBlur()
+  })
+  // Appearance → Blur (0…100): a real blur of what's behind the desk, as strong as asked.
+  ipcMain.on('desk:blur', (event, amount) => {
+    try { fromDesk(event) } catch { return }
+    if (Number.isFinite(amount)) deskLook.amount = Math.min(Math.max(Math.round(amount), 0), 100)
+    applyDeskBlur()
   })
   // The shortcuts, read on the desk and changed in Settings.
   handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), search: shortcutInfo('search'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
@@ -1434,7 +1475,7 @@ function selfTest(modelPath) {
   setTimeout(() => finish(false, 'timed out'), 180000).unref()
   child.on('message', (message) => {
     if (message.type === 'probe') {
-      if (!modelPath) finish(true, `engine ok (${message.gpu})`)
+      if (!modelPath) finish(true, `engine ok (${message.gpu})${process.platform === 'darwin' ? (blurModule() ? ', blur ok' : ', blur missing') : ''}`)
       else child.postMessage({ type: 'load', modelPath })
     } else if (message.type === 'loaded') {
       child.postMessage({ type: 'chat', id: 'self-test', messages: [{ role: 'user', content: 'Say hello in three words.' }], maxTokens: 24 })
@@ -1509,31 +1550,40 @@ app.whenReady().then(async () => {
   under.begin(prefs.under)
   registerUnder()
   registerAi()
-  await registerPhone()
-  await registerScans()
-  await registerLauncher()
-  await registerBots()
-  const agent = await registerAgent()
-  await registerBrief(agent, createMacCalendar({ handle, fail }))
+  // One part that can't start never keeps the desk from opening: it says why in the log, and the rest goes on.
+  const part = async (name, start) => { try { return await start() } catch (error) { console.error(`OSAT: ${name} could not start:`, error); return undefined } }
+  await part('the iPhone link', registerPhone)
+  await part('Scans', registerScans)
+  await part('the launcher', registerLauncher)
+  await part('Bots', registerBots)
+  const agent = await part('the agent', registerAgent)
+  await part('the brief', () => registerBrief(agent, createMacCalendar({ handle, fail })))
   // Tools → GitHub (desktop/github.cjs, Phase 55): through the gh signed in on this Mac.
-  await createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on })
+  await part('GitHub', () => createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on }))
   // Tools → Mail (desktop/mac-mail.cjs, Phase 59): the Mac's own Mail app. Local to this Mac, so it works Offline too.
-  await createMacMail({ sharedModule, handle, fail })
+  await part('Mail', () => createMacMail({ sharedModule, handle, fail }))
   // Tools → Passwords (desktop/passwords.cjs, Phase 58): locked at every launch; locks on sleep, screen lock, the desk
   // put away, and quit. Its sealed file is read by nothing else.
-  passwords = await createPasswords({
+  passwords = await part('Passwords', () => createPasswords({
     dataDir: app.getPath('userData'), sharedModule, handle, fail, dialog, mainWindow: () => mainWindow, clipboard: require('electron').clipboard, writeConcealed,
     send: (channel) => send(channel),
-  })
-  for (const event of ['suspend', 'lock-screen']) powerMonitor.on(event, () => passwords.lock())
-  await registerOvernight()
+  }))
+  for (const event of ['suspend', 'lock-screen']) powerMonitor.on(event, () => passwords?.lock())
+  await part('overnight ideas', registerOvernight)
   // Meetings can fail on their own (no helper in a source build); OSAT still opens.
   await registerMeetings().catch((error) => console.error('Meetings could not start:', error))
   registerDesk()
   registerAsk()
   createWindow()
   createTray()
-  launcher.start().catch((error) => console.error('The launcher could not start:', error))
+  launcher?.start().catch((error) => console.error('The launcher could not start:', error))
+  // Updates find you: a quiet look a minute after start and every six hours (refused while Offline, like any other
+  // request); when one is ready the desk shows one calm line with Update and restart.
+  if (app.isPackaged) {
+    const lookForUpdate = () => checkForUpdates().then((found) => { if (found?.state === 'available') send('update:available', { version: found.version, size: found.size }) }, () => {})
+    setTimeout(lookForUpdate, 60000)
+    setInterval(lookForUpdate, 6 * 3600000)
+  }
   // If the desk's shortcut is taken by another app, open Settings so a new one can be picked.
   // The quick bar's are quieter: Settings says so when you look.
   useHotkey('search', prefs.searchHotkey)

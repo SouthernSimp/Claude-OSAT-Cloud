@@ -36,6 +36,7 @@ import { NowPlayingView } from '../views/NowPlaying.jsx'
 import { PileView } from '../views/Pile.jsx'
 import { RoadmapView } from '../views/Roadmap.jsx'
 import { GitHubView } from '../views/GitHub.jsx'
+import { DashboardView } from '../views/Dashboard.jsx'
 import { MailView } from '../views/Mail.jsx'
 import { PasswordsView } from '../views/Passwords.jsx'
 import { MeetingsView } from '../views/Meetings.jsx'
@@ -79,6 +80,7 @@ const ROOMS = {
   Passwords: [860, 640],
   Meetings: [720, 620],
   Pile: [1200, 820],
+  Dashboard: [1280, 880],
   note: [600, 640],
 }
 
@@ -146,11 +148,12 @@ export function Desk() {
   const [filedToast, showFiled] = useUndoToast()
   useAutoFile({ workspace, commit, hydrated, onFiled: (noteId) => offDesk(noteId), onToast: showFiled })
 
-  /* Blur at zero means a clear desk: the Mac's frosting comes off entirely. */
-  const clear = workspace?.settings?.blur === 0
+  /* Blur (Settings → Appearance): main blurs what's behind the desk by this much; zero is a clear desk. */
+  const blurAmount = Number.isFinite(workspace?.settings?.blur) ? workspace.settings.blur : 60
   useEffect(() => {
-    bridge?.setClear?.(clear)
-  }, [bridge, clear])
+    bridge?.setClear?.(blurAmount === 0)
+    bridge?.setBlur?.(blurAmount)
+  }, [bridge, blurAmount])
 
   /* Main decides; the page only shows it, whoever asked: the line's switch, ⇧⌘U in the Go
      menu or the menu-bar icon. When one of those didn't work, the status says why. */
@@ -580,7 +583,7 @@ export function Desk() {
 
       {sky && (
         <div className={`sky-shell ${sky === 'leaving' ? 'is-leaving' : ''}`} inert={sky === 'leaving' || welcome || undefined}>
-          <Sky
+          <ErrorBoundary where="The canvas"><Sky
             ref={skyRef}
             workspace={workspace}
             commit={commit}
@@ -595,7 +598,7 @@ export function Desk() {
               place(key, null)
               return () => place(key, spot)
             }}
-          />
+          /></ErrorBoundary>
         </div>
       )}
 
@@ -633,6 +636,7 @@ export function Desk() {
           </div>
         </div>
       )}
+      <UpdateNote />
       <ClipboardOffer workspace={workspace} commit={commit} />
       <MorningBriefNote workspace={workspace} navigate={navigate} />
       {welcome && <Welcome onDone={() => setWelcome(false)} />}
@@ -681,6 +685,7 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Passwords': return <PasswordsView />
     case 'Meetings': return <MeetingsView {...room} />
     case 'Pile': return <PileView {...room} onClose={onClose} />
+    case 'Dashboard': return <DashboardView {...room} />
     case 'NowPlaying': return <NowPlayingView {...room} media={window.osatDesk?.nowPlaying ? window.osatDesk : null} />
     default: return null
   }
@@ -755,5 +760,29 @@ function PopOut({ pop, z, top, dock, title, onRaise, onClose, onGone, onChange, 
       </header>
       <div className="popout-body workspace-content is-filled" data-view={pop.view}><ErrorBoundary where={title}>{children}</ErrorBoundary></div>
     </section>
+  )
+}
+
+/* A newer OSAT is ready (main looks quietly a minute after start and every six hours): one calm line on the desk, with
+   Update and restart, or Later until the next time OSAT starts. */
+function UpdateNote() {
+  const bridge = typeof window === 'undefined' ? null : window.osatUpdate
+  const [ready, setReady] = useState(null)
+  const [state, setState] = useState('idle')
+  useEffect(() => bridge?.onAvailable?.((found) => setReady(found)), [bridge])
+  useEffect(() => bridge?.onProgress?.((progress) => setState(progress?.state || 'idle')), [bridge])
+  if (!ready) return null
+  const install = async () => {
+    setState('downloading')
+    try { await bridge.install() } catch { setState('error') }
+  }
+  const busy = ['downloading', 'checking', 'restarting'].includes(state)
+  return (
+    <p className="desk-note is-update" role="status">
+      <span className="update-dot" aria-hidden="true" />
+      {state === 'error' ? 'The update didn’t finish. Try again from Settings → About.' : busy ? 'Updating OSAT… it restarts by itself.' : `OSAT ${ready.version} is ready.`}
+      {!busy && state !== 'error' && <button type="button" onClick={install}>Update and restart</button>}
+      {!busy && <button type="button" className="is-quiet" onClick={() => setReady(null)}>Later</button>}
+    </p>
   )
 }

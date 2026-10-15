@@ -15,7 +15,7 @@ const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
 // The spaces that open as pop-outs (⌃2, 4, 5; ⌃3 is the Sky, a layer of its own), then
 // every tool from the dock's Tools menu.
-const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
+const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5], ['Dashboard', 6]]
 const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Pile', 'Sort a pile'], ['Settings', 'Settings']]
 
 /* Opens a topic (or a branch's topic) on the canvas as a map, through Find (the canvas has no list of its own). */
@@ -445,7 +445,14 @@ async function main() {
   await page.screenshot({ path: `${OUT}/settings-ring.png` })
   // Screenshots: CleanShot X is on the stand-in Mac; recent captures are off until turned on; each capture can have a key.
   await goTo('Screenshots')
-  await page.getByText('With CleanShot X', { exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: Screenshots did not say CleanShot X takes them'))
+  await page.getByRole('radio', { name: 'CleanShot X' }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: Screenshots did not offer CleanShot X'))
+  if (await page.getByRole('radio', { name: 'CleanShot X' }).getAttribute('aria-checked').catch(() => null) !== 'true') problems.push('settings: CleanShot X was not the tool while it is installed')
+  // CleanShot is never forced: the Mac's own can take them instead, and Recent captures (CleanShot's) step aside.
+  await page.getByRole('radio', { name: 'The Mac’s own' }).click()
+  await page.getByText('Save to', { exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: picking the Mac’s own did not offer where to save'))
+  if ((await page.evaluate(() => window.osatSearch.settings())).captures?.using !== 'mac') problems.push('settings: the Mac’s own screenshots were not saved as the choice')
+  await page.getByRole('radio', { name: 'CleanShot X' }).click()
+  await page.getByText('Recent captures in the quick bar', { exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: going back to CleanShot X did not bring Recent captures back'))
   const recentSwitch = page.getByRole('switch', { name: 'Show recent captures in the quick search' })
   await recentSwitch.check()
   await sleep(400)
@@ -576,24 +583,29 @@ async function main() {
   await page.keyboard.press('Home')
   await page.mouse.move(720, 700)
 
-  // Tools is a wheel with a line for each tool; the dock can move to the left or right edge (and back), and rooms keep clear of it.
+  // Tools is a launchpad: a tile for each tool (what it is in its tooltip); the dock can move to the left or right edge (and back), and rooms keep clear of it.
   room = 'dock'
   const wheelRows = page.locator('.tools-list [role="menuitem"]')
   const middleTool = () => page.locator('.tools-row:focus b').innerText().catch(() => '')
   await page.locator('.app-dock [data-space="tools"]').click()
   await page.locator('.tools-wheel').waitFor({ timeout: 3000 }).catch(() => problems.push('dock: Tools did not open its wheel'))
   if ((await wheelRows.count()) < 8) problems.push('dock: the wheel did not list the tools')
-  if (!/Think out loud with the AI on this Mac/.test(await wheelRows.first().innerText().catch(() => ''))) problems.push('dock: a tool had no line saying what it is')
+  if (!/Think out loud with the AI on this Mac/.test(await wheelRows.first().getAttribute('title').catch(() => ''))) problems.push('dock: a tool had no line saying what it is')
+  if (!await wheelRows.first().locator('.tile').count()) problems.push('dock: a tool had no app tile')
   await sleep(400)
   if (!await wheelRows.evaluateAll((rows) => rows.every((row) => { const r = row.getBoundingClientRect(); const p = row.closest('.tools-list').getBoundingClientRect(); return r.top >= p.top && r.bottom <= p.bottom && r.left >= 0 && r.right <= innerWidth }))) problems.push('dock: every tool must be visible together')
   await page.screenshot({ path: `${OUT}/desk-tools-wheel.png` })
+  await page.keyboard.press('ArrowRight')
+  await page.waitForFunction(() => document.querySelector('.tools-row:focus b')?.textContent === 'Sort a pile', null, { timeout: 3000 }).catch(async () => problems.push(`dock: → did not move to the next tile (${await middleTool()})`))
+  // ↓ goes down a whole row of tiles.
+  const columns = await page.locator('.tools-list').evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length)
   await page.keyboard.press('ArrowDown')
-  await page.waitForFunction(() => document.querySelector('.tools-row:focus b')?.textContent === 'Sort a pile', null, { timeout: 3000 }).catch(async () => problems.push(`dock: ↓ did not move the wheel (${await middleTool()})`))
+  if (await page.locator('.tools-row:focus').evaluate((node) => [...node.parentNode.children].indexOf(node)).catch(() => -1) !== 1 + columns) problems.push('dock: ↓ did not go down a row of tiles')
   await page.keyboard.press('Escape')
   await page.locator('.tools-wheel').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('dock: Esc did not close the wheel'))
   await page.locator('.app-dock [data-space="tools"]').click()
-  await page.keyboard.press('ArrowDown')
-  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
   await page.waitForFunction(() => document.querySelector('.tools-row:focus b')?.textContent === 'Journal', null, { timeout: 3000 }).catch(() => problems.push('dock: the wheel did not reach Journal'))
   await page.keyboard.press('Enter')
   await page.getByRole('dialog', { name: 'Journal' }).waitFor({ timeout: 3000 }).catch(() => problems.push('dock: Return on the middle tool did not open it'))

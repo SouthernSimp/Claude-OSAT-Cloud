@@ -258,6 +258,7 @@ contextBridge.exposeInMainWorld('osatUpdate', Object.freeze({
   check: () => ipcRenderer.invoke('update:check'),
   install: () => ipcRenderer.invoke('update:install'),
   onProgress: (listener) => listen('update:progress', listener),
+  onAvailable: (listener) => listen('update:available', listener),
 }))
 
 /* Your iPhone, through an OSAT folder in iCloud Drive: an Inbox and a copy of your notes. */
@@ -373,6 +374,7 @@ contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   media: (action) => ipcRenderer.invoke('media:control', action),
   seek: (seconds) => ipcRenderer.invoke('media:seek', seconds),
   setClear: (clear) => ipcRenderer.send('desk:clear', clear === true),
+  setBlur: (amount) => ipcRenderer.send('desk:blur', Number(amount)),
   onShown: (listener) => listen('desk:shown', listener),
 }))
 

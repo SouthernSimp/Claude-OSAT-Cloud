@@ -169,6 +169,8 @@ jobs:
           codesign --verify --strict "$APP/Contents/Resources/helpers/osat-hyper"
           test -x "$APP/Contents/Resources/helpers/osat-mouse"
           codesign --verify --strict "$APP/Contents/Resources/helpers/osat-mouse"
+          test -f "$APP/Contents/Resources/helpers/osat-blur.node"
+          codesign --verify --strict "$APP/Contents/Resources/helpers/osat-blur.node"
       - name: Check the listening engine and its helper are inside the app
         run: |
           APP="$(ls -d release/mac-arm64/OSAT.app)"

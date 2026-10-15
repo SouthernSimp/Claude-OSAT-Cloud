@@ -62,10 +62,10 @@ export function Dock({ view, navigate, storage, aiReady, extra = [], onSendUp, s
 
   const home = carried && dock.current?.offsetParent?.getBoundingClientRect()
   const wheel = [
-    ...[...SPACES.filter((space) => space.dock === false), ...TOOLS.filter((tool) => tool.id !== 'Browser')].map((tool) => ({ id: tool.id, label: tool.label, icon: tool.icon, hint: tool.hint, checked: current === tool.id, onSelect: () => navigate(tool.id) })),
-    ...extra.map((item) => ({ id: item.label, label: item.label, icon: item.icon, hint: item.hint || '', checked: item.checked, onSelect: item.onSelect })),
-    { id: 'Appearance', label: 'Appearance', icon: CircleHalf, hint: 'Light or dark, the backdrop and the blur', onSelect: () => navigate(SETTINGS.id, { section: 'appearance' }) },
-    { id: SETTINGS.id, label: SETTINGS.label, icon: SETTINGS.icon, hint: SETTINGS.hint, keys: '⌘,', checked: current === SETTINGS.id, onSelect: () => navigate(SETTINGS.id) },
+    ...[...SPACES.filter((space) => space.dock === false), ...TOOLS.filter((tool) => tool.id !== 'Browser')].map((tool) => ({ id: tool.id, label: tool.label, icon: tool.icon, tint: tool.tint, hint: tool.hint, checked: current === tool.id, onSelect: () => navigate(tool.id) })),
+    ...extra.map((item) => ({ id: item.label, label: item.label, icon: item.icon, tint: item.tint || 'slate', hint: item.hint || '', checked: item.checked, onSelect: item.onSelect })),
+    { id: 'Appearance', label: 'Appearance', icon: CircleHalf, tint: 'indigo', hint: 'Light or dark, the backdrop and the blur', onSelect: () => navigate(SETTINGS.id, { section: 'appearance' }) },
+    { id: SETTINGS.id, label: SETTINGS.label, icon: SETTINGS.icon, tint: SETTINGS.tint, hint: SETTINGS.hint, keys: '⌘,', checked: current === SETTINGS.id, onSelect: () => navigate(SETTINGS.id) },
   ]
 
   return (

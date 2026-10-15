@@ -75,6 +75,8 @@ export function cleanCaptureSettings(saved, { validHotkey = () => true } = {}) {
     // Recent captures in the quick search read CleanShot's own folder, so they are off until turned on.
     recent: from.recent === true,
     saveTo: SAVE_TO.some(([id]) => id === from.saveTo) ? from.saveTo : 'desktop',
+    // CleanShot X is used when it's on this Mac, unless Nate picks the Mac's own screenshots instead (never forced).
+    using: from.using === 'mac' ? 'mac' : 'cleanshot',
   }
 }
 
