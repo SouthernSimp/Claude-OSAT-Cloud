@@ -303,7 +303,7 @@ export function FieldDesk({
     } else if (item.kind === 'folder') {
       openMenu(event, [{ label: 'Open on the canvas', icon: TreeStructure, onSelect: () => openItem(item) }])
     } else if (item.kind === 'pile') {
-      openMenu(event, [{ label: 'Open Unsorted', icon: NotePencil, onSelect: () => openItem(item) }])
+      openMenu(event, [{ label: 'Open Just in', icon: NotePencil, onSelect: () => openItem(item) }])
     }
   }
 
@@ -362,7 +362,7 @@ export function FieldDesk({
     const next = setDown(places, noteId, null)
     commit((state) => moveSticky(state, noteId, folderId))
     changes(was, next).forEach(([key, spot]) => onPlace(key, spot))
-    const name = folderId ? workspace.folders.find((folder) => folder.id === folderId)?.name : 'Unsorted'
+    const name = folderId ? workspace.folders.find((folder) => folder.id === folderId)?.name : 'Just in'
     if (before && name) {
       showUndo(`Moved to ${name}`, () => {
         commit((state) => ({ ...state, notes: state.notes.map((note) => (note.id === noteId ? { ...note, folderId: before.folderId, unsorted: before.unsorted, rank: before.rank, kind: before.kind, ...(before.at ? { at: before.at } : {}) } : note)) }))
@@ -677,12 +677,12 @@ function DeskIcon({ item, fresh, lit, onOpen, onHover, onFile, onMenu, move }) {
     accepts: item.kind === 'folder' || item.kind === 'pile' ? ['note'] : [],
     onDrop: ({ id }) => onFile(id, item.kind === 'folder' ? item.id : null),
   })
-  const label = item.kind === 'note' ? item.note.title : item.kind === 'folder' ? item.folder.name : item.kind === 'pile' ? 'Unsorted' : `${item.count} more`
+  const label = item.kind === 'note' ? item.note.title : item.kind === 'folder' ? item.folder.name : item.kind === 'pile' ? 'Just in' : `${item.count} more`
   return (
     <button
       type="button"
       className={`icon is-${item.kind} ${fresh ? 'is-fresh' : ''} ${lit ? 'is-linked' : ''}`}
-      aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open topic ${item.folder.name}` : item.kind === 'pile' ? `Unsorted, ${item.count} ${item.count === 1 ? 'sticky' : 'stickies'}` : `See ${item.count} more notes`}
+      aria-label={item.kind === 'note' ? `Open note ${item.note.title}` : item.kind === 'folder' ? `Open topic ${item.folder.name}` : item.kind === 'pile' ? `Just in, ${item.count} ${item.count === 1 ? 'sticky' : 'stickies'}` : `See ${item.count} more notes`}
       title={item.kind === 'note' ? 'Drag it onto the desk, or into a topic' : undefined}
       onClick={onOpen}
       onContextMenu={item.kind === 'more' ? undefined : onMenu}

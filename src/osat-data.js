@@ -8,7 +8,6 @@ import { normalizeHabits, normalizeReflections } from './daily-practice.js'
 import { normalizeFocusSession } from './focus-session.js'
 import { normalizeNote, parseTags } from './note-core.js'
 import { normalizeFolders } from './notes-model.js'
-import { normalizeBoardDoc, reconcileBoards } from './board-model.js'
 
 export { normalizeNote, parseTags }
 
@@ -98,9 +97,10 @@ export function normalizeWorkspace(value) {
     calendar: normalizeCalendar(input.calendar),
     settings: isObject(input.settings) ? input.settings : {},
     chats: (Array.isArray(input.chats) ? input.chats : []).map(normalizeChat).filter(Boolean),
-    sorter: null,
+    // The old boards (Phase 1's sorter) are no longer shown: kept exactly as they were, never laid out
+    // again. Placing a card for every sticky on each load made opening a window take seconds (Phase 67).
+    sorter: isObject(input.sorter) && Array.isArray(input.sorter.boards) ? input.sorter : null,
   }
-  state.sorter = reconcileBoards({ ...state, sorter: normalizeBoardDoc(input.sorter) })
   return state
 }
 

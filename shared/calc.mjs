@@ -208,7 +208,7 @@ const HOLIDAYS = {
 
 /* A day written in words: a holiday, "dec 25", "25 december", "12/25", "2026-12-25", "friday", "tomorrow". Without a
    year, the next one from `today` (`ahead`) or the last one (`!ahead`). */
-function dayOf(words, today, ahead = true) {
+export function dayOf(words, today, ahead = true) {
   const text = String(words || '').toLowerCase().replace(/[.,]/g, '').replace(/^(the|next)\s+/, '').trim()
   const pick = (make) => {
     const year = today.getFullYear()

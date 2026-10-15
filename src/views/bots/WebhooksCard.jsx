@@ -158,7 +158,7 @@ function InboxCard({ bridge, inbox, offline }) {
     <section className="content-card bots-card">
       <p className="eyebrow">Stickies from services</p>
       <h2>{on ? 'Services can add stickies.' : 'Let services add stickies.'}</h2>
-      <p>Zapier, IFTTT, a form or a script can add a sticky to Unsorted by sending words to one web address. The words come through ntfy, a free relay OSAT checks every minute, so your Mac stays closed to the internet.</p>
+      <p>Zapier, IFTTT, a form or a script can add a sticky to Just in by sending words to one web address. The words come through ntfy, a free relay OSAT checks every minute, so your Mac stays closed to the internet.</p>
       {inbox?.error && <p className="bots-warning" role="status">{inbox.error}</p>}
       <div className="button-row">
         {on

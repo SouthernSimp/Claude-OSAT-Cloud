@@ -130,10 +130,10 @@ async function main() {
 
     // A sticky, with Undo.
     await page.getByRole('button', { name: 'Make a sticky' }).click()
-    await page.getByText('Made a sticky in Unsorted').waitFor({ timeout: 3000 }).catch(() => problems.push('Make a sticky didn’t say so'))
+    await page.getByText('Made a sticky in Just in').waitFor({ timeout: 3000 }).catch(() => problems.push('Make a sticky didn’t say so'))
     await page.screenshot({ path: `${OUT}/sticky.png` })
     await page.locator('.toast button', { hasText: 'Undo' }).click()
-    check(await page.getByText('Made a sticky in Unsorted').count() === 0, 'Undo left the toast')
+    check(await page.getByText('Made a sticky in Just in').count() === 0, 'Undo left the toast')
 
     // Ask about this message: nothing before the press; the AI on this Mac only; the email quoted as data.
     check(await page.evaluate(() => window.__asked.length) === 0, 'the AI was asked before the button')

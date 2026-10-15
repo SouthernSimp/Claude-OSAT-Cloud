@@ -12,6 +12,8 @@ import { ObsidianView } from "../Obsidian.jsx";
 import { DeskKey, useDeskKeys } from "./launcher.jsx";
 import { Group, Legacy, Page, Row, Switch } from "./parts.jsx";
 import { autoFileSettings } from "../../sky/auto-file.js";
+import { CalendarChoice } from "../../intake/CalendarChoice.jsx";
+import { datesSettings, setDates } from "../../intake/dates.js";
 import { MorningBriefSettings } from "./MorningBrief.jsx";
 import { OvernightSettings } from "./Overnight.jsx";
 
@@ -234,7 +236,7 @@ function PhoneCards() {
       <section className="content-card phone-card">
         <p className="eyebrow">iPhone</p>
         <h2>Reach OSAT from your iPhone.</h2>
-        <p>OSAT can keep a folder in your iCloud Drive. Text you drop into it from your iPhone becomes a sticky in Unsorted, and a copy of your notes waits there to read.</p>
+        <p>OSAT can keep a folder in your iCloud Drive. Text you drop into it from your iPhone becomes a sticky in Just in, and a copy of your notes waits there to read.</p>
         <p className="phone-privacy"><LockSimple /> This is the one thing that leaves this Mac. It goes to your own iCloud Drive, which Apple keeps; turn on Advanced Data Protection in iCloud settings for end-to-end encryption.</p>
         <button className="primary-button" type="button" disabled={busy} onClick={() => act(bridge.enable)}>
           <DeviceMobile /> Use iCloud Drive
@@ -361,13 +363,22 @@ function ModelTable({ status, download, working, onInstall }) {
 
 export function AiPage({ page, workspace, commit, showUndo }) {
   const filing = autoFileSettings(workspace.settings);
+  const dates = datesSettings(workspace.settings);
   const setFiling = (on) => commit((state) => ({ ...state, settings: { ...(state.settings || {}), autoFile: { ...(state.settings?.autoFile || {}), on } } }));
   return (
     <Page page={page}>
-      <Group title="Sorting" note="Only the AI's own picks move. What it isn't sure of stays in Unsorted for you, and Notes → Filed for you shows where everything went.">
+      <Group title="Sorting" note="Only the AI's own picks move. What it isn't sure of waits in Notes → Just in, which shows where everything went.">
         <Row title="File new stickies for me" hint="When you pause, the AI files each sticky into its topic. Undo takes a run back." words="auto sort file organize unsorted summarize shorten">
           <Switch label="File new stickies for me" checked={filing.on} onChange={setFiling} />
         </Row>
+        <Row title="Put dates on my calendar" hint="A sticky that names a day goes on your calendar once you stop writing. Undo, or Notes → Coming up, takes it off." words="calendar dates events google outlook icloud coming up">
+          <Switch label="Put dates on my calendar" checked={dates.on} onChange={(on) => commit((state) => setDates(state, { on }))} />
+        </Row>
+        {dates.on && (
+          <Row title="Calendar for new dates" hint="One on this Mac passes them on to Google, Outlook or iCloud." words="calendar google outlook icloud">
+            <CalendarChoice workspace={workspace} commit={commit} />
+          </Row>
+        )}
       </Group>
       <MorningBriefSettings showUndo={showUndo} />
       <OvernightSettings showUndo={showUndo} />

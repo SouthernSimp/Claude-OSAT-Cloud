@@ -101,7 +101,7 @@ test('smart lists, search grammar, sorting and counts', () => {
   assert.deepEqual(sortNotes(notesInList(state, 'all'), 'title').map((note) => note.id), ['a', 'b', 'daily-plan-2026-09-13'])
   assert.deepEqual(sortNotes(notesInList(state, 'all'), 'updated').map((note) => note.id), ['a', 'daily-plan-2026-09-13', 'b'])
   assert.deepEqual(tagIndex(state.notes), [{ tag: 'work', count: 1 }])
-  assert.deepEqual(noteCounts(state), { all: 3, unsorted: 1, pinned: 1, daily: 1, archived: 1, trashed: 0 })
+  assert.deepEqual(noteCounts(state), { all: 3, unsorted: 1, questions: 0, buy: 0, coming: 0, pinned: 1, daily: 1, archived: 1, trashed: 0 })
   assert.deepEqual(notesInList(state, 'unsorted').map((note) => note.id), ['b'], 'in no node; the day page has its own home')
 })
 

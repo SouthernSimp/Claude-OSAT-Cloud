@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
-import { gistMessages, readGistAnswer } from '../../shared/ai-tasks.mjs'
+import { gistMessages, readGistAnswer, readWhatAnswer, whatMessages } from '../../shared/ai-tasks.mjs'
+import { guessWhat, wordsOf } from '../../shared/what-model.mjs'
 import { cleanError, useAi } from '../assistant/useAi.js'
 import { streamLocalMessage } from '../local-ai.js'
-import { autoFileSettings, fileForYou, fileRequests, filedLine, filingGroups, GISTS, needsGist, readyToFile, withGist } from './auto-file.js'
+import { aiWhat } from '../notes-model.js'
+import { autoFileSettings, BATCH, fileForYou, fileRequests, filedLine, filingGroups, GISTS, needsGist, readyToFile, withGist } from './auto-file.js'
 import { undoFiling } from './sort-review.js'
 
 /* Runs auto-file.js on the desk, which is always open (hidden or not): once a pile of new
@@ -102,6 +104,15 @@ export function useAutoFile({ workspace, commit, hydrated, onFiled, onToast }) {
         }
         latest.current.onToast?.(filedLine(done.state, done.moved), undo)
       }
+      // What each one is (Phase 67), for those code couldn't tell on its own. Best effort: filing stands either way.
+      try {
+        const unsure = stickies.filter((note) => !note.what && !guessWhat(note).sure)
+        for (let from = 0; from < unsure.length; from += BATCH) {
+          const batch = unsure.slice(from, from + BATCH)
+          const picks = readWhatAnswer(await ask(whatMessages(batch.map(wordsOf))), batch.length)
+          commit((state) => aiWhat(state, picks.map(({ sticky, what }) => [batch[sticky].id, what])))
+        }
+      } catch { /* code's guess stays */ }
       resting.current = 0
       say({ state: 'idle' })
     } catch (error) {

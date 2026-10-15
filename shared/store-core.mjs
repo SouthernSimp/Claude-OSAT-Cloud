@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 12
+export const SCHEMA = 13
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -77,6 +77,9 @@ export const migrations = [
   // 12: a sticky may say the AI filed it (`filed`) and carry a short version of itself in the
   // AI's words (`gist`). An older OSAT would drop both, so it refuses this data.
   { from: 11, run: (doc) => doc },
+  // 13: a sticky may say what it is (`what`, when the AI or Nate said so), when it was done
+  // (`doneAt`) and the calendar event its day became (`cal`). An older OSAT would drop them.
+  { from: 12, run: (doc) => doc },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding

@@ -123,7 +123,7 @@ function MeetingsRoom({ bridge, navigate }) {
         <section className="mt-card">
           <div>
             <strong>{status.last.title}</strong>
-            <small>{status.last.full ? 'Written up. It is in Unsorted, with the words beside it.' : 'The words are saved in Unsorted. They are not summarised: no AI was set up.'}</small>
+            <small>{status.last.full ? 'Written up. It is in Just in, with the words beside it.' : 'The words are saved in Just in. They are not summarised: no AI was set up.'}</small>
           </div>
           <button type="button" className="primary-button" onClick={() => navigate('Notes', { noteId: status.last.writeUpId })}>Open</button>
           <button type="button" className="outline-button" disabled={busy} onClick={() => run(bridge.undo)}>Undo</button>
