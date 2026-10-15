@@ -127,7 +127,7 @@ function MailRoom({ bridge, commit }) {
     if (!text) return
     let made = null
     commit((state) => { const result = addSticky(state, text, null, { source: 'Mail' }); made = result.note; return result.state })
-    if (made) showUndo('Made a sticky in Unsorted', () => commit((state) => purgeNotes(state, [made.id])))
+    if (made) showUndo('Made a sticky in Just in', () => commit((state) => purgeNotes(state, [made.id])))
   }
 
   /* Asking is only ever pressed, never automatic, and only the AI on this Mac answers (askLocalModel). */

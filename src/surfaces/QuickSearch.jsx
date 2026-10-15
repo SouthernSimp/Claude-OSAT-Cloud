@@ -207,7 +207,7 @@ export function QuickSearchSurface() {
       return made ? linkMentions(result.state, made.id) : result.state
     })
     setText(''); setMode(null); setCursor(null)
-    said(made ? 'Saved to Unsorted' : 'Nothing to save', 1400)
+    said(made ? 'Saved to Just in' : 'Nothing to save', 1400)
     if (made) hideLater(1100)
   }, [workspace, commit, said, hideLater])
 
@@ -566,7 +566,7 @@ export function QuickSearchSurface() {
 
   const ModeIcon = mode === 'sticky' ? NotePencil : mode === 'ask' ? Sparkle : MagnifyingGlass
   const placeholder = selected ? 'What should the AI do with it? Pick one, or type your own…'
-    : mode === 'sticky' ? 'Write a sticky… Return saves it to Unsorted'
+    : mode === 'sticky' ? 'Write a sticky… Return saves it to Just in'
     : mode === 'ask' ? 'Ask the AI… Return asks'
       : scope === 'all' ? `Search, ask, or write a sticky…${full ? '' : '  ↓ for what you copied'}` : scope === KILL_SCOPE ? 'Filter running apps…' : scope === MENUS_SCOPE ? `Search ${found.menus?.app || 'this app'}’s menus…` : `Search ${tabs.find(([id]) => id === scope)?.[1] || ''}…`
 

@@ -7,6 +7,9 @@ you can click) gives every sticky a kind and a board, keeps Questions, Groceries
 to your calendar, shows every move in Just in with Undo, and turns the intake into a flow you can watch, n8n-style.
 The Sky's mind map and the six sorting screens go. Phases 67–71.
 
+Phase 67 (in review): every sticky now says what it is, Notes keeps Questions, To buy and Coming up for you,
+dates go on your calendar by themselves (Settings → AI picks which one), and Just in shows what came in and where it went.
+
 ## October 6 (evening): the AI files stickies for you
 
 Nate's biggest problem: writing down a pile of stickies, then having to sort them. Now, like Mem,
@@ -164,8 +167,8 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 65 | OSAT as my Raycast (Oct 14): the Hyper key checks itself and repairs the stale privacy entry that silenced it, and puts Caps Lock back when another app takes it; windows move and keys are pressed through Accessibility only (no System Events); Bring in from Raycast (Nate's keys, Snippets and Quicklinks exports; links to folders and apps' own links); Hyper N a quick sticky with lists, bold and screenshots; Uninstall an app with its leftovers, with Undo; Keys for this app (every shortcut of the app you're in, and any menu item from the bar); a polished pass with gentle motion | Merged (PR #94), Oct 14 |
 | 66 | A big polish pass (Oct 14): a Dashboard (dock, ⌘6) with your numbers, a week of writing, the biggest topics, what's next and every part of OSAT as an app tile; Tools as a launchpad of app tiles; the quick bar redrawn like Raycast (app-style icons, one clean list, the main action and ⌘K in its foot); app icons in Settings → Shortcuts; screenshots with CleanShot X or the Mac's own, your choice; Appearance → Blur is a real blur; Settings says less (the longer words behind ⓘ); OSAT looks for updates by itself; nothing can grey out the whole desk again, and one part that can't start no longer stops OSAT opening | In review |
 | 57 | Meetings (Tools → Meetings): OSAT listens to a meeting on your Mac (you, and the other people through what your Mac plays) and writes it up when you stop: a summary, what was decided, a to-do list, and the words themselves, as two notes. The listening and the writing happen on your Mac; the sound is deleted once it is written up | In review |
-| 67 | Kinds and boards: every sticky gets a kind (Idea, Question, Problem, To-do, Date, To buy), topics become boards (OSAT, Fortis, Home…), Questions / Groceries / Coming up kept for you, dates go to your calendar, Just in shows where everything went with Undo | Planned |
-| 68 | The new canvas: each board as a Map (one column per kind), a Board (Later, Next, Doing, Done) and a List; the old Sky and the six sorting screens go | Planned |
+| 67 | What it is, and the lists OSAT keeps for you: every sticky reads as an Idea, Question, Problem, To-do, Date or To buy (code at once and offline, the AI for the unclear ones, your pick wins); Notes → Questions, To buy and Coming up; a date goes on your calendar on its own (a Mac one passes it to Google), with Undo; Just in takes in Unsorted and Filed for you; opening a window no longer lays out the old boards (seconds with many stickies) | In review |
+| 68 | Boards and the new canvas: topics become boards (OSAT, Fortis, Home…); each board as a Map (one column per kind), a Board (Later, Next, Doing, Done) and a List; the old Sky and the sorting screens go | Planned |
 | 69 | Flows (n8n-style, on this Mac): watch each sticky go through the intake step by step; then Meeting → to-dos and the Morning brief as flows | Planned |
 | 70 | Soul and memory: SOUL.md, MEMORY.md and RULES.md, plain files you can read and change; RULES.md says what the AI may do on its own | Planned |
 | 71 | Connections: one screen for the AI (built in, Claude, ChatGPT, a key, a tool server) and your accounts (Google, Microsoft 365, Granola, Slack, Notion); one Offline switch | Planned |

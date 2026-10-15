@@ -38,7 +38,7 @@ ${acting ? 'You can use tools for this question: they look things up and make th
 Allowed types:
 - {"type":"next-step","text":"..."} — one actionable step
 - {"type":"note","title":"...","markdown":"..."} — a new note
-- {"type":"capture","text":"..."} — a raw thought to sort later (it lands in Unsorted)
+- {"type":"capture","text":"..."} — a raw thought to sort later (it lands in Just in)
 - {"type":"event","title":"...","start":"YYYY-MM-DDTHH:MM","end":"YYYY-MM-DDTHH:MM"} — a calendar event
 
 Never invent actions the person did not ask for. Never mention this block in your prose; they see it as buttons. If nothing is requested, omit the block entirely.`}${aboutMe.trim() ? `
@@ -109,7 +109,7 @@ export const wantsActions = (question) => ASKING.test(String(question || ''))
 
 export function describeAction(action) {
   if (action.type === 'next-step') return { label: 'Add next step', detail: action.text }
-  if (action.type === 'capture') return { label: 'Save to Unsorted', detail: action.text }
+  if (action.type === 'capture') return { label: 'Save to Just in', detail: action.text }
   if (action.type === 'note') return { label: 'Create note', detail: action.title }
   return {
     label: 'Add event',

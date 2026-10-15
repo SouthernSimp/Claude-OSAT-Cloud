@@ -19,6 +19,7 @@ import { SETTINGS, spaceForKey, titleFor } from '../lib/spaces.js'
 import { NotesView } from '../notes/NotesView.jsx'
 import { Sky } from '../sky/Sky.jsx'
 import { useAutoFile } from '../sky/useAutoFile.js'
+import { useDates } from '../intake/useDates.js'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { importScan } from '../nodes-model.js'
 import { relinkRenamedNote, updateNote } from '../notes-model.js'
@@ -147,6 +148,9 @@ export function Desk() {
   // The AI files new stickies on its own once you stop writing (auto-file.js); one line says where, with Undo.
   const [filedToast, showFiled] = useUndoToast()
   useAutoFile({ workspace, commit, hydrated, onFiled: (noteId) => offDesk(noteId), onToast: showFiled })
+  // A sticky that is a date goes on the calendar on its own (Phase 67), with its own line and Undo.
+  const [datesToast, showDates] = useUndoToast()
+  useDates({ workspace, commit, hydrated, onToast: showDates })
 
   /* Blur (Settings → Appearance): main blurs what's behind the desk by this much; zero is a clear desk. */
   const blurAmount = Number.isFinite(workspace?.settings?.blur) ? workspace.settings.blur : 60
@@ -526,6 +530,7 @@ export function Desk() {
       <GlassDefs />
       <SaveStatus recovery />
       {filedToast}
+      <div className="toasts-above">{datesToast}</div>
       <div className="workspace-content is-filled" inert={welcome || tour || away || undefined}>
         <button type="button" className="sky-entry" aria-label="Open the canvas" onClick={() => goUp()}><TreeStructure aria-hidden="true" /> Canvas <kbd>⌘3</kbd></button>
         <FieldDesk

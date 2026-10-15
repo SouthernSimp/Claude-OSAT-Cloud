@@ -1,19 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Archive, CalendarBlank, CaretRight, Clock, DotsThree, Folder, FolderPlus, FolderSimple, Hash, Notebook, PushPin, ShareNetwork, Sparkle, Trash, Tray,
+  Archive, CalendarBlank, CalendarCheck, CaretRight, Clock, DotsThree, Folder, FolderPlus, FolderSimple, Hash, Notebook, PushPin, Question, ShareNetwork,
+  ShoppingCart, Trash, Tray,
 } from "@phosphor-icons/react";
 import { Menu } from "../lib/Menu.jsx";
-import { canMoveFolder, folderSubtree, folderTree, isActiveNote, noteCounts, tagIndex } from "../notes-model.js";
+import { canMoveFolder, folderSubtree, folderTree, isActiveNote, isJustInList, noteCounts, tagIndex } from "../notes-model.js";
 
+// Just in took in Unsorted and Filed for you (Phase 67): everything that came in, and where it went.
 const SMART = [
-  ["unsorted", "Unsorted", Tray, "unsorted"],
-  ["filed", "Filed for you", Sparkle, null],
+  ["justin", "Just in", Tray, "unsorted"],
   ["all", "All notes", Notebook, "all"],
   ["pinned", "Pinned", PushPin, "pinned"],
   ["recent", "Recent", Clock, null],
   ["daily", "Daily notes", CalendarBlank, "daily"],
   ["archived", "Archive", Archive, "archived"],
   ["trash", "Trash", Trash, "trashed"],
+];
+
+// Lists OSAT keeps for you (Phase 67), from what each sticky is, wherever it was filed.
+const KEPT = [
+  ["questions", "Questions", Question, "questions"],
+  ["buy", "To buy", ShoppingCart, "buy"],
+  ["coming", "Coming up", CalendarCheck, "coming"],
 ];
 
 export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
@@ -62,21 +70,35 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
       </div>
 
       <nav className="organizer-section" aria-label="Smart lists">
-        {SMART.map(([id, label, Icon, countKey]) => (
-          <button
-            key={id}
-            type="button"
-            className={`organizer-row ${ui.list === id ? "active" : ""} ${dropTarget === `smart:${id}` ? "is-drop" : ""}`}
-            onClick={() => pick(id)}
-            {...(id === "unsorted" ? {
-              onDragOver: (event) => { if ([...event.dataTransfer.types].includes("text/osat-notes")) { event.preventDefault(); setDropTarget("smart:unsorted"); } },
-              onDragLeave: () => setDropTarget(null),
-              onDrop: (event) => onDrop(event, null),
-            } : {})}
-          >
+        {SMART.map(([id, label, Icon, countKey]) => {
+          const active = id === "justin" ? isJustInList(ui.list) : ui.list === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              className={`organizer-row ${active ? "active" : ""} ${dropTarget === `smart:${id}` ? "is-drop" : ""}`}
+              onClick={() => pick(id)}
+              {...(id === "justin" ? {
+                onDragOver: (event) => { if ([...event.dataTransfer.types].includes("text/osat-notes")) { event.preventDefault(); setDropTarget("smart:justin"); } },
+                onDragLeave: () => setDropTarget(null),
+                onDrop: (event) => onDrop(event, null),
+              } : {})}
+            >
+              <Icon weight={active ? "fill" : "regular"} />
+              <span>{label}</span>
+              {countKey && counts[countKey] > 0 && <small>{counts[countKey]}</small>}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="organizer-label"><span>Kept for you</span></div>
+      <nav className="organizer-section" aria-label="Kept for you">
+        {KEPT.map(([id, label, Icon, countKey]) => (
+          <button key={id} type="button" className={`organizer-row ${ui.list === id ? "active" : ""}`} onClick={() => pick(id)}>
             <Icon weight={ui.list === id ? "fill" : "regular"} />
             <span>{label}</span>
-            {countKey && counts[countKey] > 0 && <small>{counts[countKey]}</small>}
+            {counts[countKey] > 0 && <small>{counts[countKey]}</small>}
           </button>
         ))}
       </nav>

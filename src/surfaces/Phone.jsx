@@ -119,7 +119,7 @@ function Today({ notes, commit, open }) {
       setSaved('Added to today')
     } else {
       commit((state) => captureThought(state, text, 'iPhone').state)
-      setSaved('Saved in Unsorted')
+      setSaved('Saved in Just in')
     }
     setDraft('')
   }
@@ -147,7 +147,7 @@ function Today({ notes, commit, open }) {
           onChange={(event) => setDraft(event.target.value)}
         />
         <div className="phone-capture-foot">
-          <span role="status">{saved ? <><Check /> {saved}</> : mode === 'step' ? 'Goes on today’s page' : 'Waits in Unsorted until you sort it'}</span>
+          <span role="status">{saved ? <><Check /> {saved}</> : mode === 'step' ? 'Goes on today’s page' : 'Waits in Just in until it’s filed'}</span>
           <button type="submit" aria-label={mode === 'step' ? 'Add the step' : 'Save the sticky'} disabled={!draft.trim()}><ArrowUp weight="bold" /></button>
         </div>
       </form>
@@ -173,7 +173,7 @@ function Today({ notes, commit, open }) {
 
       {unsorted.length > 0 && (
         <section className="phone-card glass" aria-labelledby="phone-unsorted">
-          <h2 id="phone-unsorted">Unsorted</h2>
+          <h2 id="phone-unsorted">Just in</h2>
           <ul className="phone-list">{unsorted.slice(0, 6).map((note) => <Row key={note.id} note={note} open={open} />)}</ul>
         </section>
       )}
@@ -201,7 +201,7 @@ function Notes({ notes, open }) {
         <input type="search" value={query} placeholder="Search your notes" aria-label="Search your notes" onChange={(event) => setQuery(event.target.value)} />
       </label>
       <div className="phone-seg phone-seg-wide" role="radiogroup" aria-label="Which notes">
-        {[['all', 'All'], ['unsorted', 'Unsorted'], ['pinned', 'Pinned']].map(([id, label]) => (
+        {[['all', 'All'], ['unsorted', 'Just in'], ['pinned', 'Pinned']].map(([id, label]) => (
           <button key={id} type="button" role="radio" aria-checked={list === id} onClick={() => setList(id)}>{label}</button>
         ))}
       </div>
@@ -250,7 +250,7 @@ function Editor({ note, commit, close, trash }) {
         aria-label="Note"
         onChange={(event) => commit((state) => updateNote(state, note.id, { markdown: event.target.value }))}
       />
-      <p className="phone-editor-foot">{note.unsorted ? 'In Unsorted · ' : ''}Edited {formatRelativeTime(note.updatedAt)}</p>
+      <p className="phone-editor-foot">{note.unsorted ? 'In Just in · ' : ''}Edited {formatRelativeTime(note.updatedAt)}</p>
     </section>
   )
 }

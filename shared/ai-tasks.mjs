@@ -4,6 +4,7 @@
    reader of the answer, since small models don't always keep to the format. Pure. */
 
 import { markdownTree, NodeFileError } from './node-file.mjs'
+import { WHATS } from './what-model.mjs'
 
 const clip = (value, max) => String(value || '').trim().slice(0, max)
 const SYSTEM = { role: 'system', content: 'You help someone organise their own notes in OSAT. Keep their words where you can, never invent facts, and answer only in the form asked, with no introduction.' }
@@ -127,6 +128,45 @@ export function readSortUnsortedAnswer(text, placeNames, stickyCount) {
     seen.add(sticky)
   }
   return { homes, made: [...fresh.values()].filter((group) => group.stickies.length > 1) }
+}
+
+/* ---------- What is it? (Phase 67) ---------- */
+
+/* The stickies code couldn't read on its own (what-model.mjs), each to be named in one word. */
+export function whatMessages(stickies) {
+  return [SYSTEM, {
+    role: 'user',
+    content: `These are stickies someone wrote quickly. Say what each one is, in one word:
+idea (something to try or build), question (something to find out), problem (something wrong), todo (something to do), date (something happening on a day), buy (something to buy), note (anything else).
+
+${stickies.map((words, index) => `${index + 1}. ${clip(words, 200).replace(/\s+/g, ' ')}`).join('\n')}
+
+Write one line per sticky: its number, a colon and the word. For example:
+1: idea
+2: buy`,
+  }]
+}
+
+// Words a model uses for each kind besides its own.
+const WHAT_WORDS = {
+  idea: 'idea', thought: 'idea', question: 'question', problem: 'problem', bug: 'problem', issue: 'problem', complaint: 'problem',
+  todo: 'todo', 'to do': 'todo', 'to-do': 'todo', task: 'todo', chore: 'todo', date: 'date', event: 'date', appointment: 'date',
+  calendar: 'date', buy: 'buy', shopping: 'buy', grocery: 'buy', groceries: 'buy', purchase: 'buy', note: 'note', other: 'note',
+}
+
+/* [{ sticky, what }] (0-based), each sticky once, only kinds there are. */
+export function readWhatAnswer(text, stickyCount) {
+  const found = new Map()
+  for (const line of unwrap(text).split('\n')) {
+    const match = /^\s*(?:sticky\s*)?#?(\d+)\s*(?:[:.)=→]|-+>?)+\s*\**\s*([a-z][a-z -]*)/i.exec(line.replace(/[*_`]/g, ''))
+    if (!match) continue
+    const sticky = Number(match[1]) - 1
+    const said = match[2].toLowerCase().trim()
+    const what = WHAT_WORDS[said] || WHAT_WORDS[said.split(/\s+/)[0]]
+    if (sticky < 0 || sticky >= stickyCount || found.has(sticky) || !WHATS.includes(what)) continue
+    found.set(sticky, what)
+  }
+  return [...found].map(([sticky, what]) => ({ sticky, what }))
 }
 
 /* ---------- A long sticky, shortened ---------- */

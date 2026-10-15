@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js';
 import { captureThought, keepNotes, moveNotes, notesInList, noteCounts, createFolder } from '../src/notes-model.js';
 
-test('a captured thought is one unsorted note, on the Mindmap too, including after reload', () => {
+test('a captured thought is one unsorted note in Just in, including after reload', () => {
   const before = createDefaultWorkspace();
   assert.equal(captureThought(before, '  ').state, before);
   const captured = captureThought(before, 'A new chapter\n\nKeep [[Reading list]] close. #personal', 'Overlay');
@@ -15,7 +15,7 @@ test('a captured thought is one unsorted note, on the Mindmap too, including aft
   assert.deepEqual(note.tags, ['personal']);
   assert.equal(note.unsorted, true);
   assert.equal(note.source, 'Overlay');
-  assert.ok(reloaded.sorter.boards[0].notes.some((card) => card.id === note.id));
+  assert.deepEqual(notesInList(reloaded, 'justin').map((item) => item.id), [note.id]);
   assert.deepEqual(notesInList(reloaded, 'unsorted').map((item) => item.id), [note.id]);
   assert.equal(noteCounts(reloaded).unsorted, 1);
 });

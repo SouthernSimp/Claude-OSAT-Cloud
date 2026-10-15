@@ -440,7 +440,7 @@ export function Line({
             )}
             {!answer.busy && answer.text.trim() && (
               answer.savedId
-                ? <span className="home-answer-saved"><NotePencil /> Saved to Unsorted</span>
+                ? <span className="home-answer-saved"><NotePencil /> Saved to Just in</span>
                 : <button type="button" onClick={saveAnswer}><NotePencil /> Save as a note</button>
             )}
           </footer>

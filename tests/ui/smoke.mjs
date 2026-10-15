@@ -116,9 +116,9 @@ async function main() {
   await page.goto(url)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
   await page.keyboard.press('Control+2')
-  await page.locator('.organizer-row', { hasText: 'Unsorted' }).first().click()
+  await page.locator('.organizer-row', { hasText: 'Just in' }).first().click()
   await page.locator('.note-row', { hasText: 'Smoke test thought' }).first().waitFor({ timeout: 5000 })
-    .catch(() => problems.push('capture: a thought typed on home was not in Unsorted after a reload'))
+    .catch(() => problems.push('capture: a thought typed on home was not in Just in after a reload'))
 
   // Each room opens as a pop-out over the desk, and Esc closes it again.
   async function visit(view, go, theme) {
@@ -949,7 +949,7 @@ async function main() {
     await page.locator('.sky-layer').getByRole('button', { name: 'Desk', exact: true }).click()
     await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 })
   }
-  await page.getByRole('button', { name: /^Unsorted, / }).click()
+  await page.getByRole('button', { name: /^Just in, / }).click()
   await page.getByRole('dialog', { name: 'Notes' }).waitFor({ timeout: 5000 })
     .catch(() => problems.push('pop-outs: the Unsorted pile did not open Unsorted'))
   await page.locator('.popout.is-top .popout-bar strong').click()
@@ -1097,7 +1097,7 @@ async function main() {
   await bar.screenshot({ path: `${OUT}/QuickBar-words.png` })
   // ⌥Return: straight to Unsorted.
   await bar.keyboard.press('Alt+Enter')
-  await bar.locator('.qs-said', { hasText: 'Saved to Unsorted' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: ⌥Return did not save a sticky`))
+  await bar.locator('.qs-said', { hasText: 'Saved to Just in' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: ⌥Return did not save a sticky`))
   const kept = await bar.evaluate(async () => (await window.osat?.store?.load?.())?.doc?.notes?.map((note) => [note.title, note.source, note.unsorted]) ?? null)
   if (kept && !kept.some(([title, source, unsorted]) => title === 'pack the tent' && source === 'Quick bar' && unsorted)) problems.push(`${room}: the sticky was not in Unsorted (${JSON.stringify(kept)})`)
   // Commands by word: "sticky" starts one, "clipboard" opens the history.
@@ -1217,7 +1217,7 @@ async function main() {
   await bar.locator('.quick-sticky-pictures img').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the screenshot did not show on the sticky`))
   await bar.screenshot({ path: `${OUT}/QuickBar-sticky.png` })
   await bar.keyboard.press('Meta+Enter')
-  await bar.locator('.qs-said, .qs-foot', { hasText: 'Saved to Unsorted' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: ⌘Return did not save the sticky`))
+  await bar.locator('.qs-said, .qs-foot', { hasText: 'Saved to Just in' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: ⌘Return did not save the sticky`))
   await bar.close()
 
   // The quick search (⌥⇧Space in the Mac app), with a stand-in for what the Mac app gives it: a bar; typing opens

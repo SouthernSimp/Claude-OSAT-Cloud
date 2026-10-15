@@ -30,7 +30,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
   const trashed = Boolean(note.trashedAt);
   const mode = trashed ? "read" : ui.mode;
   const path = folderPath(workspace.folders, note.folderId);
-  const folderOptions = [{ id: null, label: "Unsorted" }, ...folderTree(workspace.folders).map(({ folder, depth }) => ({ id: folder.id, label: `${"  ".repeat(depth)}${folder.name}` }))];
+  const folderOptions = [{ id: null, label: "Just in" }, ...folderTree(workspace.folders).map(({ folder, depth }) => ({ id: folder.id, label: `${"  ".repeat(depth)}${folder.name}` }))];
   const tasks = useMemo(() => {
     const lines = note.markdown.split("\n").filter((line) => /^\s*[-*+]\s+\[[ xX]\]\s+\S/.test(line));
     return { total: lines.length, done: lines.filter((line) => /\[[xX]\]/.test(line)).length };
@@ -191,7 +191,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
             trigger={({ toggle }) => (
               <button type="button" className="editor-crumb" onClick={toggle} title="Move to">
                 <FolderSimple />
-                <span>{path.length ? path.join(" / ") : "Unsorted"}</span>
+                <span>{path.length ? path.join(" / ") : "Just in"}</span>
               </button>
             )}
             items={folderOptions.map((option) => ({ label: option.label, checked: (note.folderId || null) === option.id, onSelect: () => actions.moveNotes([note.id], option.id) }))}
@@ -426,7 +426,7 @@ function NoteInspector({ workspace, note, actions, tasks, textareaRef }) {
         <h4>Topic</h4>
         {note.folderId
           ? <ul className="link-list"><li><button type="button" onClick={() => actions.showInNode(note.id)}><ShareNetwork /> <span>{folderPath(workspace.folders, note.folderId).join(" › ")}</span></button></li></ul>
-          : <p className="inspector-empty">Unsorted. Use Move to above, or drag it into a topic on the canvas.</p>}
+          : <p className="inspector-empty">In Just in, with no topic yet. Use Move to above, or drag it into a topic on the canvas.</p>}
       </section>
     </aside>
   );

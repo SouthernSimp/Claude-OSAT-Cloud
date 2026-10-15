@@ -2,9 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { FolderSimple, NotePencil, Plus, X } from "@phosphor-icons/react";
 import { localDateKey } from "../daily-practice.js";
 import {
-  canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, folderSubtree, emptyTrash, isActiveNote, isBranch, moveNotes, notesInList,
-  keepNotes, purgeNotes, relinkRenamedNote, resolveWikilink, restoreNotes, trashNotes, updateNote,
+  canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, folderSubtree, emptyTrash, isActiveNote, isBranch, isJustInList, moveNotes, notesInList,
+  keepNotes, purgeNotes, relinkRenamedNote, resolveWikilink, restoreNotes, setDone, setWhat, trashNotes, updateNote,
 } from "../notes-model.js";
+import { datesSettings, setDates } from "../intake/dates.js";
+import { putOnCalendar, takeOffCalendar } from "../intake/useDates.js";
 import { linkMentions, renameFolder } from "../nodes-model.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { Organizer } from "./Organizer.jsx";
@@ -15,10 +17,13 @@ import { saveNoteAiResponse } from "./note-ai.js";
 const UI_KEY = "osat.notes-ui.v2";
 const DEFAULT_UI = { list: "all", folderId: null, tags: [], query: "", sort: "updated", mode: "write", inspector: false, organizer: true, focus: false };
 
+// Unsorted and Filed for you became Just in (Phase 67): a view saved or a link made before opens it.
+const listFor = (list) => (isJustInList(list) ? "justin" : list);
+
 function loadUi() {
   try {
     const saved = JSON.parse(localStorage.getItem(UI_KEY) || "{}");
-    return { ...DEFAULT_UI, ...saved, query: "", tags: [] };
+    return { ...DEFAULT_UI, ...saved, list: listFor(saved.list || DEFAULT_UI.list), query: "", tags: [] };
   } catch {
     return DEFAULT_UI;
   }
@@ -70,7 +75,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
     handledTarget.current = target.at;
     if (target.action) { requestAnimationFrame(() => actionsRef.current?.[target.action === "new" ? "createNote" : target.action === "today" ? "openToday" : "startFolder"]?.()); return; }
     if (target.list) {
-      setUi({ list: target.list, folderId: null, query: "", tags: [], focus: false });
+      setUi({ list: listFor(target.list), folderId: null, query: "", tags: [], focus: false });
       setSelection(new Set());
       setPane("list");
       return;
@@ -116,7 +121,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         let created;
         commit((state) => { const result = createNote(state, { folderId }); created = result.note; return result.state; });
         if (!created) return;
-        const visible = ["all", "recent"].includes(ui.list) || (ui.list === "unsorted" && !folderId) || (ui.list === "folder" && ui.folderId === folderId);
+        const visible = ["all", "recent"].includes(ui.list) || (isJustInList(ui.list) && !folderId) || (ui.list === "folder" && ui.folderId === folderId);
         setUi({
           query: "", tags: [],
           ...(visible ? {} : { list: folderId ? "folder" : "all", folderId: folderId || null }),
@@ -137,6 +142,24 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       },
       relinkTitle: (oldTitle, newTitle) => commit((state) => relinkRenamedNote(state, oldTitle, newTitle)),
       keepNotes: (ids) => commit((state) => keepNotes(state, ids)),
+      commit,
+      // What a sticky is (Phase 67): Nate's pick wins over the AI's and code's.
+      setWhat: (ids, what) => commit((state) => setWhat(state, ids, what)),
+      // Answered, bought or done: it leaves the list it was ticked in; Undo puts it back.
+      setDone(ids, done, word = "Done") {
+        commit((state) => setDone(state, ids, done));
+        if (done) showUndo(ids.length === 1 ? `${word}. It stays in its topic.` : `${ids.length} ${word.toLowerCase()}`, () => commit((state) => setDone(state, ids, false)));
+      },
+      async putOnCalendar(note, when) {
+        const where = await putOnCalendar(commit, note, when, datesSettings(workspace.settings).calendar);
+        showUndo(where === "mac" ? "On your calendar" : "On OSAT’s calendar", () => takeOffCalendar(commit, note.id));
+      },
+      takeOffCalendar(id) {
+        const note = workspace.notes.find((item) => item.id === id);
+        takeOffCalendar(commit, id);
+        if (note?.cal?.id) showUndo("Taken off the calendar");
+      },
+      datesOn: (on) => commit((state) => setDates(state, { on })),
       moveNotes: (ids, folderId) => commit((state) => moveNotes(state, ids, folderId)),
       setPinned: (ids, pinned) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, pinned, unsorted: pinned ? false : note.unsorted } : note) })),
       setArchived: (ids, archived) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, archived, pinned: archived ? false : note.pinned } : note) })),
@@ -217,7 +240,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         const folders = workspace.folders.filter((item) => removed.has(item.id));
         const homes = new Map(workspace.notes.filter((note) => removed.has(note.folderId)).map((note) => [note.id, note.folderId]));
         commit((state) => deleteFolder(state, id));
-        showUndo(`Deleted ${isBranch(folder) ? "branch" : "topic"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Unsorted."}`, () => commit((state) => ({
+        showUndo(`Deleted ${isBranch(folder) ? "branch" : "topic"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Just in."}`, () => commit((state) => ({
           ...state,
           folders: [...state.folders.filter((item) => !removed.has(item.id)), ...folders],
           notes: state.notes.map((note) => homes.has(note.id) ? { ...note, folderId: homes.get(note.id) } : note),

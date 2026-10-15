@@ -126,7 +126,7 @@ export function QuickSticky({ bridge, onSave, onBack, said }) {
           <button type="button" title="Add the whole screen" aria-label="Add the whole screen" disabled={busy} onClick={() => addPicture(false)}><Monitor /> Screen</button>
           <button type="button" title="Add a part of the screen" aria-label="Add a part of the screen" disabled={busy} onClick={() => addPicture(true)}><Crop /> Area</button>
         </div>
-        <button type="button" className="quick-sticky-save" onClick={save}>Save to Unsorted <kbd>⌘↵</kbd></button>
+        <button type="button" className="quick-sticky-save" onClick={save}>Save to Just in <kbd>⌘↵</kbd></button>
       </div>
     </div>
   )

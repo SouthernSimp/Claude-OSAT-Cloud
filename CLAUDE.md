@@ -8,15 +8,14 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 15, 2026: the rework plan (`claude/rework-plan`)
+## Resume checkpoint — October 15, 2026: Phase 67, what it is (`claude/kinds-and-lists`)
 
-Phase 66 (PR #96) and the Shortcuts fix (PR #95) are merged and shipped as build 0.1.271. Nate (Oct 14): the canvas
-"does not look visually easy to understand"; intake is the real strain (a few stickies some days, fifty others, and
-sorting them is the chore); he handed over the design ("I'm no longer in creative control"). The plan is
-docs/REWORK-20261015.md with a clickable mockup (https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48): boards instead
-of topics/branches/stacks, a kind on every sticky, Lists OSAT keeps (Questions, Groceries, Coming up), Just in with
-Undo instead of the six sorting screens, Flows (n8n-style, the intake first), SOUL/MEMORY/RULES.md, one Connections
-screen. Phases 67–71 in the roadmap. Next: Nate reacts to the mockup, then Phase 67 (kinds and boards) on its own branch.
+Nate approved the rework (docs/REWORK-20261015.md, mockup https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48): "Go I
+absolutely love what im looking at". This branch carries the plan commit (PR #97) and Phase 67: every sticky says what
+it is (shared/what-model.mjs), Notes → Just in / Questions / To buy / Coming up, dates on the calendar by themselves
+with Undo (src/intake/), visible "Unsorted" words became "Just in" outside the old Sky (Phase 68 replaces the Sky), and
+the old boards (`sorter`) are no longer laid out on every load: with 1,000 stickies that took 8 seconds per window.
+Next: Nate tries the DMG and says "merge"; then Phase 68 (boards, Map / Board / List) on its own branch.
 Older checkpoints are in git history.
 
 ## Working with Nate
@@ -37,7 +36,7 @@ Older checkpoints are in git history.
 3. No nagging counts or red badges.
 4. Esc always backs out; ⌘K always finds anything.
 5. Every space has the same anatomy and comes from one navigation definition.
-6. Plain words: "Unsorted", not "Inbox", "records" or "canonical".
+6. Plain words: "Just in", not "Inbox", "records" or "canonical".
 7. Saving is invisible unless it fails; then say so calmly with a way forward.
 
 ## Commands
@@ -345,6 +344,20 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `sky/useAutoFile.js` on the desk (asks with `background: true`, so `ai.chatStream` never wakes or swaps a model for it;
     tried ids in localStorage; one toast with Undo; `useAutoFileStatus` for Notes' line). Notes → Filed for you is
     `notesInList(…, 'filed')`. Schema 12: notes may carry `filed` ({ by: 'ai', at, into }) and `gist`.
+    What a sticky is (Phase 67): `shared/what-model.mjs` (pure): `guessWhat` reads idea / question / problem / todo /
+    date / buy / note at once (tags #n2b #w2b #n2d #w2d #a2c first; a shopping list from the `STOCK` words; `sure:
+    false` when it only fell to a default), memoized per note object; `findWhen(text, now)` finds a day and time
+    (calc.mjs's `dayOf`), read from `createdAt`, never today; `whatOf` = `note.what` (the AI's or Nate's pick) else the
+    guess. After filing, `useAutoFile` asks the AI only about the unsure ones (`whatMessages` / `readWhatAnswer` in
+    ai-tasks.mjs, applied with `aiWhat`, which never overrides a pick). Notes' lists: `justin` (Unsorted + filed this
+    week; `unsorted` / `filed` still answer by name and old links open Just in), `questions`, `buy`, `coming`
+    (`comingUp`, soonest first); `setWhat`, `setDone` (`doneAt`). Dates to the calendar: `src/intake/dates.js` (pure:
+    `datesToAdd` waits `QUIET_MS`, only dates written since `settings.dates.since`, never one taken off (`cal: { off
+    }`); `addOwnEvent`, `takeOff`) run by `intake/useDates.js` on the desk (a Mac calendar from `settings.dates.calendar`
+    through `osatMacCalendar.addEvent`, else OSAT's own `calendar.events`; its toast sits above the filing one,
+    `.toasts-above`); `intake/CalendarChoice.jsx` picks the calendar (Coming up and Settings → AI). Schema 13: notes may
+    carry `what`, `doneAt` and `cal` ({ id, where: 'mac' | 'osat', start } or { off: true }). The old boards
+    (`sorter`) are kept as stored and never laid out again (board-model.js is gone).
     What the AI can do is said by `assistant/ai-state.js` (`aiState`: checking, none, downloading, paused,
     offline, asleep, waking, thinking, slow, failed… each with a way forward) and run by `useAiJob` (gives up on a
     model that hasn't woken in 2 minutes; words answer instead). Unsorted and each
