@@ -3,6 +3,7 @@
    testable without a browser. */
 
 import { fromOf } from '../shared/node-file.mjs'
+import { isWhat, whatOf, whenOf } from '../shared/what-model.mjs'
 import { PAPERS, WIKILINK, linksOf, normalizeNote, parseTags, rankOf, renameWikilinks, titleKey } from './note-core.js'
 
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -139,11 +140,14 @@ export const isVisibleNote = (note) => Boolean(note) && !note.trashedAt
    have their own home. */
 export const isUnsorted = (note) => note.unsorted || (!note.folderId && !note.kind)
 
-export function noteCounts(state) {
+export function noteCounts(state, now = Date.now()) {
   const active = state.notes.filter(isActiveNote)
   return {
     all: active.length,
     unsorted: active.filter(isUnsorted).length,
+    questions: notesInList(state, 'questions', null, now).length,
+    buy: notesInList(state, 'buy', null, now).length,
+    coming: comingUp(active, now).length,
     pinned: active.filter((note) => note.pinned).length,
     daily: active.filter(isDayNote).length,
     archived: state.notes.filter((note) => note.archived && !note.trashedAt).length,
@@ -243,13 +247,42 @@ export function notesInList(state, list, folderId = null, now = Date.now()) {
     return active.filter((note) => scope.has(note.folderId))
   }
   if (list === 'pinned') return active.filter((note) => note.pinned)
-  // What the AI filed in the last week and is still where it put it (auto-file.js).
-  if (list === 'filed') return active.filter((note) => note.filed && note.folderId === note.filed.into && now - Date.parse(note.filed.at) < 7 * 86400000)
   if (list === 'recent') return active.filter((note) => now - Date.parse(note.updatedAt) < 7 * 86400000)
+  // Just in (Phase 67) took Unsorted and Filed for you in; both still answer for whoever asks by name.
+  if (list === 'justin') return active.filter((note) => isJustIn(note, now))
+  if (list === 'filed') return active.filter((note) => isFiledThisWeek(note, now))
   // 'unfiled' was its own list before Unsorted took it in.
   if (list === 'unsorted' || list === 'unfiled') return active.filter(isUnsorted)
+  // The lists OSAT keeps for you (Phase 67): every open question and thing to buy, wherever it was filed.
+  if (list === 'questions') return active.filter((note) => !note.doneAt && whatOf(note) === 'question')
+  if (list === 'buy') return active.filter((note) => !note.doneAt && whatOf(note) === 'buy')
+  if (list === 'coming') return comingUp(active, now).map(({ note }) => note)
   if (list === 'daily') return active.filter(isDayNote)
   return active
+}
+
+const WEEK = 7 * 86400000
+// The lists Just in took in: a saved view or a link to one opens Just in.
+export const isJustInList = (list) => ['justin', 'unsorted', 'unfiled', 'filed'].includes(list)
+
+/* What the AI filed in the last week and is still where it put it (auto-file.js). */
+const isFiledThisWeek = (note, now) => Boolean(note.filed && note.folderId === note.filed.into && now - Date.parse(note.filed.at) < WEEK)
+
+/* Just in: what came in and has no home yet, and what the AI filed this week. */
+export const isJustIn = (note, now = Date.now()) => isUnsorted(note) || isFiledThisWeek(note, now)
+
+/* Coming up: open stickies whose day is today or later, soonest first, as [{ note, when }]. A question
+   that names a day ("Is the dentist Thursday?") asks; it isn't on the way. */
+export function comingUp(notes, now = Date.now()) {
+  const today = new Date(now)
+  const from = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+  return notes
+    .filter((note) => isActiveNote(note) && !note.doneAt && whatOf(note) !== 'question')
+    .flatMap((note) => {
+      const when = whenOf(note)
+      return when && when.start.getTime() >= from ? [{ note, when }] : []
+    })
+    .sort((a, b) => a.when.start - b.when.start)
 }
 
 /* Query grammar: free words match title/body; `#tag` requires the tag. */
@@ -386,6 +419,42 @@ export function captureThought(state, text, source = 'Quick capture') {
   if (!value) return { state, note: null }
   const title = value.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || 'A sticky'
   return createNote(state, { title, markdown: value, unsorted: true, source })
+}
+
+/* Nate says what these are (Phase 67): his pick is kept and wins over the AI's and code's. */
+export function setWhat(state, ids, what) {
+  const set = new Set(ids)
+  if (!isWhat(what)) return state
+  return { ...state, notes: state.notes.map((note) => (set.has(note.id) && note.what !== what ? { ...note, what } : note)) }
+}
+
+/* The AI's picks ([[id, what]]), only for stickies nobody has named yet. A "date" with no day in its
+   words is something to do. */
+export function aiWhat(state, picks) {
+  const byId = new Map(picks.filter(([, what]) => isWhat(what)))
+  if (!byId.size) return state
+  return {
+    ...state,
+    notes: state.notes.map((note) => {
+      const what = byId.get(note.id)
+      if (!what || note.what) return note
+      return { ...note, what: what === 'date' && !whenOf(note) ? 'todo' : what }
+    }),
+  }
+}
+
+/* Answered, done or bought (`doneAt`), or not yet. */
+export function setDone(state, ids, done, at = new Date().toISOString()) {
+  const set = new Set(ids)
+  return {
+    ...state,
+    notes: state.notes.map((note) => {
+      if (!set.has(note.id) || Boolean(note.doneAt) === done) return note
+      if (done) return { ...note, doneAt: at }
+      const { doneAt, ...rest } = note
+      return rest
+    }),
+  }
 }
 
 export function keepNotes(state, ids) {

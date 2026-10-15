@@ -3,10 +3,7 @@ import test from 'node:test'
 
 import { createEmptyDoc, migrate, SCHEMA } from '../shared/store-core.mjs'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
-import {
-  addFolder, addSticky, boardSpots, CARD, findMentions, freeNodeName, importNode, linkMentions, mentionedIn, moveFolder, moveSticky, moveToItems,
-  nodesMentioned, nodesOf, pileOf, placeNodes, rankAt, removeFolder, renameFolder, splitMentions, suggestBranches, suggestionGroups, tidyBoard,
-} from '../src/nodes-model.js'
+import { addFolder, addSticky, findMentions, freeNodeName, importNode, linkMentions, mentionedIn, moveFolder, moveSticky, moveToItems, nodesMentioned, nodesOf, pileOf, rankAt, removeFolder, renameFolder, splitMentions } from '../src/nodes-model.js'
 
 const at = (minute) => new Date(Date.UTC(2026, 8, 28, 9, minute)).toISOString()
 const note = (id, extra = {}) => ({ id, title: id, markdown: id, createdAt: at(1), updatedAt: at(1), ...extra })
@@ -110,25 +107,6 @@ test('Move to: Unsorted, then each topic with its branches, leaving out where it
   assert.deepEqual(moveToItems([], () => {}, { unsorted: false }), [{ note: 'No topics yet.' }])
 })
 
-test('Help me sort: a matching #tag first, then shared words, one line per branch', () => {
-  const state = space(
-    [
-      note('idea', { title: 'Canvas map glow', markdown: 'Canvas map glow #ideas' }),
-      note('buy', { title: 'Buy a portable charger', markdown: 'Buy a portable charger' }),
-      note('lost', { title: 'Zebra', markdown: 'Zebra' }),
-      note('charger', { title: 'Charger list', markdown: 'portable charger options', folderId: 'n2b' }),
-    ].map((item) => ({ ...item, folderId: item.folderId || 'rnd' })),
-    [folder('rnd'), folder('ideas', { name: 'IDEAS', parentId: 'rnd', rank: 1 }), folder('n2b', { name: 'Need 2 buy', parentId: 'rnd', rank: 2 })],
-  )
-  // In the pile's order (same time, so by id).
-  assert.deepEqual(suggestBranches(state, 'rnd'), [
-    { noteId: 'buy', folderId: 'n2b' },
-    { noteId: 'idea', folderId: 'ideas' },
-  ])
-  assert.deepEqual(suggestionGroups(state, 'rnd'), [{ folderId: 'ideas', noteIds: ['idea'] }, { folderId: 'n2b', noteIds: ['buy'] }])
-  assert.deepEqual(suggestBranches(state, 'ideas'), [], 'no branches, no suggestions')
-})
-
 test('@ in a note: the longest topic name wins, a branch after a slash, emails and unknown names are only words', () => {
   const folders = [folder('g', { name: 'Garden' }), folder('p', { name: 'Project Direction' }), folder('i', { name: 'Ideas', parentId: 'g' })]
   const text = 'see @Project Direction, @garden/ideas and @Gardening; mail x@y.com, @3, @Garden/New, (@Garden)'
@@ -191,30 +169,6 @@ test('Import: one file is one new topic, with branches, stickies and finished st
   assert.throws(() => importNode(base, { branches: [] }), /topic file/)
   assert.throws(() => importNode(base, { title: 'X', branches: 'no' }), /topic file/)
 })
-
-test('the board: unplaced topics line up after the others, Unsorted waits on the left', () => {
-  const folders = space([], [folder('a', { rank: 1 }), folder('b', { rank: 2, at: { x: 900, y: 300 } }), folder('c', { rank: 3 })]).folders
-  const spots = boardSpots(folders, new Map([['a', { w: 500, h: 400 }]]))
-  assert.deepEqual(spots.get('a'), { x: 0, y: 0 })
-  assert.deepEqual(spots.get('b'), { x: 900, y: 300 })
-  assert.deepEqual(spots.get('c'), { x: 900 + CARD.w + CARD.gap, y: 0 })
-  assert.deepEqual(spots.get(null), { x: -CARD.w - CARD.gap, y: 0 })
-})
-
-test('the board: moving a topic keeps every other one where it shows, and the order follows left to right', () => {
-  let state = space([], [folder('a', { rank: 1 }), folder('b', { rank: 2 }), folder('c', { rank: 3 })])
-  const spots = boardSpots(state.folders)
-  state = placeNodes(state, spots, new Map([['c', { x: -700.4, y: 120 }]]))
-  assert.deepEqual(titles(nodesOf(state.folders).map(({ folder: item }) => item)), ['c', 'a', 'b'])
-  assert.deepEqual(state.folders.find((item) => item.id === 'c').at, { x: -700, y: 120 })
-  assert.deepEqual(state.folders.find((item) => item.id === 'b').at, spots.get('b'))
-  const same = placeNodes(state, boardSpots(state.folders), new Map())
-  assert.ok(same.folders.every((item, index) => item === state.folders[index]), 'nothing moved, nothing changes')
-  assert.ok(tidyBoard(state).folders.every((item) => !('at' in item)))
-  const normalized = space([], [folder('x', { at: { x: 1.6, y: Infinity } }), folder('y', { at: { x: 2e9, y: -3.2 } })]).folders
-  assert.deepEqual(normalized.map((item) => item.at), [undefined, { x: 1e6, y: -3 }])
-})
-
 
 test('dropping in a row of stickies that wraps: the row under the pointer decides, then left to right', async () => {
   const { slotIndex } = await import('../src/lib/carry.js')

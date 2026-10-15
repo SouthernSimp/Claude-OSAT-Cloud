@@ -1,7 +1,8 @@
 // Ask in the built preview, with the AI faked (one model on this Mac, one in the cloud): the line under the box says
 // truly where a question goes; Try again replaces the last answer and Undo brings it back; Edit replaces the last
 // question; a question that asks to do something shows its steps, asks before another app changes anything, and
-// offers one Undo, unless "Can use tools" is off. Fails on page errors or a step that didn't happen; screenshots land in test-results/ui/ask/.
+// offers one Undo, unless "Can use tools" is off; a picture goes with a question to the AI on this Mac, never the cloud.
+// Fails on page errors or a step that didn't happen; screenshots land in test-results/ui/ask/.
 // Run `npm run build` first.
 import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
@@ -17,10 +18,11 @@ function fakeAi() {
     status: async () => ({ chosen: 'balanced', tiers: [], download: null }),
     onStatus: () => () => {},
     models: async () => ({ models: [
-      { id: 'osat:balanced', name: 'Gemma 4 E4B · Balanced', runtime: 'osat', offline: true, state: 'ready' },
+      { id: 'osat:balanced', name: 'Gemma 4 E4B · Balanced', label: 'Balanced', runtime: 'osat', offline: true, state: 'ready', sees: true },
       { id: 'cloud:deepseek:deepseek-chat', name: 'deepseek-chat · DeepSeek', runtime: 'cloud', offline: false, where: 'DeepSeek' },
     ] }),
     chatStream: (payload, onDelta) => {
+      window.__payloads = [...(window.__payloads || []), payload]
       answers += 1
       const text = `Answer number ${answers}.`
       onDelta(text)
@@ -163,6 +165,29 @@ async function main() {
   await ask.locator('.bubble.assistant', { hasText: /Answer number \d+\./ }).waitFor({ timeout: 5000 }).catch(() => problems.push('with tools off there was no plain answer'))
   check(await page.evaluate(() => window.__agentRuns) === runs, 'with tools off Ask still acted')
   await page.screenshot({ path: `${OUT}/tools-off.png` })
+
+  // Pictures (Phase 37b): chosen (or pasted, or dropped), shown as a chip, and sent with the question to the AI on this
+  // Mac only; a cloud model is told no, and nothing is sent.
+  await ask.getByRole('button', { name: 'New chat', exact: true }).click()
+  const dot = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64')
+  await ask.locator('input[type="file"][accept^="image"]').setInputFiles({ name: 'shot.png', mimeType: 'image/png', buffer: dot })
+  await ask.locator('.ask-note-chip.is-picture', { hasText: 'shot.png' }).waitFor({ timeout: 3000 }).catch(() => problems.push('a chosen picture made no chip'))
+  check(await ask.locator('.ask-note-chip.is-picture img').count() === 1, 'the picture chip had no thumbnail')
+  await page.screenshot({ path: `${OUT}/picture.png` })
+  await box.fill('What is in this picture?')
+  await box.press('Enter')
+  await ask.locator('.bubble.assistant', { hasText: /Answer number \d+\./ }).last().waitFor({ timeout: 5000 }).catch(() => problems.push('no answer about the picture'))
+  const sent = await page.evaluate(() => window.__payloads.at(-1))
+  const question = sent?.messages?.at(-1)
+  check(sent?.model === 'osat:balanced' && question?.role === 'user' && question.images?.[0]?.type === 'image/png' && question.images[0].data.length > 20, 'the picture didn’t go with the question')
+  check(await ask.locator('.bubble.user').last().innerText().then((text) => text.includes('shot.png')), 'the chat didn’t say a picture went with the question')
+  const before = await page.evaluate(() => window.__payloads.length)
+  await ask.getByRole('button', { name: /^Model:/ }).click()
+  await page.getByRole('menuitemradio', { name: /deepseek-chat/ }).click()
+  await box.fill('And this one?')
+  await box.press('Enter')
+  await ask.locator('.chat-error', { hasText: 'Pictures go to the AI on this Mac' }).waitFor({ timeout: 3000 }).catch(() => problems.push('a cloud model wasn’t refused the picture'))
+  check(await page.evaluate(() => window.__payloads.length) === before, 'a picture was sent to a cloud model')
 
   await browser.close()
 }

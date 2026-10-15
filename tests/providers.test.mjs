@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import {
-  addUsage, chatModels, cleanBaseUrl, cleanBotSettings, cleanKey, cleanProviders, cloudModelId, costLine, explainFailure, parseCloudModelId, presetFor, providerFrom,
-} from '../shared/providers.mjs'
-import { readSortAnswer, readUnpackAnswer, sortMessages, unpackMessages } from '../shared/ai-tasks.mjs'
+import { addUsage, chatModels, cleanBaseUrl, cleanBotSettings, cleanKey, cleanProviders, cloudModelId, costLine, explainFailure, parseCloudModelId, presetFor, providerFrom } from '../shared/providers.mjs'
+import { readUnpackAnswer, unpackMessages } from '../shared/ai-tasks.mjs'
 
 const KEY = 'sk-0123456789abcdef0123456789abcdef'
 
@@ -108,8 +106,3 @@ test('AI jobs: unpacking reads Markdown answers, even wrapped; nothing usable sa
   assert.throws(() => readUnpackAnswer('I cannot help with that.', 'X'), /didn’t suggest any branches/)
 })
 
-test('AI jobs: Help me sort reads "sticky: branch" lines, each sticky once, only numbers that exist', () => {
-  assert.match(sortMessages({ node: 'Garden', branches: ['Beds', 'Tools'], stickies: ['Buy\nseeds'] }).at(-1).content, /1\. Beds\n2\. Tools[\s\S]*1\. Buy seeds/)
-  const picks = readSortAnswer('1: 2\n2 - none\nSticky 3 → Branch 1\n1: 1\n4: 9\n7: 1\nnonsense', 2, 4)
-  assert.deepEqual(picks, [{ sticky: 0, branch: 1 }, { sticky: 2, branch: 0 }])
-})

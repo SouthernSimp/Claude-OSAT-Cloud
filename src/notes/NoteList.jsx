@@ -4,18 +4,29 @@ import {
 } from "@phosphor-icons/react";
 import { Menu } from "../lib/Menu.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
-import { SORTS, notePreview, folderPath, folderTree, isDayNote, notesInList, searchNotes, sortNotes } from "../notes-model.js";
+import { WHAT_LABEL, WHAT_PAPER, WHATS, whatOf, whenOf } from "../../shared/what-model.mjs";
+import { CalendarChoice } from "../intake/CalendarChoice.jsx";
+import { datesSettings, whenLine } from "../intake/dates.js";
+import { SORTS, notePreview, folderPath, folderTree, isDayNote, isJustInList, isUnsorted, notesInList, searchNotes, sortNotes } from "../notes-model.js";
 import { autoFileSettings, waitingFromBefore } from "../sky/auto-file.js";
 import { useAutoFileStatus } from "../sky/useAutoFile.js";
 
 const LIST_TITLES = {
-  unsorted: "Unsorted", unfiled: "Unsorted", filed: "Filed for you", all: "All notes", pinned: "Pinned", recent: "Recent", daily: "Daily notes", archived: "Archive", trash: "Trash",
+  justin: "Just in", unsorted: "Just in", unfiled: "Just in", filed: "Just in", all: "All notes", pinned: "Pinned", recent: "Recent", daily: "Daily notes",
+  archived: "Archive", trash: "Trash", questions: "Questions", buy: "To buy", coming: "Coming up",
+};
+// What the lists OSAT keeps say under their title, and what ticking a sticky off there means.
+const KEPT = {
+  questions: { line: "Every open question, from every topic.", done: "Answered" },
+  buy: { line: "Everything to buy, wherever you wrote it.", done: "Bought" },
+  coming: { line: "Days your stickies name, soonest first.", done: "Done" },
 };
 
 export function useVisibleNotes(workspace, ui) {
   return useMemo(() => {
-    const scoped = notesInList(workspace, ui.list, ui.folderId);
-    return sortNotes(searchNotes(scoped, ui.query, ui.tags), ui.sort);
+    const scoped = searchNotes(notesInList(workspace, ui.list, ui.folderId), ui.query, ui.tags);
+    // Coming up keeps its own order: soonest first.
+    return ui.list === "coming" ? scoped : sortNotes(scoped, ui.sort);
   }, [workspace, ui.list, ui.folderId, ui.query, ui.tags, ui.sort]);
 }
 
@@ -26,7 +37,9 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
   const trash = ui.list === "trash";
   const archive = ui.list === "archived";
   const canCreate = !trash && !archive;
-  const folderOptions = [{ id: null, label: "Unsorted" }, ...folderTree(workspace.folders).map(({ folder: item, depth }) => ({ id: item.id, label: `${"  ".repeat(depth)}${item.name}` }))];
+  const kept = KEPT[ui.list];
+  const justIn = isJustInList(ui.list);
+  const folderOptions = [{ id: null, label: "Just in" }, ...folderTree(workspace.folders).map(({ folder: item, depth }) => ({ id: item.id, label: `${"  ".repeat(depth)}${item.name}` }))];
 
   useEffect(() => {
     const active = listRef.current?.querySelector('[aria-current="true"]');
@@ -65,7 +78,7 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
       <div className="list-title">
         <div>
           <h3>{title}</h3>
-          <small>{notes.length} {notes.length === 1 ? "note" : "notes"}{ui.tags.length ? ` · ${ui.tags.map((tag) => `#${tag}`).join(" ")}` : ""}</small>
+          <small>{kept ? kept.line : `${notes.length} ${notes.length === 1 ? "note" : "notes"}`}{ui.tags.length ? ` · ${ui.tags.map((tag) => `#${tag}`).join(" ")}` : ""}</small>
         </div>
         {trash && notes.length > 0 && (
           <button type="button" className="text-button danger" onClick={actions.emptyTrash}>Empty trash</button>
@@ -73,7 +86,7 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
         {ui.list === "daily" && (
           <button type="button" className="text-button" onClick={actions.openToday}><CalendarBlank /> Today</button>
         )}
-        {ui.list === "unsorted" && notes.length > 0 && (
+        {justIn && notes.some(isUnsorted) && (
           <button type="button" className="text-button" onClick={actions.sortByHand}><Stack /> Sort by hand</button>
         )}
         {(folder || ui.list === "all") && (
@@ -84,7 +97,8 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
         )}
       </div>
 
-      {(ui.list === "filed" || ui.list === "unsorted") && <FilingLine workspace={workspace} actions={actions} filedList={ui.list === "filed"} />}
+      {justIn && <FilingLine workspace={workspace} actions={actions} filedList />}
+      {ui.list === "coming" && <DatesLine workspace={workspace} actions={actions} />}
 
       {bulk && (
         <div className="bulk-bar" role="toolbar" aria-label="Selected notes">
@@ -94,6 +108,13 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
               ariaLabel="Move selected notes"
               trigger={({ toggle }) => <button type="button" onClick={toggle}><FolderSimple /> Move</button>}
               items={folderOptions.map((option) => ({ label: option.label, onSelect: () => actions.moveNotes(selectedIds, option.id) }))}
+            />
+          )}
+          {!trash && (
+            <Menu
+              ariaLabel="Say what the selected notes are"
+              trigger={({ toggle }) => <button type="button" onClick={toggle}>Kind</button>}
+              items={WHATS.map((id) => ({ label: WHAT_LABEL[id], onSelect: () => actions.setWhat(selectedIds, id) }))}
             />
           )}
           {!trash && <button type="button" onClick={() => actions.setPinned(selectedIds, true)}><PushPin /> Pin</button>}
@@ -114,6 +135,8 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
         {notes.map((note) => {
           const path = folderPath(workspace.folders, note.folderId);
           const checked = selection.has(note.id);
+          const what = whatOf(note);
+          const when = ui.list === "coming" ? whenOf(note) : null;
           return (
             <div
               key={note.id}
@@ -143,6 +166,11 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
               }}
             >
               <div className="note-row-title">
+                {kept && (
+                  <label className="note-done" title={kept.done} onClick={(event) => event.stopPropagation()}>
+                    <input type="checkbox" aria-label={`${kept.done}: ${note.title || "this note"}`} checked={Boolean(note.doneAt)} onChange={(event) => actions.setDone([note.id], event.target.checked, kept.done)} />
+                  </label>
+                )}
                 {note.pinned && <PushPin weight="fill" className="pin" />}
                 <strong>{note.title || "Untitled note"}</strong>
                 <time dateTime={note.updatedAt}>{formatRelativeTime(note.updatedAt)}</time>
@@ -150,7 +178,23 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
               {/* A one-line sticky is all title: nothing more to show, rather than "Nothing written yet". */}
               {(note.gist || notePreview(note)) ? <p>{note.gist || notePreview(note)}</p> : !note.markdown.trim() && <p><em>Nothing written yet</em></p>}
               <div className="note-row-meta">
+                {what && (
+                  <Menu
+                    align="start"
+                    ariaLabel={`What this is: ${WHAT_LABEL[what]}. Change it`}
+                    trigger={({ toggle, ariaLabel }) => (
+                      <button type="button" className="meta-kind" data-paper={WHAT_PAPER[what]} aria-label={ariaLabel} title="What this is" onClick={toggle}>{WHAT_LABEL[what]}</button>
+                    )}
+                    items={WHATS.map((id) => ({ label: WHAT_LABEL[id], checked: id === what, onSelect: () => actions.setWhat([note.id], id) }))}
+                  />
+                )}
+                {when && <span className="meta-chip"><CalendarBlank /> {whenLine(when)}</span>}
+                {when && (note.cal?.id
+                  ? <button type="button" className="meta-action" title="Take it off the calendar" onClick={(event) => { event.stopPropagation(); actions.takeOffCalendar(note.id); }}>On your calendar · Take off</button>
+                  : <button type="button" className="meta-action" onClick={(event) => { event.stopPropagation(); actions.putOnCalendar(note, when); }}>Put on calendar</button>)}
+                {!when && note.cal?.id && <span className="meta-chip"><CalendarBlank /> On your calendar</span>}
                 {isDayNote(note) && <span className="meta-chip"><CalendarBlank /> Daily</span>}
+                {justIn && isUnsorted(note) && <span className="meta-chip">Needs a home</span>}
                 {path.length > 0 && ui.list !== "folder" && <span className="meta-chip"><FolderSimple /> {path.join(" / ")}</span>}
                 {note.tags.slice(0, 3).map((tag) => <span key={tag} className="meta-tag">#{tag}</span>)}
                 {note.tags.length > 3 && <span className="meta-tag">+{note.tags.length - 3}</span>}
@@ -178,6 +222,20 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
   );
 }
 
+/* Where new dates go, in one line, with the calendar to choose (Phase 67). */
+function DatesLine({ workspace, actions }) {
+  const { on } = datesSettings(workspace.settings);
+  return (
+    <div className="filing-line" role="status">
+      {on ? (
+        <p className="dates-line">New dates go on <CalendarChoice workspace={workspace} commit={actions.commit} /></p>
+      ) : (
+        <p>New dates stay in their stickies. <button type="button" className="text-button" onClick={() => actions.datesOn(true)}>Put them on my calendar</button></p>
+      )}
+    </div>
+  );
+}
+
 /* What filing on its own is doing, in one calm line, and the way forward when it can't. */
 function FilingLine({ workspace, actions, filedList }) {
   const status = useAutoFileStatus();
@@ -199,7 +257,7 @@ function FilingLine({ workspace, actions, filedList }) {
       {!on && <button type="button" className="text-button" onClick={() => actions.autoFile({ on: true })}>File new stickies for me</button>}
       {before > 0 && (
         <p>
-          {count(before)} from before {before === 1 ? "waits" : "wait"} in Unsorted.{" "}
+          {count(before)} from before {before === 1 ? "waits" : "wait"} in Just in.{" "}
           <button type="button" className="text-button" onClick={() => actions.autoFile({ since: new Date(0).toISOString() })}>File {before === 1 ? "it" : "them"} too</button>
         </p>
       )}

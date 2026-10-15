@@ -14,7 +14,7 @@ const PLACE = { desktop: 'Desktop', documents: 'Documents', downloads: 'Download
 // line and ⌘K, and the quick bar (which does the first three right where it is: a sticky, a question, the clipboard).
 // `bar`: only the quick bar lists it (the line's own first rows already save a sticky and ask).
 const ACTIONS = [
-  { key: 'act:sticky', label: 'Write a sticky', hint: 'Straight to Unsorted', also: 'sticky note jot capture thought idea', go: ['Capture'], bar: true },
+  { key: 'act:sticky', label: 'Write a sticky', hint: 'Straight to Just in', also: 'sticky note jot capture thought idea', go: ['Capture'], bar: true },
   { key: 'act:ask', label: 'Ask the AI', hint: 'On this Mac', also: 'ask ai chat question assistant', go: ['Assistant'], bar: true },
   { key: 'act:selection', label: 'AI on selected text', hint: 'Fix, shorten, translate… Hyper T from any app', also: 'selected selection text fix grammar spelling rewrite shorter summarize translate explain reply', go: ['Assistant'], bar: true },
   { key: 'act:clipboard', label: 'Clipboard history', hint: 'Everything you copied', also: 'clipboard copies copied paste history', go: ['Clipboard'] },

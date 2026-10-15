@@ -8,19 +8,16 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 14, 2026: Phase 66, the big polish pass (`claude/polish-oct14`)
+## Resume checkpoint — October 15, 2026: Phases 67, 68, 37b, Mail + Gmail and Habits merged
 
-Nate (Oct 14): the Settings → Shortcuts fix never reached him (PR #95 passed CI but was never merged, so no release went
-out; this branch carries it); Shortcuts grey-screened the whole desk; CleanShot felt forced; Settings had too much text;
-the quick bar should look like Raycast's; Appearance → Blur "isn't really a blur"; nobody can tell GitHub, Mail… exist
-until they open Tools; "make it feel made by a real team". Done on this branch: root and per-room error boundaries plus a
-main-process reload of a crashed page (`render-process-gone`), startup parts that fail on their own (`part()` in
-`whenReady`), a background update check with a desk pill (`UpdateNote`), the Raycast-style bar (`RowTile`, `PREVIEWS`,
-`qs-act`), app icons in Shortcuts, `captures.using` (CleanShot X or the Mac's own), a real blur (`osat-blur.node`), the
-Dashboard (`views/Dashboard.jsx`, `dashboard-model.js`, ⌘6), Tools as a launchpad of tiles, `.tile` + global `data-tint`,
-shorter Settings words with group notes behind ⓘ, and the canvas in the dashboard's navy. Next: Nate tries it and says
-"merge" (the auto-mode classifier blocks Claude merging without that); the real blur and the update pill can only be
-seen on the Mac.
+Nate approved the rework (docs/REWORK-20261015.md, mockup https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48) and said
+"merge everything". In main now: the plan (#97); Phase 67 (#98): every sticky says what it is (shared/what-model.mjs),
+Notes → Just in / Questions / To buy / Coming up, dates on the calendar with Undo (src/intake/); Mail + Gmail (#99);
+Phase 37b (#100): every model downloads whole (its picture part too), llama.cpp's server ships in the app, Ask takes
+pictures, Settings → AI shows Pictures / Thinks / Code; Phase 68 (#102): the canvas is boards (`src/boards/`: Map /
+Board / List, Just in, rename and delete with Undo, starter boards), the old Sky, its sorter and layouts gone, schema
+14 (`stage`); Habits redesigned (#101). Not done yet: Sort a pile and Put the desk away stay until Just in reads a
+photo of paper stickies; words outside the canvas still say "topic" (Notes, Dashboard). Next: Phase 69 (Flows).
 Older checkpoints are in git history.
 
 ## Working with Nate
@@ -41,7 +38,7 @@ Older checkpoints are in git history.
 3. No nagging counts or red badges.
 4. Esc always backs out; ⌘K always finds anything.
 5. Every space has the same anatomy and comes from one navigation definition.
-6. Plain words: "Unsorted", not "Inbox", "records" or "canonical".
+6. Plain words: "Just in", not "Inbox", "records" or "canonical".
 7. Saving is invisible unless it fails; then say so calmly with a way forward.
 
 ## Commands
@@ -84,6 +81,19 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     thinking turned off), `index.cjs` (`createAi`: the chosen size in `prefs.json`, background
     download, engine starts on the first question and stops after 10 idle minutes; `mock`).
     Model files live in `<data folder>/models`. LM Studio still works through `local-ai.cjs`.
+    Pictures (Phase 37b): each catalog entry has `vision` (its mmproj file, same pinned revision, checked the same way;
+    the three Qwen ones renamed locally, they share a name upstream) and `can` (pictures, `thinking` 'on' / 'off' (can,
+    kept off) / null, `code` true / 'best', tools; from the makers' model cards). index.cjs: `isReady` is the model file
+    (words work), `sees` its picture part, `complete` both; one transfer brings the missing parts in order; `start()` queues
+    models already here without their part (the one in use first); `remove` deletes both. A question whose messages carry
+    `images` ([{ type, data: base64 }], user messages only, ≤ 4, checked in both `validateLocalChatPayload`s) goes to
+    `seeStream` → `ai/vision.cjs`: llama.cpp's own `llama-server` (node-llama-cpp can't read pictures), started per model
+    with `--mmproj` on 127.0.0.1 and a fresh `--api-key`, thinking off (`chat_template_kwargs`), stopped after 10 idle
+    minutes; idle word engines step aside first and `vision.rest()` frees it before a word model loads. Cloud models and
+    LM Studio refuse pictures (they never leave the Mac). `scripts/build-helpers.mjs` `LLAMA`: release b11299 (pinned
+    SHA-256), only llama-server and the ten dylibs it loads, into build/helpers/llama (extraResources). Ask:
+    `assistant/pictures.js` (`readPicture` shrinks to 2048 px, `withPictures`, `pictureProblem`); the chat keeps picture
+    names in a question's `files`, never the pictures.
   - `main.cjs`: windows, menu, IPC for the store / local AI / browser / terminal (`handle`, `fail`
     and the trusted-sender checks live here and are passed to the modules that register handlers),
     the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌥⇧Space,
@@ -316,7 +326,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `lib/ContextMenu.jsx`: `useContextMenu()` right-click menus (step-in lists, paper swatches).
   - `shell/glass.jsx`: the liquid-glass SVG filter (`GlassDefs`), `useAlive()` (cursor light on
     `.glass`/`.lit`, `--px/--py` for parallax) and the dock's magnify.
-  - `shell/Desk.jsx`: the desk and its two layers — the Sky above (`sky/Sky.jsx`, state `sky`,
+  - `shell/Desk.jsx`: the desk and its two layers — the canvas above (`boards/Boards.jsx`, state `sky`,
     ⌘3 / ⌥⌘↑ / a sticky held at the top) and the desk (`FieldDesk`: widgets, the line, the shelf of
     Desktop files or nodes and notes, stickies on the desk via `field/DeskStickies.jsx`, the
     right-click desk menu). Offline is a switch at the end of the line (`Line.jsx`, `offline` /
@@ -329,47 +339,46 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     comes back to the desk from the Sky; it never puts the desk away (⌥Space and ⌘W
     do). Also the welcome, capture (⇧⌘N) and the menu-bar commands. The browser preview shows a
     stand-in desktop and keeps `places` in localStorage.
-  - `sky/`: `Sky.jsx` (the layer: find a sticky, Import a node file, the actions and menus,
-    Help me sort: `suggestionGroups`, one line per branch with Move and Dismiss; with a model, it is
-    asked about the stickies matching words couldn't place; Unpack with AI / By hand on a packed
-    node; `useAi` reads the model list again when Bots changes; Phase 26: `SkyAsk.jsx`, the pill at the bottom
-    and its card: ask about the Sky (`useAskHere` with `context: { open, where: 'sky' }`); "sort these"
-    (`asksToSort`) / Sort Unsorted only open the sorter on "Sort them all". The sorter (`UnsortedSorter.jsx`,
-    redone Oct 2026) is the one place sorting happens: one sticky on the left, its homes on the right
-    (`homeOptions` in sort-review.js: the AI's pick, words' matches with a reason and what is in each, places used
-    a moment ago, a New node row), "Another place…" (`findPlaces`), one primary Move with Return; S / L / ⌫ / A /
-    N / F / ←→ / ⌘Z; the queue is `sortQueue` (Later sends one to the end) with a Next up strip. "Sort them all"
-    shows `sort-unsorted.js`'s groups (`sortRequests` in batches of 20, at most 300, one request after another with progress, `modelSuggestions` /
-    `wordSuggestions`, `stillToSort`) in the same screen; every move goes through `fileUnsorted` (a node of the
-    same name is reused) and one Undo (`undoFiling`, which also removes a node made for it while it is empty;
-    Sky's `actions.fileGroups` / `undoUnsorted`, with the log in a ref so a toast's Undo is always the newest).
+  - The canvas (Phase 68, `boards/`): `Boards.jsx`, the layer above the desk (state `sky` in Desk.jsx, wrapper
+    `.sky-shell`): Just in, your boards and Kept for you down the side; the open board as a Map (`mapColumns`: a column
+    per kind), a Board (`stageColumns`: Later / Next / Doing / Done; `stage` on the note, Done is `doneAt`) or a List; Find
+    on a board; the write line (`addSticky`, source `Canvas`); carry a card to a column (sets `what`), a stage (`setStage`
+    + `rankIn`) or a board in the side (`moveToBoard`); right-click a card (What it is, Stage, Move to, Edit, Open in
+    Notes, Delete) or a board (Rename, Delete board: `removeFolder`, its stickies back to Just in); starter boards
+    Personal / Home / Work on an empty canvas; an overnight idea shows one at a time over the board (a board idea moves
+    its stickies onto the new board and opens it). Every change is `change(line, updater)`: one toast, and Undo is
+    `undoFrom(before, after)`, which puts back only the stickies and boards that change touched. `boards-model.js` is
+    the pure part (tests/boards.test.mjs); `back()` steps out of an edit, Find's words or naming before Esc goes down.
+    A board is a top-level folder; a branch's stickies show on its board with the branch's name on the card.
+    `sky/` keeps what outlived the old Sky: the filing engine (`sort-unsorted.js`, `sort-review.js`'s `fileUnsorted` /
+    `undoFiling`), auto-filing, `Piles.jsx` (`AddSticky`, `NameField`), `Sticky.jsx` (desk stickies), `useOvernight`,
+    `unpack-proposal.js`.
     The AI files new stickies on its own (Phase 35, like Mem): `sky/auto-file.js` (pure: `readyToFile` waits until the
     pile has been quiet `QUIET_MS`, only `unsorted` captures written since `settings.autoFile.since`; `withGist` gives a
     long sticky a short title and `gist`; `fileForYou` files only the model's own picks and marks `filed`) run by
     `sky/useAutoFile.js` on the desk (asks with `background: true`, so `ai.chatStream` never wakes or swaps a model for it;
     tried ids in localStorage; one toast with Undo; `useAutoFileStatus` for Notes' line). Notes → Filed for you is
     `notesInList(…, 'filed')`. Schema 12: notes may carry `filed` ({ by: 'ai', at, into }) and `gist`.
+    What a sticky is (Phase 67): `shared/what-model.mjs` (pure): `guessWhat` reads idea / question / problem / todo /
+    date / buy / note at once (tags #n2b #w2b #n2d #w2d #a2c first; a shopping list from the `STOCK` words; `sure:
+    false` when it only fell to a default), memoized per note object; `findWhen(text, now)` finds a day and time
+    (calc.mjs's `dayOf`), read from `createdAt`, never today; `whatOf` = `note.what` (the AI's or Nate's pick) else the
+    guess. After filing, `useAutoFile` asks the AI only about the unsure ones (`whatMessages` / `readWhatAnswer` in
+    ai-tasks.mjs, applied with `aiWhat`, which never overrides a pick). Notes' lists: `justin` (Unsorted + filed this
+    week; `unsorted` / `filed` still answer by name and old links open Just in), `questions`, `buy`, `coming`
+    (`comingUp`, soonest first); `setWhat`, `setDone` (`doneAt`). Dates to the calendar: `src/intake/dates.js` (pure:
+    `datesToAdd` waits `QUIET_MS`, only dates written since `settings.dates.since`, never one taken off (`cal: { off
+    }`); `addOwnEvent`, `takeOff`) run by `intake/useDates.js` on the desk (a Mac calendar from `settings.dates.calendar`
+    through `osatMacCalendar.addEvent`, else OSAT's own `calendar.events`; its toast sits above the filing one,
+    `.toasts-above`); `intake/CalendarChoice.jsx` picks the calendar (Coming up and Settings → AI). Schema 13: notes may
+    carry `what`, `doneAt` and `cal` ({ id, where: 'mac' | 'osat', start } or { off: true }). The old boards
+    (`sorter`) are kept as stored and never laid out again (board-model.js is gone).
     What the AI can do is said by `assistant/ai-state.js` (`aiState`: checking, none, downloading, paused,
     offline, asleep, waking, thinking, slow, failed… each with a way forward) and run by `useAiJob` (gives up on a
-    model that hasn't woken in 2 minutes; words answer instead). Unsorted and each
-    branch fold (`osat.sky.folds.v1`: `'unsorted'` or a branch id; `actions.folds` / `actions.fold`)),
-    `Board.jsx` (the infinite whiteboard: the camera `{x, y, z}` in CSS vars `--cx/--cy/--z`,
-    registered with `@property` so a flight glides; node cards at `boardSpots`, dragged directly,
-    opened in place as a tree (Phase 16: `NodeLanes` → `Branches` → `Lane`: the node's own stickies
-    first, under "Not in a branch yet" once it has branches; each branch a label (a dot of its colour
-    and its name) on a line, its stickies in a row, its own branches on a line under it; only stickies
-    are paper; a branch dropped on a branch's name goes inside it; a closed card lists its first three
-    branches); opening a node never moves the other cards: the camera flies to it (`goTo`, `frameTop`: a node taller than the view shows its top at 60% or more), the others dim, and closing the last one flies back (unless the board was moved since); lines for @mentions;
-    far out (`z < 0.5`) names grow and insides fade), `Piles.jsx` (`StickyList`, `AddSticky`,
-    `NameField`), `Sticky.jsx` (one sticky: click to write, carry, right-click). `SkyGuide` (in Sky.jsx):
-    "How the Sky works", shown once per Mac (`osat.sky.guide.v1`), again from ? or the board's menu.
-    New branch / New branch inside are named in place (`actions.branching`); Rename for a branch
-    goes through `actions.renaming` like a node's.
-    Cards drift forever, so Playwright clicks on them need `{ force: true }`.
+    model that hasn't woken in 2 minutes; words answer instead).
   - Models (pure, unit-tested): `osat-data.js` (workspace shape), `notes-model.js`,
     `note-core.js`, `nodes-model.js` (ranks, moving stickies/nodes/branches, `moveToItems` (every
-    Move to menu), @mentions, `importNode`, the board's spots, sorting suggestions), `project-direction.js` (the
-    seeded first node), `board-model.js` (the old boards' data only; normalized on load, no longer kept in step), `next-steps.js`,
+    Move to menu), @mentions, `importNode`), `next-steps.js`,
     `daily-practice.js`, `field/field-model.js` (desk items, `freeSpot` for new stickies).
   - `shell/Welcome.jsx`: the first launch — what stays private, the shortcut, the AI's size.
   - Rooms: `field/` (home desk, widgets), `notes/`, `assistant/` (Ask:
@@ -414,25 +423,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   things carry one); folders may have `color` and `at` ({x, y} on the Sky's board; `placeNodes`
   freezes every node's spot and re-ranks left to right); notes may have `color`. Old `links` and
   `layout` are kept in the data but no longer shown or offered (Phase 12).
-- Loose branches (Phase 27, schema 8): a branch can sit on the Sky on its own. It is a top-level folder
-  marked `kind: 'branch'` (`isBranch(folder)` in notes-model: a `parentId` or that mark; normalization drops the
-  mark inside a node, and a branch whose node went missing stays a loose branch). It is drawn as a card on the
-  board like a node but on a branch's paper, with a branch's menu; a branch carried out onto the board stays a
-  branch (`moveFolder(state, id, null, Infinity, { loose: true })`); "Its own node" in Move to makes it a node.
-  Everything that lists top-level folders (`nodesOf`, Notes, the connector, import) still sees it as a
-  top-level entry; only the Sky, Find's hint and the AI's map (`board-context.js`) tell them apart. "Where does
-  this belong?" (`sky/where.js`, `whereMessages`/`readWhereAnswer` in ai-tasks): the model picks one node or
-  branch with a reason (`placing` in Sky.jsx, `PlaceHelp` in Board.jsx); nothing moves until Move (it checks the
-  branch and the place still exist and are not inside each other), and Undo restores the branch's old record.
-- Free stickies (Phase 27 step 3, schema 9): a note may carry `at: { x, y }` in Sky board points.
-  `New sticky`, double-click and the empty-board menu write one at that position; no node is created.
-  `placeSticky` in nodes-model moves the same note out onto the board; `null` returns it to the Unsorted
-  pile. Board draws active, unfiled notes with `at` as free paper, and only unplaced ones in that pile.
-  Arrow keys move a focused free sticky (Shift moves further); Find and See everything include them.
-  A filed sticky keeps its former position for when it becomes loose again. Sending up from the desk
-  places it near the Sky viewport, clears its desk place after the workspace change, and offers Undo
-  of both. Dragging it back to the desk clears its Sky presentation. Notes, backups and sync use the
-  same note and saved position. Connectors, selection/bundling and focused node editing are still next.
+- Loose branches (schema 8) and free stickies (schema 9) are still read and kept (`kind: 'branch'` on a top-level
+  folder, `at` on a note), but since Phase 68 nothing draws them: a loose branch shows as a board, a free sticky in
+  Just in or on its board. `isBranch` and `placeSticky` remain for the desk and old data.
 - @mentions (`nodes-model.js`, schema 4): an @ only links, it never files or makes a node.
   `findMentions` (longest node name wins, `/` for a branch, never after a letter/dot, so emails
   don't count; a name that matches no node is just words), `linkMentions(state, id)` records

@@ -4,6 +4,7 @@
    reader of the answer, since small models don't always keep to the format. Pure. */
 
 import { markdownTree, NodeFileError } from './node-file.mjs'
+import { WHATS } from './what-model.mjs'
 
 const clip = (value, max) => String(value || '').trim().slice(0, max)
 const SYSTEM = { role: 'system', content: 'You help someone organise their own notes in OSAT. Keep their words where you can, never invent facts, and answer only in the form asked, with no introduction.' }
@@ -36,37 +37,6 @@ export function readUnpackAnswer(text, title = 'Node') {
   }
   if (!tree || (!tree.branches.length && !tree.leaves.length)) throw new Error('The AI didn’t suggest any branches. Try again, or unpack it by hand.')
   return { branches: tree.branches, leaves: tree.leaves }
-}
-
-/* ---------- Help me sort ---------- */
-
-export function sortMessages({ node, branches, stickies }) {
-  return [SYSTEM, {
-    role: 'user',
-    content: `The topic "${clip(node, 80)}" has these branches:
-${branches.map((name, index) => `${index + 1}. ${clip(name, 80)}`).join('\n')}
-
-These stickies in it still need a branch:
-${stickies.map((words, index) => `${index + 1}. ${clip(words, 300).replace(/\s+/g, ' ')}`).join('\n')}
-
-For each sticky, write one line: its number, a colon, and the number of the branch it belongs in, or "none" if no branch fits. For example:
-1: 2
-2: none`,
-  }]
-}
-
-/* [{ sticky, branch }] (0-based), each sticky once, only numbers that exist. */
-export function readSortAnswer(text, branchCount, stickyCount) {
-  const found = new Map()
-  for (const line of unwrap(text).split('\n')) {
-    const match = /^\s*(?:sticky\s*)?#?(\d+)\s*(?:[:.)=→]|-+>?)+\s*(?:branch\s*)?#?(\d+|none)\b/i.exec(line)
-    if (!match) continue
-    const sticky = Number(match[1]) - 1
-    const branch = /none/i.test(match[2]) ? -1 : Number(match[2]) - 1
-    if (sticky < 0 || sticky >= stickyCount || found.has(sticky)) continue
-    found.set(sticky, branch)
-  }
-  return [...found].filter(([, branch]) => branch >= 0 && branch < branchCount).map(([sticky, branch]) => ({ sticky, branch }))
 }
 
 /* ---------- Sort Unsorted ---------- */
@@ -129,6 +99,45 @@ export function readSortUnsortedAnswer(text, placeNames, stickyCount) {
   return { homes, made: [...fresh.values()].filter((group) => group.stickies.length > 1) }
 }
 
+/* ---------- What is it? (Phase 67) ---------- */
+
+/* The stickies code couldn't read on its own (what-model.mjs), each to be named in one word. */
+export function whatMessages(stickies) {
+  return [SYSTEM, {
+    role: 'user',
+    content: `These are stickies someone wrote quickly. Say what each one is, in one word:
+idea (something to try or build), question (something to find out), problem (something wrong), todo (something to do), date (something happening on a day), buy (something to buy), note (anything else).
+
+${stickies.map((words, index) => `${index + 1}. ${clip(words, 200).replace(/\s+/g, ' ')}`).join('\n')}
+
+Write one line per sticky: its number, a colon and the word. For example:
+1: idea
+2: buy`,
+  }]
+}
+
+// Words a model uses for each kind besides its own.
+const WHAT_WORDS = {
+  idea: 'idea', thought: 'idea', question: 'question', problem: 'problem', bug: 'problem', issue: 'problem', complaint: 'problem',
+  todo: 'todo', 'to do': 'todo', 'to-do': 'todo', task: 'todo', chore: 'todo', date: 'date', event: 'date', appointment: 'date',
+  calendar: 'date', buy: 'buy', shopping: 'buy', grocery: 'buy', groceries: 'buy', purchase: 'buy', note: 'note', other: 'note',
+}
+
+/* [{ sticky, what }] (0-based), each sticky once, only kinds there are. */
+export function readWhatAnswer(text, stickyCount) {
+  const found = new Map()
+  for (const line of unwrap(text).split('\n')) {
+    const match = /^\s*(?:sticky\s*)?#?(\d+)\s*(?:[:.)=→]|-+>?)+\s*\**\s*([a-z][a-z -]*)/i.exec(line.replace(/[*_`]/g, ''))
+    if (!match) continue
+    const sticky = Number(match[1]) - 1
+    const said = match[2].toLowerCase().trim()
+    const what = WHAT_WORDS[said] || WHAT_WORDS[said.split(/\s+/)[0]]
+    if (sticky < 0 || sticky >= stickyCount || found.has(sticky) || !WHATS.includes(what)) continue
+    found.set(sticky, what)
+  }
+  return [...found].map(([sticky, what]) => ({ sticky, what }))
+}
+
 /* ---------- A long sticky, shortened ---------- */
 
 /* One long or tangled sticky as a short title and one or two plain sentences, in the
@@ -158,52 +167,4 @@ export function readGistAnswer(text) {
   const title = tidy(pick('title') || (lines.length > 1 && !/^gist/i.test(lines[0]) ? lines[0] : ''), 80).replace(/\.$/, '')
   const gist = tidy(pick('gist') || pick('summary'), 400)
   return title || gist ? { title, gist } : null
-}
-
-/* ---------- Where does this branch belong? ---------- */
-
-/* One branch against every place it could go (as in Sort Unsorted: `places` are { name, peek }).
-   `peek` is a few words from inside the branch. */
-export function whereMessages({ branch, peek = [], places }) {
-  return [SYSTEM, {
-    role: 'user',
-    content: `These are someone's notes. A sticky is one thought. A topic gathers stickies about one thing, and a branch is a group inside a topic.
-
-The branch "${clip(branch, 80)}" is a group of stickies${peek.length ? ` about: ${peek.slice(0, 5).map((words) => clip(words, 40).replace(/\s+/g, ' ')).join('; ')}` : ''}.
-
-Places it could go:
-${places.map(({ name, peek: inside = [] }, index) => `${index + 1}. ${clip(name, 80)}${inside.length ? ` (has: ${inside.slice(0, 2).map((words) => clip(words, 30).replace(/\s+/g, ' ')).join('; ')})` : ''}`).join('\n') || '(none yet)'}
-
-Write one line: the exact name of the place it belongs in (copy it from the list), a colon, and a few words saying why. If no place fits, write "none". For example:
-Clients / Ana: both are about clients`,
-  }]
-}
-
-/* { place (0-based), why } for the place the model picked, or null for "none" or an answer that
-   names no place there is. A place written as its name counts as that place. */
-export function readWhereAnswer(text, placeNames) {
-  const line = unwrap(text).split('\n').map((value) => value.replace(/[*_`]/g, '').trim()).find(Boolean) || ''
-  if (!line || /^(none|n\/a|unsure|unknown|skip|no place|no\b)/i.test(line)) return null
-  const reason = (rest) => clip(rest.replace(/^[\s\-–—:.]+/, ''), 140)
-  const names = placeNames.map((name, index) => ({ index, name: String(name), key: plain(name) })).filter(({ key }) => key)
-  // Its name starts the line: the longest one that does ("Clients / Ana" is not "Clients"), colon or not.
-  const key = plain(line)
-  const named = [...names].sort((a, b) => b.key.length - a.key.length).find((place) => key.startsWith(place.key))
-  if (named) {
-    const same = line.toLowerCase().startsWith(named.name.toLowerCase())
-    return { place: named.index, why: reason(same ? line.slice(named.name.length) : line.split(/\s*(?::|—|–|\s-\s)\s*/).slice(1).join(': ')) }
-  }
-  // Or its number (some models answer with the number they were shown).
-  const number = /^(?:place\s*)?#?(\d+)\b\s*(?:[:.)=→]|-+>?)*\s*(.*)$/i.exec(line)
-  if (number) {
-    const place = Number(number[1]) - 1
-    if (place < 0 || place >= placeNames.length) return null
-    const own = plain(placeNames[place])
-    const rest = number[2]
-    return { place, why: reason(own && plain(rest).startsWith(own) ? rest.split(/\s*(?::|—|–|\s-\s)\s*/).slice(1).join(': ') : rest) }
-  }
-  // Or the last part of a name ("Ana" for "Clients / Ana").
-  const [head, ...rest] = line.split(/\s*(?::|—|–|\s-\s)\s*/)
-  const place = placeNames.findIndex((name) => plain(String(name).split('/').pop()) === plain(head))
-  return place < 0 ? null : { place, why: reason(rest.join(': ')) }
 }

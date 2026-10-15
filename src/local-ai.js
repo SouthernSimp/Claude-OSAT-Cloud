@@ -15,6 +15,11 @@ function validateLocalChatPayload(payload) {
       typeof message.content !== 'string' || !message.content.trim() || message.content.length > MAX_MESSAGE_CHARS) {
       throw new Error('Messages must have a role and non-empty text.')
     }
+    // A question may carry pictures (Phase 37b); desktop/local-ai.cjs checks them again, the same way.
+    if (message.images !== undefined && (message.role !== 'user' || !Array.isArray(message.images) || !message.images.length || message.images.length > 4
+      || message.images.some((image) => !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(image?.type) || typeof image.data !== 'string' || !image.data || image.data.length > 14_000_000))) {
+      throw new Error('A question can carry up to four pictures, each a PNG or JPEG under 10 MB.')
+    }
   }
   // `background`: filing on its own (src/sky/useAutoFile.js) never wakes a model the way a question does.
   return { model: model.trim(), messages, ...(payload.background === true ? { background: true } : {}) }

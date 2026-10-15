@@ -1,6 +1,6 @@
 // The AI files stickies on its own (src/sky/auto-file.js) in the built preview, with the AI faked:
 // a pile written a minute ago is filed, a long one gets a short version, one line says where they
-// went (Undo takes it all back), and Notes → Filed for you lists them. Fails on page errors or a
+// went (Undo takes it all back), and Notes → Just in lists them. Fails on page errors or a
 // step that didn't happen; screenshots land in test-results/ui/auto-file/. Run `npm run build` first.
 import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
@@ -88,9 +88,15 @@ async function main() {
   await toast.waitFor({ timeout: 10000 }).catch(() => problems.push('no “Filed …” line appeared'))
   const said = await toast.textContent().catch(() => '')
   check(/Filed 4 stickies into/.test(said), `the line said “${said}”`)
-  const asked = await page.evaluate(() => window.__asked)
-  check(asked.length === 2 && asked.every((payload) => payload.background === true), `asked ${asked.length} times; each must be a background job`)
+  await sleep(300)
+  const everything = await page.evaluate(() => window.__asked)
+  // Phase 67: after filing, the AI is asked what the stickies code couldn't read are, and only those.
+  const kinds = everything.filter((payload) => /Say what each one is/.test(payload.messages[1].content))
+  const asked = everything.filter((payload) => !kinds.includes(payload))
+  check(asked.length === 2 && everything.every((payload) => payload.background === true), `asked ${asked.length} times; each must be a background job`)
   check(/Clear the garage this weekend/.test(asked[1]?.messages[1].content || ''), 'filing did not read the long sticky’s short version')
+  check(kinds.length === 1 && /Something I can’t place/.test(kinds[0].messages[1].content) && !/Buy cat litter/.test(kinds[0].messages[1].content),
+    'the AI wasn’t asked what the one unclear sticky is (or was asked about clear ones too)')
   await page.screenshot({ path: `${OUT}/filed-line.png` })
 
   // Undo takes the whole run back; the next run never asks about them again.
@@ -103,18 +109,20 @@ async function main() {
     return doc.notes.filter((note) => note.unsorted && !note.folderId).map((note) => note.id).sort()
   })
   check(JSON.stringify(unsorted) === JSON.stringify(['u0', 'u1', 'u2', 'u3', 'u4']), `after Undo, Unsorted held ${unsorted.join(', ')}`)
-  check((await page.evaluate(() => window.__asked.length)) === 2, 'it asked again about stickies it had already read')
+  check((await page.evaluate(() => window.__asked.length)) === everything.length, 'it asked again about stickies it had already read')
 
-  // File them again by hand-free means: a new pile, then Notes → Filed for you lists them.
+  // File them again by hand-free means: a new pile, then Notes → Just in lists them, and what it couldn't place.
   await page.evaluate(() => { localStorage.removeItem('osat.autofile.tried.v1') })
   await page.reload()
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
   await page.locator('.undo-toasts .toast').filter({ hasText: /^Filed / }).waitFor({ timeout: 10000 }).catch(() => problems.push('no second filing after reload'))
   await page.getByRole('button', { name: 'Notes', exact: true }).first().click()
-  await page.locator('.notes-organizer').getByRole('button', { name: /Filed for you/ }).click()
+  await page.locator('.notes-organizer').getByRole('button', { name: /Just in/ }).click()
   await sleep(300)
   const rows = await page.locator('.notes-list .note-row').count()
-  check(rows === 4, `Filed for you listed ${rows} stickies`)
+  const homeless = await page.locator('.notes-list .note-row', { hasText: 'Needs a home' }).count()
+  check(rows - homeless === 4 && homeless === 1, `Just in listed ${rows - homeless} filed and ${homeless} without a home`)
+  check(await page.locator('.notes-list .note-row', { hasText: 'Buy cat litter' }).locator('.meta-kind', { hasText: 'To buy' }).count() === 1, 'Buy cat litter didn’t say it is To buy')
   check(await page.locator('.notes-list .note-row', { hasText: 'Clear out the garage' }).count() === 1, 'the long sticky didn’t get its short title')
   await page.screenshot({ path: `${OUT}/filed-for-you.png` })
   await page.locator('.notes-list .note-row', { hasText: 'Clear out the garage' }).click()

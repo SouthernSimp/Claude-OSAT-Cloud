@@ -1048,14 +1048,13 @@ html:has(.quick-chat) body { background: transparent; }
 .ai-compare tr[data-best] { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .ai-compare tr:not([data-fits]) { color: var(--muted); }
 .ai-compare .ai-good { color: var(--muted); min-width: 160px; }
-.ai-compare td:nth-child(5), .ai-compare td:nth-child(6) { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ai-compare .ai-get { text-align: right; white-space: nowrap; }
 .ai-compare .ai-have { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: var(--t-xs); }
 .ai-compare .ai-too-big { color: var(--faint, var(--muted)); font-size: var(--t-xs); }
 .ai-dots { display: inline-flex; gap: 3px; }
 .ai-dots i { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--ink) 14%, transparent); }
 .ai-dots i[data-on] { background: var(--accent); }
-@container room (max-width: 760px) { .ai-compare .ai-good { display: none; } .ai-compare { min-width: 520px; } }
+@container room (max-width: 760px) { .ai-compare .ai-good-words { display: none; } .ai-compare .ai-good { min-width: 0; } .ai-compare { min-width: 520px; } }
 /* The rail's New chat is the one to use while the rail shows; the header's New only when it is tucked away. */
 .chat-head .chat-new { display: none; }
 @container room (max-width: 760px) { .chat-head .chat-new { display: inline-flex; } }
@@ -1078,3 +1077,17 @@ html:has(.quick-chat) body { background: transparent; }
 /* Attach and Speak as icons, so where the question goes and which notes it reads have room. */
 .voice-button.is-icon { width: 32px; height: 32px; padding: 0; justify-content: center; flex: none; }
 .voice-button.is-icon svg { width: 17px; height: 17px; }
+
+/* Pictures for the question (Phase 37b): a small thumbnail in the chip. */
+.ask-note-chip.is-picture img { width: 22px; height: 22px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 0 1px var(--line); }
+.ai-compare .ai-can { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.ai-compare .ai-good-words { display: block; }
+.ai-compare .ai-good { min-width: 200px; }
+.ai-compare .ai-rates { white-space: nowrap; }
+.ai-compare .ai-rates .ai-dots { display: flex; margin: 3px 0; }
+.ai-compare .ai-download { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ai-compare .ai-download small { display: block; color: var(--muted); font-size: var(--t-2xs); }
+.ai-can-chip { display: inline-block; padding: 1px 7px; border-radius: var(--r-full); font-size: var(--t-2xs); font-weight: 650; white-space: nowrap; color: var(--paper-ink); background: var(--paper-bone); cursor: help; }
+.ai-can-chip[data-can="pictures"] { background: var(--paper-sky); }
+.ai-can-chip[data-can="thinking"] { background: var(--paper-lilac); }
+.ai-can-chip[data-can="code"] { background: var(--paper-mint); }

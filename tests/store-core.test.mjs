@@ -123,7 +123,7 @@ test('schema 11 preserves existing notes and chats with their selected and respo
 test('schema 12 keeps notes as they were; a note may say the AI filed it and carry a gist', async () => {
   const old = { ...createEmptyDoc(), schema: 11, rev: 3, notes: [note('kept')] }
   const upgraded = migrate(old)
-  assert.equal(upgraded.schema, 12)
+  assert.equal(upgraded.schema, SCHEMA)
   assert.deepEqual(upgraded.notes, old.notes)
   const { normalizeNote } = await import('../shared/note-core.mjs')
   const kept = normalizeNote({ id: 'n', markdown: 'x', filed: { by: 'ai', at: '2026-10-06T00:00:00.000Z', into: 'f1' }, gist: '  Short  ' })

@@ -1,5 +1,22 @@
 # OSAT roadmap — from sprawling prototype to a calm Mac MVP
 
+## October 15: the rework — write it down, OSAT puts it where it goes
+
+Nate: the canvas is hard to read and sorting is still the chore. The plan (docs/REWORK-20261015.md, with a mockup
+you can click) gives every sticky a kind and a board, keeps Questions, Groceries and Coming up for you, sends dates
+to your calendar, shows every move in Just in with Undo, and turns the intake into a flow you can watch, n8n-style.
+The Sky's mind map and the six sorting screens go. Phases 67–71.
+
+Phase 67 (in review): every sticky now says what it is, Notes keeps Questions, To buy and Coming up for you,
+dates go on your calendar by themselves (Settings → AI picks which one), and Just in shows what came in and where it went.
+
+Phase 68 (in review): the canvas is boards now. Your boards down the side (Just in first), the open one as a Map
+(a column for each kind, so nothing tangles), a Board (Later, Next, Doing, Done) or a List. Write a sticky at the
+bottom and it lands in its column; carry one to another column, stage or board; right-click a board to rename or
+delete it (its stickies go back to Just in). Every change has Undo. The old mind map, its sorter and its layouts are
+gone (about 3,000 lines). Still here for now: Sort a pile (it is the only way in for a photo of paper stickies until
+Just in reads photos) and Put the desk away.
+
 ## October 6 (evening): the AI files stickies for you
 
 Nate's biggest problem: writing down a pile of stickies, then having to sort them. Now, like Mem,
@@ -129,6 +146,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 39 | Change it from the bar: favorites, keys and words from ⌘K; the Mac's own commands; Next screen | Merged (PR #73), Oct 8 |
 | 36 | One bar, one list: no tabs; Ask AI first, then apps, files, copies and notes with See all; Tab asks; ↓ shows the latest copies | Merged (PR #66), Oct 8 |
 | 37 | Choose your AI: best for this Mac, your models, and nine local models compared (Gemma 4, Qwen 3.5/3.6, Ministral 3) | Merged (PR #67), Oct 8 |
+| 37b | Every model whole: its picture part (the vision file) downloads with it, and models already on your Mac get theirs; llama.cpp's own server ships inside OSAT and reads pictures with them; Ask takes a pasted, dropped or chosen picture (the AI on this Mac only, never the cloud); Settings → AI says what each model can do: pictures, thinking, code | Merged (PR #100) |
 | 38 | Notes is home, the Sky becomes Canvas: one sidebar, List \| Canvas per topic, "topic" instead of node everywhere | Merged (PR #68), Oct 8 |
 | 40 | A smarter calculator: units and dates, offline (currency later: it needs the internet) | Merged (PR #70), Oct 8 |
 | 42 | Ask, tidier and honest: where a question goes, Try again, Edit your last question, a calmer box | Merged (PR #72), Oct 8 |
@@ -155,8 +173,13 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 63 | Hyper key, built in | Merged (PR #93), Oct 13 |
 | 64 | Mouse (Settings → Mouse): the mouse wheel can scroll the opposite way from the trackpad (up and down, left and right, each on its own), faster or slower, and the side buttons can go back or forward; no LinearMouse needed. A small helper does it, only while it is on and OSAT is allowed in Accessibility | Merged (PR #93), Oct 13 |
 | 65 | OSAT as my Raycast (Oct 14): the Hyper key checks itself and repairs the stale privacy entry that silenced it, and puts Caps Lock back when another app takes it; windows move and keys are pressed through Accessibility only (no System Events); Bring in from Raycast (Nate's keys, Snippets and Quicklinks exports; links to folders and apps' own links); Hyper N a quick sticky with lists, bold and screenshots; Uninstall an app with its leftovers, with Undo; Keys for this app (every shortcut of the app you're in, and any menu item from the bar); a polished pass with gentle motion | Merged (PR #94), Oct 14 |
-| 66 | A big polish pass (Oct 14): a Dashboard (dock, ⌘6) with your numbers, a week of writing, the biggest topics, what's next and every part of OSAT as an app tile; Tools as a launchpad of app tiles; the quick bar redrawn like Raycast (app-style icons, one clean list, the main action and ⌘K in its foot); app icons in Settings → Shortcuts; screenshots with CleanShot X or the Mac's own, your choice; Appearance → Blur is a real blur; Settings says less (the longer words behind ⓘ); OSAT looks for updates by itself; nothing can grey out the whole desk again, and one part that can't start no longer stops OSAT opening | In review |
+| 66 | A big polish pass (Oct 14): a Dashboard (dock, ⌘6) with your numbers, a week of writing, the biggest topics, what's next and every part of OSAT as an app tile; Tools as a launchpad of app tiles; the quick bar redrawn like Raycast (app-style icons, one clean list, the main action and ⌘K in its foot); app icons in Settings → Shortcuts; screenshots with CleanShot X or the Mac's own, your choice; Appearance → Blur is a real blur; Settings says less (the longer words behind ⓘ); OSAT looks for updates by itself; nothing can grey out the whole desk again, and one part that can't start no longer stops OSAT opening | Merged (PR #96) |
 | 57 | Meetings (Tools → Meetings): OSAT listens to a meeting on your Mac (you, and the other people through what your Mac plays) and writes it up when you stop: a summary, what was decided, a to-do list, and the words themselves, as two notes. The listening and the writing happen on your Mac; the sound is deleted once it is written up | In review |
+| 67 | What it is, and the lists OSAT keeps for you: every sticky reads as an Idea, Question, Problem, To-do, Date or To buy (code at once and offline, the AI for the unclear ones, your pick wins); Notes → Questions, To buy and Coming up; a date goes on your calendar on its own (a Mac one passes it to Google), with Undo; Just in takes in Unsorted and Filed for you; opening a window no longer lays out the old boards (seconds with many stickies) | Merged (PR #98) |
+| 68 | Boards and the new canvas: topics become boards (OSAT, Fortis, Home…); each board as a Map (one column per kind), a Board (Later, Next, Doing, Done) and a List; write, carry and right-click with Undo; starter boards (Personal, Home, Work) one tap away; the old Sky, its sorter and layouts go | Merged (PR #102) |
+| 69 | Flows (n8n-style, on this Mac): watch each sticky go through the intake step by step; then Meeting → to-dos and the Morning brief as flows | Planned |
+| 70 | Soul and memory: SOUL.md, MEMORY.md and RULES.md, plain files you can read and change; RULES.md says what the AI may do on its own | Planned |
+| 71 | Connections: one screen for the AI (built in, Claude, ChatGPT, a key, a tool server) and your accounts (Google, Microsoft 365, Granola, Slack, Notion); one Offline switch | Planned |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

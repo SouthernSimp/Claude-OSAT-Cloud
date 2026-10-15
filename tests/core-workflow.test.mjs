@@ -4,7 +4,6 @@ import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import { boardMap } from '../src/assistant/board-context.js'
 import { notesForQuestion } from '../src/assistant/work-scope.js'
 import { normalizeChat, notesContext } from '../src/assistant/chats.js'
-import { findSky } from '../src/sky/find.js'
 import { applyUnpackProposal, undoUnpackProposal } from '../src/sky/unpack-proposal.js'
 import { draftJournal } from '../src/store/recovery.js'
 import { notePreview } from '../src/notes-model.js'
@@ -48,18 +47,6 @@ test('focused board context respects the actual shared sources and removed sourc
   assert.doesNotMatch(map, /Build the raised beds|Client contract|Unsorted thought/)
   const withoutSources = boardMap(state, { scope: 'focus', focus: 'garden', noteIds: [] })
   assert.doesNotMatch(withoutSources, /Buy seeds|Build the raised beds/)
-})
-
-test('Canvas finds topics, nested branches, note content and tags using the desk matching rules', () => {
-  const state = workspace()
-  state.notes[0].tags = ['garden']
-  assert.equal(findSky(state, 'Garden')[0].type, 'Topic')
-  const branch = findSky(state, 'Raised beds').find((row) => row.type === 'Branch')
-  assert.equal(branch.go[1].folderId, 'beds')
-  assert.match(branch.hint, /Garden/)
-  assert.deepEqual(findSky(state, '#garden').map((row) => row.key), ['note:focused'])
-  assert.deepEqual(findSky(state, 'definitely missing'), [])
-  assert.deepEqual(findSky(state, ''), [])
 })
 
 test('the conversation remembers topic and no-notes scopes after normalization', () => {

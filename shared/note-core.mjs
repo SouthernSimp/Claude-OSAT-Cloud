@@ -84,7 +84,26 @@ export function normalizeNote(value, index = 0) {
     // version of a long sticky in the AI's words (`gist`); the sticky's own words never change.
     ...filedOf(value.filed),
     ...(typeof value.gist === 'string' && value.gist.trim() ? { gist: value.gist.trim().slice(0, 400) } : {}),
+    // Schema 13 (Phase 67): what it is when the AI or Nate said so (what-model.mjs; code's own guess is
+    // never kept), when it was answered, done or bought, and the calendar event its day became.
+    ...(WHATS.includes(value.what) ? { what: value.what } : {}),
+    ...(typeof value.doneAt === 'string' && !Number.isNaN(Date.parse(value.doneAt)) ? { doneAt: value.doneAt } : {}),
+    ...calOf(value.cal),
+    // Schema 14 (Phase 68): where it is on its board's Board view (Done is `doneAt`).
+    ...(['later', 'next', 'doing'].includes(value.stage) ? { stage: value.stage } : {}),
   }
+}
+
+// Kept here, not imported, so the note record stays dependency-free (what-model.mjs has the same list).
+const WHATS = ['idea', 'question', 'problem', 'todo', 'date', 'buy', 'note']
+
+/* The calendar event a sticky's day became: on the Mac's own calendar or OSAT's, or `off` once Nate
+   took it off (so it is never put back on its own). */
+function calOf(value) {
+  if (!isObject(value)) return {}
+  if (value.off === true) return { cal: { off: true } }
+  if (typeof value.id !== 'string' || !value.id || !['mac', 'osat'].includes(value.where) || Number.isNaN(Date.parse(value.start))) return {}
+  return { cal: { id: value.id.slice(0, 300), where: value.where, start: value.start } }
 }
 
 function filedOf(value) {

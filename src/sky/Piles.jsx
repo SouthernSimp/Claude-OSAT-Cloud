@@ -1,36 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus } from '@phosphor-icons/react'
 
-import { useDrop } from '../lib/carry.js'
-import { Sticky } from './Sticky.jsx'
-
-/* A run of stickies you can drop into at any place: down a pile, or across a lane. It
-   ends with a way to write the next one. `actions` are the Sky's (Sky.jsx). */
-export function StickyList({ id, folderId, notes, axis = 'y', actions, paper, adding = 'Write a sticky', className = '', empty }) {
-  const drop = useDrop(id, {
-    accepts: ['note'],
-    axis,
-    onDrop: ({ id: noteId, index }) => actions.moveSticky(noteId, folderId, index),
-  })
-  return (
-    <div className={`sticky-list is-${axis} ${className}`} {...drop}>
-      {notes.map((note) => (
-        <Sticky
-          key={note.id}
-          note={note}
-          commit={actions.commit}
-          paper={note.color || paper}
-          onToss={() => actions.toss(note)}
-          onMenu={(event) => actions.stickyMenu(event, note)}
-          mentions={actions.mentions}
-        />
-      ))}
-      {!notes.length && empty && <p className="sticky-empty">{empty}</p>}
-      {adding && <AddSticky placeholder={adding} onAdd={(text) => actions.addSticky(text, folderId)} />}
-    </div>
-  )
-}
-
 /* "Write a sticky": a blank sticky to write on. Return keeps it and gives a fresh one right
    away, so a whole pile can be typed in a row; Shift-Return is a new line; Esc stops.
    `startOpen` begins with the blank sticky out; `onClose` hears when writing stops. */

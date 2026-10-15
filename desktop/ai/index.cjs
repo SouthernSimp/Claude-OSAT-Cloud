@@ -19,7 +19,7 @@ function createAi({
   estimate = async () => null, freeMemory = () => os.freemem(),
   confirmLoad = async () => 'cancel', confirmUnload = async () => false,
   startup = false, saveStartup = async () => {}, downloadQueue = [], saveQueue = async () => {},
-  stopTimeout = 10000,
+  stopTimeout = 10000, vision = null,
 }) {
   let chosen = tierById(initial) ? initial : null
   let autoLoad = startup === true
@@ -34,10 +34,17 @@ function createAi({
   const blocked = new Set()
   const estimates = new Map()
   const fileFor = (tier) => path.join(dir, tier.file)
-  const isReady = (tier) => {
-    if (mock) return Boolean(tier.starter) // the practice model stands in for the three starter sizes only
-    try { return fs.statSync(fileFor(tier)).size === tier.size } catch { return false }
-  }
+  const visionFor = (tier) => path.join(dir, tier.vision.file)
+  const whole = (file, size) => { try { return fs.statSync(file).size === size } catch { return false } }
+  // Ready: the model is here and answers in words. Sees: its picture part is here too (Phase 37b).
+  const isReady = (tier) => (mock ? Boolean(tier.starter) : whole(fileFor(tier), tier.size)) // the practice model stands in for the three starter sizes only
+  const sees = (tier) => (mock ? Boolean(tier.starter) : !tier.vision || whole(visionFor(tier), tier.vision.size))
+  const complete = (tier) => isReady(tier) && sees(tier)
+  // What is still to come down, in order: the model, then its picture part.
+  const partsOf = (tier) => [
+    ...(isReady(tier) ? [] : [{ url: tier.url, dest: fileFor(tier), size: tier.size, sha256: tier.sha256 }]),
+    ...(sees(tier) ? [] : [{ url: tier.vision.url, dest: visionFor(tier), size: tier.vision.size, sha256: tier.vision.sha256 }]),
+  ]
   const stateOf = (id) => engines.get(id)?.state || 'idle'
   const busy = (entry) => entry.state === 'loading' || entry.state === 'unloading' || entry.requests > 0
   const exclusive = (fn) => {
@@ -59,6 +66,7 @@ function createAi({
           starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best,
           minMemory: tier.minMemory, fits: fits(tier, totalMemory),
           size: tier.size, ready: isReady(tier), state: stateOf(tier.id),
+          sees: sees(tier), visionSize: tier.vision?.size || 0, can: tier.can || null,
           busy: Boolean(entry && busy(entry)), retained: Boolean(entry?.retained),
           blocked: blocked.has(tier.id), message: entry?.message || '',
           estimatedMemory: entry?.bytes || estimates.get(tier.id)?.bytes || null }
@@ -80,18 +88,25 @@ function createAi({
   async function rememberQueue() { await saveQueue([...queued]) }
   function pump() {
     if (disposed || paused || transfer?.state === 'running') return transfer?.done
-    while (queued.length && isReady(tierById(queued[0]))) queued.shift()
+    while (queued.length && complete(tierById(queued[0]))) queued.shift()
     const tier = tierById(queued[0])
     if (!tier) { transfer = null; changed(true); return Promise.resolve() }
     const controller = new AbortController()
-    const mine = { tier: tier.id, received: 0, total: tier.size, state: 'running', message: '', abort: () => controller.abort() }
+    const total = partsOf(tier).reduce((sum, part) => sum + part.size, 0)
+    const mine = { tier: tier.id, received: 0, total, state: 'running', message: '', abort: () => controller.abort() }
     transfer = mine
     changed(true)
     mine.done = (async () => {
       for (let attempt = 1; ; attempt += 1) {
         try {
-          await download({ url: tier.url, dest: fileFor(tier), size: tier.size, sha256: tier.sha256, signal: controller.signal,
-            onProgress: (received) => { mine.received = received; if (transfer === mine) changed() } })
+          // The model first (it answers in words as soon as it is here), then its picture part; each resumes on its own.
+          let before = total - partsOf(tier).reduce((sum, part) => sum + part.size, 0)
+          for (const part of partsOf(tier)) {
+            await download({ ...part, signal: controller.signal,
+              onProgress: (received) => { mine.received = before + received; if (transfer === mine) changed() } })
+            before += part.size
+            if (transfer === mine) changed(true)
+          }
           if (transfer !== mine) return
           queued = queued.filter((id) => id !== tier.id)
           await rememberQueue()
@@ -122,7 +137,7 @@ function createAi({
     if (!list.length || list.length > TIERS.length || list.some((id) => !tierById(id))) throw new Error('Choose an OSAT model to download.')
     await fsp.mkdir(dir, { recursive: true })
     const before = [...queued]
-    for (const id of list) if (!isReady(tierById(id)) && !queued.includes(id)) queued.push(id)
+    for (const id of list) if (!complete(tierById(id)) && !queued.includes(id)) queued.push(id)
     try { await rememberQueue() } catch (error) { queued = before; throw error }
     paused = false
     pump()
@@ -142,7 +157,7 @@ function createAi({
   function cancel() { paused = true; transfer?.abort?.(); return transfer?.done }
   function resume() {
     if (transfer?.state === 'running') return transfer.done
-    if (!queued.length && chosen && !isReady(tierById(chosen))) queued.push(chosen)
+    if (!queued.length && chosen && !complete(tierById(chosen))) queued.push(chosen)
     paused = false
     const done = pump()
     rememberQueue().catch(() => {})
@@ -157,6 +172,9 @@ function createAi({
   }
   function start({ downloads = true } = {}) {
     for (const tier of TIERS) if (!isReady(tier) && fs.existsSync(fileFor(tier) + '.part') && !queued.includes(tier.id)) queued.push(tier.id)
+    // A model that is here without its picture part gets it, so every model works the way it is meant to (Phase 37b).
+    const missing = TIERS.filter((tier) => isReady(tier) && !sees(tier) && !queued.includes(tier.id))
+    for (const tier of missing.sort((a, b) => Number(b.id === chosen) - Number(a.id === chosen))) queued.push(tier.id)
     rememberQueue().then(() => { if (downloads) pump() }).catch(() => {})
     if (autoLoad && chosen && isReady(tierById(chosen))) {
       load(chosen, { interactive: false }).catch((error) => {
@@ -318,6 +336,8 @@ function createAi({
     if (replacing.some(busy)) throw new Error('Another model is busy. Wait until it finishes or choose Keep both.')
     if (mode === 'alongside') for (const other of others) { other.retained = true; clearTimeout(other.timer) }
     for (const other of replacing) await stop(other)
+    // The picture reader holds a model too; it steps aside when it isn't answering.
+    await vision?.rest()
     entry.retained = retain || mode === 'alongside'
     entry.bytes = info.estimatedMemory
     if (interactive) blocked.delete(id)
@@ -371,8 +391,10 @@ function createAi({
       if (transfer?.tier === id) { transfer.abort?.(); await transfer.done; transfer = null }
       queued = queued.filter((item) => item !== id)
       await rememberQueue()
-      await fsp.rm(fileFor(tierById(id)), { force: true })
-      await fsp.rm(fileFor(tierById(id)) + '.part', { force: true })
+      for (const file of [fileFor(tierById(id)), ...(tierById(id).vision ? [visionFor(tierById(id))] : [])]) {
+        await fsp.rm(file, { force: true })
+        await fsp.rm(file + '.part', { force: true })
+      }
       estimates.delete(id)
       if (chosen === id) { await save(null); chosen = null }
       changed(true)
@@ -394,6 +416,7 @@ function createAi({
     const id = model ? (model.startsWith('osat:') ? model.slice(5) : null) : chosen
     if (!tierById(id) || !isReady(tierById(id))) throw new Error('The AI is not set up yet. Choose a size in Settings → AI.')
     signal?.throwIfAborted()
+    if (messages.some((message) => message.images?.length)) return seeStream(tierById(id), messages, onDelta, signal)
     const entry = engines.get(id) || newEntry(id)
     entry.requests += 1
     clearTimeout(entry.timer); changed(true)
@@ -414,6 +437,26 @@ function createAi({
     } finally { entry.requests -= 1; restartIdle(entry); changed(true) }
   }
 
+  /* A question with pictures (Phase 37b): llama.cpp's server reads them with the model and its picture part.
+     Word models that aren't answering step aside first, so the Mac holds one copy of a model at a time. */
+  async function seeStream(tier, messages, onDelta, signal) {
+    if (!sees(tier)) {
+      const coming = transfer?.tier === tier.id || queued.includes(tier.id)
+      throw new Error(`${tier.label} can read pictures once its picture part is here${coming ? '. It is downloading now: Settings → AI shows how far it is.' : '. Get it in Settings → AI.'}`)
+    }
+    if (mock) {
+      const count = messages.reduce((sum, message) => sum + (message.images?.length || 0), 0)
+      return practiceAnswer([{ role: 'user', content: `${messages.at(-1).content}\n` }], onDelta, signal).then((text) => {
+        const more = ` It saw ${count === 1 ? 'one picture' : count + ' pictures'}.`
+        onDelta(more)
+        return text + more
+      })
+    }
+    if (!vision) throw new Error('Pictures can’t be read in this copy of OSAT.')
+    await exclusive(async () => { for (const entry of engines.values()) if (entry.child && !busy(entry) && !entry.retained) await stop(entry) })
+    return vision.see({ model: fileFor(tier), vision: visionFor(tier), messages, onDelta, signal, maxTokens: MAX_TOKENS })
+  }
+
   function models() {
     const ready = TIERS.filter(isReady)
     const preferred = ready.find((tier) => tier.id === chosen) || ready.find((tier) => tier.id === pickTier(totalMemory).id) || ready[0]
@@ -421,10 +464,13 @@ function createAi({
       id: 'osat:' + tier.id, name: mock ? 'Practice model' : tier.starter ? tier.model + ' · ' + tier.label : tier.model,
       label: tier.label, runtime: 'osat', offline: true, state: stateOf(tier.id),
       recommended: tier.id === pickTier(totalMemory).id,
+      // Pictures: its picture part is here (Phase 37b), so Ask can attach one.
+      sees: sees(tier),
     }))
   }
   function dispose() {
     disposed = true; paused = true; transfer?.abort?.()
+    vision?.stop().catch(() => {})
     for (const entry of engines.values()) {
       clearTimeout(entry.timer)
       failPending(entry, 'The AI was stopped.')

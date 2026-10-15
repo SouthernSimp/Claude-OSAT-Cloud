@@ -3,12 +3,13 @@ import assert from 'node:assert/strict'
 
 import { createDefaultWorkspace, makeBackup, normalizeWorkspace, parseBudgetCsv, readWorkspaceBackup } from '../src/osat-data.js'
 
-test('a fresh workspace has one desk board and nothing seeded', () => {
+test('a fresh workspace has nothing seeded, and the old boards are kept as they were', () => {
   const workspace = createDefaultWorkspace()
   assert.deepEqual(workspace.notes, [])
   assert.deepEqual(workspace.projects, [])
-  assert.equal(workspace.sorter.boards.length, 1)
-  assert.equal(workspace.sorter.boards[0].scope.kind, 'all')
+  assert.equal(workspace.sorter, null)
+  const boards = { version: 2, activeBoardId: 'b', boards: [{ id: 'b', name: 'Desk', notes: [{ id: 'gone', x: 0, y: 0 }] }] }
+  assert.equal(normalizeWorkspace({ ...workspace, sorter: boards }).sorter, boards, 'never reconciled or laid out again')
   for (const gone of ['records', 'capture', 'savedIds', 'legacySnapshot', 'mindmap', 'importedLegacyAt']) assert.equal(gone in workspace, false, gone)
 })
 

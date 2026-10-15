@@ -123,6 +123,8 @@ button { transition-property: scale, translate, background, color, box-shadow, b
 
 /* At the foot of the room that asked (the pop-out's glass is what "fixed" measures from). */
 .undo-toasts { position: fixed; z-index: var(--z-pop); left: 50%; bottom: 24px; translate: -50% 0; pointer-events: none; }
+/* A second line at the same time (a date put on the calendar while stickies are filed) sits above the first. */
+.overlay-surface .toasts-above .undo-toasts { bottom: 152px; }
 
 .home-composer { transition: box-shadow 600ms var(--glide), translate 500ms var(--spring); }
 .home-composer:focus-within {
