@@ -93,7 +93,7 @@ export function installSearchBridge(defaults) {
     askSwitch: async (on) => on,
     mode: async () => true,
     // CleanShot X is on this stand-in Mac, with two recent captures (Settings → Screenshots turns them on).
-    captureStatus: async () => ({ cleanshot: true, mac: true, list: ['area', 'window', 'fullscreen', 'scrolling', 'all-in-one', 'record', 'text', 'history'], recent: settings.captures?.recent === true, saveTo: 'desktop', screen: null }),
+    captureStatus: async () => ({ cleanshot: true, mac: true, list: ['area', 'window', 'fullscreen', 'scrolling', 'all-in-one', 'record', 'text', 'history', 'from-clipboard'], recent: settings.captures?.recent === true, saveTo: 'desktop', screen: null }),
     captureRecent: async () => [{ id: 'media_a/CleanShot 1.png', name: 'CleanShot 1.png', at: Date.now() - 60000 }, { id: 'media_b/CleanShot 2.mp4', name: 'CleanShot 2.mp4', at: Date.now() - 7200000 }],
     captureThumb: async () => picture('d7e8c6', 'A screenshot'),
     capture: async (id) => { window.__calls.push(['capture', id]); return { ok: true } },

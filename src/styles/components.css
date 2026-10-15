@@ -412,3 +412,8 @@ input[type="radio"] {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* A room or a Settings page that broke (lib/ErrorBoundary.jsx): calm, in its own place. */
+.broke { display: grid; justify-items: start; gap: 6px; margin: 24px auto; max-width: 420px; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface-raised); color: var(--ink); font-size: var(--t-sm); }
+.broke span { color: var(--muted); }
+.broke button { margin-top: 6px; }

@@ -75,7 +75,7 @@ function Table({ launcher }) {
     setKey: (hotkey) => save({ ring: { hotkey } }), setOn: (on) => save({ ring: { on } }),
   }]
   const captures = CAPTURES.filter((item) => shooting?.list.includes(item.id)).map((item) => ({
-    id: `capture:${item.id}`, icon: CAPTURE_ICONS[item.id], name: item.label, hint: shooting.cleanshot ? 'With CleanShot X' : 'With the Mac’s own screenshot', word: null, hotkey: settings.captures.hotkeys[item.id], on: true, canWord: false,
+    id: `capture:${item.id}`, icon: CAPTURE_ICONS[item.id] || ClipboardText, name: item.label, hint: shooting.cleanshot ? 'With CleanShot X' : 'With the Mac’s own screenshot', word: null, hotkey: settings.captures.hotkeys[item.id], on: true, canWord: false,
     setKey: (hotkey) => save({ captures: { hotkeys: { [item.id]: hotkey } } }),
   }))
   const groups = [

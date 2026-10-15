@@ -6,7 +6,7 @@ import {
 } from '@phosphor-icons/react'
 
 /* Screenshots and recording (shared/capture-model.mjs), on the ring and in the quick search. */
-export const CAPTURE_ICONS = { area: Selection, window: AppWindow, fullscreen: Monitor, scrolling: Scroll, 'all-in-one': Aperture, record: Record, text: TextAa, history: ClockCounterClockwise }
+export const CAPTURE_ICONS = { area: Selection, window: AppWindow, fullscreen: Monitor, scrolling: Scroll, 'all-in-one': Aperture, record: Record, text: TextAa, history: ClockCounterClockwise, 'from-clipboard': Clipboard }
 
 /* One small picture for each kind of row; a file's is drawn from its name. */
 const FILE_ICONS = [
