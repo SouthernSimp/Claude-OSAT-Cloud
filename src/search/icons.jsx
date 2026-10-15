@@ -7,7 +7,7 @@ import {
   Aperture, ClockCounterClockwise, Keyboard, Monitor, Record, Scroll, Selection, TextAa, Timer, SquaresFour, Compass, WifiSlash, PencilSimpleLine,
   WifiHigh, Bluetooth, ShieldCheck, Bell, SpeakerHigh, Moon, Hourglass, GearSix, Info, ArrowsClockwise, HardDrives, ListChecks, CircleHalf,
   PersonArmsSpread, SlidersHorizontal, Waveform, MagnifyingGlass, HandPalm, BatteryFull, LockKey, Fingerprint, Users, At, Mouse, Cursor,
-  Printer, ShareNetwork, Clock, Translate, AppleLogo, Lock, SpeakerSlash, EyeSlash, Trash,
+  Printer, ShareNetwork, Clock, Translate, AppleLogo, Lock, SpeakerSlash, EyeSlash, Trash, Smiley,
 } from '@phosphor-icons/react'
 
 /* Screenshots and recording (shared/capture-model.mjs), on the ring and in the quick search. */
@@ -21,7 +21,7 @@ const FILE_ICONS = [
 ]
 const BY_KIND = {
   folder: FolderSimple, text: Clipboard, link: Link, email: EnvelopeSimple, phone: Phone, number: Hash, image: Image, app: AppWindow,
-  note: NotePencil, sticky: NotePencil, ask: Sparkle, node: TreeStructure, room: Sparkle, calc: Calculator, 'keyword-app': AppWindow, 'keyword-link': Globe, layout: Layout, more: ArrowRight, snippet: TextAlignLeft, system: Power, menu: Keyboard,
+  note: NotePencil, sticky: NotePencil, ask: Sparkle, node: TreeStructure, room: Sparkle, calc: Calculator, 'keyword-app': AppWindow, 'keyword-link': Globe, layout: Layout, more: ArrowRight, snippet: TextAlignLeft, system: Power, menu: Keyboard, emoji: Smiley,
 }
 
 /* The quick bar draws each row's glyph on a small coloured tile, like an app's icon (Raycast-style): one hue per kind. */

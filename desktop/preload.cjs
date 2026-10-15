@@ -258,6 +258,7 @@ contextBridge.exposeInMainWorld('osatUpdate', Object.freeze({
   check: () => ipcRenderer.invoke('update:check'),
   install: () => ipcRenderer.invoke('update:install'),
   onProgress: (listener) => listen('update:progress', listener),
+  onAvailable: (listener) => listen('update:available', listener),
 }))
 
 /* Your iPhone, through an OSAT folder in iCloud Drive: an Inbox and a copy of your notes. */

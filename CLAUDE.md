@@ -8,17 +8,19 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 14, 2026: Phase 65, OSAT as Nate's Raycast (`claude/raycast-home`)
+## Resume checkpoint — October 14, 2026: Phase 66, the big polish pass (`claude/polish-oct14`)
 
-Nate's Hyper key did nothing with Raycast quit. Found on his Mac: the helper started and said `ready`, but macOS sent it no
-keys because OSAT's own Input Monitoring entry was stored for an older build (a stale entry blocks, even with Accessibility
-granted); and quitting Raycast removes the Caps Lock → F20 mapping OSAT had relied on. Fixed in code (helper self-check →
-`deaf` → `tccutil reset ListenEvent ai.mccreery.osat` once; `caps`/`woke` put the mapping back). Also on this branch: window
-moves and pressed keys go through two new helpers (Accessibility only, no System Events/Automation), Bring in from Raycast,
-Hyper N quick sticky, Uninstall, Keys for this app, and a polish pass. Raycast's `.rayconfig` export is password-encrypted;
-Nate's keys were read off Raycast's Settings → Shortcuts page and live in `shared/raycast-import.mjs`.
-Next: Nate presses Settings → Keyboard → Bring in from Raycast → Use them, and imports his Snippets/Quicklinks JSON from
-~/Desktop; he asked for "the project view" to take "a different direction" (not yet defined: ask him what he means).
+Nate (Oct 14): the Settings → Shortcuts fix never reached him (PR #95 passed CI but was never merged, so no release went
+out; this branch carries it); Shortcuts grey-screened the whole desk; CleanShot felt forced; Settings had too much text;
+the quick bar should look like Raycast's; Appearance → Blur "isn't really a blur"; nobody can tell GitHub, Mail… exist
+until they open Tools; "make it feel made by a real team". Done on this branch: root and per-room error boundaries plus a
+main-process reload of a crashed page (`render-process-gone`), startup parts that fail on their own (`part()` in
+`whenReady`), a background update check with a desk pill (`UpdateNote`), the Raycast-style bar (`RowTile`, `PREVIEWS`,
+`qs-act`), app icons in Shortcuts, `captures.using` (CleanShot X or the Mac's own), a real blur (`osat-blur.node`), the
+Dashboard (`views/Dashboard.jsx`, `dashboard-model.js`, ⌘6), Tools as a launchpad of tiles, `.tile` + global `data-tint`,
+shorter Settings words with group notes behind ⓘ, and the canvas in the dashboard's navy. Next: Nate tries it and says
+"merge" (the auto-mode classifier blocks Claude merging without that); the real blur and the update pill can only be
+seen on the Mac.
 Older checkpoints are in git history.
 
 ## Working with Nate
@@ -619,6 +621,33 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Uninstall: `shared/uninstall-model.mjs` + `desktop/launcher/uninstall.cjs` (`search:uninstall-plan | uninstall | uninstall-undo`);
   ⌘K → Uninstall… on an app row, Return twice; leftovers matched by exact bundle id or name in ~/Library only.
 - Keys for this app: `MENUS_SCOPE`/`menuRows` in quick-search-model, `search:menus` / `search:press-menu`.
+
+## Architecture added in Phase 66
+
+- Dashboard (dock, ⌘6, Go menu): `src/views/dashboard-model.js` (pure: `dashboard(workspace, now)` → cards, sorted %, habits,
+  `writingByDay`, biggest topics (a branch counts for its topic), open next steps, soon events; `smoothPath` keeps its
+  handles between each segment's heights) + `src/views/Dashboard.jsx` + `src/styles/dashboard.css` (container queries on
+  `room`). Read-only; every card only navigates. Tests: tests/dashboard.test.mjs.
+- App tiles: `.tile` with `data-tint` (blue, sky, indigo, violet, pink, rose, slate, graphite, teal, green, yellow, orange,
+  red; defined globally in settings.css). `spaces.js` gives every space and tool a `tint`. The quick bar's rows use
+  `RowTile`/`lookOf` (search/icons.jsx: rooms by their space, Settings pages by their page, System Settings panes and Mac
+  commands by `SYSTEM_LOOKS`) and `typeOf` for the grey type on the right. The preview shows only when a row in the list
+  is in `PREVIEWS` (files, copies, notes, layouts…); apps and commands are one clean list. The foot is `qs-keys` (⇥, ⌥↵)
+  and `qs-act` (the main action ↵, Actions ⌘K). Window sizes: BAR 760×60, FULL 820×520.
+- Tools (ToolsWheel.jsx) is a grid of tiles: ← → one, ↑ ↓ a row (columns read from the grid), the hint in `title`.
+- Real blur: `desktop/helpers/osat-blur.m`, a Node-API bundle built by scripts/build-helpers.mjs (`*.m` → `<name>.node`,
+  clang `-bundle -undefined dynamic_lookup`, no headers), loaded by main's `blurModule()`; `applyDeskBlur()` calls
+  `CGSSetWindowBackgroundBlurRadius` (radius = blur × 0.6) and turns vibrancy off; without the module the fixed frosting
+  stays. `desk:blur` from the desk (preload `setBlur`). `--osat-self-test` prints `blur ok`; CI checks the file is signed.
+- Screenshots: `captures.using` ('cleanshot' | 'mac'); `status()` reports `installed` and `cleanshot` (= installed and
+  chosen). Recent captures read CleanShot's folder only while it is the tool.
+- Safety: `ErrorBoundary` (`whole` on each surface in App.jsx: "Start again" reloads), one per pop-out, per Settings page and
+  the canvas; main reloads one of OSAT's own pages whose renderer died (at most once per 10 s). Startup registrations go
+  through `part(name, fn)` so one failing part (Mail, GitHub, Passwords…) never stops the desk opening.
+- Updates: packaged builds call `checkForUpdates()` a minute after start and every six hours and send `update:available`;
+  the desk's `UpdateNote` offers Update and restart or Later.
+- Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
+  `title`; page blurbs are one short line.
 
 ## Architecture added in Phase 57
 

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { AppWindow, CaretDown, CaretRight, Calculator, ClipboardText, Files, Link, NotePencil, SquaresFour, Target, X } from '@phosphor-icons/react'
+import { AppWindow, CaretDown, CaretRight, Calculator, ClipboardText, Files, Keyboard, Link, NotePencil, SquaresFour, Target, X } from '@phosphor-icons/react'
 
 import { SOURCES, holderOf } from '../../../shared/launcher-model.mjs'
 import { CAPTURES } from '../../../shared/capture-model.mjs'
@@ -128,7 +128,8 @@ function Table({ launcher }) {
 }
 
 function ShortRow({ row, sends, failed, wordHolder, keyHolder }) {
-  const { icon: Icon, canWord = true, canKey = true } = row
+  // A row that came without a picture (a new capture, an imported key) gets a keyboard: a missing icon once blanked the desk.
+  const { icon: Icon = Keyboard, canWord = true, canKey = true } = row
   const { bridge } = useContext(LauncherBridge)
   return (
     <div className={`short-row${row.on === false ? ' is-off' : ''}`} role="row">

@@ -32,12 +32,20 @@ export function Page({ page, children }) {
 }
 
 /* A card of rows, with a small grey title above it and a quieter line under it. */
+/* A group of rows. Its `note` (the longer "how it works") waits behind a small ⓘ beside the title, so a page reads as
+   titles and switches first; one click shows it under the card. */
 export function Group({ title, note, children }) {
+  const [more, setMore] = useState(false)
   return (
     <section className="setting-group">
-      {title && <h3>{title}</h3>}
+      {(title || note) && (
+        <h3>
+          {title}
+          {note && <button type="button" className="setting-more" aria-expanded={more} aria-label={more ? 'Hide the details' : 'How this works'} title={more ? 'Hide the details' : 'How this works'} onClick={() => setMore(!more)}>i</button>}
+        </h3>
+      )}
       <div className="setting-card">{children}</div>
-      {note && <p className="setting-note">{note}</p>}
+      {note && more && <p className="setting-note">{note}</p>}
     </section>
   )
 }
@@ -49,7 +57,7 @@ export function Row({ title, hint, words = '', stacked = false, children }) {
   if (query.length && !shown(query, `${title} ${typeof hint === 'string' ? hint : ''} ${words}`.toLowerCase())) return null
   return (
     <div className={`setting-row${stacked ? ' is-stacked' : ''}`}>
-      <div className="setting-text"><b>{title}</b>{hint && <small>{hint}</small>}</div>
+      <div className="setting-text"><b>{title}</b>{hint && <small title={typeof hint === 'string' ? hint : undefined}>{hint}</small>}</div>
       {children && <div className="setting-control">{children}</div>}
     </div>
   )

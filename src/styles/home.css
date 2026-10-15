@@ -704,3 +704,9 @@
 .desk-note.is-arrival button:hover { background: var(--accent-hover); }
 @keyframes desk-note-in { from { opacity: 0; translate: -50% 8px; } }
 @media (prefers-reduced-motion: reduce) { .desk-note { animation: none; } }
+/* A newer OSAT is ready: above the dock, with its two buttons. */
+.desk-note.is-update { display: flex; align-items: center; gap: 10px; top: 18px; bottom: auto; padding: 6px 6px 6px 14px; pointer-events: auto; }
+.desk-note.is-update button { height: 26px; padding: 0 12px; border-radius: var(--r-full); font: 650 var(--t-xs)/1 var(--font); color: var(--accent-ink, #fff); background: var(--accent); }
+.desk-note.is-update button.is-quiet { color: var(--muted); background: transparent; font-weight: 560; }
+.update-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); animation: update-pulse 2.4s ease-in-out infinite; }
+@keyframes update-pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent); } }

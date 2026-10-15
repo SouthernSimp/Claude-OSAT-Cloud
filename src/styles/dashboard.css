@@ -1,0 +1,207 @@
+/* The Dashboard (views/Dashboard.jsx): a deep navy board of glowing cards in the dark, soft blue on white in the light.
+   It sits in a pop-out, so it lays itself out with the room's container queries. */
+
+.dash {
+  --dash-blue: oklch(62% 0.2 258);
+  --dash-cyan: oklch(80% 0.13 210);
+  --dash-green: oklch(76% 0.17 155);
+  --dash-ink: var(--ink-strong);
+  --dash-muted: var(--muted);
+  --dash-bg:
+    radial-gradient(60% 50% at 85% 0%, color-mix(in srgb, var(--dash-blue) 20%, transparent), transparent 70%),
+    radial-gradient(50% 40% at 0% 100%, color-mix(in srgb, var(--dash-cyan) 14%, transparent), transparent 70%),
+    var(--page);
+  --dash-card: linear-gradient(127deg, var(--surface-raised) 20%, color-mix(in srgb, var(--surface-raised) 70%, transparent) 80%);
+  --dash-edge: var(--line-soft);
+  --dash-inner: color-mix(in srgb, var(--ink) 4%, transparent);
+  --dash-shadow: 0 1px 2px rgb(0 0 0 / 5%), 0 18px 40px -26px rgb(20 40 120 / 30%);
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 22px clamp(14px, 3cqi, 28px) 28px;
+  background: var(--dash-bg);
+}
+/* A pop-out's body takes its child's padding away (shell.css); the dashboard keeps its own. */
+.workspace-content.is-filled > .dash { padding: 22px clamp(14px, 3cqi, 28px) 28px;
+  color: var(--dash-ink);
+}
+:root[data-theme="dark"] .dash {
+  --dash-bg:
+    radial-gradient(70% 60% at 90% -10%, rgb(0 117 255 / 32%), transparent 65%),
+    radial-gradient(60% 50% at -10% 110%, rgb(33 212 253 / 14%), transparent 70%),
+    linear-gradient(160deg, #0b1437 0%, #0a0f2c 55%, #070b22 100%);
+  --dash-card: linear-gradient(127deg, rgb(6 11 40 / 92%) 20%, rgb(26 31 70 / 55%) 78%);
+  --dash-edge: rgb(255 255 255 / 7%);
+  --dash-inner: linear-gradient(127deg, rgb(6 11 40 / 80%), rgb(10 14 35 / 60%));
+  --dash-shadow: 0 1px 0 rgb(255 255 255 / 4%) inset, 0 24px 50px -30px rgb(0 0 0 / 80%);
+  --dash-ink: #fff;
+  --dash-muted: #a0aec0;
+}
+
+.dash h1, .dash h2, .dash h3, .dash p { margin: 0; }
+.dash small { color: var(--dash-muted); font-size: var(--t-xs); }
+
+.dash-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; padding: 2px 4px; }
+.dash-head small span { opacity: 0.5; margin: 0 2px; }
+.dash-head h1 { margin-top: 4px; font: 650 var(--t-lg)/1.2 var(--font-display); letter-spacing: var(--tr-tight); }
+.dash-head p { font-size: var(--t-sm); color: var(--dash-muted); }
+
+.dash-card {
+  position: relative;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--dash-edge);
+  border-radius: 20px;
+  background: var(--dash-card);
+  box-shadow: var(--dash-shadow);
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  animation: dash-in 520ms var(--ease-spring, cubic-bezier(0.2, 1.2, 0.3, 1)) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+button.dash-card { cursor: pointer; transition: transform 180ms var(--ease-out), border-color 180ms, box-shadow 180ms; }
+button.dash-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--dash-blue) 45%, transparent); }
+button.dash-card:active { transform: translateY(0) scale(0.995); }
+.dash-card h3 { font: 650 var(--t-md)/1.3 var(--font); }
+
+/* Four numbers. */
+.dash-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.dash-stat { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 14px 20px; }
+.dash-stat > span { display: grid; gap: 3px; min-width: 0; }
+.dash-stat b { font: 700 var(--t-lg)/1.2 var(--font); letter-spacing: var(--tr-tight); white-space: nowrap; }
+.dash-stat em, .dash-writing small b { margin-left: 4px; font: 650 var(--t-xs)/1 var(--font); font-style: normal; color: var(--dash-muted); }
+.dash-stat em[data-up], .dash-writing small b[data-up] { color: var(--dash-green); }
+.dash-stat .tile { width: 44px; height: 44px; border-radius: 12px; box-shadow: 0 10px 22px -12px var(--tint), inset 0 0 0 0.5px rgb(255 255 255 / 25%); }
+.dash-stat .tile svg { width: 22px; height: 22px; }
+
+.dash-row { display: grid; gap: 16px; }
+.dash-row-hero { grid-template-columns: minmax(0, 1.55fr) minmax(0, 0.9fr) minmax(0, 1.1fr); }
+.dash-row-wide { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+
+/* Welcome back: words on the left, a glowing orb on the right, one field to ask. */
+.dash-welcome { display: grid; grid-template-rows: 1fr auto auto; gap: 14px; min-height: 250px; overflow: hidden; isolation: isolate; }
+.dash-welcome-words { display: grid; gap: 6px; align-content: start; max-width: 60%; }
+.dash-welcome h2 { font: 700 clamp(22px, 3cqi, 30px)/1.15 var(--font-display); letter-spacing: var(--tr-display); }
+.dash-welcome p { color: var(--dash-muted); font-size: var(--t-sm); line-height: 1.5; }
+.dash-orb { position: absolute; z-index: -1; right: -40px; top: -30px; width: 330px; height: 330px; pointer-events: none; }
+.dash-orb i { position: absolute; inset: 0; border-radius: 50%; filter: blur(26px); mix-blend-mode: screen; animation: dash-drift 14s ease-in-out infinite alternate; }
+.dash-orb i:nth-child(1) { inset: 18%; background: radial-gradient(circle at 40% 40%, rgb(122 92 255 / 95%), rgb(0 117 255 / 55%) 45%, transparent 70%); }
+.dash-orb i:nth-child(2) { inset: 28% 8% 12% 30%; background: radial-gradient(circle, rgb(33 212 253 / 70%), transparent 65%); animation-duration: 11s; animation-direction: alternate-reverse; }
+.dash-orb i:nth-child(3) { inset: 40% 32% 20% 18%; background: radial-gradient(circle, rgb(255 255 255 / 55%), transparent 60%); filter: blur(18px); animation-duration: 9s; }
+.dash-orb svg { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; translate: -50% -50%; color: rgb(255 255 255 / 92%); filter: drop-shadow(0 0 18px rgb(140 160 255 / 90%)); animation: dash-float 6s ease-in-out infinite; }
+:root:not([data-theme="dark"]) .dash-orb i { mix-blend-mode: normal; opacity: 0.85; }
+.dash-ask { align-self: end; width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 6px; max-width: 420px; padding: 5px 5px 5px 14px; border-radius: 14px; border: 1px solid var(--dash-edge); background: color-mix(in srgb, var(--page) 55%, transparent); backdrop-filter: blur(12px); }
+.dash .dash-ask input { flex: 1; min-width: 0; height: 34px; padding: 0; border: 0; outline: 0; background: transparent; box-shadow: none; color: var(--dash-ink); font: var(--t-sm) var(--font); }
+.dash-ask input::placeholder { color: var(--dash-muted); }
+.dash-ask button { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: #fff; background: linear-gradient(135deg, var(--dash-blue), oklch(58% 0.2 290)); box-shadow: 0 8px 18px -8px var(--dash-blue); }
+.dash-link { justify-self: start; display: inline-flex; align-items: center; gap: 6px; font: 600 var(--t-xs) var(--font); color: var(--dash-ink); opacity: 0.85; }
+.dash-link:hover { opacity: 1; }
+.dash-link svg { transition: translate 160ms var(--ease-out); }
+.dash-link:hover svg { translate: 3px 0; }
+
+/* Sorted: an arc that fills. */
+.dash-gauge { display: grid; justify-items: center; align-content: start; gap: 2px; text-align: center; }
+.dash-gauge h3, .dash-gauge > small { justify-self: start; }
+.dash-dial { position: relative; width: min(100%, 210px); margin-top: 4px; }
+.dash-gauge svg { display: block; width: 100%; overflow: visible; }
+.dash-track, .dash-arc { fill: none; stroke-width: 12; stroke-linecap: round; }
+.dash-track { stroke: color-mix(in srgb, var(--ink) 10%, transparent); }
+.dash-arc[data-none] { opacity: 0; }
+.dash-arc { transition: stroke-dasharray 900ms var(--ease-out); animation: dash-arc 1200ms var(--ease-out) both 200ms; }
+.dash-gauge-face { position: absolute; top: 55%; left: 50%; translate: -50% -50%; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; color: #fff; background: linear-gradient(135deg, var(--dash-blue), var(--dash-cyan)); box-shadow: 0 10px 26px -8px var(--dash-blue); }
+.dash-gauge-face svg { width: 26px; height: 26px; margin: 0; }
+.dash-gauge-read { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; width: 100%; margin-top: -26px; padding: 10px 12px; border-radius: 16px; background: var(--dash-inner); }
+.dash-gauge-read span { font-size: var(--t-2xs); color: var(--dash-muted); }
+.dash-gauge-read p { display: grid; }
+.dash-gauge-read b { font: 700 var(--t-xl, 24px)/1.1 var(--font); }
+
+/* Habits today: two small numbers and a ring. */
+.dash-habits { display: grid; gap: 12px; align-content: start; }
+.dash-habits-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.dash-mini { display: grid; gap: 10px; }
+.dash-mini div { display: grid; gap: 2px; padding: 12px 14px; border-radius: 16px; background: var(--dash-inner); }
+.dash-mini b { font: 700 var(--t-lg)/1.1 var(--font); }
+.dash-ring { position: relative; width: 140px; height: 140px; }
+.dash-ring svg { width: 100%; height: 100%; }
+.dash-ring p { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.dash-ring b { font: 700 28px/1 var(--font); }
+
+/* Your writing: a smooth area chart. */
+.dash-writing { display: grid; gap: 4px; }
+.dash-writing svg { width: 100%; height: auto; margin-top: 8px; overflow: visible; }
+.dash-grid { stroke: color-mix(in srgb, var(--ink) 9%, transparent); stroke-dasharray: 3 5; }
+.dash-axis { fill: var(--dash-muted); font: 500 11px var(--font); }
+.dash-line { fill: none; stroke: var(--dash-cyan); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2000; animation: dash-draw 1400ms var(--ease-out) both 150ms; }
+.dash-line.is-before { stroke: color-mix(in srgb, var(--dash-blue) 75%, white); stroke-width: 2; opacity: 0.55; }
+.dash-area { animation: dash-fade 900ms var(--ease-out) both 500ms; }
+.dash-legend { display: flex; align-items: center; gap: 8px; font-size: var(--t-xs); color: var(--dash-muted); }
+.dash-legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--dash-cyan); }
+.dash-legend i.is-before { margin-left: 10px; background: color-mix(in srgb, var(--dash-blue) 75%, white); opacity: 0.6; }
+
+/* Biggest topics: tall rounded bars on a darker panel, four small numbers under them. */
+.dash-topics { display: grid; gap: 4px; align-content: start; }
+.dash-bars { display: flex; align-items: end; gap: 10px; height: 180px; margin-bottom: 12px; padding: 16px 18px 30px; border-radius: 16px; background: var(--dash-inner); }
+.dash-bar { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: end; justify-content: center; }
+.dash-bar i { width: 8px; height: var(--h); border-radius: 8px; background: linear-gradient(180deg, var(--dash-ink), color-mix(in srgb, var(--dash-ink) 55%, transparent)); transform-origin: bottom; animation: dash-grow 900ms var(--ease-spring, ease-out) both; animation-delay: calc(200ms + var(--i) * 60ms); transition: background 160ms; }
+.dash-bar:hover i { background: linear-gradient(180deg, var(--dash-cyan), var(--dash-blue)); }
+.dash-bar span { position: absolute; bottom: -22px; left: 50%; translate: -50% 0; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: var(--dash-muted); }
+.dash-minis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.dash-minis div { display: grid; gap: 6px; min-width: 0; }
+.dash-minis span { display: flex; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--dash-muted); white-space: nowrap; overflow: hidden; }
+.dash-minis .tile { width: 22px; height: 22px; border-radius: 6px; }
+.dash-minis .tile svg { width: 13px; height: 13px; }
+.dash-minis b { font: 700 var(--t-md)/1 var(--font); }
+.dash-minis meter { width: 100%; height: 3px; -webkit-appearance: none; appearance: none; background: none; }
+.dash-minis meter::-webkit-meter-bar { height: 3px; border: 0; border-radius: 3px; background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.dash-minis meter::-webkit-meter-optimum-value { border-radius: 3px; background: var(--dash-blue); }
+
+/* Everything in OSAT: app tiles, like a launchpad. */
+.dash-apps { display: grid; gap: 4px; align-content: start; }
+.dash-app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; margin-top: 12px; }
+.dash-app { display: grid; justify-items: center; gap: 7px; padding: 10px 4px 8px; border-radius: 14px; color: inherit; animation: dash-in 480ms var(--ease-spring, ease-out) both; animation-delay: calc(120ms + var(--i) * 18ms); transition: background 140ms; }
+.dash-app:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.dash-app .tile { width: 46px; height: 46px; border-radius: 12px; transition: transform 200ms var(--ease-spring, ease-out), box-shadow 200ms; }
+.dash-app .tile svg { width: 24px; height: 24px; }
+.dash-app:hover .tile { transform: translateY(-3px) scale(1.06); box-shadow: 0 12px 24px -12px var(--tint), inset 0 0 0 0.5px rgb(255 255 255 / 25%); }
+.dash-app span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 560 var(--t-xs)/1.2 var(--font); }
+
+/* Up next: events and next steps, one tap away. */
+.dash-next { display: grid; gap: 4px; align-content: start; }
+.dash-next ul { display: grid; gap: 4px; margin: 12px 0 0; padding: 0; list-style: none; }
+.dash-next li button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px; border-radius: 12px; text-align: left; color: inherit; transition: background 140ms; }
+.dash-next li button:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.dash-next .tile { width: 32px; height: 32px; border-radius: 9px; }
+.dash-next .tile svg { width: 17px; height: 17px; }
+.dash-next li span { display: grid; gap: 2px; min-width: 0; }
+.dash-next li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 var(--t-sm)/1.3 var(--font); }
+.dash-empty { padding: 10px 4px; font-size: var(--t-sm); line-height: 1.5; color: var(--dash-muted); }
+.dash-bars .dash-empty { align-self: center; width: 100%; text-align: center; }
+
+@container room (max-width: 1100px) {
+  .dash-row-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .dash-welcome { grid-column: 1 / -1; }
+}
+@container room (max-width: 860px) {
+  .dash-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-row-wide { grid-template-columns: minmax(0, 1fr); }
+}
+@container room (max-width: 560px) {
+  .dash-row-hero { grid-template-columns: minmax(0, 1fr); }
+  .dash-welcome-words { max-width: 100%; }
+  .dash-minis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@keyframes dash-in { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
+@keyframes dash-fade { from { opacity: 0; } }
+@keyframes dash-draw { from { stroke-dashoffset: 2000; } to { stroke-dashoffset: 0; } }
+@keyframes dash-grow { from { transform: scaleY(0); } }
+@keyframes dash-arc { from { stroke-dasharray: 0 999; } }
+@keyframes dash-drift { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-12px, 10px) scale(1.06); } 100% { transform: translate(8px, -6px) scale(0.97); } }
+@keyframes dash-float { 50% { translate: -50% -56%; } }
+@media (prefers-reduced-motion: reduce) {
+  .dash-card, .dash-app, .dash-line, .dash-area, .dash-bar i, .dash-arc, .dash-orb i, .dash-orb svg { animation: none; }
+}

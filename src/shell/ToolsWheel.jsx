@@ -42,19 +42,21 @@ export function ToolsWheel({ items, side = 'bottom', onSide, active: inTools }) 
             aria-label="Tools"
             tabIndex={0}
             onKeyDown={(event) => {
-              if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+              // A grid of tiles: ← → step one, ↑ ↓ a whole row (the grid's columns, read from its layout).
+              if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
               event.preventDefault()
               const rows = [...list.current.querySelectorAll('[role="menuitem"]')]
-              const at = rows.indexOf(document.activeElement)
-              const next = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : (at + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length
+              const at = Math.max(0, rows.indexOf(document.activeElement))
+              const columns = Math.max(1, getComputedStyle(list.current).gridTemplateColumns.split(' ').length)
+              const step = { ArrowDown: columns, ArrowUp: -columns, ArrowRight: 1, ArrowLeft: -1 }[event.key] || 0
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : Math.min(Math.max(at + step, 0), rows.length - 1)
               rows[next]?.focus()
             }}
           >
             {items.map((item) => (
-              <button key={item.id} type="button" role="menuitem" aria-label={item.label} className={`tools-row ${item.checked ? 'is-here' : ''}`} tabIndex={-1} onClick={() => choose(item)}>
-                <item.icon aria-hidden="true" />
-                <span><b>{item.label}</b><small>{item.hint}</small></span>
-                {item.keys && <kbd>{item.keys}</kbd>}
+              <button key={item.id} type="button" role="menuitem" aria-label={item.label} title={item.hint} className={`tools-row tools-app ${item.checked ? 'is-here' : ''}`} tabIndex={-1} style={{ '--i': items.indexOf(item) }} onClick={() => choose(item)}>
+                <i className="tile" data-tint={item.tint || 'slate'} aria-hidden="true"><item.icon weight="fill" /></i>
+                <span><b>{item.label}</b></span>
               </button>
             ))}
           </div>

@@ -81,7 +81,11 @@
 /* Groups gathered in one older card (the AI's models) keep the page's spacing between them. */
 .settings-legacy > .ai-management { display: grid; gap: var(--set-gap); }
 .setting-group:not(:has(.setting-row)) { display: none; }
-.setting-group > h3 { padding: 0 6px; font: 600 var(--t-xs) var(--font); letter-spacing: 0; color: var(--muted); }
+.setting-group > h3 { display: flex; align-items: center; gap: 6px; min-height: 18px; padding: 0 6px; font: 600 var(--t-xs) var(--font); letter-spacing: 0; color: var(--muted); }
+/* ⓘ: the group's longer words, one click away. */
+.setting-more { display: inline-grid; place-items: center; width: 16px; height: 16px; padding: 0; border-radius: 50%; font: italic 700 10px/1 Georgia, serif; color: var(--faint); box-shadow: inset 0 0 0 1px var(--line-strong); transition: color var(--d-fast), background var(--d-fast); }
+.setting-more:hover, .setting-more[aria-expanded="true"] { color: var(--accent-ink, #fff); background: var(--accent); box-shadow: none; }
+.setting-group > .setting-note { animation: body-in 260ms var(--glide) both; }
 .setting-card { border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface-raised); box-shadow: var(--e-1); overflow: clip; }
 .setting-card.is-padded { padding: 18px 20px; }
 .setting-note { padding: 0 6px; font-size: var(--t-xs); line-height: 1.5; color: var(--faint); }
@@ -91,7 +95,7 @@
 .setting-row + .setting-row { border-top: 1px solid var(--line-soft); }
 .setting-text { display: grid; flex: 1 1 260px; gap: 3px; min-width: 0; }
 .setting-text b { font-size: var(--t-md); font-weight: 620; line-height: 1.3; color: var(--ink-strong); }
-.setting-text small { max-width: 62ch; font-size: var(--t-sm); line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.setting-text small { max-width: 62ch; font-size: var(--t-sm); line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .setting-control { display: flex; flex: 0 1 auto; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
 .setting-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 12px; }
 .setting-row.is-stacked { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }

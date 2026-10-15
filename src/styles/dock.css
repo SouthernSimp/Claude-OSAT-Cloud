@@ -98,7 +98,7 @@
   bottom: calc(100% + 14px);
   left: 50%;
   translate: -50% 0;
-  width: min(600px, calc(100vw - 32px));
+  width: min(540px, calc(100vw - 32px));
   border-radius: 12px;
   color: var(--ink);
   background: var(--surface-raised);
@@ -110,41 +110,43 @@
 /* From a side dock it opens toward the desk, its foot level with the Tools button. */
 .tools-wheel[data-side="left"] { bottom: 0; left: calc(100% + 14px); translate: none; transform-origin: left bottom; }
 .tools-wheel[data-side="right"] { bottom: 0; left: auto; right: calc(100% + 14px); translate: none; transform-origin: right bottom; }
-.tools-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 8px; max-height: 70dvh; overflow-y: auto; overscroll-behavior: contain; }
+/* A launchpad: every tool as an app tile, four or five to a row; its words in the tile's title. */
+.tools-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; padding: 14px 12px 12px; max-height: 70dvh; overflow-y: auto; overscroll-behavior: contain; }
 .app-dock .tools-row {
   position: relative;
   z-index: 1;
   width: 100%;
-  height: 56px;
+  height: auto;
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
-  grid-template-rows: none;
-  align-items: center;
-  place-items: center start;
-  gap: 12px;
-  padding: 0 18px;
-  border-radius: 8px;
-  text-align: left;
+  grid-template-columns: none;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  padding: 12px 4px 10px;
+  border-radius: 14px;
+  text-align: center;
   color: var(--ink);
   background: none;
   translate: none;
-
+  animation: tools-in 360ms var(--spring) both;
+  animation-delay: calc(var(--i, 0) * 14ms);
 }
-.app-dock .tools-row:hover, .app-dock .tools-row:focus-visible { background: var(--surface-hover); translate: none; }
-.app-dock .tools-row svg { width: 22px; height: 22px; scale: none; color: var(--muted); }
-.app-dock .tools-row:focus-visible svg { color: var(--accent); }
-.tools-row span { display: grid; gap: 2px; min-width: 0; }
-.tools-row b { font: 620 var(--t-md)/1.2 var(--font); color: var(--ink); }
-.tools-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--t-xs)/1.3 var(--font); color: var(--muted); }
-.tools-row.is-here b::after { content: " ·  here"; font-weight: 500; color: var(--faint); }
-.tools-row kbd { font: 560 var(--t-2xs)/1 var(--font); color: var(--faint); }
+.app-dock .tools-row:hover, .app-dock .tools-row:focus-visible { background: var(--surface-hover); translate: none; outline: none; }
+.app-dock .tools-row .tile { width: 48px; height: 48px; border-radius: 12px; scale: none; transition: transform 200ms var(--spring), box-shadow 200ms; }
+.app-dock .tools-row .tile svg { width: 26px; height: 26px; scale: none; color: #fff; }
+.app-dock .tools-row:hover .tile, .app-dock .tools-row:focus-visible .tile { transform: translateY(-3px) scale(1.06); box-shadow: 0 12px 24px -12px var(--tint), inset 0 0 0 0.5px rgb(255 255 255 / 25%); }
+.tools-row span { display: block; min-width: 0; max-width: 100%; }
+.tools-row b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 560 var(--t-xs)/1.2 var(--font); color: var(--ink); }
+.tools-row.is-here .tile { box-shadow: 0 0 0 2px var(--surface-raised), 0 0 0 4px var(--accent); }
+@keyframes tools-in { from { opacity: 0; transform: translateY(8px) scale(0.96); } }
 .tools-foot { display: flex; align-items: center; gap: 4px; padding: 6px 10px 6px 18px; border-top: 1px solid var(--line); font: 600 var(--t-xs)/1 var(--font); color: var(--muted); }
 .tools-foot span { flex: 1; }
 .app-dock .tools-foot button { width: 32px; height: 30px; min-width: 0; padding: 0; display: grid; place-items: center; border-radius: 6px; color: var(--muted); translate: none; grid-template-rows: none; }
 .app-dock .tools-foot button:hover { color: var(--ink); background: var(--surface-hover); }
 .app-dock .tools-foot button[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
 .app-dock .tools-foot button svg { width: 16px; height: 16px; scale: none; }
-@media (prefers-reduced-motion: reduce) { .app-dock .tools-row { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .app-dock .tools-row { transition: none; animation: none; } }
 
 /* ---- Resizing widgets (field/Widgets.jsx, field/widget-size.js) --------------------------------
    A grip at the bottom right corner, shown like the –: while the widget is under the pointer. */
@@ -168,7 +170,7 @@
 .widget-grip:hover,
 .widget-grip:focus-visible { opacity: 1 !important; }
 
-@media (max-width: 720px) { .tools-list { grid-template-columns: minmax(0, 1fr); } .tools-wheel { width: min(316px, calc(100vw - 32px)); } }
+@media (max-width: 720px) { .tools-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tools-wheel { width: min(340px, calc(100vw - 32px)); } }
 
 .sky-entry { position: absolute; z-index: 5; top: 12px; left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-raised); color: var(--ink); font: 600 var(--t-sm)/1.2 var(--font); }
 .sky-entry svg { width: 18px; height: 18px; color: var(--accent); }

@@ -61,7 +61,7 @@ export function RaycastImport({ settings, save, showUndo }) {
       <Row title="Use my Raycast keys" hint="Hyper A Claude, C Chrome, F Finder, G Granola, M Messages, O Obsidian, P Terminal, S files, K Kill Process, T and H CleanShot, 1–6 windows, N a quick sticky, E AI on selected text." words="raycast keys shortcuts hotkeys import hyper">
         <button className="outline-button" type="button" onClick={() => applyKeys().catch(() => {})}><Keyboard /> Use them</button>
       </Row>
-      <Row title="Snippets and Quicklinks" hint="In Raycast: Settings → Extensions → Snippets (or Quicklinks) → Export. Choose the files; what is already here stays as it is." words="raycast snippets quicklinks import export json">
+      <Row title="Snippets and Quicklinks" hint="Export from Raycast’s Snippets or Quicklinks, then choose the file." words="raycast snippets quicklinks import export json">
         <button className="outline-button" type="button" onClick={() => picker.current?.click()}><DownloadSimple /> Choose files…</button>
         <input ref={picker} type="file" accept=".json,application/json" multiple hidden onChange={(event) => { readFiles([...event.target.files]).catch(() => setSaid('Those files couldn’t be read.')); event.target.value = '' }} />
       </Row>

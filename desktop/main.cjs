@@ -357,6 +357,7 @@ function buildMenu() {
         room('Canvas', 'Mindmap', 'CmdOrCtrl+3'),
         room('Ask', 'Assistant', 'CmdOrCtrl+4'),
         room('Files', 'Files', 'CmdOrCtrl+5'),
+        room('Dashboard', 'Dashboard', 'CmdOrCtrl+6'),
         { type: 'separator' },
         room('Journal', 'Journal'),
         room('Calendar', 'Calendar'),
@@ -1549,31 +1550,40 @@ app.whenReady().then(async () => {
   under.begin(prefs.under)
   registerUnder()
   registerAi()
-  await registerPhone()
-  await registerScans()
-  await registerLauncher()
-  await registerBots()
-  const agent = await registerAgent()
-  await registerBrief(agent, createMacCalendar({ handle, fail }))
+  // One part that can't start never keeps the desk from opening: it says why in the log, and the rest goes on.
+  const part = async (name, start) => { try { return await start() } catch (error) { console.error(`OSAT: ${name} could not start:`, error); return undefined } }
+  await part('the iPhone link', registerPhone)
+  await part('Scans', registerScans)
+  await part('the launcher', registerLauncher)
+  await part('Bots', registerBots)
+  const agent = await part('the agent', registerAgent)
+  await part('the brief', () => registerBrief(agent, createMacCalendar({ handle, fail })))
   // Tools → GitHub (desktop/github.cjs, Phase 55): through the gh signed in on this Mac.
-  await createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on })
+  await part('GitHub', () => createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on }))
   // Tools → Mail (desktop/mac-mail.cjs, Phase 59): the Mac's own Mail app. Local to this Mac, so it works Offline too.
-  await createMacMail({ sharedModule, handle, fail })
+  await part('Mail', () => createMacMail({ sharedModule, handle, fail }))
   // Tools → Passwords (desktop/passwords.cjs, Phase 58): locked at every launch; locks on sleep, screen lock, the desk
   // put away, and quit. Its sealed file is read by nothing else.
-  passwords = await createPasswords({
+  passwords = await part('Passwords', () => createPasswords({
     dataDir: app.getPath('userData'), sharedModule, handle, fail, dialog, mainWindow: () => mainWindow, clipboard: require('electron').clipboard, writeConcealed,
     send: (channel) => send(channel),
-  })
-  for (const event of ['suspend', 'lock-screen']) powerMonitor.on(event, () => passwords.lock())
-  await registerOvernight()
+  }))
+  for (const event of ['suspend', 'lock-screen']) powerMonitor.on(event, () => passwords?.lock())
+  await part('overnight ideas', registerOvernight)
   // Meetings can fail on their own (no helper in a source build); OSAT still opens.
   await registerMeetings().catch((error) => console.error('Meetings could not start:', error))
   registerDesk()
   registerAsk()
   createWindow()
   createTray()
-  launcher.start().catch((error) => console.error('The launcher could not start:', error))
+  launcher?.start().catch((error) => console.error('The launcher could not start:', error))
+  // Updates find you: a quiet look a minute after start and every six hours (refused while Offline, like any other
+  // request); when one is ready the desk shows one calm line with Update and restart.
+  if (app.isPackaged) {
+    const lookForUpdate = () => checkForUpdates().then((found) => { if (found?.state === 'available') send('update:available', { version: found.version, size: found.size }) }, () => {})
+    setTimeout(lookForUpdate, 60000)
+    setInterval(lookForUpdate, 6 * 3600000)
+  }
   // If the desk's shortcut is taken by another app, open Settings so a new one can be picked.
   // The quick bar's are quieter: Settings says so when you look.
   useHotkey('search', prefs.searchHotkey)
