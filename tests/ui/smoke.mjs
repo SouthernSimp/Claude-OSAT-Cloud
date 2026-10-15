@@ -1390,7 +1390,7 @@ async function main() {
   const memory = 64 * 1024 ** 3
   const fakeStatus = {
     recommended: pickTier(memory).id, best: recommendFor(memory).id, chosen: 'light', startup: false, totalMemory: memory, queued: [], download: null, engine: 'idle', message: '',
-    tiers: TIERS.map((tier) => ({ id: tier.id, label: tier.label, model: tier.model, blurb: tier.blurb, starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best, minMemory: tier.minMemory, fits: fits(tier, memory), size: tier.size, ready: tier.id === 'light', state: 'idle', busy: false, retained: false, blocked: false, message: '' })),
+    tiers: TIERS.map((tier) => ({ id: tier.id, label: tier.label, model: tier.model, blurb: tier.blurb, starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best, minMemory: tier.minMemory, fits: fits(tier, memory), size: tier.size, ready: tier.id === 'light', state: 'idle', busy: false, retained: false, blocked: false, message: '', sees: false, visionSize: tier.vision.size, can: tier.can })),
   }
   await models.addInitScript((status) => {
     window.__installs = []
@@ -1410,6 +1410,11 @@ async function main() {
   if (!(await bestGroup.innerText().catch(() => '')).includes('Qwen 3.6 35B')) problems.push(`${room}: a 64 GB Mac was not offered Qwen 3.6 35B`)
   await models.locator('.ai-compare tr', { hasText: 'Qwen 3.5 9B' }).getByRole('button', { name: 'Get' }).click()
   if (!(await models.evaluate(() => window.__installs)).includes('qwen35-9b')) problems.push(`${room}: Get did not download the model`)
+  // Phase 37b: what each model can do, and a model here without its picture part offers it.
+  if (!(await models.locator('.ai-compare tr', { hasText: 'Qwen 3.6 35B' }).locator('.ai-can-chip').allTextContents()).join('|').includes('Best at code')) problems.push(`${room}: Qwen 3.6 didn't say it is best at code`)
+  if (!(await models.locator('.ai-compare tr', { hasText: 'Gemma 4 E2B' }).locator('.ai-can-chip', { hasText: 'Pictures' }).count())) problems.push(`${room}: a model didn't say it reads pictures`)
+  await models.locator('.ai-compare tr', { hasText: 'Gemma 4 E2B' }).getByRole('button', { name: 'Add pictures' }).click()
+  if (!(await models.evaluate(() => window.__installs)).includes('light')) problems.push(`${room}: Add pictures did not download the picture part`)
   await bestGroup.scrollIntoViewIfNeeded()
   await models.screenshot({ path: `${OUT}/settings-models-best.png` })
   await models.locator('.ai-compare').scrollIntoViewIfNeeded()

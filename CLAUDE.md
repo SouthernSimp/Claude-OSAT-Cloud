@@ -16,6 +16,13 @@ it is (shared/what-model.mjs), Notes → Just in / Questions / To buy / Coming u
 with Undo (src/intake/), visible "Unsorted" words became "Just in" outside the old Sky (Phase 68 replaces the Sky), and
 the old boards (`sorter`) are no longer laid out on every load: with 1,000 stickies that took 8 seconds per window.
 Next: Nate tries the DMG and says "merge"; then Phase 68 (boards, Map / Board / List) on its own branch.
+On top of it, branch `claude/model-pictures` (Phase 37b): Nate asked that every model come with everything it needs
+("make sure everything gets downloaded for these models to function"). Each model's picture part downloads with it,
+llama.cpp's server ships in the app, Ask takes pictures, Settings → AI shows Pictures / Thinks first / Thinks if asked /
+Code. Proven on Nate's Mac from the terminal with Light: 6.7 s for the first picture, 0.9 s after. Mail + Gmail is
+`claude/mail-gmail` (PR #99); Phase 68 (boards) is parked as a WIP commit on `claude/boards-canvas`; a parallel agent is
+redesigning Habits on `claude/habits` (from main).
+
 Older checkpoints are in git history.
 
 ## Working with Nate
@@ -79,6 +86,19 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     thinking turned off), `index.cjs` (`createAi`: the chosen size in `prefs.json`, background
     download, engine starts on the first question and stops after 10 idle minutes; `mock`).
     Model files live in `<data folder>/models`. LM Studio still works through `local-ai.cjs`.
+    Pictures (Phase 37b): each catalog entry has `vision` (its mmproj file, same pinned revision, checked the same way;
+    the three Qwen ones renamed locally, they share a name upstream) and `can` (pictures, `thinking` 'on' / 'off' (can,
+    kept off) / null, `code` true / 'best', tools; from the makers' model cards). index.cjs: `isReady` is the model file
+    (words work), `sees` its picture part, `complete` both; one transfer brings the missing parts in order; `start()` queues
+    models already here without their part (the one in use first); `remove` deletes both. A question whose messages carry
+    `images` ([{ type, data: base64 }], user messages only, ≤ 4, checked in both `validateLocalChatPayload`s) goes to
+    `seeStream` → `ai/vision.cjs`: llama.cpp's own `llama-server` (node-llama-cpp can't read pictures), started per model
+    with `--mmproj` on 127.0.0.1 and a fresh `--api-key`, thinking off (`chat_template_kwargs`), stopped after 10 idle
+    minutes; idle word engines step aside first and `vision.rest()` frees it before a word model loads. Cloud models and
+    LM Studio refuse pictures (they never leave the Mac). `scripts/build-helpers.mjs` `LLAMA`: release b11299 (pinned
+    SHA-256), only llama-server and the ten dylibs it loads, into build/helpers/llama (extraResources). Ask:
+    `assistant/pictures.js` (`readPicture` shrinks to 2048 px, `withPictures`, `pictureProblem`); the chat keeps picture
+    names in a question's `files`, never the pictures.
   - `main.cjs`: windows, menu, IPC for the store / local AI / browser / terminal (`handle`, `fail`
     and the trusted-sender checks live here and are passed to the modules that register handlers),
     the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌥⇧Space,
