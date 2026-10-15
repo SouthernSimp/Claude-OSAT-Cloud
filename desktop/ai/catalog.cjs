@@ -3,7 +3,12 @@
    OSAT ships (node-llama-cpp's llama.cpp: gemma4, qwen35, qwen35moe, mistral3).
    The three `starter` sizes (Google's Gemma 4: Light, Balanced, Deep) are what the welcome
    offers; the rest are there to browse and compare in Settings → AI. `speed` and `smarts`
-   are 1–5, relative to each other, for that comparison; `best` says what each is good at. */
+   are 1–5, relative to each other, for that comparison; `best` says what each is good at.
+   Each also comes with its picture part (`vision`, Phase 37b), from the same pinned revision and checked the
+   same way: OSAT downloads it with the model, and llama.cpp's own server (bundled, desktop/ai/vision.cjs) reads
+   pictures with the two. `can` is what each does, from its makers' model cards: pictures, `thinking` ('on': it
+   thinks before it answers; 'off': it can, but OSAT keeps it off for quick, direct answers; null: this version
+   doesn't), code ('best' for the one most made for it) and tools. */
 
 const GB = 1024 ** 3
 
@@ -19,6 +24,14 @@ const TIERS = [
     size: 3349516256,
     sha256: 'fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634',
     minMemory: 8 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'gemma-4-E2B-it-mmproj.gguf',
+      url: 'https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf/resolve/675cff42a74c774d6cb76f76d8eacb49b48c9b93/gemma-4-E2B-it-mmproj.gguf',
+      size: 986833664,
+      sha256: '021059cce659fe7f9170d5599761d7bbaf644b798dab9503aca30dc43e6beb14',
+    },
+    can: { pictures: true, thinking: 'off', code: true, tools: true },
   },
   {
     id: 'balanced',
@@ -31,6 +44,14 @@ const TIERS = [
     size: 5154941280,
     sha256: '676c35070db6dbe52f93e9c864ee0fba4eddea94b9c875d9cb10daff453fbaee',
     minMemory: 16 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'gemma-4-E4B-it-mmproj.gguf',
+      url: 'https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf/resolve/4b4a2c1d584be7264f87aac328a1bc739ce81b6c/gemma-4-E4B-it-mmproj.gguf',
+      size: 991552256,
+      sha256: '7498a37cb619e55f2fcf87eb931f56e99389ed6d432e4c5c66110694c0d65578',
+    },
+    can: { pictures: true, thinking: 'off', code: true, tools: true },
   },
   {
     id: 'deep',
@@ -43,6 +64,14 @@ const TIERS = [
     size: 14439363584,
     sha256: '3eca3b8f6d7baf218a7dd6bba5fb59a56ee25fe2d567b6f5f589b4f697eca51d',
     minMemory: 32 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'gemma-4-26B-it-mmproj.gguf',
+      url: 'https://huggingface.co/google/gemma-4-26B-A4B-it-qat-q4_0-gguf/resolve/d1c082be9cf3c8a514acf63b8761f4b41935842e/gemma-4-26B-it-mmproj.gguf',
+      size: 1194828160,
+      sha256: 'a359953a076b877db30c31dbbb4c6d93b4a6e017ee5db5784247e4d4c0dd4f3b',
+    },
+    can: { pictures: true, thinking: 'off', code: true, tools: true },
   },
   {
     id: 'ministral-3b',
@@ -55,6 +84,14 @@ const TIERS = [
     size: 2147023008,
     sha256: '9ed150d4367e68df0ac8e1540f6ddc65b42d0ee26378329d1ecbca60f93fc5f8',
     minMemory: 8 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'Ministral-3-3B-Instruct-2512-BF16-mmproj.gguf',
+      url: 'https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF/resolve/eb599d408350ea2bb60452cb86be7c7b2fc28227/Ministral-3-3B-Instruct-2512-BF16-mmproj.gguf',
+      size: 841501856,
+      sha256: '70ca26e41ecea9da997e2887462ad68b848fbf64da011ff4107bbe7353519ee0',
+    },
+    can: { pictures: true, thinking: null, code: false, tools: true },
   },
   {
     id: 'qwen35-4b',
@@ -67,6 +104,14 @@ const TIERS = [
     size: 2740937888,
     sha256: '00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4',
     minMemory: 8 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'Qwen3.5-4B-mmproj-F16.gguf',
+      url: 'https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/mmproj-F16.gguf',
+      size: 672423616,
+      sha256: 'cd88edcf8d031894960bb0c9c5b9b7e1fea6ebee02b9f7ce925a00d12891f864',
+    },
+    can: { pictures: true, thinking: 'on', code: true, tools: true },
   },
   {
     id: 'ministral-8b',
@@ -79,6 +124,14 @@ const TIERS = [
     size: 5198911904,
     sha256: '33e7a72cf5e6e2cfc2f2847075acc013d68bba023e35310cef86b5cf8fdca761',
     minMemory: 16 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'Ministral-3-8B-Instruct-2512-BF16-mmproj.gguf',
+      url: 'https://huggingface.co/mistralai/Ministral-3-8B-Instruct-2512-GGUF/resolve/0102285ad796bd99af90f58de616092e5630e970/Ministral-3-8B-Instruct-2512-BF16-mmproj.gguf',
+      size: 858283168,
+      sha256: 'e799380f596d152ff4026a72d409ecc89c96cd437676804bc3f2ab3bd6b486ec',
+    },
+    can: { pictures: true, thinking: null, code: false, tools: true },
   },
   {
     id: 'qwen35-9b',
@@ -91,6 +144,14 @@ const TIERS = [
     size: 5680522464,
     sha256: '03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8',
     minMemory: 16 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'Qwen3.5-9B-mmproj-F16.gguf',
+      url: 'https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/3885219b6810b007914f3a7950a8d1b469d598a5/mmproj-F16.gguf',
+      size: 918166080,
+      sha256: 'f70dc3509053962b0d0d3ee8a7eacebf5d60aa560cad78254ae8698516ae029f',
+    },
+    can: { pictures: true, thinking: 'on', code: true, tools: true },
   },
   {
     id: 'gemma4-12b',
@@ -103,6 +164,14 @@ const TIERS = [
     size: 6975879296,
     sha256: '93567e57a8fe10b23569b9d9ec38cd005deedf71e29477c421a4b83f418a538b',
     minMemory: 24 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'mmproj-gemma-4-12b-it-qat-q4_0.gguf',
+      url: 'https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-gguf/resolve/29d097773436b69ff9feafd636ab4cf873786537/mmproj-gemma-4-12b-it-qat-q4_0.gguf',
+      size: 175115616,
+      sha256: 'cb018338a7538a9814d994bfe54644c71eb7ed54e31eae2f721e45fd3c260da7',
+    },
+    can: { pictures: true, thinking: 'off', code: true, tools: true },
   },
   {
     id: 'qwen36-35b',
@@ -115,6 +184,14 @@ const TIERS = [
     size: 17730509792,
     sha256: '649d7508507b84638732c4f52c24c8b15843c6dca2f3ff793ae07c14a67ebbb3',
     minMemory: 36 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'Qwen3.6-35B-A3B-mmproj-F16.gguf',
+      url: 'https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/a483e9e6cbd595906af30beda3187c2663a1118c/mmproj-F16.gguf',
+      size: 899283680,
+      sha256: '8971ee4f331ff0a4c609374f32984b3d4e6dc086c0aa35f1d637fad1829e887f',
+    },
+    can: { pictures: true, thinking: 'on', code: 'best', tools: true },
   },
 ]
 

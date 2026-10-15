@@ -28,8 +28,9 @@ function guardSession(ses) {
 app.on('session-created', guardSession)
 
 const { claimDataFolder } = require('./data-folder.cjs')
-const { localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
+const { hasPictures, localAiChatStream, localAiModels, validateLocalChatPayload } = require('./local-ai.cjs')
 const { createAi } = require('./ai/index.cjs')
+const { createVision } = require('./ai/vision.cjs')
 const { estimateResources } = require('./ai/resources.cjs')
 const { tierById } = require('./ai/catalog.cjs')
 const { createPhoneBridge } = require('./phone.cjs')
@@ -963,6 +964,8 @@ function registerAi() {
     },
     // Tests and CI answer with a practice model instead of downloading one.
     mock: mockAi,
+    // Pictures (Phase 37b): llama.cpp's own server, bundled by scripts/build-helpers.mjs, reads them with the model's picture part.
+    vision: createVision({ bin: app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'llama', 'llama-server') : path.join(__dirname, '..', 'build', 'helpers', 'llama', 'llama-server') }),
   })
   // Local startup loading works offline too. Only downloads wait for online.
   ai.start({ downloads: !under.on })
@@ -1032,7 +1035,11 @@ async function answeringModels() {
 /* `valid.schema` (a grammar for the built-in model) only ever comes from main (desktop/agent.cjs);
    a window's payload is validated without one. */
 function chatWith(valid, onDelta, signal) {
-  if (valid.model.startsWith('cloud:')) return bots.chatStream(valid, onDelta, signal)
+  if (valid.model.startsWith('cloud:')) {
+    // A picture never leaves the Mac on its own: only the AI on this Mac reads pictures, for now.
+    if (hasPictures(valid.messages)) return Promise.reject(new Error('Pictures go to the AI on this Mac, so they never leave it. Choose it in the model menu.'))
+    return bots.chatStream(valid, onDelta, signal)
+  }
   return valid.model.startsWith('osat:') ? ai.chatStream(valid, onDelta, signal, { interactive: !valid.background }) : localAiChatStream(valid, onDelta, signal)
 }
 

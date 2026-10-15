@@ -8,16 +8,17 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 15, 2026: Phase 68, boards (`claude/boards-canvas`)
+## Resume checkpoint — October 15, 2026: Phases 67, 68, 37b, Mail + Gmail and Habits merged
 
-Nate approved the rework (docs/REWORK-20261015.md, mockup https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48). Phase 67
-(PR #98) gave every sticky a kind; #99 (Mail + Gmail) and #100 (models come whole, pictures in Ask) sit on top of it.
-This branch is Phase 68 on top of #98: the canvas is `src/boards/` (Map / Board / List per board, Just in, rename and
-delete with Undo, starter boards); the old Sky (Sky.jsx, Board.jsx, the sorter, the mind-map layout, the example
-roadmap) and its dead helpers and CSS are gone. Schema 14: a note may carry `stage`. Habits (PR #101) is separate,
-on main. Not done yet: Sort a pile and Put the desk away stay until Just in reads a photo of paper stickies; on-screen
-words outside the canvas still say "topic" (Notes, Dashboard). Next: Nate tries the DMGs and says "merge"; then
-Phase 69 (Flows). Older checkpoints are in git history.
+Nate approved the rework (docs/REWORK-20261015.md, mockup https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48) and said
+"merge everything". In main now: the plan (#97); Phase 67 (#98): every sticky says what it is (shared/what-model.mjs),
+Notes → Just in / Questions / To buy / Coming up, dates on the calendar with Undo (src/intake/); Mail + Gmail (#99);
+Phase 37b (#100): every model downloads whole (its picture part too), llama.cpp's server ships in the app, Ask takes
+pictures, Settings → AI shows Pictures / Thinks / Code; Phase 68 (#102): the canvas is boards (`src/boards/`: Map /
+Board / List, Just in, rename and delete with Undo, starter boards), the old Sky, its sorter and layouts gone, schema
+14 (`stage`); Habits redesigned (#101). Not done yet: Sort a pile and Put the desk away stay until Just in reads a
+photo of paper stickies; words outside the canvas still say "topic" (Notes, Dashboard). Next: Phase 69 (Flows).
+Older checkpoints are in git history.
 
 ## Working with Nate
 
@@ -80,6 +81,19 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     thinking turned off), `index.cjs` (`createAi`: the chosen size in `prefs.json`, background
     download, engine starts on the first question and stops after 10 idle minutes; `mock`).
     Model files live in `<data folder>/models`. LM Studio still works through `local-ai.cjs`.
+    Pictures (Phase 37b): each catalog entry has `vision` (its mmproj file, same pinned revision, checked the same way;
+    the three Qwen ones renamed locally, they share a name upstream) and `can` (pictures, `thinking` 'on' / 'off' (can,
+    kept off) / null, `code` true / 'best', tools; from the makers' model cards). index.cjs: `isReady` is the model file
+    (words work), `sees` its picture part, `complete` both; one transfer brings the missing parts in order; `start()` queues
+    models already here without their part (the one in use first); `remove` deletes both. A question whose messages carry
+    `images` ([{ type, data: base64 }], user messages only, ≤ 4, checked in both `validateLocalChatPayload`s) goes to
+    `seeStream` → `ai/vision.cjs`: llama.cpp's own `llama-server` (node-llama-cpp can't read pictures), started per model
+    with `--mmproj` on 127.0.0.1 and a fresh `--api-key`, thinking off (`chat_template_kwargs`), stopped after 10 idle
+    minutes; idle word engines step aside first and `vision.rest()` frees it before a word model loads. Cloud models and
+    LM Studio refuse pictures (they never leave the Mac). `scripts/build-helpers.mjs` `LLAMA`: release b11299 (pinned
+    SHA-256), only llama-server and the ten dylibs it loads, into build/helpers/llama (extraResources). Ask:
+    `assistant/pictures.js` (`readPicture` shrinks to 2048 px, `withPictures`, `pictureProblem`); the chat keeps picture
+    names in a question's `files`, never the pictures.
   - `main.cjs`: windows, menu, IPC for the store / local AI / browser / terminal (`handle`, `fail`
     and the trusted-sender checks live here and are passed to the modules that register handlers),
     the desk and three shortcuts in `shortcuts` (`layer` is the desk's ⌥Space, `search` the quick bar's ⌥⇧Space,
