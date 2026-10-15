@@ -139,6 +139,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 39 | Change it from the bar: favorites, keys and words from ⌘K; the Mac's own commands; Next screen | Merged (PR #73), Oct 8 |
 | 36 | One bar, one list: no tabs; Ask AI first, then apps, files, copies and notes with See all; Tab asks; ↓ shows the latest copies | Merged (PR #66), Oct 8 |
 | 37 | Choose your AI: best for this Mac, your models, and nine local models compared (Gemma 4, Qwen 3.5/3.6, Ministral 3) | Merged (PR #67), Oct 8 |
+| 37b | Every model whole: its picture part (the vision file) downloads with it, and models already on your Mac get theirs; llama.cpp's own server ships inside OSAT and reads pictures with them; Ask takes a pasted, dropped or chosen picture (the AI on this Mac only, never the cloud); Settings → AI says what each model can do: pictures, thinking, code | In review |
 | 38 | Notes is home, the Sky becomes Canvas: one sidebar, List \| Canvas per topic, "topic" instead of node everywhere | Merged (PR #68), Oct 8 |
 | 40 | A smarter calculator: units and dates, offline (currency later: it needs the internet) | Merged (PR #70), Oct 8 |
 | 42 | Ask, tidier and honest: where a question goes, Try again, Edit your last question, a calmer box | Merged (PR #72), Oct 8 |

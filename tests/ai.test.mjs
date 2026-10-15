@@ -365,7 +365,8 @@ test('an offline launch can load its downloaded default without starting a queue
   ai.start({ downloads: false })
   await settle(() => ai.status().tiers[0].state === 'ready')
   assert.equal(downloads, 0)
-  assert.deepEqual(ai.status().queued, ['balanced'])
+  // Light is here without its picture part, so it waits in the queue for it too (Phase 37b); nothing downloads offline.
+  assert.deepEqual(ai.status().queued, ['balanced', 'light'])
   ai.dispose()
 })
 

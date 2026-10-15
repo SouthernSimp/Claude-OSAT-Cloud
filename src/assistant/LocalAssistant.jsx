@@ -10,6 +10,7 @@ import {
   CircleNotch,
   Copy,
   FileText,
+  ImageSquare,
   LockKey,
   MagnifyingGlass,
   Microphone,
@@ -43,6 +44,7 @@ import { cleanError, setupLine, useAi } from "./useAi.js";
 import { ModelMenu } from './ModelMenu.jsx';
 import { AgentConfirm, AgentSteps } from "./AgentSteps.jsx";
 import { AGENT_MEMORY_CHARS, useAgent } from "./useAgent.js";
+import { isPicture, MAX_PICTURES, pictureProblem, readPicture, withPictures } from "./pictures.js";
 import "../styles/assistant.css";
 
 const STARTERS = [
@@ -143,6 +145,9 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const [railOpen, setRailOpen] = useState(false);
   const [voiceHint, setVoiceHint] = useState(false);
   const [files, setFiles] = useState([]);
+  // Pictures for this question and the ones after it in this chat (Phase 37b); only the AI on this Mac reads them.
+  const [pictures, setPictures] = useState([]);
+  const pictureInput = useRef(null);
   const [reading, setReading] = useState(false);
   const [dropping, setDropping] = useState(false);
   // Edit on your last question: it waits in the box, and asking replaces that question and its answer.
@@ -252,11 +257,30 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     }
   }
 
+  /* Pictures dropped, pasted or chosen: made small enough to read quickly, four at most. */
+  async function addPictures(list) {
+    const chosen = [...list].filter(isPicture);
+    if (!chosen.length) return;
+    setError("");
+    try {
+      const read = await Promise.all(chosen.slice(0, MAX_PICTURES).map((file) => readPicture(file)));
+      setPictures((current) => [...current, ...read].slice(-MAX_PICTURES));
+    } catch (reason) {
+      setError(cleanError(reason));
+    } finally {
+      inputRef.current?.focus();
+    }
+  }
+  const dropPicture = (picture) => { URL.revokeObjectURL(picture.url); setPictures((list) => list.filter((item) => item !== picture)); };
+  const clearPictures = () => setPictures((list) => { list.forEach((picture) => URL.revokeObjectURL(picture.url)); return []; });
+
   function onDrop(event) {
     setDropping(false);
-    if (!fileApi?.attachDropped || !event.dataTransfer?.files?.length) return;
+    const dropped = [...(event.dataTransfer?.files || [])];
+    if (!dropped.length) return;
     event.preventDefault();
-    for (const file of [...event.dataTransfer.files].slice(0, 3)) attach(() => fileApi.attachDropped(file));
+    addPictures(dropped.filter(isPicture));
+    if (fileApi?.attachDropped) for (const file of dropped.filter((item) => !isPicture(item)).slice(0, 3)) attach(() => fileApi.attachDropped(file));
   }
 
   function startChat() {
@@ -266,6 +290,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     setModel(models?.[0]?.id || "");
     setDraft("");
     setFiles([]);
+    clearPictures();
     setDropped(new Set());
     setStreaming("");
     setError("");
@@ -278,6 +303,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     abortRef.current?.abort();
     setActiveId(id);
     setFiles([]);
+    clearPictures();
     setStreaming("");
     setError("");
     setRailOpen(false);
@@ -298,10 +324,12 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   async function ask(text = draft, { retry = false, redo = editing } = {}) {
     const content = text.trim();
     if (!content || busy || !model || content.length > 8000) return;
+    const replyingModel = models?.find((item) => item.id === model);
+    const problem = pictures.length ? pictureProblem(replyingModel) : "";
+    if (problem) { setError(problem); return; }
     setEditing(false);
     const noteIds = text === asking ? using : pickNotes(content);
     setBusy(true);
-    const replyingModel = models?.find((item) => item.id === model);
     const found = await findForAsk(content, isLocalModel(replyingModel) && active?.contextScope?.kind !== "none");
     let base = active || newChat();
     if (retry && base.messages.at(-1)?.role === "user") base = { ...base, messages: base.messages.slice(0, -1) };
@@ -314,7 +342,9 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
         showUndo("Asked again", () => commit((state) => putChat(state, before)));
       }
     }
-    const question = newMessage("user", content, { ...(noteIds.length ? { noteIds } : {}), ...(files.length ? { files: files.map((file) => file.name) } : {}), ...sourceRefs(found) });
+    // The chat remembers which files and pictures went with the question, by name; the pictures themselves are never saved.
+    const named = [...files.map((file) => file.name), ...pictures.map((picture) => picture.name)];
+    const question = newMessage("user", content, { ...(noteIds.length ? { noteIds } : {}), ...(named.length ? { files: named } : {}), ...sourceRefs(found) });
     const chat = { ...base, modelId: model, messages: [...base.messages, question] };
     commit((state) => putChat(state, chat));
     setActiveId(chat.id);
@@ -328,7 +358,8 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     const controller = new AbortController();
     abortRef.current = controller;
     let full = "";
-    const acting = base.tools !== false && agent.wants(content);
+    // A question with a picture is answered, never acted on.
+    const acting = !pictures.length && base.tools !== false && agent.wants(content);
     const fit = fitToMemory(outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds }), { acting }), base.messages, content, workspace.notes, noteIds, files, workspace.folders, found.text), acting ? AGENT_MEMORY_CHARS : undefined);
     const onDelta = (delta) => {
       full += delta;
@@ -339,7 +370,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
       if (acting) {
         acted = await agent.act({ model, messages: fit.messages, signal: controller.signal, onDelta });
         if (acted.error) setError(acted.error);
-      } else await streamLocalMessage({ model, messages: fit.messages, signal: controller.signal, onDelta });
+      } else await streamLocalMessage({ model, messages: withPictures(fit.messages, pictures), signal: controller.signal, onDelta });
     } catch (reason) {
       if (reason?.name !== "AbortError") setError(cleanError(reason) || "The AI could not answer.");
     } finally {
@@ -424,7 +455,8 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
       className={`assistant ${compact ? "is-compact" : ""} ${dropping ? "is-dropping" : ""}`}
       aria-label="Ask"
       onDragOver={(event) => {
-        if (!fileApi?.attachDropped || !event.dataTransfer?.types?.includes("Files")) return;
+        // Files need the Mac's reader; pictures are read right here, so a drop is always welcome.
+        if (!event.dataTransfer?.types?.includes("Files")) return;
         event.preventDefault();
         setDropping(true);
       }}
@@ -618,6 +650,17 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
               ))}
             </div>
           )}
+          {pictures.length > 0 && (
+            <div className="ask-notes ask-pictures" aria-label="Pictures Ask will look at">
+              <span>Looking at {pictures.length === 1 ? "1 picture" : `${pictures.length} pictures`}</span>
+              {pictures.map((picture) => (
+                <span className="ask-note-chip is-picture" key={picture.url}>
+                  <img src={picture.url} alt="" /> {picture.name}
+                  <button type="button" aria-label={`Leave out ${picture.name}`} onClick={() => dropPicture(picture)}><X /></button>
+                </span>
+              ))}
+            </div>
+          )}
           {using.length > 0 && (
             <div className="ask-notes" aria-label="Notes Ask will read">
               <span>Using {using.length} {using.length === 1 ? "note" : "notes"}</span>
@@ -638,6 +681,13 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
             placeholder={status === "unavailable" ? "Set up the AI in Settings to begin…" : "Ask anything. Shift + Return for a new line."}
             aria-label="Ask the AI on this Mac"
             onChange={(event) => setDraft(event.target.value)}
+            onPaste={(event) => {
+              // A screenshot pasted here becomes a picture for the question; pasted words stay words.
+              const pasted = [...(event.clipboardData?.files || [])].filter(isPicture);
+              if (!pasted.length) return;
+              event.preventDefault();
+              addPictures(pasted);
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
@@ -667,6 +717,8 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
               ? <span className="composer-note is-cloud" title={whereLine(replying)}><Cloud /> To {replying.where || "the cloud"}</span>
               : <span className="composer-note" title="Nothing leaves this Mac"><LockKey /> On this Mac</span>}
             <span className="composer-spacer" />
+            <input ref={pictureInput} type="file" accept={"image/png,image/jpeg,image/webp,image/gif"} multiple hidden onChange={(event) => { addPictures(event.target.files || []); event.target.value = ""; }} />
+            <button className="voice-button is-icon" type="button" aria-label="Add a picture" title="Add a picture, paste a screenshot, or drop one here" disabled={busy} onClick={() => pictureInput.current?.click()}><ImageSquare /></button>
             {fileApi?.attachChosen && (
               <button className="voice-button is-icon" type="button" aria-label="Attach a file" title="Attach a file, or drop one here" disabled={busy || reading} onClick={() => attach(() => fileApi.attachChosen())}><Paperclip /></button>
             )}
@@ -686,7 +738,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
       </div>
 
       {railOpen && <div className="rail-scrim" onClick={() => setRailOpen(false)} />}
-      {dropping && <div className="drop-veil" aria-hidden="true"><FileText /> Drop to ask about it</div>}
+      {dropping && <div className="drop-veil" aria-hidden="true"><FileText /> Drop a file or a picture to ask about it</div>}
       {toast}
     </section>
   );

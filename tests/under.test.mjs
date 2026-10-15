@@ -190,6 +190,11 @@ const FENCE = [
   [/\bmodelUrl\b/, 'the listening engine fetching a model itself', (file) => file.startsWith('desktop/meetings/')],
 ]
 const ALLOWED = {
+  'desktop/ai/vision.cjs': [
+    // Pictures (Phase 37b): only to find a free port on 127.0.0.1 for llama.cpp's own server, which listens on this
+    // Mac alone with a new key each start (tests/ai-pictures.test.mjs). Nothing here reaches beyond the Mac.
+    "const net = require('node:net')",
+  ],
   'desktop/mac-mail.cjs': [
     // Tools → Mail: reads and starts a reply in Mail, which is local to this Mac, so it works Offline too. The script
     // never asks Mail to check for mail or send (tests/mac-mail.test.mjs); Mail fetches on its own schedule, as it always does.
