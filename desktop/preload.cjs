@@ -110,6 +110,8 @@ contextBridge.exposeInMainWorld('osatGitHub', Object.freeze({
 contextBridge.exposeInMainWorld('osatMail', Object.freeze({
   status: () => ipcRenderer.invoke('mail:status'),
   allow: () => ipcRenderer.invoke('mail:allow'),
+  accounts: () => ipcRenderer.invoke('mail:accounts'),
+  addAccount: () => ipcRenderer.invoke('mail:add-account'),
   list: () => ipcRenderer.invoke('mail:list'),
   search: (query, inside) => ipcRenderer.invoke('mail:search', query, inside === true),
   read: (id) => ipcRenderer.invoke('mail:read', id),

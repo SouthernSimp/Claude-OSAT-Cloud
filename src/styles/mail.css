@@ -65,3 +65,10 @@
   .mail-main { padding: 14px 16px 24px; }
   .mail-message .mail-back { display: inline-flex; }
 }
+
+/* Adding Gmail (one sign-in on the Mac) and which accounts Mail reads. */
+.mail-setup-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.mail-setup-actions .primary-button svg { width: 14px; height: 14px; }
+.mail-setup .mail-said { max-width: 52ch; text-align: left; }
+.mail-accounts { margin: 0 12px 6px; }
+.mail-list > .mail-said { margin: 0 12px 8px; }

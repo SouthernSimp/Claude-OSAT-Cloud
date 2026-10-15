@@ -6,10 +6,11 @@ import { createRequire } from 'node:module'
 const { SCRIPT, osascriptArgs, createMacMail } = createRequire(import.meta.url)('../desktop/mac-mail.cjs')
 
 /* The room's channels with a stand-in for osascript: nothing here ever starts it or touches the real Mail. */
-async function setup(answer, { platform = 'darwin', installed = () => true } = {}) {
+async function setup(answer, { platform = 'darwin', installed = () => true, running = async () => true, launch = async () => true, openPane = async () => true } = {}) {
   const handlers = new Map()
   const calls = []
   await createMacMail({
+    running, launch, openPane, settle: async () => {},
     sharedModule: (name) => import(`../shared/${name}`),
     handle: (channel, operation, options) => handlers.set(channel, { operation, options }),
     fail: (message) => { throw new Error(message) },
@@ -27,7 +28,7 @@ async function setup(answer, { platform = 'darwin', installed = () => true } = {
 
 test('every channel is for the desk and the quick bar only, and the list is the whole surface', async () => {
   const { handlers } = await setup([])
-  assert.deepEqual([...handlers.keys()].sort(), ['mail:allow', 'mail:list', 'mail:open', 'mail:read', 'mail:reply', 'mail:search', 'mail:status'])
+  assert.deepEqual([...handlers.keys()].sort(), ['mail:accounts', 'mail:add-account', 'mail:allow', 'mail:list', 'mail:open', 'mail:read', 'mail:reply', 'mail:search', 'mail:status'])
   for (const { options } of handlers.values()) assert.deepEqual(options, { from: 'app' })
 })
 
@@ -112,7 +113,7 @@ test('a Mac that has not allowed it, has no accounts, or is slow answers in plai
   const insideScript = await setup({ error: 'Error: Not authorized to send Apple events to Mail. (-1743)' })
   await assert.rejects(insideScript.call('mail:list'), /OSAT isn’t allowed to control Mail/)
   const empty = await setup({ error: 'noAccounts' })
-  await assert.rejects(empty.call('mail:list'), /Mail isn’t set up on this Mac/)
+  await assert.rejects(empty.call('mail:list'), /no accounts on this Mac yet/)
   const slow = await setup(new Error('timed out '))
   await assert.rejects(slow.call('mail:list'), /took too long/)
   const odd = await setup(new Error('spawn osascript ENOENT /Users/nate/private'))
@@ -122,15 +123,33 @@ test('a Mac that has not allowed it, has no accounts, or is slow answers in plai
 
 /* The script itself, run in a sandbox against a stand-in for Mail's scripting: it proves the script's own
    logic (caps, order, how a search is built) without ever starting osascript or opening the real Mail. */
-function fakeMail(messages, { accounts = 1 } = {}) {
-  const seen = { whose: [], replies: [], opened: [], activated: 0 }
+function fakeMail(messages, { accounts = 1, accountRows = null, byId = true, arriving = null } = {}) {
+  // `requests` counts every Apple event the script would send (each property read is one).
+  const seen = { whose: [], replies: [], opened: [], activated: 0, requests: 0, idReads: 0 }
+  const ask = (value) => { seen.requests += 1; return value }
   const specifier = (m) => ({
-    id: () => m.id, subject: () => m.subject, sender: () => m.sender, dateReceived: () => new Date(m.date),
-    readStatus: () => m.read !== false, content: () => m.body ?? 'Body of ' + m.subject, messageId: () => m.mid ?? `<m${m.id}@example.com>`,
+    id: () => ask(m.id), subject: () => ask(m.subject), sender: () => ask(m.sender), dateReceived: () => ask(new Date(m.date)),
+    readStatus: () => ask(m.read !== false), content: () => ask(m.body ?? 'Body of ' + m.subject), messageId: () => ask(m.mid ?? `<m${m.id}@example.com>`),
   })
-  const setOf = (list) => {
-    const set = list.map(specifier)
-    set.dateReceived = () => list.map((m) => new Date(m.date))
+  const missing = { id: () => { throw new Error('Can’t get object.') } }
+  const setOf = (source) => {
+    const live = () => (typeof source === 'function' ? source() : source)
+    const set = live().map(specifier)
+    // One request for the whole set: what Mail answers for `messages.subject()` and the like.
+    set.id = () => {
+      seen.idReads += 1
+      const ids = ask(live().map((m) => m.id))
+      if (arriving && seen.idReads === 1) arriving()
+      return ids
+    }
+    set.subject = () => ask(live().map((m) => m.subject))
+    set.sender = () => ask(live().map((m) => m.sender))
+    set.readStatus = () => ask(live().map((m) => m.read !== false))
+    set.dateReceived = () => ask(live().map((m) => new Date(m.date)))
+    set.byId = (id) => {
+      const m = byId && live().find((item) => item.id === id)
+      return m ? specifier(m) : missing
+    }
     set.whose = (criteria) => {
       seen.whose.push(criteria)
       const test = (m, c) => {
@@ -140,12 +159,21 @@ function fakeMail(messages, { accounts = 1 } = {}) {
         const [field, op] = Object.entries(c)[0]
         return String(field === 'content' ? m.body ?? '' : m[field]).includes(op._contains)
       }
-      return setOf(list.filter((m) => test(m, criteria)))
+      return setOf(() => live().filter((m) => test(m, criteria)))
     }
     return set
   }
+  const rows = accountRows || Array.from({ length: accounts }, (_, i) => ({ name: `Account ${i + 1}`, accountType: 'imap', emailAddresses: [`me${i}@example.com`], serverName: 'imap.example.com', enabled: true }))
+  const accountSet = {
+    length: rows.length,
+    name: () => ask(rows.map((row) => row.name)),
+    accountType: () => ask(rows.map((row) => row.accountType)),
+    emailAddresses: () => ask(rows.map((row) => row.emailAddresses)),
+    serverName: () => ask(rows.map((row) => row.serverName)),
+    enabled: () => ask(rows.map((row) => row.enabled)),
+  }
   const Mail = {
-    accounts: { length: accounts }, inbox: { messages: setOf(messages) },
+    accounts: accountSet, inbox: { messages: setOf(() => messages) },
     reply: (m, options) => seen.replies.push([m.id(), options]), activate: () => { seen.activated += 1 },
   }
   const me = { openLocation: (url) => seen.opened.push(url) }
@@ -153,7 +181,10 @@ function fakeMail(messages, { accounts = 1 } = {}) {
   const run = vm.runInNewContext(`${SCRIPT}\nrun`, { Application })
   // What the sandbox made is read back through JSON, so it compares with this file's own objects.
   const copy = (value) => JSON.parse(JSON.stringify(value))
-  return { go: (command, args = {}) => JSON.parse(run([command, JSON.stringify(args)])), seen: { get whose() { return copy(seen.whose) }, get replies() { return copy(seen.replies) }, get opened() { return copy(seen.opened) } } }
+  return {
+    go: (command, args = {}) => JSON.parse(run([command, JSON.stringify(args)])),
+    seen: { get whose() { return copy(seen.whose) }, get replies() { return copy(seen.replies) }, get opened() { return copy(seen.opened) }, get requests() { return seen.requests } },
+  }
 }
 
 const hoursAgo = (n) => new Date(Date.now() - n * 3600000).toISOString()
@@ -207,4 +238,66 @@ test('the script: read gives the text only; reply opens a window and never sends
   assert.deepEqual(seen.opened, ['message://%3Cabc%40mail.example.com%3E'])
   assert.deepEqual(go('reply', { id: 99 }), { error: 'gone' })
   assert.equal(seen.replies.length, 1)
+})
+
+test('Mail is started hidden when it isn’t running, so its window never jumps out; once only', async () => {
+  let up = false
+  const launched = []
+  const { call } = await setup([], { running: async () => up, launch: async () => { launched.push(true); up = true; return true } })
+  await call('mail:list')
+  await call('mail:list')
+  assert.equal(launched.length, 1)
+  const already = []
+  await (await setup([], { launch: async () => { already.push(true); return true } })).call('mail:list')
+  assert.equal(already.length, 0, 'a running Mail is left as it is')
+})
+
+test('Add Gmail opens Internet Accounts on the Mac (the Mac signs in to Google, never OSAT); accounts say which is Gmail', async () => {
+  const opened = []
+  const { call } = await setup([
+    { name: 'iCloud', kind: 'iCloud', emails: ['nate@icloud.com'], server: 'p00-imap.mail.me.com', enabled: true },
+    { name: 'Google', kind: 'imap', emails: ['nate@gmail.com'], server: 'imap.gmail.com', enabled: true },
+    { name: 'Old work', kind: 'imap', emails: ['n@old.example'], server: 'imap.old.example', enabled: false },
+  ], { openPane: async () => { opened.push(true); return true } })
+  assert.equal(await call('mail:add-account'), true)
+  assert.equal(opened.length, 1)
+  assert.deepEqual(await call('mail:accounts'), [
+    { name: 'iCloud', address: 'nate@icloud.com', gmail: false },
+    { name: 'Google', address: 'nate@gmail.com', gmail: true },
+  ], 'an account turned off in Mail isn’t read')
+  const off = await setup([], { platform: 'linux', openPane: async () => { throw new Error('should not open') } })
+  assert.equal(await off.call('mail:add-account'), false)
+})
+
+test('the script: a big inbox costs the same few requests as a small one (never one per message)', () => {
+  const inbox = (count) => Array.from({ length: count }, (_, i) => ({ id: i + 1, subject: `Mail ${i}`, sender: 'a@b.co', date: hoursAgo(1 + i / 100) }))
+  const small = fakeMail(inbox(80))
+  const big = fakeMail(inbox(5000))
+  assert.equal(big.go('list').length, 50)
+  small.go('list')
+  assert.equal(big.seen.requests, small.seen.requests, 'the same requests whatever the size of the inbox')
+  assert.ok(big.seen.requests <= 6 + 50 * 2, `${big.seen.requests} requests`)
+})
+
+test('the script: mail arriving mid-read never pairs one message’s subject with another’s date', () => {
+  const messages = [{ id: 1, subject: 'First', sender: 'a@b.co', date: hoursAgo(2) }]
+  const { go } = fakeMail(messages, { arriving: () => messages.unshift({ id: 2, subject: 'Just arrived', sender: 'c@d.co', date: hoursAgo(1) }) })
+  const list = go('list')
+  assert.deepEqual(list.map((row) => [row.id, row.subject, row.sender]), [[2, 'Just arrived', 'c@d.co'], [1, 'First', 'a@b.co']])
+})
+
+test('the script: a message is opened by its id, or found by search when Mail can’t look it up', () => {
+  const one = [{ id: 7, subject: 'Hi', sender: 'a@b.co', date: hoursAgo(1), body: 'Hello' }]
+  const direct = fakeMail(one)
+  assert.equal(direct.go('read', { id: 7 }).body, 'Hello')
+  assert.equal(direct.seen.whose.length, 0, 'no search of the inbox for one message')
+  const fallback = fakeMail(one, { byId: false })
+  assert.equal(fallback.go('read', { id: 7 }).body, 'Hello')
+  assert.deepEqual(fallback.seen.whose, [{ id: 7 }])
+})
+
+test('the script: the accounts Mail reads, in one request each, and an empty Mail lists none', () => {
+  const { go } = fakeMail([], { accountRows: [{ name: 'Google', accountType: 'imap', emailAddresses: ['nate@gmail.com'], serverName: 'imap.gmail.com', enabled: true }] })
+  assert.deepEqual(go('accounts'), [{ name: 'Google', kind: 'imap', emails: ['nate@gmail.com'], server: 'imap.gmail.com', enabled: true }])
+  assert.deepEqual(fakeMail([], { accounts: 0 }).go('accounts'), [], 'asking which accounts never fails for having none')
 })
