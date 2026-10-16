@@ -16,6 +16,8 @@ const pad = (n) => String(n).padStart(2, '0')
 const today = new Date()
 const DAY = `day-${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
 const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 14).toISOString()
+// Yesterday at noon, whatever the time now.
+const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 12).toISOString()
 // Earlier today (or a minute ago, just after midnight), and yesterday.
 const earlier = (hours) => ago(Math.min(hours, today.getHours() + today.getMinutes() / 60 - 0.02))
 const filed = (into, at) => ({ folderId: into, filed: { by: 'ai', at, into } })
@@ -31,7 +33,7 @@ const NOTES = [
   sticky('w2', 'Is a Mac mini enough for five people?', 'question', earlier(1), { unsorted: true, source: 'Quick bar' }),
   sticky('w3', 'Dentist tomorrow 2pm', 'date', earlier(1.5), { unsorted: true, source: 'iPhone', cal: { id: 'event-1', where: 'osat', start: tomorrow } }),
   sticky('f1', 'The canvas is hard to read', 'problem', earlier(2), { ...filed('osat', earlier(1.9)), source: 'Quick bar' }),
-  sticky('f2', 'Integrate n8n inside OSAT', 'idea', ago(27), { ...filed('osat', ago(26.9)), source: 'Quick bar' }),
+  sticky('f2', 'Integrate n8n inside OSAT', 'idea', yesterday, { ...filed('osat', yesterday), source: 'Quick bar' }),
   sticky('milk', 'milk, bread, turkey', 'buy', ago(40), { folderId: 'home' }),
   sticky('j1', 'Call Jordan about the roof estimate', 'todo', ago(50), { folderId: 'osat' }),
   sticky('j2', 'Call Jordan back about the roof estimate', 'todo', ago(49), { folderId: 'osat' }),
