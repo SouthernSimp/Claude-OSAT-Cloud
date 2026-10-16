@@ -203,6 +203,8 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   useEffect(() => {
     if (!target) return
     const state = latest.current
+    // Sent with a view (Coming next opens its board as a Board).
+    if (VIEWS.some(([id]) => id === target.view)) setView(target.view)
     if (target.action === 'new-node') { setNaming({}); return }
     if (target.action === 'new-sticky') { requestAnimationFrame(() => writeField.current?.focus()); return }
     if (target.action === 'sort') { open(JUST_IN); return }

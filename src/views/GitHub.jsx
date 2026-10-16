@@ -3,10 +3,10 @@ import { ArrowClockwise, ArrowSquareOut, Check, CircleNotch, GitBranch, GitMerge
 
 import { cleanError } from '../assistant/useAi.js'
 import { ago, checksWords } from '../../shared/github-model.mjs'
+import { OSAT_REPO } from '../lib/changelog.js'
 import '../styles/github.css'
 
 const PICKED_KEY = 'osat.github.repo.v1'
-const OSAT_REPO = 'SouthernSimp/Claude-OSAT-Cloud'
 const readPicked = () => { try { return localStorage.getItem(PICKED_KEY) || '' } catch { return '' } }
 const keepPicked = (name) => { try { localStorage.setItem(PICKED_KEY, name) } catch { /* the next open starts at the newest */ } }
 

@@ -684,7 +684,7 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Habits': return <HabitsView {...room} />
     case 'Budget': return <BudgetView {...room} />
     case 'Settings': return <SettingsView {...room} storage={storage} target={pop.detail?.section ? target : null} />
-    case 'Roadmap': return <RoadmapView />
+    case 'Roadmap': return <RoadmapView {...room} target={target} onClose={onClose} />
     case 'GitHub': return <GitHubView />
     case 'Mail': return <MailView {...room} />
     case 'Passwords': return <PasswordsView />

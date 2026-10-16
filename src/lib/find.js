@@ -26,6 +26,8 @@ const ACTIONS = [
   { key: 'act:board', label: 'Open the canvas', also: 'map mindmap topics board whiteboard canvas sort stars', go: ['Mindmap'] },
   { key: 'act:focus', label: 'Focus for 25 minutes', also: 'timer pomodoro quiet concentrate', go: ['Focus'] },
   { key: 'act:widget', label: 'Add a widget', hint: 'Calendar, Next, Focus, Habits…', also: 'widgets tray', go: ['Widgets'] },
+  { key: 'act:whats-new', label: 'What’s new', hint: 'Every build of OSAT, and how a change gets to you', also: 'whats changelog changes version build update release notes roadmap coming next plans', go: ['Roadmap', { tab: 'news' }] },
+  { key: 'act:coming', label: 'Coming next', hint: 'The plans for OSAT, as a board you can rerank', also: 'roadmap plans upcoming features kanban rank next', go: ['Roadmap', { tab: 'coming' }] },
   { key: 'act:tour', label: 'Take the tour', hint: 'A quick look around OSAT', also: 'help guide tutorial welcome intro how it works learn', go: ['Tour'] },
   { key: 'act:offline', label: 'Offline', hint: 'Turn OSAT’s internet off, or back on', also: 'go online private incognito wifi internet network airplane', go: ['Offline'] },
   // Every page of Settings, so ⌘K finds it by what it is about ("hyper", "clipboard", "words").
@@ -34,10 +36,12 @@ const ACTIONS = [
 
 const newest = (a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))
 
-// Rooms and actions match by the start of their words: "cal" finds Calendar, "end" doesn't.
+// Rooms and actions match by the start of their words: "cal" finds Calendar, "end" doesn't. What was typed is
+// split the same way, so "what's new" finds What’s new.
 const startsWords = (text, words) => {
   const own = text.toLowerCase().split(/[^\p{L}\p{N}]+/u)
-  return words.length > 0 && words.every((word) => own.some((part) => part.startsWith(word)))
+  const typed = words.flatMap((word) => word.split(/[^\p{L}\p{N}]+/u)).filter(Boolean)
+  return typed.length > 0 && typed.every((word) => own.some((part) => part.startsWith(word)))
 }
 
 function noteRow(workspace, note) {

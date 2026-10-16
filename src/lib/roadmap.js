@@ -3,10 +3,12 @@
    and nothing is kept anywhere else. Read-only: no dates to keep up; a phase with none
    simply shows in its place in the order. Pure. */
 
-/* done (merged, shipped), now (in review, in progress) or planned (planned, later, parked). */
+/* done (merged, shipped), dropped (dropped, replaced: it won't be built), now (in review, in progress) or
+   planned (planned, later, parked). */
 export function stateOf(label) {
   const text = String(label || '').toLowerCase()
-  if (/^(merged|done|shipped|finished)\b/.test(text)) return 'done'
+  if (/^(merged|done|shipped|finished|completed)\b/.test(text)) return 'done'
+  if (/^(dropped|replaced)\b/.test(text)) return 'dropped'
   if (/review|progress|building|\bnow\b|started/.test(text)) return 'now'
   return 'planned'
 }
@@ -27,7 +29,8 @@ export function roadmapPhases(markdown) {
       if (phases.length) break
       continue
     }
-    const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim())
+    // A `\|` inside a cell is a pipe in its words, not the next cell.
+    const cells = row.replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map((cell) => cell.trim().replace(/\\\|/g, '|'))
     if (cells.length < 3 || /^:?-{2,}:?$/.test(cells[0]) || /^phase$/i.test(cells[0]) || !cells[0]) continue
     const [id, what, label] = cells
     phases.push({
@@ -45,7 +48,7 @@ export function roadmapPhases(markdown) {
 /* "16 done · 2 in progress · 6 planned" */
 export function timelineSummary(phases) {
   const count = (state) => phases.filter((phase) => phase.state === state).length
-  return [[count('done'), 'done'], [count('now'), 'in progress'], [count('planned'), 'planned']]
+  return [[count('done'), 'done'], [count('now'), 'in progress'], [count('planned'), 'planned'], [count('dropped'), 'dropped']]
     .filter(([n]) => n)
     .map(([n, word]) => `${n} ${word}`)
     .join(' · ')

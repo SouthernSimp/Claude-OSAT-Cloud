@@ -27,10 +27,15 @@ Older checkpoints are in git history.
   Mac checklist. Nate tries the DMG that CI builds and says "merge"; then Claude merges.
 - Explain in plain words. Nate would rather see the result than the internals.
 - Display the name `OSAT` only and never spell out the letters.
-- Nate wants a changelog for every version. After a merge to main publishes a build (`gh release list`), add its
-  entry at the top of CHANGELOG.md: `## Build N · <date> — <short name>`, plain words, one line per change ending
-  with its PR number (rebuilds of the same commit share an entry: `Builds N–M`). Commit it straight to main with
-  `[skip ci]` in the message, so the changelog itself doesn't start another build.
+- Nate wants a changelog for every version; OSAT shows it (Tools → Roadmap → What’s new, `src/lib/changelog.js`,
+  checked by tests/whats-new.test.mjs). A build carries CHANGELOG.md as it was when built, so its entry goes in
+  before the merge: the last PR of a batch puts `## Next build · <date> — <short name>` at the top (plain words,
+  one line per change ending with its PR number); the app shows that entry as the build you have. After GitHub
+  publishes it (`gh release list`), change `Next build` to `Build N` (rebuilds of the same commit: `Builds N–M`)
+  in a commit straight to main with `[skip ci]` in the message, so it doesn't start another build.
+- Before picking the next phase, read Nate's "Coming to OSAT" board (Phase 31): his order and notes are in his
+  workspace, `~/Library/Application Support/OSAT/store/workspace.json` (read it, never write it): the folder
+  `settings.plan.boardId`, its notes by `rank` and `stage` (`settings.plan.notes` says which note is which phase).
 - Before finishing a working session, commit and push completed changes to GitHub.
   Keep this resume checkpoint and the roadmap current so Nate can switch between
   Claude and Codex without losing progress. Leave merging for Nate's instruction.
@@ -301,7 +306,13 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     Today, Notes, iCloud), `?surface=search` the quick bar (with Ask inside it), `?surface=ring` the ring.
   - `lib/spaces.js`: the one list of spaces (Desk, Notes, Canvas (id `Mindmap`, once the Sky), Ask, Files), tools and
     Settings. The dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
-  - `views/Roadmap.jsx`: Tools → Roadmap (also ⌘K and the Go menu) shows docs/ROADMAP.md, built in
+  - `views/Roadmap.jsx`: Tools → Roadmap has four tabs. What’s new is CHANGELOG.md (`lib/changelog.js`: builds,
+    `Next build` = the build itself, `isYours` against `osatApp.about()`'s version, a #number opens its pull request
+    through `osatSearch.openLink`). Coming next is Phase 31 (`boards/plan.js`): the Roadmap's open phases as the
+    board "Coming to OSAT" on the canvas (`setUpPlan` once, `syncPlan` each visit: new plans to Later, merged or
+    dropped ones ticked off, a deleted one never comes back; `settings.plan`), opened with `view: 'board'`; the room
+    closes itself so it doesn't float over the canvas. Roadmap and Timeline as below (states: done, now, planned,
+    dropped). Tools → Roadmap (also ⌘K and the Go menu) shows docs/ROADMAP.md, built in
     with `?raw` and drawn by `lib/markdown.jsx`. Nate reads it there: keep it in plain words, the
     Status table first. Its Timeline view (`lib/roadmap.js`, `roadmapPhases`) is drawn from that
     same Status table, so keep the table's three columns (Phase | What | State: "Merged (PR #n)",
