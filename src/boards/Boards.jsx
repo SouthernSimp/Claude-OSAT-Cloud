@@ -1,31 +1,42 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, CalendarCheck, Kanban, ListBullets, MagnifyingGlass, NotePencil, Plus, Question, ShoppingCart, Sparkle, SquaresFour, Trash, Tray, X,
+  ArrowDown, ArrowsMerge, CalendarCheck, Camera, Kanban, ListBullets, MagnifyingGlass, NotePencil, Plus, Question, ShoppingCart, Sparkle, SquaresFour, Trash, Tray, X,
 } from '@phosphor-icons/react'
 
-import { readUnpackAnswer, unpackMessages } from '../../shared/ai-tasks.mjs'
+import { photoMessages, readPhotoAnswer, readUnpackAnswer, unpackMessages } from '../../shared/ai-tasks.mjs'
 import { WHAT_LABEL, WHAT_PAPER, WHATS, whatOf, whenOf } from '../../shared/what-model.mjs'
 import { answeringLabel, askModel } from '../assistant/ask-model.js'
+import { pictureProblem, readPicture, withPictures } from '../assistant/pictures.js'
 import { cleanError, useAi } from '../assistant/useAi.js'
-import { whenLine } from '../intake/dates.js'
+import { datesSettings, whenLine } from '../intake/dates.js'
+import { putOnCalendar, takeOffCalendar } from '../intake/useDates.js'
 import { carryable, useCarrying, useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { connect, recordOf } from '../links-model.js'
 import { PAPERS } from '../note-core.js'
-import { folderPath, isActiveNote, setWhat, trashNotes, updateNote } from '../notes-model.js'
+import { getLocalModels, streamLocalMessage } from '../local-ai.js'
+import { folderPath, isActiveNote, setDone, setWhat, trashNotes, updateNote } from '../notes-model.js'
 import { addSticky, markOpened, pileOf, removeFolder, renameFolder } from '../nodes-model.js'
 import { applyUnpackProposal, undoUnpackProposal } from '../sky/unpack-proposal.js'
+import { useAutoFileStatus } from '../sky/useAutoFile.js'
 import { useOvernight } from '../sky/useOvernight.js'
 import '../styles/boards.css'
 import {
   addBoard, boardsOf, COLUMN, findOn, JUST_IN, mapColumns, moveToBoard, onBoard, rankIn, setStage, stageColumns, stageOf, STAGES, stickiesOn, undoFrom,
 } from './boards-model.js'
+import { JustIn } from './JustIn.jsx'
+import { mergeStickies, placeFrom, samePair } from './just-in.js'
 
 const BOARD_KEY = 'osat.boards.board.v1'
 const VIEW_KEY = 'osat.boards.view.v1'
+// Pairs of stickies waved away with Keep both, so they aren't offered again.
+const SAME_KEY = 'osat.boards.same.v1'
 const read = (key, fallback) => { try { return localStorage.getItem(key) || fallback } catch { return fallback } }
 const keep = (key, value) => { try { localStorage.setItem(key, value) } catch { /* only a convenience */ } }
+const readList = (key) => { try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] } }
+// What two of a kind are called in "Two ideas say the same thing".
+const PLURAL = { idea: 'ideas', question: 'questions', problem: 'problems', todo: 'to-dos', date: 'dates', buy: 'things to buy', note: 'notes' }
 
 const VIEWS = [['map', 'Map', SquaresFour], ['board', 'Board', Kanban], ['list', 'List', ListBullets]]
 const STARTER = ['Personal', 'Home', 'Work']
@@ -46,6 +57,9 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const [editing, setEditing] = useState(null)
   const [lit, setLit] = useState(null)
   const [unpacking, setUnpacking] = useState(null)
+  const [reading, setReading] = useState(null)
+  const [keptPairs, setKeptPairs] = useState(() => readList(SAME_KEY))
+  const photoField = useRef(null)
   const [menu, openMenu] = useContextMenu()
   const [toast, showUndo] = useUndoToast()
   const findField = useRef(null)
@@ -62,6 +76,8 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const all = useMemo(() => stickiesOn(workspace, boardId), [workspace, boardId])
   const shown = useMemo(() => findOn(all, query), [all, query])
   const waiting = useMemo(() => stickiesOn(workspace, JUST_IN).length, [workspace])
+  const same = useMemo(() => samePair(all, keptPairs), [all, keptPairs])
+  const filing = useAutoFileStatus()
 
   const open = (id) => { setPicked(id); keep(BOARD_KEY, id); setQuery(''); setEditing(null) }
   const setView = (id) => { setViewState(id); keep(VIEW_KEY, id) }
@@ -81,7 +97,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const actions = {
     moveTo(ids, toId) {
       const restores = ids.map((id) => onFiled?.(id)).filter((restore) => typeof restore === 'function')
-      change(`Moved to ${nameOf(toId)}`, (state) => moveToBoard(state, ids, toId), () => restores.forEach((restore) => restore()))
+      change(`Moved to ${nameOf(toId)}`, (state) => placeFrom(state, ids, toId), () => restores.forEach((restore) => restore()))
     },
     setKind(ids, what) {
       change(`Now ${ids.length === 1 ? 'it is' : 'they are'} ${COLUMN[what].toLowerCase()}`, (state) => setWhat(state, ids, what))
@@ -109,6 +125,49 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
     },
     trash(id) {
       change('Moved to Trash', (state) => trashNotes(state, [id]))
+    },
+    startEdit(id) { setEditing(id) },
+    /* Just in's Undo on one row: what the AI filed goes back to Just in; a date comes off the calendar. */
+    undoRow(note) {
+      if (note.filed && note.folderId === note.filed.into) { actions.moveTo([note.id], JUST_IN); return }
+      const when = whenOf(note)
+      takeOffCalendar(commit, note.id)
+      showUndo('Took it off your calendar', when ? () => putOnCalendar(commit, note, when, datesSettings(latest.current.settings).calendar) : null)
+    },
+    tick(id) {
+      change('Ticked off', (state) => setDone(state, [id], true))
+    },
+    merge(pair) {
+      change('Merged into one sticky. Both sets of words are in it.', (state) => mergeStickies(state, pair.a.id, pair.b.id))
+      setLit(pair.a.id)
+    },
+    keepBoth(key) {
+      const next = [...keptPairs, key].slice(-500)
+      setKeptPairs(next)
+      keep(SAME_KEY, JSON.stringify(next))
+    },
+    moveMenu(event, note) {
+      openMenu(event, boards.map(({ folder }) => ({ label: folder.name, onSelect: () => actions.moveTo([note.id], folder.id) })))
+    },
+    /* A photo of paper stickies: the AI on this Mac reads it (the photo never leaves the Mac and isn't
+       kept), and each sticky it finds lands here on its own, filed like any other. One Undo takes them all. */
+    async photo(file) {
+      if (!file) return
+      setReading('Reading the photo…')
+      try {
+        const own = (await getLocalModels()).filter((model) => model.runtime === 'osat')
+        const model = own.find((item) => item.sees)
+        if (!model) throw new Error(own.length ? pictureProblem(own[0]) : 'The AI on this Mac reads photos. Set it up in Settings → AI.')
+        const picture = await readPicture(file)
+        URL.revokeObjectURL(picture.url)
+        const lines = readPhotoAnswer(await streamLocalMessage({ model: model.id, messages: withPictures(photoMessages(), [picture]) }))
+        if (!lines.length) throw new Error('No writing was found in that photo.')
+        const home = boardId === JUST_IN ? null : boardId
+        change(`Read ${lines.length} ${lines.length === 1 ? 'sticky' : 'stickies'} from the photo`, (state) => lines.reduce((next, line) => addSticky(next, line, home, { source: 'Photo' }).state, state))
+        setReading(null)
+      } catch (error) {
+        setReading(cleanError(error))
+      }
     },
     newBoard(name) {
       const value = String(name || '').trim()
@@ -272,7 +331,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
           <div className="boards-title">
             <h1>{title}</h1>
             <p>{boardId === JUST_IN
-              ? (all.length ? 'What came in and has no home yet. Drag one onto a board, or let OSAT file it.' : 'Nothing waiting. Everything that came in has a home.')
+              ? justInLine(filing)
               : (all.length ? count : `Nothing on ${title} yet. Write the first sticky below.`)}</p>
           </div>
           <label className="boards-find">
@@ -280,11 +339,13 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
             <input ref={findField} value={query} placeholder={`Find on ${title}`} aria-label={`Find on ${title}`} onChange={(event) => setQuery(event.target.value)} />
             {query && <button type="button" aria-label="Clear" onClick={() => setQuery('')}><X /></button>}
           </label>
-          <div className="segmented boards-views" role="tablist" aria-label="Show as">
-            {VIEWS.map(([id, label, Icon]) => (
-              <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}><Icon /> {label}</button>
-            ))}
-          </div>
+          {boardId !== JUST_IN && (
+            <div className="segmented boards-views" role="tablist" aria-label="Show as">
+              {VIEWS.map(([id, label, Icon]) => (
+                <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}><Icon /> {label}</button>
+              ))}
+            </div>
+          )}
           <button type="button" className="outline-button boards-ask" onClick={() => navigate('Assistant')}><Sparkle weight="fill" /> Ask</button>
         </header>
 
@@ -296,6 +357,14 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
             <button type="button" className="primary-button" onClick={() => actions.keepIdea(idea)}>{idea.kind === 'link' ? 'Connect them' : 'Make the board'}</button>
           </div>
         ))}
+        {same && (
+          <div className="boards-note" role="note">
+            <ArrowsMerge aria-hidden="true" />
+            <p><strong>Two {PLURAL[whatOf(same.a)]} say the same thing.</strong> <span>{quoted(workspace, `note:${same.a.id}`)} and {quoted(workspace, `note:${same.b.id}`)}. Merge them into one?</span></p>
+            <button type="button" className="text-button" onClick={() => actions.keepBoth(same.key)}>Keep both</button>
+            <button type="button" className="primary-button" onClick={() => actions.merge(same)}>Merge</button>
+          </div>
+        )}
         {board?.packed && (
           <div className="boards-note" role="note">
             <Sparkle aria-hidden="true" />
@@ -304,24 +373,28 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
           </div>
         )}
 
-        <div className={`boards-body is-${view}`}>
-          {view === 'map' && (
+        <div className={`boards-body is-${boardId === JUST_IN ? 'justin' : view}`}>
+          {boardId === JUST_IN && <JustIn workspace={workspace} boards={boards} query={query} editing={editing} card={card} actions={actions} navigate={navigate} />}
+          {boardId !== JUST_IN && view === 'map' && (
             <div className="boards-map">
               {mapColumns(shown).map((column) => <MapColumn key={column.what} column={column} boardId={boardId} actions={actions}>{column.notes.map(card)}</MapColumn>)}
             </div>
           )}
-          {view === 'board' && (
+          {boardId !== JUST_IN && view === 'board' && (
             <div className="boards-kanban">
               {stageColumns(shown).map((column) => <StageColumn key={column.stage} column={column} actions={actions}>{column.notes.map(card)}</StageColumn>)}
             </div>
           )}
-          {view === 'list' && <ListView notes={shown} actions={actions} onOpen={(id) => setEditing(id)} />}
+          {boardId !== JUST_IN && view === 'list' && <ListView notes={shown} actions={actions} onOpen={(id) => setEditing(id)} />}
         </div>
 
         <form className="boards-write" onSubmit={(event) => { event.preventDefault(); actions.write(writeField.current.value); writeField.current.value = '' }}>
           <label htmlFor="boards-write" className="visually-hidden">Write a sticky on {title}</label>
-          <input id="boards-write" ref={writeField} autoComplete="off" placeholder={`Write a sticky on ${title}. OSAT puts it in the right column.`} />
+          <input id="boards-write" ref={writeField} autoComplete="off" placeholder={boardId === JUST_IN ? 'Write anything. OSAT works out what it is and where it goes.' : `Write a sticky on ${title}. OSAT puts it in the right column.`} />
+          <button type="button" className="outline-button" aria-label="Add a photo of paper stickies" disabled={reading === 'Reading the photo…'} onClick={() => photoField.current?.click()}><Camera /> Photo</button>
+          <input ref={photoField} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={(event) => { actions.photo(event.target.files?.[0]); event.target.value = '' }} />
           <button type="submit" className="primary-button">Add</button>
+          {reading && <p className="boards-write-line" role="status">{reading}{reading !== 'Reading the photo…' && <button type="button" className="text-button" onClick={() => setReading(null)}>OK</button>}</p>}
         </form>
       </main>
       {menu}
@@ -329,6 +402,15 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
     </section>
   )
 })
+
+/* What Just in says under its name: what filing is doing right now, else what the screen is. */
+function justInLine(status) {
+  const count = (n) => `${n} ${n === 1 ? 'sticky' : 'stickies'}`
+  if (status.state === 'filing') return `Filing ${count(status.count)}…`
+  if (status.state === 'no-ai') return `${count(status.count)} wait for the AI. Set it up in Settings → AI.`
+  if (status.state === 'resting') return `The AI couldn’t file ${count(status.count)} just now (${status.message}). It tries again in a few minutes.`
+  return 'Everything that came in and where OSAT put it. Every move can be undone.'
+}
 
 /* A sticky or board by its key ('note:<id>'), in quotes and short enough for one line. */
 function quoted(state, key) {

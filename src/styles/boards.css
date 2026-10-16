@@ -203,10 +203,82 @@
 .boards-list-row > span:not(:first-child) { color: var(--muted); }
 .boards-list-words { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ---- Just in (Phase 72): the brief, what waits for a home, what came in by day, the lists kept for you ---- */
+.boards-body.is-justin { overflow-y: auto; }
+.justin { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s-4); }
+.justin-main { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: var(--s-3); }
+.justin-kept { flex: 1 1 260px; max-width: 340px; display: flex; flex-direction: column; gap: var(--s-3); }
+.justin-card,
+.justin-brief {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-xl);
+  background: var(--surface-raised);
+}
+.justin-card h2,
+.justin-brief h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-2) var(--s-2) var(--s-1);
+  color: var(--faint);
+  font-size: var(--t-2xs);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.justin-card h2 small { color: var(--faint); font-size: var(--t-2xs); font-weight: 500; font-variant-numeric: tabular-nums; }
+.justin-card h2 button { display: flex; align-items: center; gap: var(--s-2); color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.justin-card h2 button:hover { color: var(--ink); }
+.justin-card h2 svg,
+.justin-brief h2 svg { width: 14px; height: 14px; }
+.justin-brief { gap: var(--s-2); padding: var(--s-3) var(--s-4); }
+.justin-brief h2 { padding: 0; }
+.justin-brief p { margin: 0; font-size: var(--t-md); line-height: 1.55; white-space: pre-line; }
+.justin-brief .text-button { align-self: flex-start; }
+.justin-hint { margin: 0; padding: 0 var(--s-2) var(--s-2); color: var(--muted); font-size: var(--t-sm); }
+.justin-more { align-self: flex-start; margin: var(--s-1) var(--s-2); }
+.justin-empty { margin: var(--s-6) 0; color: var(--muted); font-size: var(--t-sm); text-align: center; }
+
+/* A row: kind, words, where it went (or the boards it looks like), where it came from, Undo. */
+.justin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-3);
+  padding: var(--s-2);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  cursor: grab;
+}
+.justin-row:hover { background: var(--surface-hover); }
+.justin-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.justin-row.is-carried { opacity: 0.35; }
+.justin-row .meta-kind { flex: none; }
+.justin-words { flex: 1 1 240px; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.justin-to { color: var(--ink); font-size: var(--t-xs); }
+.justin-guess { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1); }
+.justin-guess .outline-button { min-height: 26px; padding: 0 var(--s-3); font-size: var(--t-xs); }
+.justin-from { min-width: 92px; color: var(--faint); font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
+.justin-undo { min-height: 26px; padding: 0 var(--s-2); font-size: var(--t-xs); }
+.justin-main > .justin-card > .boards-card { margin: var(--s-1) var(--s-2); }
+
+/* The lists kept for you. */
+.justin-tick { display: flex; align-items: center; gap: var(--s-2); padding: 4px var(--s-2); font-size: var(--t-sm); }
+.justin-tick input { flex: none; margin: 0; }
+.justin-line { display: flex; justify-content: space-between; gap: var(--s-2); margin: 0; padding: 4px var(--s-2); font-size: var(--t-sm); line-height: 1.4; }
+.justin-line small { flex: none; color: var(--muted); font-size: var(--t-xs); }
+
 /* ---- The line to write a sticky ---------------------------------------------------------------------------- */
 .boards-write {
   flex: none;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--s-2);
   margin: 0 var(--s-6) var(--s-5);
   padding: var(--s-2);
@@ -216,7 +288,10 @@
   box-shadow: var(--sheet-shadow);
 }
 .boards-write:focus-within { border-color: var(--accent-line); }
-.boards .boards-write input { flex: 1; min-width: 0; min-height: 0; padding: 0 var(--s-2); border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink); font-size: var(--t-md); outline: none; }
+.boards-write-line { flex-basis: 100%; display: flex; align-items: center; gap: var(--s-2); margin: 0; padding: 0 var(--s-2); color: var(--muted); font-size: var(--t-xs); }
+.boards-write .outline-button { display: inline-flex; align-items: center; gap: 6px; }
+.boards-write .outline-button svg { width: 15px; height: 15px; }
+.boards .boards-write input { flex: 1 1 200px; min-width: 0; min-height: 0; padding: 0 var(--s-2); border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink); font-size: var(--t-md); outline: none; }
 
 /* Narrow screens: the side becomes a strip along the top. */
 @media (max-width: 900px) {
@@ -227,6 +302,7 @@
   .boards-label { margin: 0 var(--s-1) 0 var(--s-3); }
   .boards-head, .boards-body { padding-inline: var(--s-4); }
   .boards-note, .boards-write { margin-inline: var(--s-4); }
+  .justin-kept { max-width: none; }
   .boards-list-head, .boards-list-row { grid-template-columns: minmax(0, 1fr) 96px; }
   .boards-list-head > :nth-child(n + 3), .boards-list-row > :nth-child(n + 3) { display: none; }
 }

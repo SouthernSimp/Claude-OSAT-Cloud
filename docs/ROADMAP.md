@@ -7,15 +7,21 @@ you can click) gives every sticky a kind and a board, keeps Questions, Groceries
 to your calendar, shows every move in Just in with Undo, and turns the intake into a flow you can watch, n8n-style.
 The Sky's mind map and the six sorting screens go. Phases 67–71.
 
-Phase 67 (in review): every sticky now says what it is, Notes keeps Questions, To buy and Coming up for you,
+Phase 67 (merged, build 280): every sticky now says what it is, Notes keeps Questions, To buy and Coming up for you,
 dates go on your calendar by themselves (Settings → AI picks which one), and Just in shows what came in and where it went.
 
-Phase 68 (in review): the canvas is boards now. Your boards down the side (Just in first), the open one as a Map
+Phase 68 (merged, build 280): the canvas is boards now. Your boards down the side (Just in first), the open one as a Map
 (a column for each kind, so nothing tangles), a Board (Later, Next, Doing, Done) or a List. Write a sticky at the
 bottom and it lands in its column; carry one to another column, stage or board; right-click a board to rename or
 delete it (its stickies go back to Just in). Every change has Undo. The old mind map, its sorter and its layouts are
 gone (about 3,000 lines). Still here for now: Sort a pile (it is the only way in for a photo of paper stickies until
 Just in reads photos) and Put the desk away.
+
+Phase 72 (in review): Just in is a screen of its own, the mockup's third. Today's morning brief on top; what waits for
+a home, each with the boards it looks like one tap away; what came in this week by day, where each one went (its
+board and column, the calendar, To buy, Questions) and Undo on each; the lists OSAT keeps beside it. A Photo button on
+the write line: the AI on this Mac reads a photo of paper stickies into one sticky each. On a board, two stickies
+that say the same thing are offered to merge into one, with Undo. Sort a pile can go next, now that Just in reads photos.
 
 ## October 6 (evening): the AI files stickies for you
 
@@ -180,6 +186,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 69 | Flows (n8n-style, on this Mac): watch each sticky go through the intake step by step; then Meeting → to-dos and the Morning brief as flows | Planned |
 | 70 | Soul and memory: SOUL.md, MEMORY.md and RULES.md, plain files you can read and change; RULES.md says what the AI may do on its own | Planned |
 | 71 | Connections: one screen for the AI (built in, Claude, ChatGPT, a key, a tool server) and your accounts (Google, Microsoft 365, Granola, Slack, Notion); one Offline switch | Planned |
+| 72 | Just in, the screen (the mockup's third): the morning brief on top; what waits for a home with the boards it looks like one tap away; what came in this week by day, where each went, Undo on each; To buy, Coming up and Questions beside it; a Photo button (the AI on this Mac reads paper stickies into one sticky each); two stickies on a board that say the same thing offered to merge | In review |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
