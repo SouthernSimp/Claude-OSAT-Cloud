@@ -101,7 +101,7 @@ async function carry(page, from, to) {
 async function light(page) {
   // Just in first: what has no home yet.
   check((await page.locator('.boards-title h1').innerText()) === 'Just in', 'the canvas didn’t open on Just in the first time')
-  check(await page.locator('.boards-card').count() === 2, 'Just in didn’t show its two stickies')
+  check(await page.locator('.justin-row').count() === 2, 'Just in didn’t show its two stickies')
 
   // A board's Map: a column per kind, the branch's sticky on its board, nothing tangled.
   await side(page, 'OSAT').click()
@@ -164,13 +164,15 @@ async function light(page) {
   check(await page.locator('.boards').count() === 1, 'Esc left the canvas while Find had words')
 
   // Just in: carried onto a board in the side, it lives there; Undo brings it back.
+  const row = (words) => page.locator('.justin-row', { hasText: words })
   await side(page, 'Just in').click()
-  await card(page, 'Call mom').waitFor({ timeout: 3000 })
-  await carry(page, card(page, 'Call mom'), side(page, 'Home'))
+  await row('Call mom').waitFor({ timeout: 3000 })
+  await carry(page, row('Call mom'), side(page, 'Home'))
   check((await stored(page, 'n10')).folderId === 'home', 'carrying onto Home didn’t file it there')
-  check(await card(page, 'Call mom').count() === 0, 'a filed sticky stayed in Just in')
-  await page.getByRole('button', { name: 'Undo', exact: true }).click()
-  await card(page, 'Call mom').waitFor({ timeout: 3000 }).catch(() => problems.push('Undo didn’t bring it back to Just in'))
+  check((await row('Call mom').innerText()).includes('→ Home'), 'Just in didn’t say where the sticky went')
+  await page.locator('.toast').getByRole('button', { name: 'Undo', exact: true }).click()
+  await sleep(200)
+  check((await stored(page, 'n10')).folderId === null, 'Undo didn’t bring it back to Just in')
   await page.screenshot({ path: `${OUT}/light-justin.png` })
 
   // A new board, named in place.

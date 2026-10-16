@@ -707,7 +707,7 @@ async function main() {
   // Sent to the canvas (its menu), the sticky waits in Just in there; Notes still finds it in Just in.
   await here.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Send to the canvas' }).click()
-  await page.locator('.boards-card', { hasText: 'Written right here' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: Send to the canvas did not show the sticky there'))
+  await page.locator('.justin-row', { hasText: 'Written right here' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: Send to the canvas did not show the sticky there'))
   await page.locator('.boards').getByRole('button', { name: 'Desk', exact: true }).click()
   await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 })
   const shelfSticky = page.locator('.home .desk-sticky', { hasText: 'Smoke test thought' })

@@ -16,8 +16,10 @@ Notes → Just in / Questions / To buy / Coming up, dates on the calendar with U
 Phase 37b (#100): every model downloads whole (its picture part too), llama.cpp's server ships in the app, Ask takes
 pictures, Settings → AI shows Pictures / Thinks / Code; Phase 68 (#102): the canvas is boards (`src/boards/`: Map /
 Board / List, Just in, rename and delete with Undo, starter boards), the old Sky, its sorter and layouts gone, schema
-14 (`stage`); Habits redesigned (#101). Not done yet: Sort a pile and Put the desk away stay until Just in reads a
-photo of paper stickies; words outside the canvas still say "topic" (Notes, Dashboard). Next: Phase 69 (Flows).
+14 (`stage`); Habits redesigned (#101); all of that is build 285 (build 280 was the plan alone). Phase 31 (#103):
+What's new and Coming next, build 288. Phase 72 (#104): Just in as the mockup's third screen (`boards/JustIn.jsx`,
+`boards/just-in.js`), the Photo button, Merge for two stickies that say the same thing. Not done yet: Sort a pile can go now that Just in reads photos; Put
+the desk away; words outside the canvas still say "topic" (Notes, Dashboard). Next: Phase 69 (Flows).
 Older checkpoints are in git history.
 
 ## Working with Nate
@@ -364,6 +366,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     its stickies onto the new board and opens it). Every change is `change(line, updater)`: one toast, and Undo is
     `undoFrom(before, after)`, which puts back only the stickies and boards that change touched. `boards-model.js` is
     the pure part (tests/boards.test.mjs); `back()` steps out of an edit, Find's words or naming before Esc goes down.
+    Just in (Phase 72) is its own screen, not a Map: `JustIn.jsx` shows today's brief (`todaysBrief`, from today's
+    journal page), what waits (`cameIn().waiting`, each with `guessBoards`: the two boards whose words it shares, by
+    `relatedNotes`) and what came in this week by day (`whereTo`, and `undoOf`: a filing goes back to Just in, else a
+    date comes off the calendar), with To buy / Coming up / Questions beside. A sticky given a home from the canvas
+    (`placeFrom`) is marked `filed: { by: 'you' }`, so it stays listed with Undo. The write line's Photo reads a picture
+    with the AI on this Mac that `sees` (`photoMessages` / `readPhotoAnswer` in ai-tasks), one sticky a line, source
+    `Photo`. `samePair` (words only, one kind) offers Merge (`mergeStickies`: the newer one's words go under the older
+    one's, the newer to the Bin); Keep both is remembered in localStorage (`osat.boards.same.v1`).
     A board is a top-level folder; a branch's stickies show on its board with the branch's name on the card.
     `sky/` keeps what outlived the old Sky: the filing engine (`sort-unsorted.js`, `sort-review.js`'s `fileUnsorted` /
     `undoFiling`), auto-filing, `Piles.jsx` (`AddSticky`, `NameField`), `Sticky.jsx` (desk stickies), `useOvernight`,

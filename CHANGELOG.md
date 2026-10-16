@@ -4,7 +4,17 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 15, 2026 — What's new and Coming next, inside OSAT
+## Next build · October 15, 2026 — Just in, the screen
+
+- **Just in is a screen of its own:** this morning’s brief on top, what waits for a home with the board it looks
+  like one tap away, and everything that came in this week, by day, saying where it went (its board, your calendar,
+  To buy, Questions) with Undo on each. To buy, Coming up and Questions sit beside it. (#104)
+- **Photo:** a picture of paper stickies becomes one sticky each, read by the AI on this Mac. The photo never leaves
+  your Mac and isn’t kept. (#104)
+- **Merge:** when two stickies on a board say the same thing, OSAT offers to make them one, both sets of words
+  kept, with Undo. (#104)
+
+## Build 288 · October 15, 2026 — What's new and Coming next, inside OSAT
 
 - **What’s new** (Tools → Roadmap, ⌘K “What’s new”, Settings → About): every build of OSAT in plain words, the one
   on your Mac marked, and the six steps a change takes to reach you. A pull request’s number opens it on GitHub. (#103)
@@ -15,7 +25,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   dropped. (#103)
 - ⌘K finds commands whose names have an apostrophe, like “what’s new”. (#103)
 
-## Build 280 · October 15, 2026 — Boards, a kind for every sticky, Habits, pictures
+## Build 285 · October 15, 2026 — Boards, a kind for every sticky, Habits, pictures
 
 - **The canvas is boards.** Your boards (OSAT, Fortis, Home…) down the side with Just in on top. Each board shows as
   a Map (a column per kind), a Board (Later, Next, Doing, Done) or a List. Write at the bottom and it lands in the

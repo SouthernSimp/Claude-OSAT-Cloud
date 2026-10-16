@@ -168,3 +168,29 @@ export function readGistAnswer(text) {
   const gist = tidy(pick('gist') || pick('summary'), 400)
   return title || gist ? { title, gist } : null
 }
+
+/* ---------- A photo of paper stickies (Phase 72) ---------- */
+
+/* The AI on this Mac looks at the photo (it goes with this question) and writes out each paper sticky. */
+export function photoMessages() {
+  return [SYSTEM, {
+    role: 'user',
+    content: `This photo shows paper sticky notes, or a page of handwritten notes. Write out each sticky note on its own line, in the writer's own words. Fix only obvious misreadings. A list written on one sticky stays on one line, its items separated by commas. Leave out anything that isn't writing.
+If there is no writing, answer: none`,
+  }]
+}
+
+/* The stickies in the answer: one per line, bullets and numbers gone, each once, at most 40. */
+export function readPhotoAnswer(text) {
+  const seen = new Set()
+  return unwrap(text).split('\n')
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.):])\s*/, '').replace(/^["“]+|["”]+$/g, '').trim().slice(0, 600))
+    .filter((line) => {
+      const key = line.toLowerCase()
+      // An introduction ("Here are the notes:") ends with a colon; a sticky doesn't.
+      if (!line || /^none\.?$/i.test(line) || line.endsWith(':') || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .slice(0, 40)
+}

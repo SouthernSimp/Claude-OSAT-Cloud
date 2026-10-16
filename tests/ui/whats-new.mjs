@@ -82,7 +82,9 @@ async function coming(page, plans) {
   await room(page).getByRole('button', { name: 'Put it on my canvas' }).click()
   await room(page).locator('.coming-board').waitFor({ timeout: 3000 }).catch(() => problems.push('the plan board wasn’t made'))
   const column = (name) => room(page).getByRole('region', { name, exact: true }).locator('.coming-card')
-  check((await column('Doing').allInnerTexts()).some((text) => text.startsWith('Phase 31')), 'the phase in review wasn’t in Doing')
+  // The phase in review (the Roadmap's "now"), whichever it is.
+  const now = plans.find((plan) => plan.state === 'now')
+  check(!now || (await column('Doing').allInnerTexts()).some((text) => text.startsWith(`Phase ${now.id}`)), 'the phase in review wasn’t in Doing')
   check(JSON.stringify((await column('Next').allInnerTexts()).map((text) => text.split(' ·')[0])) === JSON.stringify(['Phase 69', 'Phase 70', 'Phase 71']), 'the current plan wasn’t in Next, in order')
   await sleep(300)
   await page.screenshot({ path: `${OUT}/light-coming.png` })
