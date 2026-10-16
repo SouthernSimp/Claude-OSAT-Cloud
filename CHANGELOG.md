@@ -4,7 +4,7 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 15, 2026 — Just in, the screen
+## Build 290 · October 15, 2026 — Just in, the screen
 
 - **Just in is a screen of its own:** this morning’s brief on top, what waits for a home with the board it looks
   like one tap away, and everything that came in this week, by day, saying where it went (its board, your calendar,

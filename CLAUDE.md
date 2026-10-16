@@ -8,7 +8,7 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 15, 2026: Phases 67, 68, 37b, Mail + Gmail and Habits merged
+## Resume checkpoint — October 15, 2026: Phases 67, 68, 37b, 31, 72, Mail + Gmail and Habits merged
 
 Nate approved the rework (docs/REWORK-20261015.md, mockup https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48) and said
 "merge everything". In main now: the plan (#97); Phase 67 (#98): every sticky says what it is (shared/what-model.mjs),
@@ -18,7 +18,7 @@ pictures, Settings → AI shows Pictures / Thinks / Code; Phase 68 (#102): the c
 Board / List, Just in, rename and delete with Undo, starter boards), the old Sky, its sorter and layouts gone, schema
 14 (`stage`); Habits redesigned (#101); all of that is build 285 (build 280 was the plan alone). Phase 31 (#103):
 What's new and Coming next, build 288. Phase 72 (#104): Just in as the mockup's third screen (`boards/JustIn.jsx`,
-`boards/just-in.js`), the Photo button, Merge for two stickies that say the same thing. Not done yet: Sort a pile can go now that Just in reads photos; Put
+`boards/just-in.js`), the Photo button, Merge for two stickies that say the same thing, build 290. Not done yet: Sort a pile can go now that Just in reads photos; Put
 the desk away; words outside the canvas still say "topic" (Notes, Dashboard). Next: Phase 69 (Flows).
 Older checkpoints are in git history.
 

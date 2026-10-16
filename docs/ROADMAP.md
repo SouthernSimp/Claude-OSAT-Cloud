@@ -17,7 +17,7 @@ delete it (its stickies go back to Just in). Every change has Undo. The old mind
 gone (about 3,000 lines). Still here for now: Sort a pile (it is the only way in for a photo of paper stickies until
 Just in reads photos) and Put the desk away.
 
-Phase 72 (in review): Just in is a screen of its own, the mockup's third. Today's morning brief on top; what waits for
+Phase 72 (merged, build 290): Just in is a screen of its own, the mockup's third. Today's morning brief on top; what waits for
 a home, each with the boards it looks like one tap away; what came in this week by day, where each one went (its
 board and column, the calendar, To buy, Questions) and Undo on each; the lists OSAT keeps beside it. A Photo button on
 the write line: the AI on this Mac reads a photo of paper stickies into one sticky each. On a board, two stickies
@@ -186,7 +186,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 69 | Flows (n8n-style, on this Mac): watch each sticky go through the intake step by step; then Meeting → to-dos and the Morning brief as flows | Planned |
 | 70 | Soul and memory: SOUL.md, MEMORY.md and RULES.md, plain files you can read and change; RULES.md says what the AI may do on its own | Planned |
 | 71 | Connections: one screen for the AI (built in, Claude, ChatGPT, a key, a tool server) and your accounts (Google, Microsoft 365, Granola, Slack, Notion); one Offline switch | Planned |
-| 72 | Just in, the screen (the mockup's third): the morning brief on top; what waits for a home with the boards it looks like one tap away; what came in this week by day, where each went, Undo on each; To buy, Coming up and Questions beside it; a Photo button (the AI on this Mac reads paper stickies into one sticky each); two stickies on a board that say the same thing offered to merge | In review |
+| 72 | Just in, the screen (the mockup's third): the morning brief on top; what waits for a home with the boards it looks like one tap away; what came in this week by day, where each went, Undo on each; To buy, Coming up and Questions beside it; a Photo button (the AI on this Mac reads paper stickies into one sticky each); two stickies on a board that say the same thing offered to merge | Merged (PR #104) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
