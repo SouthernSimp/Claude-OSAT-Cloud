@@ -4,6 +4,12 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
+## Next build · October 15, 2026 — The Dashboard goes; Just in shows today’s intake
+
+- **The Dashboard is gone** from the dock, the Go menu and ⌘6. It was more than OSAT needed. (#105)
+- **Today’s intake on Just in:** one line at the top, “3 came in today → 1 on the calendar → 1 to Questions → 2 waiting”,
+  so you can see what OSAT did with today’s stickies without opening each one. (#105)
+
 ## Build 290 · October 15, 2026 — Just in, the screen
 
 - **Just in is a screen of its own:** this morning’s brief on top, what waits for a home with the board it looks
