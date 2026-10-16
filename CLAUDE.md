@@ -16,9 +16,9 @@ Notes → Just in / Questions / To buy / Coming up, dates on the calendar with U
 Phase 37b (#100): every model downloads whole (its picture part too), llama.cpp's server ships in the app, Ask takes
 pictures, Settings → AI shows Pictures / Thinks / Code; Phase 68 (#102): the canvas is boards (`src/boards/`: Map /
 Board / List, Just in, rename and delete with Undo, starter boards), the old Sky, its sorter and layouts gone, schema
-14 (`stage`); Habits redesigned (#101). In review: Phase 31 (#103, What's new and Coming next) and, stacked on it,
-Phase 72 (#104): Just in as the mockup's third screen (`boards/JustIn.jsx`, `boards/just-in.js`), the Photo button,
-Merge for two stickies that say the same thing. Not done yet: Sort a pile can go now that Just in reads photos; Put
+14 (`stage`); Habits redesigned (#101); all of that is build 285 (build 280 was the plan alone). Phase 31 (#103):
+What's new and Coming next, build 288. Phase 72 (#104): Just in as the mockup's third screen (`boards/JustIn.jsx`,
+`boards/just-in.js`), the Photo button, Merge for two stickies that say the same thing. Not done yet: Sort a pile can go now that Just in reads photos; Put
 the desk away; words outside the canvas still say "topic" (Notes, Dashboard). Next: Phase 69 (Flows).
 Older checkpoints are in git history.
 

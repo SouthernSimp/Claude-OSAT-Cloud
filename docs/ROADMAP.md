@@ -7,10 +7,10 @@ you can click) gives every sticky a kind and a board, keeps Questions, Groceries
 to your calendar, shows every move in Just in with Undo, and turns the intake into a flow you can watch, n8n-style.
 The Sky's mind map and the six sorting screens go. Phases 67–71.
 
-Phase 67 (merged, build 280): every sticky now says what it is, Notes keeps Questions, To buy and Coming up for you,
+Phase 67 (merged, build 285): every sticky now says what it is, Notes keeps Questions, To buy and Coming up for you,
 dates go on your calendar by themselves (Settings → AI picks which one), and Just in shows what came in and where it went.
 
-Phase 68 (merged, build 280): the canvas is boards now. Your boards down the side (Just in first), the open one as a Map
+Phase 68 (merged, build 285): the canvas is boards now. Your boards down the side (Just in first), the open one as a Map
 (a column for each kind, so nothing tangles), a Board (Later, Next, Doing, Done) or a List. Write a sticky at the
 bottom and it lands in its column; carry one to another column, stage or board; right-click a board to rename or
 delete it (its stickies go back to Just in). Every change has Undo. The old mind map, its sorter and its layouts are
@@ -143,7 +143,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 29 | Recording made in OSAT (proposed): record an area, a window or the screen without CleanShot, trim, save as a GIF. Waits for Developer ID signing (backlog #6) | Planned |
 | 30 | Ask across everything, step one: Ask understands "last month" and a node's name ("my notes about Jordan"), tells a scan from a sticky, and the sources under each answer say what each is, where it lives, and "No longer saved" when it's gone | Merged (PR #57) |
 | 30b | Ask across everything, step two: what you copied and your files, with anything that looks like a password left out, never sent to a cloud model, one switch to turn it off, a calm first-time note | Merged (PR #61) |
-| 31 | Your own roadmap: edit it inside OSAT, drag phases around, add your own notes (kept in your workspace, not in the app's bundled copy) | In review |
+| 31 | Your own roadmap: edit it inside OSAT, drag phases around, add your own notes (kept in your workspace, not in the app's bundled copy) | Merged (PR #103): What's new and Coming next in Tools → Roadmap |
 | 32 | OSAT as an MCP client: add remote MCP servers (Settings → Bots → Tools), each one named, switched on by you, with its tools listed and a preview before anything leaves the Mac | Done in Phase 48 (PR #75) |
 | 33 | OSAT as a fuller MCP server: more tools, resources and prompts than today's four, readable by Claude, ChatGPT and other apps | Done in Phases 43–48 (PR #74, #75) |
 | 34 | OSAT's own local API and webhooks: a documented API on this Mac with keys and scopes; webhooks in (a service pings OSAT) and out (OSAT pings a service) | Done in Phases 43 and 46 (PR #74, #75) |
