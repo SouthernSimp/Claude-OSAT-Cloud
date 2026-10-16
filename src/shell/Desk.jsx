@@ -37,7 +37,6 @@ import { NowPlayingView } from '../views/NowPlaying.jsx'
 import { PileView } from '../views/Pile.jsx'
 import { RoadmapView } from '../views/Roadmap.jsx'
 import { GitHubView } from '../views/GitHub.jsx'
-import { DashboardView } from '../views/Dashboard.jsx'
 import { MailView } from '../views/Mail.jsx'
 import { PasswordsView } from '../views/Passwords.jsx'
 import { MeetingsView } from '../views/Meetings.jsx'
@@ -81,7 +80,6 @@ const ROOMS = {
   Passwords: [860, 640],
   Meetings: [720, 620],
   Pile: [1200, 820],
-  Dashboard: [1280, 880],
   note: [600, 640],
 }
 
@@ -690,7 +688,6 @@ function PopRoom({ pop, common, storage, command, covered, onClose, open }) {
     case 'Passwords': return <PasswordsView />
     case 'Meetings': return <MeetingsView {...room} />
     case 'Pile': return <PileView {...room} onClose={onClose} />
-    case 'Dashboard': return <DashboardView {...room} />
     case 'NowPlaying': return <NowPlayingView {...room} media={window.osatDesk?.nowPlaying ? window.osatDesk : null} />
     default: return null
   }

@@ -104,7 +104,7 @@ test('at most five, however much matches', () => {
 test('an empty line jumps: the four latest notes, then the spaces', () => {
   const rows = findAll(workspace, '  ')
   assert.deepEqual(keys(rows).slice(0, 4), ['note:n-8', 'note:n-7', 'note:n-6', 'note:n-pack'])
-  assert.deepEqual(rows.slice(4).map((row) => row.go[0]), ['Notes', 'Mindmap', 'Assistant', 'Files', 'Dashboard'])
+  assert.deepEqual(rows.slice(4).map((row) => row.go[0]), ['Notes', 'Mindmap', 'Assistant', 'Files'])
 })
 
 

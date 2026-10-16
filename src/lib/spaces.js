@@ -16,8 +16,6 @@ export const SPACES = [
   // Ask lives in the desk's line; its room (every chat) is under Tools and ⌘4.
   { id: 'Assistant', tint: 'violet', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac', dock: false },
   { id: 'Files', tint: 'sky', label: 'Files', icon: Files, hint: 'Your Desktop, Documents and Downloads' },
-  // Everything at a glance, and every part of OSAT as an app tile (Oct 2026).
-  { id: 'Dashboard', tint: 'blue', label: 'Dashboard', icon: SquaresFour, hint: 'Everything at a glance' },
 ]
 
 export const TOOLS = [
