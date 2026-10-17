@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { addBoard, boardsOf, findOn, JUST_IN, mapColumns, moveToBoard, rankIn, setStage, stageColumns, stageOf, stickiesOn } from '../src/boards/boards-model.js'
+import { addBoard, boardOverview, boardsOf, findOn, JUST_IN, mapColumns, moveToBoard, rankIn, setStage, stageColumns, stageOf, stickiesOn } from '../src/boards/boards-model.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import { normalizeNote } from '../shared/note-core.mjs'
 import { createEmptyDoc, migrate, SCHEMA } from '../shared/store-core.mjs'
@@ -48,6 +48,50 @@ test('the Board: what is to be done, in Later / Next / Doing / Done, each in its
   // Granola was ranked by hand (2048); a sticky never ranked ranks by when it was made, so after it.
   assert.deepEqual(columns.map((column) => [column.title, ids(column.notes)]), [['Later', ['granola', 'canvas']], ['Next', []], ['Doing', ['ship']], ['Done', ['fixed']]])
   assert.equal(stageOf({ stage: 'nonsense' }), 'later')
+})
+
+test('the overview keeps the Board’s steps and hand ordering, Doing then Next then Later, with honest progress', () => {
+  const notes = stickiesOn(state, 'osat')
+  const before = structuredClone(notes)
+  const overview = boardOverview(notes, T0)
+  assert.deepEqual(ids(overview.steps), ['ship', 'granola', 'canvas'])
+  assert.deepEqual([overview.done, overview.total], [1, 4], 'a plain idea is not a step; a problem is')
+  assert.deepEqual(notes, before, 'opening the overview never changes notes or ranks')
+  const moved = setStage(state, ['granola'], 'next')
+  assert.deepEqual(ids(boardOverview(stickiesOn(moved, 'osat'), T0).steps), ['ship', 'granola', 'canvas'])
+  const done = setStage(state, ['ship'], 'done')
+  assert.deepEqual([boardOverview(stickiesOn(done, 'osat'), T0).done, boardOverview(stickiesOn(done, 'osat'), T0).total], [2, 4])
+})
+
+test('the overview dates include today, in time order, and skip old, completed, deleted, invalid and question dates', () => {
+  const now = new Date(2026, 9, 17, 16).getTime()
+  const dated = (id, date, extra = {}) => sticky(id, id, { what: 'date', ask: { event: { date, title: id } }, ...extra })
+  const notes = [
+    dated('future', '2026-10-22'), dated('today', '2026-10-17'), dated('old', '2026-10-16'),
+    dated('done', '2026-10-18', { doneAt: iso(T0) }), dated('deleted', '2026-10-18', { trashedAt: iso(T0) }),
+    dated('question', '2026-10-18', { what: 'question' }), dated('invalid', 'not-a-date'),
+    sticky('relative', 'Site visit tomorrow', { what: 'date' }), // written October 15, so tomorrow is already past
+  ]
+  assert.deepEqual(boardOverview(notes, now).upcoming.map(({ note }) => note.id), ['today', 'future'])
+})
+
+test('the overview recent notes follow edits, never include Trash or day pages, and retain every matching note', () => {
+  const notes = [
+    sticky('old-edited', 'Old note', {}, 1), sticky('new', 'New note', {}, 10),
+    sticky('deleted', 'Deleted', { trashedAt: iso(T0) }, 20), sticky('day', 'Journal', { kind: 'day' }, 30),
+  ].map((note) => Object.freeze(note.id === 'old-edited' ? { ...note, updatedAt: iso(T0 + 40) } : note))
+  Object.freeze(notes)
+  assert.deepEqual(ids(boardOverview(notes, T0).recent), ['old-edited', 'new'])
+  const many = Array.from({ length: 20 }, (_, i) => sticky(`n${i}`, 'Matching action', { what: 'todo' }, i))
+  assert.equal(boardOverview(many, T0).steps.length, 20, 'the preview limit never discards steps from the model')
+  assert.equal(findOn(many, 'Matching action').length, 20, 'search can reach every match beyond the preview')
+})
+
+test('an empty or finished overview has no invented steps or dates', () => {
+  assert.deepEqual(boardOverview([], T0), { steps: [], done: 0, total: 0, upcoming: [], recent: [] })
+  const notes = [sticky('done', 'Complete the job', { what: 'todo', doneAt: iso(T0) })]
+  const finished = boardOverview(notes, T0)
+  assert.deepEqual([finished.steps.length, finished.done, finished.total, finished.upcoming.length], [0, 1, 1, 0])
 })
 
 test('moving across the Board: Done ticks it off, leaving Done un-ticks it', () => {

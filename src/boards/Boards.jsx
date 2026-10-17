@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsMerge, CalendarCheck, Camera, Kanban, ListBullets, MagnifyingGlass, NotePencil, Plus, Question, ShoppingCart, Sparkle, SquaresFour, Trash, Tray, X,
+  ArrowDown, ArrowsMerge, CalendarCheck, Camera, Kanban, ListBullets, MagnifyingGlass, NotePencil, Plus, Question, ShoppingCart, Sparkle, SquaresFour, StackSimple, Trash, Tray, X,
 } from '@phosphor-icons/react'
 
 import { photoMessages, readPhotoAnswer, readUnpackAnswer, unpackMessages } from '../../shared/ai-tasks.mjs'
@@ -25,6 +25,7 @@ import {
   addBoard, boardsOf, cardWords, COLUMN, findOn, JUST_IN, mapColumns, moveToBoard, onBoard, paperOf, rankIn, setStage, sourceWords, stageColumns, stageOf, STAGES, stickiesOn, undoFrom,
 } from './boards-model.js'
 import { JustIn } from './JustIn.jsx'
+import { BoardOverview } from './BoardOverview.jsx'
 import { mergeStickies, placeFrom, samePair } from './just-in.js'
 
 const BOARD_KEY = 'osat.boards.board.v1'
@@ -37,7 +38,7 @@ const readList = (key) => { try { return JSON.parse(localStorage.getItem(key) ||
 // What two of a kind are called in "Two ideas say the same thing".
 const PLURAL = { idea: 'ideas', question: 'questions', problem: 'problems', todo: 'to-dos', date: 'dates', buy: 'things to buy', note: 'notes' }
 
-const VIEWS = [['map', 'Map', SquaresFour], ['board', 'Board', Kanban], ['list', 'List', ListBullets]]
+const VIEWS = [['overview', 'Overview', StackSimple], ['map', 'Map', SquaresFour], ['board', 'Board', Kanban], ['list', 'List', ListBullets]]
 const STARTER = ['Personal', 'Home', 'Work']
 const KEPT = [['questions', 'Questions', Question], ['buy', 'To buy', ShoppingCart], ['coming', 'Coming up', CalendarCheck]]
 
@@ -52,7 +53,10 @@ const KEPT = [['questions', 'Questions', Question], ['buy', 'To buy', ShoppingCa
 export const Boards = forwardRef(function Boards({ workspace, commit, navigate, target, onClose, onFiled, onStackSent, board: openBoard, onOpenBoard }, ref) {
   const [picked, setPicked] = useState(() => read(BOARD_KEY, JUST_IN))
   // Sent with a view (Coming next opens its board as a Board): that one from the first frame.
-  const [view, setViewState] = useState(() => (VIEWS.some(([id]) => id === target?.view) ? target.view : read(VIEW_KEY, 'map')))
+  const [view, setViewState] = useState(() => {
+    const saved = target?.view || read(VIEW_KEY, 'overview')
+    return VIEWS.some(([id]) => id === saved) ? saved : 'overview'
+  })
   const [query, setQuery] = useState('')
   const [naming, setNaming] = useState(null)
   const [editing, setEditing] = useState(null)
@@ -130,7 +134,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
     trash(id) {
       change('Moved to Trash', (state) => trashNotes(state, [id]))
     },
-    startEdit(id) { setEditing(id) },
+    startEdit(id) { if (view === 'overview' || view === 'list') setView('map'); setEditing(id); setLit(id) },
     /* Just in's Undo on one row: what the AI filed goes back to Just in; a date comes off the calendar. */
     undoRow(note) {
       if (note.filed && note.folderId === note.filed.into) { actions.moveTo([note.id], JUST_IN); return }
@@ -244,7 +248,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
             note.folderId ? { label: 'Just in', onSelect: () => actions.moveTo([note.id], JUST_IN) } : null,
           ].filter(Boolean),
         },
-        { label: 'Edit', icon: NotePencil, onSelect: () => setEditing(note.id) },
+        { label: 'Edit', icon: NotePencil, onSelect: () => actions.startEdit(note.id) },
         { label: 'Open in Notes', onSelect: () => navigate('Notes', { noteId: note.id }) },
         { divider: true },
         { label: 'Delete', icon: Trash, danger: true, onSelect: () => actions.trash(note.id) },
@@ -295,7 +299,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
     const folderId = target.folderId || note?.folderId || null
     if (folderId) open(rootOf(state.folders, folderId) || JUST_IN)
     else if (note) open(JUST_IN)
-    if (note) setLit(note.id)
+    if (note) { if (!target.view) setView('map'); setLit(note.id) }
   }, [target?.at]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -336,7 +340,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
             <h1>{title}</h1>
             <p>{boardId === JUST_IN
               ? justInLine(filing)
-              : (all.length ? count : `Nothing on ${title} yet. Write the first sticky below.`)}</p>
+              : (all.length ? (view === 'overview' ? 'Your next steps, dates and notes, together.' : count) : `Nothing on ${title} yet. Write the first sticky below.`)}</p>
           </div>
           <label className="boards-find">
             <MagnifyingGlass aria-hidden="true" />
@@ -379,6 +383,9 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
 
         <div className={`boards-body is-${boardId === JUST_IN ? 'justin' : view}`}>
           {boardId === JUST_IN && <JustIn workspace={workspace} boards={boards} query={query} editing={editing} card={card} actions={actions} navigate={navigate} />}
+          {boardId !== JUST_IN && view === 'overview' && (query.trim()
+            ? <div className="board-overview-results"><p>{shown.length} {shown.length === 1 ? 'match' : 'matches'}</p><ListView notes={shown} actions={actions} onOpen={actions.startEdit} /></div>
+            : <BoardOverview notes={all} onOpen={(noteId) => navigate('Notes', { noteId })} onTick={actions.tick} onShow={setView} onWrite={() => writeField.current?.focus()} />)}
           {boardId !== JUST_IN && view === 'map' && (
             <div className="boards-map">
               {mapColumns(shown).map((column) => <MapColumn key={column.what} column={column} boardId={boardId} actions={actions}>{column.notes.map(card)}</MapColumn>)}
@@ -389,7 +396,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
               {stageColumns(shown).map((column) => <StageColumn key={column.stage} column={column} actions={actions}>{column.notes.map(card)}</StageColumn>)}
             </div>
           )}
-          {boardId !== JUST_IN && view === 'list' && <ListView notes={shown} actions={actions} onOpen={(id) => setEditing(id)} />}
+          {boardId !== JUST_IN && view === 'list' && <ListView notes={shown} actions={actions} onOpen={actions.startEdit} />}
         </div>
 
         <form className="boards-write" onSubmit={(event) => { event.preventDefault(); actions.write(writeField.current.value); writeField.current.value = '' }}>
@@ -509,7 +516,7 @@ function ListView({ notes, actions, onOpen }) {
         const what = whatOf(note)
         return (
           <div role="row" key={note.id} className="boards-list-row" data-note={note.id} onContextMenu={(event) => actions.menuFor(event, note)} onDoubleClick={() => onOpen(note.id)}>
-            <span role="cell" className="boards-list-words">{note.title}</span>
+            <span role="cell" className="boards-list-words"><button type="button" onClick={() => onOpen(note.id)}>{note.title}</button></span>
             <span role="cell"><span className="meta-kind" data-paper={WHAT_PAPER[what]}>{WHAT_LABEL[what]}</span></span>
             <span role="cell">{note.source || '—'}</span>
             <span role="cell">{new Date(note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>

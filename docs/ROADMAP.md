@@ -19,6 +19,11 @@ link back to the meeting.
 Phase 75 (merged, build 321): Goals. The few big things, each moving with a board (its to-dos done) or a habit (its days kept
 this week), on a page of their own under Life and as a card on Today.
 
+Phase 79 (in review, PR pending): a board at a glance. Overview brings its next steps, upcoming dates and recent notes
+together, with progress from its completed steps. Doing comes first, then Next, then Later, in the same hand order as
+Board. Tick off with Undo; open any preview in Notes; search reaches every match. The detailed views stay a click away.
+This is a view of the existing notes, without a new room, AI guesswork or any workspace change.
+
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
 Nate: the canvas is hard to read and sorting is still the chore. The plan (docs/REWORK-20261015.md, with a mockup
@@ -210,6 +215,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 74 | Follow-ups from meetings: each thing promised in a meeting OSAT wrote up becomes a To-do sticky in Just in, linked to the write-up; Granola's meetings too (its Next steps, read once an hour once Granola is connected; Meetings has the switch, Look now, Take them back) | Merged (PR #109), Oct 17 |
 | 75 | Goals: Life → Goals and a card on Today; each goal moves with a board (its to-dos done) or a habit (its days kept this week), or is ticked off; Undo on Mark done and Delete (schema 15) | Merged (PR #110), Oct 17 |
 | 76 | Polish, first part: rooms settle in when you move between them, the welcome leads with what OSAT does, cards say where a sticky came from in today's words, the desk's leftover dock, places and widgets go | Merged (PR #111), Oct 17 |
+| 79 | Your board at a glance: next steps, dates, recent notes and progress, with Undo for completing a step and the detailed views a click away | In review (PR pending) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

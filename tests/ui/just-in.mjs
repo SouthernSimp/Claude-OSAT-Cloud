@@ -158,6 +158,7 @@ async function light(page) {
 
   // On a board: two stickies that say the same thing, merged, then Undo.
   await page.locator('nav.side .side-group[aria-label="Boards"]').getByRole('button', { name: /^OSAT\b/ }).click()
+  await page.getByRole('tab', { name: 'Map' }).click()
   const note = page.locator('.boards-note', { hasText: 'say the same thing' })
   await note.waitFor({ timeout: 3000 }).catch(() => problems.push('two stickies that say the same thing weren’t offered to merge'))
   check((await note.innerText()).includes('Two to-dos'), 'the merge note didn’t say what they are')

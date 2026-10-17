@@ -15,10 +15,21 @@ Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something 
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
 Merged and released as build 321: Phase 73 one window with one sidebar, Today and To do, the bar on top, Ask as a
 panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
-Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111). Next ideas, none promised: Notes' own folder column
-beside the sidebar (fold it into the sidebar?), native vibrancy for the sidebar once seen on the Mac, People (a page
-per customer: their stickies, meetings, follow-ups), an AI pass for Granola notes without a Next steps heading, and
-the remaining desk words in the AI's board map (board-context.js `boardMap` still says nodes and the Sky). Nate's
+Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111).
+
+Phase 79 is in review (PR pending), `codex/phase-79-board-overview`, independently based on main. Nate wanted something
+with more wow, still elegant and simple, and delegated the choice. A board's new Overview brings its own steps,
+dates and recent notes together; progress is the Board's actual completed steps. `BoardOverview.jsx` uses the pure
+`boardOverview` helper (Board ordering and Notes' existing `comingUp`). Completing uses existing `actions.tick` and
+Undo; note previews open Notes. Search includes every match, not just the previews; opening a specific note or editing
+from List switches to Map so it is visible. Overview is the default only without a saved view. Just in is unchanged.
+No workspace/schema changes or dependencies. All 997 unit tests and the production build pass; updated browser
+test scripts pass syntax checks. Browser checks and screenshots are for CI only, native testing stays
+paused. Nate reviews before merging. Phase 77 Ask (#112) and Phase 78 simpler Notes (#113) remain separate draft PRs;
+this branch does not include them. Their changelog, roadmap and checkpoint edits need combining when merged.
+
+Next ideas, none promised: native vibrancy for the sidebar once seen on the Mac, People (a page
+per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading. Nate's
 answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install,
 sell as a done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
 

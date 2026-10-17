@@ -119,6 +119,69 @@
 
 .boards-body { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--s-6) var(--s-4); }
 
+/* ---- Overview: the board at a glance ---------------------------------------------------------------------- */
+.board-overview { display: grid; gap: var(--s-5); max-width: var(--content-max); margin-inline: auto; padding-top: var(--s-2); }
+.board-overview h2 { margin: 0; font-size: var(--t-lg); font-weight: 650; letter-spacing: var(--tr-tight); }
+.board-overview button svg { flex: none; width: 16px; height: 16px; }
+.board-overview .text-button { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-sm); }
+.board-progress { display: flex; align-items: center; gap: var(--s-5); padding: var(--s-4) var(--s-5); border: 1px solid var(--line-soft); border-radius: var(--r-xl); background: var(--surface); }
+.board-progress > span { flex: none; font-size: var(--t-sm); font-variant-numeric: tabular-nums; }
+.board-progress progress { flex: 1; min-width: 30px; height: 6px; overflow: hidden; border: 0; border-radius: var(--r-full); background: var(--surface-sunken); accent-color: var(--accent); }
+.board-progress progress::-webkit-progress-bar { background: var(--surface-sunken); }
+.board-progress progress::-webkit-progress-value { background: var(--accent); border-radius: var(--r-full); }
+.board-overview-columns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: var(--s-5); }
+.board-next, .board-upcoming { min-width: 0; padding: var(--s-5); border: 1px solid var(--line-soft); border-radius: var(--r-xl); background: var(--surface-raised); box-shadow: var(--e-1); }
+.board-overview ul { list-style: none; padding: 0; margin: var(--s-4) 0 0; }
+.board-steps li { display: flex; align-items: center; gap: var(--s-2); min-height: 58px; padding: var(--s-1) var(--s-2); border-radius: var(--r-md); }
+.board-steps li + li { border-top: 1px solid var(--line-soft); }
+.board-steps li.is-first { background: var(--accent-soft); }
+.board-steps .board-step-tick { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-md); color: var(--faint); }
+.board-steps .board-step-tick svg { width: 23px; height: 23px; }
+.board-step-tick:hover { background: var(--surface-hover); color: var(--positive); }
+.board-step-open { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; min-height: 46px; padding: var(--s-2) 0; text-align: left; font-size: var(--t-md); }
+.board-step-open > span { min-width: 0; }
+.board-step-open strong { font-weight: 560; overflow-wrap: anywhere; }
+.board-step-open > svg { color: var(--faint); }
+.board-step-open:hover strong { color: var(--accent); }
+.board-step-stage { display: inline-block; margin-right: var(--s-2); padding: 2px 6px; border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent); font-size: var(--t-xs); font-weight: 600; }
+.board-see-all { margin-top: var(--s-4); }
+.board-upcoming li + li { border-top: 1px solid var(--line-soft); }
+.board-upcoming li > button { display: flex; align-items: center; gap: var(--s-4); width: 100%; min-height: 84px; padding-block: var(--s-3); text-align: left; }
+.board-upcoming li > button:hover strong { color: var(--accent); }
+.board-upcoming li > button > span { flex: 1; min-width: 0; }
+.board-upcoming strong { display: block; overflow-wrap: anywhere; font-size: var(--t-md); font-weight: 560; }
+.board-upcoming small { display: block; margin-top: var(--s-1); color: var(--muted); font-size: var(--t-xs); }
+.board-upcoming li svg { color: var(--faint); }
+.board-date { flex: none; width: 38px; text-align: center; color: var(--accent); }
+.board-date span { display: block; font-size: var(--t-xs); }
+.board-date b { font-size: var(--t-2xl); line-height: 1.25; font-weight: 500; }
+.board-overview-quiet { display: flex; align-items: flex-start; gap: var(--s-2); margin: var(--s-5) 0; color: var(--muted); font-size: var(--t-sm); line-height: var(--lh-normal); }
+.board-overview-quiet svg { flex: none; width: 18px; height: 18px; }
+.board-recent { min-width: 0; padding: var(--s-5) 0; }
+.board-recent > header { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-4); }
+.board-recent-notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
+.board-recent-note { min-width: 0; min-height: 140px; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); text-align: left; transition: border-color var(--d-fast); }
+.board-recent-note:hover { border-color: var(--accent-line); }
+.board-recent-note strong, .board-recent-note p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.board-recent-note strong { margin-top: var(--s-3); font-size: var(--t-md); font-weight: 560; line-height: var(--lh-snug); }
+.board-recent-note p { margin: var(--s-2) 0 0; color: var(--muted); font-size: var(--t-sm); line-height: var(--lh-normal); }
+.board-overview-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: min(420px, 100%); padding: var(--s-8); text-align: center; }
+.board-overview-empty > svg { width: 42px; height: 42px; margin-bottom: var(--s-5); color: var(--accent); }
+.board-overview-empty h2 { margin: 0; font-family: var(--font-display); font-size: var(--t-2xl); font-weight: 600; letter-spacing: var(--tr-display); }
+.board-overview-empty p { max-width: 360px; margin: var(--s-3) 0 var(--s-6); color: var(--muted); font-size: var(--t-md); line-height: var(--lh-normal); }
+.board-overview-empty button { display: inline-flex; align-items: center; gap: var(--s-2); }
+.board-overview-empty button svg { width: 16px; height: 16px; }
+.board-overview-results > p { color: var(--muted); font-size: var(--t-sm); }
+.boards-list-words > button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.boards-list-words > button:hover { color: var(--accent); }
+
+@container room (max-width: 760px) {
+  .board-overview-columns { grid-template-columns: minmax(0, 1fr); }
+  .board-progress { gap: var(--s-3); padding-inline: var(--s-3); }
+  .board-recent-notes { grid-template-columns: minmax(0, 1fr); }
+  .board-recent-note { min-height: 0; }
+}
+
 /* ---- Map and Board: columns side by side, each scrolling on its own ------------------------------------------ */
 .boards-map,
 .boards-kanban {
