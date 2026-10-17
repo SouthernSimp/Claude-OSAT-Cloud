@@ -6,7 +6,7 @@
 import { WHAT_PAPER, WHATS, whatOf } from '../../shared/what-model.mjs'
 import { folderChildren, folderSubtree, isActiveNote, isUnsorted } from '../notes-model.js'
 import { addFolder, moveSticky, nodesOf, rankAt } from '../nodes-model.js'
-import { rankOf } from '../note-core.js'
+import { PAPERS, rankOf } from '../note-core.js'
 
 export const JUST_IN = 'justin'
 
@@ -21,6 +21,9 @@ const STAGE_IDS = ['later', 'next', 'doing']
 const TO_DO = ['todo', 'problem', 'date']
 
 const newest = (a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)
+
+/* A board's paper: its own colour, else one of the papers in turn. */
+export const paperOf = (folder, index) => folder.color || PAPERS[index % PAPERS.length]
 
 /* The boards, in their order, each with how many stickies are on it. */
 export function boardsOf(state) {

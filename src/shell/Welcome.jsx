@@ -59,7 +59,7 @@ export function Welcome({ onDone }) {
           <>
             <span className="welcome-icon"><Keyboard weight="fill" /></span>
             <h2 id="welcome-title">{hotkey}, from anywhere.</h2>
-            <p>Press it in any app to bring up your desk. {bar} opens the quick bar over whatever you are doing: type to find anything, ⌘Return to ask the AI, ⌥Return to save a sticky. Esc puts either away. Try it now if you like; this will wait.</p>
+            <p>Press it in any app to bring OSAT up. {bar} opens the quick bar over whatever you are doing: type to find anything, ⌘Return to ask the AI, ⌥Return to save a sticky. Esc puts either away. Try it now if you like; this will wait.</p>
             <div className="welcome-actions">{next}</div>
           </>
         )}

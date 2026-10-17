@@ -317,7 +317,7 @@ function More({ bridge, status, onStatus, onPanel, showUndo, onFailed }) {
     <div className="pw-more">
       <h3>More</h3>
       <label>Lock after<select value={status.autoLockMinutes} onChange={setLock}>{AUTO_LOCK_CHOICES.map((minutes) => <option key={minutes} value={minutes}>{minutes} {minutes === 1 ? 'minute' : 'minutes'} without use</option>)}</select></label>
-      <p className="pw-quiet">It also locks when your Mac sleeps or locks, when the desk is put away, and when you close this.</p>
+      <p className="pw-quiet">It also locks when your Mac sleeps or locks, when OSAT’s window is put away, and when you close this.</p>
       <div className="pw-actions is-stacked">
         <button type="button" className="outline-button" onClick={backup}>Back up…</button>
         <button type="button" className="outline-button" onClick={() => onPanel('import')}>Add from a backup…</button>

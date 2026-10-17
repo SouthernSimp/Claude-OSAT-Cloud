@@ -148,7 +148,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       // Answered, bought or done: it leaves the list it was ticked in; Undo puts it back.
       setDone(ids, done, word = "Done") {
         commit((state) => setDone(state, ids, done));
-        if (done) showUndo(ids.length === 1 ? `${word}. It stays in its topic.` : `${ids.length} ${word.toLowerCase()}`, () => commit((state) => setDone(state, ids, false)));
+        if (done) showUndo(ids.length === 1 ? `${word}. It stays on its board.` : `${ids.length} ${word.toLowerCase()}`, () => commit((state) => setDone(state, ids, false)));
       },
       async putOnCalendar(note, when) {
         const where = await putOnCalendar(commit, note, when, datesSettings(workspace.settings).calendar);
@@ -240,7 +240,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         const folders = workspace.folders.filter((item) => removed.has(item.id));
         const homes = new Map(workspace.notes.filter((note) => removed.has(note.folderId)).map((note) => [note.id, note.folderId]));
         commit((state) => deleteFolder(state, id));
-        showUndo(`Deleted ${isBranch(folder) ? "branch" : "topic"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Just in."}`, () => commit((state) => ({
+        showUndo(`Deleted ${isBranch(folder) ? "branch" : "board"} “${folder.name}”. ${folder.parentId ? "Its notes moved up a level." : "Its notes are in Just in."}`, () => commit((state) => ({
           ...state,
           folders: [...state.folders.filter((item) => !removed.has(item.id)), ...folders],
           notes: state.notes.map((note) => homes.has(note.id) ? { ...note, folderId: homes.get(note.id) } : note),
@@ -307,7 +307,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         />
       )}
       {narrow && organizerOpen && (
-        <button type="button" className="organizer-scrim" aria-label="Close the list of topics" onClick={() => setDrawer(false)}><X /></button>
+        <button type="button" className="organizer-scrim" aria-label="Close the list of boards" onClick={() => setDrawer(false)}><X /></button>
       )}
       <NoteList
         workspace={workspace}
@@ -321,7 +321,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         actions={actions}
       />
       {!organizerOpen && (
-        <button type="button" className="organizer-reveal" aria-label="Show topics" title="Show topics" onClick={() => (narrow ? setDrawer(true) : setUi({ organizer: true }))}><FolderSimple /></button>
+        <button type="button" className="organizer-reveal" aria-label="Show boards" title="Show boards" onClick={() => (narrow ? setDrawer(true) : setUi({ organizer: true }))}><FolderSimple /></button>
       )}
       {selected ? (
         <NoteEditor key={selected.id} workspace={workspace} note={selected} ui={ui} setUi={setUi} actions={actions} onBack={() => { setUi({ focus: false }); setPane("list"); }} />
@@ -330,7 +330,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
           <div className="empty-panel">
             <NotePencil />
             <h2>{workspace.notes.filter(isActiveNote).length ? "Pick a note, or start a new one." : "Your first note is a blank page."}</h2>
-            <p>Write @ and a topic’s name to link to it. #tags cut across, [[links]] connect ideas. Everything stays on this Mac.</p>
+            <p>Write @ and a board’s name to link to it. #tags cut across, [[links]] connect ideas. Everything stays on this Mac.</p>
             <button className="primary-button" type="button" onClick={() => actions.createNote(ui.list === "folder" ? ui.folderId : null)}><Plus /> New note</button>
           </div>
         </section>

@@ -98,7 +98,7 @@ try {
   await main.getByRole('dialog', { name: /AI’s size/ }).waitFor({ state: 'detached', timeout: 5000 })
     .catch(() => problems.push('the welcome did not close after Start'))
   // The first-run tour follows the welcome, once: Skip ends it for good.
-  const tour = main.getByRole('dialog', { name: /One line for everything/ })
+  const tour = main.getByRole('dialog', { name: /Write it down, find it, or ask/ })
   await tour.waitFor({ timeout: 8000 }).catch(() => problems.push('the tour did not follow the welcome'))
   await main.getByRole('button', { name: 'Skip the tour' }).click().catch(() => {})
   await tour.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('Skip the tour did not end it'))
@@ -116,30 +116,26 @@ try {
   await sleep(2500)
   check(!(await main.locator('.tour').count()), 'the tour came back after it was skipped')
 
-  // 4. Ask on the desk: a question in the line and ⌘↵ (Ctrl↵ elsewhere); the answer
-  //    appears under the line and is kept as a chat.
+  // 4. Ask beside the room: a question in the bar and ⌘↵ (Ctrl↵ elsewhere); the answer comes in the Ask panel
+  //    and is kept as a chat; Esc puts the panel away.
   await main.fill('#home-line', 'What did I save across a restart?')
   await main.press('#home-line', 'ControlOrMeta+Enter')
-  const answered = await main.locator('.home-answer').getByText('practice model').waitFor({ timeout: 10000 }).then(() => true, () => false)
-  check(answered, 'Ask did not answer on the desk (⌘↵ in the line)')
+  const answered = await main.locator('.ask-panel .bubble.assistant').getByText('practice model').waitFor({ timeout: 10000 }).then(() => true, () => false)
+  check(answered, 'Ask did not answer in its panel (⌘↵ in the bar)')
   if (answered) {
-    await main.getByRole('button', { name: 'Keep talking' }).click()
-    await main.locator('.popout-body[data-view="Assistant"] .bubble.assistant').first().waitFor({ timeout: 5000 })
-      .catch(() => problems.push('Keep talking did not open the chat in Ask'))
     const chats = await main.evaluate(async () => (await window.osat.store.load()).doc.chats)
-    check(chats.length === 1 && chats[0].messages.length === 2, 'the desk question and its answer were not kept as one chat')
+    check(chats.length === 1 && chats[0].messages.length === 2, 'the question and its answer were not kept as one chat')
     check(chats[0]?.messages[0].noteIds?.length === 1, 'Ask did not pick the matching note for the question')
-    // Esc leaves the chat's box, then closes the Ask pop-out.
+    await main.locator('.ask-panel textarea').focus()
     await main.keyboard.press('Escape')
-    await main.keyboard.press('Escape')
-    await main.locator('.popout-body[data-view="Assistant"]').waitFor({ state: 'detached', timeout: 3000 })
-      .catch(() => problems.push('Esc did not close the Ask pop-out'))
+    await main.locator('.ask-panel').waitFor({ state: 'detached', timeout: 3000 })
+      .catch(() => problems.push('Esc did not put the Ask panel away'))
   }
-  // Whatever happened above, the line starts the next steps empty.
+  // Whatever happened above, the bar starts the next steps empty.
   await main.fill('#home-line', '')
 
-  // The canvas uses the native store: a sticky written there is on disk, and is still there after quitting.
-  await main.getByRole('button', { name: 'Canvas', exact: true }).click()
+  // The boards use the native store: a sticky written in Just in is on disk, and is still there after quitting.
+  await main.locator('nav.side .side-tile', { hasText: 'Just in' }).click()
   await main.locator('.boards').waitFor({ timeout: 5000 })
   await main.getByRole('textbox', { name: /^Write a sticky on / }).fill('Native canvas sticky')
   await main.getByRole('textbox', { name: /^Write a sticky on / }).press('Enter')
@@ -148,35 +144,22 @@ try {
   const writtenId = await written.getAttribute('data-note')
   await app.close()
   const writtenOnDisk = JSON.parse(await readFile(dataFile, 'utf8')).notes.find((note) => note.id === writtenId)
-  check(writtenOnDisk?.source === 'Canvas', 'a sticky written on the canvas was not saved on disk')
+  check(writtenOnDisk?.source === 'Canvas', 'a sticky written in Just in was not saved on disk')
   ;({ app, main } = await launch())
-  await main.getByRole('button', { name: 'Canvas', exact: true }).click()
+  await main.locator('nav.side .side-tile', { hasText: 'Just in' }).click()
   await main.locator('.justin-row, .boards-card', { hasText: 'Native canvas sticky' }).waitFor({ timeout: 5000 })
-    .catch(() => problems.push('a sticky written on the canvas was gone after a restart'))
-  await main.locator('.boards').getByRole('button', { name: 'Desk', exact: true }).click()
-  await main.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 })
-  const deskSticky = main.locator('.home .desk-sticky', { hasText: 'Saved across a restart' })
-  await deskSticky.locator('.sticky').click({ button: 'right' })
-  await main.getByRole('menuitem', { name: 'Send to the canvas', exact: true }).click()
-  await main.locator('.justin-row, .boards-card', { hasText: 'Saved across a restart' }).waitFor({ timeout: 5000 })
-  check(await deskSticky.count() === 0, 'sending a sticky up left it on the desk too')
-  await main.locator('.toast').getByRole('button', { name: 'Undo', exact: true }).click()
-  await main.locator('.boards').getByRole('button', { name: 'Desk', exact: true }).click()
-  await main.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 })
-  await deskSticky.waitFor({ timeout: 3000 }).catch(() => problems.push('Undo did not put a sent sticky back on the desk'))
-
-  // 7. The Desktop on the desk; a folder opens in Files; Ask reads a file from there.
-  await main.keyboard.press('Control+1')
-  const icons = main.locator('.home-icons')
-  await icons.getByRole('button', { name: 'Trip notes.md' }).waitFor({ timeout: 8000 })
-    .catch(() => problems.push('the Desktop\'s files did not appear on the desk'))
-  check(!(await icons.getByRole('button', { name: '.hidden' }).count()), 'a hidden file showed on the desk')
-  await icons.getByRole('button', { name: 'Plans, folder' }).dblclick()
-  const packing = main.locator('.popout-body[data-view="Files"] .finder-item', { hasText: 'packing.txt' })
+    .catch(() => problems.push('a sticky written in Just in was gone after a restart'))
+  // 7. Files (⌘6) opens on the Desktop; a folder opens; Ask reads a file from there.
+  await main.keyboard.press('Control+6')
+  const files = main.locator('.app-room[data-view="Files"]')
+  await files.locator('.finder-item', { hasText: 'Trip notes.md' }).waitFor({ timeout: 8000 })
+    .catch(() => problems.push('the Desktop\'s files did not appear in Files'))
+  check(!(await files.locator('.finder-item', { hasText: '.hidden' }).count()), 'a hidden file showed in Files')
+  await files.locator('.finder-item', { hasText: 'Plans' }).first().dblclick()
+  const packing = files.locator('.finder-item', { hasText: 'packing.txt' })
   await packing.waitFor({ timeout: 5000 }).catch(() => problems.push('a Desktop folder did not open in Files'))
   // Find: a word inside a file finds it, each result says where it lives, a kind narrows it,
   // and Show in its folder goes there.
-  const files = main.locator('.popout-body[data-view="Files"]')
   const findBox = files.getByLabel('Find a file')
   await findBox.fill('stove')
   const found = files.locator('.finder-item', { hasText: 'packing.txt' })
@@ -298,7 +281,7 @@ try {
     await quick.locator('#qs-input').waitFor({ state: 'visible', timeout: 3000 }).catch(() => problems.push('Esc did not come back from Ask to the bar'))
     await quick.keyboard.press('Escape')
     check(await until(async () => !(await chatShown()), 3000), 'Esc did not put the quick bar away')
-    // Pop out: the desk's chat opens in the quick bar.
+    // Pop out: a chat from the window opens in the quick bar.
     const deskChat = (await asked()).id
     await main.evaluate((chatId) => window.osatChat.show({ chatId }), deskChat)
     await quick.locator('.qs-chat .chat-title h2', { hasText: 'What should I pack?' }).waitFor({ timeout: 5000 })
@@ -391,15 +374,13 @@ try {
     check((await searchPage.inputValue('#qs-input')) === '', 'Esc did not clear the words first')
     await searchPage.keyboard.press('Escape')
     check(await until(async () => !(await searchWindow('shown')), 3000), 'Esc did not put the quick search away')
-    // Return on a note opens it on the desk.
+    // Return on a note opens it in Notes.
     await fileMenu('Search or Ask…')
     await searchPage.fill('#qs-input', 'restart')
     await searchPage.locator('.qs-row', { hasText: 'Saved across a restart' }).waitFor({ timeout: 5000 })
     await searchPage.keyboard.press('Enter')
-    await main.getByRole('dialog', { name: 'Saved across a restart' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Return on a note did not open it on the desk'))
+    await main.locator('.app-room[data-view="Notes"]', { hasText: 'Saved across a restart' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Return on a note did not open it in Notes'))
     check(await until(async () => !(await searchWindow('shown')), 3000), 'the quick search stayed up after opening a note')
-    await main.keyboard.press('Escape')
-    await main.keyboard.press('Escape')
   }
   await main.keyboard.press('Control+1')
 
@@ -520,8 +501,8 @@ try {
     await main.getByText('test-chat · Test Cloud').first().waitFor({ timeout: 5000 })
       .catch(() => problems.push('the line did not pick up the chosen cloud model'))
     await main.press('#home-line', 'ControlOrMeta+Enter')
-    await main.locator('.home-answer').getByText('From the cloud model').waitFor({ timeout: 10000 })
-      .catch(async () => problems.push(`the line’s answer did not come from the chosen cloud model: ${JSON.stringify(await main.locator('.home-answer').innerText().catch(() => 'no answer'))}`))
+    await main.locator('.ask-panel .bubble.assistant').getByText('From the cloud model').waitFor({ timeout: 10000 })
+      .catch(async () => problems.push(`the answer did not come from the chosen cloud model: ${JSON.stringify(await main.locator('.ask-panel').innerText().catch(() => 'no answer'))}`))
     const usage = (await main.evaluate(() => window.osatBots.status())).cloud.providers[0]?.usage
     check(usage?.requests === 1 && usage.input === 40 && usage.output === 4, `the running total did not count the question: ${JSON.stringify(usage)}`)
     check(!(await readFile(path.join(home, 'OSAT Test', 'bots.json'), 'utf8')).includes(KEY), 'the key was written to a file')
@@ -664,16 +645,15 @@ try {
     check((await main.evaluate(() => window.osatPhone.status())).sync?.on !== true, 'the iPhone link kept syncing while under')
     check(await access(icloudCopy).then(() => true, () => false), 'going under took the copy of the notes out of iCloud Drive')
     check((await goMenu()).includes('Go Online'), 'the Go menu did not offer Go Online while offline')
-    // The page shows it: the desk stays, and the line says it's offline, its switch pressed.
-    await main.locator('.home-offline-note', { hasText: 'Offline · nothing leaves OSAT' }).waitFor({ timeout: 5000 })
-      .catch(() => problems.push('the line did not say that nothing leaves OSAT'))
-    check(await main.locator('.home-offline[aria-pressed="true"]').isVisible(), 'the line\'s switch was not on while offline')
-    check(await main.locator('.home').isVisible(), 'the desk went away offline')
+    // The page shows it: the window stays, and the sidebar's switch says Offline, pressed.
+    await main.locator('.side-net[aria-pressed="true"]', { hasText: 'Offline' }).waitFor({ timeout: 5000 })
+      .catch(() => problems.push('the sidebar did not say OSAT is offline'))
+    check(await main.locator('.app-room').isVisible(), 'the window\'s room went away offline')
 
-    // Back online, from the line's switch.
-    await main.locator('.home-offline').click()
-    await main.locator('.home-offline-note').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('the line still said offline after going back online'))
-    check((await main.evaluate(() => window.osatUnder.status())).on === false, 'the line\'s switch did not go back online')
+    // Back online, from the sidebar's switch.
+    await main.locator('.side-net').click()
+    await main.locator('.side-net[aria-pressed="false"]').waitFor({ timeout: 5000 }).catch(() => problems.push('the sidebar still said offline after going back online'))
+    check((await main.evaluate(() => window.osatUnder.status())).on === false, 'the sidebar\'s switch did not go back online')
     check(await until(async () => {
       const urls = await tabUrls()
       return urls.length === 2 && urls.includes(page)
@@ -691,8 +671,8 @@ try {
     check(await mainFetch() === 'OfflineError', 'a relaunch under let the main process fetch')
     check((await main.evaluate(() => window.osatPhone.status())).sync?.on !== true, 'a relaunch under started the iPhone link')
     check(/web waits/.test(await refused(() => window.osatBrowser.open('https://example.com/'))), 'a relaunch under opened a web page')
-    await main.locator('.home-offline-note').waitFor({ timeout: 5000 })
-      .catch(() => problems.push('a relaunch offline did not say so on the line'))
+    await main.locator('.side-net[aria-pressed="true"]').waitFor({ timeout: 5000 })
+      .catch(() => problems.push('a relaunch offline did not say so in the sidebar'))
     // 10. The drop folder is on this Mac, so it works offline too.
     const nodesDir = path.join(home, 'OSAT Nodes')
     check((await main.evaluate(() => window.osatBots.status())).nodes?.dir === nodesDir, 'Settings → Connections did not show the drop folder')
@@ -709,7 +689,7 @@ try {
 
     // Go Online from the Go menu (what ⇧⌘U does): main decides, and the page follows.
     await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find((item) => item.label === 'Go').submenu.items.find((item) => item.label === 'Go Online').click())
-    await main.locator('.home-offline-note').waitFor({ state: 'detached', timeout: 5000 }).catch(() => problems.push('Go Online in the Go menu did not reach the line'))
+    await main.locator('.side-net[aria-pressed="false"]').waitFor({ timeout: 5000 }).catch(() => problems.push('Go Online in the Go menu did not reach the sidebar'))
     check((await main.evaluate(() => window.osatUnder.status())).on === false, 'Go Online in the Go menu did not go back online')
     await app.evaluate(({ clipboard }, words) => clipboard.writeText(words), originalClipboard)
     await app.close()

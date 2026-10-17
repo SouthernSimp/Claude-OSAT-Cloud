@@ -1,38 +1,38 @@
-/* The first-run tour (Phase 27): a few short cards, each pointing at the real thing on the
-   screen (a `target` selector; none means the card sits in the middle). It shows once per Mac,
-   after the welcome; "Take the tour" in ⌘K brings it back. Words are the app's own: sticky, node,
-   branch, Sky. `{desk}` and `{search}` are the shortcuts as they are set now. Pure. */
+/* The first-run tour (Phase 27, redone for the window in Phase 73): a few short cards, each pointing at the real
+   thing on the screen (a `target` selector; none means the card sits in the middle). It shows once per Mac, after
+   the welcome; "Take the tour" in ⌘K brings it back. `{desk}` and `{search}` are the shortcuts as they are set now.
+   Pure. */
 
 export const TOUR = [
   {
-    id: 'line',
-    target: '.home-composer-wrap',
-    title: 'One line for everything',
-    body: 'Write a thought, find something, or ask your notes. Press Return and it lands on the desk as a sticky.',
+    id: 'bar',
+    target: '.app-bar .home-composer-wrap',
+    title: 'Write it down, find it, or ask',
+    body: 'Type anything and press Return: it lands in Just in, and OSAT works out what it is and where it goes. ⌘Return asks the AI on this Mac.',
   },
   {
-    id: 'stickies',
-    target: null,
-    title: 'Stickies live on the desk',
-    body: 'Double-click anywhere to write one. Drop one on another to stack them, or drag the small dot on its edge to connect two. Nothing gets filed until you say so.',
+    id: 'today',
+    target: '.side-tiles',
+    title: 'Today is your day at a glance',
+    body: 'What to do, what’s on your calendar, what came in, your habits and your money, all on one page. ⌘1 brings it back.',
   },
   {
-    id: 'sky',
-    target: '.sky-entry',
-    title: 'The canvas is your map',
-    body: 'Your topics and branches spread out like a mind map. Click a topic to open it, double-click to focus on just that one. ⌘3 opens it from anywhere.',
+    id: 'boards',
+    target: '.side-group[aria-label="Boards"]',
+    title: 'Boards keep things in their place',
+    body: 'A board for each part of your work and life: a client, a project, home. OSAT files what you write onto the right one, and every move has Undo.',
   },
   {
-    id: 'tools',
-    target: '.app-dock [data-space="tools"]',
-    title: 'Everything else is one click away',
-    body: 'Journal, Calendar, Files, the Browser and more live in Tools. Press ⌘K any time to find anything.',
+    id: 'ask',
+    target: '.app-ask-button',
+    title: 'Ask, beside whatever you’re doing',
+    body: 'Ask reads your notes and answers right here, on this Mac. Nothing leaves it unless you choose a cloud model.',
   },
   {
     id: 'anywhere',
     target: null,
     title: 'And from any app',
-    body: '{desk} brings the desk up, and {search} opens the quick bar: find files, what you copied, apps and notes, ask the AI, or save a sticky. Everything, the AI too, stays on this Mac.',
+    body: '{desk} brings OSAT up, and {search} opens the quick bar: find files, what you copied, apps and notes, ask the AI, or save a sticky.',
   },
 ]
 

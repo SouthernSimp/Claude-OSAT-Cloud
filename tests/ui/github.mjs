@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { openRoom } from './window.mjs'
 
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/github`
 const PORT = Number(process.env.OSAT_PORT || 4323)
@@ -66,8 +67,7 @@ async function main() {
     await page.addInitScript(() => { for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen') })
     await page.goto(`${url}?fresh=1`)
     await page.waitForSelector('.workspace-content', { timeout: 15000 })
-    await page.locator('.app-dock [data-space="tools"]').click()
-    await page.getByRole('menuitem', { name: 'GitHub' }).click()
+    await openRoom(page, 'GitHub')
     await page.locator('.gh-pull').first().waitFor({ timeout: 5000 }).catch(() => problems.push(`${theme}: no pull requests showed`))
     await sleep(500)
     await page.screenshot({ path: `${OUT}/${theme}-room.png` })

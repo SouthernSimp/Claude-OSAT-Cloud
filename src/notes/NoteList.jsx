@@ -17,7 +17,7 @@ const LIST_TITLES = {
 };
 // What the lists OSAT keeps say under their title, and what ticking a sticky off there means.
 const KEPT = {
-  questions: { line: "Every open question, from every topic.", done: "Answered" },
+  questions: { line: "Every open question, from every board.", done: "Answered" },
   buy: { line: "Everything to buy, wherever you wrote it.", done: "Bought" },
   coming: { line: "Days your stickies name, soonest first.", done: "Done" },
 };
@@ -92,7 +92,7 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
         {(folder || ui.list === "all") && (
           <div className="list-view-switch" role="group" aria-label="Show as">
             <button type="button" aria-pressed="true"><ListBullets /> List</button>
-            <button type="button" aria-pressed="false" title={folder ? `${folder.name} on the canvas` : "Everything on the canvas"} onClick={() => actions.openCanvas(folder?.id || null)}><TreeStructure /> Canvas</button>
+            <button type="button" aria-pressed="false" title={folder ? `${folder.name} as a board` : "Your boards"} onClick={() => actions.openCanvas(folder?.id || null)}><TreeStructure /> Board</button>
           </div>
         )}
       </div>

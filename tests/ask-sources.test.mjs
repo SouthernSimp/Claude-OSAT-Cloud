@@ -53,7 +53,7 @@ test('each source says what it is and where it lives', () => {
   assert.equal(noteKind(note('x')), 'Sticky')
   assert.equal(noteWhere(scan, folders), 'in Jordan / Lease')
   assert.equal(noteWhere(note('x'), folders), 'in Just in')
-  assert.equal(noteWhere(note('x', { at: { x: 1, y: 2 } }), folders), 'on the canvas')
+  assert.equal(noteWhere(note('x', { at: { x: 1, y: 2 } }), folders), 'on a board')
   assert.equal(noteHeading(scan, folders), 'SCAN: Lease (in Jordan / Lease, edited Sep 28, 2026)')
 })
 

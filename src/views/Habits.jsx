@@ -5,7 +5,7 @@ import {
   calendarMonthDays, createHabit, habitFace, habitStreak, isHabitDone, keptWords, lastDays, localDateKey, moveHabit, renameHabit,
   shiftDay, streakWords, toggleHabit,
 } from '../daily-practice.js'
-import { menuEvent } from '../field/DeskStickies.jsx'
+import { menuEvent } from '../lib/ContextMenu.jsx'
 import { carryable, useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
@@ -132,7 +132,7 @@ export function HabitsView({ workspace, commit }) {
       <header className="habits-head">
         {!history && habits.length > 0 && <Ring kept={kept} total={habits.length} cheer={pop?.all ? pop.at : 0} />}
         <div className="habits-title">
-          <h2>{history ? 'History' : 'Today'}</h2>
+          <h2>{history ? 'History' : 'Habits'}</h2>
           <p aria-live="polite">{history ? 'Tap a day to change it.' : [longDay(today), keptWords(habits, today)].filter(Boolean).join(' · ')}</p>
         </div>
         {habits.length > 0 && (

@@ -1,14 +1,5 @@
-/* The frame: the desk fills the window; rooms float over it (glass.css). */
+/* The frame rooms scroll in. */
 
-.app-shell { height: 100dvh; overflow: hidden; background: var(--page); }
-.workspace {
-  height: 100%;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
-}
 .workspace-content {
   min-width: 0;
   min-height: 0;
@@ -18,12 +9,3 @@
 .workspace-content > * { max-width: var(--content-max); margin-inline: auto; padding: 32px var(--gutter) 64px; }
 .workspace-content.is-filled { overflow: hidden; }
 .workspace-content.is-filled > * { height: 100%; max-width: none; padding: 0; }
-.loading-workspace { display: grid; place-items: center; height: 100%; }
-
-
-/* ---- Inside the Mac app ---------------------------------------------- */
-/* The window has no title bar of its own. The desk and the sheet's top bar
-   drag the window, and both leave room for the traffic lights. */
-.is-mac-app .workspace-content > .home { padding-top: 46px; }
-.is-mac-app .home { -webkit-app-region: drag; }
-.is-mac-app .home :is(.widget, .home-composer-wrap, .icon, .icons-head, .icons-empty, .dock) { -webkit-app-region: no-drag; }

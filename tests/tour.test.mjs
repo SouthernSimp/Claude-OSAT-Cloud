@@ -6,20 +6,20 @@ import { cardSpot, TOUR, tourWords } from '../src/shell/tour-model.js'
 const VIEW = { w: 1440, h: 900 }
 const CARD = { w: 380, h: 190 }
 
-test('the tour has a few short cards in plain words, and every target is a real place on the desk', () => {
+test('the tour has a few short cards in plain words, and every target is a real place in the window', () => {
   assert.ok(TOUR.length >= 4 && TOUR.length <= 6, 'a few cards, not a lecture')
   assert.equal(new Set(TOUR.map((step) => step.id)).size, TOUR.length)
   for (const step of TOUR) {
     assert.ok(step.title.length <= 40 && step.body.length <= 220, `${step.id} is short`)
     assert.doesNotMatch(`${step.title} ${step.body}`, /\b(Inbox|folder|record|canonical|OSAT Field)\b/, `${step.id} uses OSAT's own words`)
   }
-  assert.deepEqual(TOUR.filter((step) => step.target).map((step) => step.target), ['.home-composer-wrap', '.sky-entry', '.app-dock [data-space="tools"]'])
+  assert.deepEqual(TOUR.filter((step) => step.target).map((step) => step.target), ['.app-bar .home-composer-wrap', '.side-tiles', '.side-group[aria-label="Boards"]', '.app-ask-button'])
 })
 
 test('the shortcuts are filled in as they are set now, with a plain fallback', () => {
   const step = TOUR.find((item) => item.id === 'anywhere')
-  assert.match(tourWords(step, { desk: '⌥Space', search: '⌘⇧Space' }).body, /^⌥Space brings the desk up, and ⌘⇧Space opens the quick bar/)
-  assert.match(tourWords(step).body, /^Your shortcut brings the desk up, and the search shortcut opens/)
+  assert.match(tourWords(step, { desk: '⌥Space', search: '⌘⇧Space' }).body, /^⌥Space brings OSAT up, and ⌘⇧Space opens the quick bar/)
+  assert.match(tourWords(step).body, /^Your shortcut brings OSAT up, and the search shortcut opens/)
   assert.equal(tourWords(TOUR[0]).title, TOUR[0].title, 'a card with no shortcut is unchanged')
 })
 

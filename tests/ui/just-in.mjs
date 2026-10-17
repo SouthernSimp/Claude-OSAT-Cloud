@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { openRoom as openPlace } from './window.mjs'
 
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/just-in`
 const PORT = Number(process.env.OSAT_PORT || 4335)
@@ -98,7 +99,7 @@ async function openCanvas(browser, url, theme, viewport = { width: 1440, height:
   }, { notes: NOTES, folders: FOLDERS })
   await page.goto(url)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
-  await page.getByRole('button', { name: 'Open the canvas', exact: true }).click()
+  await openPlace(page, 'Just in')
   await page.locator('.justin').waitFor({ timeout: 5000 })
   return page
 }
@@ -156,7 +157,7 @@ async function light(page) {
   await page.screenshot({ path: `${OUT}/light-photo.png` })
 
   // On a board: two stickies that say the same thing, merged, then Undo.
-  await page.getByRole('navigation', { name: 'Boards' }).getByRole('button', { name: /^OSAT\b/ }).click()
+  await page.locator('nav.side .side-group[aria-label="Boards"]').getByRole('button', { name: /^OSAT\b/ }).click()
   const note = page.locator('.boards-note', { hasText: 'say the same thing' })
   await note.waitFor({ timeout: 3000 }).catch(() => problems.push('two stickies that say the same thing weren’t offered to merge'))
   check((await note.innerText()).includes('Two to-dos'), 'the merge note didn’t say what they are')

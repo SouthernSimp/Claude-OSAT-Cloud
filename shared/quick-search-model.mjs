@@ -380,7 +380,7 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
     case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⇧↵' },
       ...(/^\/System\//.test(String(row.data?.path)) ? [] : [{ id: 'uninstall', label: 'Uninstall…', hint: 'The app and what it left behind go to the Bin', keys: '⌘⌫', danger: true }])]
     case 'note': return [{ id: 'go', label: 'Open', keys: '↵' }]
-    case 'node': return [{ id: 'go', label: 'Open on the canvas', keys: '↵' }]
+    case 'node': return [{ id: 'go', label: 'Open the board', keys: '↵' }]
     case 'room': return [{ id: 'go', label: 'Open', keys: '↵' }]
     case 'calc': return [{ id: 'copy-text', label: 'Copy the answer', keys: '↵' }, { id: 'paste-text', label: 'Paste the answer', keys: '⇧↵' }]
     case 'sticky': return [{ id: 'sticky', label: 'Save as a sticky', keys: '↵' }]

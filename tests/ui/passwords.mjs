@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { openRoom } from './window.mjs'
 
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/passwords`
 const PORT = Number(process.env.OSAT_PORT || 4324)
@@ -88,8 +89,7 @@ async function main() {
     await page.addInitScript(() => { for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen') })
     await page.goto(`${url}?fresh=1`)
     await page.waitForSelector('.workspace-content', { timeout: 15000 })
-    await page.locator('.app-dock [data-space="tools"]').click()
-    await page.getByRole('menuitem', { name: 'Passwords' }).click()
+    await openRoom(page, 'Passwords')
     const room = page.locator('.popout-body[data-view="Passwords"]')
     const words = async () => (await room.innerText())
     const primaries = () => room.locator('.primary-button:visible').count()
@@ -189,9 +189,8 @@ async function main() {
     await room.getByLabel('Master password').fill(MASTER)
     await room.getByRole('button', { name: 'Unlock' }).click()
     await room.getByRole('button', { name: /^Bank/ }).waitFor({ timeout: 3000 })
-    await page.locator('.popouts').click({ position: { x: 5, y: 5 }, force: true }).catch(() => {})
-    await page.keyboard.press('Escape')
-    await room.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push(`${theme}: Esc didn’t close the room`))
+    await openRoom(page, 'Today')
+    await room.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push(`${theme}: going to Today didn’t leave the room`))
     check((await page.evaluate(() => window.__calls)).filter((name) => name === 'lock').length > before, `${theme}: closing the room didn’t lock`)
     await page.close()
   }

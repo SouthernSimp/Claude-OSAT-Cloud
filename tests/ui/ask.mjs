@@ -93,8 +93,9 @@ async function main() {
   await page.addInitScript(() => { for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen') })
   await page.goto(`${url}?fresh=1`)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
-  await page.keyboard.press('Control+4')
-  const ask = page.getByRole('region', { name: 'Ask' }).last()
+  // Ask is the panel on the right of the window.
+  await page.locator('.app-ask-button').click()
+  const ask = page.locator('.ask-panel')
   await ask.waitFor({ timeout: 5000 })
   const box = ask.getByRole('textbox', { name: 'Ask the AI on this Mac' })
   await box.waitFor({ timeout: 5000 })
@@ -129,7 +130,7 @@ async function main() {
   await page.screenshot({ path: `${OUT}/cloud.png` })
 
   // Ask can act: the steps show while it works, another app's change waits for Allow, and one Undo is offered.
-  await ask.getByRole('button', { name: 'New chat', exact: true }).click()
+  await ask.getByRole('button', { name: 'New', exact: true }).click()
   await box.fill('Move Buy seeds to Garden and put the dentist in Google Calendar')
   await box.press('Enter')
   await ask.locator('.agent-confirm').waitFor({ timeout: 5000 }).catch(() => problems.push('no question before another app changed something'))
@@ -168,7 +169,7 @@ async function main() {
 
   // Pictures (Phase 37b): chosen (or pasted, or dropped), shown as a chip, and sent with the question to the AI on this
   // Mac only; a cloud model is told no, and nothing is sent.
-  await ask.getByRole('button', { name: 'New chat', exact: true }).click()
+  await ask.getByRole('button', { name: 'New', exact: true }).click()
   const dot = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64')
   await ask.locator('input[type="file"][accept^="image"]').setInputFiles({ name: 'shot.png', mimeType: 'image/png', buffer: dot })
   await ask.locator('.ask-note-chip.is-picture', { hasText: 'shot.png' }).waitFor({ timeout: 3000 }).catch(() => problems.push('a chosen picture made no chip'))

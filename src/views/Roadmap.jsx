@@ -187,7 +187,7 @@ function ComingNext({ phases, workspace, commit, navigate, onClose }) {
     let before = null
     let after = null
     commit((state) => { before = state; after = setUpPlan(state, phases).state; return after })
-    if (before && after !== before) showUndo('Put the plan on your canvas', () => commit(undoFrom(before, after)))
+    if (before && after !== before) showUndo('Put the plan on your boards', () => commit(undoFrom(before, after)))
   }
   // The canvas comes up over the desk; this room steps aside so it doesn't float over the board.
   const openBoard = (detail = {}) => { navigate?.('Mindmap', { folderId: board.id, view: 'board', ...detail }); onClose?.() }
@@ -197,7 +197,7 @@ function ComingNext({ phases, workspace, commit, navigate, onClose }) {
       <header className="news-head">
         <div>
           <h2>Coming next</h2>
-          <p>What’s planned for OSAT, from the Roadmap. On your canvas it’s a board you own: drag the plans into the order you want, click one to change what it says, and write your notes on it. Claude reads this board before building what’s next.</p>
+          <p>What’s planned for OSAT, from the Roadmap. Among your boards it’s one you own: drag the plans into the order you want, click one to change what it says, and write your notes on it. Claude reads this board before building what’s next.</p>
         </div>
         {board && <button type="button" className="primary-button" onClick={() => openBoard()}><Kanban /> Open the board</button>}
       </header>
@@ -209,8 +209,8 @@ function ComingNext({ phases, workspace, commit, navigate, onClose }) {
               <li key={phase.id}><span className="coming-phase">Phase {phase.id}</span><span>{phase.what}</span>{phase.state === 'now' && <em>Being built</em>}</li>
             ))}
           </ol>
-          <button type="button" className="primary-button" onClick={setUp}><Kanban /> Put it on my canvas</button>
-          <p className="coming-hint">It becomes the board “Coming to OSAT”, with {coming.length} plans to rerank. Nothing else on your canvas changes.</p>
+          <button type="button" className="primary-button" onClick={setUp}><Kanban /> Add it to my boards</button>
+          <p className="coming-hint">It becomes the board “Coming to OSAT”, with {coming.length} plans to rerank. Nothing else on your boards changes.</p>
         </div>
       )}
       {toast}

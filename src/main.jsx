@@ -6,17 +6,17 @@ import "./styles/base.css";
 import "./styles/shell.css";
 import "./styles/components.css";
 import "./styles/views.css";
-import "./styles/today.css";
 import "./styles/calendar.css";
 import "./styles/notes.css";
-import "./styles/field.css";
-import "./styles/home.css";
+import "./styles/journal.css";
+import "./styles/bar.css";
 import "./styles/tools.css";
-import "./styles/overlay.css";
+import "./styles/rooms.css";
 import "./styles/sky.css";
 import "./styles/glass.css";
 import "./styles/search.css";
-import "./styles/dock.css";
+// The window itself last: it sets how every room sits in it.
+import "./styles/app.css";
 
 // The Mac app draws its own title bar: leave room for the window buttons.
 if (window.osatApp) document.documentElement.classList.add("is-mac-app");

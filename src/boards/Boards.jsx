@@ -14,7 +14,6 @@ import { carryable, useCarrying, useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { connect, recordOf } from '../links-model.js'
-import { PAPERS } from '../note-core.js'
 import { getLocalModels, streamLocalMessage } from '../local-ai.js'
 import { folderPath, isActiveNote, setDone, setWhat, trashNotes, updateNote } from '../notes-model.js'
 import { addSticky, markOpened, pileOf, removeFolder, renameFolder } from '../nodes-model.js'
@@ -23,7 +22,7 @@ import { useAutoFileStatus } from '../sky/useAutoFile.js'
 import { useOvernight } from '../sky/useOvernight.js'
 import '../styles/boards.css'
 import {
-  addBoard, boardsOf, COLUMN, findOn, JUST_IN, mapColumns, moveToBoard, onBoard, rankIn, setStage, stageColumns, stageOf, STAGES, stickiesOn, undoFrom,
+  addBoard, boardsOf, COLUMN, findOn, JUST_IN, mapColumns, moveToBoard, onBoard, paperOf, rankIn, setStage, stageColumns, stageOf, STAGES, stickiesOn, undoFrom,
 } from './boards-model.js'
 import { JustIn } from './JustIn.jsx'
 import { mergeStickies, placeFrom, samePair } from './just-in.js'
@@ -41,7 +40,6 @@ const PLURAL = { idea: 'ideas', question: 'questions', problem: 'problems', todo
 const VIEWS = [['map', 'Map', SquaresFour], ['board', 'Board', Kanban], ['list', 'List', ListBullets]]
 const STARTER = ['Personal', 'Home', 'Work']
 const KEPT = [['questions', 'Questions', Question], ['buy', 'To buy', ShoppingCart], ['coming', 'Coming up', CalendarCheck]]
-const paperOf = (folder, index) => folder.color || PAPERS[index % PAPERS.length]
 
 /* The canvas (Phase 68): the layer above the desk (⌘3, the dock's Canvas, ⌥⌘↑, or a sticky held at the
    top of the screen). Your boards down the side; the one open as a Map (a column per kind), a Board
@@ -49,9 +47,12 @@ const paperOf = (folder, index) => folder.color || PAPERS[index % PAPERS.length]
    Every change has Undo. `target` says what to show on arriving ({ folderId }, { noteId }, or an
    action from the desk); Esc steps back (an edit, the search, a board being named) and then goes down
    (Desk.jsx asks `back()`). `onFiled` hears when a sticky from the desk went onto a board. */
-export const Boards = forwardRef(function Boards({ workspace, commit, navigate, target, onClose, onFiled, onStackSent }, ref) {
+/* In OSAT's window (Phase 73) the sidebar holds the boards: `board` says which is open and `onOpenBoard` hears a move to
+   another (a note's board, a new one, Just in), and the canvas's own side list and Ask button step aside. */
+export const Boards = forwardRef(function Boards({ workspace, commit, navigate, target, onClose, onFiled, onStackSent, board: openBoard, onOpenBoard }, ref) {
   const [picked, setPicked] = useState(() => read(BOARD_KEY, JUST_IN))
-  const [view, setViewState] = useState(() => read(VIEW_KEY, 'map'))
+  // Sent with a view (Coming next opens its board as a Board): that one from the first frame.
+  const [view, setViewState] = useState(() => (VIEWS.some(([id]) => id === target?.view) ? target.view : read(VIEW_KEY, 'map')))
   const [query, setQuery] = useState('')
   const [naming, setNaming] = useState(null)
   const [editing, setEditing] = useState(null)
@@ -71,7 +72,8 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const answering = answeringLabel(models)
 
   const boards = useMemo(() => boardsOf(workspace), [workspace])
-  const boardId = picked === JUST_IN || boards.some(({ folder }) => folder.id === picked) ? picked : (boards[0]?.folder.id || JUST_IN)
+  const wanted = openBoard !== undefined && openBoard !== null ? openBoard : picked
+  const boardId = wanted === JUST_IN || boards.some(({ folder }) => folder.id === wanted) ? wanted : (boards[0]?.folder.id || JUST_IN)
   const board = boards.find(({ folder }) => folder.id === boardId)?.folder || null
   const all = useMemo(() => stickiesOn(workspace, boardId), [workspace, boardId])
   const shown = useMemo(() => findOn(all, query), [all, query])
@@ -79,9 +81,11 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const same = useMemo(() => samePair(all, keptPairs), [all, keptPairs])
   const filing = useAutoFileStatus()
 
-  const open = (id) => { setPicked(id); keep(BOARD_KEY, id); setQuery(''); setEditing(null) }
+  const open = (id) => { setPicked(id); keep(BOARD_KEY, id); setQuery(''); setEditing(null); if (id !== wanted) onOpenBoard?.(id) }
   const setView = (id) => { setViewState(id); keep(VIEW_KEY, id) }
   useEffect(() => { if (board?.fresh) commit((state) => markOpened(state, board.id)) }, [board?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Another board from the sidebar: its own Find and edit start fresh.
+  useEffect(() => { setQuery(''); setEditing(null) }, [boardId])
 
   /* One change, one line, one Undo that only takes back what this change touched. */
   function change(line, updater, after) {
@@ -310,7 +314,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
 
   return (
     <section className="boards" aria-label="Canvas">
-      <nav className="boards-side" aria-label="Boards">
+      {!onOpenBoard && <nav className="boards-side" aria-label="Boards">
         <button type="button" className="ghost-button boards-down" onClick={onClose}><ArrowDown /> Desk</button>
         <BoardRow id={JUST_IN} name="Just in" icon={Tray} count={waiting} active={boardId === JUST_IN} onOpen={() => open(JUST_IN)} actions={actions} />
         <div className="boards-label"><span>Boards</span><button type="button" className="text-button" onClick={() => setNaming({})}>New</button></div>
@@ -324,7 +328,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
         {KEPT.map(([list, label, Icon]) => (
           <button key={list} type="button" className="boards-row" onClick={() => navigate('Notes', { list })}><Icon /> <span>{label}</span></button>
         ))}
-      </nav>
+      </nav>}
 
       <main className="boards-main">
         <header className="boards-head">
@@ -346,7 +350,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
               ))}
             </div>
           )}
-          <button type="button" className="outline-button boards-ask" onClick={() => navigate('Assistant')}><Sparkle weight="fill" /> Ask</button>
+          {!onOpenBoard && <button type="button" className="outline-button boards-ask" onClick={() => navigate('Assistant')}><Sparkle weight="fill" /> Ask</button>}
         </header>
 
         {ideas.map((idea) => (

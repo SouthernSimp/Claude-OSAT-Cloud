@@ -4,6 +4,26 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
+## Next build · October 17, 2026 — The new OSAT: one window, and Today
+
+- **One window, one sidebar,** the way Apple's own apps work: Today, Just in, Calendar and To do at the top, your
+  boards under them, then Business (Meetings, Mail), Life (Habits, Money, Journal), Library (Notes, Files) and the
+  power tools (Web, Terminal, GitHub, Passwords, the Roadmap), folded until you open them. Everything opens in the same
+  window; the desk, the dock and the floating windows are gone. ⌘1–6 open the first six places, and the window opens
+  where you left it. (#108)
+- **Today** is the first thing you see: a greeting and the morning brief (or one line that sums up the day), what’s
+  to do (tick it off, with Undo), what waits in Just in, today’s calendar and what’s coming up, your habits to tick,
+  and the month’s money. Each card opens the place it comes from. (#108)
+- **To do:** every open to-do in one list, by board, with a line at the bottom to add one. ⌥Return in the bar makes
+  a to-do too. (#108)
+- **One bar on top of every screen** to write it down, find it or ask (⌘K): Return saves a sticky to Just in, ⌘Return
+  asks. (#108)
+- **Ask beside whatever you’re doing:** the Ask button opens it as a panel on the right; Esc puts it away. (#108)
+- **Plain words:** topics and the canvas are boards everywhere now. Appearance is Light, Dark or Auto (the backdrop
+  and blur were for the desk). (#108)
+- Fixes: a board opened from Coming next shows as a Board from its first moment, and only one Undo line shows at a
+  time. (#108)
+
 ## Build 299 · October 16, 2026 — Connections, Soul and memory, Granola sign-in
 
 - **Connections** (Settings → Bots is now Settings → Connections): the one Offline switch at the top, then the AI that

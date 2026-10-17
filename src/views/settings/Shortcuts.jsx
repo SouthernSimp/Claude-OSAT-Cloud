@@ -17,7 +17,7 @@ import { windowRows } from './WindowCommands.jsx'
 const ICONS = { files: Files, clipboard: ClipboardText, apps: AppWindow, notes: NotePencil, calc: Calculator, windows: SquaresFour }
 const TINTS = { files: 'sky', clipboard: 'sky', apps: 'indigo', notes: 'yellow', calc: 'graphite', windows: 'blue' }
 // Short words for the places, so a row reads in one line.
-const HINTS = { files: 'Files on this Mac', clipboard: 'What you copied', apps: 'Open any app', notes: 'Notes and topics', calc: 'Sums, units, dates', windows: 'Snap the window you’re in' }
+const HINTS = { files: 'Files on this Mac', clipboard: 'What you copied', apps: 'Open any app', notes: 'Notes and boards', calc: 'Sums, units, dates', windows: 'Snap the window you’re in' }
 const LauncherBridge = createContext({ bridge: null })
 const FILTERS = [['all', 'All'], ['key', 'Has a key'], ['word', 'Has a word'], ['off', 'Off']]
 const passes = (filter, row) => filter === 'all' || (filter === 'key' && row.hotkey) || (filter === 'word' && row.word) || (filter === 'off' && row.on === false)

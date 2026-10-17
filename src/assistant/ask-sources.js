@@ -11,7 +11,7 @@ export function noteWhere(note, folders = []) {
   if (note.kind === 'day') return ''
   const path = note.folderId ? folderPath(folders, note.folderId) : []
   if (path.length) return `in ${path.join(' / ')}`
-  return note.at ? 'on the canvas' : 'in Just in'
+  return note.at ? 'on a board' : 'in Just in'
 }
 
 const DAY = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
