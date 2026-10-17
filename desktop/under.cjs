@@ -61,7 +61,7 @@ const WAITS = [
   [/^phone:disable$/, 'Turning the iPhone link off waits until you’re back online.'],
   // The apps OSAT uses (Settings → Connections): their web addresses and the commands it starts. Listing them
   // still works (askapps:tools answers nothing offline), and adding or turning one on just waits.
-  [/^askapps:(call|check)$/, 'Apps OSAT uses wait until you’re back online.'],
+  [/^askapps:(call|check|sign-in)$/, 'Apps OSAT uses wait until you’re back online.'],
   // Tools → GitHub: every call goes to github.com.
   [/^github:/, 'GitHub waits until you’re back online.'],
 ]

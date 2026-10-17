@@ -13,6 +13,7 @@ const path = require('node:path')
 const { randomBytes, randomUUID } = require('node:crypto')
 const { watchFolder } = require('../folder-watch.cjs')
 const { createAskApps } = require('./ask-apps.cjs')
+const mcpSignin = require('./mcp-signin.cjs')
 const { createCloud } = require('./cloud.cjs')
 const { appWithKey, createConnector } = require('./connector.cjs')
 const { createDropFolder } = require('./drop-folder.cjs')
@@ -37,7 +38,12 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   const settings = createSettings({ file: path.join(dataDir, 'bots.json'), clean: providers.cleanBotSettings })
   await settings.load()
   const cloud = createCloud({ core: providers, settings, keychain, offline })
-  const askApps = createAskApps({ file: path.join(dataDir, 'ask-apps.json'), keychain, offline, version, ownPort: () => settings.get().connector.port || tools.CONNECTOR_PORT })
+  // A page in Nate's own browser. Refused offline: the check sits on the same line (tests/under.test.mjs).
+  const openPage = async (url) => { if (!offline() && /^https:\/\//i.test(url)) await shell.openExternal(url) }
+  // Signing in to an app (Granola…): main's fetch, so Offline refuses it, and the sign-in page in the browser.
+  const fetch = (...args) => globalThis.fetch(...args)
+  const signin = { signIn: (url) => mcpSignin.signIn(url, { fetch, open: openPage }), refreshed: (saved) => mcpSignin.refreshed(saved, { fetch }) }
+  const askApps = createAskApps({ file: path.join(dataDir, 'ask-apps.json'), keychain, offline, version, signin, ownPort: () => settings.get().connector.port || tools.CONNECTOR_PORT })
   await askApps.load()
   const client = store.connect(() => {})
   const makeId = (prefix) => `${prefix}-${randomUUID()}`
@@ -370,6 +376,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
   handle('askapps:undo-remove', plain(() => askApps.undoRemove()), { from: 'app' })
   handle('askapps:toggle', plain((id, on) => askApps.toggle(String(id), on === true)), { from: 'app' })
   handle('askapps:check', plain((id) => askApps.check(String(id))), { from: 'app' })
+  handle('askapps:sign-in', plain((id) => askApps.signIn(String(id))), { from: 'app' })
   handle('askapps:claude-config', plain(() => askApps.claudeOffers()), { from: 'app' })
   handle('askapps:import', plain((names) => askApps.importClaude(Array.isArray(names) ? names : [])), { from: 'app' })
   handle('askapps:tools', plain(() => askApps.tools()), { from: 'any' })
@@ -380,8 +387,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     const known = providers.PRESETS.flatMap((preset) => [preset.keys, preset.usage])
     if (!known.includes(url)) fail('OSAT only opens a provider’s own pages from here.')
     if (offline()) fail('That page waits until you’re back online.')
-    // Refused offline: the check sits on the same line (tests/under.test.mjs).
-    if (!offline() && /^https:\/\//i.test(url)) await shell.openExternal(url)
+    await openPage(url)
     return true
   }, { from: 'app' })
 

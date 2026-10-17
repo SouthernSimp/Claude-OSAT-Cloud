@@ -499,8 +499,10 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   iCloud identity. Temporary files contain a key and are removed after an hour or quit.
 - `desktop/bots/mcp-client.cjs` + `ask-apps.cjs`: streamable HTTP or local-command
   MCP servers, explicitly enabled in Settings. Claude Desktop imports start off.
-  No OAuth flow; keys and environment values stay in the Keychain. Offline closes
-  connections and stops local commands.
+  Keys and environment values stay in the Keychain. Offline closes connections and stops local commands.
+  Sign-in (Phase 71b, `mcp-signin.cjs`): RFC 9728 → 8414 discovery, dynamic registration, PKCE in Nate's browser
+  (`openPage` in bots/index.cjs), the answer on a one-shot 127.0.0.1 page; tokens join the app's Keychain secret as
+  `oauth` and are refreshed when a connection starts within a minute of running out (`askapps:sign-in`, refused offline).
 - `shared/agent.mjs` + `desktop/agent.cjs`: bounded tool loop and read-only spoken
   answers. Own changing tools commit without confirmation; external changing
   tools wait for Allow. Built-in models get `stepSchema`; cloud and LM Studio get

@@ -325,6 +325,7 @@ contextBridge.exposeInMainWorld('osatAskApps', Object.freeze({
   undoRemove: () => ipcRenderer.invoke('askapps:undo-remove'),
   toggle: (id, on) => ipcRenderer.invoke('askapps:toggle', id, on === true),
   check: (id) => ipcRenderer.invoke('askapps:check', id),
+  signIn: (id) => ipcRenderer.invoke('askapps:sign-in', id),
   claudeConfig: () => ipcRenderer.invoke('askapps:claude-config'),
   import: (names) => ipcRenderer.invoke('askapps:import', names),
   tools: () => ipcRenderer.invoke('askapps:tools'),

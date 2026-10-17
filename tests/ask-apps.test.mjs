@@ -85,7 +85,7 @@ test('add a web address with a key: on at once, checked, and the key is only in 
   const { apps, keychain, started, onDisk } = await setup()
   const row = await apps.add({ kind: 'http', url: 'https://mcp.notion.com/mcp', header: 'secret-key-123' })
   assert.deepEqual(row, {
-    id: 'app1', name: 'notion.com', kind: 'http', on: true, where: 'https://mcp.notion.com/mcp', withKey: true, from: '',
+    id: 'app1', name: 'notion.com', kind: 'http', on: true, where: 'https://mcp.notion.com/mcp', withKey: true, signIn: false, signedIn: false, from: '',
     tools: 2, toolNames: ['list_events', 'create_event'], error: '', checkedAt: '2026-10-08T10:00:00.000Z',
   })
   assert.deepEqual(started, [{ kind: 'http', url: 'https://mcp.notion.com/mcp', headers: { Authorization: 'Bearer secret-key-123' } }])
