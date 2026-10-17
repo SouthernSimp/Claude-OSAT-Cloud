@@ -682,7 +682,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   `get_meetings` per new meeting), `granolaMeetings` / `granolaMeeting` / `granolaSteps` read the tags and the summary's
   Next steps (code only; ponytail: an AI pass for summaries without that heading), and each step becomes a To-do sticky
   (source `Granola`, a link to notes.granola.ai). `granola.json` keeps `on`, `since`, `seen` (ids, the last 500) and the
-  last batch for Take them back. First look: two days back. Meetings' `GranolaCard` shows it (`meeting:granola*`).
+  last batch for Take them back. First look: a week back. Meetings' `GranolaCard` shows it (`meeting:granola*`).
 
 ## Architecture added in Phase 57
 
