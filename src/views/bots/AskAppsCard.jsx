@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ArrowCounterClockwise, ArrowsClockwise, Check, DownloadSimple, LockSimple, Plus, PuzzlePiece, SignIn } from '@phosphor-icons/react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowCounterClockwise, ArrowsClockwise, CaretRight, Check, DownloadSimple, LockSimple, Plus, PuzzlePiece, SignIn, X } from '@phosphor-icons/react'
 
 import { cleanError } from '../../assistant/useAi.js'
 import { formatRelativeTime } from '../../lib/ui.js'
@@ -18,16 +18,23 @@ export function AskAppsCard({ apps = [], offline = false }) {
   const bridge = typeof window === 'undefined' ? null : window.osatAskApps
   const [message, setMessage] = useState(null)
   const [busy, setBusy] = useState(false)
-  const [showing, setShowing] = useState(null) // the app whose list of things shows
+  const [showing, setShowing] = useState(null) // the app whose details show
+  const [adding, setAdding] = useState(false)
+  const connectButton = useRef(null)
+  const picker = useRef(null)
   const [removed, setRemoved] = useState(null) // { name }, for Undo
   const [form, setForm] = useState(null) // { kind, name, url, key, command } while adding
   const [offers, setOffers] = useState(null) // what Claude Desktop has, while importing
   const [picked, setPicked] = useState(() => new Set())
   const [signing, setSigning] = useState('') // the app's name while its sign-in page is open in the browser
+  useEffect(() => { if (adding) picker.current?.focus() }, [adding])
   if (!bridge) return null
+
+  const closeAdd = () => { setAdding(false); setForm(null); setOffers(null); connectButton.current?.focus() }
 
   const act = async (work, done) => {
     setBusy(true)
+    setMessage(null)
     try {
       const result = await work()
       setMessage(typeof done === 'function' ? done(result) : done ? { ok: true, text: done } : null)
@@ -48,7 +55,7 @@ export function AskAppsCard({ apps = [], offline = false }) {
     const row = await act(() => bridge.add(input), (made) => (made.error
       ? { ok: false, text: `${made.name} was added. ${made.error}` }
       : { ok: true, text: made.tools === null ? `${made.name} was added.` : `${made.name} was added. ${things(made.tools)}.` }))
-    if (row) setForm(null)
+    if (row) { setForm(null); setAdding(false); connectButton.current?.focus() }
   }
 
   const startImport = async () => {
@@ -67,24 +74,32 @@ export function AskAppsCard({ apps = [], offline = false }) {
         ? { ok: false, text: `${came}${skipped.map((item) => `${item.name}: ${item.why}`).join(' ')}` }
         : { ok: true, text: `${came}Each stays off until you turn it on.` }
     })
-    if (result) setOffers(null)
+    if (result) { setOffers(null); setAdding(false); connectButton.current?.focus() }
   }
 
   const signInTo = (name, id) => {
     setSigning(name)
     return act(async () => bridge.signIn(id ?? (await bridge.add({ kind: 'http', name, url: SIGN_IN_APPS.find(([label]) => label === name)[1] })).id),
-      (row) => (row.error ? { ok: false, text: row.error } : { ok: true, text: `Signed in to ${row.name}. ${things(row.tools || 0)}.` }))
+      (row) => {
+        if (row.error) return { ok: false, text: row.error }
+        setAdding(false)
+        connectButton.current?.focus()
+        return { ok: true, text: `Signed in to ${row.name}.${row.on ? '' : ' Turn it on when you want OSAT to use it.'}` }
+      })
       .finally(() => setSigning(''))
   }
 
   const remove = (app) => act(async () => {
     await bridge.remove(app.id)
     setRemoved({ name: app.name })
+    setShowing(null)
+    connectButton.current?.focus()
   })
 
   const undo = () => act(async () => {
     await bridge.undoRemove()
     setRemoved(null)
+    connectButton.current?.focus()
   })
 
   const pick = (name) => setPicked((now) => {
@@ -95,53 +110,41 @@ export function AskAppsCard({ apps = [], offline = false }) {
   })
 
   return (
-    <section className="content-card bots-card ask-apps-card">
-      <p className="eyebrow">Apps</p>
-      <h2>Apps OSAT can use</h2>
-      <p>Ask can also read your Google Calendar, Gmail, Notion and other apps you connect here: the same ones Claude uses. Each one stays off until you turn it on.</p>
-      <p className="bots-privacy">
-        <LockSimple aria-hidden="true" />
-        When one is on, Ask can use it while you ask. Anything that changes something in that app asks you first.
-      </p>
+    <section className="ask-apps-card" onKeyDown={(event) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      if (adding) { event.preventDefault(); event.stopPropagation(); closeAdd() }
+      else if (showing) { event.preventDefault(); event.stopPropagation(); event.currentTarget.querySelector('.ask-app-open[aria-expanded="true"]')?.focus(); setShowing(null) }
+    }}>
+      <header className="connections-apps-head"><h3>Your apps</h3><button ref={connectButton} className="primary-button" type="button" aria-expanded={adding} aria-controls="connect-an-app" onClick={() => { setMessage(null); setAdding(!adding); setForm(null); setOffers(null) }}><Plus /> Connect an app</button></header>
       {offline && <p className="bots-warning" role="status">Offline: apps OSAT uses wait until you’re back online.</p>}
 
       {apps.length > 0 && (
         <ul className="ask-apps" aria-label="Apps OSAT can use">
           {apps.map((app) => (
             <li key={app.id}>
-              <PuzzlePiece aria-hidden="true" />
-              <span className="ask-app-name">
-                <b>{app.name}</b>
-                <code>{app.where}</code>
-                {app.error
-                  ? <small className="ask-app-error">{app.error}</small>
-                  : app.tools === null
-                    ? <small>{app.on ? 'Not checked yet.' : 'Off. Turn it on to see what it can do.'}</small>
-                    : (
-                      <span className="ask-app-meta">
-                        <button className="text-button ask-app-count" type="button" aria-expanded={showing === app.id} onClick={() => setShowing(showing === app.id ? null : app.id)}>
-                          {app.tools ? things(app.tools) : 'Nothing it can do yet'}
-                        </button>
-                        {app.checkedAt && <small>· checked {formatRelativeTime(app.checkedAt)}</small>}
-                      </span>
-                    )}
-              </span>
+              <button type="button" className="ask-app-open" aria-expanded={showing === app.id} aria-controls={`app-details-${app.id}`} onClick={() => setShowing(showing === app.id ? null : app.id)}>
+                <PuzzlePiece aria-hidden="true" />
+                <span className="ask-app-name"><b>{app.name}</b><small>{app.error ? 'Needs attention' : !app.on ? 'Off' : offline ? 'Paused while offline' : app.tools === null ? 'Not checked yet' : 'On'}</small></span>
+                <CaretRight aria-hidden="true" />
+              </button>
               <Switch checked={app.on} disabled={busy} label={`Let Ask use ${app.name}`} onChange={(on) => act(() => bridge.toggle(app.id, on))} />
-              <span className="ask-app-actions">
-                <button className="text-button" type="button" disabled={busy || offline || !app.on} onClick={() => act(() => bridge.check(app.id))}><ArrowsClockwise /> Check</button>
-                {app.signIn && <button className="text-button" type="button" disabled={busy || offline} onClick={() => signInTo(app.name, app.id)}><SignIn /> {app.signedIn ? 'Sign in again' : 'Sign in'}</button>}
-                <button className="text-button" type="button" disabled={busy} onClick={() => remove(app)}>Remove</button>
-              </span>
-              {showing === app.id && app.toolNames?.length > 0 && (
-                <ul className="ask-app-tools" aria-label={`What ${app.name} can do`}>
-                  {app.toolNames.map((name) => <li key={name}>{name}</li>)}
-                </ul>
-              )}
+              {showing === app.id && <div className="ask-app-detail" id={`app-details-${app.id}`}>
+                {app.error && <p className="bots-warning" role="status">{app.error}</p>}
+                <code>{app.where}</code>
+                <p>{app.tools === null ? 'Turn it on and check the connection to see what OSAT can use.' : things(app.tools)}{app.checkedAt && ` · checked ${formatRelativeTime(app.checkedAt)}`}</p>
+                {app.toolNames?.length > 0 && <details className="ask-app-capabilities"><summary>What OSAT can use</summary><ul className="ask-app-tools" aria-label={`What ${app.name} can do`}>{app.toolNames.map((name) => <li key={name}>{name}</li>)}</ul></details>}
+                <div className="ask-app-actions">
+                  <button className="outline-button" type="button" disabled={busy || offline || !app.on} onClick={() => act(() => bridge.check(app.id))}><ArrowsClockwise /> Check connection</button>
+                  {app.signIn && <button className="outline-button" type="button" disabled={busy || offline} onClick={() => signInTo(app.name, app.id)}><SignIn /> {app.signedIn ? 'Sign in again' : 'Sign in'}</button>}
+                  <button className="text-button" type="button" disabled={busy} onClick={() => remove(app)}>Remove</button>
+                </div>
+              </div>}
             </li>
           ))}
         </ul>
       )}
-      {!apps.length && !form && !offers && <p className="ai-note">No apps yet. Add one, or bring over the ones Claude Desktop uses.</p>}
+      {!apps.length && <div className="connections-empty"><PuzzlePiece aria-hidden="true" /><b>Your apps, working together.</b><p>Connect an app to get started. You can turn it off here.</p></div>}
+      <p className="connections-privacy"><LockSimple aria-hidden="true" />Changes in another app ask you first.</p>
       {removed && (
         <p className="bots-message ask-apps-removed" role="status">
           <Check /> {removed.name} was removed.
@@ -149,10 +152,20 @@ export function AskAppsCard({ apps = [], offline = false }) {
         </p>
       )}
 
-      {form && (
+      {adding && <div ref={picker} tabIndex={-1} role="region" className="ask-apps-picker" id="connect-an-app" aria-label="Connect an app">
+        <header><h3>Connect an app</h3><button type="button" className="icon-button" aria-label="Close Connect an app" onClick={closeAdd}><X /></button></header>
+        {!form && !offers && <>
+          <div className="ask-apps-presets">{SIGN_IN_APPS.map(([name, url]) => {
+            const existing = apps.find((app) => app.where === url)
+            return <div key={name}><PuzzlePiece aria-hidden="true" /><span><b>{name}</b><small>{name === 'Granola' ? 'Meeting notes and follow-ups' : 'Pages and notes'}</small></span><button className="outline-button" type="button" disabled={busy || offline || Boolean(existing)} onClick={() => signInTo(name)}>{existing ? 'Added' : 'Connect'}</button></div>
+          })}</div>
+          <p className="ai-note">Signing in connects the app and turns it on. You can turn it off here any time.</p>
+          <div className="button-row"><button className="text-button" type="button" disabled={busy} onClick={startImport}><DownloadSimple /> Import from Claude Desktop</button><button className="text-button" type="button" disabled={busy} onClick={() => setForm({ kind: 'http', name: '', url: '', key: '', command: '' })}>Use a web address or command <CaretRight /></button></div>
+        </>}
+        {form && (
         <form className="bots-connect ask-apps-form" onSubmit={add}>
           <Choice label="How OSAT reaches it" value={form.kind} options={KINDS} onChange={(kind) => setForm({ ...form, kind })} />
-          <label><span>Name</span><input value={form.name} maxLength={60} placeholder="Optional, like Notion" onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
+          <label><span>Name</span><input autoFocus value={form.name} maxLength={60} placeholder="Optional, like Notion" onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
           {form.kind === 'http' ? (
             <>
               <label><span>Address</span><input value={form.url} spellCheck={false} placeholder="https://example.com/mcp" onChange={(event) => setForm({ ...form, url: event.target.value })} /></label>
@@ -166,7 +179,7 @@ export function AskAppsCard({ apps = [], offline = false }) {
           )}
           <div className="button-row">
             <button className="primary-button" type="submit" disabled={busy || !(form.kind === 'http' ? form.url.trim() : form.command.trim())}><Plus /> {busy ? 'Adding…' : 'Add'}</button>
-            <button className="text-button" type="button" onClick={() => setForm(null)}>Cancel</button>
+            <button className="text-button" type="button" disabled={busy} onClick={() => setForm(null)}>Back</button>
           </div>
         </form>
       )}
@@ -190,20 +203,12 @@ export function AskAppsCard({ apps = [], offline = false }) {
           </ul>
           <div className="button-row">
             <button className="primary-button" type="button" disabled={busy || !picked.size} onClick={importPicked}><Plus /> Add {picked.size > 1 ? `these ${picked.size}` : 'it'}</button>
-            <button className="text-button" type="button" onClick={() => setOffers(null)}>Cancel</button>
+            <button className="text-button" type="button" disabled={busy} onClick={() => setOffers(null)}>Back</button>
           </div>
         </div>
       )}
 
-      {!form && !offers && (
-        <div className="button-row">
-          <button className="primary-button" type="button" disabled={busy} onClick={() => { setMessage(null); setForm({ kind: 'http', name: '', url: '', key: '', command: '' }) }}><Plus /> Add an app</button>
-          <button className="outline-button" type="button" disabled={busy} onClick={startImport}><DownloadSimple /> Import from Claude Desktop</button>
-          {SIGN_IN_APPS.filter(([, url]) => !apps.some((app) => app.where === url)).map(([name]) => (
-            <button key={name} className="outline-button" type="button" disabled={busy || offline} onClick={() => signInTo(name)}><SignIn /> Add {name}</button>
-          ))}
-        </div>
-      )}
+      </div>}
       {signing && <p className="bots-message" role="status">Finish signing in to {signing} in your browser. OSAT waits here.</p>}
       {message && <p className={message.ok ? 'bots-message' : 'bots-warning'} role="status">{message.ok && <Check />} {message.text}</p>}
     </section>

@@ -15,10 +15,25 @@ Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something 
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
 Merged and released as build 321: Phase 73 one window with one sidebar, Today and To do, the bar on top, Ask as a
 panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
-Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111). Next ideas, none promised: Notes' own folder column
-beside the sidebar (fold it into the sidebar?), native vibrancy for the sidebar once seen on the Mac, People (a page
-per customer: their stickies, meetings, follow-ups), an AI pass for Granola notes without a Next steps heading, and
-the remaining desk words in the AI's board map (board-context.js `boardMap` still says nodes and the Sky). Nate's
+Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111).
+
+Phase 80 is in review (draft PR #115), branch `codex/phase-80-connections`, worktree `work/osat-connections-20261017`,
+based directly on main. Nate supplied a screenshot of Connections and said the whole section needs reworking.
+The starting page now shows app names, on/off status and one Connect an app action. App details contain the address,
+checks, sign-in, tool names and Remove with Undo. The picker offers Granola/Notion, then imports and custom setup.
+Sharing OSAT and automation each have a native disclosure. Model choice and CloudCard moved to AI; its key form
+starts closed. Cloud error directions now point to AI. Existing bridge handlers, Keychain storage, approval gates,
+offline rules and connector permissions are unchanged. OAuth sign-in already enables the app in the backend; the
+picker says so. Imports/custom additions stay off. Local AI privacy copy no longer claims other apps are offline.
+Code-only validation: all 993 unit tests and production build pass. The new isolated browser test covers toggles,
+checks, sign-in, removal/Undo, custom setup, selected imports, read-only sharing, offline state, focus and AI keys;
+it is added to CI, never run locally. No native/installed app or real account changes. Nate reviews before merging.
+
+Other independent drafts: Phase 77 Ask (#112), Phase 78 simpler Notes (#113), Phase 79 board overview (#114, primary
+checkout). This branch does not include them; combine their changelog, roadmap and checkpoint changes on merge.
+
+Next ideas, none promised: native vibrancy for the sidebar once seen on the Mac, People (a page
+per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading. Nate's
 answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install,
 sell as a done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
