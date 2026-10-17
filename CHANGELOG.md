@@ -4,6 +4,12 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
+## Next build · October 17, 2026 — A clearer view of your work
+
+- **Today brings your work together:** your boards with their real progress, recently edited notes, your day at a
+  glance and shortcuts to Mail, Meetings and Files. Open a board or note straight from Today. Calendar entries
+  open the calendar; dated stickies open their note. To-dos still tick off with Undo; habits, goals and money stay. (PR pending)
+
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 
 - **One window, one sidebar,** the way Apple's own apps work: Today, Just in, Calendar and To do at the top, your

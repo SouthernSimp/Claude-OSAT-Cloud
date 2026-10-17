@@ -19,6 +19,14 @@ link back to the meeting.
 Phase 75 (merged, build 321): Goals. The few big things, each moving with a board (its to-dos done) or a habit (its days kept
 this week), on a page of their own under Life and as a card on Today.
 
+Phase 81 (in review, PR pending): Today as a business dashboard. Nate supplied Jack Roberts' Agentic OS video
+(https://www.youtube.com/watch?v=xpfuSPG71XI), asking for its visual design and functionality without the Jev
+integration. First part: a calm daily overview, boards with the same steps/progress as their Board view, recent
+work, mail/meetings/files shortcuts and calendar/note links. Existing to-do Undo, habits, goals and money stay.
+The video also demonstrates voice routing, inbox classification, invoice review and image search by meaning;
+those need separate working flows and are not implemented by this first dashboard phase. See
+docs/DASHBOARD-20261017.md for the source review and remaining scope.
+
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
 Nate: the canvas is hard to read and sorting is still the chore. The plan (docs/REWORK-20261015.md, with a mockup
@@ -210,6 +218,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 74 | Follow-ups from meetings: each thing promised in a meeting OSAT wrote up becomes a To-do sticky in Just in, linked to the write-up; Granola's meetings too (its Next steps, read once an hour once Granola is connected; Meetings has the switch, Look now, Take them back) | Merged (PR #109), Oct 17 |
 | 75 | Goals: Life → Goals and a card on Today; each goal moves with a board (its to-dos done) or a habit (its days kept this week), or is ticked off; Undo on Mark done and Delete (schema 15) | Merged (PR #110), Oct 17 |
 | 76 | Polish, first part: rooms settle in when you move between them, the welcome leads with what OSAT does, cards say where a sticky came from in today's words, the desk's leftover dock, places and widgets go | Merged (PR #111), Oct 17 |
+| 81 | Today as a business dashboard: boards with real progress, recent work, daily overview and business shortcuts; calendar and note links; existing habits, goals, money and Undo | In review (PR pending) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

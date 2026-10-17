@@ -22,6 +22,15 @@ the remaining desk words in the AI's board map (board-context.js `boardMap` stil
 answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install,
 sell as a done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
+Phase 81 is in review (PR pending), branch `codex/phase-81-business-dashboard`, worktree
+`work/osat-dashboard-20261017`, based directly on main. Nate asked for the design and functions shown in Jack
+Roberts' Agentic OS video, without Jev. First part adds a quiet daily overview, real board progress (same Board
+steps, including branches), recent notes and business shortcuts to Today. Agenda items now open their calendar
+or note. No schema changes, external AI calls or new account access. All 995 unit tests and production build pass;
+new browser actions/screenshots run only in CI. `design-qa.md` tracks visual review. The source review and remaining
+video workflows are in docs/DASHBOARD-20261017.md. Independent drafts #112 Ask, #113 Notes, #114 board overview,
+#115 Connections remain separate; combine their docs at merge. No merge/install/native testing authorized.
+
 ## Working with Nate
 
 - Nate is new to git and GitHub. Claude runs the repo: one branch and one draft pull
