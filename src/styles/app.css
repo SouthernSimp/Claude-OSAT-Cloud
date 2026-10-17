@@ -40,6 +40,11 @@
 .app-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .app-room { flex: 1 1 auto; min-height: 0; position: relative; }
 .app-room.popout-body { background: transparent; border-radius: 0; }
+/* Moving to another room: it settles in, quickly. Not the Web or the Terminal: their native page is placed by
+   measuring the room, which would be caught mid-move. */
+.app-room:not([data-view="Browser"], [data-view="Terminal"]) > * { animation: room-in 220ms var(--ease-out) both; }
+@keyframes room-in { from { opacity: 0; translate: 0 6px; } }
+@media (prefers-reduced-motion: reduce) { .app-room > * { animation: none; } }
 /* The boards fill the room: the sidebar holds the list of them. */
 .app-room .boards { grid-template-columns: minmax(0, 1fr); background: transparent; }
 
@@ -130,6 +135,7 @@
   text-align: left;
   color: var(--ink);
 }
+.side-row { transition: background var(--d-fast) var(--ease-out); }
 .side-row:hover { background: var(--side-hover); }
 .side-row[aria-current="page"] { background: var(--side-pick); }
 .side-row > svg { flex: none; width: 17px; height: 17px; color: var(--accent); }

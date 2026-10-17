@@ -365,20 +365,13 @@ contextBridge.exposeInMainWorld('osatMacCalendar', Object.freeze({
   setReminderDone: (id, done) => ipcRenderer.invoke('maccal:reminder-done', id, done),
 }))
 
-/* The desk (⌥Space): put it away, the shortcuts, the app launchers, where things sit
-   on it, Spotify, and the frosting behind it. */
+/* OSAT's window (⌥Space): put it away, the shortcuts, and Spotify. */
 contextBridge.exposeInMainWorld('osatDesk', Object.freeze({
   hide: () => ipcRenderer.send('desk:hide'),
   prefs: () => ipcRenderer.invoke('desk:prefs'),
   keys: () => ipcRenderer.invoke('desk:keys'),
-  // which: 'layer' (⌥Space, the desk) or 'search' (⌥⇧Space, the one bar: Search or Ask).
+  // which: 'layer' (⌥Space, the window) or 'search' (⌥⇧Space, the one bar: Search or Ask).
   setHotkey: (value, which = 'layer') => ipcRenderer.invoke('desk:set-hotkey', value, which),
-  addLauncher: () => ipcRenderer.invoke('desk:add-launcher'),
-  removeLauncher: (appPath) => ipcRenderer.invoke('desk:remove-launcher', appPath),
-  launch: (appPath) => ipcRenderer.invoke('desk:launch', appPath),
-  place: (id, spot) => ipcRenderer.invoke('desk:place', id, spot),
-  tidy: () => ipcRenderer.invoke('desk:tidy'),
-  setWidgets: (list) => ipcRenderer.invoke('desk:widgets', list),
   nowPlaying: () => ipcRenderer.invoke('media:now'),
   media: (action) => ipcRenderer.invoke('media:control', action),
   seek: (seconds) => ipcRenderer.invoke('media:seek', seconds),
