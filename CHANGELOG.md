@@ -8,7 +8,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 
 - **Today brings your work together:** your boards with their real progress, recently edited notes, your day at a
   glance and shortcuts to Mail, Meetings and Files. Open a board or note straight from Today. Calendar entries
-  open the calendar; dated stickies open their note. To-dos still tick off with Undo; habits, goals and money stay. (PR pending)
+  open the calendar; dated stickies open their note. To-dos still tick off with Undo; habits, goals and money stay. (#116)
 
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 

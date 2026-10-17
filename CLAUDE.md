@@ -22,7 +22,7 @@ the remaining desk words in the AI's board map (board-context.js `boardMap` stil
 answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install,
 sell as a done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
-Phase 81 is in review (PR pending), branch `codex/phase-81-business-dashboard`, worktree
+Phase 81 is in review (#116), branch `codex/phase-81-business-dashboard`, worktree
 `work/osat-dashboard-20261017`, based directly on main. Nate asked for the design and functions shown in Jack
 Roberts' Agentic OS video, without Jev. First part adds a quiet daily overview, real board progress (same Board
 steps, including branches), recent notes and business shortcuts to Today. Agenda items now open their calendar
