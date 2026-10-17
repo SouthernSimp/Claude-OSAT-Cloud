@@ -114,13 +114,16 @@ test('a meeting is heard, written up, and the sound is deleted', async () => {
   assert.equal(log.killed, 1)
   // The write-up lands in Unsorted; the transcript is a plain note beside it, and each links to the other.
   assert.equal(log.notes.length, 1)
-  const [writeUp, transcript] = log.notes[0]
+  const [writeUp, transcript, todo] = log.notes[0]
   assert.equal(writeUp.title, 'Launch date · Oct 13')
   assert.equal(writeUp.unsorted, true)
   assert.match(writeUp.markdown, /- \[ \] Me: Write the rollout plan \(Friday\)/)
   assert.match(writeUp.markdown, /\[\[Launch date · Oct 13 · Transcript\]\]/)
   assert.equal(transcript.unsorted, false)
   assert.match(transcript.markdown, /\[0:00\] Me: Thanks for joining everyone\.\n\n\[0:03\] Them: Nov 12 works for us\./)
+  // What was promised is a to-do of its own in Just in, linked to the write-up (Phase 74).
+  assert.deepEqual({ title: todo.title, what: todo.what, unsorted: todo.unsorted }, { title: 'Write the rollout plan (Friday)', what: 'todo', unsorted: true })
+  assert.match(todo.markdown, /From \[\[Launch date · Oct 13\]\]/)
   // The AI was asked for notes, then for a name; both with a grammar, and it was told the speakers.
   assert.deepEqual(log.chats.map((c) => Object.keys(c.schema.properties)[0]), ['summary', 'title'])
   // Nothing of the sound is left, and the notes are told to Nate.
@@ -132,16 +135,16 @@ test('a meeting is heard, written up, and the sound is deleted', async () => {
   assert.equal(status.last.full, true)
   assert.equal(status.problem, '')
   assert.deepEqual(status.unfinished, [])
-  assert.deepEqual(JSON.parse(await readFile(path.join(dataDir, 'meetings.json'), 'utf8')).last.ids, ['note-1-0', 'note-1-1'])
+  assert.deepEqual(JSON.parse(await readFile(path.join(dataDir, 'meetings.json'), 'utf8')).last.ids, ['note-1-0', 'note-1-1', 'note-1-2'])
 })
 
-test('Undo takes the two notes back out', async () => {
+test('Undo takes the notes back out, the to-dos too', async () => {
   const { meetings, log, idle } = await setup()
   await meetings.start()
   await meetings.stop()
   await idle()
   const status = await meetings.undo()
-  assert.deepEqual(log.removed, [['note-1-0', 'note-1-1']])
+  assert.deepEqual(log.removed, [['note-1-0', 'note-1-1', 'note-1-2']])
   assert.equal(status.last, null)
   await assert.rejects(meetings.undo(), /nothing to undo/)
 })

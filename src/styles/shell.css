@@ -1,4 +1,4 @@
-/* The frame rooms scroll in. */
+/* The frame rooms scroll in. Its defaults weigh nothing (:where), so a room's own padding wins. */
 
 .workspace-content {
   min-width: 0;
@@ -6,6 +6,6 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.workspace-content > * { max-width: var(--content-max); margin-inline: auto; padding: 32px var(--gutter) 64px; }
+:where(.workspace-content) > * { max-width: var(--content-max); margin-inline: auto; padding: 32px var(--gutter) 64px; }
 .workspace-content.is-filled { overflow: hidden; }
-.workspace-content.is-filled > * { height: 100%; max-width: none; padding: 0; }
+:where(.workspace-content.is-filled) > * { height: 100%; max-width: none; padding: 0; }

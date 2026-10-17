@@ -3,6 +3,7 @@ import { CircleNotch, DownloadSimple, Microphone, Stop, Warning } from '@phospho
 
 import { cleanError } from '../assistant/useAi.js'
 import { clock, durationWords } from '../../shared/meeting-model.mjs'
+import { Switch } from './settings/parts.jsx'
 import '../styles/meetings.css'
 
 const SYSTEM_KEY = 'osat.meetings.system.v1'
@@ -11,9 +12,10 @@ const keepSystem = (on) => { try { localStorage.setItem(SYSTEM_KEY, on ? 'yes' :
 const when = (ms) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(ms)
 const megabytes = (bytes) => `${Math.round(bytes / 1e6)} MB`
 
-/* Tools → Meetings (Phase 57, desktop/meetings/): OSAT listens to a meeting on this Mac and, when you stop,
-   writes it up: a summary, what was decided, a to-do list, and the words themselves, as two notes. The
-   write-up arrives in Unsorted. Only in the Mac app; the sound is deleted once it is written up. */
+/* Meetings (Phase 57, desktop/meetings/): OSAT listens to a meeting on this Mac and, when you stop, writes it up: a
+   summary, what was decided, a to-do list, and the words themselves, as two notes, and each thing promised as a
+   to-do (Phase 74). They arrive in Just in. Only in the Mac app; the sound is deleted once it is written up. Below,
+   to-dos from Granola's meetings (desktop/meetings/granola.cjs). */
 export function MeetingsView(room) {
   const bridge = window.osatMeetings
   if (!bridge) return <p className="pop-gone">Meetings listen through OSAT on your Mac.</p>
@@ -123,12 +125,48 @@ function MeetingsRoom({ bridge, navigate }) {
         <section className="mt-card">
           <div>
             <strong>{status.last.title}</strong>
-            <small>{status.last.full ? 'Written up. It is in Just in, with the words beside it.' : 'The words are saved in Just in. They are not summarised: no AI was set up.'}</small>
+            <small>{status.last.full ? 'Written up. It is in Just in, with the words beside it, and each thing promised is a to-do.' : 'The words are saved in Just in. They are not summarised: no AI was set up.'}</small>
           </div>
           <button type="button" className="primary-button" onClick={() => navigate('Notes', { noteId: status.last.writeUpId })}>Open</button>
           <button type="button" className="outline-button" disabled={busy} onClick={() => run(bridge.undo)}>Undo</button>
         </section>
       )}
+
+      {bridge.granola && <GranolaCard bridge={bridge} navigate={navigate} />}
     </div>
+  )
+}
+
+const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+
+/* To-dos from Granola (Phase 74): once Granola is connected, what its notes list under Next steps comes into Just in as
+   to-dos, once an hour. One switch, what the last look brought, Look now, and Take them back for that batch. */
+function GranolaCard({ bridge, navigate }) {
+  const [state, setState] = useState(null)
+  const [problem, setProblem] = useState('')
+  useEffect(() => {
+    bridge.granola().then(setState, () => {})
+    return bridge.onGranola(setState)
+  }, [bridge])
+  if (!state) return null
+  const act = (work) => { setProblem(''); work().then(setState, (error) => setProblem(cleanError(error))) }
+  const line = !state.on
+    ? 'Off. Turn it on and the next steps from your Granola meetings come into Just in as to-dos.'
+    : state.connected === false ? 'Connect Granola in Settings → Connections, and its next steps come into Just in as to-dos.'
+      : state.busy ? 'Looking at your Granola meetings…'
+        : problem || state.problem || (state.last?.count
+          ? `${plural(state.last.count, 'to-do')} from ${plural(state.last.meetings, 'meeting')}, ${when(state.last.at)}. Each hour, new meetings’ next steps come in.`
+          : 'Each hour, the next steps from your new Granola meetings come into Just in as to-dos.')
+  return (
+    <section className="mt-card" aria-label="To-dos from Granola">
+      <div>
+        <strong>To-dos from Granola</strong>
+        <small>{line}</small>
+      </div>
+      {state.on && state.connected === false && <button type="button" className="outline-button" onClick={() => navigate('Settings', { section: 'bots' })}>Connections</button>}
+      {state.on && state.connected !== false && <button type="button" className="outline-button" disabled={state.busy} onClick={() => act(bridge.granolaNow)}>Look now</button>}
+      {state.on && state.last?.undo && <button type="button" className="outline-button" disabled={state.busy} onClick={() => act(bridge.undoGranola)}>Take them back</button>}
+      <Switch label="To-dos from Granola" checked={state.on} onChange={(on) => act(() => bridge.setGranola(on))} />
+    </section>
   )
 }

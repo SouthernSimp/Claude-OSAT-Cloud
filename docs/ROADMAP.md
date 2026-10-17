@@ -10,7 +10,11 @@ that answers “what do I need to do?”, one bar on top of every screen, Ask as
 (Granola and OSAT’s own), Goals, and a polish pass.
 
 Phase 73 (in review): one window, one sidebar, Today and To do. The desk, its widgets, the dock, the Tools grid and the
-floating windows are gone (about 4,000 lines); every room opens beside the sidebar.
+floating windows are gone (about 3,400 lines); every room opens beside the sidebar.
+
+Phase 74 (in review): what you promise becomes a to-do. A meeting OSAT writes up makes a to-do for each thing promised;
+Granola's meetings do too, read once an hour from its Next steps. They land in Just in, show on Today and To do, and
+link back to the meeting.
 
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
@@ -200,6 +204,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 70 | Soul and memory (Settings → Soul and memory): SOUL.md, who OSAT is and how it talks, starts as OSAT's own and is yours to change; MEMORY.md, one line each with where it came from and Forget (with Undo), starts from About you; Ask reads both before every answer and filing reads the memory; RULES.md is File new stickies and Put dates on your calendar, each On its own or Ask me. Kept in your workspace, not as files on disk; OSAT doesn't add to its memory by itself yet | Merged (PR #106) |
 | 71 | Connections, the small version first: Settings → Bots is Settings → Connections, with the one Offline switch at the top (the same as the line's, ⇧⌘U and the menu-bar icon), then the AI that answers, cloud models and the apps Ask can use, then the ways bots reach OSAT. Apps whose own servers sign in in the browser (OAuth with PKCE, as MCP describes it) now can: Add Granola and Add Notion are one tap, any other app at a web address has Sign in; the tokens stay in the Keychain and refresh before they run out. Slack's own server needs OSAT registered with Slack first; the mockup's tiles wait | Merged (PR #107) |
 | 73 | One window and Today: a Mac window with one sidebar (Today, Just in, Calendar, To do; your boards; Business, Life, Library; the power tools folded), Today as the first screen (to-dos, the day, Just in, habits, money), a To do list, one bar on top of every room, Ask as a panel. The desk, dock, widgets and floating windows go | In review |
+| 74 | Follow-ups from meetings: each thing promised in a meeting OSAT wrote up becomes a To-do sticky in Just in, linked to the write-up; Granola's meetings too (its Next steps, read once an hour once Granola is connected; Meetings has the switch, Look now, Take them back) | In review |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

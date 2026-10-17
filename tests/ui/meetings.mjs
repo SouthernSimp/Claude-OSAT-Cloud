@@ -1,6 +1,7 @@
 // Tools → Meetings (Phase 57) in the built preview, with the Mac's listening bridge faked: get the listening model,
 // start, the clock and the Mac-sound note, stop, the "writing it up" wait, the finished notes with Open and Undo,
-// and a meeting that was never written up. Light, then dark. Fails on page errors or a step that didn't happen;
+// a meeting that was never written up, and To-dos from Granola (Phase 74: Look now, Take them back, the switch).
+// Light, then dark. Fails on page errors or a step that didn't happen;
 // screenshots land in test-results/ui/meetings/. Run `npm run build` first.
 import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
@@ -30,7 +31,16 @@ function fakeMeetings() {
     discard: async (id) => { window.__calls.push(`discard ${id}`); return set({ unfinished: [] }) },
     undo: async () => { window.__calls.push('undo'); return set({ last: null }) },
     onChange: (listener) => { listeners.add(listener); return () => listeners.delete(listener) },
+    // To-dos from Granola: connected, and the last look brought three from two meetings.
+    granola: async () => granola,
+    setGranola: async (on) => { window.__calls.push(`granola ${on}`); return setGranola({ on }) },
+    granolaNow: async () => { window.__calls.push('granola now'); return setGranola({ last: { at: Date.now(), count: 1, meetings: 1, undo: true } }) },
+    undoGranola: async () => { window.__calls.push('granola undo'); return setGranola({ last: { ...granola.last, count: 0, undo: false } }) },
+    onGranola: (listener) => { granolaListeners.add(listener); return () => granolaListeners.delete(listener) },
   }
+  const granolaListeners = new Set()
+  let granola = { on: true, connected: true, busy: false, problem: '', last: { at: Date.now() - 3600000, count: 3, meetings: 2, undo: true } }
+  const setGranola = (patch) => { granola = { ...granola, ...patch }; for (const listener of granolaListeners) listener(granola); return granola }
 }
 
 let server
@@ -96,8 +106,18 @@ async function main() {
     await page.getByText('Launch date and owners · Oct 13').waitFor({ timeout: 3000 }).catch(() => problems.push(`${theme}: the finished meeting didn’t show`))
     check(await page.getByText('A meeting that was not written up').count() === 1, `${theme}: the unfinished meeting didn’t show`)
     check(await page.getByText('25 minutes heard').count() === 1, `${theme}: the unfinished meeting didn’t say how much was heard`)
+    const granola = page.getByRole('region', { name: 'To-dos from Granola' })
+    check((await granola.innerText().catch(() => '')).includes('3 to-dos from 2 meetings'), `${theme}: To-dos from Granola didn’t say what the last look brought`)
     await page.screenshot({ path: `${OUT}/${theme}-6-done.png` })
     if (theme === 'dark') { await page.close(); continue }
+
+    await granola.getByRole('button', { name: 'Take them back' }).click()
+    check((await page.evaluate(() => window.__calls)).includes('granola undo'), 'Take them back didn’t ask the Mac')
+    await granola.getByRole('button', { name: 'Look now' }).click()
+    await granola.getByText('1 to-do from 1 meeting').waitFor({ timeout: 3000 }).catch(() => problems.push('Look now didn’t show what it brought'))
+    await granola.getByRole('switch', { name: 'To-dos from Granola' }).click()
+    await granola.getByText(/^Off\./).waitFor({ timeout: 3000 }).catch(() => problems.push('turning To-dos from Granola off didn’t say so'))
+    check(await granola.getByRole('button', { name: 'Look now' }).count() === 0, 'Look now stayed while it was off')
 
     await page.getByRole('button', { name: 'Write it up' }).click()
     check((await page.evaluate(() => window.__calls)).includes('finish 2026-10-12-abcd1234'), 'Write it up didn’t finish that meeting')

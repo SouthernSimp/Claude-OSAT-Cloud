@@ -216,7 +216,8 @@ async function createMeetings({
       let made
       if (notes) {
         const { writeUp: up, transcript } = model.meetingNotes({ ...common, notes })
-        made = [{ ...up, unsorted: true }, { ...transcript, unsorted: false }]
+        // What was promised: a To-do sticky each, in Just in, linked to the write-up (Phase 74). Undo takes all back.
+        made = [{ ...up, unsorted: true }, { ...transcript, unsorted: false }, ...model.followUps(notes.actions, { from: `From [[${up.title}]]` })]
       } else {
         made = [{ ...model.transcriptOnly(common), unsorted: true }]
       }

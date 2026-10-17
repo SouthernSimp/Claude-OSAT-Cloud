@@ -23,6 +23,13 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   and blur were for the desk). (#108)
 - Fixes: a board opened from Coming next shows as a Board from its first moment, and only one Undo line shows at a
   time. (#108)
+- **Meetings make to-dos:** each thing promised in a meeting OSAT wrote up is a to-do of its own in Just in, linked
+  to the write-up (Undo takes them back with it). Someone else’s reads as waiting on them: “Sam: send the price
+  list”. (#109)
+- **To-dos from Granola:** once Granola is connected, OSAT looks once an hour for new meetings and brings each
+  one’s Next steps into Just in as to-dos, with a link back to the meeting. Meetings has the switch, Look now and
+  Take them back. Nothing is written to Granola. (#109)
+- Rooms keep their own margins inside the window again, and the on/off switch looks the same everywhere. (#109)
 
 ## Build 299 · October 16, 2026 — Connections, Soul and memory, Granola sign-in
 
