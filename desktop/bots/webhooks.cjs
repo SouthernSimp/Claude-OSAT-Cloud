@@ -1,4 +1,4 @@
-/* Webhooks (Phase 46, Settings → Bots), off until Nate adds an address or turns the inbox on.
+/* Webhooks (Phase 46, Settings → Connections), off until Nate adds an address or turns the inbox on.
      out   each moment he ticked (a sticky added or filed, a topic added, the journal written) is
            sent as JSON to the addresses he gave, one after another, through the main process's
            fetch (so Offline holds it). Offline, up to 100 wait (kept in webhooks-waiting.json beside

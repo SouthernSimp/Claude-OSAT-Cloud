@@ -85,7 +85,7 @@ test('add a web address with a key: on at once, checked, and the key is only in 
   const { apps, keychain, started, onDisk } = await setup()
   const row = await apps.add({ kind: 'http', url: 'https://mcp.notion.com/mcp', header: 'secret-key-123' })
   assert.deepEqual(row, {
-    id: 'app1', name: 'notion.com', kind: 'http', on: true, where: 'https://mcp.notion.com/mcp', withKey: true, from: '',
+    id: 'app1', name: 'notion.com', kind: 'http', on: true, where: 'https://mcp.notion.com/mcp', withKey: true, signIn: false, signedIn: false, from: '',
     tools: 2, toolNames: ['list_events', 'create_event'], error: '', checkedAt: '2026-10-08T10:00:00.000Z',
   })
   assert.deepEqual(started, [{ kind: 'http', url: 'https://mcp.notion.com/mcp', headers: { Authorization: 'Bearer secret-key-123' } }])
@@ -155,7 +155,7 @@ test('no Claude Desktop settings: said plainly', async () => {
 test('on, off, remove and Undo; a call to an app that is off says so', async () => {
   const { apps, keychain, closed, onDisk } = await setup({ claude: CLAUDE })
   await apps.importClaude(['notion', 'calendar'])
-  await assert.rejects(apps.call('app1', 'list_events', {}), /notion is off\. Turn it on in Settings → Bots first/)
+  await assert.rejects(apps.call('app1', 'list_events', {}), /notion is off\. Turn it on in Settings → Connections first/)
   assert.equal((await apps.toggle('app1', true)).tools, 2)
   assert.deepEqual(await apps.call('app1', 'list_events', { day: 'today' }), { text: 'list_events {"day":"today"}', isError: false })
   assert.deepEqual(apps.running(), ['app1'])

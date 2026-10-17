@@ -695,7 +695,7 @@ try {
       .catch(() => problems.push('a relaunch offline did not say so on the line'))
     // 10. The drop folder is on this Mac, so it works offline too.
     const nodesDir = path.join(home, 'OSAT Nodes')
-    check((await main.evaluate(() => window.osatBots.status())).nodes?.dir === nodesDir, 'Settings → Bots did not show the drop folder')
+    check((await main.evaluate(() => window.osatBots.status())).nodes?.dir === nodesDir, 'Settings → Connections did not show the drop folder')
     const nodeFile = path.join(nodesDir, 'Garden.md')
     await writeFile(nodeFile, '---\nsource: Muse\n---\n# Garden from Muse\nWhat grows where.\n')
     const settled = new Date(Date.now() - 60_000)

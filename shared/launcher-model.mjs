@@ -365,13 +365,13 @@ export function botJob(text) {
   return match?.[1].trim() ? { job: match[1].trim().slice(0, 2000) } : null
 }
 
-/* Bots that can take a job register here: { id, name, run(job) }. Today none can (Settings → Bots
+/* Bots that can take a job register here: { id, name, run(job) }. Today none can (Settings → Connections
    holds the drop folder, cloud models and the connector, which bring things in), so a job is
    never sent anywhere, and the words say so plainly. The seam is here so a later phase only has to
    register its bots. */
 export function handOff(job, takers = []) {
   const taker = takers.find((item) => typeof item?.run === 'function')
-  if (!taker) return { ok: false, message: 'No bot takes jobs yet. Bots that can are planned; Settings → Bots shows what is connected today.' }
+  if (!taker) return { ok: false, message: 'No bot takes jobs yet. Bots that can are planned; Settings → Connections shows what is connected today.' }
   return { ok: true, taker, run: () => taker.run(job) }
 }
 

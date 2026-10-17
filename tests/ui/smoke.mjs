@@ -416,7 +416,7 @@ async function main() {
   await page.screenshot({ path: `${OUT}/settings-mouse.png` })
   await page.getByRole('switch', { name: 'Use these mouse changes' }).uncheck()
   await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.mouse.on === false && value.mouse.speed === 2), null, { timeout: 3000 }).catch(() => problems.push('settings: switching Mouse off lost its settings'))
-  for (const name of ['General', 'Appearance', 'AI', 'Bots', 'Data', 'Scans', 'iPhone', 'About']) {
+  for (const name of ['General', 'Appearance', 'AI', 'Soul and memory', 'Connections', 'Data', 'Scans', 'iPhone', 'About']) {
     await goTo(name)
     if (!await page.locator('.settings-section .setting-head h2', { hasText: new RegExp(`^${name}$`) }).count()) problems.push(`settings: the ${name} page did not open`)
     await page.screenshot({ path: `${OUT}/settings-${name.toLowerCase()}.png` })

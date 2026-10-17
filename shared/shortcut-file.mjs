@@ -1,4 +1,4 @@
-/* Siri and Shortcuts (Phase 47): six ready-made shortcuts Nate adds from Settings → Bots.
+/* Siri and Shortcuts (Phase 47): six ready-made shortcuts Nate adds from Settings → Connections.
    Each talks to the connector's plain web API on this Mac (desktop/bots/connector.cjs):
    POST /api/add_sticky, GET /api/read_journal…, with the key in an Authorization header,
    and the answer (plain words) shown or spoken. Pure: `shortcutFile(id, { api, key })` gives

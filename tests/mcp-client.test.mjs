@@ -29,9 +29,9 @@ test('over the web: OSAT’s own connector, with its key', async () => {
     const listed = await client.tools()
     assert.deepEqual(listed.map((tool) => [tool.name, tool.annotations?.readOnlyHint]), [['search', true]], 'an app that may only look sees only what looks')
     assert.deepEqual(await client.call('search', { query: 'seeds' }), { text: 'search for Tester: seeds', isError: false })
-    assert.deepEqual(await client.call('add_sticky', { text: 'Buy seeds' }), { text: 'Tester can only read. Change that in Settings → Bots.', isError: true })
+    assert.deepEqual(await client.call('add_sticky', { text: 'Buy seeds' }), { text: 'Tester can only read. Change that in Settings → Connections.', isError: true })
     client.close()
-    await assert.rejects(connect({ kind: 'http', url, headers: { Authorization: 'Bearer wrong' } }), /turned OSAT away: it needs a key/)
+    await assert.rejects(connect({ kind: 'http', url, headers: { Authorization: 'Bearer wrong' } }), /turned OSAT away: sign in, or give it a key/)
     await assert.rejects(connect({ kind: 'http', url: `http://127.0.0.1:${port}/nothing` }), /Nothing answers at that address/)
   } finally {
     connector.stop()

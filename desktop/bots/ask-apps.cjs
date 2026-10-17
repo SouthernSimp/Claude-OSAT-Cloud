@@ -1,10 +1,11 @@
-/* Apps OSAT can use (Phase 48, Settings → Bots): the MCP servers Claude uses (Google Calendar,
+/* Apps OSAT can use (Phase 48, Settings → Connections): the MCP servers Claude uses (Google Calendar,
    Gmail, Notion…), added by Nate or imported from Claude Desktop, each one off until he turns it on.
    The list is <data folder>/ask-apps.json, written whole like bots.json. Keys and env values never
    go there or to the window: they sit in the Keychain as base64 JSON { headers, env }, cut into
    items of 400 letters ('ask-app-<id>', then 'ask-app-<id>-1', …; `parts` says how many); the file
    keeps only their names. What each app can do (its tools) is kept there too, refreshed on Check,
-   so listing them never has to start anything.
+   so listing them never has to start anything. An app at a web address can sign in instead of a key (Phase 71b,
+   mcp-signin.cjs): its tokens go in the same Keychain secret as `oauth`, refreshed a minute before they run out.
    A connection starts on first use and closes after 10 idle minutes; all close at quit and when
    OSAT goes offline (closeAll), and offline, using one says it waits. A command only ever runs
    because Nate added it, or imported and then turned it on, having seen its whole command line. */
@@ -116,6 +117,7 @@ function createAskApps({
   timers = { setTimeout, clearTimeout },
   now = () => new Date().toISOString(),
   makeId = () => randomBytes(6).toString('hex'),
+  signin = null, // { signIn(url), refreshed(saved) }: bots/index.cjs gives main's fetch and the browser
 } = {}) {
   let apps = []
   let writing = Promise.resolve()
@@ -149,6 +151,8 @@ function createAskApps({
     on: app.on,
     where: whereOf(app),
     withKey: app.secrets.length > 0,
+    signIn: app.kind === 'http' && Boolean(signin),
+    signedIn: Boolean(app.signedIn),
     from: app.from || '',
     tools: app.tools ? app.tools.length : null,
     toolNames: (app.tools || []).map((tool) => tool.name),
@@ -200,9 +204,37 @@ function createAskApps({
     // Offline may have come on, or it was closed, while the Keychain answered.
     if (offline()) throw plain(WAITS)
     signal.throwIfAborted()
+    const headers = strings(secret.headers)
+    if (secret.oauth && signin) {
+      // ponytail: refreshed only when a connection starts (they last 10 idle minutes); a token that runs out mid-way fails once, then the next use refreshes.
+      if (secret.oauth.expiresAt && secret.oauth.expiresAt - Date.now() < 60000) {
+        secret.oauth = await signin.refreshed(secret.oauth)
+        await keep(app, Buffer.from(JSON.stringify(secret)).toString('base64'))
+        await save()
+      }
+      headers.Authorization = `Bearer ${secret.oauth.access}`
+    }
     return connect(app.kind === 'command'
       ? { kind: 'command', command: app.command, args: app.args, env: strings(secret.env) }
-      : { kind: 'http', url: app.url, headers: strings(secret.headers) }, { version, signal })
+      : { kind: 'http', url: app.url, headers }, { version, signal })
+  }
+
+  /* Signs in in Nate's browser and keeps the tokens with the app's other secrets; then checks it. */
+  async function signIn(id) {
+    if (offline()) throw plain(WAITS)
+    const app = find(id)
+    if (app.kind !== 'http' || !signin) throw plain('Only an app at a web address can sign in.')
+    const oauth = await signin.signIn(app.url)
+    if (!apps.includes(app)) throw plain('That app isn’t in OSAT any more.')
+    const secret = { ...(await secretOf(app)), oauth }
+    if (!app.secrets.includes('Authorization')) app.secrets = [...app.secrets, 'Authorization']
+    await keep(app, Buffer.from(JSON.stringify(secret)).toString('base64'))
+    app.signedIn = now()
+    app.on = true
+    close(id)
+    errors.delete(id)
+    await save()
+    return check(id)
   }
 
   /* The app's connection, started on first use; each use starts its 10 idle minutes again. */
@@ -379,7 +411,7 @@ function createAskApps({
 
   async function call(id, name, args) {
     const app = find(id)
-    if (!app.on) throw plain(`${app.name} is off. Turn it on in Settings → Bots first.`)
+    if (!app.on) throw plain(`${app.name} is off. Turn it on in Settings → Connections first.`)
     const ready = use(id)
     const entry = live.get(id)
     const client = await ready
@@ -409,6 +441,7 @@ function createAskApps({
     remove,
     undoRemove,
     check,
+    signIn,
     claudeOffers,
     importClaude,
     tools,

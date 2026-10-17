@@ -6,7 +6,7 @@ import { cleanError } from '../../assistant/useAi.js'
 
 const ICONS = { add: Microphone, send: Export, write: NotePencil, read: BookOpen, find: MagnifyingGlass, ask: ChatCircle }
 
-/* Settings → Bots → Siri and Shortcuts (Phase 47): ready-made shortcuts that reach OSAT through
+/* Settings → Connections → Siri and Shortcuts (Phase 47): ready-made shortcuts that reach OSAT through
    the connector. A button has main sign one, and Shortcuts asks Nate to add it. */
 export function ShortcutsCard({ bridge, connector }) {
   const [busy, setBusy] = useState('')

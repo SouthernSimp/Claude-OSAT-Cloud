@@ -215,7 +215,7 @@ const dayWords = (date) => new Intl.DateTimeFormat('en-US', { month: 'long', day
 export function payloadFor(moment, doc, { at = new Date().toISOString() } = {}) {
   const folders = doc?.folders || []
   const send = (text, more) => ({ event: moment.event, at, text: oneLine(text, 300), content: oneLine(text, 300), ...more })
-  if (moment.event === 'test') return send('OSAT is connected. This is a test from Settings → Bots.', {})
+  if (moment.event === 'test') return send('OSAT is connected. This is a test from Settings → Connections.', {})
   if (moment.event === 'topic.added') {
     const folder = folders.find((item) => item.id === moment.id)
     return folder ? send(`New topic: ${folder.name}`, { topic: { id: folder.id, name: folder.name } }) : null

@@ -1020,7 +1020,7 @@ function registerAi() {
   })
 }
 
-/* Ask lists the model chosen in Settings → Bots first (a cloud model, while online), then
+/* Ask lists the model chosen in Settings → Connections first (a cloud model, while online), then
    the built-in model, then whatever LM Studio has loaded. The line asks the first. */
 async function answeringModels() {
   const own = [...(bots?.models() || []), ...ai.models()]
@@ -1177,7 +1177,7 @@ async function registerPhone() {
   if (phoneLive()) startPhone().catch((error) => console.error('The iPhone link could not start:', error))
 }
 
-/* ---- Bots: what Muse, Grok Bot and Claude send OSAT (desktop/bots, Settings → Bots) ---- */
+/* ---- Bots: what Muse, Grok Bot and Claude send OSAT (desktop/bots, Settings → Connections) ---- */
 
 let bots = null
 

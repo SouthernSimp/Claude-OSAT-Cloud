@@ -17,7 +17,7 @@ const NOW = '2026-09-29T10:00:00.000Z'
 const LATER = '2026-09-30T08:00:00.000Z'
 
 /* A real store in a temp folder, as in connector.test.mjs. Each change keeps its inverse the
-   way main does (applyOps before committing), so `undo` is what Settings → Bots' Undo does. */
+   way main does (applyOps before committing), so `undo` is what Settings → Connections' Undo does. */
 async function tempStore() {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'osat-connector-more-'))
   const store = await createStore({ dir, core: storeCore, writeDelay: 0, maxDelay: 0 })

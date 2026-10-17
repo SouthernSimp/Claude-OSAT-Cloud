@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowCounterClockwise, ArrowsClockwise, Check, DownloadSimple, LockSimple, Plus, PuzzlePiece } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, ArrowsClockwise, Check, DownloadSimple, LockSimple, Plus, PuzzlePiece, SignIn } from '@phosphor-icons/react'
 
 import { cleanError } from '../../assistant/useAi.js'
 import { formatRelativeTime } from '../../lib/ui.js'
@@ -8,6 +8,8 @@ import '../../styles/bots-ask-apps.css'
 
 const KINDS = [['http', 'A web address'], ['command', 'A command on this Mac']]
 const things = (count) => (count === 1 ? '1 thing it can do' : `${count} things it can do`)
+// Apps whose own servers sign in in the browser (Phase 71b): one tap adds and signs in.
+const SIGN_IN_APPS = [['Granola', 'https://mcp.granola.ai/mcp'], ['Notion', 'https://mcp.notion.com/mcp']]
 
 /* Apps OSAT can use (Phase 48): the apps Claude uses (Google Calendar, Gmail, Notion…), each off
    until Nate turns it on. Main keeps the list (desktop/bots/ask-apps.cjs); keys and a command's
@@ -21,6 +23,7 @@ export function AskAppsCard({ apps = [], offline = false }) {
   const [form, setForm] = useState(null) // { kind, name, url, key, command } while adding
   const [offers, setOffers] = useState(null) // what Claude Desktop has, while importing
   const [picked, setPicked] = useState(() => new Set())
+  const [signing, setSigning] = useState('') // the app's name while its sign-in page is open in the browser
   if (!bridge) return null
 
   const act = async (work, done) => {
@@ -65,6 +68,13 @@ export function AskAppsCard({ apps = [], offline = false }) {
         : { ok: true, text: `${came}Each stays off until you turn it on.` }
     })
     if (result) setOffers(null)
+  }
+
+  const signInTo = (name, id) => {
+    setSigning(name)
+    return act(async () => bridge.signIn(id ?? (await bridge.add({ kind: 'http', name, url: SIGN_IN_APPS.find(([label]) => label === name)[1] })).id),
+      (row) => (row.error ? { ok: false, text: row.error } : { ok: true, text: `Signed in to ${row.name}. ${things(row.tools || 0)}.` }))
+      .finally(() => setSigning(''))
   }
 
   const remove = (app) => act(async () => {
@@ -119,6 +129,7 @@ export function AskAppsCard({ apps = [], offline = false }) {
               <Switch checked={app.on} disabled={busy} label={`Let Ask use ${app.name}`} onChange={(on) => act(() => bridge.toggle(app.id, on))} />
               <span className="ask-app-actions">
                 <button className="text-button" type="button" disabled={busy || offline || !app.on} onClick={() => act(() => bridge.check(app.id))}><ArrowsClockwise /> Check</button>
+                {app.signIn && <button className="text-button" type="button" disabled={busy || offline} onClick={() => signInTo(app.name, app.id)}><SignIn /> {app.signedIn ? 'Sign in again' : 'Sign in'}</button>}
                 <button className="text-button" type="button" disabled={busy} onClick={() => remove(app)}>Remove</button>
               </span>
               {showing === app.id && app.toolNames?.length > 0 && (
@@ -188,8 +199,12 @@ export function AskAppsCard({ apps = [], offline = false }) {
         <div className="button-row">
           <button className="primary-button" type="button" disabled={busy} onClick={() => { setMessage(null); setForm({ kind: 'http', name: '', url: '', key: '', command: '' }) }}><Plus /> Add an app</button>
           <button className="outline-button" type="button" disabled={busy} onClick={startImport}><DownloadSimple /> Import from Claude Desktop</button>
+          {SIGN_IN_APPS.filter(([, url]) => !apps.some((app) => app.where === url)).map(([name]) => (
+            <button key={name} className="outline-button" type="button" disabled={busy || offline} onClick={() => signInTo(name)}><SignIn /> Add {name}</button>
+          ))}
         </div>
       )}
+      {signing && <p className="bots-message" role="status">Finish signing in to {signing} in your browser. OSAT waits here.</p>}
       {message && <p className={message.ok ? 'bots-message' : 'bots-warning'} role="status">{message.ok && <Check />} {message.text}</p>}
     </section>
   )

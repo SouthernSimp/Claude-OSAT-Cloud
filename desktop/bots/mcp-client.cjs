@@ -143,7 +143,7 @@ function unreachable(error) {
 }
 
 function refused(status) {
-  if (status === 401 || status === 403) return plain('It turned OSAT away: it needs a key, or the key isn’t right.')
+  if (status === 401 || status === 403) return plain('It turned OSAT away: sign in, or give it a key.')
   if (status === 404) return plain('Nothing answers at that address.')
   if (status === 405 || status === 406 || status === 415) return plain('That address isn’t an app OSAT can use.')
   return plain(`It answered with an error (${status}).`)

@@ -1,6 +1,6 @@
 /* The OSAT connector: a small MCP server (Model Context Protocol, over HTTP) so Claude Code,
    Claude Desktop, Grok Bot or any app that speaks MCP can find, read, add and change topics,
-   stickies, the journal and OSAT's calendar. Off until Nate turns it on in Settings → Bots, and then:
+   stickies, the journal and OSAT's calendar. Off until Nate turns it on in Settings → Connections, and then:
      - it only listens on this Mac (127.0.0.1), never on the network;
      - every request needs an app's own key (Authorization: Bearer <key>), which lives in the
        Keychain and can be reset; an app that may only read sees and runs only the tools that
@@ -40,7 +40,7 @@ function createConnector({ tools, call, appFor, version = '0' }) {
   const reads = (tool) => tool.annotations?.readOnlyHint === true
   const toolsFor = (app) => (app.access === 'write' ? tools : tools.filter(reads))
   const readOnly = (app, name) => app.access !== 'write' && !tools.some((tool) => tool.name === name && reads(tool))
-  const onlyReads = (app) => `${app.name} can only read. Change that in Settings → Bots.`
+  const onlyReads = (app) => `${app.name} can only read. Change that in Settings → Connections.`
 
   const reply = (response, status, body, headers = {}) => {
     response.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers })
@@ -121,7 +121,7 @@ function createConnector({ tools, call, appFor, version = '0' }) {
     if (url.pathname !== '/mcp' && !api) return reply(response, 404, { error: 'The connector is at /mcp, and its tools at /api/<tool>.' })
     const auth = /^Bearer\s+(.+)$/i.exec(request.headers.authorization || '')?.[1]
     const app = auth ? appFor(auth) : null
-    if (!app) return reply(response, 401, { error: 'OSAT needs this app’s connector key (Settings → Bots).' }, { 'www-authenticate': 'Bearer' })
+    if (!app) return reply(response, 401, { error: 'OSAT needs this app’s connector key (Settings → Connections).' }, { 'www-authenticate': 'Bearer' })
     if (api) return answerApi(api, url, request, response, app)
     if (request.method === 'DELETE') return reply(response, 200, {})
     if (request.method !== 'POST') return reply(response, 405, { error: 'Send requests with POST.' }, { allow: 'POST, DELETE' })

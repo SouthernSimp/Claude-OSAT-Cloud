@@ -1,4 +1,4 @@
-/* ---- Settings → Bots → Apps OSAT can use (views/bots/AskAppsCard.jsx) -----
+/* ---- Settings → Connections → Apps OSAT can use (views/bots/AskAppsCard.jsx) -----
    One row per app: its name, where it is, what it can do, on/off, Check and Remove. */
 
 .ask-apps { display: grid; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }

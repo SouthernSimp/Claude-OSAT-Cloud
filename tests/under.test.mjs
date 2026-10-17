@@ -57,7 +57,7 @@ test('under, a loopback answer can’t send the main process fetch anywhere else
 })
 
 test('what reaches out answers in plain words while offline; the rest works', () => {
-  for (const channel of ['browser:open', 'browser:navigate', 'skills:record-start', 'skills:run', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'ai:install', 'meeting:ears-install', 'phone:enable', 'phone:disable', 'askapps:call', 'askapps:check', 'github:status', 'github:repos', 'github:repo', 'github:merge', 'github:open']) {
+  for (const channel of ['browser:open', 'browser:navigate', 'skills:record-start', 'skills:run', 'files:open', 'search:open-file', 'search:open-app', 'search:open-app-named', 'search:open-link', 'media:now', 'media:control', 'desk:launch', 'terminal:start', 'ai:resume', 'ai:install', 'meeting:ears-install', 'phone:enable', 'phone:disable', 'askapps:call', 'askapps:check', 'askapps:sign-in', 'github:status', 'github:repos', 'github:repo', 'github:merge', 'github:open']) {
     assert.match(refusal(channel), /when you’re back online|until you’re back online/, channel)
   }
   // Files on this Mac still list, show and search; the desk shows the Desktop while offline.
@@ -66,7 +66,7 @@ test('what reaches out answers in plain words while offline; the rest works', ()
   }
 })
 
-/* A command OSAT starts for an app (Settings → Bots) could reach the internet on its own, past the
+/* A command OSAT starts for an app (Settings → Connections) could reach the internet on its own, past the
    fetch lock: going offline ends it (bots.changed() calls closeAll), and none starts while offline. */
 test('an app’s command ends when OSAT goes offline, and none starts while offline', async () => {
   const require = createRequire(import.meta.url)
@@ -213,8 +213,13 @@ const ALLOWED = {
     'ses.webRequest.onBeforeRequest((details, callback) => callback({ cancel: under.on && !isLocal(details.url) }))',
   ],
   'desktop/bots/index.cjs': [
-    // A cloud provider's own key or usage page (Settings → Bots). Refused offline on the same line.
-    'if (!offline() && /^https:\\/\\//i.test(url)) await shell.openExternal(url)',
+    // A cloud provider's own key or usage page, or an app's sign-in page (Settings → Connections). Refused offline on the same line.
+    'const openPage = async (url) => { if (!offline() && /^https:\\/\\//i.test(url)) await shell.openExternal(url) }',
+  ],
+  'desktop/bots/mcp-signin.cjs': [
+    // Signing in to an app (Phase 71b): a page on 127.0.0.1 only, for the browser's one answer, closed right after.
+    // Everything that leaves goes through main's fetch, which Offline locks.
+    "const http = require('node:http')",
   ],
   'desktop/launcher/index.cjs': [
     // A web address Nate chose in the quick search (a keyword like `g cats`, or a link he copied) opens in his own
@@ -234,7 +239,7 @@ const ALLOWED = {
     "child = spawn(file, args, { stdio: ['pipe', 'ignore', 'ignore'] })",
   ],
   'desktop/bots/mcp-client.cjs': [
-    // An app's command (Settings → Bots), only one Nate added, or imported and turned on. Going offline
+    // An app's command (Settings → Connections), only one Nate added, or imported and turned on. Going offline
     // ends it, and none starts while offline (ask-apps.cjs; the test above).
     "const child = spawn(command, args, { env: { ...process.env, PATH: searchPath(process.env.PATH), ...env }, stdio: ['pipe', 'pipe', 'pipe'], detached: true })",
   ],

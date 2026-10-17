@@ -272,7 +272,7 @@ contextBridge.exposeInMainWorld('osatPhone', Object.freeze({
   onStatus: (listener) => listen('phone:status', listener),
 }))
 
-/* Bots (Settings → Bots): the drop folder where Muse and other bots save node files, cloud
+/* Bots (Settings → Connections): the drop folder where Muse and other bots save node files, cloud
    models (keys go straight to the Keychain in main; status never carries them) and the
    connector. */
 contextBridge.exposeInMainWorld('osatBots', Object.freeze({
@@ -298,7 +298,7 @@ contextBridge.exposeInMainWorld('osatBots', Object.freeze({
   onStatus: (listener) => listen('bots:status', listener),
 }))
 
-/* Webhooks (Settings → Bots, Phase 46): the addresses OSAT tells when something happens, and
+/* Webhooks (Settings → Connections, Phase 46): the addresses OSAT tells when something happens, and
    the ntfy address services add stickies through (it goes to the clipboard from main). */
 contextBridge.exposeInMainWorld('osatHooks', Object.freeze({
   status: () => ipcRenderer.invoke('hooks:status'),
@@ -315,7 +315,7 @@ contextBridge.exposeInMainWorld('osatHooks', Object.freeze({
   onStatus: (listener) => listen('hooks:status', listener),
 }))
 
-/* Apps OSAT can use (Settings → Bots, Phase 48): the MCP servers Claude uses, each off until turned
+/* Apps OSAT can use (Settings → Connections, Phase 48): the MCP servers Claude uses, each off until turned
    on. Keys and env values go to the Keychain in main; status only says an app has one. Ask (the
    desk's and the quick bar's) lists what the apps that are on can do and calls them. */
 contextBridge.exposeInMainWorld('osatAskApps', Object.freeze({
@@ -325,6 +325,7 @@ contextBridge.exposeInMainWorld('osatAskApps', Object.freeze({
   undoRemove: () => ipcRenderer.invoke('askapps:undo-remove'),
   toggle: (id, on) => ipcRenderer.invoke('askapps:toggle', id, on === true),
   check: (id) => ipcRenderer.invoke('askapps:check', id),
+  signIn: (id) => ipcRenderer.invoke('askapps:sign-in', id),
   claudeConfig: () => ipcRenderer.invoke('askapps:claude-config'),
   import: (names) => ipcRenderer.invoke('askapps:import', names),
   tools: () => ipcRenderer.invoke('askapps:tools'),
