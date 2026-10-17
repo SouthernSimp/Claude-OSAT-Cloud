@@ -17,7 +17,7 @@ Merged and released as build 321: Phase 73 one window with one sidebar, Today an
 panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
 Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111).
 
-Phase 78 is in review on `codex/phase-78-simpler-notes`, based on main independently of Phase 77 (draft PR #112).
+Phase 78 is in review (draft PR #113) on `codex/phase-78-simpler-notes`, based on main independently of Phase 77 (draft PR #112).
 Notes starts with its list and editor; the list title opens Browse notes (the existing Organizer). A list pick,
 Esc or Close puts it away. Old saved organizer-open preferences no longer reopen the extra column; the saved list
 and editor settings remain. No workspace/schema changes. Code-only checks: 993 unit tests, production build and

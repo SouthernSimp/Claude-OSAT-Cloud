@@ -8,7 +8,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 
 - **Notes opens with room to write:** the extra board column stays tucked away. Click the list's title (All notes,
   Questions, or a board's name) to browse lists, boards and tags. Pick a list, press Esc, or close Browse notes to
-  return to writing. Your saved list, notes and boards stay as they are.
+  return to writing. Your saved list, notes and boards stay as they are. (#113)
 
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 
