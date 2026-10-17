@@ -56,6 +56,25 @@ function normalizeBudget(value) {
   }
 }
 
+/* Goals (Phase 75, src/goals/): { id, name, by, fed: { kind, id } | null, perWeek, doneAt, createdAt }. */
+function normalizeGoals(value) {
+  const seen = new Set()
+  return (Array.isArray(value) ? value : []).flatMap((goal) => {
+    if (!isObject(goal) || typeof goal.id !== 'string' || !goal.id || seen.has(goal.id) || !cleanString(goal.name).trim()) return []
+    seen.add(goal.id)
+    const fed = isObject(goal.fed) && ['board', 'habit'].includes(goal.fed.kind) && typeof goal.fed.id === 'string' ? { kind: goal.fed.kind, id: goal.fed.id } : null
+    return [{
+      id: goal.id,
+      name: goal.name.trim().slice(0, 120),
+      by: /^\d{4}-\d{2}-\d{2}$/.test(goal.by) ? goal.by : '',
+      fed,
+      perWeek: Number.isInteger(goal.perWeek) && goal.perWeek >= 1 && goal.perWeek <= 7 ? goal.perWeek : 7,
+      doneAt: cleanString(goal.doneAt),
+      createdAt: cleanString(goal.createdAt),
+    }]
+  })
+}
+
 function normalizeCalendar(value) {
   const input = isObject(value) ? value : {}
   return {
@@ -88,6 +107,7 @@ export function normalizeWorkspace(value) {
     rev: Number.isInteger(input.rev) ? input.rev : 0,
     theme: ['system', 'light', 'dark'].includes(input.theme) ? input.theme : 'system',
     habits: normalizeHabits(input.habits),
+    goals: normalizeGoals(input.goals),
     reflections: normalizeReflections(input.reflections),
     focus: normalizeFocusSession(input.focus),
     notes,
@@ -113,7 +133,7 @@ export function makeBackup(workspace, exportedAt = new Date().toISOString()) {
 
 export function readWorkspaceBackup(payload) {
   const raw = payload?.workspace
-  const lists = ['notes', 'folders', 'projects', 'habits', 'chats']
+  const lists = ['notes', 'folders', 'projects', 'habits', 'goals', 'chats']
   // Backups from an earlier schema are upgraded; ones from a newer OSAT are refused.
   const input = isObject(raw) && Number.isInteger(raw.schema) && raw.schema <= SCHEMA ? migrate(raw) : null
   if (payload?.format !== BACKUP_FORMAT || payload.version !== 1 || !isObject(input)

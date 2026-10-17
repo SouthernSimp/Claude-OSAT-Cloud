@@ -170,3 +170,10 @@ test('schema 6: a sticky keeps a real day it names to ask about; nothing else ch
   assert.deepEqual(asked.ask, { event: { title: 'Wedding', date: '2026-10-05', time: '' } })
   assert.equal('ask' in normalizeNote({ ...note('c'), ask: { event: { title: 'X', date: 'Oct 5' } } }), false)
 })
+
+test('schema 15: goals come in as a list of their own, kept from a newer copy and empty otherwise', () => {
+  assert.deepEqual(migrate({ schema: 14, notes: [] }).goals, [])
+  const goal = { id: 'g1', name: 'Get OSAT into three businesses' }
+  assert.deepEqual(migrate({ schema: 14, goals: [goal] }).goals, [goal])
+  assert.deepEqual(createEmptyDoc().goals, [])
+})

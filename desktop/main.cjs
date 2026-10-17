@@ -361,6 +361,7 @@ function buildMenu() {
         room('Meetings', 'Meetings'),
         room('Mail', 'Mail'),
         room('Habits', 'Habits'),
+        room('Goals', 'Goals'),
         room('Money', 'Budget'),
         room('Journal', 'Journal'),
         { type: 'separator' },

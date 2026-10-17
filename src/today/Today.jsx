@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, CalendarBlank, Check, CheckCircle, CurrencyDollar, ListChecks, Plus, Tray } from '@phosphor-icons/react'
+import { ArrowRight, CalendarBlank, Check, CheckCircle, CurrencyDollar, ListChecks, Plus, Target, Tray } from '@phosphor-icons/react'
 
 import { WHAT_LABEL, WHAT_PAPER, whatOf } from '../../shared/what-model.mjs'
 import { cameIn, dayLabel, todaysBrief } from '../boards/just-in.js'
+import { GoalsSummary } from '../goals/Goals.jsx'
 import { habitFace, isHabitDone, localDateKey, streakWords, toggleHabit } from '../daily-practice.js'
 import { Markdown } from '../lib/markdown.jsx'
 import { useUndoToast } from '../lib/UndoToast.jsx'
@@ -84,6 +85,10 @@ export function TodayView({ workspace, commit, navigate }) {
               {waiting.length > 4 && <p className="today-more-line">And {waiting.length - 4} more.</p>}
             </Card>
           )}
+
+          <Card tint="violet" icon={Target} title="Goals" more="Open" onMore={() => navigate('Goals')}>
+            <GoalsSummary workspace={workspace} />
+          </Card>
         </div>
 
         <div className="today-col">

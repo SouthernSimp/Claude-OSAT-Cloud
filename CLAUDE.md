@@ -15,7 +15,8 @@ Nate made Claude OSAT's owner and asked for an Apple-quality redesign. Approved 
 https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C. Phase 73 (branch `claude/one-window`, PR #108) replaces the desk:
 one Mac window with one sidebar (`shell/Sidebar.jsx`), Today and To do (`today/`), the bar on top (`shell/Line.jsx`),
 Ask as a panel; the desk, widgets, dock, Tools grid and pop-outs are deleted. Phase 74 (branch `claude/follow-ups`,
-PR #109, stacked on #108): meeting and Granola to-dos. Next, in order: 75 Goals (a small Life page, each goal fed by a board or a habit); 76 polish (Notes'
+PR #109, stacked on #108): meeting and Granola to-dos. Phase 75 (branch `claude/goals`, PR #110, stacked on #109): Goals.
+Next: 76 polish (Notes'
 own folder column vs the sidebar, motion, native vibrancy for the sidebar once seen on the Mac). Nate's answers that
 steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install, sell as a
 done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
@@ -670,6 +671,14 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phase 75
+
+- Goals: `workspace.goals` (schema 15; `normalizeGoals` in osat-data.js): { id, name, by, fed: { kind: 'board' | 'habit',
+  id } | null, perWeek, doneAt, createdAt }. `src/goals/goals-model.js` (pure, tests/goals.test.mjs): `progressOf` (a board:
+  its to-do-kind stickies done of all; a habit: days kept in the last seven of `perWeek`; else Open; done is done),
+  `byWords`, `sortGoals`, `createGoal`. `Goals.jsx`: `GoalsView` (Life → Goals: cards, … for Mark done / Delete with Undo,
+  New goal with By and Moves with) and `GoalsSummary` (Today's Goals card, the three soonest open).
 
 ## Architecture added in Phase 74
 
