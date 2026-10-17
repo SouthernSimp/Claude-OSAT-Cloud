@@ -165,6 +165,9 @@ async function exercise(page) {
   assert.equal(await page.locator('input[type="password"]').count(), 0, 'the provider key stayed in the form after connecting')
   await choosePage(page, 'Connections')
   assert.equal(await root.locator('.bots-models').count(), 0)
+  await page.evaluate(() => { const test = window.__connectionsTest; test.state.askApps = []; test.emit() })
+  await root.getByText('Your apps, working together.', { exact: true }).waitFor()
+  assert.equal(await root.getByRole('button', { name: 'Connect an app', exact: true }).isEnabled(), true)
 }
 
 async function main() {
@@ -182,11 +185,11 @@ async function main() {
       await choosePage(page, 'Connections')
       await row(page, 'Granola').waitFor()
       await page.screenshot({ path: `${OUT}/${theme}-overview.png` })
-      if (theme === 'light') await exercise(page)
+      if (theme === 'dark') await exercise(page)
       else {
         await page.setViewportSize({ width: 820, height: 760 })
         assert.equal(await section(page).evaluate((element) => element.scrollWidth <= element.clientWidth), true)
-        await page.screenshot({ path: `${OUT}/dark-narrow.png` })
+        await page.screenshot({ path: `${OUT}/light-narrow.png` })
       }
       await page.close()
     }
