@@ -33,6 +33,9 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 - **Goals** (Life → Goals, and a card on Today): the few big things, each with how far along it is. A goal can move
   with a board (its to-dos done) or a habit (its days kept this week), so it moves when you do; or tick it off
   yourself. Mark done and Delete have Undo. (#110)
+- **Polish:** moving between rooms, each one settles in gently (unless Reduce motion is on). The welcome says what
+  OSAT does for you first. Cards say where a sticky came from in today’s words (no more Desk or Sky), and a picture
+  in a sticky reads as [Screenshot]. (#111)
 
 ## Build 299 · October 16, 2026 — Connections, Soul and memory, Granola sign-in
 
