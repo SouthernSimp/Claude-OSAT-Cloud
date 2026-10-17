@@ -1,25 +1,65 @@
-/* ---- Settings → Connections → Apps OSAT can use (views/bots/AskAppsCard.jsx) -----
-   One row per app: its name, where it is, what it can do, on/off, Check and Remove. */
-
-.ask-apps { display: grid; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
-.ask-apps > li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto auto; gap: 6px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
-.ask-apps > li > svg { align-self: start; width: 15px; height: 15px; margin-top: 3px; color: var(--faint); }
-.ask-app-name { display: grid; gap: 2px; min-width: 0; justify-items: start; }
-.ask-app-name b { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+/* Connections: names and switches first; addresses and setup belong inside the selected app. */
+.connections, .connected-ai-settings { display: grid; gap: var(--set-gap); }
+.connections-apps-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.connections-apps-head h3 { margin: 0; padding-left: 6px; color: var(--muted); font-size: var(--t-xs); font-weight: 600; }
+.connections-apps-head button { display: inline-flex; align-items: center; gap: 6px; }
+.connections-apps-head button svg { width: 15px; height: 15px; }
+.ask-apps { display: grid; margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: var(--r-xl); overflow: clip; background: var(--surface-raised); }
+.ask-apps > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 12px 16px; }
+.ask-apps > li + li { border-top: 1px solid var(--line-soft); }
+.ask-app-open { display: grid; grid-template-columns: 28px minmax(0, 1fr) 16px; gap: 12px; align-items: center; min-width: 0; min-height: 42px; text-align: left; }
+.ask-app-open > svg:first-child { width: 24px; height: 24px; color: var(--accent); }
+.ask-app-open > svg:last-child { width: 14px; height: 14px; color: var(--faint); transition: rotate var(--d-fast); }
+.ask-app-open[aria-expanded="true"] > svg:last-child { rotate: 90deg; }
+.ask-app-open:hover b { color: var(--accent); }
+.ask-app-name { display: grid; gap: 3px; min-width: 0; }
+.ask-app-name b { color: var(--ink); font-size: var(--t-md); font-weight: 600; overflow-wrap: anywhere; }
 .ask-app-name small { color: var(--muted); font-size: var(--t-xs); }
-.settings .ask-app-name small.ask-app-error { color: var(--ink); }
-.ask-apps code,
-.ask-apps-import code { display: block; max-width: 100%; color: var(--muted); font: 11px/1.45 var(--font-mono); overflow-wrap: anywhere; }
-.settings .ask-app-count { padding: 0; font-size: var(--t-xs); }
-.ask-app-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; }
-.ask-app-actions { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: flex-end; }
-.ask-app-tools { display: flex; flex-wrap: wrap; grid-column: 2 / -1; gap: 4px; margin: 2px 0 0; padding: 0; list-style: none; }
-.ask-app-tools li { padding: 2px 8px; border-radius: var(--r-full); color: var(--muted); background: color-mix(in srgb, var(--ink) 5%, transparent); font: 11px/1.5 var(--font-mono); }
+.ask-app-detail { grid-column: 1 / -1; min-width: 0; padding: 12px 0 2px 40px; border-top: 1px solid var(--line-soft); }
+.settings .ask-app-detail p { color: var(--muted); font-size: var(--t-sm); line-height: 1.5; margin-block: 8px; }
+.ask-app-detail code, .ask-apps-import code { display: block; max-width: 100%; color: var(--muted); font: 11px/1.5 var(--font-mono); overflow-wrap: anywhere; }
+.ask-app-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 14px; }
+.ask-app-actions button { display: inline-flex; align-items: center; gap: 6px; }
+.ask-app-actions button svg { width: 15px; height: 15px; }
+.ask-app-capabilities { margin-top: 12px; }
+.ask-app-capabilities > summary { cursor: pointer; color: var(--muted); font-size: var(--t-xs); }
+.ask-app-tools { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; }
+.ask-app-tools li { padding: 2px 8px; border-radius: var(--r-sm); color: var(--muted); background: var(--surface-sunken); font: 11px/1.5 var(--font-mono); overflow-wrap: anywhere; }
+.settings .connections-privacy { display: flex; align-items: flex-start; gap: 6px; padding: 0 6px; margin: 10px 0 0; color: var(--muted); font-size: var(--t-xs); }
+.connections-privacy svg { flex: none; width: 14px; height: 14px; }
+.connections-empty { display: grid; justify-items: center; gap: 10px; padding: 28px 20px; border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface-raised); text-align: center; }
+.connections-empty > svg { width: 28px; height: 28px; color: var(--accent); }
+.connections-empty b { font-size: var(--t-md); font-weight: 600; }
+.settings .connections-empty p { margin: 0; color: var(--muted); font-size: var(--t-sm); }
+.connections-more { border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface-raised); }
+.connections-more > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; cursor: pointer; list-style: none; }
+.connections-more > summary::-webkit-details-marker { display: none; }
+.connections-more > summary > span { display: grid; gap: 3px; }
+.connections-more > summary b { font-size: var(--t-md); font-weight: 600; }
+.connections-more > summary small { color: var(--muted); font-size: var(--t-xs); }
+.connections-more > summary > svg { width: 16px; height: 16px; color: var(--faint); transition: rotate var(--d-fast); }
+.connections-more[open] > summary > svg { rotate: 90deg; }
+.connections-detail { display: grid; gap: 24px; padding: 20px 16px; border-top: 1px solid var(--line-soft); }
+.connections-detail > .content-card { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.connections-detail .content-card + .content-card { padding-top: 20px; border-top: 1px solid var(--line-soft); }
 .settings .ask-apps-removed .text-button { margin-left: auto; }
 
-/* Add an app (a .bots-connect form, bots.css), and what Claude Desktop has. */
+/* The connect flow reuses the existing sign-in, import and custom connection handlers. */
+.ask-apps-picker { margin-top: 20px; padding: 18px; border: 1px solid var(--accent-line); border-radius: var(--r-xl); background: var(--surface-raised); }
+.ask-apps-picker > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ask-apps-picker h3 { margin: 0; font-size: var(--t-lg); font-weight: 600; }
+.ask-apps-picker > header button svg { width: 16px; height: 16px; }
+.ask-apps-picker > .button-row { margin-top: 16px; gap: 12px; }
+.ask-apps-picker > .button-row button { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-xs); }
+.ask-apps-picker > .button-row svg { width: 14px; height: 14px; }
+.ask-apps-presets { display: grid; margin-top: 16px; }
+.ask-apps-presets > div { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 68px; border-bottom: 1px solid var(--line-soft); }
+.ask-apps-presets > div > svg { width: 22px; height: 22px; color: var(--accent); }
+.ask-apps-presets > div > span { display: grid; gap: 3px; }
+.ask-apps-presets b { font-size: var(--t-md); font-weight: 600; }
+.ask-apps-presets small { color: var(--muted); font-size: var(--t-xs); }
 .ask-apps-form .segmented { justify-self: start; }
-.ask-apps-import { display: grid; gap: 8px; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.ask-apps-import { display: grid; gap: 8px; margin-top: 14px; }
 .ask-apps-import strong { color: var(--ink); font-weight: 650; }
 .ask-apps-import ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .ask-apps-import label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; font-size: var(--t-sm); cursor: pointer; }
@@ -27,7 +67,12 @@
 .ask-apps-import label b { color: var(--ink); font-weight: 600; }
 .ask-apps-import label small { color: var(--muted); font-size: var(--t-xs); }
 
-@container room (max-width: 760px) {
-  .ask-apps > li { grid-template-columns: 16px minmax(0, 1fr) auto; }
-  .ask-app-actions { grid-column: 2 / -1; justify-content: flex-start; }
-}
+@container room (max-width: 560px) { .ask-app-detail { padding-left: 0; } .ask-apps-picker { padding: 14px; } }
+@media (prefers-reduced-motion: reduce) { .ask-app-open > svg:last-child, .connections-more > summary > svg { transition: none; } }
+
+.settings .ask-apps-card { padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface-raised); }
+.settings .connections-apps-head h3 { padding-left: 0; color: var(--ink); font-size: var(--t-lg); }
+.settings .ask-apps { border: 0; border-radius: 0; }
+.settings .ask-apps > li { padding-inline: 0; border-top: 1px solid var(--line-soft); }
+.settings .connections-privacy { padding-inline: 0; }
+.settings .connections-empty { padding-inline: 0; border: 0; border-radius: 0; }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, ClipboardText, Cloud, FolderOpen, Laptop, LockSimple, Plus, Robot } from '@phosphor-icons/react'
+import { CaretRight, Check, ClipboardText, Cloud, FolderOpen, Laptop, LockSimple, Plus, Robot } from '@phosphor-icons/react'
 
 import { OTHER, PRESETS } from '../../shared/providers.mjs'
 import { cleanError, useAi } from '../assistant/useAi.js'
@@ -18,38 +18,59 @@ const shortDate = (iso) => (iso ? new Intl.DateTimeFormat('en-US', { month: 'sho
 function useBots() {
   const bridge = typeof window === 'undefined' ? null : window.osatBots
   const [status, setStatus] = useState(null)
+  const [problem, setProblem] = useState('')
   useEffect(() => {
     if (!bridge) return undefined
-    bridge.status().then(setStatus).catch(() => {})
-    return bridge.onStatus(setStatus)
+    bridge.status().then(setStatus).catch((error) => setProblem(cleanError(error)))
+    return bridge.onStatus((value) => { setStatus(value); setProblem('') })
   }, [bridge])
-  return { bridge, status, setStatus }
+  return { bridge, status, problem }
 }
 
-/* Settings → Connections: the model that answers, cloud models, the apps Ask can use, and everything that lets Muse,
-   Grok Bot, Claude and other AI reach OSAT, in one place. */
+/* Connections starts with the apps OSAT may use. The other direction and automation stay optional. */
 export function BotsSettings() {
-  const { bridge, status } = useBots()
+  const { bridge, status, problem } = useBots()
   if (!bridge) {
     return (
       <section className="content-card">
         <p className="eyebrow">Connections</p>
         <h2>Connections live in the Mac app.</h2>
-        <p>In the Mac app: the AI that answers, cloud models, the apps Ask can use, bots like Muse, and one switch to go offline.</p>
+        <p>Connect the apps OSAT may use, and choose which apps may use OSAT.</p>
       </section>
     )
   }
+  if (problem || !status) return <p className="bots-warning" role="status">{problem || 'Reading your connections…'}</p>
   return (
-    <>
-      <ModelCard bridge={bridge} cloud={status?.cloud} offline={status?.offline} />
-      <CloudCard bridge={bridge} cloud={status?.cloud} />
-      <AskAppsCard apps={status?.askApps} offline={status?.offline} />
-      <ConnectorCard bridge={bridge} connector={status?.connector} />
-      <DropFolderCard bridge={bridge} nodes={status?.nodes} />
-      <WebhooksCard />
-      <ShortcutsCard bridge={bridge} connector={status?.connector} />
-    </>
+    <div className="connections" onKeyDown={(event) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      const expanded = event.target.closest('.connections-more[open]')
+      if (expanded) { event.preventDefault(); event.stopPropagation(); expanded.open = false; expanded.querySelector('summary')?.focus() }
+    }}>
+      <AskAppsCard apps={status.askApps} offline={status.offline} />
+      <details className="connections-more">
+        <summary><span><b>Let other apps use OSAT</b><small>{status.connector?.error ? 'Needs attention' : 'Claude, Shortcuts and scripts'}</small></span><CaretRight aria-hidden="true" /></summary>
+        <div className="connections-detail">
+          <ConnectorCard bridge={bridge} connector={status.connector} />
+          <ShortcutsCard bridge={bridge} connector={status.connector} />
+        </div>
+      </details>
+      <details className="connections-more">
+        <summary><span><b>More ways to connect</b><small>Board files and automations</small></span><CaretRight aria-hidden="true" /></summary>
+        <div className="connections-detail">
+          <DropFolderCard bridge={bridge} nodes={status.nodes} />
+          <WebhooksCard />
+        </div>
+      </details>
+    </div>
   )
+}
+
+/* The model choice and cloud keys belong with the rest of AI settings. */
+export function ConnectedAiSettings() {
+  const { bridge, status, problem } = useBots()
+  if (!bridge) return null
+  if (problem || !status) return <p className="bots-warning" role="status">{problem || 'Reading your AI settings…'}</p>
+  return <div className="connected-ai-settings"><ModelCard bridge={bridge} cloud={status.cloud} offline={status.offline} /><CloudCard bridge={bridge} cloud={status.cloud} /></div>
 }
 
 /* The drop folder: where a bot saves node files. */
@@ -110,12 +131,12 @@ function ModelCard({ bridge, cloud, offline }) {
     <section className="content-card bots-card">
       <p className="eyebrow">Model</p>
       <h2>{cloud?.leavesMac ? `${cloud.leavesMac} answers.` : 'The AI on this Mac answers.'}</h2>
-      <p>The model you pick answers the line, Ask, Help me sort and Unpack with AI. Scans (Settings → Data) are always sorted by the AI on this Mac.</p>
+      <p>Choose the AI that answers your questions. Photos and scans use the AI on this Mac.</p>
       <div className="bots-models" role="radiogroup" aria-label="Which AI answers">
         <button type="button" role="radio" aria-checked={chosen === 'local'} className="bots-model" onClick={() => choose('local')}>
           <Laptop aria-hidden="true" />
           <strong>On this Mac</strong>
-          <span>{local ? `${local.name} · nothing leaves this Mac` : 'Not set up yet: choose a size in Settings → AI'}</span>
+          <span>{local ? local.name : 'Not set up yet: choose a model below'}</span>
         </button>
         {(cloud?.providers || []).map((provider) => {
           const id = `cloud:${provider.id}:${provider.model}`
@@ -137,8 +158,8 @@ function ModelCard({ bridge, cloud, offline }) {
         {cloud?.leavesMac
           ? offline
             ? `Offline: ${cloud.leavesMac} waits until you’re back online, and the AI on this Mac answers meanwhile.`
-            : `What you ask, the notes Ask reads and the stickies Help me sort and Unpack look at go to ${cloud.leavesMac}. Choose On this Mac to keep everything here.`
-          : 'Everything stays on this Mac. A cloud model is only used once you connect one and pick it.'}
+            : `Your questions and any notes used to answer or unpack go to ${cloud.leavesMac}. Choose On this Mac to keep them here.`
+          : 'Questions are answered on this Mac. Connected apps may still use the internet.'}
       </p>
       {message && <p className="bots-warning" role="status">{message}</p>}
     </section>
@@ -147,6 +168,7 @@ function ModelCard({ bridge, cloud, offline }) {
 
 /* Connect any AI provider: pick it, paste the key, done. Keys go to the Keychain. */
 function CloudCard({ bridge, cloud }) {
+  const [adding, setAdding] = useState(false)
   const [preset, setPreset] = useState(PRESETS[0].id)
   const [key, setKey] = useState('')
   const [name, setName] = useState('')
@@ -164,6 +186,7 @@ function CloudCard({ bridge, cloud }) {
     try {
       const made = await bridge.connect(preset === OTHER.id ? { name, baseUrl, key, model } : { preset, key })
       setKey('')
+      setAdding(false)
       setMessage({ ok: true, text: `Connected. ${made.name} answers now, with ${made.model}.` })
     } catch (error) {
       setMessage({ ok: false, text: cleanError(error) })
@@ -174,10 +197,11 @@ function CloudCard({ bridge, cloud }) {
 
   return (
     <section className="content-card bots-card">
-      <p className="eyebrow">Cloud models</p>
-      <h2>Connect any AI.</h2>
-      <p>Pick the provider, paste its API key, and it’s ready. DeepSeek, OpenAI, xAI (Grok), OpenRouter, Mistral, Groq, or any other that works like OpenAI.</p>
-      <form className="bots-connect" onSubmit={connect}>
+      <h2>Cloud AI</h2>
+      <p>Use your own provider for questions.</p>
+      {!adding && <button type="button" className="outline-button" onClick={() => setAdding(true)}><Plus /> Connect a provider</button>}
+      {adding && <form className="bots-connect" onSubmit={connect}>
+        <p className="ai-note">Connecting selects this provider for new questions. Your questions and shared notes go to it.</p>
         <label>
           <span>Provider</span>
           <select value={preset} onChange={(event) => { setPreset(event.target.value); setMessage(null) }}>
@@ -198,9 +222,10 @@ function CloudCard({ bridge, cloud }) {
         </label>
         <div className="button-row">
           <button className="primary-button" type="submit" disabled={busy || !key.trim()}><Plus /> {busy ? 'Checking the key…' : 'Connect'}</button>
+          <button type="button" className="text-button" disabled={busy} onClick={() => { setAdding(false); setKey('') }}>Cancel</button>
           {chosen.keys && <button className="text-button" type="button" onClick={() => bridge.openPage(chosen.keys).catch((error) => setMessage({ ok: false, text: cleanError(error) }))}>Get a {chosen.name} key</button>}
         </div>
-      </form>
+      </form>}
       {message && <p className={message.ok ? 'bots-message' : 'bots-warning'} role="status">{message.ok && <Check />} {message.text}</p>}
       {connected.length > 0 && (
         <ul className="bots-providers" aria-label="Connected">

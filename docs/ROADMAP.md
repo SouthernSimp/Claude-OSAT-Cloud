@@ -19,6 +19,12 @@ link back to the meeting.
 Phase 75 (merged, build 321): Goals. The few big things, each moving with a board (its to-dos done) or a habit (its days kept
 this week), on a page of their own under Life and as a card on Today.
 
+Phase 80 (in review, PR pending): Connections, made clear. The starting page shows your apps, their on/off switches and
+Connect an app. Open one for its address, checks, sign-in, tools and Remove with Undo. Granola and Notion sign-in,
+Claude Desktop imports and custom connections use their existing handlers. Sharing OSAT with other apps and board
+files/automations are separate disclosures. Cloud providers and the AI choice move to AI; connecting a provider opens
+its key form only when asked. Nate supplied the crowded settings screenshot and requested the rework.
+
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
 Nate: the canvas is hard to read and sorting is still the chore. The plan (docs/REWORK-20261015.md, with a mockup
@@ -210,6 +216,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 74 | Follow-ups from meetings: each thing promised in a meeting OSAT wrote up becomes a To-do sticky in Just in, linked to the write-up; Granola's meetings too (its Next steps, read once an hour once Granola is connected; Meetings has the switch, Look now, Take them back) | Merged (PR #109), Oct 17 |
 | 75 | Goals: Life → Goals and a card on Today; each goal moves with a board (its to-dos done) or a habit (its days kept this week), or is ticked off; Undo on Mark done and Delete (schema 15) | Merged (PR #110), Oct 17 |
 | 76 | Polish, first part: rooms settle in when you move between them, the welcome leads with what OSAT does, cards say where a sticky came from in today's words, the desk's leftover dock, places and widgets go | Merged (PR #111), Oct 17 |
+| 80 | Connections, made clear: app names and switches first, setup on demand, sharing and automations folded, cloud AI under AI | In review (PR pending) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

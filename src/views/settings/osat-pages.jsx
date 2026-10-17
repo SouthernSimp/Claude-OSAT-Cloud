@@ -6,7 +6,7 @@ import { downloadFile, formatRelativeTime } from "../../lib/ui.js";
 import { localDateKey } from "../../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../../osat-data.js";
 import { workspaceClient } from "../../store/useWorkspace.js";
-import { BotsSettings } from "../Bots.jsx";
+import { BotsSettings, ConnectedAiSettings } from "../Bots.jsx";
 import { ObsidianView } from "../Obsidian.jsx";
 import { DeskKey, useDeskKeys } from "./launcher.jsx";
 import { Group, Legacy, Page, Row, Switch } from "./parts.jsx";
@@ -365,6 +365,7 @@ function ModelTable({ status, download, working, onInstall }) {
 export function AiPage({ page, showUndo }) {
   return (
     <Page page={page}>
+      <Legacy words="cloud model provider key deepseek openai grok"><ConnectedAiSettings /></Legacy>
       <MorningBriefSettings showUndo={showUndo} />
       <OvernightSettings showUndo={showUndo} />
       <Legacy words="local ai model size download lm studio gemma"><AiCard /></Legacy>
@@ -372,13 +373,12 @@ export function AiPage({ page, showUndo }) {
   );
 }
 
-/* Settings → Connections (Phase 71, the mockup's fifth screen; the page id stays "bots" for older links): the one
-   Offline switch, then the AI, the apps Ask can use and the ways bots reach OSAT. */
+/* Connections keeps the old "bots" page id: offline, the apps OSAT may use, then optional sharing and automation. */
 export function BotsPage({ page }) {
   return (
     <Page page={page}>
       <OfflineSwitch />
-      <Legacy words="drop folder cloud model key connector apps mcp"><BotsSettings /></Legacy>
+      <Legacy words="drop folder key connector apps mcp"><BotsSettings /></Legacy>
     </Page>
   );
 }
@@ -396,8 +396,8 @@ function OfflineSwitch() {
   if (!api) return null;
   const set = (on) => { setProblem(""); api.set(on).then(setStatus, (error) => setProblem(cleanError(error))); };
   return (
-    <Group title="One switch">
-      <Row title="Offline" hint={problem || (status?.on ? "Nothing leaves this Mac. Cloud models, apps and links wait; the AI on this Mac keeps working." : "Turn it on and nothing leaves this Mac, whatever is connected below.")} words="offline online internet wifi private nothing leaves">
+    <Group title="Internet access">
+      <Row title="Offline" hint={problem || (status?.on ? "Connections are paused. The AI on this Mac keeps working." : "Pause cloud AI, connected apps and links.")} words="offline online internet wifi private nothing leaves">
         <Switch label="Offline" checked={status?.on === true} disabled={!status} onChange={set} />
       </Row>
     </Group>
