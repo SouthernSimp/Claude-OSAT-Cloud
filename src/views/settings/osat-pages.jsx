@@ -374,11 +374,11 @@ export function AiPage({ page, showUndo }) {
 }
 
 /* Connections keeps the old "bots" page id: offline, the apps OSAT may use, then optional sharing and automation. */
-export function BotsPage({ page }) {
+export function BotsPage({ page, navigate }) {
   return (
     <Page page={page}>
       <OfflineSwitch />
-      <Legacy words="drop folder key connector apps mcp"><BotsSettings /></Legacy>
+      <Legacy words="drop folder key connector apps mcp"><BotsSettings navigate={navigate} /></Legacy>
     </Page>
   );
 }

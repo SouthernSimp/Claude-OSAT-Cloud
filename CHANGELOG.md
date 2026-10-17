@@ -8,7 +8,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 
 - **Connections starts with your apps:** names, on/off switches and one Connect an app button. Open an app for
   sign-in, connection checks, what it can do and Remove with Undo. Sharing with other apps and automations wait
-  behind their own rows. AI provider setup is now in AI, with keys only shown when connecting a provider. (PR pending)
+  behind their own rows. AI provider setup is now in AI, with keys only shown when connecting a provider. (#115)
 
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 

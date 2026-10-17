@@ -123,7 +123,7 @@ export function ConnectorCard({ bridge, connector }) {
           ))}
         </ul>
       )}
-      <p className="ai-note">Muse’s custom connectors run in Meta’s cloud, so they can’t reach this Mac. Muse saves boards through the folder above instead.</p>
+      <p className="ai-note">Muse’s custom connectors run in Meta’s cloud, so they can’t reach this Mac. Board files are under More ways to connect.</p>
     </section>
   )
 }

@@ -157,7 +157,7 @@ async function exercise(page) {
   await page.keyboard.press('Escape')
   assert.equal(await sharing.getAttribute('open'), null, 'Escape did not put sharing setup away')
 
-  await choosePage(page, 'AI')
+  await root.getByRole('button', { name: 'Open AI settings', exact: true }).click()
   await page.getByRole('button', { name: 'Connect a provider' }).click()
   await page.getByLabel('API key', { exact: true }).fill('example-test-key-only')
   await page.locator('.bots-connect').getByRole('button', { name: 'Connect', exact: true }).click()

@@ -76,3 +76,5 @@
 .settings .ask-apps > li { padding-inline: 0; border-top: 1px solid var(--line-soft); }
 .settings .connections-privacy { padding-inline: 0; }
 .settings .connections-empty { padding-inline: 0; border: 0; border-radius: 0; }
+.settings .connections-ai-link { margin: 0; padding: 0 6px; color: var(--muted); font-size: var(--t-xs); }
+.settings .connections-ai-link button { font-size: inherit; }

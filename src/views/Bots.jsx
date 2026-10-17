@@ -28,7 +28,7 @@ function useBots() {
 }
 
 /* Connections starts with the apps OSAT may use. The other direction and automation stay optional. */
-export function BotsSettings() {
+export function BotsSettings({ navigate }) {
   const { bridge, status, problem } = useBots()
   if (!bridge) {
     return (
@@ -61,6 +61,7 @@ export function BotsSettings() {
           <WebhooksCard />
         </div>
       </details>
+      {navigate && <p className="connections-ai-link">Looking for AI models? <button type="button" className="text-button" onClick={() => navigate('Settings', { section: 'ai' })}>Open AI settings</button></p>}
     </div>
   )
 }

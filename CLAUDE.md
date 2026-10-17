@@ -17,7 +17,7 @@ Merged and released as build 321: Phase 73 one window with one sidebar, Today an
 panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
 Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111).
 
-Phase 80 is in review (PR pending), branch `codex/phase-80-connections`, worktree `work/osat-connections-20261017`,
+Phase 80 is in review (draft PR #115), branch `codex/phase-80-connections`, worktree `work/osat-connections-20261017`,
 based directly on main. Nate supplied a screenshot of Connections and said the whole section needs reworking.
 The starting page now shows app names, on/off status and one Connect an app action. App details contain the address,
 checks, sign-in, tool names and Remove with Undo. The picker offers Granola/Notion, then imports and custom setup.
