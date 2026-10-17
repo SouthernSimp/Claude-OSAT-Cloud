@@ -54,7 +54,7 @@ async function launch(withEnv = env) {
     main = app.windows().find((page) => !page.url().includes('surface='))
     if (!main) await sleep(100)
   }
-  await main.waitForSelector('.overlay-surface .workspace-content', { timeout: 20000 })
+  await main.waitForSelector('.app .workspace-content', { timeout: 20000 })
   if (originalClipboard === undefined) originalClipboard = await app.evaluate(({ clipboard }) => clipboard.readText())
   return { app, main }
 }

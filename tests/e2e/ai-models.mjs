@@ -26,7 +26,7 @@ async function launch() {
   }
   assert.ok(page, 'The desk window opened')
   page.on('pageerror', (error) => errors.push(error.message))
-  await page.waitForSelector('.overlay-surface .workspace-content', { timeout: 20000 })
+  await page.waitForSelector('.app .workspace-content', { timeout: 20000 })
   return page
 }
 const status = (page) => page.evaluate(() => window.osatLocalAI.status())
@@ -56,10 +56,11 @@ try {
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
   await page.getByRole('radio', { name: /^Light/ }).click()
   await page.getByRole('button', { name: 'Start', exact: true }).click()
-  await page.getByRole('dialog', { name: /One line for everything/ }).waitFor()
+  await page.getByRole('dialog', { name: /Write it down, find it, or ask/ }).waitFor()
   await page.getByRole('button', { name: 'Skip the tour', exact: true }).click()
   assert.equal((await status(page)).startup, false)
-  await page.keyboard.press('Control+4')
+  // Ask is the panel on the right of the window.
+  await page.locator('.app-ask-button').click()
   await page.getByRole('button', { name: 'Model: Light', exact: true }).waitFor()
   await pick(page, 'Balanced')
   assert.ok((await status(page)).tiers.every((tier) => tier.state === 'idle'), 'Choosing a model does not load one')
