@@ -75,7 +75,8 @@ async function news(page, builds, have) {
   check(await page.evaluate(() => localStorage.getItem('osat.news.how.v1')) === 'closed', 'putting the steps away wasn’t remembered')
 }
 
-async function coming(page, plans) {
+async function coming(page, phases) {
+  const plans = comingPhases(phases)
   await room(page).getByRole('tab', { name: 'Coming next' }).click()
   check(await room(page).locator('.coming-list li').count() === plans.length, `Coming next didn’t list the ${plans.length} plans`)
   await page.screenshot({ path: `${OUT}/light-coming-start.png` })
@@ -85,17 +86,22 @@ async function coming(page, plans) {
   // The phase in review (the Roadmap's "now"), whichever it is.
   const now = plans.find((plan) => plan.state === 'now')
   check(!now || (await column('Doing').allInnerTexts()).some((text) => text.startsWith(`Phase ${now.id}`)), 'the phase in review wasn’t in Doing')
-  check(JSON.stringify((await column('Next').allInnerTexts()).map((text) => text.split(' ·')[0])) === JSON.stringify(['Phase 69', 'Phase 70', 'Phase 71']), 'the current plan wasn’t in Next, in order')
+  // The current plan: planned after the last phase done.
+  const lastDone = phases.findLastIndex((phase) => phase.state === 'done')
+  const current = phases.filter((phase, index) => phase.state === 'planned' && index > lastDone).map((phase) => `Phase ${phase.id}`)
+  check(JSON.stringify((await column('Next').allInnerTexts()).map((text) => text.split(' ·')[0])) === JSON.stringify(current), 'the current plan wasn’t in Next, in order')
   await sleep(300)
   await page.screenshot({ path: `${OUT}/light-coming.png` })
 
-  // On the canvas, as a Board: Phase 71 goes to the top of Next, and gets a note.
+  // On the canvas, as a Board: Later's second card (old plans, which stay put while phases come and go) goes to its top, and gets a note.
+  const later = (await column('Later').allInnerTexts()).map((text) => text.split(' ·')[0])
+  const [top, moved] = later
   await room(page).getByRole('button', { name: 'Open the board' }).click()
   await page.locator('.boards-title h1', { hasText: 'Coming to OSAT' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Open the board didn’t open it on the canvas'))
   check(await page.getByRole('tab', { name: 'Board' }).getAttribute('aria-selected') === 'true', 'the plan board didn’t open as a Board')
-  const card = (words) => page.locator('.boards-card', { hasText: words })
-  const from = await card('Phase 71').boundingBox()
-  const to = await card('Phase 69').boundingBox()
+  const card = (phase) => page.locator('.boards-card', { hasText: `${phase} ·` })
+  const from = await card(moved).boundingBox()
+  const to = await card(top).boundingBox()
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
   await page.mouse.down()
   await page.mouse.move(from.x + from.width / 2 + 8, from.y + from.height / 2 + 8, { steps: 3 })
@@ -103,7 +109,7 @@ async function coming(page, plans) {
   await sleep(120)
   await page.mouse.up()
   await sleep(250)
-  await card('Phase 71').click()
+  await card(moved).click()
   const field = page.getByRole('textbox', { name: 'Sticky', exact: true })
   await field.fill(`${await field.inputValue()}\nMy note: this one first, it makes everything else easier.`)
   await field.press('Control+Enter')
@@ -117,15 +123,15 @@ async function coming(page, plans) {
   await page.locator('.app-dock [data-space="tools"]').click()
   await page.getByRole('menuitem', { name: 'Roadmap' }).click()
   await room(page).locator('.coming-board').waitFor({ timeout: 5000 }).catch(() => problems.push('the room didn’t open again on Coming next'))
-  const next = await column('Next').allInnerTexts()
-  check(next[0]?.startsWith('Phase 71'), `the new order didn’t show in Coming next: ${next.map((text) => text.split(' ·')[0]).join(', ')}`)
-  check(next[0]?.includes('Your notes'), 'a plan with a note didn’t say so')
+  const after = await column('Later').allInnerTexts()
+  check(after[0]?.startsWith(`${moved} ·`), `the new order didn’t show in Coming next: ${after.map((text) => text.split(' ·')[0]).join(', ')}`)
+  check(after[0]?.includes('Your notes'), 'a plan with a note didn’t say so')
 }
 
 async function main() {
   await mkdir(OUT, { recursive: true })
   const builds = changelogBuilds(await readFile('CHANGELOG.md', 'utf8'))
-  const plans = comingPhases(roadmapPhases(await readFile('docs/ROADMAP.md', 'utf8')))
+  const phases = roadmapPhases(await readFile('docs/ROADMAP.md', 'utf8'))
   const url = await start()
   const browser = await chromium.launch()
 
@@ -134,7 +140,7 @@ async function main() {
   const have = builds[0].next ? 999 : builds[0].to
   const light = await openRoom(browser, url, 'light', `0.1.${have}`)
   await news(light, builds, have)
-  await coming(light, plans)
+  await coming(light, phases)
   await light.close()
 
   const dark = await openRoom(browser, url, 'dark', `0.1.${have}`)
