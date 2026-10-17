@@ -2,7 +2,7 @@
    browser), OSAT looks once an hour while online for meetings that have notes since it last looked, reads each one's
    Next steps (shared/meeting-model.mjs: granolaMeetings, granolaMeeting, granolaSteps) and puts each step in Just in
    as a To-do sticky (source Granola), with a link back to the meeting. A meeting is read once (`seen`); one without
-   notes yet is read again next time. The first look goes back two days only, so an old history doesn't flood Just in.
+   notes yet is read again next time. The first look goes back a week only, so an old history doesn't flood Just in.
    Nothing is written to Granola, and nothing is read while OSAT is offline.
    granola.json in the data folder: { on, since, seen, last: { at, count, meetings, ids } }.
      meeting:granola (status) · meeting:granola-set (on) · meeting:granola-now · meeting:granola-undo */
@@ -10,7 +10,7 @@ const fs = require('node:fs/promises')
 const path = require('node:path')
 
 const HOUR = 60 * 60 * 1000
-const FIRST_LOOK = 2 * 24 * HOUR
+const FIRST_LOOK = 7 * 24 * HOUR
 const MOST_MEETINGS = 10
 const NO_ANSWER = 'Granola didn’t answer just now. OSAT looks again within the hour.'
 

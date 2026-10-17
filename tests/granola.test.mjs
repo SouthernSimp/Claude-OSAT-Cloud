@@ -57,10 +57,10 @@ test('each new Granola meeting’s next steps come in once, as to-dos, written o
   assert.ok(committed[0].made.every((item) => item.what === 'todo' && item.createdAt === new Date(NOW - 3 * 3600000).toISOString()))
   assert.match(committed[0].made[0].markdown, /From Granola: \[Merchant check-in\]\(https:\/\/notes\.granola\.ai\/d\/aaaaaaaa-1\)/)
   assert.deepEqual({ count: status.last.count, meetings: status.last.meetings, connected: status.connected }, { count: 2, meetings: 1, connected: true })
-  // Only my meetings, from two days back the first time.
+  // Only my meetings, from a week back the first time.
   const [, args] = apps.asked[0]
   assert.deepEqual(args.involvement, { captured_by_me: true })
-  assert.equal(args.custom_start, localDay(NOW - 2 * 86400000 - 3600000))
+  assert.equal(args.custom_start, localDay(NOW - 7 * 86400000 - 3600000))
   // Looking again brings nothing twice; the one with no notes yet is asked again.
   await granola.look()
   assert.equal(committed.length, 1)
