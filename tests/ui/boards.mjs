@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { openRoom as openPlace } from './window.mjs'
 
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/boards`
 const PORT = Number(process.env.OSAT_PORT || 4331)
@@ -75,12 +76,15 @@ async function openCanvas(browser, url, theme, viewport = { width: 1440, height:
   }, { notes: NOTES, folders: FOLDERS })
   await page.goto(url)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
-  await page.getByRole('button', { name: 'Open the canvas', exact: true }).click()
+  await openPlace(page, 'Just in')
   await page.locator('.boards').waitFor({ timeout: 5000 })
   return page
 }
 
-const side = (page, name) => page.getByRole('navigation', { name: 'Boards' }).getByRole('button', { name: new RegExp(`^${name}\\b`) })
+// The sidebar: the Just in tile, and the boards (each row its name, then how many stickies).
+const side = (page, name) => (name === 'Just in'
+  ? page.locator('nav.side .side-tile', { hasText: 'Just in' })
+  : page.locator('nav.side .side-group[aria-label="Boards"]').getByRole('button', { name: new RegExp(`^${name}\\b`) }))
 const column = (page, name) => page.locator('.boards-body').getByRole('region', { name, exact: true })
 const card = (page, words) => page.locator('.boards-card', { hasText: words })
 const cardsIn = async (page, name) => column(page, name).locator('.boards-card').allInnerTexts()
@@ -161,9 +165,9 @@ async function light(page) {
   check(await page.locator('.boards-card').count() === 1, 'Find didn’t narrow the board to one sticky')
   await page.keyboard.press('Escape')
   check(await page.getByRole('textbox', { name: 'Find on OSAT' }).inputValue() === '', 'Esc didn’t clear Find first')
-  check(await page.locator('.boards').count() === 1, 'Esc left the canvas while Find had words')
+  check(await page.locator('.boards').count() === 1, 'Esc left the board while Find had words')
 
-  // Just in: carried onto a board in the side, it lives there; Undo brings it back.
+  // Just in: carried onto a board in the sidebar, it lives there; Undo brings it back.
   const row = (words) => page.locator('.justin-row', { hasText: words })
   await side(page, 'Just in').click()
   await row('Call mom').waitFor({ timeout: 3000 })
@@ -176,7 +180,7 @@ async function light(page) {
   await page.screenshot({ path: `${OUT}/light-justin.png` })
 
   // A new board, named in place.
-  await page.getByRole('navigation', { name: 'Boards' }).getByRole('button', { name: 'New', exact: true }).click()
+  await page.locator('nav.side').getByRole('button', { name: 'New board', exact: true }).click()
   await page.getByRole('textbox', { name: 'New board’s name' }).fill('Garden')
   await page.getByRole('textbox', { name: 'New board’s name' }).press('Enter')
   await page.locator('.boards-title h1', { hasText: 'Garden' }).waitFor({ timeout: 3000 }).catch(() => problems.push('a new board didn’t open'))
@@ -201,9 +205,9 @@ async function light(page) {
   await side(page, 'Fortis').waitFor({ timeout: 3000 }).catch(() => problems.push('Undo didn’t bring the board back'))
   check((await stored(page, 'n7')).folderId === 'fortis', 'Undo didn’t put the sticky back on its board')
 
-  // Esc goes back down to the desk.
+  // Esc with nothing to step back from leaves the board where it is.
   await page.keyboard.press('Escape')
-  await page.locator('.boards').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('Esc didn’t come back down to the desk'))
+  check(await page.locator('.boards').count() === 1, 'Esc closed the board')
 }
 
 async function main() {

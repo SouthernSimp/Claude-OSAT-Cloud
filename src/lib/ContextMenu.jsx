@@ -117,3 +117,10 @@ function ContextMenu({ x, y, stack, onClose, onStep, onBack }) {
     </div>
   )
 }
+
+/* A menu opened from the keyboard (or a button) has no pointer spot: it opens beside the button instead. */
+export function menuEvent(event) {
+  if (event.clientX || event.clientY) return event
+  const box = event.currentTarget?.getBoundingClientRect?.()
+  return { preventDefault() {}, stopPropagation() {}, clientX: box ? box.right : innerWidth / 2, clientY: box ? box.top : innerHeight / 2 }
+}

@@ -56,8 +56,8 @@ export function ConnectorCard({ bridge, connector }) {
       <h2>{on ? 'Apps on this Mac can reach OSAT.' : 'Let apps on this Mac reach OSAT.'}</h2>
       <p>The OSAT connector lets Claude Code, Claude Desktop, Shortcuts and other apps reach your notes. It only listens on this Mac, never on the network. Each app gets its own key, and you choose what it may do:</p>
       <ul className="connector-access">
-        <li><b>Can look:</b> find and read stickies, topics, the journal, the calendar and the names of your files.</li>
-        <li><b>Can look and change:</b> also add, change, move and delete stickies, add and rename topics and branches, write in the journal and add events. Each change shows below with Undo.</li>
+        <li><b>Can look:</b> find and read stickies, boards, the journal, the calendar and the names of your files.</li>
+        <li><b>Can look and change:</b> also add, change, move and delete stickies, add and rename boards and branches, write in the journal and add events. Each change shows below with Undo.</li>
       </ul>
       {connector?.error && <p className="bots-warning" role="status">{connector.error}</p>}
       <div className="button-row">
@@ -123,7 +123,7 @@ export function ConnectorCard({ bridge, connector }) {
           ))}
         </ul>
       )}
-      <p className="ai-note">Muse’s custom connectors run in Meta’s cloud, so they can’t reach this Mac. Muse saves topics through the folder above instead.</p>
+      <p className="ai-note">Muse’s custom connectors run in Meta’s cloud, so they can’t reach this Mac. Muse saves boards through the folder above instead.</p>
     </section>
   )
 }

@@ -12,6 +12,7 @@ import { chromium } from 'playwright'
 import { changelogBuilds } from '../../src/lib/changelog.js'
 import { roadmapPhases } from '../../src/lib/roadmap.js'
 import { comingPhases } from '../../src/boards/plan.js'
+import { openRoom as openPlace } from './window.mjs'
 
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/whats-new`
 const PORT = Number(process.env.OSAT_PORT || 4333)
@@ -42,13 +43,12 @@ async function openRoom(browser, url, theme, version) {
   }, version)
   await page.goto(`${url}?fresh=1`)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
-  await page.locator('.app-dock [data-space="tools"]').click()
-  await page.getByRole('menuitem', { name: 'Roadmap' }).click()
+  await openPlace(page, 'Roadmap')
   await page.locator('.roadmap-room').waitFor({ timeout: 5000 })
   return page
 }
 
-const room = (page) => page.locator('.popout-body[data-view="Roadmap"]')
+const room = (page) => page.locator('.app-room[data-view="Roadmap"]')
 
 async function news(page, builds, have) {
   check(await room(page).getByRole('tab', { name: 'What’s new' }).getAttribute('aria-selected') === 'true', 'the room didn’t open on What’s new')
@@ -80,7 +80,7 @@ async function coming(page, phases) {
   await room(page).getByRole('tab', { name: 'Coming next' }).click()
   check(await room(page).locator('.coming-list li').count() === plans.length, `Coming next didn’t list the ${plans.length} plans`)
   await page.screenshot({ path: `${OUT}/light-coming-start.png` })
-  await room(page).getByRole('button', { name: 'Put it on my canvas' }).click()
+  await room(page).getByRole('button', { name: 'Add it to my boards' }).click()
   await room(page).locator('.coming-board').waitFor({ timeout: 3000 }).catch(() => problems.push('the plan board wasn’t made'))
   const column = (name) => room(page).getByRole('region', { name, exact: true }).locator('.coming-card')
   // The phase in review (the Roadmap's "now"), whichever it is.
@@ -97,7 +97,7 @@ async function coming(page, phases) {
   const later = (await column('Later').allInnerTexts()).map((text) => text.split(' ·')[0])
   const [top, moved] = later
   await room(page).getByRole('button', { name: 'Open the board' }).click()
-  await page.locator('.boards-title h1', { hasText: 'Coming to OSAT' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Open the board didn’t open it on the canvas'))
+  await page.locator('.boards-title h1', { hasText: 'Coming to OSAT' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Open the board didn’t open it'))
   check(await page.getByRole('tab', { name: 'Board' }).getAttribute('aria-selected') === 'true', 'the plan board didn’t open as a Board')
   const card = (phase) => page.locator('.boards-card', { hasText: `${phase} ·` })
   const from = await card(moved).boundingBox()
@@ -115,13 +115,10 @@ async function coming(page, phases) {
   await field.press('Control+Enter')
   await sleep(200)
   await page.screenshot({ path: `${OUT}/light-plan-board.png` })
-  await page.keyboard.press('Escape')
-  await page.locator('.sky-shell').waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('Esc didn’t come back down'))
 
-  // The room stepped aside for the canvas; opened again (on Coming next), it shows that order and the note.
-  check(await room(page).count() === 0, 'the room stayed open over the canvas')
-  await page.locator('.app-dock [data-space="tools"]').click()
-  await page.getByRole('menuitem', { name: 'Roadmap' }).click()
+  // The board took the room's place; the Roadmap opened again (on Coming next) shows that order and the note.
+  check(await room(page).count() === 0, 'the Roadmap stayed open beside the board')
+  await openPlace(page, 'Roadmap')
   await room(page).locator('.coming-board').waitFor({ timeout: 5000 }).catch(() => problems.push('the room didn’t open again on Coming next'))
   const after = await column('Later').allInnerTexts()
   check(after[0]?.startsWith(`${moved} ·`), `the new order didn’t show in Coming next: ${after.map((text) => text.split(' ·')[0]).join(', ')}`)

@@ -3,7 +3,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
-const { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, powerMonitor, screen, session, shell, systemPreferences, utilityProcess } = require('electron')
+const { app, BrowserWindow, Menu, Notification, Tray, dialog, globalShortcut, ipcMain, nativeImage, nativeTheme, powerMonitor, screen, session, shell, systemPreferences, utilityProcess } = require('electron')
 const { createUnder, guardFetch, isLocal, refusal } = require('./under.cjs')
 
 /* Offline (see "Offline" below). Two locks, set before any of OSAT's own modules load:
@@ -52,7 +52,7 @@ const { createBrowser } = require('./browser.cjs')
 const { createSkills } = require('./skills.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, OLD_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = require('./desk.cjs')
+const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, OLD_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, hotkeyLabel, pickWidgets, placeItem, validHotkey, windowSpot } = require('./desk.cjs')
 const { createLauncher } = require('./launcher/index.cjs')
 const { extractText } = require('./mac-files.cjs')
 const { TidyError } = require('./file-ops.cjs')
@@ -160,22 +160,18 @@ function send(channel, ...args) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args)
 }
 
-/* The desk: one see-through window over the real desktop. It fills the screen under
-   the cursor each time it comes up, and closing it only puts it away. */
+/* OSAT's one window (Phase 73): a Mac window with its sidebar, the window buttons inside the sidebar's top. It opens
+   where it was left; closing it only puts it away (⌘Q quits). */
 function createWindow() {
   const mac = process.platform === 'darwin'
   const window = new BrowserWindow({
     show: false,
-    frame: false,
-    transparent: true,
-    hasShadow: false,
-    resizable: false,
-    movable: false,
-    maximizable: false,
-    fullscreenable: false,
-    backgroundColor: '#00000000',
+    ...windowSpot(prefs.bounds, screen.getAllDisplays(), screen.getCursorScreenPoint()),
+    minWidth: 900,
+    minHeight: 600,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#121214' : '#f2f2f7',
     title: 'OSAT',
-    ...(mac ? { vibrancy: 'fullscreen-ui', visualEffectState: 'active', roundedCorners: false } : {}),
+    ...(mac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 24, y: 24 } } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -186,12 +182,24 @@ function createWindow() {
 
   mainWindow = window
   mainListening = false
+  // Where it was left, kept a moment after it stops moving.
+  let keepTimer = null
+  const keepBounds = () => {
+    clearTimeout(keepTimer)
+    keepTimer = setTimeout(() => {
+      if (window.isDestroyed() || window.isMinimized() || window.isFullScreen()) return
+      prefs = { ...prefs, bounds: window.getNormalBounds() }
+      savePrefs().catch(() => {})
+    }, 600)
+  }
+  window.on('resize', keepBounds)
+  window.on('move', keepBounds)
   window.on('close', (event) => {
     if (quitting) return
     event.preventDefault()
     hideDesk()
   })
-  // Passwords lock whenever the desk goes (put away, hidden with the app) and when its page reloads or dies.
+  // Passwords lock whenever the window goes (put away, hidden with the app) and when its page reloads or dies.
   window.on('hide', () => passwords?.lock())
   window.webContents.on('did-start-loading', () => passwords?.lock())
   window.webContents.on('render-process-gone', () => passwords?.lock())
@@ -235,27 +243,17 @@ app.on('render-process-gone', (_event, contents, details) => {
   setTimeout(() => { if (!contents.isDestroyed()) contents.reload() }, 300)
 })
 
-/* The desk's blur. macOS's vibrancy has one fixed blur, so the Appearance slider only tinted it; osat-blur
-   (desktop/helpers/osat-blur.m) sets the window server's own blur radius on the desk instead, so the slider is a real
-   blur, 0 (clear) to deep. Without the module (an older build, not a Mac) the desk keeps the fixed frosting. */
-const deskLook = { amount: 60, clear: false }
+/* The old desk's blur helper (desktop/helpers/osat-blur.m). The window is a plain Mac window since Phase 73, so nothing
+   sets a blur now; the self-test still says whether the module loads.
+   ponytail: the helper still ships; drop it from build-helpers and the CI check in a cleanup. */
 let blurLoaded
 function blurModule() {
   if (blurLoaded !== undefined) return blurLoaded
   blurLoaded = null
   if (process.platform !== 'darwin') return null
   const file = app.isPackaged ? path.join(process.resourcesPath, 'helpers', 'osat-blur.node') : path.join(__dirname, '..', 'build', 'helpers', 'osat-blur.node')
-  try { blurLoaded = require(file) } catch (error) { console.warn('OSAT: the blur module did not load; the fixed frosting stays.', error?.message) }
+  try { blurLoaded = require(file) } catch (error) { console.warn('OSAT: the blur module did not load.', error?.message) }
   return blurLoaded
-}
-function applyDeskBlur() {
-  if (process.platform !== 'darwin' || !mainWindow || mainWindow.isDestroyed()) return
-  const amount = deskLook.clear ? 0 : deskLook.amount
-  const blur = blurModule()
-  let real = false
-  if (blur) { try { real = blur.setBlur(mainWindow.getNativeWindowHandle(), Math.round(amount * 0.6)) === true } catch { real = false } }
-  // With the real blur the vibrancy comes off (it would blur twice); without it, frosting unless the desk is clear.
-  mainWindow.setVibrancy(real || amount === 0 ? null : 'fullscreen-ui')
 }
 
 function showDesk() {
@@ -264,15 +262,12 @@ function showDesk() {
   const window = mainWindow
   const mac = process.platform === 'darwin'
   if (window.isMinimized()) window.restore()
-  const area = displayAt(screen.getAllDisplays(), screen.getCursorScreenPoint()).workArea
-  if (!sameBounds(window.getBounds(), area)) window.setBounds(area)
   // Shown on every Space for a moment, so it comes to the Space you are on instead of
   // taking you back to the one it was last on. skipTransformProcessType: without it each
   // call made Electron activate the Mac's Dock and flip OSAT's Dock icon, so an auto-hiding
   // Dock slid up and down and the desk blinked behind it (Phase 13c).
   if (mac) window.setVisibleOnAllWorkspaces(true, { skipTransformProcessType: true })
   window.show()
-  applyDeskBlur()
   if (mac) {
     app.focus({ steal: true })
     window.setVisibleOnAllWorkspaces(false, { skipTransformProcessType: true })
@@ -352,23 +347,27 @@ function buildMenu() {
     {
       label: 'Go',
       submenu: [
-        // The same spaces and tools as the dock (src/lib/spaces.js).
-        room('Desk', 'Today', 'CmdOrCtrl+1'),
-        room('Notes', 'Notes', 'CmdOrCtrl+2'),
-        room('Canvas', 'Mindmap', 'CmdOrCtrl+3'),
-        room('Ask', 'Assistant', 'CmdOrCtrl+4'),
-        room('Files', 'Files', 'CmdOrCtrl+5'),
+        // The same places as the sidebar (src/lib/spaces.js).
+        room('Today', 'Today', 'CmdOrCtrl+1'),
+        room('Just in', 'JustIn', 'CmdOrCtrl+2'),
+        room('Calendar', 'Calendar', 'CmdOrCtrl+3'),
+        room('To do', 'Todo', 'CmdOrCtrl+4'),
+        room('Notes', 'Notes', 'CmdOrCtrl+5'),
+        room('Files', 'Files', 'CmdOrCtrl+6'),
         { type: 'separator' },
-        room('Journal', 'Journal'),
-        room('Calendar', 'Calendar'),
+        room('Boards', 'Mindmap'),
+        room('Ask', 'Assistant'),
+        room('Meetings', 'Meetings'),
+        room('Mail', 'Mail'),
         room('Habits', 'Habits'),
         room('Money', 'Budget'),
-        room('Browser', 'Browser'),
+        room('Journal', 'Journal'),
+        { type: 'separator' },
+        room('Web', 'Browser'),
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
-        room('Roadmap', 'Roadmap'),
         room('GitHub', 'GitHub'),
-        room('Mail', 'Mail'),
         room('Passwords', 'Passwords'),
+        room('Roadmap', 'Roadmap'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
       ],
@@ -557,6 +556,8 @@ async function loadPrefs() {
       toured: saved.toured === true,
       phone: saved.phone === true,
       under: saved.under === true,
+      // Where the window was left (Phase 73); windowSpot checks it is still on a screen.
+      bounds: saved.bounds && typeof saved.bounds === 'object' ? saved.bounds : null,
     }
   } catch {
     // No preferences yet: the defaults stand.
@@ -629,18 +630,6 @@ function registerDesk() {
     assertMainWindow(event)
   }
   ipcMain.on('desk:hide', (event) => { try { fromDesk(event); hideDesk() } catch { /* ignored */ } })
-  // Blur set to zero in Appearance: no frosting, the desktop shows through clear.
-  ipcMain.on('desk:clear', (event, clear) => {
-    try { fromDesk(event) } catch { return }
-    deskLook.clear = clear === true
-    applyDeskBlur()
-  })
-  // Appearance → Blur (0…100): a real blur of what's behind the desk, as strong as asked.
-  ipcMain.on('desk:blur', (event, amount) => {
-    try { fromDesk(event) } catch { return }
-    if (Number.isFinite(amount)) deskLook.amount = Math.min(Math.max(Math.round(amount), 0), 100)
-    applyDeskBlur()
-  })
   // The shortcuts, read on the desk and changed in Settings.
   handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), search: shortcutInfo('search'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
   // Settings → Shortcuts → Keys in use: what the desk's two keys are, and the Mac's own shortcuts (the launcher's come from its settings).

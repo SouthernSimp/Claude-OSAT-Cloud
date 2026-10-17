@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { openRoom as openPlace } from './window.mjs'
 
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/habits`
 const PORT = Number(process.env.OSAT_PORT || 4329)
@@ -46,14 +47,13 @@ const readDoc = (page) => page.evaluate(async () => {
   return new Promise((resolve) => { const request = db.transaction('workspace').objectStore('workspace').get('doc'); request.onsuccess = () => resolve(request.result) })
 })
 
-/* A page with these habits saved (none: the first run), the desk up, and Habits opened from Tools unless `desk`. */
-async function openRoom(browser, url, { theme = 'light', habits = HABITS, widgets = null, desk = false } = {}) {
+/* A page with these habits saved (none: the first run), and Habits opened from the sidebar unless `desk` (Today, then). */
+async function openRoom(browser, url, { theme = 'light', habits = HABITS, desk = false } = {}) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: theme })
   page.on('pageerror', (error) => problems.push(`${theme}: ${error.message}`))
-  await page.addInitScript((widgets) => {
+  await page.addInitScript(() => {
     for (const name of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(name, 'seen')
-    if (widgets) localStorage.setItem('osat.widgets', JSON.stringify(widgets))
-  }, widgets)
+  })
   await page.route('**/seed.html', (route) => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>seed</title>' }))
   await page.goto(`${url}seed.html`)
   await page.evaluate(async (habits) => {
@@ -69,14 +69,13 @@ async function openRoom(browser, url, { theme = 'light', habits = HABITS, widget
   await page.goto(url)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
   if (desk) return page
-  await page.locator('.app-dock [data-space="tools"]').click()
-  await page.getByRole('menuitem', { name: 'Habits' }).click()
+  await openPlace(page, 'Habits')
   await page.locator('.habits').waitFor({ timeout: 5000 })
   await sleep(500)
   return page
 }
 
-const room = (page) => page.locator('.popout[aria-label="Habits"]')
+const room = (page) => page.locator('.app-room[data-view="Habits"]')
 const habitButton = (page, name) => room(page).getByRole('button', { name, exact: true })
 // `has` is matched inside each row, so it starts from the page, not the room.
 const row = (page, name) => room(page).locator('.habit', { has: page.getByRole('button', { name, exact: true }) })
@@ -220,11 +219,11 @@ async function today(page) {
   check(/All \d+ kept today/.test(await room(page).locator('.habits-title p').innerText()), 'keeping everything wasn’t said')
   check(await room(page).locator('.habits-ring[data-full]').count() === 1, 'the ring didn’t fill')
 
-  // Esc closes the room once nothing else is open.
+  // Esc on a habit leaves the room as it is: rooms stay until you pick another place.
   await habitButton(page, 'Walk').focus()
   await page.keyboard.press('Escape')
   await sleep(400)
-  check(await room(page).count() === 0, 'Esc didn’t close the room')
+  check(await room(page).count() === 1, 'Esc closed the room')
 }
 
 async function main() {
@@ -256,7 +255,7 @@ async function main() {
   check(strip.y > name.y + name.height - 2, 'the week didn’t move under the name in a narrow room')
   await narrow.close()
 
-  // Dark: the room, History, the first run, and the desk widget.
+  // Dark: the room, History, the first run, and the Habits card on Today.
   const dark = await openRoom(browser, url, { theme: 'dark' })
   await room(dark).screenshot({ path: `${OUT}/dark-today.png` })
   await room(dark).getByRole('tab', { name: 'History' }).click()
@@ -268,13 +267,13 @@ async function main() {
   await room(darkFirst).screenshot({ path: `${OUT}/dark-first.png` })
   await darkFirst.close()
 
-  const desk = await openRoom(browser, url, { theme: 'dark', widgets: ['calendar', 'habits', 'next'], desk: true })
-  const widget = desk.locator('.widget-habits')
-  await widget.waitFor({ timeout: 5000 }).catch(() => problems.push('the Habits widget didn’t show'))
-  check((await widget.innerText()).includes('2 of 5'), 'the widget didn’t say how many are kept')
-  const chip = widget.getByRole('button', { name: 'Bedtime', exact: true })
+  const desk = await openRoom(browser, url, { theme: 'dark', desk: true })
+  const widget = desk.locator('.today-card[aria-label="Habits"]')
+  await widget.waitFor({ timeout: 5000 }).catch(() => problems.push('the Habits card on Today didn’t show'))
+  check((await widget.innerText()).includes('2 of 5'), 'the card didn’t say how many are kept')
+  const chip = widget.getByRole('button', { name: /Bedtime/ })
   await chip.click()
-  check(await chip.getAttribute('aria-pressed') === 'true' && (await stored(desk, 'bed')).doneDates.includes(TODAY), 'a chip didn’t keep its habit')
+  check(await chip.getAttribute('aria-pressed') === 'true' && (await stored(desk, 'bed')).doneDates.includes(TODAY), 'a habit on Today didn’t keep it')
   await sleep(500)
   await widget.screenshot({ path: `${OUT}/dark-widget.png` })
   await desk.close()

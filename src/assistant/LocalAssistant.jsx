@@ -126,8 +126,8 @@ export function UsedNotes({ ids, notes, folders = [], onOpen }) {
    opens a new chat with the text waiting ({ prompt, send: true, at } asks it
    as soon as a model is there: ⌘Return in the quick bar), { chatId, at } opens
    that chat, { file: { rootId, relative }, at } starts one about that file.
-   `compact` is Ask inside the quick bar. */
-export function LocalAssistant({ workspace, commit, navigate, initialPrompt = null, compact = false }) {
+   `compact` is Ask inside the quick bar; `panel` is Ask beside a room in OSAT's window. */
+export function LocalAssistant({ workspace, commit, navigate, initialPrompt = null, compact = false, panel = false }) {
   const { models, status: ai, bridge } = useAi();
   const [toast, showUndo] = useUndoToast();
   // Ask can act (Phase 48): in the Mac app a question that asks to do something may use tools.
@@ -520,7 +520,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                 <PictureInPicture /> Pop out
               </button>
             )}
-            {compact && (
+            {compact && !panel && (
               <button className="icon-button" type="button" aria-label="Open in the OSAT window" title="Open in the OSAT window" onClick={() => navigate?.("Assistant", active ? { chatId: active.id } : null)}>
                 <ArrowsOut />
               </button>
@@ -704,7 +704,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
               setDropped(new Set());
             }}>
               <option value="workspace">Reads related notes</option>
-              {active?.contextScope?.folderId && <option value="focus">Reads this topic</option>}
+              {active?.contextScope?.folderId && <option value="focus">Reads this board</option>}
               <option value="none">Reads no notes</option>
             </select>
             {agent.can && (

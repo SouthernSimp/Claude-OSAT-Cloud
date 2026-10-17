@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import test from 'node:test'
 
-const { accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey } = createRequire(import.meta.url)('../desktop/desk.cjs')
+const { accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey, windowSpot } = createRequire(import.meta.url)('../desktop/desk.cjs')
 
 test('the desk opens on the display under the cursor', () => {
   const left = { id: 1, bounds: { x: 0, y: 0, width: 1440, height: 900 } }
@@ -10,6 +10,19 @@ test('the desk opens on the display under the cursor', () => {
   assert.equal(displayAt([left, right], { x: 2000, y: 100 }).id, 2)
   assert.equal(displayAt([left, right], { x: 10, y: 10 }).id, 1)
   assert.equal(displayAt([left, right], { x: -50, y: 5000 }).id, 1)
+})
+
+test('the window opens where it was left while that is mostly on a screen, else in the middle of the screen under the cursor', () => {
+  const laptop = { bounds: { x: 0, y: 0, width: 1512, height: 982 }, workArea: { x: 0, y: 33, width: 1512, height: 949 } }
+  const big = { bounds: { x: 1512, y: 0, width: 2560, height: 1440 }, workArea: { x: 1512, y: 25, width: 2560, height: 1415 } }
+  const left = { x: 1700, y: 100, width: 1100, height: 760 }
+  assert.deepEqual(windowSpot(left, [laptop, big], { x: 10, y: 10 }), left)
+  // The big screen unplugged: back in the middle of the laptop's.
+  assert.deepEqual(windowSpot(left, [laptop], { x: 10, y: 10 }), { x: 116, y: 98, width: 1280, height: 820 })
+  // Nothing saved, a small screen: what fits.
+  const small = { bounds: { x: 0, y: 0, width: 1280, height: 800 }, workArea: { x: 0, y: 25, width: 1280, height: 775 } }
+  assert.deepEqual(windowSpot(null, [small], { x: 5, y: 5 }), { x: 20, y: 45, width: 1240, height: 735 })
+  assert.deepEqual(windowSpot({ x: 0, y: 0, width: 'big' }, [small], { x: 5, y: 5 }).width, 1240)
 })
 
 test('the desk is fitted only when it would move: showing it never nudges a window already in place', () => {

@@ -1,23 +1,25 @@
 # OSAT — notes for Claude
 
-OSAT is Nate's personal, private "second brain" for the Mac. It is a calm layer over the
-Mac: press a hotkey anywhere to drop a thought, find something or ask your own notes,
-and open the window to sort and think. Everything, including the AI, stays on the Mac.
-It is built for one person first; the App Store and a phone companion come later.
+OSAT is a private, AI-organized place to run your work and your life on a Mac: one window with a sidebar, Today as
+its first screen, boards for each client, project or part of life, plus habits, money, meetings, mail and power
+tools. Write anything (the bar, or ⌥⇧Space from any app) and OSAT works out what it is and where it goes. The AI runs
+on the Mac unless a cloud model is chosen. Since Oct 17 2026 Claude owns OSAT's direction (Nate: "you are now the
+owner"); the goal is something businesses can use, Nate himself the first user (his clients, Fortis, mccreery.ai).
 
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 16, 2026: the rework's five stages are merged (build 299)
+## Resume checkpoint — October 17, 2026: Phase 73, the new OSAT (one window, Today)
 
-The rework (docs/REWORK-20261015.md, mockup https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48) is in main: Phases 67,
-68, 72 (Just in), 69 small (#105, Just in's intake line; Dashboard removed; build 297), 70 Soul and memory (#106) and
-71 Connections with MCP sign-in (#107, Add Granola / Add Notion), build 299. Proposed next (waiting on Nate's yes):
-Workers (Phase 19 reborn): 1) Nate tries Add Granola; 2) Meeting secretary (Granola and Meetings → to-dos and decisions
-in Just in, Undo each); 3) a Workers room for the background jobs (filing, dates, brief, overnight, secretary: what each
-did, what it may touch, on/off); 4) OSAT offers MEMORY.md lines when Nate re-files a sticky. Cleanup asked about:
-delete Sort a pile and Put the desk away (a permission check blocked it once), "topic" words. Parked: Gemini via MCP
-(needs OSAT reachable from the internet), iPad, budget questions. Older checkpoints are in git history.
+Nate made Claude OSAT's owner and asked for an Apple-quality redesign. Approved mockup:
+https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C. Phase 73 (branch `claude/one-window`, PR #108) replaces the desk:
+one Mac window with one sidebar (`shell/Sidebar.jsx`), Today and To do (`today/`), the bar on top (`shell/Line.jsx`),
+Ask as a panel; the desk, widgets, dock, Tools grid and pop-outs are deleted. Next, in order: 74 follow-ups from
+meetings (Granola through the MCP client + OSAT Meetings' to-dos become To-do stickies with `source: 'Meeting'`, shown
+on Today and To do, Undo each); 75 Goals (a small Life page, each goal fed by a board or a habit); 76 polish (Notes'
+own folder column vs the sidebar, motion, native vibrancy for the sidebar once seen on the Mac). Nate's answers that
+steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install, sell as a
+done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
 ## Working with Nate
 
@@ -37,7 +39,8 @@ delete Sort a pile and Put the desk away (a permission check blocked it once), "
   `settings.plan.boardId`, its notes by `rank` and `stage` (`settings.plan.notes` says which note is which phase).
 - Before finishing a working session, commit and push completed changes to GitHub.
   Keep this resume checkpoint and the roadmap current so Nate can switch between
-  Claude and Codex without losing progress. Leave merging for Nate's instruction.
+  Claude and Codex without losing progress. Nate asked Claude to merge once CI's checks pass (he gets it through Check
+  for updates); a change he must see first waits for his word.
 
 ## Calm rules (apply to every screen)
 
@@ -108,11 +111,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `chat` the bar on Ask, ⌥⇧Space; `chat:show` is Pop out, into the bar); menu-bar icon, app launchers, Esc
     routing (a panel swallows Esc, so OSAT takes it while the bar or the ring has focus), single-instance lock.
     Every `setVisibleOnAllWorkspaces` passes `skipTransformProcessType: true`: without it Electron activates the
-    Mac's Dock app and flips OSAT's Dock icon on each call (the Dock bug, Phase 13c). The desk is the one main window: frameless,
-    see-through with vibrancy, it fills the work area of the display under the cursor each time
-    it shows (`showDesk`), comes to the current Space, and closing it only hides it (`hideDesk`
-    gives focus back to the previous app); only ⌘Q quits. IPC answers the desk (`from: 'app'` is
-    kept for windows that will show rooms later).
+    Mac's Dock app and flips OSAT's Dock icon on each call (the Dock bug, Phase 13c). The main window (Phase 73) is a
+    plain Mac window: `titleBarStyle: 'hiddenInset'` with the traffic lights at (24, 24), inside the sidebar's top; it
+    opens where it was left (`prefs.bounds`, `windowSpot` in desk.cjs), comes to the current Space when shown
+    (`showDesk`), and closing it only hides it (`hideDesk` gives focus back to the previous app); only ⌘Q quits. The
+    old desk's blur helper still ships for the self-test line only (a ponytail cleanup). IPC answers the main window
+    (`from: 'app'`).
   - `files.cjs`: all of main's file access, so main only calls `createFiles` (as it calls `createBots`):
     the places and grants (`approved-files.json`), `approvedPath`/`approvedWritePath`/`sourcePath`/
     `folderPath` (a path must stay inside one), the undo tokens (`undos`, `keepUndo`), `binTrash`,
@@ -301,10 +305,12 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     batched operations, confirmed vs pending so edits never bounce back), `bridges.js`
     (the Mac app's `window.osat.store`, or an IndexedDB-backed hub for the browser preview;
     `?fresh=1` starts the preview empty).
-  - `App.jsx`: picks the surface: the desk (`shell/Desk.jsx`), `?surface=phone` the iPhone app (`surfaces/Phone.jsx`:
+  - `App.jsx`: picks the surface: the window (`shell/Desk.jsx`), `?surface=phone` the iPhone app (`surfaces/Phone.jsx`:
     Today, Notes, iCloud), `?surface=search` the quick bar (with Ask inside it), `?surface=ring` the ring.
-  - `lib/spaces.js`: the one list of spaces (Desk, Notes, Canvas (id `Mindmap`, once the Sky), Ask, Files), tools and
-    Settings. The dock, ⌘K and ⌘1–5 read it; the Mac Go menu in `main.cjs` mirrors it by hand.
+  - `lib/spaces.js`: the one definition of where things live: `SPACES` (Today, Just in (id `JustIn`), Calendar, To do
+    (`Todo`), Notes, Files: the sidebar's four tiles, then ⌘1–6), `TOOLS` (every other room; Money is `Budget`, the
+    boards `Mindmap`, Ask `Assistant`), `GROUPS` (the sidebar's Business, Life, Library and the folded Power tools) and
+    `SETTINGS`. The sidebar, ⌘K and the keys read it; the Mac Go menu in `main.cjs` mirrors it by hand.
   - `views/Roadmap.jsx`: Tools → Roadmap has four tabs. What’s new is CHANGELOG.md (`lib/changelog.js`: builds,
     `Next build` = the build itself, `isYours` against `osatApp.about()`'s version, a #number opens its pull request
     through `osatSearch.openLink`). Coming next is Phase 31 (`boards/plan.js`): the Roadmap's open phases as the
@@ -338,23 +344,26 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
     `dragover`/`drop` on the room, the target found with `targetAt`); `carryable(item, { out })` calls `out`
     when the pointer leaves the window, and Files uses it to start the Mac's own drag.
     `lib/ContextMenu.jsx`: `useContextMenu()` right-click menus (step-in lists, paper swatches).
-  - `shell/glass.jsx`: the liquid-glass SVG filter (`GlassDefs`), `useAlive()` (cursor light on
-    `.glass`/`.lit`, `--px/--py` for parallax) and the dock's magnify.
-  - `shell/Desk.jsx`: the desk and its two layers — the canvas above (`boards/Boards.jsx`, state `sky`,
-    ⌘3 / ⌥⌘↑ / a sticky held at the top) and the desk (`FieldDesk`: widgets, the line, the shelf of
-    Desktop files or nodes and notes, stickies on the desk via `field/DeskStickies.jsx`, the
-    right-click desk menu). Offline is a switch at the end of the line (`Line.jsx`, `offline` /
-    `onOffline`; also ⇧⌘U, the menu-bar icon and "Offline" in ⌘K): the desk stays, a calm line
-    under it says so, and Browser, Terminal and Now Playing say they wait (`ONLINE_ONLY`). The dock
-    (`shell/Shell.jsx`: `Dock` with app launchers; Tools holds Appearance, which opens Settings →
-    Appearance; its Sky button takes a dragged sticky) and every room as a solid draggable pop-out (`ROOMS`, `PopRoom`; double-click the bar
-    to fill the screen). Rooms open beside the line (`shell/placement.js`); when one covers it,
-    the line rises (`raised`). Esc leaves a field in a pop-out, then closes the top pop-out, then
-    comes back to the desk from the Sky; it never puts the desk away (⌥Space and ⌘W
-    do). Also the welcome, capture (⇧⌘N) and the menu-bar commands. The browser preview shows a
-    stand-in desktop and keeps `places` in localStorage.
-  - The canvas (Phase 68, `boards/`): `Boards.jsx`, the layer above the desk (state `sky` in Desk.jsx, wrapper
-    `.sky-shell`): Just in, your boards and Kept for you down the side; the open board as a Map (`mapColumns`: a column
+  - `shell/Desk.jsx` (Phase 73): OSAT's one window. `at` = { view, board, detail, stamp } is where you are; `navigate`
+    maps every old view name (Mindmap/Sky/Canvas → a board or Just in, Today/Desk → Today, Assistant → the Ask panel,
+    Capture → the bar). Left `shell/Sidebar.jsx` (tiles with counts, boards with drop targets and right-click Rename /
+    Delete board with Undo, groups, Settings and the Online/Offline switch at the foot; "New board" from ⌘K names it
+    here, `newBoard`); then the bar (`shell/Line.jsx`: Save as a sticky (source `Typed`), ⌘↵ hands the words to the Ask
+    panel (`onAsk`, `send: true`), ⌥↵ a To-do sticky; type-anywhere only on Today) and the room (`.app-room`, also
+    `.popout-body`: a `container: room / size`, `data-view`); right the Ask panel (`LocalAssistant compact panel`).
+    Boards is controlled there (`board`, `onOpenBoard`; its own side list and Ask button step aside). Esc: a room's own
+    step (`boardsRef.back()`), then the Ask panel; it never hides the window. Also the welcome, the tour
+    (`tour-model.js`, pointing at the bar, the tiles, the boards and Ask), scans arriving, auto-filing, dates, the update
+    line, the clipboard offer and the brief note. Styles: `styles/app.css` (loaded last in main.jsx: the window, the
+    sidebar, the bar's look, Ask's panel layout, Today); `styles/bar.css` is the bar's parts.
+  - `today/` (Phase 73): `today-model.js` (pure, tests/today.test.mjs): `openTodos` (Doing, then Next, then the soonest
+    day, then the newest; `late`), `dayPlan` (the Mac's events minus hidden calendars, OSAT's own, dated stickies not on
+    a calendar; all-day first), `greeting`, `dayLine` (never a scold), `monthMoney`. `Today.jsx`: `TodayView` (cards
+    tinted by kind of thing: To do, Waiting in Just in, Your day + Coming up, Habits with a ring, the month's money;
+    ticking a to-do shows it ticked, then leaves with Undo) and `TodoView` (every open to-do by board, a New to-do line).
+  - `lib/UndoToast.jsx`: one toast at a time in the window: a newer one anywhere puts the older away (`osat:toast`).
+  - The boards (Phase 68, `boards/`; a room of the window since Phase 73): `Boards.jsx`: Just in and your boards (in
+    the window's sidebar; the component's own side list shows only without `onOpenBoard`); the open board as a Map (`mapColumns`: a column
     per kind), a Board (`stageColumns`: Later / Next / Doing / Done; `stage` on the note, Done is `doneAt`) or a List; Find
     on a board; the write line (`addSticky`, source `Canvas`); carry a card to a column (sets `what`), a stage (`setStage`
     + `rankIn`) or a board in the side (`moveToBoard`); right-click a card (What it is, Stage, Move to, Edit, Open in
@@ -685,37 +694,24 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 
 ## Layout traps worth remembering
 
-- The desk (`.overlay-surface`) is `100dvh` and never scrolls; each pop-out's body is a
-  `.workspace-content.is-filled` and its room uses `height: 100%`.
-  Never write `calc(100dvh - <number>)`.
+- The window (`.app`) is `100dvh` and never scrolls; a room (`.app-room`) fills what is left beside the sidebar and
+  scrolls itself (`height: 100%`). Never write `calc(100dvh - <number>)`.
+- `styles/app.css` is imported last in `main.jsx` (CSS from a component import would load before the base sheets and
+  lose ties). `.workspace-content.is-filled > *` zeroes a room's padding: give a room's own padding as
+  `.app-room > .room-class`.
 - Grid tracks: write `minmax(0, 1fr)`, not `1fr`, and always declare columns, or wide
   children push the track past the viewport.
-- `backdrop-filter` only blurs what shares its backdrop root: no element containing glass
-  may carry opacity, filter or a view-transition name.
-- Colours: neutral greys and `--accent` (the Mac's accent, painted by main as `--mac-accent`);
-  no brown, orange or green chrome. Sticky papers (`[data-paper]` → `--paper-bg`) stay bright in
-  both looks with dark ink.
-- `.overlay-surface` is `overflow: clip`, never `hidden`: focusing something half off-screen must
-  not be able to scroll the whole desk.
-- Pop-outs, menus, dialogs and toasts are solid (`--page`, `--surface-raised`): in the Mac app
-  `backdrop-filter` doesn't reach the desk behind a pop-out, so anything translucent over other
-  content shows it crisp through. Glass is only for things that sit over the bare desktop.
-- Layers on the desk: widgets and icons, stickies (`.sticky-layer`, z 3), the line (z 4), rooms
-  (`.popouts`, z 10), then the dock and a risen line (z 11+); the Sky (`.sky-shell`, z 13) covers
-  it all, with rooms opened from it above (14). `.overlay-surface` is the one stacking context;
-  `.home` must not become one.
-- Rooms lay themselves out for their pop-out: `.popout-body` (and `.quick-chat`) is a
-  `container: room / size`, and room styles use `@container room (max-width: 960px | 760px |
-  560px)`. Only the desk itself uses `@media`.
+- Colours: neutral greys, `--accent` (the Mac's accent, painted by main as `--mac-accent`) and the few `--tint-*`
+  colours for tiles and Today's cards (dark enough for white words). Sticky papers (`[data-paper]` → `--paper-bg`)
+  stay bright in both looks with dark ink.
+- Rooms lay themselves out for their box: `.popout-body` (the room, the Ask panel, `.quick-chat`) is a
+  `container: room / size`, and room styles use `@container room (max-width: 960px | 760px | 560px)`. Size containment
+  makes that box the containing block for `position: fixed`, so a toast inside Ask sits in the panel (placed under its
+  head in app.css).
 - In the quick bar (and Ask in it) `--page` is transparent: never use it as a text colour; use `--on-solid-ink`.
-- `.glass` draws its rim and cursor light with `::before`/`::after`; don't give glass elements
-  other pseudo-elements.
-- Every token lives in `tokens.css` (Mindmap's `--paper-*` and `--desk` too); app-wide layers use
-  `--z-*`, type sizes `--t-*`, and the only desk breakpoints are 1100, 900 and 720px.
+- Every token lives in `tokens.css`; app-wide layers use `--z-*`, type sizes `--t-*`.
 - Ad-hoc signing a build inside `~/Desktop` (iCloud-synced) fails with "detritus not allowed";
   build elsewhere: `-c.directories.output=<folder outside Desktop>`.
-- The dock is a grid child whose row is the desk's foot: on a side edge it needs `grid-column/row: auto` so the
-  desk's whole box is its containing block. `input:not([type])` beats a bare class, so panel fields use
-  `.quick-search .qs-input`-style selectors.
+- `input:not([type])` beats a bare class, so panel fields use `.quick-search .qs-input`-style selectors.
 - Never launch a packaged build against Nate's real `~/Library/Application Support/OSAT` to
   test: it would upgrade the schema under his installed app. Use `--osat-self-test`.

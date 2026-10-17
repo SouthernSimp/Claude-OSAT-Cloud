@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, DeviceMobile, DownloadSimple, FolderOpen, LockSimple, Printer, UploadSimple } from "@phosphor-icons/react";
+import { Check, DeviceMobile, DownloadSimple, FolderOpen, LockSimple, Monitor, Moon, Printer, Sun, UploadSimple } from "@phosphor-icons/react";
 import { cleanError, setupLine, useAi } from "../../assistant/useAi.js";
 import { memoryResult } from "../../assistant/ModelMenu.jsx";
 import { downloadFile, formatRelativeTime } from "../../lib/ui.js";
 import { localDateKey } from "../../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../../osat-data.js";
-import { AppearanceControls } from "../../shell/Shell.jsx";
 import { workspaceClient } from "../../store/useWorkspace.js";
 import { BotsSettings } from "../Bots.jsx";
 import { ObsidianView } from "../Obsidian.jsx";
@@ -155,13 +154,13 @@ function ScansCard() {
       <p className="eyebrow">Scans</p>
       {status?.dir ? (
         <>
-          <h2>Scans become topics.</h2>
+          <h2>Scans become boards.</h2>
           <p>
             {status.error || (status.waiting
               ? "A scan is being sorted now."
               : status.last
                 ? `Watching ${folder}. The last scan came in ${formatRelativeTime(status.last)}.`
-                : `Watching ${folder}. Scan something and it appears on the canvas in a minute or two.`)}
+                : `Watching ${folder}. Scan something and it appears in OSAT in a minute or two.`)}
           </p>
           <div className="button-row">
             <button className="outline-button" type="button" onClick={() => bridge.show().catch(() => {})}><FolderOpen /> Show the folder</button>
@@ -171,8 +170,8 @@ function ScansCard() {
         </>
       ) : (
         <>
-          <h2>Turn paper into a topic.</h2>
-          <p>Choose the folder your scanner saves to. Each new scan is read on this Mac, and the AI sorts it into a topic with branches, waiting for you on the canvas. A single sticky comes in as one sticky. A date becomes a question: add it to your Calendar? Scans already in the folder are left alone.</p>
+          <h2>Turn paper into a board.</h2>
+          <p>Choose the folder your scanner saves to. Each new scan is read on this Mac, and the AI sorts it into a board with branches, waiting for you in the sidebar. A single sticky comes in as one sticky. A date becomes a question: add it to your Calendar? Scans already in the folder are left alone.</p>
           <button className="primary-button" type="button" onClick={() => act(bridge.choose)}><Printer /> Choose the scans folder</button>
         </>
       )}
@@ -262,7 +261,7 @@ function PhoneCards() {
       <section className="content-card">
         <p className="eyebrow">Read your notes</p>
         <h2>Files → iCloud Drive → OSAT → Notes.</h2>
-        <p>A copy that follows your notes as you write, in the same topics. Write in OSAT; changes made to the copy aren’t read back.</p>
+        <p>A copy that follows your notes as you write, on the same boards. Write in OSAT; changes made to the copy aren’t read back.</p>
       </section>
     </>
   );
@@ -270,7 +269,7 @@ function PhoneCards() {
 
 /* ---- The pages ----------------------------------------------------------------------------------------------------- */
 
-const KEYS_INSIDE = [["⌘1 – ⌘5", "Desk, Notes, Canvas, Ask, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new sticky"], ["⌘,", "Settings"], ["⌘F", "Search these settings"], ["esc", "Back out, one step at a time"]];
+const KEYS_INSIDE = [["⌘1 – ⌘6", "Today, Just in, Calendar, To do, Notes, Files"], ["⌘K", "Find anything"], ["⇧⌘N", "A new sticky"], ["⌘,", "Settings"], ["⌘F", "Search these settings"], ["esc", "Back out, one step at a time"]];
 
 export function GeneralPage({ page }) {
   const keys = useDeskKeys();
@@ -280,8 +279,8 @@ export function GeneralPage({ page }) {
     <Page page={page}>
       {keys.bridge && (
         <Group title="OSAT, from anywhere" note="A key another app already has is refused, and the old one stays.">
-          <Row title="The desk" hint={taken(info, "Brings OSAT up over your desktop. Press it again, or Esc, to put it away.")} words="hotkey open show overlay">
-            <DeskKey which="layer" name="the desk" keys={keys} />
+          <Row title="Show OSAT" hint={taken(info, "Brings OSAT’s window up from any app. Press it again to put it away.")} words="hotkey open show window desk">
+            <DeskKey which="layer" name="OSAT" keys={keys} />
           </Row>
           <Row title="Search or Ask" hint={taken(info?.search, "One bar over your other apps, like Spotlight: find a file, a copy, an app or a note, ask the AI (Tab or ⌘Return), or save a sticky (⌥Return).")} words="hotkey spotlight find search raycast quick bar ask ai chat">
             <DeskKey which="search" name="Search or Ask" keys={keys} />
@@ -300,9 +299,15 @@ export function GeneralPage({ page }) {
 export function AppearancePage({ page, workspace, commit }) {
   return (
     <Page page={page}>
-      <Legacy words="light dark auto backdrop blur desk look">
+      <Legacy words="light dark auto theme look">
         <div className="setting-card is-padded appearance-card">
-          <AppearanceControls workspace={workspace} commit={commit} />
+          <div className="segmented" role="radiogroup" aria-label="Light or dark">
+            {[["system", "Auto", Monitor], ["light", "Light", Sun], ["dark", "Dark", Moon]].map(([id, label, Icon]) => (
+              <button key={id} type="button" role="radio" aria-checked={workspace.theme === id} onClick={() => commit((state) => ({ ...state, theme: id }))}>
+                <Icon weight={workspace.theme === id ? "fill" : "regular"} />{label}
+              </button>
+            ))}
+          </div>
         </div>
       </Legacy>
     </Page>
@@ -441,7 +446,7 @@ export function DataPage({ page, workspace, commit, storage, showUndo }) {
         </Row>
       </Group>
       <Group title="Backup">
-        <Row title="Download a backup" hint="One file with every note and topic." words="export save file json">
+        <Row title="Download a backup" hint="One file with every note and board." words="export save file json">
           <button className="primary-button" type="button" onClick={backup}><DownloadSimple /> Download a backup</button>
         </Row>
         <Row title="Restore a backup" hint="Restoring keeps a copy of what it replaces, so it can be undone." words="import load file json">
@@ -465,7 +470,7 @@ export function ScansPage({ page }) {
     <Page page={page}>
       {window.osatScans
         ? <Legacy words="scanner folder brother paper"><ScansCard /></Legacy>
-        : <Group><Row title="Scans live in the Mac app" hint="Pick your scanner’s folder; each new scan becomes a topic." /></Group>}
+        : <Group><Row title="Scans live in the Mac app" hint="Pick your scanner’s folder; each new scan becomes a board." /></Group>}
     </Page>
   );
 }

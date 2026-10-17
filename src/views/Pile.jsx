@@ -361,7 +361,7 @@ export function PileView({ workspace, commit, navigate, onClose }) {
     setBlank(true)
     pending.current = null
     setCam({ x: 0, y: 0, z: 1 })
-    showUndo(`Sent ${label} to the canvas`, () => {
+    showUndo(`Sent ${label} to your boards`, () => {
       commit((state) => purgeNotes({
         ...setPiles(state, [...pilesOf(state), before]),
         folders: state.folders.filter((folder) => !made.folders.includes(folder.id)),
@@ -408,7 +408,7 @@ export function PileView({ workspace, commit, navigate, onClose }) {
           <button type="button" className="pile-tool" onClick={() => readFiles([() => files.attachChosen()])} title="Read a photo, scan or PDF of a pile into stickies"><Image weight="bold" /> Photo</button>
         )}
         <button type="button" className="pile-tool" onClick={askHelp} disabled={!pile?.cards.length || help?.busy}><Sparkle weight="bold" /> Help me sort</button>
-        <button type="button" className="pile-send" onClick={() => setSending({ name: pile?.name || '', mode: 'one' })} disabled={!pile?.cards.length}>Send to the canvas</button>
+        <button type="button" className="pile-send" onClick={() => setSending({ name: pile?.name || '', mode: 'one' })} disabled={!pile?.cards.length}>Send to a board</button>
       </header>
 
       <div
@@ -491,7 +491,7 @@ export function PileView({ workspace, commit, navigate, onClose }) {
         {sent && !pile?.cards.length && (
           <div className="pile-sent" role="status">
             <p>Sent {sent.label} to the Sky.</p>
-            {sent.nodeId && <button type="button" className="is-primary" onClick={() => { navigate('Mindmap', { folderId: sent.nodeId, open: true }); onClose?.() }}>See it on the canvas</button>}
+            {sent.nodeId && <button type="button" className="is-primary" onClick={() => { navigate('Mindmap', { folderId: sent.nodeId, open: true }); onClose?.() }}>Open the board</button>}
             <button type="button" onClick={() => { setSent(null); input.current?.focus() }}>Start the next pile</button>
           </div>
         )}
@@ -572,13 +572,13 @@ function SendPanel({ pile, initial, onSend, onCancel }) {
       <form
         className="pile-send-panel"
         role="dialog"
-        aria-label="Send to the canvas"
+        aria-label="Send to a board"
         onSubmit={(event) => { event.preventDefault(); onSend({ name, mode }) }}
         onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel() } }}
       >
-        <h2>Send to the canvas</h2>
+        <h2>Send to a board</h2>
         <label className="pile-field">
-          <span>Name of the topic</span>
+          <span>Name of the board</span>
           <input ref={field} value={name} placeholder={pileName(pile)} maxLength={80} onChange={(event) => setName(event.target.value)} disabled={mode === 'each'} />
         </label>
         <div className="pile-modes" role="radiogroup" aria-label="How it goes up">

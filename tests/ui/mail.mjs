@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { openRoom as openPlace } from './window.mjs'
 
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/mail`
 const PORT = Number(process.env.OSAT_PORT || 4327)
@@ -84,8 +85,7 @@ async function openRoom(browser, url, { theme, denied = false, empty = false }) 
   await page.addInitScript(() => { for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen') })
   await page.goto(`${url}?fresh=1`)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
-  await page.locator('.app-dock [data-space="tools"]').click()
-  await page.getByRole('menuitem', { name: 'Mail' }).click()
+  await openPlace(page, 'Mail')
   return page
 }
 
@@ -156,7 +156,7 @@ async function main() {
     // Ask about this message: nothing before the press; the AI on this Mac only; the email quoted as data.
     check(await page.evaluate(() => window.__asked.length) === 0, 'the AI was asked before the button')
     await page.getByRole('button', { name: 'Ask about this message' }).click()
-    await page.getByRole('button', { name: 'Ask', exact: true }).click()
+    await page.locator('.mail-ask').getByRole('button', { name: 'Ask', exact: true }).click()
     await page.getByText('Sam is sending a price.').waitFor({ timeout: 3000 }).catch(() => problems.push('the answer didn’t show'))
     const asked = await page.evaluate(() => window.__asked)
     check(asked.length === 1 && asked[0].model === 'osat:balanced', 'it asked a model that isn’t the one on this Mac')

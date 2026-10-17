@@ -1,7 +1,6 @@
-/* The desk: OSAT's one window. It fills the screen under the cursor, see-through
-   with macOS vibrancy so the real desktop shows blurred behind it. ⌥Space brings it
-   up (or forward), and puts it away when it is already in front. These are the pure
-   pieces; main.cjs owns the window. */
+/* OSAT's one window (Phase 73: a Mac window with a sidebar; until then a see-through desk over the screen). ⌥Space
+   brings it up (or forward), and puts it away when it is already in front. These are the pure pieces; main.cjs owns
+   the window. */
 
 const DEFAULT_HOTKEY = 'Alt+Space'
 // The quick bar (Phase 13, one bar since 13c; one key for it since Oct 2026). ⌥Space is the desk, ⌥⇧Space the bar. ⌘⇧Space
@@ -20,6 +19,22 @@ function displayAt(displays, point) {
 /* The same rectangle: the desk is fitted only when it would change, so showing it never moves a window that
    is already where it belongs. */
 const sameBounds = (a, b) => Boolean(a && b) && ['x', 'y', 'width', 'height'].every((key) => a[key] === b[key])
+
+/* Where the window opens (Phase 73): where it was left, while that is still mostly on a screen; else 1280 × 820 (or
+   what fits) in the middle of the screen under the cursor. */
+const WINDOW_SIZE = { width: 1280, height: 820 }
+function windowSpot(saved, displays, point) {
+  const ok = saved && ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(saved[key])) && saved.width >= 600 && saved.height >= 400
+  const shown = (area) => Math.max(0, Math.min(saved.x + saved.width, area.x + area.width) - Math.max(saved.x, area.x))
+    * Math.max(0, Math.min(saved.y + saved.height, area.y + area.height) - Math.max(saved.y, area.y))
+  if (ok && displays.some((display) => shown(display.workArea) >= saved.width * saved.height * 0.5)) {
+    return { x: Math.round(saved.x), y: Math.round(saved.y), width: Math.round(saved.width), height: Math.round(saved.height) }
+  }
+  const area = displayAt(displays, point).workArea
+  const width = Math.min(WINDOW_SIZE.width, area.width - 40)
+  const height = Math.min(WINDOW_SIZE.height, area.height - 40)
+  return { x: Math.round(area.x + (area.width - width) / 2), y: Math.round(area.y + (area.height - height) / 2), width, height }
+}
 
 /* A hotkey is one or more modifiers plus one key, e.g. "Alt+Space" or "Control+Shift+O". */
 function validHotkey(value) {
@@ -104,4 +119,4 @@ function deskAction({ visible, focused }) {
   return focused ? 'hide' : 'show'
 }
 
-module.exports = { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, OLD_SEARCH_HOTKEY, accentCss, addLauncher, placeItem, pickWidgets, deskAction, displayAt, hotkeyLabel, sameBounds, validHotkey }
+module.exports = { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, OLD_SEARCH_HOTKEY, accentCss, addLauncher, placeItem, pickWidgets, deskAction, displayAt, hotkeyLabel, sameBounds, validHotkey, windowSpot }

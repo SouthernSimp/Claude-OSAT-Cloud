@@ -68,14 +68,13 @@ test('actions answer to their other words', () => {
   for (const word of ['offline', 'online', 'incognito', 'private', 'wifi']) {
     assert.deepEqual(findAll(workspace, word)[0].go, ['Offline'], word)
   }
-  for (const word of ['focus', 'pomodoro', 'timer']) {
-    assert.deepEqual(findAll(workspace, word)[0].go, ['Focus'], word)
-  }
   assert.deepEqual(findAll(workspace, 'new note').find((row) => row.kind === 'action').go, ['Notes', { action: 'new' }])
-  for (const word of ['add a widget', 'widget', 'widgets']) {
-    assert.deepEqual(findAll(workspace, word)[0].go, ['Widgets'], word)
+  for (const word of ['new board', 'new client']) {
+    assert.deepEqual(findAll(workspace, word).find((row) => row.kind === 'action').go, ['Mindmap', { action: 'new-node' }], word)
   }
-  assert.ok(!findAll(workspace, 'habits').some((row) => row.go[0] === 'Widgets'), 'a room\'s name finds the room, not the tray')
+  // The desk's Focus timer and widget tray went with the desk (Phase 73).
+  assert.ok(!findAll(workspace, 'widget').some((row) => row.go[0] === 'Widgets'))
+  assert.ok(!findAll(workspace, 'pomodoro').some((row) => row.go[0] === 'Focus'))
 })
 
 test('hidden rooms are found by name: Now playing', () => {
@@ -101,10 +100,10 @@ test('at most five, however much matches', () => {
   assert.equal(findAll(workspace, 'tent').length, 5)
 })
 
-test('an empty line jumps: the four latest notes, then the spaces', () => {
+test('an empty line jumps: the four latest notes, then the places in the sidebar’s first rows', () => {
   const rows = findAll(workspace, '  ')
   assert.deepEqual(keys(rows).slice(0, 4), ['note:n-8', 'note:n-7', 'note:n-6', 'note:n-pack'])
-  assert.deepEqual(rows.slice(4).map((row) => row.go[0]), ['Notes', 'Mindmap', 'Assistant', 'Files'])
+  assert.deepEqual(rows.slice(4).map((row) => row.go[0]), ['JustIn', 'Calendar', 'Todo', 'Notes', 'Files'])
 })
 
 

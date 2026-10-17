@@ -10,7 +10,18 @@ export function useUndoToast() {
     const timer = setTimeout(() => setToast(null), 6000);
     return () => clearTimeout(timer);
   }, [toast]);
-  const show = useCallback((message, undo) => setToast({ id: Date.now(), message, undo }), []);
+  // One toast at a time in the window: a newer one anywhere (the sidebar, a room) puts this one away.
+  useEffect(() => {
+    if (!toast) return undefined;
+    const newer = (event) => { if (event.detail !== toast.id) setToast(null); };
+    window.addEventListener("osat:toast", newer);
+    return () => window.removeEventListener("osat:toast", newer);
+  }, [toast]);
+  const show = useCallback((message, undo) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    window.dispatchEvent(new CustomEvent("osat:toast", { detail: id }));
+    setToast({ id, message, undo });
+  }, []);
   const element = (
     <div className="undo-toasts" aria-live="polite">
       {toast && (

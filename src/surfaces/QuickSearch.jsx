@@ -764,8 +764,8 @@ function NodePicker({ workspace, onPick, onClose }) {
     <div className="qs-picker">
       <input
         ref={field}
-        aria-label="Add to which topic?"
-        placeholder="Add to which topic?"
+        aria-label="Add to which board?"
+        placeholder="Add to which board?"
         value={words}
         onChange={(event) => { setWords(event.target.value); setAt(0) }}
         onKeyDown={(event) => {
@@ -775,8 +775,8 @@ function NodePicker({ workspace, onPick, onClose }) {
           else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose() }
         }}
       />
-      <ul role="listbox" aria-label="Topics">
-        {options.length === 0 && <li className="qs-empty">{workspace?.folders?.length ? 'No topic by that name.' : 'You have no topics yet. Make one on the canvas.'}</li>}
+      <ul role="listbox" aria-label="Boards">
+        {options.length === 0 && <li className="qs-empty">{workspace?.folders?.length ? 'No board by that name.' : 'You have no boards yet. Make one in OSAT’s sidebar.'}</li>}
         {options.map((option, index) => (
           <li key={option.id} role="option" aria-selected={index === at} className="qs-row" onClick={() => onPick(option.id)}>
             <span className="qs-row-text"><b>{option.label}</b></span>

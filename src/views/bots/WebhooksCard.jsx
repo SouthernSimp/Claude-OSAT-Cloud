@@ -133,7 +133,7 @@ function SendCard({ bridge, hooks, offline }) {
         <LockSimple aria-hidden="true" />
         {offline
           ? 'Offline: what happens waits here (up to 100 moments) and is sent when you’re back online.'
-          : 'Each moment sends only its own words (the sticky and its topic, the topic’s name, or the journal line) to that address. Offline, they wait and go when you’re back online.'}
+          : 'Each moment sends only its own words (the sticky and its board, the board’s name, or the journal line) to that address. Offline, they wait and go when you’re back online.'}
       </p>
     </section>
   )

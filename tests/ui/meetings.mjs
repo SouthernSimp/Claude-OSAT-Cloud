@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { openRoom } from './window.mjs'
 
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/meetings`
 const PORT = Number(process.env.OSAT_PORT || 4324)
@@ -58,8 +59,7 @@ async function main() {
     await page.addInitScript(() => { for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen') })
     await page.goto(`${url}?fresh=1`)
     await page.waitForSelector('.workspace-content', { timeout: 15000 })
-    await page.locator('.app-dock [data-space="tools"]').click()
-    await page.getByRole('menuitem', { name: 'Meetings' }).click()
+    await openRoom(page, 'Meetings')
     await page.getByRole('button', { name: /Get the listening model/ }).waitFor({ timeout: 5000 }).catch(() => problems.push(`${theme}: the room didn’t offer the listening model first`))
     await page.screenshot({ path: `${OUT}/${theme}-1-get-model.png` })
 

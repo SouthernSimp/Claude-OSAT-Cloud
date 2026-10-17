@@ -34,7 +34,7 @@ export const tintOf = (row) => TINTS[row.kind] || null
 
 /* What a row is, in one grey word on its right (Raycast's "Application", "Command"). */
 const TYPES = {
-  app: 'Application', process: 'Application', room: 'OSAT', note: 'Note', sticky: 'Sticky', node: 'Topic', calc: 'Calculator', layout: 'Window',
+  app: 'Application', process: 'Application', room: 'OSAT', note: 'Note', sticky: 'Sticky', node: 'Board', calc: 'Calculator', layout: 'Window',
   capture: 'Screenshot', shot: 'Capture', snippet: 'Snippet', 'keyword-link': 'Quick link', 'keyword-app': 'Command', system: 'Command', menu: 'Menu',
   folder: 'Folder', file: 'File', emoji: 'Emoji', text: 'Clipboard', link: 'Clipboard', email: 'Clipboard', phone: 'Clipboard', number: 'Clipboard', image: 'Clipboard',
 }

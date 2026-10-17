@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { chromium } from 'playwright'
+import { openRoom as openPlace } from './window.mjs'
 
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/overnight`
 const PORT = Number(process.env.OSAT_PORT || 4321)
@@ -84,7 +85,7 @@ async function main() {
   }, { notes, folders })
   await page.goto(url)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
-  await page.locator('.app-dock [data-space="Mindmap"]').click()
+  await openPlace(page, 'Just in')
   await page.locator('.boards').waitFor({ timeout: 5000 })
   const readDoc = () => page.evaluate(async () => {
     await new Promise((resolve) => setTimeout(resolve, 600))
@@ -95,7 +96,7 @@ async function main() {
 
   // One idea at a time, over the board: the link idea names both stickies and says why.
   const idea = page.locator('.boards-note')
-  await idea.waitFor({ timeout: 5000 }).catch(() => problems.push('no idea showed on the canvas'))
+  await idea.waitFor({ timeout: 5000 }).catch(() => problems.push('no idea showed on the boards'))
   const words = await idea.innerText()
   check(words.includes('Send Dana the merchant dashboard mockup') && words.includes('Dana liked the dashboard colours'), `the link idea didn’t name both stickies: ${words}`)
   check(words.includes('both are about Dana and the merchant dashboard'), 'the idea didn’t say why')

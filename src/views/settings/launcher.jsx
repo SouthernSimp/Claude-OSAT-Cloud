@@ -225,8 +225,8 @@ export function ClipboardPage({ page }) {
             <Row title="Ask" hint="Ask can read your copies and files to answer. Only with an AI on this Mac; passwords are left out." words="ask ai copies files look private">
               <Switch label="Ask can look at copies and files" checked={settings.ask?.sources !== false} onChange={(sources) => save({ ask: { sources } })} />
             </Row>
-            <Row title="Add to a topic" hint="Offer to add a copied email address or phone number to its topic, once, when that topic already exists." words="offer jordan customer contact">
-              <Switch label="Offer to add a copied email address or phone number to its topic" checked={settings.clipboard.offers !== false} onChange={(offers) => save({ clipboard: { offers } })} />
+            <Row title="Add to a board" hint="Offer to add a copied email address or phone number to its board, once, when that board already exists." words="offer jordan customer contact">
+              <Switch label="Offer to add a copied email address or phone number to its board" checked={settings.clipboard.offers !== false} onChange={(offers) => save({ clipboard: { offers } })} />
             </Row>
           </Group>
           <Group title="Clear">

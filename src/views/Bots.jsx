@@ -59,9 +59,9 @@ function DropFolderCard({ bridge, nodes }) {
   const last = nodes?.arrived?.[0]
   return (
     <section className="content-card bots-card">
-      <p className="eyebrow">Topics from bots</p>
-      <h2>Bots save topics in one folder.</h2>
-      <p>A topic file saved here appears on your canvas, marked New, a few seconds later. The file then moves to Added in the same folder. Nothing is deleted, and it works offline.</p>
+      <p className="eyebrow">Boards from bots</p>
+      <h2>Bots save boards in one folder.</h2>
+      <p>A board file saved here appears in your sidebar, marked New, a few seconds later. The file then moves to Added in the same folder. Nothing is deleted, and it works offline.</p>
       {nodes?.dir && <p className="settings-path">{nodes.dir}</p>}
       {nodes?.error && <p className="bots-warning" role="status">{nodes.error}</p>}
       <div className="button-row">
@@ -93,7 +93,7 @@ function DropFolderCard({ bridge, nodes }) {
           ))}
         </ul>
       )}
-      {!last && !nodes?.setAside?.length && <p className="ai-note">Nothing has arrived yet. Copy the instructions into a bot, and ask it to save a topic here.</p>}
+      {!last && !nodes?.setAside?.length && <p className="ai-note">Nothing has arrived yet. Copy the instructions into a bot, and ask it to save a board here.</p>}
     </section>
   )
 }

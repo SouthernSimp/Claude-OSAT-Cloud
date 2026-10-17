@@ -20,9 +20,8 @@ import { findAll } from '../lib/find.js'
 import { Markdown } from '../lib/markdown.jsx'
 import { spaceFor } from '../lib/spaces.js'
 import { inputActive } from '../lib/ui.js'
-import { addNextStep } from '../next-steps.js'
 import { linkMentions } from '../nodes-model.js'
-import { captureThought, isActiveNote } from '../notes-model.js'
+import { captureThought, isActiveNote, setWhat } from '../notes-model.js'
 
 const KINDS = {
   note: [NotePencil, 'Note'],
@@ -58,7 +57,7 @@ const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceF
    stays first: only the arrows ever move to a launcher row, so Return never guesses. `onNote` says one calm line. */
 export function Line({
   workspace, commit, navigate, greeting, storage, visit = 0, summon = 0, paused = false, offline = null, onOffline,
-  raised = false, onLine, onOpenNote, onSaved, onNote, stacks,
+  raised = false, onLine, onOpenNote, onSaved, onNote, stacks, onAsk, typeAnywhere = true,
 }) {
   const center = useRef(null)
   const greetingRef = useRef(null)
@@ -126,10 +125,10 @@ export function Line({
     ...(text ? [
       { key: 'save', label: 'Save as a sticky', keys: '↵', icon: NotePencil, run: save },
       ...launcherRows,
-      ai.state === 'none'
+      ai.state === 'none' && !onAsk
         ? { key: 'ask', label: 'Set up the AI', hint: setupLine(aiStatus) || 'It runs on this Mac, nothing leaves it', keys: '⌘↵', icon: Sparkle, run: () => { setOpen(false); navigate('Settings', { section: 'ai' }) } }
-        : { key: 'ask', label: 'Ask the AI on this Mac', hint: ai.state === 'ready' ? ai.label : 'Looking for it…', keys: '⌘↵', icon: Sparkle, run: ask },
-      { key: 'next', label: 'Add as a next step', keys: '⌥↵', icon: CheckCircle, run: addStep },
+        : { key: 'ask', label: isLocalModel(models?.[0]) || !models?.length ? 'Ask the AI on this Mac' : 'Ask the AI', hint: ai.state === 'ready' ? ai.label : ai.state === 'none' ? 'Set it up in the panel' : 'Looking for it…', keys: '⌘↵', icon: Sparkle, run: ask },
+      { key: 'next', label: 'Add as a to-do', keys: '⌥↵', icon: CheckCircle, run: addStep },
     ] : []),
     ...launchedRows,
     ...matches.map((row) => ({ ...row, icon: iconFor(row), tag: KINDS[row.kind]?.[1], run: () => { reset(); navigate(...row.go) } })),
@@ -180,7 +179,7 @@ export function Line({
   }, [visit])
 
   const live = useRef(null)
-  live.current = { open, cursor: active, answer, paused }
+  live.current = { open, cursor: active, answer, paused, typeAnywhere }
 
   /* ⌘K, ⇧⌘N and the menu's Find land here: the words are picked, the drawer is open.
      During Focus it waits until the Focus screen has stepped aside. A layout effect, so
@@ -243,7 +242,7 @@ export function Line({
   /* Type anywhere on the desk and the words land in the line. */
   useEffect(() => {
     const onKey = (event) => {
-      if (live.current.paused || document.activeElement?.closest?.('.popout')) return
+      if (live.current.paused || !live.current.typeAnywhere || document.activeElement?.closest?.('.popout')) return
       if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1 || inputActive()) return
       if (box.current?.closest('[inert]')) return
       if (event.key === ' ' && document.activeElement && document.activeElement !== document.body) return
@@ -269,7 +268,7 @@ export function Line({
     let note
     commit((state) => {
       // A sticky in Unsorted; one written offline says so.
-      const result = captureThought(state, text.slice(0, 8000), isOffline ? 'Offline' : 'Home')
+      const result = captureThought(state, text.slice(0, 8000), isOffline ? 'Offline' : 'Typed')
       note = result.note
       return note ? linkMentions(result.state, note.id) : result.state
     })
@@ -278,15 +277,21 @@ export function Line({
     box.current?.focus()
   }
 
+  /* ⌥↵: a to-do, straight onto the To do list (and filed onto its board like any sticky). */
   function addStep() {
     if (!text) return
-    commit((state) => addNextStep(state, text.replace(/\s*\n\s*/g, ' '), localDateKey()))
+    commit((state) => {
+      const made = captureThought(state, text.slice(0, 8000), isOffline ? 'Offline' : 'Typed')
+      return made.note ? setWhat(linkMentions(made.state, made.note.id), [made.note.id], 'todo') : made.state
+    })
     reset()
     box.current?.focus()
   }
 
   function ask() {
     if (!text) return
+    // In the window, Ask is the panel on the right: it says itself what the AI is doing.
+    if (onAsk) { onAsk(text.slice(0, 8000)); reset(); return }
     if (ai.state !== 'ready') { checkAi(); return }
     askHere(text.slice(0, 8000))
     reset()
@@ -332,7 +337,7 @@ export function Line({
 
   return (
     <div ref={center} className="home-center" data-active={open || answer ? '' : undefined}>
-      <h1 ref={greetingRef} className="home-greeting" aria-hidden={raised || undefined}>{greeting}</h1>
+      {greeting && <h1 ref={greetingRef} className="home-greeting" aria-hidden={raised || undefined}>{greeting}</h1>}
 
       <form
         ref={lineRef}
@@ -341,12 +346,12 @@ export function Line({
         onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }}
       >
         <div className="home-line">
-          <div className={`glass home-composer ${text ? 'has-text' : ''}`}>
+          <div className={`home-composer ${text ? "has-text" : ""}`}>
             <label className="visually-hidden" htmlFor="home-line">Write it down, find it, or ask</label>
             <textarea
               id="home-line"
               ref={box}
-              rows={2}
+              rows={1}
               value={draft}
               maxLength={8000}
               placeholder="Write it down, find it, or ask…"
