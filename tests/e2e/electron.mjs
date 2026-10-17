@@ -121,7 +121,7 @@ try {
   await main.fill('#home-line', 'What did I save across a restart?')
   await main.press('#home-line', 'ControlOrMeta+Enter')
   const answered = await main.locator('.ask-panel .bubble.assistant').getByText('practice model').waitFor({ timeout: 10000 }).then(() => true, () => false)
-  check(answered, 'Ask did not answer in its panel (⌘↵ in the bar)')
+  check(answered, `Ask did not answer in its panel (⌘↵ in the bar): ${JSON.stringify((await main.locator('.ask-panel').innerText().catch(() => 'no panel')).slice(0, 600))}`)
   if (answered) {
     const chats = await main.evaluate(async () => (await window.osat.store.load()).doc.chats)
     check(chats.length === 1 && chats[0].messages.length === 2, 'the question and its answer were not kept as one chat')
