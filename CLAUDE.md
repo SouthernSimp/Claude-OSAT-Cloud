@@ -17,7 +17,7 @@ Merged and released as build 321: Phase 73 one window with one sidebar, Today an
 panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
 Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111).
 
-Phase 77 is in review on `codex/phase-77-ask-current-workspace`: Ask's workspace summary uses boards and Just in,
+Phase 77 is in review (draft PR #112) on `codex/phase-77-ask-current-workspace`: Ask's workspace summary uses boards and Just in,
 lists the same open to-dos as Today, and labels the journal checklist separately. Its guide explains the current
 sidebar and meeting follow-ups; obsolete sorting directions and desk stacks are gone. Existing no-notes and
 focused-board scopes still apply. Code-only validation: 995 unit tests and the production build pass. No local
