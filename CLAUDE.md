@@ -9,17 +9,18 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 17, 2026: Phase 73, the new OSAT (one window, Today)
+## Resume checkpoint — October 17, 2026: the new OSAT is out (build 321)
 
-Nate made Claude OSAT's owner and asked for an Apple-quality redesign. Approved mockup:
-https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C. Phase 73 (branch `claude/one-window`, PR #108) replaces the desk:
-one Mac window with one sidebar (`shell/Sidebar.jsx`), Today and To do (`today/`), the bar on top (`shell/Line.jsx`),
-Ask as a panel; the desk, widgets, dock, Tools grid and pop-outs are deleted. Phase 74 (branch `claude/follow-ups`,
-PR #109, stacked on #108): meeting and Granola to-dos. Phase 75 (branch `claude/goals`, PR #110, stacked on #109): Goals.
-Next: 76 polish (Notes'
-own folder column vs the sidebar, motion, native vibrancy for the sidebar once seen on the Mac). Nate's answers that
-steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install, sell as a
-done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
+Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something businesses can use, Nate the first
+user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
+Merged and released as build 321: Phase 73 one window with one sidebar, Today and To do, the bar on top, Ask as a
+panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
+Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111). Next ideas, none promised: Notes' own folder column
+beside the sidebar (fold it into the sidebar?), native vibrancy for the sidebar once seen on the Mac, People (a page
+per customer: their stickies, meetings, follow-ups), an AI pass for Granola notes without a Next steps heading, and
+the remaining desk words in the AI's board map (board-context.js `boardMap` still says nodes and the Sky). Nate's
+answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install,
+sell as a done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
 ## Working with Nate
 
