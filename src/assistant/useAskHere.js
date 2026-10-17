@@ -8,6 +8,7 @@ import { findForAsk, sourceRefs } from './ask-find.js'
 import { newChat, newMessage, outbound, putChat } from './chats.js'
 import { cleanError } from './useAi.js'
 import { notesForQuestion } from './work-scope.js'
+import { aiPreamble } from '../soul.js'
 
 /* Ask, right here (the desk's line, the Sky's): the answer streams into a card and is kept as
    a chat, so nothing said is lost and "Keep talking" picks it up in Ask. The question reads
@@ -38,7 +39,7 @@ export function useAskHere({ workspace, commit, modelId, context, local = true }
     try {
       await streamLocalMessage({
         model: modelId,
-        messages: outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, question, { ...context, noteIds })), [], question, active, noteIds, [], workspace.folders, found.text),
+        messages: outbound(systemPrompt(new Date(), aiPreamble(workspace.settings), askContext(workspace, question, { ...context, noteIds })), [], question, active, noteIds, [], workspace.folders, found.text),
         signal: controller.signal,
         onDelta: (delta) => { full += delta; update({ text: extractActions(full).body }) },
       })

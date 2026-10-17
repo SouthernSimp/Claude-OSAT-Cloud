@@ -11,9 +11,6 @@ import { BotsSettings } from "../Bots.jsx";
 import { ObsidianView } from "../Obsidian.jsx";
 import { DeskKey, useDeskKeys } from "./launcher.jsx";
 import { Group, Legacy, Page, Row, Switch } from "./parts.jsx";
-import { autoFileSettings } from "../../sky/auto-file.js";
-import { CalendarChoice } from "../../intake/CalendarChoice.jsx";
-import { datesSettings, setDates } from "../../intake/dates.js";
 import { MorningBriefSettings } from "./MorningBrief.jsx";
 import { OvernightSettings } from "./Overnight.jsx";
 
@@ -44,21 +41,6 @@ export function AiSizes({ status, value, onChoose }) {
         </button>
       ))}
     </div>
-  );
-}
-
-/* A page the AI reads before every answer, in plain words (like a note to a new helper). */
-function AboutYouCard({ workspace, commit }) {
-  const [text, setText] = useState(workspace.settings?.aboutMe || "");
-  const save = () => commit((state) => ({ ...state, settings: { ...(state.settings || {}), aboutMe: text } }));
-  return (
-    <section className="content-card about-you">
-      <p className="eyebrow">About you</p>
-      <h2>Tell the AI who it's helping.</h2>
-      <p>Write a few lines: your name, what you do, how you like answers. The AI reads this before every question. It never leaves this Mac.</p>
-      <textarea rows={6} value={text} onChange={(event) => setText(event.target.value)} onBlur={save}
-        placeholder={"I'm Nate. I run a small business.\nKeep answers short, with a clear next step.\nI think best in lists."} aria-label="About you" />
-    </section>
   );
 }
 
@@ -375,28 +357,11 @@ function ModelTable({ status, download, working, onInstall }) {
   );
 }
 
-export function AiPage({ page, workspace, commit, showUndo }) {
-  const filing = autoFileSettings(workspace.settings);
-  const dates = datesSettings(workspace.settings);
-  const setFiling = (on) => commit((state) => ({ ...state, settings: { ...(state.settings || {}), autoFile: { ...(state.settings?.autoFile || {}), on } } }));
+export function AiPage({ page, showUndo }) {
   return (
     <Page page={page}>
-      <Group title="Sorting" note="Only the AI's own picks move. What it isn't sure of waits in Notes → Just in, which shows where everything went.">
-        <Row title="File new stickies for me" hint="When you pause, the AI files each sticky into its topic. Undo takes a run back." words="auto sort file organize unsorted summarize shorten">
-          <Switch label="File new stickies for me" checked={filing.on} onChange={setFiling} />
-        </Row>
-        <Row title="Put dates on my calendar" hint="A sticky that names a day goes on your calendar once you stop writing. Undo, or Notes → Coming up, takes it off." words="calendar dates events google outlook icloud coming up">
-          <Switch label="Put dates on my calendar" checked={dates.on} onChange={(on) => commit((state) => setDates(state, { on }))} />
-        </Row>
-        {dates.on && (
-          <Row title="Calendar for new dates" hint="One on this Mac passes them on to Google, Outlook or iCloud." words="calendar google outlook icloud">
-            <CalendarChoice workspace={workspace} commit={commit} />
-          </Row>
-        )}
-      </Group>
       <MorningBriefSettings showUndo={showUndo} />
       <OvernightSettings showUndo={showUndo} />
-      <Legacy words="about you model size download lm studio"><AboutYouCard workspace={workspace} commit={commit} /></Legacy>
       <Legacy words="local ai model size download lm studio gemma"><AiCard /></Legacy>
     </Page>
   );

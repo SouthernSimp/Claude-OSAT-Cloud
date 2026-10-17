@@ -9,6 +9,7 @@ import { QueryContext } from "./settings/parts.jsx";
 import { ShortcutsPage } from "./settings/Shortcuts.jsx";
 import { MousePage } from "./settings/mouse.jsx";
 import { ScreenshotsPage } from "./settings/screenshots.jsx";
+import { SoulPage } from "./settings/Soul.jsx";
 import "../styles/settings.css";
 
 /* Settings (Phase 13b), in Raycast's shape: a sidebar with a search box and one page for each thing, and on the right
@@ -23,6 +24,7 @@ const PAGES = {
   general: GeneralPage,
   appearance: AppearancePage,
   ai: AiPage,
+  soul: SoulPage,
   bots: BotsPage,
   data: DataPage,
   scans: ScansPage,
