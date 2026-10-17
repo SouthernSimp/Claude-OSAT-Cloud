@@ -209,6 +209,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 73 | One window and Today: a Mac window with one sidebar (Today, Just in, Calendar, To do; your boards; Business, Life, Library; the power tools folded), Today as the first screen (to-dos, the day, Just in, habits, money), a To do list, one bar on top of every room, Ask as a panel. The desk, dock, widgets and floating windows go | In review |
 | 74 | Follow-ups from meetings: each thing promised in a meeting OSAT wrote up becomes a To-do sticky in Just in, linked to the write-up; Granola's meetings too (its Next steps, read once an hour once Granola is connected; Meetings has the switch, Look now, Take them back) | In review |
 | 75 | Goals: Life → Goals and a card on Today; each goal moves with a board (its to-dos done) or a habit (its days kept this week), or is ticked off; Undo on Mark done and Delete (schema 15) | In review |
+| 76 | Polish, first part: rooms settle in when you move between them, the welcome leads with what OSAT does, cards say where a sticky came from in today's words, the desk's leftover dock, places and widgets go | In review |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

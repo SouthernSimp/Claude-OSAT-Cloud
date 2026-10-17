@@ -22,7 +22,7 @@ import { useAutoFileStatus } from '../sky/useAutoFile.js'
 import { useOvernight } from '../sky/useOvernight.js'
 import '../styles/boards.css'
 import {
-  addBoard, boardsOf, COLUMN, findOn, JUST_IN, mapColumns, moveToBoard, onBoard, paperOf, rankIn, setStage, stageColumns, stageOf, STAGES, stickiesOn, undoFrom,
+  addBoard, boardsOf, cardWords, COLUMN, findOn, JUST_IN, mapColumns, moveToBoard, onBoard, paperOf, rankIn, setStage, sourceWords, stageColumns, stageOf, STAGES, stickiesOn, undoFrom,
 } from './boards-model.js'
 import { JustIn } from './JustIn.jsx'
 import { mergeStickies, placeFrom, samePair } from './just-in.js'
@@ -560,12 +560,12 @@ function Card({ note, view, lit, editing, workspace, boardId, actions, onEdit })
       onContextMenu={(event) => actions.menuFor(event, note)}
       {...carryable({ kind: 'note', id: note.id, data: { folderId: note.folderId || null, onBoard: boardId !== JUST_IN } })}
     >
-      <p>{note.gist || note.markdown}</p>
+      <p>{note.gist || cardWords(note.markdown)}</p>
       <footer>
         {when && <span>{whenLine(when)}</span>}
         {branch && <span>{branch}</span>}
         {stage && stage !== 'later' && <span>{STAGES.find(([key]) => key === stage)[1]}</span>}
-        {note.source && <span className="boards-card-from">{note.source}</span>}
+        {note.source && <span className="boards-card-from">{sourceWords(note.source)}</span>}
       </footer>
     </article>
   )

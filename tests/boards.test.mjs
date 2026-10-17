@@ -107,3 +107,12 @@ test('Undo on the canvas puts back only what the change touched', async () => {
   assert.equal(back.notes.find((note) => note.id === 'milk').unsorted, true, 'the sticky is back in Just in')
   assert.equal(back.notes.find((note) => note.id === 'q').folderId, 'home', 'what happened meanwhile stays')
 })
+
+test('a card says where a sticky came from in today’s words, and a picture as [Screenshot]', async () => {
+  const { cardWords, sourceWords } = await import('../src/boards/boards-model.js')
+  assert.equal(sourceWords('Desk'), 'Typed')
+  assert.equal(sourceWords('Sky'), 'Board')
+  assert.equal(sourceWords('Quick bar'), 'Quick bar')
+  assert.equal(sourceWords(undefined), '')
+  assert.equal(cardWords('Test\n![Screenshot](osat-picture:8405cf2f.png) and ![](osat-picture:a.png)'), 'Test\n[Screenshot] and [Picture]')
+})

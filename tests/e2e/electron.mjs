@@ -89,7 +89,7 @@ try {
 
   // 1. The welcome, then a thought on home; quit, reopen.
   let { app, main } = await launch()
-  const welcome = main.getByRole('dialog', { name: /Everything stays on this Mac/ })
+  const welcome = main.getByRole('dialog', { name: /Your work and your life, in one place/ })
   await welcome.waitFor({ timeout: 10000 }).catch(() => problems.push('the welcome did not appear on first launch'))
   await main.getByRole('button', { name: 'Continue' }).click()
   await main.getByRole('button', { name: 'Continue' }).click()
@@ -112,7 +112,7 @@ try {
   check(onDisk.notes.some((note) => note.title === 'Saved across a restart' && note.unsorted), 'the thought was not written to workspace.json')
   ;({ app, main } = await launch())
   check((await notesIn(main)).includes('Saved across a restart'), 'the thought was not there after a restart')
-  check(!(await main.getByRole('dialog', { name: /Everything stays/ }).count()), 'the welcome came back after it was finished')
+  check(!(await main.getByRole('dialog', { name: /Your work and your life/ }).count()), 'the welcome came back after it was finished')
   await sleep(2500)
   check(!(await main.locator('.tour').count()), 'the tour came back after it was skipped')
 

@@ -53,7 +53,7 @@ const { createBrowser } = require('./browser.cjs')
 const { createSkills } = require('./skills.cjs')
 const { createTerminals } = require('./terminal.cjs')
 const { createStore } = require('./store/index.cjs')
-const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, OLD_SEARCH_HOTKEY, accentCss, addLauncher, deskAction, hotkeyLabel, pickWidgets, placeItem, validHotkey, windowSpot } = require('./desk.cjs')
+const { DEFAULT_HOTKEY, DEFAULT_SEARCH_HOTKEY, OLD_SEARCH_HOTKEY, accentCss, deskAction, hotkeyLabel, validHotkey, windowSpot } = require('./desk.cjs')
 const { createLauncher } = require('./launcher/index.cjs')
 const { extractText } = require('./mac-files.cjs')
 const { TidyError } = require('./file-ops.cjs')
@@ -69,7 +69,7 @@ const APP_URL = pathToFileURL(APP_ENTRY).href
 let mainWindow
 let quitting = false
 let tray
-let prefs = { hotkey: DEFAULT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, barSpot: null, launchers: [], places: {}, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
+let prefs = { hotkey: DEFAULT_HOTKEY, searchHotkey: DEFAULT_SEARCH_HOTKEY, barSpot: null, ai: { tier: null }, welcomed: false, toured: false, phone: false, under: false }
 // The two shortcuts: the desk, and the one bar (search, ask, or write a sticky; it was two keys until Oct 2026).
 // `value` is null when another app has it.
 const macKeys = createMacKeys({ sharedModule })
@@ -549,9 +549,6 @@ async function loadPrefs() {
       searchHotkey: validHotkey(saved.searchHotkey) && saved.searchHotkey !== OLD_SEARCH_HOTKEY ? saved.searchHotkey : DEFAULT_SEARCH_HOTKEY,
       // Where the quick bar was dragged to (its top middle); the old quick chat's chatBounds is left behind.
       barSpot: Number.isFinite(saved.barSpot?.x) && Number.isFinite(saved.barSpot?.y) ? { x: saved.barSpot.x, y: saved.barSpot.y } : null,
-      launchers: Array.isArray(saved.launchers) ? saved.launchers.reduce((list, item) => addLauncher(list, item?.path), []) : [],
-      places: Object.entries(saved.places || {}).reduce((places, [id, spot]) => placeItem(places, id, spot), {}),
-      widgets: pickWidgets(saved.widgets),
       ai: { tier: typeof saved.ai?.tier === 'string' ? saved.ai.tier : null, startup: saved.ai?.startup === true,
         downloadQueue: Array.isArray(saved.ai?.downloadQueue) ? saved.ai.downloadQueue : [] },
       welcomed: saved.welcomed === true,
@@ -617,15 +614,6 @@ function releaseEscape() {
   if (!launcher?.focused()) globalShortcut.unregister('Escape')
 }
 
-const launcherIcons = new Map()
-async function launcherList() {
-  return Promise.all(prefs.launchers.map(async (item) => {
-    // getFileIcon's large size crashes Electron 43 on the Mac; Quick Look gives the same icon.
-    if (!launcherIcons.has(item.path)) launcherIcons.set(item.path, await files.thumbnail(item.path, 128).catch(() => null) || '')
-    return { ...item, icon: launcherIcons.get(item.path) }
-  }))
-}
-
 function registerDesk() {
   const fromDesk = (event) => {
     assertTrustedSender(event)
@@ -633,7 +621,7 @@ function registerDesk() {
   }
   ipcMain.on('desk:hide', (event) => { try { fromDesk(event); hideDesk() } catch { /* ignored */ } })
   // The shortcuts, read on the desk and changed in Settings.
-  handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), search: shortcutInfo('search'), launchers: await launcherList(), places: prefs.places, widgets: prefs.widgets ?? null }), { from: 'app' })
+  handle('desk:prefs', async () => ({ ...shortcutInfo('layer'), search: shortcutInfo('search') }), { from: 'app' })
   // Settings → Shortcuts → Keys in use: what the desk's two keys are, and the Mac's own shortcuts (the launcher's come from its settings).
   handle('desk:keys', async () => ({
     desk: Object.entries(shortcuts).map(([id, shortcut]) => ({ name: HOTKEY_OPENS[id] === 'OSAT' ? 'Show OSAT' : 'Search or Ask', combo: shortcut.value || prefs[HOTKEY_PREF[id]] })),
@@ -653,52 +641,10 @@ function registerDesk() {
     await savePrefs()
     return shortcutInfo(which)
   }, { from: 'app' })
-  handle('desk:add-launcher', async () => {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      title: 'Add an app to the dock',
-      defaultPath: '/Applications',
-      properties: ['openFile'],
-      filters: [{ name: 'Applications', extensions: ['app'] }],
-    })
-    if (!result.canceled && result.filePaths[0]) {
-      prefs = { ...prefs, launchers: addLauncher(prefs.launchers, result.filePaths[0]) }
-      await savePrefs()
-    }
-    return launcherList()
-  })
-  handle('desk:remove-launcher', async (appPath) => {
-    prefs = { ...prefs, launchers: prefs.launchers.filter((item) => item.path !== appPath) }
-    await savePrefs()
-    return launcherList()
-  })
-  // Widgets and icons Nate moved on the desk. null puts one back; tidy puts all back.
-  handle('desk:place', async (id, spot) => {
-    prefs = { ...prefs, places: placeItem(prefs.places, id, spot) }
-    await savePrefs()
-    return prefs.places
-  })
-  // Widgets and icons go back where they were; stickies stay where they lie.
-  handle('desk:tidy', async () => {
-    prefs = { ...prefs, places: Object.fromEntries(Object.entries(prefs.places).filter(([key]) => key.startsWith('note:'))) }
-    await savePrefs()
-    return prefs.places
-  })
-  // Which widgets are out, in order (per Mac, like places). null brings back the defaults.
-  handle('desk:widgets', async (list) => {
-    prefs = { ...prefs, widgets: pickWidgets(list) }
-    await savePrefs()
-    return prefs.widgets
-  })
   const media = createMedia()
   handle('media:now', () => (process.platform === 'darwin' ? media.nowPlaying() : null))
   handle('media:control', (action) => media.control(action))
   handle('media:seek', (seconds) => media.seek(seconds))
-  // Only apps Nate added can be opened this way.
-  handle('desk:launch', async (appPath) => {
-    if (!prefs.launchers.some((item) => item.path === appPath)) fail('That app is not in the dock.')
-    if (await shell.openPath(appPath)) fail('macOS could not open that app.')
-    return true
-  })
 }
 
 /* ---- The launcher (⌥⇧Space): the quick bar, the clipboard history, Hyper keys (desktop/launcher) ---- */

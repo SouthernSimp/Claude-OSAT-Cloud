@@ -40,6 +40,12 @@
 .app-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .app-room { flex: 1 1 auto; min-height: 0; position: relative; }
 .app-room.popout-body { background: transparent; border-radius: 0; }
+/* Moving to another room: it fades in, quickly. Only opacity, and nothing left once it ends (`backwards`): a moved or
+   transformed room would hold a room's toasts (position: fixed) inside it. Not the Web or the Terminal: their native
+   page sits over the room. */
+.app-room:not([data-view="Browser"], [data-view="Terminal"]) > * { animation: room-in 200ms var(--ease-out) backwards; }
+@keyframes room-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .app-room > * { animation: none; } }
 /* The boards fill the room: the sidebar holds the list of them. */
 .app-room .boards { grid-template-columns: minmax(0, 1fr); background: transparent; }
 
@@ -130,6 +136,7 @@
   text-align: left;
   color: var(--ink);
 }
+.side-row { transition: background var(--d-fast) var(--ease-out); }
 .side-row:hover { background: var(--side-hover); }
 .side-row[aria-current="page"] { background: var(--side-pick); }
 .side-row > svg { flex: none; width: 17px; height: 17px; color: var(--accent); }

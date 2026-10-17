@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import test from 'node:test'
 
-const { accentCss, addLauncher, deskAction, displayAt, hotkeyLabel, pickWidgets, placeItem, sameBounds, validHotkey, windowSpot } = createRequire(import.meta.url)('../desktop/desk.cjs')
+const { accentCss, deskAction, displayAt, hotkeyLabel, validHotkey, windowSpot } = createRequire(import.meta.url)('../desktop/desk.cjs')
 
 test('the desk opens on the display under the cursor', () => {
   const left = { id: 1, bounds: { x: 0, y: 0, width: 1440, height: 900 } }
@@ -25,16 +25,6 @@ test('the window opens where it was left while that is mostly on a screen, else 
   assert.deepEqual(windowSpot({ x: 0, y: 0, width: 'big' }, [small], { x: 5, y: 5 }).width, 1240)
 })
 
-test('the desk is fitted only when it would move: showing it never nudges a window already in place', () => {
-  const area = { x: 0, y: 25, width: 1440, height: 875 }
-  assert.equal(sameBounds({ ...area }, area), true)
-  assert.equal(sameBounds({ ...area, height: 871 }, area), false, 'the Dock now hidden or shown: one fit')
-  assert.equal(sameBounds(null, area), false)
-})
-
-/* The Dock bug (Phase 13c): Electron's setVisibleOnAllWorkspaces, unless told to skip it, turns OSAT into a Dock-less
-   app and back, activating the Mac's Dock app each time; with an auto-hiding Dock it slid up and down and the desk
-   blinked behind it. Every call in desktop/ must pass skipTransformProcessType. */
 test('no window makes the Mac’s Dock jump: every setVisibleOnAllWorkspaces skips the process transform', async () => {
   const { readdir, readFile } = await import('node:fs/promises')
   const { fileURLToPath } = await import('node:url')
@@ -59,47 +49,10 @@ test('a hotkey needs a modifier and one key', () => {
   assert.equal(hotkeyLabel('Command+Shift+K'), '⌘⇧K')
 })
 
-test('launchers keep real apps, once', () => {
-  let list = addLauncher([], '/Applications/Safari.app')
-  list = addLauncher(list, '/Applications/Safari.app')
-  list = addLauncher(list, '/etc/passwd')
-  list = addLauncher(list, 'relative/Thing.app')
-  assert.deepEqual(list, [{ path: '/Applications/Safari.app', name: 'Safari' }])
-})
-
 test('⌥Space shows the desk, brings it forward, or puts it away', () => {
   assert.equal(deskAction({ visible: false, focused: false }), 'show')
   assert.equal(deskAction({ visible: true, focused: false }), 'show')
   assert.equal(deskAction({ visible: true, focused: true }), 'hide')
-})
-
-test('a spot on the desk is kept inside it, and null puts the item back', () => {
-  let places = placeItem({}, 'widget:day', { x: 0.4, y: 1.8 })
-  assert.deepEqual(places, { 'widget:day': { x: 0.4, y: 0.97 } })
-  places = placeItem(places, 'note:abc', { x: -2, y: 0.1 })
-  assert.deepEqual(places['note:abc'], { x: 0, y: 0.1 })
-  assert.equal(placeItem(places, 'bad id!', { x: 0, y: 0 }), places)
-  assert.equal(placeItem(places, 'note:abc', { x: 'a', y: 0 }), places)
-  assert.deepEqual(Object.keys(placeItem(places, 'widget:day', null)), ['note:abc'])
-  // A sticky keeps its size, within reason; half a size is no size.
-  assert.deepEqual(placeItem({}, 'note:s', { x: 0.2, y: 0.2, w: 9000, h: 10 })['note:s'], { x: 0.2, y: 0.2, w: 720, h: 90 })
-  assert.deepEqual(placeItem({}, 'note:s', { x: 0.2, y: 0.2, w: 300 })['note:s'], { x: 0.2, y: 0.2 })
-  // A stack keeps its stickies in order, once each, with its name and fold; an empty one goes.
-  assert.deepEqual(
-    placeItem({}, 'stack:s1', { x: 0.5, y: 0.2, ids: ['note-a', 'note-b', 'note-a', 'bad id', 4], name: '  Ideas ', folded: true, extra: 1 })['stack:s1'],
-    { x: 0.5, y: 0.2, ids: ['note-a', 'note-b'], name: 'Ideas', folded: true },
-  )
-  assert.deepEqual(placeItem({ 'stack:s1': { x: 0, y: 0, ids: ['a'] } }, 'stack:s1', { x: 0.5, y: 0.2, ids: [] }), {})
-  assert.equal('ids' in placeItem({}, 'note:s', { x: 0.2, y: 0.2, ids: ['a'] })['note:s'], false, 'only a stack has stickies in it')
-})
-
-test('the widgets out on the desk: up to five short ids, once each, in order', () => {
-  assert.deepEqual(pickWidgets(['calendar', 'next', 'calendar', 'from-before']), ['calendar', 'next', 'from-before'])
-  assert.deepEqual(pickWidgets(['a', 'b', 'c', 'd', 'e', 'f']), ['a', 'b', 'c', 'd', 'e'])
-  assert.deepEqual(pickWidgets(['Next', '../x', '', 'x'.repeat(25), 3, null, 'habits']), ['habits'])
-  assert.deepEqual(pickWidgets([]), [], 'an empty desk is a choice, not the defaults')
-  assert.equal(pickWidgets(undefined), null)
-  assert.equal(pickWidgets('calendar'), null)
 })
 
 test('the Mac’s accent colour becomes the page’s, with text that reads on it', () => {
