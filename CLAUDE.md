@@ -8,19 +8,16 @@ It is built for one person first; the App Store and a phone companion come later
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 16, 2026: the rework's five stages are built; three stacked PRs wait for Nate
+## Resume checkpoint — October 16, 2026: the rework's five stages are merged (build 299)
 
-Nate approved the rework (docs/REWORK-20261015.md, mockup https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48, five
-screens) and asked for the smallest version of each. In main: Phases 67, 68, 72 (Just in), 31, Mail + Gmail, Habits
-(build 290). Waiting, stacked, each a draft PR with CI green before Nate's "merge" (merge in order; retarget the next
-one to main after each): **#105** (claude/flows) the Dashboard removed and Phase 69 small (Just in's top line counts
-today's intake, `todayFlow`); **#106** (claude/soul, base claude/flows) Phase 70: Settings → Soul and memory
-(`src/soul.js`, `views/settings/Soul.jsx`: SOUL.md, MEMORY.md with Forget, RULES.md = the filing and dates switches;
-Ask's prompt and the filing prompt read them); **#107** (claude/connections, base claude/soul) Phase 71: Settings →
-Bots is Connections (page id still `bots`) with the Offline switch on top, and MCP sign-in (`desktop/bots/mcp-signin.cjs`,
-Add Granola / Add Notion / Sign in). Their one CHANGELOG "Next build" entry covers all three. Not done: the real Granola
-sign-in hasn't been tried with Nate's account; Granola meetings as stickies on their own (a flow); the n8n-style Flows
-screen; Sort a pile and Put the desk away can go; "topic" words outside the canvas. Older checkpoints are in git history.
+The rework (docs/REWORK-20261015.md, mockup https://claude.ai/artifact/2i4zwb7q15fKeyuCan9D48) is in main: Phases 67,
+68, 72 (Just in), 69 small (#105, Just in's intake line; Dashboard removed; build 297), 70 Soul and memory (#106) and
+71 Connections with MCP sign-in (#107, Add Granola / Add Notion), build 299. Proposed next (waiting on Nate's yes):
+Workers (Phase 19 reborn): 1) Nate tries Add Granola; 2) Meeting secretary (Granola and Meetings → to-dos and decisions
+in Just in, Undo each); 3) a Workers room for the background jobs (filing, dates, brief, overnight, secretary: what each
+did, what it may touch, on/off); 4) OSAT offers MEMORY.md lines when Nate re-files a sticky. Cleanup asked about:
+delete Sort a pile and Put the desk away (a permission check blocked it once), "topic" words. Parked: Gemini via MCP
+(needs OSAT reachable from the internet), iPad, budget questions. Older checkpoints are in git history.
 
 ## Working with Nate
 
