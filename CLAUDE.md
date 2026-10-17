@@ -15,8 +15,16 @@ Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something 
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
 Merged and released as build 321: Phase 73 one window with one sidebar, Today and To do, the bar on top, Ask as a
 panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
-Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111). Next ideas, none promised: Notes' own folder column
-beside the sidebar (fold it into the sidebar?), native vibrancy for the sidebar once seen on the Mac, People (a page
+Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111).
+
+Phase 78 is in review on `codex/phase-78-simpler-notes`, based on main independently of Phase 77 (draft PR #112).
+Notes starts with its list and editor; the list title opens Browse notes (the existing Organizer). A list pick,
+Esc or Close puts it away. Old saved organizer-open preferences no longer reopen the extra column; the saved list
+and editor settings remain. No workspace/schema changes. Code-only checks: 993 unit tests, production build and
+syntax checks for the updated CI browser tests pass. Browser/Electron/Mac checks run in CI, never locally. Nate
+merges. Phase 77's Ask changes remain in their separate PR; neither phase has been merged here.
+
+Next ideas, none promised: native vibrancy for the sidebar once seen on the Mac, People (a page
 per customer: their stickies, meetings, follow-ups), an AI pass for Granola notes without a Next steps heading, and
 the remaining desk words in the AI's board map (board-context.js `boardMap` still says nodes and the Sky). Nate's
 answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install,

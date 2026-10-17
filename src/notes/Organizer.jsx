@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Archive, CalendarBlank, CalendarCheck, CaretRight, Clock, DotsThree, Folder, FolderPlus, FolderSimple, Hash, Notebook, PushPin, Question, ShareNetwork,
-  ShoppingCart, Trash, Tray,
+  ShoppingCart, Trash, Tray, X,
 } from "@phosphor-icons/react";
 import { Menu } from "../lib/Menu.jsx";
 import { canMoveFolder, folderSubtree, folderTree, isActiveNote, isJustInList, noteCounts, tagIndex } from "../notes-model.js";
@@ -24,7 +24,7 @@ const KEPT = [
   ["coming", "Coming up", CalendarCheck, "coming"],
 ];
 
-export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
+export function Organizer({ workspace, ui, setUi, actions, draftAt = 0, onClose }) {
   const counts = noteCounts(workspace);
   const tags = tagIndex(workspace.notes);
   const [draft, setDraft] = useState(null); // { parentId, name } for a node or branch being made
@@ -61,12 +61,13 @@ export function Organizer({ workspace, ui, setUi, actions, draftAt = 0 }) {
   });
 
   return (
-    <aside className="notes-organizer" aria-label="Notes organizer">
+    <aside id="notes-browser" className="notes-organizer" aria-label="Browse notes">
       <div className="organizer-head">
-        <h2>Notes</h2>
+        <h2>Browse notes</h2>
         <button className="icon-button" type="button" title="New board" aria-label="New board" onClick={() => setDraft({ parentId: null, name: "" })}>
           <FolderPlus />
         </button>
+        <button className="icon-button" type="button" aria-label="Close Browse notes" onClick={onClose}><X /></button>
       </div>
 
       <nav className="organizer-section" aria-label="Smart lists">
