@@ -132,9 +132,9 @@
 .board-overview-columns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: var(--s-5); }
 .board-next, .board-upcoming { min-width: 0; padding: var(--s-5); border: 1px solid var(--line-soft); border-radius: var(--r-xl); background: var(--surface-raised); box-shadow: var(--e-1); }
 .board-overview ul { list-style: none; padding: 0; margin: var(--s-4) 0 0; }
-.board-steps li { display: flex; align-items: center; gap: var(--s-2); min-height: 58px; padding: var(--s-1) var(--s-2); border-radius: var(--r-md); }
+.board-steps li { display: flex; align-items: center; gap: var(--s-2); min-height: 58px; padding: var(--s-1) var(--s-2); }
 .board-steps li + li { border-top: 1px solid var(--line-soft); }
-.board-steps li.is-first { background: var(--accent-soft); }
+.board-steps li.is-first { border-radius: var(--r-md); background: var(--accent-soft); }
 .board-steps .board-step-tick { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-md); color: var(--faint); }
 .board-steps .board-step-tick svg { width: 23px; height: 23px; }
 .board-step-tick:hover { background: var(--surface-hover); color: var(--positive); }
@@ -144,6 +144,7 @@
 .board-step-open > svg { color: var(--faint); }
 .board-step-open:hover strong { color: var(--accent); }
 .board-step-stage { display: inline-block; margin-right: var(--s-2); padding: 2px 6px; border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent); font-size: var(--t-xs); font-weight: 600; }
+.board-step-preview { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin-top: var(--s-1); color: var(--muted); font-size: var(--t-sm); line-height: var(--lh-normal); }
 .board-see-all { margin-top: var(--s-4); }
 .board-upcoming li + li { border-top: 1px solid var(--line-soft); }
 .board-upcoming li > button { display: flex; align-items: center; gap: var(--s-4); width: 100%; min-height: 84px; padding-block: var(--s-3); text-align: left; }
@@ -160,7 +161,7 @@
 .board-recent { min-width: 0; padding: var(--s-5) 0; }
 .board-recent > header { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-4); }
 .board-recent-notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
-.board-recent-note { min-width: 0; min-height: 140px; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); text-align: left; transition: border-color var(--d-fast); }
+.board-recent-note { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; min-height: 140px; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); text-align: left; transition: border-color var(--d-fast); }
 .board-recent-note:hover { border-color: var(--accent-line); }
 .board-recent-note strong, .board-recent-note p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
 .board-recent-note strong { margin-top: var(--s-3); font-size: var(--t-md); font-weight: 560; line-height: var(--lh-snug); }

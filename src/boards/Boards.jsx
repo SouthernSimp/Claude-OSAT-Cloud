@@ -385,7 +385,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
           {boardId === JUST_IN && <JustIn workspace={workspace} boards={boards} query={query} editing={editing} card={card} actions={actions} navigate={navigate} />}
           {boardId !== JUST_IN && view === 'overview' && (query.trim()
             ? <div className="board-overview-results"><p>{shown.length} {shown.length === 1 ? 'match' : 'matches'}</p><ListView notes={shown} actions={actions} onOpen={actions.startEdit} /></div>
-            : <BoardOverview notes={all} onOpen={(noteId) => navigate('Notes', { noteId })} onTick={actions.tick} onShow={setView} onWrite={() => writeField.current?.focus()} />)}
+            : <BoardOverview key={boardId} notes={all} onOpen={(noteId) => navigate('Notes', { noteId })} onTick={actions.tick} onShow={setView} onWrite={() => writeField.current?.focus()} />)}
           {boardId !== JUST_IN && view === 'map' && (
             <div className="boards-map">
               {mapColumns(shown).map((column) => <MapColumn key={column.what} column={column} boardId={boardId} actions={actions}>{column.notes.map(card)}</MapColumn>)}

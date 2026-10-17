@@ -1,5 +1,5 @@
 import { ArrowRight, CalendarBlank, CaretRight, Circle, NotePencil } from '@phosphor-icons/react'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 import { WHAT_LABEL, WHAT_PAPER, whatOf } from '../../shared/what-model.mjs'
 import { whenLine } from '../intake/dates.js'
@@ -8,6 +8,7 @@ import { boardOverview, cardWords, stageOf } from './boards-model.js'
 /* A view of the same stickies, with the detailed Board and Map one click away. */
 export function BoardOverview({ notes, onOpen, onTick, onShow, onWrite }) {
   const nextHeading = useRef(null)
+  const [allDates, setAllDates] = useState(false)
   const { steps, done, total, upcoming, recent } = boardOverview(notes)
   if (!notes.length) return (
     <div className="board-overview-empty">
@@ -32,7 +33,10 @@ export function BoardOverview({ notes, onOpen, onTick, onShow, onWrite }) {
             <li key={note.id} className={index === 0 ? 'is-first' : ''}>
               <button type="button" className="board-step-tick" aria-label={`Mark done: ${note.title}`} onClick={() => { nextHeading.current?.focus(); onTick(note.id) }}><Circle aria-hidden="true" /></button>
               <button type="button" className="board-step-open" onClick={() => onOpen(note.id)}>
-                <span>{stageOf(note) !== 'later' && <small className="board-step-stage">{stageOf(note) === 'doing' ? 'Doing' : 'Next'}</small>}<strong>{note.title}</strong></span>
+                <span>
+                  {stageOf(note) !== 'later' && <small className="board-step-stage">{stageOf(note) === 'doing' ? 'Doing' : 'Next'}</small>}<strong>{note.title}</strong>
+                  {index === 0 && note.markdown.includes('\n') && <small className="board-step-preview">{cardWords(note.markdown).split('\n').slice(1).join('\n')}</small>}
+                </span>
                 <CaretRight aria-hidden="true" />
               </button>
             </li>
@@ -42,14 +46,14 @@ export function BoardOverview({ notes, onOpen, onTick, onShow, onWrite }) {
 
         <section className="board-upcoming" aria-label="Coming up">
           <h2>Coming up</h2>
-          {upcoming.length ? <ul>{upcoming.slice(0, 4).map(({ note, when }) => (
+          {upcoming.length ? <ul>{(allDates ? upcoming : upcoming.slice(0, 4)).map(({ note, when }) => (
             <li key={note.id}><button type="button" onClick={() => onOpen(note.id)}>
               <time dateTime={when.date} className="board-date"><span>{when.start.toLocaleDateString(undefined, { month: 'short' })}</span><b>{when.start.getDate()}</b></time>
               <span><strong>{when.title}</strong><small>{whenLine(when)}</small></span>
               <CaretRight aria-hidden="true" />
             </button></li>
           ))}</ul> : <p className="board-overview-quiet"><CalendarBlank aria-hidden="true" />Dates written on this board will appear here.</p>}
-          {upcoming.length > 4 && <button type="button" className="text-button board-see-all" onClick={() => onShow('map')}>See all dates <ArrowRight /></button>}
+          {upcoming.length > 4 && <button type="button" className="text-button board-see-all" aria-expanded={allDates} onClick={() => setAllDates((value) => !value)}>{allDates ? 'Show fewer dates' : `See all ${upcoming.length} dates`} <ArrowRight /></button>}
         </section>
       </div>
 

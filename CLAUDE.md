@@ -17,7 +17,7 @@ Merged and released as build 321: Phase 73 one window with one sidebar, Today an
 panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
 Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111).
 
-Phase 79 is in review (PR pending), `codex/phase-79-board-overview`, independently based on main. Nate wanted something
+Phase 79 is in review (draft PR #114), `codex/phase-79-board-overview`, independently based on main. Nate wanted something
 with more wow, still elegant and simple, and delegated the choice. A board's new Overview brings its own steps,
 dates and recent notes together; progress is the Board's actual completed steps. `BoardOverview.jsx` uses the pure
 `boardOverview` helper (Board ordering and Notes' existing `comingUp`). Completing uses existing `actions.tick` and

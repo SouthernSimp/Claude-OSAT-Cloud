@@ -21,7 +21,7 @@ const FOLDERS = [
   { id: 'home', name: 'Home', createdAt: ago(600) },
   { id: 'gate', name: 'Westside gate', createdAt: ago(500) },
 ]
-const sticky = (id, markdown, folderId, what, extra = {}) => ({ id, title: markdown.split('\n')[0], markdown, folderId, what, createdAt: ago(Number(id.replace(/\D/g, '')) || 1), ...extra })
+const sticky = (id, markdown, folderId, what, extra = {}) => ({ id, title: markdown.split('\n')[0], markdown, folderId, what, createdAt: ago(Number(id.replace(/\D/g, '')) || 1), updatedAt: ago(Number(id.replace(/\D/g, '')) || 1), ...extra })
 const dayAfter = (days) => { const day = new Date(); day.setDate(day.getDate() + days); return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}` }
 const NOTES = [
   sticky('n1', 'Boards replace topics and branches', 'osat', 'idea'),
@@ -44,6 +44,7 @@ const NOTES = [
   sticky('g7', 'Site measurements', 'gate', 'date', { ask: { event: { date: dayAfter(2), title: 'Site measurements' } } }),
   sticky('g8', 'Installation', 'gate', 'date', { ask: { event: { date: dayAfter(5), title: 'Installation' } } }),
   ...['Meet the customer', 'Sketch the design', 'Agree the finish'].map((text, index) => sticky(`g${index + 9}`, text, 'gate', 'todo', { doneAt: ago(12) })),
+  ...Array.from({ length: 6 }, (_, index) => sticky(`date${index}`, `Home visit ${index + 1}`, 'home', 'date', { ask: { event: { date: dayAfter(index + 1) } } })),
 ]
 
 let server
@@ -279,6 +280,13 @@ async function main() {
     await overview.reload()
     await side(overview, 'Westside gate').click()
     check(await overview.getByRole('tab', { name: 'Board', exact: true }).getAttribute('aria-selected') === 'true', `${theme}: a saved view choice was lost`)
+    await side(overview, 'Home').click()
+    await overview.getByRole('tab', { name: 'Overview' }).click()
+    check(await overview.locator('.board-upcoming li').count() === 4, `${theme}: date previews were not bounded`)
+    await overview.getByRole('button', { name: 'See all 6 dates' }).click()
+    check(await overview.locator('.board-upcoming li').count() === 6, `${theme}: expanding dates hid a date`)
+    await overview.getByRole('button', { name: 'Show fewer dates' }).click()
+    check(await overview.locator('.board-upcoming li').count() === 4, `${theme}: dates did not fold away again`)
     await overview.close()
   }
 

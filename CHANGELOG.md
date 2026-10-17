@@ -8,7 +8,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 
 - **Overview on every board:** next steps, upcoming dates and recent notes together, with progress from the steps
   actually done. Tick a step off with Undo, open a note to read it, or switch to Map, Board or List for the details.
-  A fresh start uses Overview; your saved view stays yours. Nothing is moved or rewritten. (PR pending)
+  A fresh start uses Overview; your saved view stays yours. Nothing is moved or rewritten. (#114)
 
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 
