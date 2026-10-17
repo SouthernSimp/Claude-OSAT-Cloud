@@ -124,8 +124,11 @@ try {
   const answered = await main.locator('.ask-panel .bubble.assistant', { hasText: 'used for tests' }).waitFor({ timeout: 10000 }).then(() => true, () => false)
   check(answered, `Ask did not answer in its panel (⌘↵ in the bar): ${JSON.stringify((await main.locator('.ask-panel').innerText().catch(() => 'no panel')).slice(0, 600))}`)
   if (answered) {
-    const chats = await main.evaluate(async () => (await window.osat.store.load()).doc.chats)
-    check(chats.length === 1 && chats[0].messages.length === 2, 'the question and its answer were not kept as one chat')
+    // The answer is saved a moment after it shows.
+    const chatsNow = () => main.evaluate(async () => (await window.osat.store.load()).doc.chats)
+    await until(async () => (await chatsNow())[0]?.messages.length === 2, 5000)
+    const chats = await chatsNow()
+    check(chats.length === 1 && chats[0].messages.length === 2, `the question and its answer were not kept as one chat: ${JSON.stringify(chats.map((chat) => chat.messages.map((message) => message.role)))}`)
     check(chats[0]?.messages[0].noteIds?.length === 1, 'Ask did not pick the matching note for the question')
     await main.locator('.ask-panel textarea').focus()
     await main.keyboard.press('Escape')
