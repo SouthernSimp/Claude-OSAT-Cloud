@@ -19,7 +19,7 @@ Board / List, Just in, rename and delete with Undo, starter boards), the old Sky
 14 (`stage`); Habits redesigned (#101); all of that is build 285 (build 280 was the plan alone). Phase 31 (#103):
 What's new and Coming next, build 288. Phase 72 (#104): Just in as the mockup's third screen (`boards/JustIn.jsx`,
 `boards/just-in.js`), the Photo button, Merge for two stickies that say the same thing, build 290. Not done yet: Sort a pile can go now that Just in reads photos; Put
-the desk away; words outside the canvas still say "topic" (Notes, Dashboard). Next: Phase 69 (Flows).
+the desk away; words outside the canvas still say "topic" (Notes). Next: Phase 69 (Flows).
 Older checkpoints are in git history.
 
 ## Working with Nate
@@ -642,10 +642,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 
 ## Architecture added in Phase 66
 
-- Dashboard (dock, ⌘6, Go menu): `src/views/dashboard-model.js` (pure: `dashboard(workspace, now)` → cards, sorted %, habits,
-  `writingByDay`, biggest topics (a branch counts for its topic), open next steps, soon events; `smoothPath` keeps its
-  handles between each segment's heights) + `src/views/Dashboard.jsx` + `src/styles/dashboard.css` (container queries on
-  `room`). Read-only; every card only navigates. Tests: tests/dashboard.test.mjs.
+- Dashboard: removed (Oct 15 2026) as over-engineered; keep new rooms small.
 - App tiles: `.tile` with `data-tint` (blue, sky, indigo, violet, pink, rose, slate, graphite, teal, green, yellow, orange,
   red; defined globally in settings.css). `spaces.js` gives every space and tool a `tint`. The quick bar's rows use
   `RowTile`/`lookOf` (search/icons.jsx: rooms by their space, Settings pages by their page, System Settings panes and Mac

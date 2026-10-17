@@ -53,6 +53,22 @@ export function cameIn(state, now = Date.now()) {
   return { waiting, days }
 }
 
+/* What today's intake did, in counts: how many came in, and how many went to the calendar, Questions,
+   To buy, a board, or wait for a home. One sticky can count twice (a date that also waits). */
+export function todayFlow(state, now = Date.now()) {
+  const { waiting, days } = cameIn(state, now)
+  const today = [...waiting, ...days.flatMap((day) => day.notes)].filter((note) => dayLabel(note.createdAt, now) === 'Today')
+  const count = (test) => today.filter(test).length
+  return {
+    came: today.length,
+    calendar: count(onCalendar),
+    questions: count((note) => whatOf(note) === 'question'),
+    buy: count((note) => whatOf(note) === 'buy'),
+    board: count((note) => Boolean(note.folderId)),
+    waiting: count(isUnsorted),
+  }
+}
+
 /* "Today", "Yesterday", "Monday", or "Oct 3" for longer ago. */
 export function dayLabel(iso, now = Date.now()) {
   const day = new Date(iso)

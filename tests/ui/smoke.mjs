@@ -15,7 +15,7 @@ const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
 // The spaces that open as pop-outs (⌃2, 4, 5; ⌃3 is the canvas, a layer of its own), then
 // every tool from the dock's Tools menu.
-const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5], ['Dashboard', 6]]
+const SPACES = [['Notes', 2], ['Assistant', 4], ['Files', 5]]
 const TOOLS = [['Journal', 'Journal'], ['Calendar', 'Calendar'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Pile', 'Sort a pile'], ['Settings', 'Settings']]
 
 

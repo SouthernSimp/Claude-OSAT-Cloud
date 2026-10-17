@@ -6,7 +6,7 @@ import { whenLine } from '../intake/dates.js'
 import { carryable, useCarrying } from '../lib/carry.js'
 import { comingUp, isActiveNote, notesInList } from '../notes-model.js'
 import { findOn } from './boards-model.js'
-import { cameIn, guessBoards, todaysBrief, undoOf, whereTo } from './just-in.js'
+import { cameIn, guessBoards, todayFlow, todaysBrief, undoOf, whereTo } from './just-in.js'
 
 const FIRST = 12
 const timeOf = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -22,6 +22,7 @@ export function JustIn({ workspace, boards, query, editing, card, actions, navig
   const shownWaiting = findOn(waiting, query)
   const shownDays = days.map((day) => ({ ...day, notes: findOn(day.notes, query) })).filter((day) => day.notes.length)
   const brief = query ? '' : todaysBrief(workspace)
+  const flow = useMemo(() => todayFlow(workspace), [workspace])
   const nameOf = (id) => boards.find(({ folder }) => folder.id === id)?.folder.name
   const row = (note, guesses) => (editing === note.id
     ? card(note)
@@ -36,6 +37,13 @@ export function JustIn({ workspace, boards, query, editing, card, actions, navig
             <p>{brief}</p>
             <button type="button" className="text-button" onClick={() => navigate('Journal')}>Open today’s journal</button>
           </section>
+        )}
+        {flow.came > 0 && !query && (
+          <p className="justin-flow" aria-label="Today’s intake">
+            <b>{flow.came} came in today</b>
+            {[['calendar', 'on the calendar'], ['questions', 'to Questions'], ['buy', 'to To buy'], ['board', 'on a board'], ['waiting', 'waiting']]
+              .filter(([key]) => flow[key]).map(([key, label]) => <span key={key}>→ {flow[key]} {label}</span>)}
+          </p>
         )}
         {shownWaiting.length > 0 && (
           <section className="justin-card" aria-label="Waiting for a home">

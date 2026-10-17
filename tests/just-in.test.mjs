@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { readPhotoAnswer } from '../shared/ai-tasks.mjs'
 import { JUST_IN } from '../src/boards/boards-model.js'
-import { cameIn, dayLabel, guessBoards, mergeStickies, placeFrom, samePair, todaysBrief, undoOf, whereTo } from '../src/boards/just-in.js'
+import { cameIn, dayLabel, guessBoards, mergeStickies, placeFrom, samePair, todayFlow, todaysBrief, undoOf, whereTo } from '../src/boards/just-in.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 
 const NOW = new Date(2026, 9, 15, 9, 0).getTime()
@@ -100,4 +100,8 @@ test('merging keeps both sets of words in the older sticky and bins the newer on
 test('a photo’s answer: one sticky a line, bullets gone, each once, none is nothing', () => {
   assert.deepEqual(readPhotoAnswer('Here are the notes:\n- Spotlight Search\n2. Audio player?\n• milk, bread\n- spotlight search\n\n'), ['Spotlight Search', 'Audio player?', 'milk, bread'])
   assert.deepEqual(readPhotoAnswer('none'), [])
+})
+
+test('today’s intake in counts: what came in, and where it went', () => {
+  assert.deepEqual(todayFlow(state, NOW), { came: 3, calendar: 1, questions: 1, buy: 0, board: 1, waiting: 2 })
 })

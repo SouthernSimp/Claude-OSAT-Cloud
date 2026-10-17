@@ -358,7 +358,6 @@ function buildMenu() {
         room('Canvas', 'Mindmap', 'CmdOrCtrl+3'),
         room('Ask', 'Assistant', 'CmdOrCtrl+4'),
         room('Files', 'Files', 'CmdOrCtrl+5'),
-        room('Dashboard', 'Dashboard', 'CmdOrCtrl+6'),
         { type: 'separator' },
         room('Journal', 'Journal'),
         room('Calendar', 'Calendar'),

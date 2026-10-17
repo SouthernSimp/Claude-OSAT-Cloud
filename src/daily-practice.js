@@ -58,8 +58,8 @@ export function toggleHabit(habits, id, date = localDateKey()) {
 
 /* ---- Habits over time --------------------------------------------------------------------------------------------
    Everything below is worked out from `doneDates` alone: the days a habit was kept. For a Build habit that is a day
-   it was done; for an Avoid habit, a day kept clean (both have always been "kept" in the room, the widget and the
-   Dashboard). A run isn't over until a whole day passes without it: this morning, yesterday's run still stands. */
+   it was done; for an Avoid habit, a day kept clean (both have always been "kept" in the room and the
+   widget). A run isn't over until a whole day passes without it: this morning, yesterday's run still stands. */
 
 /* The day `count` days after `key` (before it when negative), counted on the calendar, so a 23-hour day is a day. */
 export function shiftDay(key, count) {
