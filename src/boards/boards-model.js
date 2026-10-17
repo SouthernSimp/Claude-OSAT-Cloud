@@ -22,6 +22,13 @@ const TO_DO = ['todo', 'problem', 'date']
 
 const newest = (a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)
 
+/* Where a sticky came from, as you'd say it now: the desk and the canvas are gone (Phase 73). */
+const SOURCE_NOW = { Home: 'Typed', Desk: 'Typed', Sky: 'Board', Canvas: 'Board' }
+export const sourceWords = (source) => SOURCE_NOW[source] || source || ''
+
+/* A sticky's words on a card: a picture in it reads as [Screenshot], never as its file's name. */
+export const cardWords = (text) => String(text || '').replace(/!\[([^\]]*)\]\([^)]*\)/g, (_, alt) => `[${alt || 'Picture'}]`)
+
 /* A board's paper: its own colour, else one of the papers in turn. */
 export const paperOf = (folder, index) => folder.color || PAPERS[index % PAPERS.length]
 

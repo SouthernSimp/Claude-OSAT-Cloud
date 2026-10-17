@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ArrowRight, CalendarBlank, Check, CheckCircle, CurrencyDollar, ListChecks, Plus, Target, Tray } from '@phosphor-icons/react'
 
 import { WHAT_LABEL, WHAT_PAPER, whatOf } from '../../shared/what-model.mjs'
+import { sourceWords } from '../boards/boards-model.js'
 import { cameIn, dayLabel, todaysBrief } from '../boards/just-in.js'
 import { GoalsSummary } from '../goals/Goals.jsx'
 import { habitFace, isHabitDone, localDateKey, streakWords, toggleHabit } from '../daily-practice.js'
@@ -77,7 +78,7 @@ export function TodayView({ workspace, commit, navigate }) {
                     <button type="button" className="today-item is-row" onClick={() => navigate('JustIn')}>
                       <span className="meta-kind" data-paper={WHAT_PAPER[whatOf(note)]}>{WHAT_LABEL[whatOf(note)]}</span>
                       <span className="today-item-text">{note.title || 'A sticky'}</span>
-                      <small>{[note.source, dayLabel(note.createdAt, now.getTime()) === 'Today' ? time(note.createdAt) : dayLabel(note.createdAt, now.getTime())].filter(Boolean).join(' · ')}</small>
+                      <small>{[sourceWords(note.source), dayLabel(note.createdAt, now.getTime()) === 'Today' ? time(note.createdAt) : dayLabel(note.createdAt, now.getTime())].filter(Boolean).join(' · ')}</small>
                     </button>
                   </li>
                 ))}

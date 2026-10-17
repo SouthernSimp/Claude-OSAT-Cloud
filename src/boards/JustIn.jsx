@@ -5,7 +5,7 @@ import { WHAT_LABEL, WHAT_PAPER, whatOf, whenOf } from '../../shared/what-model.
 import { whenLine } from '../intake/dates.js'
 import { carryable, useCarrying } from '../lib/carry.js'
 import { comingUp, isActiveNote, notesInList } from '../notes-model.js'
-import { findOn } from './boards-model.js'
+import { findOn, sourceWords } from './boards-model.js'
 import { cameIn, guessBoards, todayFlow, todaysBrief, undoOf, whereTo } from './just-in.js'
 
 const FIRST = 12
@@ -95,7 +95,7 @@ function Row({ note, workspace, guesses, nameOf, actions }) {
           <button type="button" className="text-button" onClick={(event) => actions.moveMenu(event, note)}>{guesses.length ? 'Other…' : 'Move to…'}</button>
         </span>
       )}
-      <span className="justin-from">{[note.source, timeOf(note.createdAt)].filter(Boolean).join(' · ')}</span>
+      <span className="justin-from">{[sourceWords(note.source), timeOf(note.createdAt)].filter(Boolean).join(' · ')}</span>
       {undo && <button type="button" className="ghost-button justin-undo" onClick={(event) => { event.stopPropagation(); actions.undoRow(note) }}>{undo === 'board' ? 'Undo' : 'Take off calendar'}</button>}
     </article>
   )
