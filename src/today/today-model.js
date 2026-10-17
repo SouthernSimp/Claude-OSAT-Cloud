@@ -3,12 +3,26 @@
    calendar yet), and one plain line that says it all. Pure. */
 
 import { whatOf, whenOf } from '../../shared/what-model.mjs'
-import { stageOf } from '../boards/boards-model.js'
+import { boardsOf, onBoard, stageOf, stickiesOn } from '../boards/boards-model.js'
 import { folderPath, isActiveNote } from '../notes-model.js'
 
 const STAGE_FIRST = { doing: 0, next: 1, later: 2 }
 const startOfDay = (time) => { const day = new Date(time); return new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime() }
 const DAY = 86400000
+
+/* The same steps as each board, including branches, in the user's board order. */
+export function dashboardBoards(state) {
+  return boardsOf(state).map(({ folder, count }) => {
+    const steps = stickiesOn(state, folder.id).filter(onBoard)
+    return { folder, count, total: steps.length, done: steps.filter((note) => stageOf(note) === 'done').length }
+  })
+}
+
+export function recentWork(state) {
+  return state.notes.filter((note) => isActiveNote(note) && !note.kind)
+    .sort((a, b) => (Date.parse(b.updatedAt || b.createdAt) || 0) - (Date.parse(a.updatedAt || a.createdAt) || 0))
+    .slice(0, 4)
+}
 
 /* Open to-dos as [{ note, when, board }]: Doing, then Next, then the soonest day, then the newest. */
 export function openTodos(state, now = Date.now()) {
