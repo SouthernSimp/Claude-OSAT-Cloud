@@ -120,8 +120,9 @@ try {
   //    and is kept as a chat; Esc puts the panel away.
   await main.fill('#home-line', 'What did I save across a restart?')
   await main.press('#home-line', 'ControlOrMeta+Enter')
-  const answered = await main.locator('.ask-panel .bubble.assistant').getByText('practice model').waitFor({ timeout: 10000 }).then(() => true, () => false)
-  check(answered, 'Ask did not answer in its panel (⌘↵ in the bar)')
+  // The answer's own words: the model's name above it says Practice model too.
+  const answered = await main.locator('.ask-panel .bubble.assistant', { hasText: 'used for tests' }).waitFor({ timeout: 10000 }).then(() => true, () => false)
+  check(answered, `Ask did not answer in its panel (⌘↵ in the bar): ${JSON.stringify((await main.locator('.ask-panel').innerText().catch(() => 'no panel')).slice(0, 600))}`)
   if (answered) {
     const chats = await main.evaluate(async () => (await window.osat.store.load()).doc.chats)
     check(chats.length === 1 && chats[0].messages.length === 2, 'the question and its answer were not kept as one chat')
@@ -501,7 +502,7 @@ try {
     await main.getByText('test-chat · Test Cloud').first().waitFor({ timeout: 5000 })
       .catch(() => problems.push('the line did not pick up the chosen cloud model'))
     await main.press('#home-line', 'ControlOrMeta+Enter')
-    await main.locator('.ask-panel .bubble.assistant').getByText('From the cloud model').waitFor({ timeout: 10000 })
+    await main.locator('.ask-panel .bubble.assistant', { hasText: 'From the cloud model' }).waitFor({ timeout: 10000 })
       .catch(async () => problems.push(`the answer did not come from the chosen cloud model: ${JSON.stringify(await main.locator('.ask-panel').innerText().catch(() => 'no answer'))}`))
     const usage = (await main.evaluate(() => window.osatBots.status())).cloud.providers[0]?.usage
     check(usage?.requests === 1 && usage.input === 40 && usage.output === 4, `the running total did not count the question: ${JSON.stringify(usage)}`)
