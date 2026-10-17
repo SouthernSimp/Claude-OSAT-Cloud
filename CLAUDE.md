@@ -27,6 +27,9 @@ No workspace/schema changes or dependencies. All 997 unit tests and the producti
 test scripts pass syntax checks. Browser checks and screenshots are for CI only, native testing stays
 paused. Nate reviews before merging. Phase 77 Ask (#112) and Phase 78 simpler Notes (#113) remain separate draft PRs;
 this branch does not include them. Their changelog, roadmap and checkpoint edits need combining when merged.
+CI 39063422424 at f96fd4a passes browser and xvfb Electron checks; light/dark/narrow screenshot review passes
+(`design-qa.md`); its Mac packaging job also passes and provides a review DMG. Phase 80 Connections (#115) is being developed in the
+independent `work/osat-connections-20261017` worktree after Nate requested a settings rework.
 
 Next ideas, none promised: native vibrancy for the sidebar once seen on the Mac, People (a page
 per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading. Nate's
