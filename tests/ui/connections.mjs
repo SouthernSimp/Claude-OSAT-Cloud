@@ -190,7 +190,7 @@ async function main() {
         try { await exercise(page) }
         catch (error) {
           await page.screenshot({ path: `${OUT}/failed.png` })
-          console.error(await section(page).innerText(), problems)
+          console.error(await page.locator('.settings').innerText(), problems)
           throw error
         }
       }
