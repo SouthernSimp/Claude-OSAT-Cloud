@@ -4,6 +4,13 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
+## Next build · October 17, 2026 — Ask knows the new OSAT
+
+- **Ask uses today's words:** boards and Just in, with directions for the sidebar and meeting follow-ups. It no
+  longer sends you to the old Sky or sorting screens.
+- **Ask sees your open to-dos,** in the same order as Today, with their board names. Today's journal checklist is
+  named separately, so the two don't get mixed up. Your note-sharing choices still apply.
+
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 
 - **One window, one sidebar,** the way Apple's own apps work: Today, Just in, Calendar and To do at the top, your

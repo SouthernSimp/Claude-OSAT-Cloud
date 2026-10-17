@@ -19,6 +19,18 @@ link back to the meeting.
 Phase 75 (merged, build 321): Goals. The few big things, each moving with a board (its to-dos done) or a habit (its days kept
 this week), on a page of their own under Life and as a card on Today.
 
+Phase 76 (merged, build 321): first polish. Rooms settle in gently, the welcome says what OSAT does, and cards use
+today's words for where a sticky came from.
+
+Phase 77 (in review): Ask knows the new OSAT. Its workspace summary says boards and Just in, with the same open
+to-dos as Today (Doing, then Next, then soonest), and the journal checklist named separately. Its directions explain
+the sidebar and meeting follow-ups instead of sending people to the old Sky and sorting screens. Note-sharing
+choices still apply; no notes move or change.
+
+Coming next, none promised: simplify Notes' second folder column, People (a page per customer with their notes,
+meetings and follow-ups), and an AI pass for Granola summaries without a Next steps heading. Native sidebar
+vibrancy waits for a Mac review. Keep each step small enough to use before adding the next.
+
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
 Nate: the canvas is hard to read and sorting is still the chore. The plan (docs/REWORK-20261015.md, with a mockup
@@ -210,6 +222,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 74 | Follow-ups from meetings: each thing promised in a meeting OSAT wrote up becomes a To-do sticky in Just in, linked to the write-up; Granola's meetings too (its Next steps, read once an hour once Granola is connected; Meetings has the switch, Look now, Take them back) | Merged (PR #109), Oct 17 |
 | 75 | Goals: Life → Goals and a card on Today; each goal moves with a board (its to-dos done) or a habit (its days kept this week), or is ticked off; Undo on Mark done and Delete (schema 15) | Merged (PR #110), Oct 17 |
 | 76 | Polish, first part: rooms settle in when you move between them, the welcome leads with what OSAT does, cards say where a sticky came from in today's words, the desk's leftover dock, places and widgets go | Merged (PR #111), Oct 17 |
+| 77 | Ask knows the new OSAT: boards and Just in, the same open to-dos as Today, a separate journal checklist, and directions for the sidebar and meeting follow-ups | In review |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

@@ -1,15 +1,17 @@
 /* What the AI knows about OSAT. Every question carries a short map of the workspace (the
-   nodes and branches, what waits in Unsorted, what is open in the Sky, Next, what is coming up
+   boards and branches, what waits in Just in, the open board, to-dos, what is coming up
    on the Calendar) and a few lines on how OSAT works, so it can talk about the person's own
    things in OSAT's own words. The map is words only and stays small: the built-in model reads
    about 8,000 tokens in all, and the notes a question matches come on top of it. Pure. */
 
 import { localDateKey } from '../daily-practice.js'
 import { nextSteps } from '../next-steps.js'
-import { folderChildren, folderPath, isActiveNote, isBranch } from '../notes-model.js'
-import { nodesOf, pileOf, stickiesIn } from '../nodes-model.js'
+import { folderChildren, folderPath, isActiveNote } from '../notes-model.js'
+import { boardsOf, JUST_IN, stickiesOn } from '../boards/boards-model.js'
+import { pileOf } from '../nodes-model.js'
 import { linksOf, recordOf } from '../links-model.js'
 import { roadmapPhases } from '../lib/roadmap.js'
+import { openTodos } from '../today/today-model.js'
 
 /* How OSAT works, as the AI should say it. */
 export const OSAT_GUIDE = `You live inside OSAT, the person's private notes app on their Mac.
@@ -18,7 +20,8 @@ How OSAT works, in its own words: OSAT is one window with a sidebar. A sticky is
 Use those words (sticky, board, branch, Just in), never "folder", "inbox" or "record" for their notes.
 You read text only. For a picture or a scan you get the words in it, not how it looks; if asked about something you cannot see, say so.
 When part of your answer comes from something they wrote (it arrives labelled STICKY, SCAN or JOURNAL, with where it lives), say so in plain words, like “in your sticky Call mom” or “in your scan Lease”. Copied items and files arrive as COPIED ITEM or FILE with a number; say so too, like “in something you copied on Oct 5” or “in your file lease.pdf”. Only say what is in what you were given; if it isn't there, say you don't see it.
-You can suggest, but you never move or change anything yourself: say where something could go and the person does it. In the Sky, "Sort Unsorted" suggests a home for every sticky in Unsorted, with one click to accept.`
+Just in shows stickies waiting for a home and suggested boards; the person chooses a board to move one, with Undo. To do (⌘4) lists open to-dos by board; tick one off there or on Today, with Undo. Meetings makes a to-do for each promised next step; connected Granola meetings bring their Next steps in too, linked to the meeting.
+Only say you changed something after a tool confirms it. When tools are available, OSAT changes have Undo and changes to another app wait for Allow. Otherwise, offer the action buttons described below or explain how the person can do it.`
 
 const one = (value, max) => {
   const text = String(value || '').replace(/\s+/g, ' ').trim()
@@ -45,23 +48,23 @@ function fit(lines, room, noun) {
   return out
 }
 
-/* One line a node: how much is in it, then its branches with theirs. */
-function nodeLines(state, list) {
-  return list.map(({ folder }) => {
+/* One line a board: how much is in it, then its branches with theirs. */
+function boardLines(state, list) {
+  return list.map(({ folder, count }) => {
     const branches = folderChildren(state.folders, folder.id)
     const loose = pileOf(state.notes, folder.id).length
-    const head = `- ${folder.name} (${stickies(stickiesIn(state, folder.id).length)})`
+    const head = `- ${folder.name} (${stickies(count)})`
     if (!branches.length) return head
-    const inside = branches.map((branch) => `${branch.name} (${stickiesIn(state, branch.id).length})`).join(', ')
+    const inside = branches.map((branch) => `${branch.name} (${stickiesOn(state, branch.id).length})`).join(', ')
     return `${head}, branches: ${inside}${loose ? `; ${stickies(loose)} in no branch yet` : ''}`
   })
 }
 
-/* What is open in the Sky: each open node's stickies, branch by branch. */
+/* The open boards' stickies, branch by branch. */
 function openLines(state, ids, room, allowedNotes = null) {
   const out = []
   for (const node of ids.map((id) => state.folders.find((folder) => folder.id === id)).filter(Boolean)) {
-    out.push(`Open on the canvas: ${node.name}`)
+    out.push(`Open board: ${node.name}`)
     const walk = (folder, label) => {
       const own = pileOf(state.notes, folder.id).filter((note) => !allowedNotes || allowedNotes.has(note.id))
       if (own.length) out.push(...(label ? [`  ${label}:`] : []), ...own.slice(0, 12).map((note) => `  ${stickyLine(note)}`))
@@ -75,9 +78,9 @@ function openLines(state, ids, room, allowedNotes = null) {
 const WHEN = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
 /* The map: everything the AI may look at, most useful first, in at most `maxChars`.
-   `open` is the ids of the nodes open in the Sky; `where: 'sky'` says they are up there. */
-export function boardMap(state, { open = [], focus = null, noteIds = null, scope = 'workspace', where = 'desk', maxChars = 3200, now = new Date(), stacks = [] } = {}) {
-  const parts = [where === 'sky' ? 'THEIR OSAT (they are looking at the canvas right now)' : 'THEIR OSAT']
+   `open` holds board ids; the saved `where: 'sky'` still means the boards screen. */
+export function boardMap(state, { open = [], focus = null, noteIds = null, scope = 'workspace', where = 'app', maxChars = 3200, now = new Date() } = {}) {
+  const parts = [where === 'sky' ? 'THEIR OSAT (they are looking at their boards right now)' : 'THEIR OSAT']
   const room = () => maxChars - parts.join('\n\n').length - 2
   const add = (title, lines, noun = 'lines', limit = Infinity) => {
     if (lines.length && room() > title.length + 30) parts.push([title, ...fit(lines, Math.min(limit, room() - title.length - 1), noun)].join('\n'))
@@ -92,9 +95,12 @@ export function boardMap(state, { open = [], focus = null, noteIds = null, scope
   }
   if (scope === 'focus') return parts.join('\n\n').slice(0, maxChars)
 
+  const todos = openTodos(state, now)
+  add(`To do (${todos.length} open; Doing, then Next, then soonest):`, todos.map(({ note, board }) => `${stickyLine(note)} [${board || 'Just in'}]`), 'to-dos', 650)
+
   const today = localDateKey(now)
   const steps = nextSteps(state.notes.filter((note) => note.kind === 'day' && note.date === today && !note.trashedAt)).filter((step) => !step.done)
-  add('Next (steps for today):', steps.slice(0, 5).map((step) => `- ${one(step.text, 90)}`))
+  add("Today's journal checklist:", steps.slice(0, 5).map((step) => `- ${one(step.text, 90)}`))
 
   const soon = (state.calendar?.events || [])
     .map((event) => ({ event, at: Date.parse(event.start) }))
@@ -102,20 +108,15 @@ export function boardMap(state, { open = [], focus = null, noteIds = null, scope
     .sort((a, b) => a.at - b.at)
   add('Coming up on the Calendar (next 8 days):', soon.slice(0, 5).map(({ event, at }) => `- ${WHEN.format(new Date(at))}: ${one(event.title, 80)}`))
 
-  const top = nodesOf(state.folders)
-  const nodes = top.filter(({ folder }) => !isBranch(folder))
-  const alone = top.filter(({ folder }) => isBranch(folder))
-  add(`Topics (${nodes.length}):`, nodeLines(state, nodes), 'nodes', 650)
-  if (!nodes.length) parts.push('They have no topics yet.')
-  add(`Branches on the canvas on their own (${alone.length}), in no topic yet:`, nodeLines(state, alone), 'branches', 350)
+  const boards = boardsOf(state)
+  add(`Boards (${boards.length}):`, boardLines(state, boards), 'boards', 650)
+  if (!boards.length) parts.push('They have no boards yet.')
   // Lines between things: only that they relate, by name.
   const name = (key) => one(recordOf(state, key)?.title || recordOf(state, key)?.name, 40)
   add('Connected (a line between two things; nothing was filed by it):', linksOf(state).slice(0, 12).map((link) => `- ${name(link.a)} — ${name(link.b)}`), 'connections')
-  // Stacks on the desk (kept on this Mac, so the desk hands them in).
-  add('Stacks on the desk (stickies standing in a column; they only arrange the desk):', stacks.slice(0, 6).map((stack) => `- ${one(stack.name, 40) || 'A stack'}: ${(stack.titles || []).slice(0, 6).map((title) => one(title, 40)).join(' · ')}`), 'stacks')
-  const unsorted = pileOf(state.notes, null)
-  add(`Unsorted (${stickies(unsorted.length)}, in no topic yet):`, unsorted.map(stickyLine), 'stickies', 450)
-  if (!unsorted.length) parts.push('Unsorted is empty.')
+  const waiting = stickiesOn(state, JUST_IN)
+  add(`Just in (${stickies(waiting.length)}, waiting for a board):`, waiting.map(stickyLine), 'stickies', 450)
+  if (!waiting.length) parts.push('Nothing is waiting in Just in.')
   return parts.join('\n\n').slice(0, maxChars)
 }
 

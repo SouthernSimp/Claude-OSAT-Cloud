@@ -10,9 +10,9 @@ import { cleanError } from './useAi.js'
 import { notesForQuestion } from './work-scope.js'
 import { aiPreamble } from '../soul.js'
 
-/* Ask, right here (the desk's line, the Sky's): the answer streams into a card and is kept as
+/* Ask from the bar: the answer streams into a card and is kept as
    a chat, so nothing said is lost and "Keep talking" picks it up in Ask. The question reads
-   the notes it matches and, through `context` (boardMap's options), what is open in the Sky.
+   the notes it matches and, through `context` (boardMap's options), the open board.
    `answer` is { chatId, question, text, busy, error, noteIds, actions, savedId } or null. */
 export function useAskHere({ workspace, commit, modelId, context, local = true }) {
   const [answer, setAnswer] = useState(null)

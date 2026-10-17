@@ -57,9 +57,9 @@ test('schema 8 changes nothing in the data; a newer OSAT is refused', () => {
   assert.throws(() => migrate({ schema: SCHEMA + 1 }), /newer OSAT/)
 })
 
-test('the AI is told about branches on their own, apart from the topics', () => {
+test('Ask names old loose branches as boards, like the sidebar does', () => {
   const state = space([folder('Clients'), folder('Mine', { kind: 'branch' })], [note('hello', 'Mine')])
   const map = boardMap(state)
-  assert.match(map, /Topics \(1\):\n- Clients/)
-  assert.match(map, /Branches on the canvas on their own \(1\), in no topic yet:\n- Mine/)
+  assert.match(map, /Boards \(2\):/)
+  assert.match(map, /- Mine \(1 sticky\)/)
 })
