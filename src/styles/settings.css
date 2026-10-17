@@ -241,3 +241,7 @@
 .snippet-form button { justify-self: start; }
 .snippet-edit .icon-plain { margin-top: 22px; }
 .setting-list { margin: 4px 0 0; padding-left: 1.1em; display: grid; gap: 3px; }
+
+/* Settings → Soul and memory */
+.settings .soul-text { width: 100%; box-sizing: border-box; resize: vertical; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-raised); color: inherit; font: var(--t-sm)/1.6 ui-monospace, "SF Mono", Menlo, monospace; }
+.setting-form.soul-form { grid-template-columns: minmax(0, 1fr) auto; }

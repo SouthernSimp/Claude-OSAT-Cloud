@@ -44,6 +44,7 @@ import { cleanError, setupLine, useAi } from "./useAi.js";
 import { ModelMenu } from './ModelMenu.jsx';
 import { AgentConfirm, AgentSteps } from "./AgentSteps.jsx";
 import { AGENT_MEMORY_CHARS, useAgent } from "./useAgent.js";
+import { aiPreamble } from "../soul.js";
 import { isPicture, MAX_PICTURES, pictureProblem, readPicture, withPictures } from "./pictures.js";
 import "../styles/assistant.css";
 
@@ -360,7 +361,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     let full = "";
     // A question with a picture is answered, never acted on.
     const acting = !pictures.length && base.tools !== false && agent.wants(content);
-    const fit = fitToMemory(outbound(systemPrompt(new Date(), workspace.settings?.aboutMe || '', askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds }), { acting }), base.messages, content, workspace.notes, noteIds, files, workspace.folders, found.text), acting ? AGENT_MEMORY_CHARS : undefined);
+    const fit = fitToMemory(outbound(systemPrompt(new Date(), aiPreamble(workspace.settings), askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds }), { acting }), base.messages, content, workspace.notes, noteIds, files, workspace.folders, found.text), acting ? AGENT_MEMORY_CHARS : undefined);
     const onDelta = (delta) => {
       full += delta;
       setStreaming(extractActions(full).body);

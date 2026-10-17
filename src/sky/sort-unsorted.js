@@ -9,6 +9,7 @@
 import { readSortUnsortedAnswer, sortUnsortedMessages } from '../../shared/ai-tasks.mjs'
 import { folderChildren, folderPath, relatedNotes } from '../notes-model.js'
 import { nodesOf, pileOf } from '../nodes-model.js'
+import { memoryLines } from '../soul.js'
 
 /* One request reads this many stickies (the built-in model reads about 8,000 tokens); a sort goes
    through up to MOST of them, one request after another with progress shown, so a pile of a hundred
@@ -153,7 +154,7 @@ export function sortRequests(state, stickies = unsortedStickies(state)) {
   const places = sortPlaces(state)
   const batches = []
   for (let from = 0; from < stickies.length; from += BATCH) {
-    batches.push({ from, messages: sortUnsortedMessages({ places, stickies: stickies.slice(from, from + BATCH).map(wordsOfSticky) }) })
+    batches.push({ from, messages: sortUnsortedMessages({ places, stickies: stickies.slice(from, from + BATCH).map(wordsOfSticky), memory: memoryLines(state.settings) }) })
   }
   return { places, batches }
 }

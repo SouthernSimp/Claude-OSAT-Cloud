@@ -46,11 +46,14 @@ const plain = (value) => String(value || '').toLowerCase().replace(/[^\p{L}\p{N}
 /* Every sticky in Unsorted against every place it could go (a node or a branch, with a
    couple of the stickies already in it as examples). `places` are { name, peek: [words] },
    `stickies` the words of each. */
-export function sortUnsortedMessages({ places, stickies }) {
+export function sortUnsortedMessages({ places, stickies, memory = [] }) {
   return [SYSTEM, {
     role: 'user',
     content: `These are someone's notes. A sticky is one thought. A topic gathers stickies about one thing, and a branch is a group inside a topic.
-
+${memory.length ? `
+What they told OSAT to remember:
+${memory.slice(0, 20).map((line) => `- ${clip(line, 200)}`).join('\n')}
+` : ''}
 Places a sticky can go:
 ${places.map(({ name, peek = [] }, index) => `${index + 1}. ${clip(name, 80)}${peek.length ? ` (has: ${peek.slice(0, 2).map((words) => clip(words, 30).replace(/\s+/g, ' ')).join('; ')})` : ''}`).join('\n') || '(none yet)'}
 

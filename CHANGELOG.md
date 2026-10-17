@@ -4,8 +4,11 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 15, 2026 — The Dashboard goes; Just in shows today’s intake
+## Next build · October 16, 2026 — Soul and memory; the Dashboard goes; Just in shows today’s intake
 
+- **Soul and memory** (Settings): who OSAT is and how it talks, what it knows about you (one line each, Forget with
+  Undo; your About you lines are the first ones), and what it may do on its own (file new stickies, put dates on your
+  calendar: On its own or Ask me). Ask reads the first two before every answer; filing reads what it knows. (#106)
 - **The Dashboard is gone** from the dock, the Go menu and ⌘6. It was more than OSAT needed. (#105)
 - **Today’s intake on Just in:** one line at the top, “3 came in today → 1 on the calendar → 1 to Questions → 2 waiting”,
   so you can see what OSAT did with today’s stickies without opening each one. (#105)
