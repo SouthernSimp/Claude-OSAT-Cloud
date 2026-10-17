@@ -50,8 +50,8 @@ export function Welcome({ onDone }) {
         {step === 0 && (
           <>
             <span className="welcome-icon"><LockKey weight="fill" /></span>
-            <h2 id="welcome-title">Everything stays on this Mac.</h2>
-            <p>Your notes live in one folder here and save as you type. The AI runs here too. No account, no cloud, nothing sent anywhere.</p>
+            <h2 id="welcome-title">Your work and your life, in one place.</h2>
+            <p>Write anything and OSAT puts it where it goes: a to-do, your calendar, the right board. Today shows what needs you. Everything stays on this Mac, the AI too: no account, nothing sent anywhere.</p>
             <div className="welcome-actions">{next}</div>
           </>
         )}
