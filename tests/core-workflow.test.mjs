@@ -17,7 +17,7 @@ const workspace = () => normalizeWorkspace({ ...createDefaultWorkspace(),
 
 test('200 unrelated captures cannot crowd the focused topic out of the AI map', () => {
   const map = boardMap(workspace(), { where: 'sky', focus: 'garden', open: ['business'], maxChars: 2000 })
-  assert.match(map, /Open on the canvas: Garden/)
+  assert.match(map, /Open board: Garden/)
   assert.match(map, /Buy seeds/)
   assert.match(map, /Raised beds/)
   assert.ok(map.indexOf('Garden') < map.indexOf('Unsorted thought'))

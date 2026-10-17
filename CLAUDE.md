@@ -15,11 +15,18 @@ Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something 
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
 Merged and released as build 321: Phase 73 one window with one sidebar, Today and To do, the bar on top, Ask as a
 panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
-Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111). Next ideas, none promised: Notes' own folder column
+Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111).
+
+Phase 77 is in review (draft PR #112) on `codex/phase-77-ask-current-workspace`: Ask's workspace summary uses boards and Just in,
+lists the same open to-dos as Today, and labels the journal checklist separately. Its guide explains the current
+sidebar and meeting follow-ups; obsolete sorting directions and desk stacks are gone. Existing no-notes and
+focused-board scopes still apply. Code-only validation: 995 unit tests and the production build pass. No local
+Electron/native tests or installed-app changes. Leave merging to Nate; CI runs the browser/Electron/Mac checks.
+
+Next ideas, none promised: Notes' own folder column
 beside the sidebar (fold it into the sidebar?), native vibrancy for the sidebar once seen on the Mac, People (a page
-per customer: their stickies, meetings, follow-ups), an AI pass for Granola notes without a Next steps heading, and
-the remaining desk words in the AI's board map (board-context.js `boardMap` still says nodes and the Sky). Nate's
-answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install,
+per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading.
+Nate's answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install,
 sell as a done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
 ## Working with Nate
@@ -415,7 +422,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   - `shell/Welcome.jsx`: the first launch — what stays private, the shortcut, the AI's size.
   - Rooms: `field/` (home desk, widgets), `notes/`, `assistant/` (Ask:
     `chats.js` pure chat helpers, `useAi.js`, `LocalAssistant.jsx` with `ActionCards`/`UsedNotes`; Phase 26:
-    `board-context.js` (`boardMap`: the words-only map of nodes, Unsorted, open nodes, Next and the Calendar
+    `board-context.js` (`boardMap`: the words-only map of boards, Just in, open boards, To do, today's journal checklist and the Calendar
     every question carries, `OSAT_GUIDE`, `planLines` for a question about the roadmap), `ask-find.js` + `UsedSources.jsx` (copies and files, local models only) and `ask-sources.js` (what each source
     is, a sticky, a scan or a journal day, and where it lives: the label the model reads and the chips under an answer;
     `relatedForAsk` in `work-scope.js` picks the notes: the question's words, a node it names, a time like "last month"
