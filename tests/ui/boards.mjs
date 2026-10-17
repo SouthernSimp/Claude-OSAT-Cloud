@@ -44,7 +44,7 @@ const NOTES = [
   sticky('g7', 'Site measurements', 'gate', 'date', { ask: { event: { date: dayAfter(2), title: 'Site measurements' } } }),
   sticky('g8', 'Installation', 'gate', 'date', { ask: { event: { date: dayAfter(5), title: 'Installation' } } }),
   ...['Meet the customer', 'Sketch the design', 'Agree the finish'].map((text, index) => sticky(`g${index + 9}`, text, 'gate', 'todo', { doneAt: ago(12) })),
-  ...Array.from({ length: 6 }, (_, index) => sticky(`date${index}`, `Home visit ${index + 1}`, 'home', 'date', { ask: { event: { date: dayAfter(index + 1) } } })),
+  ...Array.from({ length: 6 }, (_, index) => sticky(`date${index}`, `Home visit ${index + 1}`, 'home', 'date', { ask: { event: { date: dayAfter(index + 1), title: `Home visit ${index + 1}` } } })),
 ]
 
 let server
