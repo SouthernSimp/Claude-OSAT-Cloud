@@ -19,6 +19,7 @@ import { useUndoToast } from '../lib/UndoToast.jsx'
 import { importScan } from '../nodes-model.js'
 import { storageFrom, useWorkspace } from '../store/useWorkspace.js'
 import { SaveStatus } from '../store/SaveStatus.jsx'
+import { GoalsView } from '../goals/Goals.jsx'
 import { TodayView, TodoView } from '../today/Today.jsx'
 import { BrowserView } from '../tools/Browser.jsx'
 import { TerminalView } from '../tools/Terminal.jsx'
@@ -47,7 +48,7 @@ import { needsTour, Tour } from './Tour.jsx'
 
 // The rooms that can't do anything offline; they say so instead of opening.
 const ONLINE_ONLY = new Set(['Browser', 'Terminal', 'NowPlaying', 'GitHub'])
-const ROOMS = new Set(['Today', 'Todo', 'JustIn', 'Mindmap', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile'])
+const ROOMS = new Set(['Today', 'Todo', 'JustIn', 'Mindmap', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile'])
 const BOARD_KEY = 'osat.boards.board.v1'
 
 export function Desk() {
@@ -330,6 +331,7 @@ function Room({ at, common, storage, command, covered, boardsRef, setBoard }) {
     case 'Journal': return <JournalView {...common} target={target} />
     case 'Calendar': return <CalendarView {...common} initialDate={at.detail?.date || null} />
     case 'Habits': return <HabitsView {...common} />
+    case 'Goals': return <GoalsView {...common} />
     case 'Budget': return <BudgetView {...common} />
     case 'Settings': return <SettingsView {...common} storage={storage} target={at.detail?.section ? target : null} />
     case 'Roadmap': return <RoadmapView {...common} target={target} />

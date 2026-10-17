@@ -6,17 +6,17 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 14
+export const SCHEMA = 15
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
-  'notes', 'folders', 'habits', 'reflections', 'projects', 'chats',
+  'notes', 'folders', 'habits', 'goals', 'reflections', 'projects', 'chats',
   'sorter.boards', 'calendar.events', 'budget.transactions', 'budget.recurring',
 ]
 
 /* Top-level keys a window may change. `rev` and `schema` belong to the store. */
 export const ROOTS = [
-  'theme', 'notes', 'folders', 'habits', 'reflections', 'focus', 'projects',
+  'theme', 'notes', 'folders', 'habits', 'goals', 'reflections', 'focus', 'projects',
   'sorter', 'calendar', 'budget', 'settings', 'chats',
 ]
 
@@ -83,6 +83,8 @@ export const migrations = [
   // 14: a sticky may say where it is on its board's Board view (`stage`: later, next or doing).
   // An older OSAT would drop it.
   { from: 13, run: (doc) => doc },
+  // 15 (Phase 75): goals, the few big things, each fed by a board or a habit. An older OSAT would drop them.
+  { from: 14, run: (doc) => ({ ...doc, goals: Array.isArray(doc.goals) ? doc.goals : [] }) },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding
@@ -128,6 +130,7 @@ export function createEmptyDoc() {
     notes: [],
     folders: [],
     habits: [],
+    goals: [],
     reflections: [],
     focus: { status: 'idle' },
     projects: [],

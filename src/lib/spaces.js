@@ -1,6 +1,6 @@
 import {
   BookOpenText, CalendarBlank, CheckCircle, CurrencyDollar, EnvelopeSimple, Files, GearSix, GithubLogo, Globe, Key, Kanban, ListChecks,
-  MapTrifold, Microphone, MusicNotes, NotePencil, Sparkle, Stack, Sun, TerminalWindow, Tray, UploadSimple,
+  MapTrifold, Microphone, MusicNotes, NotePencil, Sparkle, Stack, Sun, Target, TerminalWindow, Tray, UploadSimple,
 } from '@phosphor-icons/react'
 
 /* The one definition of where things live (Phase 73: one window, one sidebar). The sidebar, ⌘K, the keyboard and the
@@ -21,6 +21,7 @@ export const TOOLS = [
   { id: 'Meetings', tint: 'pink', label: 'Meetings', icon: Microphone, hint: 'Listen to a meeting on this Mac; it is written up for you' },
   { id: 'Mail', tint: 'blue', label: 'Mail', icon: EnvelopeSimple, hint: 'Your inbox, read here' },
   { id: 'Habits', tint: 'orange', label: 'Habits', icon: ListChecks, hint: 'Small things, kept daily' },
+  { id: 'Goals', tint: 'violet', label: 'Goals', icon: Target, hint: 'The few big things, each moving with a board or a habit' },
   { id: 'Budget', tint: 'green', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },
   { id: 'Journal', tint: 'orange', label: 'Journal', icon: BookOpenText, hint: 'A page for every day' },
   { id: 'Mindmap', tint: 'teal', label: 'Boards', icon: Kanban, hint: 'Your boards: OSAT, Fortis, Home…' },
@@ -36,7 +37,7 @@ export const TOOLS = [
 // The sidebar's groups under the tiles and the boards. A folded group opens with one click.
 export const GROUPS = [
   { name: 'Business', items: ['Meetings', 'Mail'] },
-  { name: 'Life', items: ['Habits', 'Budget', 'Journal'] },
+  { name: 'Life', items: ['Habits', 'Goals', 'Budget', 'Journal'] },
   { name: 'Library', items: ['Notes', 'Files'] },
   { name: 'Power tools', fold: true, items: ['Browser', 'Terminal', 'GitHub', 'Passwords', 'Roadmap'] },
 ]

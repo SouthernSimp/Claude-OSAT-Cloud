@@ -30,6 +30,9 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   one’s Next steps into Just in as to-dos, with a link back to the meeting. Meetings has the switch, Look now and
   Take them back. Nothing is written to Granola. (#109)
 - Rooms keep their own margins inside the window again, and the on/off switch looks the same everywhere. (#109)
+- **Goals** (Life → Goals, and a card on Today): the few big things, each with how far along it is. A goal can move
+  with a board (its to-dos done) or a habit (its days kept this week), so it moves when you do; or tick it off
+  yourself. Mark done and Delete have Undo. (#110)
 
 ## Build 299 · October 16, 2026 — Connections, Soul and memory, Granola sign-in
 

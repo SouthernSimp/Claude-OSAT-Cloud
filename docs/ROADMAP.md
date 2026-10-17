@@ -16,6 +16,9 @@ Phase 74 (in review): what you promise becomes a to-do. A meeting OSAT writes up
 Granola's meetings do too, read once an hour from its Next steps. They land in Just in, show on Today and To do, and
 link back to the meeting.
 
+Phase 75 (in review): Goals. The few big things, each moving with a board (its to-dos done) or a habit (its days kept
+this week), on a page of their own under Life and as a card on Today.
+
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
 Nate: the canvas is hard to read and sorting is still the chore. The plan (docs/REWORK-20261015.md, with a mockup
@@ -205,6 +208,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 71 | Connections, the small version first: Settings → Bots is Settings → Connections, with the one Offline switch at the top (the same as the line's, ⇧⌘U and the menu-bar icon), then the AI that answers, cloud models and the apps Ask can use, then the ways bots reach OSAT. Apps whose own servers sign in in the browser (OAuth with PKCE, as MCP describes it) now can: Add Granola and Add Notion are one tap, any other app at a web address has Sign in; the tokens stay in the Keychain and refresh before they run out. Slack's own server needs OSAT registered with Slack first; the mockup's tiles wait | Merged (PR #107) |
 | 73 | One window and Today: a Mac window with one sidebar (Today, Just in, Calendar, To do; your boards; Business, Life, Library; the power tools folded), Today as the first screen (to-dos, the day, Just in, habits, money), a To do list, one bar on top of every room, Ask as a panel. The desk, dock, widgets and floating windows go | In review |
 | 74 | Follow-ups from meetings: each thing promised in a meeting OSAT wrote up becomes a To-do sticky in Just in, linked to the write-up; Granola's meetings too (its Next steps, read once an hour once Granola is connected; Meetings has the switch, Look now, Take them back) | In review |
+| 75 | Goals: Life → Goals and a card on Today; each goal moves with a board (its to-dos done) or a habit (its days kept this week), or is ticked off; Undo on Mark done and Delete (schema 15) | In review |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

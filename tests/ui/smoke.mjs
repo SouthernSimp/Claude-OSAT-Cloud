@@ -16,7 +16,7 @@ const OUT = process.env.OSAT_SHOTS || 'test-results/ui'
 const PORT = Number(process.env.OSAT_PORT || 4317)
 // The places ⌘1–6 open (Just in is the boards' room), then the rest from the sidebar.
 const SPACES = [[1, 'Today'], [2, 'Mindmap'], [3, 'Calendar'], [4, 'Todo'], [5, 'Notes'], [6, 'Files']]
-const TOOLS = [['Meetings', 'Meetings'], ['Mail', 'Mail'], ['Journal', 'Journal'], ['Habits', 'Habits'], ['Budget', 'Money'], ['Browser', 'Web'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Settings', 'Settings']]
+const TOOLS = [['Meetings', 'Meetings'], ['Mail', 'Mail'], ['Journal', 'Journal'], ['Habits', 'Habits'], ['Goals', 'Goals'], ['Budget', 'Money'], ['Browser', 'Web'], ['Terminal', 'Terminal'], ['Roadmap', 'Roadmap'], ['Settings', 'Settings']]
 
 
 let server
