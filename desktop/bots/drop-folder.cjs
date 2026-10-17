@@ -1,6 +1,6 @@
 /* The drop folder (~/Documents/OSAT Nodes): a bot (Muse, Grok Bot, Claude) or Nate saves a
    node file there, and it becomes a node in the Sky, then moves to Added. A file OSAT
-   can't read moves to "Set aside" with a calm word in Settings → Bots. Nothing is deleted.
+   can't read moves to "Set aside" with a calm word in Settings → Connections. Nothing is deleted.
    It is a folder on this Mac, so it works offline too.
    `core` is shared/node-file.mjs; `take(tree, { name, hash })` puts the node in the store
    and answers { folder } or { duplicate }. The file system and the clock are passed in. */

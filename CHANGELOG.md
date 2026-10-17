@@ -4,8 +4,10 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 16, 2026 — Soul and memory; the Dashboard goes; Just in shows today’s intake
+## Next build · October 16, 2026 — Connections, Soul and memory; the Dashboard goes; Just in shows today’s intake
 
+- **Connections** (Settings → Bots is now Settings → Connections): the one Offline switch at the top, then the AI that
+  answers, cloud models and the apps Ask can use, then the ways bots reach OSAT. (#107)
 - **Soul and memory** (Settings): who OSAT is and how it talks, what it knows about you (one line each, Forget with
   Undo; your About you lines are the first ones), and what it may do on its own (file new stickies, put dates on your
   calendar: On its own or Ask me). Ask reads the first two before every answer; filing reads what it knows. (#106)

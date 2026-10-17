@@ -1,4 +1,4 @@
-/* Cloud models (Settings → Bots): connect a provider with its key, pick a model, and it
+/* Cloud models (Settings → Connections): connect a provider with its key, pick a model, and it
    answers the line, Ask, Help me sort, Unpack with AI and scans. Paste a key → OSAT checks
    it by listing the provider's models → the key goes to the Keychain → it just works.
    A running total of what was used sits beside the key. `core` is shared/providers.mjs;
@@ -161,10 +161,10 @@ function createCloud({ core, settings, keychain, fetch = globalThis.fetch, offli
   async function chatStream({ model, messages }, onDelta, signal) {
     const parsed = core.parseCloudModelId(model)
     const provider = parsed && providerOf(parsed.providerId)
-    if (!provider) throw new CloudError('That cloud model isn’t connected any more. Pick one in Settings → Bots.')
+    if (!provider) throw new CloudError('That cloud model isn’t connected any more. Pick one in Settings → Connections.')
     if (offline()) throw new CloudError(core.explainFailure({ code: 'OFFLINE', name: provider.name }))
     const key = await keychain.get(account(provider.id))
-    if (!key) throw new CloudError(`OSAT couldn’t find your ${provider.name} key in the Keychain. Paste it again in Settings → Bots.`)
+    if (!key) throw new CloudError(`OSAT couldn’t find your ${provider.name} key in the Keychain. Paste it again in Settings → Connections.`)
     const { text, usage } = await openAiStream({ baseUrl: provider.baseUrl, key, model: parsed.model, messages, onDelta, signal, fetch, name: provider.name, explain })
     const counted = usage && (usage.input || usage.output) ? usage : {
       input: core.estimateTokens(messages.map((message) => message.content).join('\n')), output: core.estimateTokens(text), estimated: true,
@@ -173,7 +173,7 @@ function createCloud({ core, settings, keychain, fetch = globalThis.fetch, offli
     return text
   }
 
-  /* For Settings → Bots: the providers (never their keys), what each has used, and which
+  /* For Settings → Connections: the providers (never their keys), what each has used, and which
      model answers. Everything that leaves the Mac is named here (the switchboard reads it). */
   function status() {
     const current = settings.get()

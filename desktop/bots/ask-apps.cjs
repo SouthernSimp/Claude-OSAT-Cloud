@@ -1,4 +1,4 @@
-/* Apps OSAT can use (Phase 48, Settings → Bots): the MCP servers Claude uses (Google Calendar,
+/* Apps OSAT can use (Phase 48, Settings → Connections): the MCP servers Claude uses (Google Calendar,
    Gmail, Notion…), added by Nate or imported from Claude Desktop, each one off until he turns it on.
    The list is <data folder>/ask-apps.json, written whole like bots.json. Keys and env values never
    go there or to the window: they sit in the Keychain as base64 JSON { headers, env }, cut into
@@ -379,7 +379,7 @@ function createAskApps({
 
   async function call(id, name, args) {
     const app = find(id)
-    if (!app.on) throw plain(`${app.name} is off. Turn it on in Settings → Bots first.`)
+    if (!app.on) throw plain(`${app.name} is off. Turn it on in Settings → Connections first.`)
     const ready = use(id)
     const entry = live.get(id)
     const client = await ready

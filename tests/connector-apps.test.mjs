@@ -18,7 +18,7 @@ const freePort = () => new Promise((resolve) => {
   const probe = net.createServer().listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)) })
 })
 
-/* Settings → Bots as main wires it, on a temp folder, a Keychain held in memory (never the
+/* Settings → Connections as main wires it, on a temp folder, a Keychain held in memory (never the
    Mac's) and a clock the test moves; IPC handlers are called directly. */
 async function bots({ dir, keychain = createKeychain({ platform: 'memory' }) } = {}) {
   dir ||= await fs.mkdtemp(path.join(os.tmpdir(), 'osat-apps-'))
@@ -80,8 +80,8 @@ test('each app has its own key; one that may only look can’t change anything; 
     assert.equal(note.source, 'Claude Code', 'what an app adds carries its name')
 
     const refused = await t.mcp(shortcuts, 'tools/call', sticky('Sneak in'))
-    assert.deepEqual([refused.body.result.isError, refused.body.result.content[0].text], [true, 'Shortcuts can only read. Change that in Settings → Bots.'])
-    assert.deepEqual(await t.api(shortcuts, 'add_sticky', { text: 'Sneak in' }), { status: 403, text: 'Shortcuts can only read. Change that in Settings → Bots.\n' })
+    assert.deepEqual([refused.body.result.isError, refused.body.result.content[0].text], [true, 'Shortcuts can only read. Change that in Settings → Connections.'])
+    assert.deepEqual(await t.api(shortcuts, 'add_sticky', { text: 'Sneak in' }), { status: 403, text: 'Shortcuts can only read. Change that in Settings → Connections.\n' })
     assert.ok((await t.mcp(shortcuts, 'tools/list')).body.result.tools.every((tool) => tool.annotations?.readOnlyHint === true), 'it only sees the tools that read')
     assert.ok(!t.store.load().doc.notes.some((item) => item.markdown === 'Sneak in'))
 

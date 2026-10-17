@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, DeviceMobile, DownloadSimple, FolderOpen, LockSimple, Printer, UploadSimple } from "@phosphor-icons/react";
-import { setupLine, useAi } from "../../assistant/useAi.js";
+import { cleanError, setupLine, useAi } from "../../assistant/useAi.js";
 import { memoryResult } from "../../assistant/ModelMenu.jsx";
 import { downloadFile, formatRelativeTime } from "../../lib/ui.js";
 import { localDateKey } from "../../daily-practice.js";
@@ -367,8 +367,36 @@ export function AiPage({ page, showUndo }) {
   );
 }
 
+/* Settings → Connections (Phase 71, the mockup's fifth screen; the page id stays "bots" for older links): the one
+   Offline switch, then the AI, the apps Ask can use and the ways bots reach OSAT. */
 export function BotsPage({ page }) {
-  return <Page page={page}><Legacy words="drop folder cloud model key connector"><BotsSettings /></Legacy></Page>;
+  return (
+    <Page page={page}>
+      <OfflineSwitch />
+      <Legacy words="drop folder cloud model key connector apps mcp"><BotsSettings /></Legacy>
+    </Page>
+  );
+}
+
+/* The same switch as the line's, ⇧⌘U and the menu-bar icon: main pauses everything first, then answers. */
+function OfflineSwitch() {
+  const api = window.osatUnder;
+  const [status, setStatus] = useState(null);
+  const [problem, setProblem] = useState("");
+  useEffect(() => {
+    if (!api) return undefined;
+    api.status().then(setStatus, () => {});
+    return api.onChange(setStatus);
+  }, [api]);
+  if (!api) return null;
+  const set = (on) => { setProblem(""); api.set(on).then(setStatus, (error) => setProblem(cleanError(error))); };
+  return (
+    <Group title="One switch">
+      <Row title="Offline" hint={problem || (status?.on ? "Nothing leaves this Mac. Cloud models, apps and links wait; the AI on this Mac keeps working." : "Turn it on and nothing leaves this Mac, whatever is connected below.")} words="offline online internet wifi private nothing leaves">
+        <Switch label="Offline" checked={status?.on === true} disabled={!status} onChange={set} />
+      </Row>
+    </Group>
+  );
 }
 
 export function DataPage({ page, workspace, commit, storage, showUndo }) {

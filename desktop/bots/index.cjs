@@ -1,5 +1,5 @@
 /* Bots in (Phase 16): everything that lets Muse, Grok Bot, Claude and other AI reach OSAT,
-   and OSAT reach them, in one place with one Settings section (Settings → Bots):
+   and OSAT reach them, in one place with one Settings section (Settings → Connections):
      the drop folder   node files saved in ~/Documents/OSAT Nodes become nodes (drop-folder.cjs)
      cloud models      any provider with a key, next to the AI on this Mac (cloud.cjs)
      the connector     an MCP server on this Mac only, off until turned on (connector.cjs); each app
@@ -397,7 +397,7 @@ async function createBots({ dataDir, nodesDir, service, store, sharedModule, han
     appKey,
     setAsk: (answer) => { ask = answer },
     // For Ask in main: what the apps that are on can do (never throws; a failing app is left out
-    // and its reason shows in Settings → Bots), and one of them doing it.
+    // and its reason shows in Settings → Connections), and one of them doing it.
     askApps: {
       tools: () => askApps.tools().finally(changed),
       call: (id, name, args) => askApps.call(String(id), String(name), args).finally(changed),

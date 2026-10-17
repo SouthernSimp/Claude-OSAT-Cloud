@@ -1,4 +1,4 @@
-/* ---- Settings → Bots → the connector's apps (views/bots/ConnectorCard.jsx) -----
+/* ---- Settings → Connections → the connector's apps (views/bots/ConnectorCard.jsx) -----
    One row per app: its name and when it was last used, what it may do, its setup. */
 
 .settings .connector-access { display: grid; gap: 4px; margin: 8px 0 0; padding-left: 18px; font-size: var(--t-sm); color: var(--muted); }

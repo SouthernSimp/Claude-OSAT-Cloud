@@ -66,7 +66,7 @@ test('what reaches out answers in plain words while offline; the rest works', ()
   }
 })
 
-/* A command OSAT starts for an app (Settings → Bots) could reach the internet on its own, past the
+/* A command OSAT starts for an app (Settings → Connections) could reach the internet on its own, past the
    fetch lock: going offline ends it (bots.changed() calls closeAll), and none starts while offline. */
 test('an app’s command ends when OSAT goes offline, and none starts while offline', async () => {
   const require = createRequire(import.meta.url)
@@ -213,7 +213,7 @@ const ALLOWED = {
     'ses.webRequest.onBeforeRequest((details, callback) => callback({ cancel: under.on && !isLocal(details.url) }))',
   ],
   'desktop/bots/index.cjs': [
-    // A cloud provider's own key or usage page (Settings → Bots). Refused offline on the same line.
+    // A cloud provider's own key or usage page (Settings → Connections). Refused offline on the same line.
     'if (!offline() && /^https:\\/\\//i.test(url)) await shell.openExternal(url)',
   ],
   'desktop/launcher/index.cjs': [
@@ -234,7 +234,7 @@ const ALLOWED = {
     "child = spawn(file, args, { stdio: ['pipe', 'ignore', 'ignore'] })",
   ],
   'desktop/bots/mcp-client.cjs': [
-    // An app's command (Settings → Bots), only one Nate added, or imported and turned on. Going offline
+    // An app's command (Settings → Connections), only one Nate added, or imported and turned on. Going offline
     // ends it, and none starts while offline (ask-apps.cjs; the test above).
     "const child = spawn(command, args, { env: { ...process.env, PATH: searchPath(process.env.PATH), ...env }, stdio: ['pipe', 'pipe', 'pipe'], detached: true })",
   ],

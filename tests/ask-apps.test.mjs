@@ -155,7 +155,7 @@ test('no Claude Desktop settings: said plainly', async () => {
 test('on, off, remove and Undo; a call to an app that is off says so', async () => {
   const { apps, keychain, closed, onDisk } = await setup({ claude: CLAUDE })
   await apps.importClaude(['notion', 'calendar'])
-  await assert.rejects(apps.call('app1', 'list_events', {}), /notion is off\. Turn it on in Settings → Bots first/)
+  await assert.rejects(apps.call('app1', 'list_events', {}), /notion is off\. Turn it on in Settings → Connections first/)
   assert.equal((await apps.toggle('app1', true)).tools, 2)
   assert.deepEqual(await apps.call('app1', 'list_events', { day: 'today' }), { text: 'list_events {"day":"today"}', isError: false })
   assert.deepEqual(apps.running(), ['app1'])

@@ -45,7 +45,7 @@ function useAct() {
   return { busy, act, line }
 }
 
-/* Settings → Bots (Phase 46): OSAT tells other services what happens, and services add stickies. */
+/* Settings → Connections (Phase 46): OSAT tells other services what happens, and services add stickies. */
 export function WebhooksCard() {
   const { bridge, status } = useHooks()
   if (!bridge) return null

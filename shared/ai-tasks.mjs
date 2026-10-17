@@ -1,4 +1,4 @@
-/* The small jobs OSAT gives the model chosen in Settings → Bots (a cloud model, or the AI on
+/* The small jobs OSAT gives the model chosen in Settings → Connections (a cloud model, or the AI on
    this Mac): unpack a packed node into branches, and suggest where stickies still to sort
    belong (Help me sort). Each is a question in plain words and a forgiving
    reader of the answer, since small models don't always keep to the format. Pure. */

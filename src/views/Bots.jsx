@@ -26,26 +26,26 @@ function useBots() {
   return { bridge, status, setStatus }
 }
 
-/* Settings → Bots: everything that lets Muse, Grok Bot, Claude and other AI reach OSAT, and
-   every model and privacy choice, in one place. */
+/* Settings → Connections: the model that answers, cloud models, the apps Ask can use, and everything that lets Muse,
+   Grok Bot, Claude and other AI reach OSAT, in one place. */
 export function BotsSettings() {
   const { bridge, status } = useBots()
   if (!bridge) {
     return (
       <section className="content-card">
-        <p className="eyebrow">Bots</p>
-        <h2>Bots reach OSAT in the Mac app.</h2>
-        <p>In the Mac app, a bot like Muse saves a topic file in a folder on your Mac, and it appears on your canvas. Cloud models connect there too.</p>
+        <p className="eyebrow">Connections</p>
+        <h2>Connections live in the Mac app.</h2>
+        <p>In the Mac app: the AI that answers, cloud models, the apps Ask can use, bots like Muse, and one switch to go offline.</p>
       </section>
     )
   }
   return (
     <>
-      <DropFolderCard bridge={bridge} nodes={status?.nodes} />
       <ModelCard bridge={bridge} cloud={status?.cloud} offline={status?.offline} />
       <CloudCard bridge={bridge} cloud={status?.cloud} />
       <AskAppsCard apps={status?.askApps} offline={status?.offline} />
       <ConnectorCard bridge={bridge} connector={status?.connector} />
+      <DropFolderCard bridge={bridge} nodes={status?.nodes} />
       <WebhooksCard />
       <ShortcutsCard bridge={bridge} connector={status?.connector} />
     </>
