@@ -184,8 +184,16 @@ async function main() {
       await openRoom(page, 'Settings')
       await choosePage(page, 'Connections')
       await row(page, 'Granola').waitFor()
+      await sleep(500) // Let the Settings entrance finish before taking its review image.
       await page.screenshot({ path: `${OUT}/${theme}-overview.png` })
-      if (theme === 'dark') await exercise(page)
+      if (theme === 'dark') {
+        try { await exercise(page) }
+        catch (error) {
+          await page.screenshot({ path: `${OUT}/failed.png` })
+          console.error(await section(page).innerText(), problems)
+          throw error
+        }
+      }
       else {
         await page.setViewportSize({ width: 820, height: 760 })
         assert.equal(await section(page).evaluate((element) => element.scrollWidth <= element.clientWidth), true)
