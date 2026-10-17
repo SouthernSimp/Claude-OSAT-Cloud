@@ -53,7 +53,8 @@ test('a new model comes down whole: the model, then its picture part, as one tra
   const log = []
   const ai = createAi({ dir, totalMemory: 64 * GB, download: fakeDownload(log), fork: () => { throw new Error('no engine here') } })
   await ai.install('light')
-  await settle(() => ai.status().tiers[0].sees)
+  // The picture part being there is not the transfer being over: wait for the queue too (it flaked under load).
+  await settle(() => ai.status().tiers[0].sees && !ai.status().download && !ai.status().queued.length)
   const light = TIERS.find((tier) => tier.id === 'light')
   assert.deepEqual(log, [light.file, light.vision.file])
   const status = ai.status().tiers.find((tier) => tier.id === 'light')
