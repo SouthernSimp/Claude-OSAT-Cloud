@@ -168,6 +168,12 @@ contextBridge.exposeInMainWorld('osatMeetings', Object.freeze({
   discard: (id) => ipcRenderer.invoke('meeting:discard', id),
   undo: () => ipcRenderer.invoke('meeting:undo'),
   onChange: (listener) => listen('meeting:changed', listener),
+  // To-dos from Granola (Phase 74).
+  granola: () => ipcRenderer.invoke('meeting:granola'),
+  setGranola: (on) => ipcRenderer.invoke('meeting:granola-set', on === true),
+  granolaNow: () => ipcRenderer.invoke('meeting:granola-now'),
+  undoGranola: () => ipcRenderer.invoke('meeting:granola-undo'),
+  onGranola: (listener) => listen('meeting:granola-changed', listener),
 }))
 
 // While you sleep (desktop/overnight.cjs): the canvas's ideas and Settings → AI.

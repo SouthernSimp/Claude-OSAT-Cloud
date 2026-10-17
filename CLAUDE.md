@@ -14,9 +14,8 @@ Read it before any substantial change and keep it current when a phase lands.
 Nate made Claude OSAT's owner and asked for an Apple-quality redesign. Approved mockup:
 https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C. Phase 73 (branch `claude/one-window`, PR #108) replaces the desk:
 one Mac window with one sidebar (`shell/Sidebar.jsx`), Today and To do (`today/`), the bar on top (`shell/Line.jsx`),
-Ask as a panel; the desk, widgets, dock, Tools grid and pop-outs are deleted. Next, in order: 74 follow-ups from
-meetings (Granola through the MCP client + OSAT Meetings' to-dos become To-do stickies with `source: 'Meeting'`, shown
-on Today and To do, Undo each); 75 Goals (a small Life page, each goal fed by a board or a habit); 76 polish (Notes'
+Ask as a panel; the desk, widgets, dock, Tools grid and pop-outs are deleted. Phase 74 (branch `claude/follow-ups`,
+PR #109, stacked on #108): meeting and Granola to-dos. Next, in order: 75 Goals (a small Life page, each goal fed by a board or a habit); 76 polish (Notes'
 own folder column vs the sidebar, motion, native vibrancy for the sidebar once seen on the Mac). Nate's answers that
 steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install, sell as a
 done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
@@ -671,6 +670,19 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phase 74
+
+- Follow-ups: `shared/meeting-model.mjs` `followUps(actions, { from, me })` makes one To-do sticky per action (`what:
+  'todo'`, `unsorted`; someone else's as "Sam: send …"). Meetings' write-up adds them to the notes it commits (one
+  Undo takes all). main's `commitNotes(made, source)` keeps `what` and `createdAt` (a meeting's to-do is written on the
+  meeting's day, so its "tomorrow" reads right).
+- Granola: `desktop/meetings/granola.cjs` (`createGranola`, started with Meetings in main): once an hour while online,
+  through the connected Granola app's own tools (`bots.askApps`: `list_meetings` with `captured_by_me`, then
+  `get_meetings` per new meeting), `granolaMeetings` / `granolaMeeting` / `granolaSteps` read the tags and the summary's
+  Next steps (code only; ponytail: an AI pass for summaries without that heading), and each step becomes a To-do sticky
+  (source `Granola`, a link to notes.granola.ai). `granola.json` keeps `on`, `since`, `seen` (ids, the last 500) and the
+  last batch for Take them back. First look: a week back. Meetings' `GranolaCard` shows it (`meeting:granola*`).
 
 ## Architecture added in Phase 57
 

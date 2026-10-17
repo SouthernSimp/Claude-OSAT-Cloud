@@ -46,6 +46,7 @@ const { createOvernight } = require('./overnight.cjs')
 const { createMeetings } = require('./meetings/index.cjs')
 const { createEars } = require('./meetings/ears.cjs')
 const { createCapture } = require('./meetings/capture.cjs')
+const { createGranola } = require('./meetings/granola.cjs')
 const { createMacSync } = require('./sync.cjs')
 const { settleRoot } = require('./phone-root.cjs')
 const { createBrowser } = require('./browser.cjs')
@@ -1262,6 +1263,31 @@ let meetings = null
 async function registerMeetings() {
   const { normalizeNote } = await sharedModule('note-core.mjs')
   const client = store.connect(() => {})
+  // The write-up and each to-do land in Just in, like any thought that arrives without a home; the transcript is a
+  // plain note beside it. A to-do from a meeting is written on the meeting's day (`createdAt`), so its "Friday" is
+  // the Friday after the meeting.
+  const commitNotes = async (made, source = 'Meeting') => {
+    const now = new Date().toISOString()
+    const notes = made.map((item, index) => normalizeNote({
+      id: `note-${randomUUID()}`, title: item.title, markdown: item.markdown, createdAt: item.createdAt || now, updatedAt: now,
+      unsorted: item.unsorted, source, ...(item.what ? { what: item.what } : {}),
+    }, index))
+    store.commit(client, notes.map((note) => ({ t: 'add', c: 'notes', v: note, at: 0 })))
+    return notes.map((note) => note.id)
+  }
+  // Undo puts them in the Bin (Notes can bring them back), rather than deleting them.
+  const removeNotes = async (ids) => {
+    const trashedAt = new Date().toISOString()
+    store.commit(client, ids.map((id) => ({ t: 'patch', c: 'notes', id, v: { trashedAt, pinned: false } })))
+  }
+  // To-dos from Granola's meetings, once Granola is connected (desktop/meetings/granola.cjs).
+  if (bots) {
+    const granola = await createGranola({
+      dataDir: app.getPath('userData'), sharedModule, apps: bots.askApps, commitNotes, removeNotes,
+      offline: () => under.on, handle, fail, send: sendToAllWindows,
+    })
+    granola.start()
+  }
   const ears = createEars({
     dir: path.join(app.getPath('userData'), 'models'),
     emit: () => meetings?.status().then((status) => sendToAllWindows('meeting:changed', status)),
@@ -1276,18 +1302,8 @@ async function registerMeetings() {
     // The write-up reads everything that was said, so only the AI on this Mac does it, never a cloud model.
     hasAi: () => ai.models().length > 0,
     chat: (messages, schema) => ai.chatStream({ messages, schema }, () => {}, undefined, { interactive: true }),
-    // The write-up lands in Unsorted, like any thought that arrives without a home; the transcript is a plain note beside it.
-    commitNotes: async (made) => {
-      const now = new Date().toISOString()
-      const notes = made.map((item, index) => normalizeNote({ id: `note-${randomUUID()}`, title: item.title, markdown: item.markdown, createdAt: now, updatedAt: now, unsorted: item.unsorted, source: 'Meeting' }, index))
-      store.commit(client, notes.map((note) => ({ t: 'add', c: 'notes', v: note, at: 0 })))
-      return notes.map((note) => note.id)
-    },
-    // Undo puts them in the Bin (Notes can bring them back), rather than deleting them.
-    removeNotes: async (ids) => {
-      const trashedAt = new Date().toISOString()
-      store.commit(client, ids.map((id) => ({ t: 'patch', c: 'notes', id, v: { trashedAt, pinned: false } })))
-    },
+    commitNotes,
+    removeNotes,
     handle,
     fail,
     send: sendToAllWindows,

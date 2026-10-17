@@ -418,3 +418,10 @@ input[type="radio"] {
 .broke span { color: var(--muted); }
 .broke button { margin-top: 6px; }
 .broke.is-whole { position: fixed; inset: 0; z-index: 9999; margin: auto; height: max-content; box-shadow: var(--e-3, 0 20px 50px -20px rgb(0 0 0 / 50%)); }
+
+/* A switch, the Mac's own shape: Settings, and any room with one on/off (Meetings' To-dos from Granola). */
+input.setting-switch { appearance: none; flex: none; position: relative; width: 38px; height: 22px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: var(--r-full); background: color-mix(in srgb, var(--ink) 20%, transparent); cursor: pointer; transition: background var(--d-fast); }
+input.setting-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 28%); transition: translate var(--d-fast) var(--ease-out); }
+input.setting-switch:checked { background: var(--accent); }
+input.setting-switch:checked::after { translate: 16px 0; }
+input.setting-switch:focus-visible { outline: none; box-shadow: var(--ring); }

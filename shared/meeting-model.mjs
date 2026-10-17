@@ -348,3 +348,72 @@ export function transcriptOnly({ turns, startedAt, durationMs, labelled = true, 
     markdown: [`# ${title}`, `*${when}. Heard by a program on this Mac, so names and numbers may be off.*`, transcriptLines(turns, { labelled }).join('\n\n'), '#meeting'].join('\n\n'),
   }
 }
+
+/* ---------- follow-ups (Phase 74) ---------- */
+
+/* What someone said will be done, one To-do sticky each, for Just in. Mine (`who` is "Me", the note's writer in `me`,
+   or nobody) reads as the task; someone else's as "Sam: send the price list", so it reads as waiting on them. `from`
+   goes under the words: where it came from. */
+export function followUps(actions, { from = '', me = [] } = {}) {
+  const mine = (who) => !who || /^(me|i|you)$/i.test(who) || me.some((name) => name && who.toLowerCase() === name.toLowerCase())
+  return uniqueBy((Array.isArray(actions) ? actions : []).map((item) => ({ what: clean(item?.what, 240), who: clean(item?.who, 60), due: clean(item?.due, 60) })), (item) => item.what)
+    .slice(0, MOST_ACTIONS)
+    .map((item) => {
+      // "Sam: send the deck", lower case after the name, unless the first word is a name or a short form ("OSAT").
+      const what = mine(item.who) || /^\p{Lu}[\p{Lu}\d]/u.test(item.what) ? item.what : `${item.what[0].toLowerCase()}${item.what.slice(1)}`
+      const words = `${mine(item.who) ? '' : `${item.who}: `}${what}${item.due ? ` (${item.due})` : ''}`
+      return { title: words.slice(0, 120), markdown: from ? `${words}\n\n${from}` : words, what: 'todo', unsorted: true }
+    })
+}
+
+/* Granola, through its own MCP server: its answers are text with <meeting …> tags and, for one meeting, its
+   <summary> in Markdown. Read here, never trusted as instructions. */
+const unescape = (text) => String(text).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&(apos|#39);/g, '\'').replace(/&amp;/g, '&')
+const attr = (tag, name) => unescape(tag.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1] || '')
+const meetingOf = (tag) => ({ id: attr(tag, 'id'), title: clean(attr(tag, 'title'), 120) || 'A Granola meeting', at: attr(tag, 'meeting_at') || attr(tag, 'created_at'), url: attr(tag, 'url') })
+const GRANOLA_URL = /^https:\/\/notes\.granola\.ai\/[\w/-]+$/
+
+/* list_meetings' answer: [{ id, title, at, url }]. */
+export function granolaMeetings(text) {
+  return [...String(text || '').matchAll(/<meeting\s[^>]*>/g)].map(([tag]) => meetingOf(tag)).filter((meeting) => /^[\w-]{8,80}$/.test(meeting.id))
+}
+
+/* get_meetings' answer, for the meeting `id`: { title, at, url, creator, summary }, or null. `creator` is the first
+   name of whoever wrote the notes ("Nate"), so their own steps read as theirs. */
+export function granolaMeeting(text, id) {
+  const all = String(text || '')
+  const start = [...all.matchAll(/<meeting\s[^>]*>/g)].find(([tag]) => attr(tag, 'id') === id)
+  if (!start) return null
+  const body = all.slice(start.index, (all.indexOf('</meeting>', start.index) + 1 || all.length + 1) - 1)
+  const meeting = meetingOf(start[0])
+  return {
+    ...meeting,
+    url: GRANOLA_URL.test(meeting.url) ? meeting.url : '',
+    creator: unescape(body.match(/^\s*([^\n(<]+?)\s*\(note creator\)/m)?.[1] || '').split(/\s+/)[0] || '',
+    summary: unescape(body.match(/<summary>([\s\S]*?)<\/summary>/)?.[1] || '').trim(),
+  }
+}
+
+/* The steps a Granola summary lists under Next steps (or Action items, To-dos, Follow-ups): [{ what, who, due }].
+   "- **Send the deck** (Sam)" is Sam's; a ticked one is done; the lines under a step only explain it.
+   ponytail: Granola's own list only; a summary written without that heading gives none (an AI pass with
+   notesMessages could read those if Granola templates vary). */
+export function granolaSteps(summary) {
+  const lines = String(summary || '').split('\n')
+  const start = lines.findIndex((line) => /^#{1,4}\s*(next steps|action items|to-?dos?|follow[- ]?ups?)\b/i.test(line.trim()))
+  if (start < 0) return []
+  const level = lines[start].trim().match(/^#+/)[0].length
+  const out = []
+  for (const line of lines.slice(start + 1)) {
+    const head = line.trim().match(/^(#+)\s/)
+    if (head && head[1].length <= level) break
+    const item = line.match(/^[-*]\s+(\[([ xX])\]\s*)?(.+)$/)
+    if (!item || /x/i.test(item[2] || '')) continue
+    let what = item[3].replace(/\*\*|__/g, '').trim()
+    const owner = what.match(/\s*\(([A-Z][\w'’.-]*(?:\s[A-Z][\w'’.-]*){0,2})\)\s*$/)
+    if (owner) what = what.slice(0, owner.index).trim()
+    what = what.replace(/[.;:]+$/, '')
+    if (what) out.push({ what, who: owner?.[1] || '', due: '' })
+  }
+  return out
+}
