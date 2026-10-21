@@ -117,6 +117,7 @@ async function main() {
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
   await page.locator('.undo-toasts .toast').filter({ hasText: /^Filed / }).waitFor({ timeout: 10000 }).catch(() => problems.push('no second filing after reload'))
   await page.getByRole('button', { name: 'Notes', exact: true }).first().click()
+  await page.getByRole('button', { name: /^Browse notes:/ }).click()
   await page.locator('.notes-organizer').getByRole('button', { name: /Just in/ }).click()
   await sleep(300)
   const rows = await page.locator('.notes-list .note-row').count()

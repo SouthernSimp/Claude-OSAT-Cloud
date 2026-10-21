@@ -88,6 +88,7 @@ async function main() {
   // Notes → Kept for you.
   await page.getByRole('button', { name: 'Notes', exact: true }).first().click()
   const organizer = page.locator('.notes-organizer')
+  await page.getByRole('button', { name: /^Browse notes:/ }).click()
   await organizer.getByRole('button', { name: /^Questions/ }).click()
   await sleep(300)
   const rows = () => page.locator('.notes-list .note-row')
@@ -100,12 +101,14 @@ async function main() {
   await sleep(300)
   check(await rows().count() === 1, 'Undo didn’t bring the question back')
 
+  await page.getByRole('button', { name: /^Browse notes:/ }).click()
   await organizer.getByRole('button', { name: /^To buy/ }).click()
   await sleep(300)
   check(await rows().count() === 1 && await rows().first().textContent().then((text) => text.includes('milk')), 'To buy didn’t list the shopping list')
   await page.screenshot({ path: `${OUT}/to-buy.png` })
 
   // Just in: the kind chip says what each is, and changes it.
+  await page.getByRole('button', { name: /^Browse notes:/ }).click()
   await organizer.getByRole('button', { name: /^Just in/ }).click()
   await sleep(300)
   const spot = rows().filter({ hasText: 'Spotlight Search' })
@@ -114,11 +117,13 @@ async function main() {
   await page.screenshot({ path: `${OUT}/just-in.png` })
   await spot.locator('.meta-kind').click()
   await page.getByRole('menuitem', { name: 'Question' }).click()
+  await page.getByRole('button', { name: /^Browse notes:/ }).click()
   await organizer.getByRole('button', { name: /^Questions/ }).click()
   await sleep(300)
   check(await rows().filter({ hasText: 'Spotlight Search' }).count() === 1, 'a sticky made a question didn’t show in Questions')
 
   // Coming up: soonest first, and a day put back on the calendar by hand.
+  await page.getByRole('button', { name: /^Browse notes:/ }).click()
   await organizer.getByRole('button', { name: /^Coming up/ }).click()
   await sleep(300)
   const titles = await rows().locator('strong').allTextContents()

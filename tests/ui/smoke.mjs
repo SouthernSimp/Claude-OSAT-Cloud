@@ -103,9 +103,39 @@ async function main() {
   await page.locator('.today-card[aria-label="Waiting in Just in"]', { hasText: 'Smoke test thought' }).waitFor({ timeout: 5000 })
     .catch(() => problems.push('capture: Today did not show the thought waiting in Just in after a reload'))
   await page.keyboard.press('Control+5')
+  // Notes starts with only its list and editor, even when an older version saved its organizer open.
+  if (await page.locator('.notes-organizer').count()) problems.push('notes: Browse notes opened before it was requested')
+  const browse = page.getByRole('button', { name: /^Browse notes:/ })
+  const columns = await page.locator('.notes-view').evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length)
+  if (columns !== 2) problems.push(`notes: expected list and editor, saw ${columns} columns`)
+  await browse.focus()
+  await page.keyboard.press('Enter')
+  await page.locator('.notes-organizer').waitFor()
+  if (!await page.locator('.notes-organizer').evaluate((node) => node.contains(document.activeElement))) problems.push('notes: Browse notes did not receive keyboard focus')
+  await page.keyboard.press('Escape')
+  if (await page.locator('.notes-organizer').count()) problems.push('notes: Escape did not close Browse notes')
+  if (!await browse.evaluate((node) => node === document.activeElement)) problems.push('notes: Escape did not return focus to Browse notes')
+  await browse.click()
   await page.locator('.organizer-row', { hasText: 'Just in' }).first().click()
+  if (await page.locator('.notes-organizer').count()) problems.push('notes: choosing a list left Browse notes open')
   await page.locator('.note-row', { hasText: 'Smoke test thought' }).first().waitFor({ timeout: 5000 })
     .catch(() => problems.push('capture: a thought typed in the bar was not in Just in after a reload'))
+  await page.evaluate(() => {
+    const key = 'osat.notes-ui.v2'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key)), organizer: true }))
+  })
+  await page.reload()
+  await page.waitForSelector('.workspace-content')
+  await page.keyboard.press('Control+5')
+  await page.getByRole('button', { name: 'Browse notes: Just in', exact: true }).waitFor()
+  if (await page.locator('.notes-organizer').count()) problems.push('notes: an old saved preference reopened Browse notes')
+  // The same button works when the room is narrow; closing it preserves the chosen list.
+  await page.setViewportSize({ width: 1000, height: 900 })
+  await browse.click()
+  await page.locator('.organizer-scrim').waitFor({ state: 'visible' })
+  await page.locator('.notes-organizer').getByRole('button', { name: 'Close Browse notes', exact: true }).click()
+  if (await browse.getAttribute('aria-expanded') !== 'false') problems.push('notes: Close left Browse notes expanded')
+  await page.setViewportSize({ width: 1440, height: 900 })
 
   // Every place opens from the sidebar into the window, beside it; ⌘1–6 open the first six.
   async function visit(view, label, theme) {

@@ -4,12 +4,20 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
+<<<<<<< HEAD
 ## Next build · October 17, 2026 — Ask knows the new OSAT
 
 - **Ask uses today's words:** boards and Just in, with directions for the sidebar and meeting follow-ups. It no
   longer sends you to the old Sky or sorting screens. (#112)
 - **Ask sees your open to-dos,** in the same order as Today, with their board names. Today's journal checklist is
   named separately, so the two don't get mixed up. Your note-sharing choices still apply. (#112)
+=======
+## Next build · October 17, 2026 — More room for your notes
+
+- **Notes opens with room to write:** the extra board column stays tucked away. Click the list's title (All notes,
+  Questions, or a board's name) to browse lists, boards and tags. Pick a list, press Esc, or close Browse notes to
+  return to writing. Your saved list, notes and boards stay as they are. (#113)
+>>>>>>> origin/codex/phase-78-simpler-notes
 
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 
