@@ -1,4 +1,4 @@
-/* Notes: organizer | list | editor (+ inspector). Fills the frame; each column
+/* Notes: list | editor (+ inspector), with Browse notes when asked. Each column
    scrolls on its own. */
 
 .notes-view {
@@ -34,6 +34,7 @@
 }
 
 .organizer-head h2 {
+  flex: 1;
   font-size: var(--t-lg);
 }
 
@@ -366,6 +367,17 @@
   font-size: var(--t-md);
   font-weight: 650;
 }
+
+.list-browse {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  max-width: 100%;
+  text-align: left;
+  font: inherit;
+}
+.list-browse svg { flex-shrink: 0; width: 14px; height: 14px; color: var(--muted); }
+.list-browse:hover { color: var(--accent); }
 
 .list-title small {
   display: block;
@@ -1303,8 +1315,7 @@ button.md-mention:hover {
 /* Notes lives in a pop-out, so these follow the pop-out's width (the "room"
    container), not the screen's. */
 
-.organizer-scrim,
-.organizer-reveal {
+.organizer-scrim {
   display: none;
 }
 
@@ -1386,23 +1397,7 @@ button.md-mention:hover {
     display: none;
   }
 
-  .organizer-reveal {
-    position: absolute;
-    right: var(--s-4);
-    bottom: var(--s-4);
-    z-index: 20;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: var(--r-full);
-    background: var(--surface-raised);
-    color: var(--ink);
-    box-shadow: var(--e-4);
-  }
-
   .notes-view.pane-editor .notes-list,
-  .notes-view.pane-editor .organizer-reveal,
   .notes-view.pane-list .note-editor {
     display: none;
   }
@@ -1448,8 +1443,7 @@ textarea.note-title { flex: none; resize: none; overflow: hidden; max-height: 18
 .notes-view.is-writing-focus { grid-template-columns: minmax(0, 1fr); }
 .notes-view.is-writing-focus.pane-list .note-editor { display: grid; }
 .notes-view.is-writing-focus > .notes-organizer,
-.notes-view.is-writing-focus > .notes-list,
-.notes-view.is-writing-focus > .organizer-reveal { display: none; }
+.notes-view.is-writing-focus > .notes-list { display: none; }
 .notes-view.is-writing-focus .editor-column { width: min(100%, 800px); margin-inline: auto; }
 .notes-view.is-writing-focus .editor-body { grid-template-columns: minmax(0, 1fr); }
 .notes-view.is-writing-focus .note-inspector { display: none; }

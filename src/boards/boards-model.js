@@ -4,7 +4,7 @@
    List. Just in is a board of its own: what came in and has no home yet. Pure. */
 
 import { WHAT_PAPER, WHATS, whatOf } from '../../shared/what-model.mjs'
-import { folderChildren, folderSubtree, isActiveNote, isUnsorted } from '../notes-model.js'
+import { comingUp, folderChildren, folderSubtree, isActiveNote, isUnsorted } from '../notes-model.js'
 import { addFolder, moveSticky, nodesOf, rankAt } from '../nodes-model.js'
 import { PAPERS, rankOf } from '../note-core.js'
 
@@ -63,6 +63,17 @@ export function stageColumns(notes) {
     title,
     notes: shown.filter((note) => stageOf(note) === stage).sort((a, b) => rankOf(a) - rankOf(b)),
   }))
+}
+
+/* The overview uses the Board's own steps and ordering; dates come from the day a sticky was written. */
+export function boardOverview(notes, now = Date.now()) {
+  const active = notes.filter((note) => isActiveNote(note) && !note.kind)
+  const columns = stageColumns(active)
+  const steps = ['doing', 'next', 'later'].flatMap((stage) => columns.find((column) => column.stage === stage).notes)
+  const done = columns.find((column) => column.stage === 'done').notes.length
+  const upcoming = comingUp(active, now)
+  const recent = [...active].sort((a, b) => (Date.parse(b.updatedAt) || Date.parse(b.createdAt) || 0) - (Date.parse(a.updatedAt) || Date.parse(a.createdAt) || 0))
+  return { steps, done, total: done + steps.length, upcoming, recent }
 }
 
 /* Moves stickies to a stage. Done ticks them off; leaving Done un-ticks them. */

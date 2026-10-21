@@ -122,7 +122,7 @@ async function main() {
   const topic = doc.folders.find((folder) => folder.name === 'Hendrix plumber')
   const homes = (state) => JSON.stringify(state.notes.filter((note) => note.id.startsWith('p')).map((note) => note.folderId))
   check(homes(doc) === JSON.stringify([topic?.id, topic?.id, topic?.id]), `the stickies it is about weren’t put on the board: ${homes(doc)}`)
-  check(await page.locator('.boards-card').count() === 3, 'the new board didn’t show its three stickies')
+  check(await page.locator('.board-recent-note').count() === 3, 'the new board’s overview didn’t show its three stickies')
   await page.screenshot({ path: `${OUT}/board-made.png` })
   await page.locator('.undo-toasts .toast').filter({ hasText: /^Made the board/ }).getByRole('button', { name: 'Undo' }).click()
   const undone = await readDoc()

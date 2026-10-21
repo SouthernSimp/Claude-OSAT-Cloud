@@ -50,7 +50,7 @@ export function SettingsView({ workspace, commit, storage, target, navigate }) {
   const root = useRef(null);
   const field = useRef(null);
   const main = useRef(null);
-  useEffect(() => { if (target?.section) { setSection(sectionFor(target.section)); setText(""); } }, [target]);
+  useEffect(() => { if (target?.section) { setSection(sectionFor(target.section)); setText(""); } }, [target?.section, target?.at]);
 
   const query = useMemo(() => text.toLowerCase().split(/\s+/).filter(Boolean), [text]);
   const searching = query.length > 0;

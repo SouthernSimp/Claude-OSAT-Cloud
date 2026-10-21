@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowCounterClockwise, Check, ClipboardText, Plug, Plus } from '@phosphor-icons/react'
 
 import { connectorSetup } from '../../../shared/connector-tools.mjs'
@@ -27,6 +27,8 @@ export function ConnectorCard({ bridge, connector }) {
   const [name, setName] = useState('')
   const [access, setAccess] = useState('read')
   const [open, setOpen] = useState(null) // the app whose setup shows
+  const setup = useRef(null)
+  useEffect(() => { if (open) setup.current?.focus() }, [open])
   const act = async (work, done) => {
     setBusy(true)
     try {
@@ -83,7 +85,7 @@ export function ConnectorCard({ bridge, connector }) {
                     <button className="text-button" type="button" disabled={busy} onClick={() => act(async () => { await bridge.removeApp(app.id); setOpen(null) })}>Remove</button>
                   </span>
                   {open === app.id && (
-                    <div className="bots-setups">
+                    <div ref={setup} tabIndex={-1} role="region" aria-label={`Set up ${app.name}`} className="bots-setups">
                       {SETUPS.map(([id, label, how]) => (
                         <div key={id} className="bots-setup">
                           <strong>{label}</strong>
@@ -123,7 +125,7 @@ export function ConnectorCard({ bridge, connector }) {
           ))}
         </ul>
       )}
-      <p className="ai-note">Muse’s custom connectors run in Meta’s cloud, so they can’t reach this Mac. Muse saves boards through the folder above instead.</p>
+      <p className="ai-note">Muse’s custom connectors run in Meta’s cloud, so they can’t reach this Mac. Board files are under More ways to connect.</p>
     </section>
   )
 }

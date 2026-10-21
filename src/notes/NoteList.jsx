@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import {
-  Archive, ArrowCounterClockwise, CalendarBlank, FolderSimple, ListBullets, MagnifyingGlass, Plus, PushPin, SortAscending, Stack, Trash, TreeStructure, X,
+  Archive, ArrowCounterClockwise, CalendarBlank, CaretDown, FolderSimple, ListBullets, MagnifyingGlass, Plus, PushPin, SortAscending, Stack, Trash, TreeStructure, X,
 } from "@phosphor-icons/react";
 import { Menu } from "../lib/Menu.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
@@ -30,7 +30,7 @@ export function useVisibleNotes(workspace, ui) {
   }, [workspace, ui.list, ui.folderId, ui.query, ui.tags, ui.sort]);
 }
 
-export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, onSelect, onToggleSelect, actions }) {
+export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, onSelect, onToggleSelect, actions, browseRef, browsing, onBrowse }) {
   const listRef = useRef(null);
   const folder = ui.list === "folder" ? workspace.folders.find((item) => item.id === ui.folderId) : null;
   const title = folder ? folder.name : LIST_TITLES[ui.list] || "Notes";
@@ -77,7 +77,7 @@ export function NoteList({ workspace, ui, setUi, notes, selectedId, selection, o
 
       <div className="list-title">
         <div>
-          <h3>{title}</h3>
+          <h3><button ref={browseRef} type="button" className="list-browse" aria-label={`Browse notes: ${title}`} aria-expanded={browsing} aria-controls="notes-browser" title="Browse notes" onClick={onBrowse}>{title}<CaretDown aria-hidden="true" /></button></h3>
           <small>{kept ? kept.line : `${notes.length} ${notes.length === 1 ? "note" : "notes"}`}{ui.tags.length ? ` · ${ui.tags.map((tag) => `#${tag}`).join(" ")}` : ""}</small>
         </div>
         {trash && notes.length > 0 && (

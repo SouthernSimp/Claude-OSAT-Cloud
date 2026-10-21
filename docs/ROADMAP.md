@@ -19,13 +19,40 @@ link back to the meeting.
 Phase 75 (merged, build 321): Goals. The few big things, each moving with a board (its to-dos done) or a habit (its days kept
 this week), on a page of their own under Life and as a card on Today.
 
-Phase 81 (in review, PR #116): Today as a business dashboard. Nate supplied Jack Roberts' Agentic OS video
+Phase 76 (merged, build 321): first polish. Rooms settle in gently, the welcome says what OSAT does, and cards use
+today's words for where a sticky came from.
+
+Phase 77 (merged, build 338): Ask knows the new OSAT. Its workspace summary says boards and Just in, with the same open
+to-dos as Today (Doing, then Next, then soonest), and the journal checklist named separately. Its directions explain
+the sidebar and meeting follow-ups instead of sending people to the old Sky and sorting screens. Note-sharing
+choices still apply; no notes move or change.
+
+Phase 78 (merged, build 338): more room for your notes. Notes starts with its list and editor. Its list title opens Browse
+notes when you need Questions, To buy, Coming up, a board or a tag; choosing a list puts it away again. Esc and Close
+return to the title button. The existing board and branch controls stay available, and no notes move or change.
+
+Phase 79 (merged, build 338): a board at a glance. Overview brings its next steps, upcoming dates and recent notes
+together, with progress from its completed steps. Doing comes first, then Next, then Later, in the same hand order as
+Board. Tick off with Undo; open any preview in Notes; search reaches every match. The detailed views stay a click away.
+This is a view of the existing notes, without a new room, AI guesswork or any workspace change.
+
+Phase 80 (merged, build 338): Connections, made clear. The starting page shows your apps, their on/off switches and
+Connect an app. Open one for its address, checks, sign-in, tools and Remove with Undo. Granola and Notion sign-in,
+Claude Desktop imports and custom connections use their existing handlers. Sharing OSAT with other apps and board
+files/automations are separate disclosures. Cloud providers and the AI choice move to AI; connecting a provider opens
+its key form only when asked. Nate supplied the crowded settings screenshot and requested the rework.
+
+Phase 81 (merged, PR #116): Today as a business dashboard. Nate supplied Jack Roberts' Agentic OS video
 (https://www.youtube.com/watch?v=xpfuSPG71XI), asking for its visual design and functionality without the Jev
 integration. First part: a calm daily overview, boards with the same steps/progress as their Board view, recent
 work, mail/meetings/files shortcuts and calendar/note links. Existing to-do Undo, habits, goals and money stay.
 The video also demonstrates voice routing, inbox classification, invoice review and image search by meaning;
 those need separate working flows and are not implemented by this first dashboard phase. See
 docs/DASHBOARD-20261017.md for the source review and remaining scope.
+
+Coming next, none promised: People (a page per customer with their notes, meetings and follow-ups), and an AI pass
+for Granola summaries without a Next steps heading. Native sidebar vibrancy waits for a Mac review. Keep each step
+small enough to use before adding the next.
 
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
@@ -218,7 +245,12 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 74 | Follow-ups from meetings: each thing promised in a meeting OSAT wrote up becomes a To-do sticky in Just in, linked to the write-up; Granola's meetings too (its Next steps, read once an hour once Granola is connected; Meetings has the switch, Look now, Take them back) | Merged (PR #109), Oct 17 |
 | 75 | Goals: Life → Goals and a card on Today; each goal moves with a board (its to-dos done) or a habit (its days kept this week), or is ticked off; Undo on Mark done and Delete (schema 15) | Merged (PR #110), Oct 17 |
 | 76 | Polish, first part: rooms settle in when you move between them, the welcome leads with what OSAT does, cards say where a sticky came from in today's words, the desk's leftover dock, places and widgets go | Merged (PR #111), Oct 17 |
-| 81 | Today as a business dashboard: boards with real progress, recent work, daily overview and business shortcuts; calendar and note links; existing habits, goals, money and Undo | In review (#116) |
+| 77 | Ask knows the new OSAT: boards and Just in, the same open to-dos as Today, a separate journal checklist, and directions for the sidebar and meeting follow-ups | Merged (PR #112), build 338, Oct 21 |
+| 78 | More room for notes: the list and editor first, Browse notes from the list title for lists, boards and tags, Esc and Close to put it away | Merged (PR #113), build 338, Oct 21 |
+| 79 | Your board at a glance: next steps, dates, recent notes and progress, with Undo for completing a step and the detailed views a click away | Merged (PR #114), build 338, Oct 21 |
+| 80 | Connections, made clear: app names and switches first, setup on demand, sharing and automations folded, cloud AI under AI | Merged (PR #115), build 338, Oct 21 |
+
+| 81 | Today as a business dashboard: boards with real progress, recent work, daily overview and business shortcuts; calendar and note links; existing habits, goals, money and Undo | Merged (PR #116), Oct 21 |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
@@ -1415,7 +1447,6 @@ about 45 minutes. Built from first principles (nothing taken from Granola’s ap
   (Write it up / Delete it); nothing is thrown away on its own.
 - **Not yet.** Real names for the other people (they are all “Them”), a quick-bar command and shortcut to start, notes
   while the meeting is still going, linking a meeting to a Calendar event. See docs/BACKLOG.md.
-
 
 - `main` always works.
 - Each phase gets its own `claude/…` branch from `main` and is opened as a draft PR with a plain-English summary, a "How to try it" section and a Mac checklist.

@@ -19,8 +19,10 @@ const FOLDERS = [
   { id: 'osat-canvas', name: 'Canvas', parentId: 'osat', createdAt: ago(800) },
   { id: 'fortis', name: 'Fortis', createdAt: ago(700) },
   { id: 'home', name: 'Home', createdAt: ago(600) },
+  { id: 'gate', name: 'Westside gate', createdAt: ago(500) },
 ]
-const sticky = (id, markdown, folderId, what, extra = {}) => ({ id, title: markdown.split('\n')[0], markdown, folderId, what, createdAt: ago(Number(id.replace(/\D/g, '')) || 1), ...extra })
+const sticky = (id, markdown, folderId, what, extra = {}) => ({ id, title: markdown.split('\n')[0], markdown, folderId, what, createdAt: ago(Number(id.replace(/\D/g, '')) || 1), updatedAt: ago(Number(id.replace(/\D/g, '')) || 1), ...extra })
+const dayAfter = (days) => { const day = new Date(); day.setDate(day.getDate() + days); return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}` }
 const NOTES = [
   sticky('n1', 'Boards replace topics and branches', 'osat', 'idea'),
   sticky('n2', 'A kanban view for what is to be done', 'osat-canvas', 'idea'),
@@ -32,6 +34,17 @@ const NOTES = [
   sticky('n8', 'milk, bread, eggs, turkey', 'home', 'buy'),
   sticky('n9', 'What time does the DMV open?', null, 'question', { unsorted: true, source: 'Quick bar' }),
   sticky('n10', 'Call mom about the roof', null, 'todo', { unsorted: true, source: 'iPhone' }),
+  // Fictional job for the overview screenshots; never added to a user's workspace.
+  sticky('g1', 'Finish & materials\nMatte black powder coat. Cedar infill panels.', 'gate', 'note'),
+  sticky('g2', 'Which latch does the customer prefer?', 'gate', 'question'),
+  sticky('g3', 'Hide the fasteners on the street side.', 'gate', 'idea'),
+  sticky('g4', 'Confirm the gate measurements\nCheck the opening width before ordering steel.', 'gate', 'todo', { stage: 'doing' }),
+  sticky('g5', 'Send the revised quote', 'gate', 'todo', { stage: 'next', rank: 1 }),
+  sticky('g6', 'Order hinges and steel', 'gate', 'todo', { stage: 'next', rank: 2 }),
+  sticky('g7', 'Site measurements', 'gate', 'date', { ask: { event: { date: dayAfter(2), title: 'Site measurements' } } }),
+  sticky('g8', 'Installation', 'gate', 'date', { ask: { event: { date: dayAfter(5), title: 'Installation' } } }),
+  ...['Meet the customer', 'Sketch the design', 'Agree the finish'].map((text, index) => sticky(`g${index + 9}`, text, 'gate', 'todo', { doneAt: ago(12) })),
+  ...Array.from({ length: 6 }, (_, index) => sticky(`date${index}`, `Home visit ${index + 1}`, 'home', 'date', { ask: { event: { date: dayAfter(index + 1), title: `Home visit ${index + 1}` } } })),
 ]
 
 let server
@@ -110,6 +123,28 @@ async function light(page) {
   // A board's Map: a column per kind, the branch's sticky on its board, nothing tangled.
   await side(page, 'OSAT').click()
   await page.locator('.boards-title h1', { hasText: 'OSAT' }).waitFor({ timeout: 3000 })
+  await page.locator('.board-overview').waitFor()
+  check(await page.getByRole('tab', { name: 'Overview' }).getAttribute('aria-selected') === 'true', 'a fresh board did not start on Overview')
+  check(await page.locator('.board-steps li').count() === 3, 'the overview did not show the Board’s three open steps')
+  check((await page.locator('.board-steps li').first().innerText()).includes('Ship the DMG'), 'Doing did not lead the overview')
+  await page.getByRole('button', { name: 'Mark done: Ship the DMG to Nate', exact: true }).click()
+  check(Boolean((await stored(page, 'n6')).doneAt), 'the overview did not complete the step')
+  check(await page.getByRole('progressbar', { name: 'Steps done' }).getAttribute('value') === '1', 'progress did not reflect the completed step')
+  check(await page.locator('.board-next h2').evaluate((element) => element === document.activeElement), 'completing a step lost keyboard focus')
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  check(!(await stored(page, 'n6')).doneAt, 'Undo did not restore the overview step')
+  await page.getByRole('textbox', { name: 'Find on OSAT' }).fill('kanban')
+  check(await page.locator('.boards-list-row').count() === 1, 'Overview Find did not show its match')
+  await page.locator('.boards-list-words button').click()
+  await page.getByRole('textbox', { name: 'Sticky', exact: true }).waitFor()
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await page.getByRole('tab', { name: 'Overview' }).click()
+  await page.locator('.board-recent-note').first().click()
+  await page.locator('.notes-view').waitFor()
+  await side(page, 'OSAT').click()
+  // The detailed views keep their columns and editing.
+  await page.getByRole('tab', { name: 'Map' }).click()
   check((await cardsIn(page, 'Ideas')).length === 2, 'the Ideas column didn’t hold both ideas (the branch’s too)')
   check((await cardsIn(page, 'Questions')).length === 1 && (await cardsIn(page, 'Problems')).length === 1, 'questions or problems were in the wrong place')
   check((await cardsIn(page, 'To-dos')).length === 2, 'the To-dos column didn’t hold two')
@@ -221,6 +256,7 @@ async function main() {
 
   const dark = await openCanvas(browser, url, 'dark')
   await side(dark, 'OSAT').click()
+  await dark.getByRole('tab', { name: 'Map' }).click()
   await sleep(400)
   await dark.screenshot({ path: `${OUT}/dark-map.png` })
   await dark.getByRole('tab', { name: 'Board' }).click()
@@ -228,8 +264,36 @@ async function main() {
   await dark.screenshot({ path: `${OUT}/dark-board.png` })
   await dark.close()
 
+  for (const theme of ['light', 'dark']) {
+    const overview = await openCanvas(browser, url, theme)
+    await side(overview, 'Westside gate').click()
+    await overview.locator('.board-overview').waitFor()
+    check((await overview.locator('.board-progress').innerText()).includes('3 of 8 steps done'), `${theme}: the example board’s progress was wrong`)
+    check(await overview.locator('.board-upcoming li').count() === 2, `${theme}: the example board lost its dates`)
+    check(!(await overview.locator('.board-overview').innerText()).includes('Ship the DMG'), `${theme}: another board’s note leaked into the overview`)
+    await overview.screenshot({ path: `${OUT}/${theme}-overview.png` })
+    await overview.getByRole('textbox', { name: 'Write a sticky on Westside gate' }).fill('Keep the customer updated')
+    await overview.getByRole('textbox', { name: 'Write a sticky on Westside gate' }).press('Enter')
+    await overview.locator('.board-recent-note', { hasText: 'Keep the customer updated' }).waitFor()
+    check((await readDoc(overview)).notes.some((note) => note.title === 'Keep the customer updated' && note.folderId === 'gate'), `${theme}: writing on Overview did not save to this board`)
+    await overview.getByRole('tab', { name: 'Board' }).click()
+    await overview.reload()
+    await side(overview, 'Westside gate').click()
+    check(await overview.getByRole('tab', { name: 'Board', exact: true }).getAttribute('aria-selected') === 'true', `${theme}: a saved view choice was lost`)
+    await side(overview, 'Home').click()
+    await overview.getByRole('tab', { name: 'Overview' }).click()
+    check(await overview.locator('.board-upcoming li').count() === 4, `${theme}: date previews were not bounded`)
+    await overview.getByRole('button', { name: 'See all 6 dates' }).click()
+    check(await overview.locator('.board-upcoming li').count() === 6, `${theme}: expanding dates hid a date`)
+    await overview.getByRole('button', { name: 'Show fewer dates' }).click()
+    check(await overview.locator('.board-upcoming li').count() === 4, `${theme}: dates did not fold away again`)
+    await overview.close()
+  }
+
   const narrow = await openCanvas(browser, url, 'light', { width: 820, height: 760 })
-  await side(narrow, 'OSAT').click()
+  await side(narrow, 'Westside gate').click()
+  await narrow.locator('.board-overview').waitFor()
+  check(await narrow.locator('.board-overview').evaluate((element) => element.scrollWidth <= element.clientWidth), 'the narrow overview overflowed horizontally')
   await sleep(300)
   await narrow.screenshot({ path: `${OUT}/light-narrow.png` })
   await narrow.close()
