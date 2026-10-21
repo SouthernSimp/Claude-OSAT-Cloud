@@ -9,25 +9,22 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 17, 2026: the new OSAT is out (build 321)
+## Resume checkpoint — October 21, 2026: Phases 77–80 combined for merge
 
 Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something businesses can use, Nate the first
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
-Merged and released as build 321: Phase 73 one window with one sidebar, Today and To do, the bar on top, Ask as a
-panel; the desk, widgets, dock, Tools grid and pop-outs are gone (#108). Phase 74 meeting and Granola to-dos (#109).
-Phase 75 Goals, schema 15 (#110). Phase 76 first polish (#111).
+Build 321 (Oct 17) shipped Phases 73–76: one window and sidebar, Today, To do, meeting to-dos, Goals, first polish.
 
-Phase 77 is in review (draft PR #112) on `codex/phase-77-ask-current-workspace`: Ask's workspace summary uses boards and Just in,
-lists the same open to-dos as Today, and labels the journal checklist separately. Its guide explains the current
-sidebar and meeting follow-ups; obsolete sorting directions and desk stacks are gone. Existing no-notes and
-focused-board scopes still apply. Code-only validation: 995 unit tests and the production build pass. No local
-Electron/native tests or installed-app changes. Leave merging to Nate; CI runs the browser/Electron/Mac checks.
+Codex built Phases 77–80 as separate draft PRs (#112 Ask knows boards/Just in/to-dos, #113 roomier Notes with Browse
+notes, #114 board Overview, #115 Connections rework with AI settings moved to AI). On Oct 21 Nate let Claude pick;
+Claude combined them on `claude/phases-77-80` (doc conflicts only: changelog, roadmap, design-qa.md, this
+checkpoint) for one merge. Phase 81 (#116, a dashboard Today) is held for Nate to see first: Today is his home screen
+and it brings back some of the Dashboard he had removed (Phase 69). Its Mac DMG job was cancelled; re-run CI.
 
-Next ideas, none promised: Notes' own folder column
-beside the sidebar (fold it into the sidebar?), native vibrancy for the sidebar once seen on the Mac, People (a page
-per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading.
-Nate's answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install,
-sell as a done-for-you setup with a monthly fee (Claude's pick). Older checkpoints are in git history.
+Next ideas, none promised: native vibrancy for the sidebar once seen on the Mac, People (a page
+per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading. Nate's answers that steer it: keep
+every power tool, Apple $99 Developer ID only right before the first customer install, sell as a done-for-you setup
+with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
 ## Working with Nate
 

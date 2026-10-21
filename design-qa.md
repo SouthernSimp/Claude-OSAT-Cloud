@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Phase 79 board overview review
 
 Source visual truth: `/Users/nate/.codex/generated_images/01a14b1b-0457-7b10-9b38-d8ad1a24c919/exec-b1737dce-6262-4758-adaa-c8c34e04bc7b.png` (shown in Nate's conversation).
@@ -66,7 +65,7 @@ real Mac appearance and installed-data acceptance remain for Nate.
 - Mac packaging passes in CI 39063422424. Leave real Mac review, merge and the installed app to Nate.
 
 final result: passed
-=======
+
 # Phase 80 Connections review
 
 Source screenshot: Nate's supplied image at `/Users/nate/Library/Application Support/OSAT/clipboard/images/cf8e9fe9-004e-4a2a-990e-71600f0f17fa.png`.
@@ -110,4 +109,3 @@ Real account sign-in, Keychain, installation and native windows were not touched
 Implementation screenshots, full-view and readable-region comparison, and responsive review await CI.
 
 final result: blocked
->>>>>>> origin/codex/phase-80-connections
