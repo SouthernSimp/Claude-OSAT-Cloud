@@ -1,4 +1,4 @@
-/* Cloud models: any AI provider Nate (or anyone) connects in Settings → Connections, next to the
+/* Cloud models: any AI provider Nate (or anyone) connects in Settings → AI, next to the
    AI on this Mac, which stays the default. OpenAI-compatible providers first (DeepSeek,
    OpenAI, xAI and most others speak it); each provider has a `kind`, so Anthropic-style
    ones can follow with their own adapter. Keys never live here: they go in the Keychain.
@@ -106,15 +106,15 @@ export function chatModels(ids, preferred = '') {
 export function explainFailure({ status, body = '', code = '', name = 'The provider', model = '' }) {
   const text = String(body).slice(0, 2000)
   if (code === 'OFFLINE') return `OSAT is offline. ${name} waits until you’re back online; the AI on this Mac still answers.`
-  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return `Nothing answered at ${name}’s address. Check your internet, or the address in Settings → Connections.`
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return `Nothing answered at ${name}’s address. Check your internet, or the address in Settings → AI.`
   if (code === 'TIMEOUT') return `${name} took too long to answer. Try again in a moment.`
   if (status === 401 || (status === 403 && /key|auth|token/i.test(text))) return `${name} didn’t accept that key. Copy it again from ${name}’s API keys page and paste it here.`
   if (status === 402 || /insufficient.{0,20}(balance|credit|quota)/i.test(text)) return `Your ${name} account is out of credit. Add some on ${name}’s website, then try again.`
   if (status === 403) return `${name} said no to this request. Check that the key is allowed to use this model.`
-  if (status === 404 || /model.{0,40}(not exist|not found|does not exist)/i.test(text)) return model ? `${name} doesn’t have a model called “${model}”. Pick another in Settings → Connections.` : `Nothing answered at that address. Check it in Settings → Connections.`
+  if (status === 404 || /model.{0,40}(not exist|not found|does not exist)/i.test(text)) return model ? `${name} doesn’t have a model called “${model}”. Pick another in Settings → AI.` : `Nothing answered at that address. Check it in Settings → AI.`
   if (status === 429) return `${name} says too many requests right now. Wait a minute and try again.`
   if (status >= 500) return `${name} isn’t answering right now. Try again in a moment.`
-  if (status) return `${name} couldn’t answer (${status}). Try again, or pick another model in Settings → Connections.`
+  if (status) return `${name} couldn’t answer (${status}). Try again, or pick another model in Settings → AI.`
   return `OSAT couldn’t reach ${name}. Check your internet connection and try again.`
 }
 
@@ -154,7 +154,7 @@ export function costLine(total, price) {
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 const whole = (value) => (Number.isFinite(value) && value > 0 ? Math.round(value) : 0)
 
-/* Settings → Connections as kept in bots.json (never a key): which model answers ('local' or a
+/* Settings → AI as kept in bots.json (never a key): which model answers ('local' or a
    connected provider's), the providers, what each has used, and the connector. Anything
    malformed falls back to the safe default: the AI on this Mac. */
 export function cleanBotSettings(value) {

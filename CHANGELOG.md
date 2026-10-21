@@ -6,6 +6,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## Next build · October 17, 2026 — Ask knows the new OSAT
 
 - **Ask uses today's words:** boards and Just in, with directions for the sidebar and meeting follow-ups. It no
@@ -26,6 +27,13 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   actually done. Tick a step off with Undo, open a note to read it, or switch to Map, Board or List for the details.
   A fresh start uses Overview; your saved view stays yours. Nothing is moved or rewritten. (#114)
 >>>>>>> origin/codex/phase-79-board-overview
+=======
+## Next build · October 17, 2026 — Connections, made clear
+
+- **Connections starts with your apps:** names, on/off switches and one Connect an app button. Open an app for
+  sign-in, connection checks, what it can do and Remove with Undo. Sharing with other apps and automations wait
+  behind their own rows. AI provider setup is now in AI, with keys only shown when connecting a provider. (#115)
+>>>>>>> origin/codex/phase-80-connections
 
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 

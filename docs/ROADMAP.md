@@ -21,6 +21,7 @@ this week), on a page of their own under Life and as a card on Today.
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 Phase 76 (merged, build 321): first polish. Rooms settle in gently, the welcome says what OSAT does, and cards use
 today's words for where a sticky came from.
 
@@ -43,6 +44,13 @@ together, with progress from its completed steps. Doing comes first, then Next, 
 Board. Tick off with Undo; open any preview in Notes; search reaches every match. The detailed views stay a click away.
 This is a view of the existing notes, without a new room, AI guesswork or any workspace change.
 >>>>>>> origin/codex/phase-79-board-overview
+=======
+Phase 80 (in review, PR #115): Connections, made clear. The starting page shows your apps, their on/off switches and
+Connect an app. Open one for its address, checks, sign-in, tools and Remove with Undo. Granola and Notion sign-in,
+Claude Desktop imports and custom connections use their existing handlers. Sharing OSAT with other apps and board
+files/automations are separate disclosures. Cloud providers and the AI choice move to AI; connecting a provider opens
+its key form only when asked. Nate supplied the crowded settings screenshot and requested the rework.
+>>>>>>> origin/codex/phase-80-connections
 
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
@@ -237,6 +245,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 76 | Polish, first part: rooms settle in when you move between them, the welcome leads with what OSAT does, cards say where a sticky came from in today's words, the desk's leftover dock, places and widgets go | Merged (PR #111), Oct 17 |
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 | 77 | Ask knows the new OSAT: boards and Just in, the same open to-dos as Today, a separate journal checklist, and directions for the sidebar and meeting follow-ups | In review (PR #112) |
 =======
 | 78 | More room for notes: the list and editor first, Browse notes from the list title for lists, boards and tags, Esc and Close to put it away | In review (PR #113) |
@@ -244,6 +253,9 @@ checks do not establish real-model quality or packaged/offline acceptance.
 =======
 | 79 | Your board at a glance: next steps, dates, recent notes and progress, with Undo for completing a step and the detailed views a click away | In review (PR #114) |
 >>>>>>> origin/codex/phase-79-board-overview
+=======
+| 80 | Connections, made clear: app names and switches first, setup on demand, sharing and automations folded, cloud AI under AI | In review (PR #115) |
+>>>>>>> origin/codex/phase-80-connections
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
