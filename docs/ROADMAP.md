@@ -249,7 +249,6 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 78 | More room for notes: the list and editor first, Browse notes from the list title for lists, boards and tags, Esc and Close to put it away | Merged (PR #113), build 338, Oct 21 |
 | 79 | Your board at a glance: next steps, dates, recent notes and progress, with Undo for completing a step and the detailed views a click away | Merged (PR #114), build 338, Oct 21 |
 | 80 | Connections, made clear: app names and switches first, setup on demand, sharing and automations folded, cloud AI under AI | Merged (PR #115), build 338, Oct 21 |
-
 | 81 | Today as a business dashboard: boards with real progress, recent work, daily overview and business shortcuts; calendar and note links; existing habits, goals, money and Undo | Merged (PR #116), Oct 21 |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
