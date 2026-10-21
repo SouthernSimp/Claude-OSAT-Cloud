@@ -23,8 +23,11 @@ schema change. On Oct 21 Nate said "finish up and merge any previous work": main
 only), and it was merged. The rest of the video's flows are in docs/DASHBOARD-20261017.md. Old Sky draft #62 was
 closed (Sky was removed in Phase 73).
 
-Next, none promised: People (a page per customer: their stickies, meetings, follow-ups), an AI pass for Granola
-notes without a Next steps heading, native sidebar vibrancy once seen on the Mac. Nate's answers that steer it: keep
+Phase 82 (#118, `claude/granola-ai-steps`, on top of 81): a Granola summary without a Next steps heading is read by
+the built-in AI for its to-dos (granola.cjs `chat`). Merge after CI passes.
+
+Next, none promised: People (a page per customer: their stickies, meetings, follow-ups), native sidebar vibrancy once
+seen on the Mac. Nate's answers that steer it: keep
 every power tool, Apple $99 Developer ID only right before the first customer install, sell as a done-for-you setup
 with a monthly fee (Claude's pick). Older checkpoints are in git history.
 

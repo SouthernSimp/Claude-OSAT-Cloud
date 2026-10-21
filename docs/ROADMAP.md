@@ -50,9 +50,13 @@ The video also demonstrates voice routing, inbox classification, invoice review 
 those need separate working flows and are not implemented by this first dashboard phase. See
 docs/DASHBOARD-20261017.md for the source review and remaining scope.
 
-Coming next, none promised: People (a page per customer with their notes, meetings and follow-ups), and an AI pass
-for Granola summaries without a Next steps heading. Native sidebar vibrancy waits for a Mac review. Keep each step
-small enough to use before adding the next.
+Phase 82 (in review, PR #118): every Granola meeting's to-dos. A Granola summary without a Next steps (or Action
+items) heading went unread; now the AI on this Mac reads it for what was promised, and each becomes a To-do in Just in,
+like the listed ones. Only the built-in AI reads it, in the background; if it's asleep the meeting waits for the next
+look instead of being skipped (also true now for a meeting whose notes take over an hour to appear).
+
+Coming next, none promised: People (a page per customer with their notes, meetings and follow-ups). Native sidebar
+vibrancy waits for a Mac review. Keep each step small enough to use before adding the next.
 
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
@@ -250,6 +254,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 79 | Your board at a glance: next steps, dates, recent notes and progress, with Undo for completing a step and the detailed views a click away | Merged (PR #114), build 338, Oct 21 |
 | 80 | Connections, made clear: app names and switches first, setup on demand, sharing and automations folded, cloud AI under AI | Merged (PR #115), build 338, Oct 21 |
 | 81 | Today as a business dashboard: boards with real progress, recent work, daily overview and business shortcuts; calendar and note links; existing habits, goals, money and Undo | Merged (PR #116), Oct 21 |
+| 82 | Every Granola meeting's to-dos: a summary without a Next steps list is read by the AI on this Mac; a meeting left for later is looked at again | In review (#118) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
