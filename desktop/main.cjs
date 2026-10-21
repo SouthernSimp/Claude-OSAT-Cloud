@@ -1231,6 +1231,8 @@ async function registerMeetings() {
   if (bots) {
     const granola = await createGranola({
       dataDir: app.getPath('userData'), sharedModule, apps: bots.askApps, commitNotes, removeNotes,
+      // A summary without a Next steps list is read by the AI on this Mac only, never a cloud model, in the background.
+      chat: (messages, schema) => (ai.models().length ? ai.chatStream({ messages, schema }, () => {}) : Promise.reject(new Error('No AI on this Mac yet'))),
       offline: () => under.on, handle, fail, send: sendToAllWindows,
     })
     granola.start()

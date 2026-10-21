@@ -695,7 +695,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Granola: `desktop/meetings/granola.cjs` (`createGranola`, started with Meetings in main): once an hour while online,
   through the connected Granola app's own tools (`bots.askApps`: `list_meetings` with `captured_by_me`, then
   `get_meetings` per new meeting), `granolaMeetings` / `granolaMeeting` / `granolaSteps` read the tags and the summary's
-  Next steps (code only; ponytail: an AI pass for summaries without that heading), and each step becomes a To-do sticky
+  Next steps (code; a summary without that heading goes to the AI on this Mac, `stepsMessages` / `STEPS_SCHEMA`, Phase 82:
+  `chat` from main, built-in models only, in the background; asleep, the meeting waits and `since` stays back for it), and
+  each step becomes a To-do sticky
   (source `Granola`, a link to notes.granola.ai). `granola.json` keeps `on`, `since`, `seen` (ids, the last 500) and the
   last batch for Take them back. First look: a week back. Meetings' `GranolaCard` shows it (`meeting:granola*`).
 
