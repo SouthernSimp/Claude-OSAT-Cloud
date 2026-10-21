@@ -4,6 +4,22 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
+## Next build · October 21, 2026 — Ask knows the new OSAT, board overviews, roomier Notes, clearer Connections
+
+- **Ask uses today's words:** boards and Just in, with directions for the sidebar and meeting follow-ups. It no
+  longer sends you to the old Sky or sorting screens. (#112)
+- **Ask sees your open to-dos,** in the same order as Today, with their board names. Today's journal checklist is
+  named separately, so the two don't get mixed up. Your note-sharing choices still apply. (#112)
+- **Notes opens with room to write:** the extra board column stays tucked away. Click the list's title (All notes,
+  Questions, or a board's name) to browse lists, boards and tags. Pick a list, press Esc, or close Browse notes to
+  return to writing. Your saved list, notes and boards stay as they are. (#113)
+- **Overview on every board:** next steps, upcoming dates and recent notes together, with progress from the steps
+  actually done. Tick a step off with Undo, open a note to read it, or switch to Map, Board or List for the details.
+  A fresh start uses Overview; your saved view stays yours. Nothing is moved or rewritten. (#114)
+- **Connections starts with your apps:** names, on/off switches and one Connect an app button. Open an app for
+  sign-in, connection checks, what it can do and Remove with Undo. Sharing with other apps and automations wait
+  behind their own rows. AI provider setup is now in AI, with keys only shown when connecting a provider. (#115)
+
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 
 - **One window, one sidebar,** the way Apple's own apps work: Today, Just in, Calendar and To do at the top, your

@@ -103,9 +103,39 @@ async function main() {
   await page.locator('.today-card[aria-label="Waiting in Just in"]', { hasText: 'Smoke test thought' }).waitFor({ timeout: 5000 })
     .catch(() => problems.push('capture: Today did not show the thought waiting in Just in after a reload'))
   await page.keyboard.press('Control+5')
+  // Notes starts with only its list and editor, even when an older version saved its organizer open.
+  if (await page.locator('.notes-organizer').count()) problems.push('notes: Browse notes opened before it was requested')
+  const browse = page.getByRole('button', { name: /^Browse notes:/ })
+  const columns = await page.locator('.notes-view').evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length)
+  if (columns !== 2) problems.push(`notes: expected list and editor, saw ${columns} columns`)
+  await browse.focus()
+  await page.keyboard.press('Enter')
+  await page.locator('.notes-organizer').waitFor()
+  if (!await page.locator('.notes-organizer').evaluate((node) => node.contains(document.activeElement))) problems.push('notes: Browse notes did not receive keyboard focus')
+  await page.keyboard.press('Escape')
+  if (await page.locator('.notes-organizer').count()) problems.push('notes: Escape did not close Browse notes')
+  if (!await browse.evaluate((node) => node === document.activeElement)) problems.push('notes: Escape did not return focus to Browse notes')
+  await browse.click()
   await page.locator('.organizer-row', { hasText: 'Just in' }).first().click()
+  if (await page.locator('.notes-organizer').count()) problems.push('notes: choosing a list left Browse notes open')
   await page.locator('.note-row', { hasText: 'Smoke test thought' }).first().waitFor({ timeout: 5000 })
     .catch(() => problems.push('capture: a thought typed in the bar was not in Just in after a reload'))
+  await page.evaluate(() => {
+    const key = 'osat.notes-ui.v2'
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key)), organizer: true }))
+  })
+  await page.reload()
+  await page.waitForSelector('.workspace-content')
+  await page.keyboard.press('Control+5')
+  await page.getByRole('button', { name: 'Browse notes: Just in', exact: true }).waitFor()
+  if (await page.locator('.notes-organizer').count()) problems.push('notes: an old saved preference reopened Browse notes')
+  // The same button works when the room is narrow; closing it preserves the chosen list.
+  await page.setViewportSize({ width: 1000, height: 900 })
+  await browse.click()
+  await page.locator('.organizer-scrim').waitFor({ state: 'visible' })
+  await page.locator('.notes-organizer').getByRole('button', { name: 'Close Browse notes', exact: true }).click()
+  if (await browse.getAttribute('aria-expanded') !== 'false') problems.push('notes: Close left Browse notes expanded')
+  await page.setViewportSize({ width: 1440, height: 900 })
 
   // Every place opens from the sidebar into the window, beside it; ⌘1–6 open the first six.
   async function visit(view, label, theme) {
@@ -140,7 +170,10 @@ async function main() {
       await page.getByRole('textbox', { name: 'New board’s name' }).press('Enter')
     }
     await boardsSide.getByRole('button', { name: /^Project Direction/ }).click().catch(() => problems.push(`boards: Project Direction was not there to open (${theme})`))
-    await page.locator('.map-column').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`boards: a board showed no Map (${theme})`))
+    await page.getByRole('tab', { name: 'Overview' }).click()
+    await page.locator('.board-overview-empty').waitFor({ timeout: 3000 }).catch(() => problems.push(`boards: an empty board showed no overview (${theme})`))
+    await page.getByRole('button', { name: 'Write the first note' }).click()
+    if (!await page.locator('#boards-write').evaluate((element) => element === document.activeElement)) problems.push(`boards: Write the first note did not focus writing (${theme})`)
     await sleep(500)
     await page.screenshot({ path: `${OUT}/${theme}-Canvas.png` })
     for (const [view, label] of TOOLS) await visit(view, label, theme)
@@ -476,6 +509,7 @@ async function main() {
   await page.mouse.up()
   await sleep(300)
   await boardRow.click()
+  await page.getByRole('tab', { name: 'Map' }).click()
   await page.locator('.boards-card', { hasText: 'Left in the bar' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: the sticky dropped on a board was not on it'))
   await page.screenshot({ path: `${OUT}/desk-stickies.png` })
 

@@ -16,9 +16,9 @@ export const SETTINGS_GROUPS = [
 export const SETTINGS_PAGES = [
   { id: 'general', tint: 'graphite', group: 'osat', label: 'General', icon: GearSix, blurb: 'The keys that bring OSAT up.', words: 'shortcut hotkey desk quick bar ask chat keys esc' },
   { id: 'appearance', tint: 'indigo', group: 'osat', label: 'Appearance', icon: Palette, blurb: 'Light, dark, or the Mac’s own.', words: 'theme light dark auto look' },
-  { id: 'ai', tint: 'violet', group: 'osat', label: 'AI', icon: Sparkle, blurb: 'The AI on this Mac.', words: 'model local lm studio download size light balanced deep gemma brief overnight' },
+  { id: 'ai', tint: 'violet', group: 'osat', label: 'AI', icon: Sparkle, blurb: 'Choose the AI that answers, on this Mac or in the cloud.', words: 'model local lm studio download size light balanced deep gemma brief overnight cloud provider key deepseek openai grok openrouter mistral groq' },
   { id: 'soul', tint: 'pink', group: 'osat', label: 'Soul and memory', icon: Brain, blurb: 'Who OSAT is, what it knows about you, and what it may do alone.', words: 'soul memory rules about you remember forget sort file dates calendar' },
-  { id: 'bots', tint: 'blue', group: 'osat', label: 'Connections', icon: Plugs, blurb: 'The AI, your apps and bots, and one switch to go offline.', words: 'bots offline online drop folder cloud model key connector mcp deepseek openai claude chatgpt provider topics apps gmail notion granola google calendar import claude desktop webhooks zapier slack discord ntfy siri' },
+  { id: 'bots', tint: 'blue', group: 'osat', label: 'Connections', icon: Plugs, blurb: 'Choose the apps OSAT can use.', words: 'bots offline online drop folder key connector mcp claude chatgpt apps gmail notion granola google calendar import claude desktop webhooks zapier slack discord ntfy siri' },
   { id: 'data', tint: 'blue', group: 'osat', label: 'Data', icon: Database, blurb: 'Where your work lives, and its backups.', words: 'backup restore folder obsidian saved storage vault download' },
   { id: 'scans', tint: 'slate', group: 'osat', label: 'Scans', icon: Printer, blurb: 'A scan becomes a sorted board.', words: 'scanner brother paper folder ocr document' },
   { id: 'iphone', tint: 'graphite', group: 'osat', label: 'iPhone', icon: DeviceMobile, blurb: 'Your notes on your iPhone.', words: 'icloud drive phone shortcuts sync inbox' },

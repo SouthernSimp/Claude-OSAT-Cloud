@@ -19,7 +19,7 @@ export function useAi() {
     return bridge.onStatus(setStatus)
   }, [bridge, refresh])
 
-  // Picking a model in Settings → Connections (or going offline, which sets a cloud model aside)
+  // Picking a model in Settings → AI (or going offline, which sets a cloud model aside)
   // changes which one answers: the list is read again, so the line asks the new first one.
   useEffect(() => (typeof window === 'undefined' ? undefined : window.osatBots?.onStatus?.(refresh)), [refresh])
 

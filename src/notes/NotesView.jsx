@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { FolderSimple, NotePencil, Plus, X } from "@phosphor-icons/react";
+import { NotePencil, Plus, X } from "@phosphor-icons/react";
 import { localDateKey } from "../daily-practice.js";
 import {
   canMoveFolder, createFolder, createNote, ensureDayNote, deleteFolder, duplicateNote, folderSubtree, emptyTrash, isActiveNote, isBranch, isJustInList, moveNotes, notesInList,
@@ -15,7 +15,7 @@ import { NoteEditor } from "./NoteEditor.jsx";
 import { saveNoteAiResponse } from "./note-ai.js";
 
 const UI_KEY = "osat.notes-ui.v2";
-const DEFAULT_UI = { list: "all", folderId: null, tags: [], query: "", sort: "updated", mode: "write", inspector: false, organizer: true, focus: false };
+const DEFAULT_UI = { list: "all", folderId: null, tags: [], query: "", sort: "updated", mode: "write", inspector: false, organizer: false, focus: false };
 
 // Unsorted and Filed for you became Just in (Phase 67): a view saved or a link made before opens it.
 const listFor = (list) => (isJustInList(list) ? "justin" : list);
@@ -23,15 +23,13 @@ const listFor = (list) => (isJustInList(list) ? "justin" : list);
 function loadUi() {
   try {
     const saved = JSON.parse(localStorage.getItem(UI_KEY) || "{}");
-    return { ...DEFAULT_UI, ...saved, list: listFor(saved.list || DEFAULT_UI.list), query: "", tags: [] };
+    return { ...DEFAULT_UI, ...saved, list: listFor(saved.list || DEFAULT_UI.list), query: "", tags: [], organizer: false };
   } catch {
     return DEFAULT_UI;
   }
 }
 
-// Narrow follows the pop-out Notes sits in (the desk fills the screen, so the
-// screen is never narrow), or the window when there is no pop-out. Same width as
-// the @container room (max-width: 760px) rule in notes.css.
+// Follow the room's width, including when Ask is open beside Notes.
 function useNarrowRoom(ref, max = 760) {
   const [narrow, setNarrow] = useState(false);
   useLayoutEffect(() => {
@@ -54,6 +52,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
   const rootRef = useRef(null);
   const narrow = useNarrowRoom(rootRef);
   const organizerOpen = narrow ? drawer : ui.organizer;
+  const browseRef = useRef(null);
   const setUi = useCallback((patch) => {
     if (patch.focus) setPane("editor");
     setUiState((current) => ({ ...current, ...patch }));
@@ -108,6 +107,10 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
 
   const pendingFocus = useRef(null);
   const [folderDraftAt, setFolderDraftAt] = useState(0);
+  const closeBrowser = () => { setDrawer(false); setUi({ organizer: false }); setFolderDraftAt(0); browseRef.current?.focus(); };
+  useEffect(() => {
+    if (organizerOpen && !folderDraftAt) rootRef.current?.querySelector(".notes-organizer button")?.focus();
+  }, [organizerOpen, folderDraftAt]);
   const [toast, showUndo] = useUndoToast();
   // Undo after a delete for good puts the very same notes back (still in the Trash).
   const bringBack = (gone) => commit((state) => ({ ...state, notes: [...state.notes.filter((note) => !gone.some((item) => item.id === note.id)), ...gone] }));
@@ -247,7 +250,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         })));
         if (ui.list === "folder" && ui.folderId === id) setUi({ list: "all", folderId: null });
       },
-      startFolder() { setUi({ organizer: true }); setDrawer(true); setFolderDraftAt(Date.now()); },
+      startFolder() { setUi({ organizer: true, focus: false }); setPane("list"); setDrawer(true); setFolderDraftAt(Date.now()); },
       /* A node in Notes is the same node in the Sky: this opens it there. */
       // List | Canvas: the same topic (or everything) spread out on the canvas.
       openCanvas(folderId = null) {
@@ -296,18 +299,23 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
   };
 
   return (
-    <div ref={rootRef} className={`notes-view ${organizerOpen ? "" : "organizer-hidden"} ${ui.focus && selected ? "is-writing-focus" : ""} pane-${pane}`} onKeyDown={(event) => { if (event.key === "Escape" && ui.focus && !event.defaultPrevented) { event.stopPropagation(); setUi({ focus: false }); } }}>
+    <div ref={rootRef} className={`notes-view ${organizerOpen ? "" : "organizer-hidden"} ${ui.focus && selected ? "is-writing-focus" : ""} pane-${pane}`} onKeyDown={(event) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (organizerOpen) { event.preventDefault(); event.stopPropagation(); closeBrowser(); }
+      else if (ui.focus) { event.stopPropagation(); setUi({ focus: false }); }
+    }}>
       {organizerOpen && (
         <Organizer
           workspace={workspace}
           ui={ui}
-          setUi={(patch) => { setUi(patch); if (narrow && "list" in patch) setDrawer(false); }}
+          setUi={(patch) => { setUi(patch); if ("list" in patch) { setSelection(new Set()); setPane("list"); closeBrowser(); } }}
           actions={actions}
           draftAt={folderDraftAt}
+          onClose={closeBrowser}
         />
       )}
       {narrow && organizerOpen && (
-        <button type="button" className="organizer-scrim" aria-label="Close the list of boards" onClick={() => setDrawer(false)}><X /></button>
+        <button type="button" className="organizer-scrim" aria-label="Close the list of boards" onClick={closeBrowser}><X /></button>
       )}
       <NoteList
         workspace={workspace}
@@ -319,10 +327,10 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         onSelect={(id) => { setSelectedId(id); setSelection(new Set()); setPane("editor"); }}
         onToggleSelect={toggleSelect}
         actions={actions}
+        browseRef={browseRef}
+        browsing={organizerOpen}
+        onBrowse={() => { if (organizerOpen) closeBrowser(); else { setUi({ organizer: true }); setDrawer(true); } }}
       />
-      {!organizerOpen && (
-        <button type="button" className="organizer-reveal" aria-label="Show boards" title="Show boards" onClick={() => (narrow ? setDrawer(true) : setUi({ organizer: true }))}><FolderSimple /></button>
-      )}
       {selected ? (
         <NoteEditor key={selected.id} workspace={workspace} note={selected} ui={ui} setUi={setUi} actions={actions} onBack={() => { setUi({ focus: false }); setPane("list"); }} />
       ) : (
