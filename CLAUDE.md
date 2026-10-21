@@ -9,22 +9,23 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 21, 2026: Phases 77–80 are out (build 338)
+## Resume checkpoint — October 21, 2026: Phase 81 (dashboard Today) merged; People is next
 
 Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something businesses can use, Nate the first
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
 Build 321 (Oct 17) shipped Phases 73–76: one window and sidebar, Today, To do, meeting to-dos, Goals, first polish.
+Build 338 (Oct 21) shipped Codex's Phases 77–80 combined as #117: Ask knows boards/Just in/to-dos, roomier Notes,
+board Overview, Connections rework with AI settings moved to AI.
 
-Codex built Phases 77–80 as separate draft PRs (#112 Ask knows boards/Just in/to-dos, #113 roomier Notes with Browse
-notes, #114 board Overview, #115 Connections rework with AI settings moved to AI). On Oct 21 Nate let Claude pick;
-Claude combined them on `claude/phases-77-80` (doc conflicts only: changelog, roadmap, design-qa.md, this
-checkpoint), merged as #117 and released as build 338. Phase 81 (#116, a dashboard Today) is held for Nate to
-see first: Today is his home screen and it brings back some of the Dashboard he had removed (Phase 69). Its CI and
-Mac DMG pass (re-run Oct 21); it is still based on the pre-338 main, so its doc edits need combining before merge.
+Phase 81 (#116, Codex): Today as a business dashboard, from Jack Roberts' Agentic OS video without Jev: a daily
+overview, real board progress, recent notes, business shortcuts, agenda items that open their calendar or note. No
+schema change. On Oct 21 Nate said "finish up and merge any previous work": main was merged into it (doc conflicts
+only), and it was merged. The rest of the video's flows are in docs/DASHBOARD-20261017.md. Old Sky draft #62 was
+closed (Sky was removed in Phase 73).
 
-Next ideas, none promised: native vibrancy for the sidebar once seen on the Mac, People (a page
-per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading.
-Nate's answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install, sell as a done-for-you setup
+Next, none promised: People (a page per customer: their stickies, meetings, follow-ups), an AI pass for Granola
+notes without a Next steps heading, native sidebar vibrancy once seen on the Mac. Nate's answers that steer it: keep
+every power tool, Apple $99 Developer ID only right before the first customer install, sell as a done-for-you setup
 with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
 ## Working with Nate

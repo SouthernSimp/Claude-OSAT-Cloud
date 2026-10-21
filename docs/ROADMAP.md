@@ -42,9 +42,17 @@ Claude Desktop imports and custom connections use their existing handlers. Shari
 files/automations are separate disclosures. Cloud providers and the AI choice move to AI; connecting a provider opens
 its key form only when asked. Nate supplied the crowded settings screenshot and requested the rework.
 
-Coming next, none promised: Phase 81, a dashboard Today (draft PR #116, waiting for Nate to see it), People (a page per
-customer with their notes, meetings and follow-ups), and an AI pass for Granola summaries without a Next steps heading.
-Native sidebar vibrancy waits for a Mac review. Keep each step small enough to use before adding the next.
+Phase 81 (merged, PR #116): Today as a business dashboard. Nate supplied Jack Roberts' Agentic OS video
+(https://www.youtube.com/watch?v=xpfuSPG71XI), asking for its visual design and functionality without the Jev
+integration. First part: a calm daily overview, boards with the same steps/progress as their Board view, recent
+work, mail/meetings/files shortcuts and calendar/note links. Existing to-do Undo, habits, goals and money stay.
+The video also demonstrates voice routing, inbox classification, invoice review and image search by meaning;
+those need separate working flows and are not implemented by this first dashboard phase. See
+docs/DASHBOARD-20261017.md for the source review and remaining scope.
+
+Coming next, none promised: People (a page per customer with their notes, meetings and follow-ups), and an AI pass
+for Granola summaries without a Next steps heading. Native sidebar vibrancy waits for a Mac review. Keep each step
+small enough to use before adding the next.
 
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
@@ -241,6 +249,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 78 | More room for notes: the list and editor first, Browse notes from the list title for lists, boards and tags, Esc and Close to put it away | Merged (PR #113), build 338, Oct 21 |
 | 79 | Your board at a glance: next steps, dates, recent notes and progress, with Undo for completing a step and the detailed views a click away | Merged (PR #114), build 338, Oct 21 |
 | 80 | Connections, made clear: app names and switches first, setup on demand, sharing and automations folded, cloud AI under AI | Merged (PR #115), build 338, Oct 21 |
+| 81 | Today as a business dashboard: boards with real progress, recent work, daily overview and business shortcuts; calendar and note links; existing habits, goals, money and Undo | Merged (PR #116), Oct 21 |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

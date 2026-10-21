@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, CalendarBlank, Check, CheckCircle, CurrencyDollar, ListChecks, Plus, Target, Tray } from '@phosphor-icons/react'
+import { ArrowRight, CalendarBlank, Check, CheckCircle, ClockCounterClockwise, CurrencyDollar, EnvelopeSimple, Files, ListChecks, Microphone, Plus, Target, Tray } from '@phosphor-icons/react'
 
 import { WHAT_LABEL, WHAT_PAPER, whatOf } from '../../shared/what-model.mjs'
 import { sourceWords } from '../boards/boards-model.js'
@@ -11,7 +11,8 @@ import { useUndoToast } from '../lib/UndoToast.jsx'
 import { captureThought, comingUp, isActiveNote, setDone, setWhat } from '../notes-model.js'
 import { formatMinor } from '../osat-data.js'
 import { useMacCalendar } from '../views/MacCalendar.jsx'
-import { dayLine, dayPlan, greeting, monthMoney, openTodos } from './today-model.js'
+import { dashboardBoards, dayLine, dayPlan, greeting, monthMoney, openTodos, recentWork } from './today-model.js'
+import './dashboard.css'
 
 const TICK_MS = 420
 const time = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -40,6 +41,9 @@ export function TodayView({ workspace, commit, navigate }) {
   const today = localDateKey(now)
   const mac = useMacCalendar(now)
   const { toast, tick, leaving } = useTick(commit)
+  const [allBoards, setAllBoards] = useState(false)
+  const boards = useMemo(() => dashboardBoards(workspace), [workspace])
+  const recent = useMemo(() => recentWork(workspace), [workspace])
 
   const todos = useMemo(() => openTodos(workspace, now.getTime()), [workspace, now])
   const waiting = useMemo(() => cameIn(workspace, now.getTime()).waiting, [workspace, now])
@@ -55,12 +59,34 @@ export function TodayView({ workspace, commit, navigate }) {
   const line = dayLine({ todos: todos.length, late: todos.filter((item) => item.late).length, events: plan.length, waiting: waiting.length, habitsLeft: habits.length - kept })
 
   return (
-    <div className="today">
+    <div className="today today-dashboard">
       <header className="today-head">
         <p className="today-date">{now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         <h1>{greeting(now)}</h1>
         {brief ? <Markdown className="today-brief" text={brief} /> : <p className="today-line">{line}</p>}
+        <nav className="today-shortcuts" aria-label="Business shortcuts">
+          <button type="button" onClick={() => navigate('Mail')}><EnvelopeSimple aria-hidden="true" />Mail</button>
+          <button type="button" onClick={() => navigate('Meetings')}><Microphone aria-hidden="true" />Meetings</button>
+          <button type="button" onClick={() => navigate('Files')}><Files aria-hidden="true" />Files</button>
+        </nav>
       </header>
+
+      <nav className="today-overview" aria-label="Your day at a glance">
+        {[[CheckCircle, 'To do', todos.length, 'Todo'], [Tray, 'Just in', waiting.length, 'JustIn'], [CalendarBlank, 'Calendar', plan.length, 'Calendar']].map(([Icon, label, count, room]) => (
+          <button type="button" key={room} onClick={() => navigate(room)}><Icon aria-hidden="true" /><span>{label}</span><strong>{count}</strong><ArrowRight aria-hidden="true" /></button>
+        ))}
+      </nav>
+
+      {boards.length > 0 && <section className="today-boards" aria-label="Your boards">
+        <header><h2>Your boards</h2>{boards.length > 3 && <button type="button" className="today-more" aria-expanded={allBoards} aria-controls="today-board-list" onClick={() => setAllBoards(!allBoards)}>{allBoards ? 'Show fewer' : `All ${boards.length}`}<ArrowRight aria-hidden="true" /></button>}</header>
+        <div className="today-board-list" id="today-board-list">
+          {(allBoards ? boards : boards.slice(0, 3)).map(({ folder, count, done, total }) => <button className="today-board" type="button" key={folder.id} onClick={() => navigate('Mindmap', { folderId: folder.id, open: true })}>
+            <span className="today-board-name">{folder.name}<ArrowRight aria-hidden="true" /></span>
+            <span className="today-board-progress">{total ? `${done} of ${total} steps done` : `${count} ${count === 1 ? 'note' : 'notes'}`}</span>
+            {total > 0 && <progress max={total} value={done} aria-label={`${folder.name}: steps done`} />}
+          </button>)}
+        </div>
+      </section>}
 
       <div className="today-grid">
         <div className="today-col">
@@ -87,6 +113,15 @@ export function TodayView({ workspace, commit, navigate }) {
             </Card>
           )}
 
+          {recent.length > 0 && <Card tint="indigo" icon={ClockCounterClockwise} title="Recent work" more="Notes" onMore={() => navigate('Notes')}>
+            <ul className="today-list">{recent.map((note) => <li key={note.id}>
+              <button type="button" className="today-item" onClick={() => navigate('Notes', { noteId: note.id })}>
+                <span className="today-item-text">{note.title || 'A sticky'}</span>
+                <small>{[WHAT_LABEL[whatOf(note)], dayLabel(note.updatedAt || note.createdAt, now.getTime())].filter(Boolean).join(' · ')}</small>
+              </button>
+            </li>)}</ul>
+          </Card>}
+
           <Card tint="violet" icon={Target} title="Goals" more="Open" onMore={() => navigate('Goals')}>
             <GoalsSummary workspace={workspace} />
           </Card>
@@ -104,7 +139,7 @@ export function TodayView({ workspace, commit, navigate }) {
                     <li key={item.id}>
                       <span className="today-time">{item.allDay ? 'All day' : time(item.start)}</span>
                       <i style={item.color ? { background: item.color } : undefined} aria-hidden="true" />
-                      <span className="today-item-text">{item.title}</span>
+                      <button type="button" className="today-item today-item-text" onClick={() => item.noteId ? navigate('Notes', { noteId: item.noteId }) : navigate('Calendar', { date: item.start })}>{item.title}</button>
                     </li>
                   ))}
                 </ul>
@@ -118,7 +153,7 @@ export function TodayView({ workspace, commit, navigate }) {
                     <li key={note.id}>
                       <span className="today-time">{shortDay(when.start)}</span>
                       <i aria-hidden="true" />
-                      <span className="today-item-text">{note.title || when.title}</span>
+                      <button type="button" className="today-item today-item-text" onClick={() => navigate('Notes', { noteId: note.id })}>{note.title || when.title}</button>
                     </li>
                   ))}
                 </ul>
