@@ -170,7 +170,10 @@ async function main() {
       await page.getByRole('textbox', { name: 'New board’s name' }).press('Enter')
     }
     await boardsSide.getByRole('button', { name: /^Project Direction/ }).click().catch(() => problems.push(`boards: Project Direction was not there to open (${theme})`))
-    await page.locator('.map-column').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`boards: a board showed no Map (${theme})`))
+    await page.getByRole('tab', { name: 'Overview' }).click()
+    await page.locator('.board-overview-empty').waitFor({ timeout: 3000 }).catch(() => problems.push(`boards: an empty board showed no overview (${theme})`))
+    await page.getByRole('button', { name: 'Write the first note' }).click()
+    if (!await page.locator('#boards-write').evaluate((element) => element === document.activeElement)) problems.push(`boards: Write the first note did not focus writing (${theme})`)
     await sleep(500)
     await page.screenshot({ path: `${OUT}/${theme}-Canvas.png` })
     for (const [view, label] of TOOLS) await visit(view, label, theme)
@@ -506,6 +509,7 @@ async function main() {
   await page.mouse.up()
   await sleep(300)
   await boardRow.click()
+  await page.getByRole('tab', { name: 'Map' }).click()
   await page.locator('.boards-card', { hasText: 'Left in the bar' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: the sticky dropped on a board was not on it'))
   await page.screenshot({ path: `${OUT}/desk-stickies.png` })
 

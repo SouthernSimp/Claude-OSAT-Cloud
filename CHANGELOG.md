@@ -5,6 +5,7 @@ build 280), and Check for updates installs the newest. Newest first. Each line e
 OSAT shows this page in Tools → Roadmap → What’s new.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## Next build · October 17, 2026 — Ask knows the new OSAT
 
 - **Ask uses today's words:** boards and Just in, with directions for the sidebar and meeting follow-ups. It no
@@ -18,6 +19,13 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   Questions, or a board's name) to browse lists, boards and tags. Pick a list, press Esc, or close Browse notes to
   return to writing. Your saved list, notes and boards stay as they are. (#113)
 >>>>>>> origin/codex/phase-78-simpler-notes
+=======
+## Next build · October 17, 2026 — Your board at a glance
+
+- **Overview on every board:** next steps, upcoming dates and recent notes together, with progress from the steps
+  actually done. Tick a step off with Undo, open a note to read it, or switch to Map, Board or List for the details.
+  A fresh start uses Overview; your saved view stays yours. Nothing is moved or rewritten. (#114)
+>>>>>>> origin/codex/phase-79-board-overview
 
 ## Build 321 · October 17, 2026 — The new OSAT: one window, Today, Goals and meeting to-dos
 
