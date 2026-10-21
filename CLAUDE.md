@@ -19,11 +19,12 @@ Codex built Phases 77–80 as separate draft PRs (#112 Ask knows boards/Just in/
 notes, #114 board Overview, #115 Connections rework with AI settings moved to AI). On Oct 21 Nate let Claude pick;
 Claude combined them on `claude/phases-77-80` (doc conflicts only: changelog, roadmap, design-qa.md, this
 checkpoint), merged as #117 and released as build 338. Phase 81 (#116, a dashboard Today) is held for Nate to
-see first: Today is his home screen and it brings back some of the Dashboard he had removed (Phase 69). Its Mac DMG job was cancelled; re-run CI.
+see first: Today is his home screen and it brings back some of the Dashboard he had removed (Phase 69). Its CI and
+Mac DMG pass (re-run Oct 21); it is still based on the pre-338 main, so its doc edits need combining before merge.
 
 Next ideas, none promised: native vibrancy for the sidebar once seen on the Mac, People (a page
-per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading. Nate's answers that steer it: keep
-every power tool, Apple $99 Developer ID only right before the first customer install, sell as a done-for-you setup
+per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading.
+Nate's answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install, sell as a done-for-you setup
 with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
 ## Working with Nate
