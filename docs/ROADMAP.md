@@ -60,6 +60,13 @@ with Undo). Clients get their own sidebar group, a line saying when you last met
 meeting write-ups and Granola meetings (one line each), plus notes anywhere that name the client. No new database:
 a client is a board (schema 16 keeps the mark). Cards also show a link's words instead of its Markdown.
 
+Phase 84 (in review, PR #120): to-dos from email, the first smart connector after Granola. Nate said yes to the AI on
+his Mac reading new mail for this (never a cloud model). Off until turned on in Mail; once an hour, each new email from
+a person (not a newsletter, receipt robot or bounce) is read for what it asks of him, quoted as untrusted words with no
+tools, and each thing becomes a to-do in Just in naming the email. Nothing is sent or changed in Mail. Gmail comes
+through the Mac's Mail app (one Google sign-in on the Mac). Next for connectors, none promised: one-click sign-in for
+more apps, "watch for me" (any connected app feeding Just in the way Granola does), and client prep before a meeting.
+
 Coming next, none promised: People, step two, only if clients prove useful: who was in each meeting (Granola and the
 Mac's Calendar know), a contact per client, and a calm line on Today for a client you haven't met in a while. Native sidebar vibrancy waits for a Mac
 review. Keep each step small enough to use before adding the next.
@@ -262,6 +269,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 81 | Today as a business dashboard: boards with real progress, recent work, daily overview and business shortcuts; calendar and note links; existing habits, goals, money and Undo | Merged (PR #116), Oct 21 |
 | 82 | Every Granola meeting's to-dos: a summary without a Next steps list is read by the AI on this Mac; a meeting left for later is looked at again | In review (#118) |
 | 83 | Clients: mark a board as a client; it gets its own sidebar group, a last-met line and a With card of its meetings and mentions | In review (#119) |
+| 84 | To-dos from email: once an hour, what new mail asks of you becomes a to-do in Just in; only the AI on this Mac reads it, robots skipped, Take them back | In review (#120) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

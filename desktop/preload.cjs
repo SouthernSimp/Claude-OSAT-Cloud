@@ -117,6 +117,12 @@ contextBridge.exposeInMainWorld('osatMail', Object.freeze({
   read: (id) => ipcRenderer.invoke('mail:read', id),
   reply: (id) => ipcRenderer.invoke('mail:reply', id),
   open: (id) => ipcRenderer.invoke('mail:open', id),
+  // To-dos from email (desktop/mail-follow.cjs, Phase 84).
+  follow: () => ipcRenderer.invoke('mail:follow'),
+  setFollow: (on) => ipcRenderer.invoke('mail:follow-set', on === true),
+  followNow: () => ipcRenderer.invoke('mail:follow-now'),
+  undoFollow: () => ipcRenderer.invoke('mail:follow-undo'),
+  onFollow: (listener) => listen('mail:follow-changed', listener),
 }))
 
 // Tools → Passwords (desktop/passwords.cjs): locked until the master password. The window gets titles and usernames;

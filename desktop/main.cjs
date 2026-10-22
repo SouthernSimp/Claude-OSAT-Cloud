@@ -62,6 +62,7 @@ const { createMedia } = require('./media.cjs')
 const { createUpdater } = require('./updater.cjs')
 const { createMacCalendar } = require('./mac-calendar.cjs')
 const { createMacMail } = require('./mac-mail.cjs')
+const { createMailFollow } = require('./mail-follow.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
@@ -1207,6 +1208,7 @@ async function registerOvernight() {
 /* ---- Meetings: OSAT listens to a meeting on this Mac and writes it up (desktop/meetings/, Phase 57) ---- */
 
 let meetings = null
+let macMail = null
 async function registerMeetings() {
   const { normalizeNote } = await sharedModule('note-core.mjs')
   const client = store.connect(() => {})
@@ -1236,6 +1238,14 @@ async function registerMeetings() {
       offline: () => under.on, handle, fail, send: sendToAllWindows,
     })
     granola.start()
+  }
+  // To-dos from email (Phase 84), the same way: off until turned on in Tools → Mail; only the AI on this Mac reads.
+  if (macMail) {
+    const follow = await createMailFollow({
+      dataDir: app.getPath('userData'), sharedModule, mail: macMail, commitNotes, removeNotes, handle, fail, send: sendToAllWindows,
+      chat: (messages, schema) => (ai.models().length ? ai.chatStream({ messages, schema }, () => {}) : Promise.reject(new Error('No AI on this Mac yet'))),
+    })
+    follow.start()
   }
   const ears = createEars({
     dir: path.join(app.getPath('userData'), 'models'),
@@ -1521,7 +1531,7 @@ app.whenReady().then(async () => {
   // Tools → GitHub (desktop/github.cjs, Phase 55): through the gh signed in on this Mac.
   await part('GitHub', () => createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on }))
   // Tools → Mail (desktop/mac-mail.cjs, Phase 59): the Mac's own Mail app. Local to this Mac, so it works Offline too.
-  await part('Mail', () => createMacMail({ sharedModule, handle, fail }))
+  macMail = await part('Mail', () => createMacMail({ sharedModule, handle, fail }))
   // Tools → Passwords (desktop/passwords.cjs, Phase 58): locked at every launch; locks on sleep, screen lock, the desk
   // put away, and quit. Its sealed file is read by nothing else.
   passwords = await part('Passwords', () => createPasswords({

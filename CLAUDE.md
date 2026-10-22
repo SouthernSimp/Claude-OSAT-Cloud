@@ -9,7 +9,7 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 21, 2026: Phases 81–83 ready in one PR (#119); clients are People's first step
+## Resume checkpoint — October 21, 2026: Phases 81–84 ready in one PR (#120); smart connectors, Google first
 
 Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something businesses can use, Nate the first
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
@@ -26,7 +26,13 @@ closed (Sky was removed in Phase 73).
 Phase 82 (#118, `claude/granola-ai-steps`, on top of 81): a Granola summary without a Next steps heading is read by
 the built-in AI for its to-dos (granola.cjs `chat`).
 
-Phase 83 (#119, `claude/phase-83-clients`, on top of 82, so merging #119 ships 81–83 and closes #116 and #118): clients.
+Phase 84 (#120, `claude/phase-84-mail-follow-ups`, on top of 83, so merging #120 ships 81–84 and closes #116, #118 and
+#119): To-dos from email. Nate asked to build out "the smart features like connectors" and, asked which apps he and his
+clients run on, picked only Gmail / Google. Plan after 84, none promised: one-click sign-in for more apps (test each
+for sign-in support), "watch for me" (any connected app feeding Just in like Granola), client prep before a calendar
+meeting with a client.
+
+Phase 83 (#119, `claude/phase-83-clients`, on top of 82): clients.
 Nate left People's shape to Claude ("just do what you think needs to be done… something I can sell someday"). A client
 is a board marked `client: true` (schema 16), not a new people store. Next, none promised: People step two (meeting
 attendees from Granola/Calendar, a contact per client) only if clients get used; native sidebar vibrancy once seen on
@@ -575,10 +581,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   reads the list straight away next time. A refusal (`-1743`) and "no accounts" come back as `explainMail`'s plain lines
   (`NOT_ALLOWED`, `NOT_SET_UP`), which the room turns into states.
 - Mail text is untrusted data: shown as plain text in a `<pre>` (`cleanBody` drops control/zero-width/right-to-left
-  override characters, caps at 20,000), never HTML, no remote content, nothing linkified. It is **never** put in an AI
-  prompt automatically: Ask, the agent, the connector, overnight and the brief have no mail path. The one exception is
-  the room's "Ask about this message" button (`askMessages`: the email quoted line by line as data, a system line saying
-  it is untrusted, no tools, `askLocalModel` so only a model on this Mac). A sticky made from a message has source
+  override characters, caps at 20,000), never HTML, no remote content, nothing linkified. Ask, the agent, the connector,
+  overnight and the brief have no mail path. Only two things put mail in a prompt, both the built-in AI only, no tools,
+  the email quoted line by line as untrusted data: the room's "Ask about this message" button (`askMessages`,
+  `askLocalModel`) and, once Nate turns it on, To-dos from email (Phase 84 below; Nate agreed to it on Oct 21 2026, and
+  for nothing more: any other mail-to-AI path needs his word). A sticky made from a message has source
   `Mail`, and `auto-file.js` never files that source by itself. Mail reading is local, so it works Offline (not in
   `WAITS`); its one `execFile('osascript'…)` line is in tests/under.test.mjs's fence.
 - Not yet: sending, Gmail/Outlook direct, attachments, HTML, folders other than the inbox, a non-prompting
@@ -684,6 +691,20 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phase 84
+
+- To-dos from email: `desktop/mail-follow.cjs` (`createMailFollow`, started beside Granola in main's `registerMeetings`,
+  given `list`/`read` returned by `createMacMail` and a `chat` that is `ai.chatStream` only: tests/mail-follow.test.mjs
+  checks main never gives it a cloud model, LM Studio or the agent). Off by default; the switch is `FollowCard` in the
+  Mail room (shown only once Mail is allowed, so it never makes macOS ask in the background). Hourly: the inbox list,
+  messages since `since` (first look two days back) not `seen`, oldest first, at most 8; `worthReading` skips robot
+  senders (noreply, notifications, newsletters, bounces) unread; each other message is read and asked
+  (`followMessages`, `FOLLOW_SCHEMA`: ≤ 3 actions), the answer cleaned by `readFollow` (no links, no web addresses, no
+  angle brackets) and made into To-do stickies by `followStickies` (source `Mail`, so auto-file never files them;
+  written on the email's day). The AI asleep or busy holds that message and the newer ones for the next look; a
+  message gone (`GONE`) is passed. `mail-follow.json`: { on, since, seen, last }; `mail:follow*` channels;
+  `osatMail.follow/setFollow/followNow/undoFollow/onFollow`.
 
 ## Architecture added in Phase 83
 

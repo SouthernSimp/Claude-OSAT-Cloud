@@ -7,6 +7,7 @@ import { askLocalModel } from '../local-ai.js'
 import { addSticky } from '../nodes-model.js'
 import { purgeNotes } from '../notes-model.js'
 import { NOT_ALLOWED, NOT_SET_UP, askMessages, cleanQuery, dateLabel, fullDate, stickyText } from '../../shared/mail-model.mjs'
+import { Switch } from './settings/parts.jsx'
 import '../styles/mail.css'
 
 const ALLOWED_KEY = 'osat.mail.allowed.v1'
@@ -266,6 +267,7 @@ function MailRoom({ bridge, commit }) {
           </p>
         )}
         {adding && <p className="mail-said" role="status">{ADDING}</p>}
+        {bridge.follow && <FollowCard bridge={bridge} />}
         {searched && (
           <p className="mail-quiet mail-searched">
             Results for “{searched.words}”
@@ -316,6 +318,41 @@ function MailRoom({ bridge, commit }) {
       </main>
       {toast}
     </div>
+  )
+}
+
+const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+const ago = (at) => { const minutes = Math.round((Date.now() - at) / 60000); return minutes < 1 ? 'just now' : minutes < 60 ? `${plural(minutes, 'minute')} ago` : `at ${new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` }
+
+/* To-dos from email (Phase 84, desktop/mail-follow.cjs): once an hour, what new mail asks of you comes into Just in as
+   to-dos. One switch, what the last look brought, Look now, and Take them back for that batch. */
+function FollowCard({ bridge }) {
+  const [state, setState] = useState(null)
+  const [problem, setProblem] = useState('')
+  useEffect(() => {
+    bridge.follow().then(setState, () => {})
+    return bridge.onFollow(setState)
+  }, [bridge])
+  if (!state) return null
+  const act = (work) => { setProblem(''); work().then(setState, (error) => setProblem(cleanError(error))) }
+  const line = !state.on
+    ? 'Off. Turn it on and what new mail asks of you comes into Just in as to-dos. Only the AI on this Mac reads it.'
+    : state.busy ? 'Reading your new mail…'
+      : problem || state.problem || (state.last?.count
+        ? `${plural(state.last.count, 'to-do')} from ${plural(state.last.emails, 'email')}, ${ago(state.last.at)}. Each hour, new mail is read for what it asks of you.`
+        : 'Each hour, the AI on this Mac reads new mail for what it asks of you. Newsletters and robots are skipped.')
+  return (
+    <section className="mail-follow" aria-label="To-dos from email">
+      <div>
+        <strong>To-dos from email</strong>
+        <small>{line}</small>
+      </div>
+      <Switch label="To-dos from email" checked={state.on} onChange={(on) => act(() => bridge.setFollow(on))} />
+      {state.on && <span className="mail-follow-actions">
+        <button type="button" className="mail-link" disabled={state.busy} onClick={() => act(bridge.followNow)}>Look now</button>
+        {state.last?.undo && <> · <button type="button" className="mail-link" disabled={state.busy} onClick={() => act(bridge.undoFollow)}>Take them back</button></>}
+      </span>}
+    </section>
   )
 }
 
