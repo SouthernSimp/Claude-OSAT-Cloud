@@ -9,7 +9,12 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 22, 2026: Phases 85–87 (#121 canvases, #122 Gmail, #123 Money), stacked on #120
+## Resume checkpoint — October 22, 2026: Phases 81–87 shipped as build 356; Phase 89 bills (#125) in review
+
+Build 356 (Oct 22) shipped #116–#123. Open: #125 (Phase 89, bills & subscriptions, Claude) and #124 (Phase 88, one-click
+sign-in for 18 apps, opened by another session on Nate's account the same afternoon); both target main and both edit
+CHANGELOG/ROADMAP/CLAUDE.md, so the second to merge needs main merged in first.
+
 
 Later Oct 22: Gmail (#122) and Money with banks (#123) were built. Two things wait on Nate: Google Cloud project
 `osat-512421` (account thenatemccreery@gmail.com) has the Gmail API on, but its sign-in screen (Google Auth Platform)
