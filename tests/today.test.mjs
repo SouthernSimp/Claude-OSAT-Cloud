@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
-import { dayLine, dayPlan, greeting, monthMoney, openTodos } from '../src/today/today-model.js'
+import { dashboardBoards, dayLine, dayPlan, greeting, monthMoney, openTodos, recentWork } from '../src/today/today-model.js'
 
 const NOW = new Date(2026, 9, 19, 9, 0).getTime()
 const iso = (ms) => new Date(ms).toISOString()
@@ -68,4 +68,34 @@ test('money this month', () => {
     { amountMinor: -1200, date: '2026-09-30' },
   ] }
   assert.deepEqual(monthMoney(budget, '2026-10'), { spent: 8500, income: 250000 })
+})
+
+test('dashboard board progress includes branch steps and matches the Board, without changing user order', () => {
+  const workspace = normalizeWorkspace({ ...createDefaultWorkspace(), folders: [
+    { id: 'first', name: 'First', rank: 1 }, { id: 'second', name: 'Second', rank: 2 },
+    { id: 'branch', name: 'Branch', parentId: 'first', rank: 0 },
+  ], notes: [
+    sticky('open', 'Send quote', { folderId: 'first', what: 'todo' }),
+    sticky('finished', 'Measure site', { folderId: 'branch', what: 'todo', doneAt: iso(NOW) }),
+    sticky('staged', 'A staged note', { folderId: 'branch', what: 'note', stage: 'next' }),
+    sticky('plain', 'A plain note', { folderId: 'first', what: 'note' }),
+    sticky('trashed', 'Deleted step', { folderId: 'first', what: 'todo', trashedAt: iso(NOW) }),
+  ] })
+  assert.deepEqual(dashboardBoards(workspace).map(({ folder, count, total, done }) => [folder.name, count, total, done]), [
+    ['First', 4, 3, 1], ['Second', 0, 0, 0],
+  ])
+})
+
+test('recent work uses edit time, omits deleted and journal pages, limits to four and leaves source order alone', () => {
+  const notes = [
+    sticky('old', 'Older', {}, 5 * HOUR),
+    sticky('edited', 'Edited', { updatedAt: iso(NOW + HOUR) }, 8 * HOUR),
+    sticky('latest', 'Latest'), sticky('third', 'Third', {}, HOUR), sticky('fourth', 'Fourth', {}, 2 * HOUR),
+    sticky('deleted', 'Deleted', { trashedAt: iso(NOW), updatedAt: iso(NOW + 3 * HOUR) }),
+    sticky('journal', 'Day', { kind: 'day', updatedAt: iso(NOW + 4 * HOUR) }),
+  ]
+  const before = notes.map((note) => note.id)
+  assert.deepEqual(recentWork({ notes }).map((note) => note.id), ['edited', 'latest', 'third', 'fourth'])
+  assert.deepEqual(notes.map((note) => note.id), before)
+  assert.deepEqual(recentWork({ notes: [] }), [])
 })

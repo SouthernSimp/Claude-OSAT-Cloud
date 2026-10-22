@@ -42,9 +42,50 @@ Claude Desktop imports and custom connections use their existing handlers. Shari
 files/automations are separate disclosures. Cloud providers and the AI choice move to AI; connecting a provider opens
 its key form only when asked. Nate supplied the crowded settings screenshot and requested the rework.
 
-Coming next, none promised: Phase 81, a dashboard Today (draft PR #116, waiting for Nate to see it), People (a page per
-customer with their notes, meetings and follow-ups), and an AI pass for Granola summaries without a Next steps heading.
-Native sidebar vibrancy waits for a Mac review. Keep each step small enough to use before adding the next.
+Phase 81 (merged, PR #116): Today as a business dashboard. Nate supplied Jack Roberts' Agentic OS video
+(https://www.youtube.com/watch?v=xpfuSPG71XI), asking for its visual design and functionality without the Jev
+integration. First part: a calm daily overview, boards with the same steps/progress as their Board view, recent
+work, mail/meetings/files shortcuts and calendar/note links. Existing to-do Undo, habits, goals and money stay.
+The video also demonstrates voice routing, inbox classification, invoice review and image search by meaning;
+those need separate working flows and are not implemented by this first dashboard phase. See
+docs/DASHBOARD-20261017.md for the source review and remaining scope.
+
+Phase 82 (in review, PR #118): every Granola meeting's to-dos. A Granola summary without a Next steps (or Action
+items) heading went unread; now the AI on this Mac reads it for what was promised, and each becomes a To-do in Just in,
+like the listed ones. Only the built-in AI reads it, in the background; if it's asleep the meeting waits for the next
+look instead of being skipped (also true now for a meeting whose notes take over an hour to appear).
+
+Phase 83 (in review, PR #119): clients, the first step of People. Any board can be marked a client (right-click,
+with Undo). Clients get their own sidebar group, a line saying when you last met, and a With card on the Overview:
+meeting write-ups and Granola meetings (one line each), plus notes anywhere that name the client. No new database:
+a client is a board (schema 16 keeps the mark). Cards also show a link's words instead of its Markdown.
+
+Phase 84 (in review, PR #120): to-dos from email, the first smart connector after Granola. Nate said yes to the AI on
+his Mac reading new mail for this (never a cloud model). Off until turned on in Mail; once an hour, each new email from
+a person (not a newsletter, receipt robot or bounce) is read for what it asks of him, quoted as untrusted words with no
+tools, and each thing becomes a to-do in Just in naming the email. Nothing is sent or changed in Mail. Gmail comes
+through the Mac's Mail app (one Google sign-in on the Mac). Next for connectors, none promised: one-click sign-in for
+more apps, "watch for me" (any connected app feeding Just in the way Granola does), and client prep before a meeting.
+
+Phase 85 (in review, PR #121): canvases are back. Nate missed the old whiteboard for planning and thinking ideas out
+(it went on Oct 15, when the Sky's mind map was hard to read) and couldn't find the kanban (it was the Board tab).
+Now: as many canvases as he likes in the sidebar, each a whiteboard (Excalidraw) of stickies, shapes, text boxes,
+arrows for mind maps and a live kanban of any board; the tab is called Kanban. No freehand drawing needed (he
+uses a mouse right-handed, being left-handed).
+
+Phase 87 (in review, PR #123): Money, fully built out, Nate's ask ("a PFM app inside OSAT so the financials area
+finally feels fully built out", with a bank's Spending by category donut and table as the reference). His Plaid team is on
+the free Trial (10 banks, production keys on dashboard.plaid.com); he pastes the Client ID and Secret into Money once.
+OSAT opens Plaid's Hosted Link page in the browser, syncs every hour, never counts transfers as spending.
+
+Next, in Nate's order (Oct 22): Phase 86, Gmail signed in directly (he picked Sign in with Google over an app password;
+the Mac Mail app route was slow on a big Gmail inbox and kept breaking), then Phase 87, banks in Money through Plaid
+(started on branch `claude/phase-85-bank`: the transaction model is written; OSAT needs Nate's own Plaid keys, since
+Muse's link runs on Meta's Plaid account).
+
+Coming next, none promised: People, step two, only if clients prove useful: who was in each meeting (Granola and the
+Mac's Calendar know), a contact per client, and a calm line on Today for a client you haven't met in a while. Native sidebar vibrancy waits for a Mac
+review. Keep each step small enough to use before adding the next.
 
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
@@ -241,6 +282,13 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 78 | More room for notes: the list and editor first, Browse notes from the list title for lists, boards and tags, Esc and Close to put it away | Merged (PR #113), build 338, Oct 21 |
 | 79 | Your board at a glance: next steps, dates, recent notes and progress, with Undo for completing a step and the detailed views a click away | Merged (PR #114), build 338, Oct 21 |
 | 80 | Connections, made clear: app names and switches first, setup on demand, sharing and automations folded, cloud AI under AI | Merged (PR #115), build 338, Oct 21 |
+| 81 | Today as a business dashboard: boards with real progress, recent work, daily overview and business shortcuts; calendar and note links; existing habits, goals, money and Undo | Merged (PR #116), Oct 21 |
+| 82 | Every Granola meeting's to-dos: a summary without a Next steps list is read by the AI on this Mac; a meeting left for later is looked at again | In review (#118) |
+| 83 | Clients: mark a board as a client; it gets its own sidebar group, a last-met line and a With card of its meetings and mentions | In review (#119) |
+| 84 | To-dos from email: once an hour, what new mail asks of you becomes a to-do in Just in; only the AI on this Mac reads it, robots skipped, Take them back | In review (#120) |
+| 85 | Canvases: whiteboards with stickies, shapes, text, arrows for mind maps and a live kanban of any board; the Board tab renamed Kanban | In review (#121) |
+| 86 | Gmail, signed in directly: Connect Gmail with Google's own sign-in, instead of reading it through the Mac's Mail app | In review (#122) |
+| 87 | Money, fully built out: banks through Plaid (accounts, balances, transactions each hour), spending by category (donut and table), budgets per category, six months of cash flow, find and recategorize | In review (#123) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

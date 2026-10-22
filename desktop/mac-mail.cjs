@@ -7,7 +7,8 @@
    Google account added to the Mac (Internet Accounts), which Mail then reads like any other.
    Safety: execFile (no shell); the script is one fixed text and the command and its JSON travel as
    arguments, never joined into the script; ids and search words are checked here first; what comes
-   back is data. Nothing here is offered to the AI, the agent, the brief or the connector.
+   back is data. Nothing here is offered to the agent, the brief or the connector; `list` and `read` are
+   returned for To-dos from email alone (desktop/mail-follow.cjs, Phase 84).
    The window's side (shapes, cleaning, words) is shared/mail-model.mjs. */
 const fs = require('node:fs')
 const { execFile } = require('node:child_process')
@@ -144,7 +145,7 @@ const ACCOUNTS_PANE = 'x-apple.systempreferences:com.apple.Internet-Accounts-Set
 /* `run`, `installed`, `running`, `launch` and `openPane` are passed in so tests can answer as the Mac would.
    Off the Mac nothing is asked. */
 async function createMacMail({
-  sharedModule, handle, fail, run = osascript, platform = process.platform, installed = there,
+  sharedModule, handle, fail, gmail = null, run = osascript, platform = process.platform, installed = there,
   running = () => quiet('pgrep', ['-x', 'Mail']),
   launch = () => quiet('open', ['-g', '-j', '-b', 'com.apple.mail']),
   openPane = () => quiet('open', [ACCOUNTS_PANE]),
@@ -173,20 +174,27 @@ async function createMacMail({
   }
   const need = (id) => (model.validMessageId(id) ? id : fail('That isn’t a message in your inbox.'))
 
-  handle('mail:status', async () => ({ available: platform === 'darwin' && installed() === true }), { from: 'app' })
+  // Gmail signed in directly (desktop/gmail.cjs, Phase 86) answers instead of the Mail app once it is connected.
+  const google = () => gmail?.on() === true
+  handle('mail:status', async () => ({ available: google() || (platform === 'darwin' && installed() === true), gmail: gmail?.status() || null }), { from: 'app' })
   handle('mail:allow', async () => ask('allow', {}, { timeout: 130000 }), { from: 'app' })
   handle('mail:accounts', async () => model.accountRows(await ask('accounts', {}, { timeout: 30000 })), { from: 'app' })
   // Adding Gmail: the Mac signs in to Google itself (OSAT never sees a password or a token), then Mail reads it.
   handle('mail:add-account', async () => (platform === 'darwin' ? openPane() : false), { from: 'app' })
-  handle('mail:list', async () => model.messageRows(await ask('list', {}, { timeout: 90000 })), { from: 'app' })
+  const list = async () => (google() ? gmail.list() : model.messageRows(await ask('list', {}, { timeout: 90000 })))
+  const read = async (id) => (google() ? gmail.read(need(id)) : model.messageFull(await ask('read', { id: need(id) }, { timeout: 40000 })) || fail(model.GONE))
+  handle('mail:list', list, { from: 'app' })
   handle('mail:search', async (query, inside) => {
     const words = model.cleanQuery(query)
     if (!words) fail('Type a word to look for.')
+    if (google()) return gmail.search(words)
     return model.messageRows(await ask('search', { query: words, inside: inside === true }, { timeout: inside === true ? 180000 : 90000 }))
   }, { from: 'app' })
-  handle('mail:read', async (id) => model.messageFull(await ask('read', { id: need(id) }, { timeout: 40000 })) || fail(model.GONE), { from: 'app' })
-  handle('mail:reply', async (id) => { await ask('reply', { id: need(id) }, { timeout: 40000 }); return true }, { from: 'app' })
-  handle('mail:open', async (id) => { await ask('open', { id: need(id) }, { timeout: 40000 }); return true }, { from: 'app' })
+  handle('mail:read', read, { from: 'app' })
+  // With Gmail, Reply and Open both open the message in Gmail itself: OSAT reads Gmail, it never writes there.
+  handle('mail:reply', async (id) => (google() ? gmail.open(need(id)) : (await ask('reply', { id: need(id) }, { timeout: 40000 }), true)), { from: 'app' })
+  handle('mail:open', async (id) => (google() ? gmail.open(need(id)) : (await ask('open', { id: need(id) }, { timeout: 40000 }), true)), { from: 'app' })
+  return { list, read }
 }
 
 module.exports = { SCRIPT, osascriptArgs, createMacMail, ACCOUNTS_PANE }

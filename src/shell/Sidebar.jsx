@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CaretRight, NotePencil, Plus, Trash, WifiHigh, WifiSlash } from '@phosphor-icons/react'
+import { CaretRight, NotePencil, Plus, Shapes, Trash, WifiHigh, WifiSlash } from '@phosphor-icons/react'
 
-import { addBoard, boardsOf, JUST_IN, paperOf, stickiesOn, undoFrom } from '../boards/boards-model.js'
+import { clientItem } from '../boards/BoardOverview.jsx'
+import { addBoard, boardsOf, isClient, JUST_IN, paperOf, stickiesOn, undoFrom } from '../boards/boards-model.js'
 import { placeFrom } from '../boards/just-in.js'
+import { addCanvas, canvasesOf, removeCanvas, renameCanvas } from '../canvas/canvas-model.js'
 import { useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
 import { GROUPS, SETTINGS, SPACES, spaceFor } from '../lib/spaces.js'
@@ -24,6 +26,9 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
   const [naming, setNaming] = useState(null)
   const [opened, setOpened] = useState(readOpen)
   const boards = useMemo(() => boardsOf(workspace), [workspace])
+  const canvases = canvasesOf(workspace)
+  // The canvas open now: the one named, else the one the room opened last.
+  const openCanvas = at.detail?.canvasId || (() => { try { return localStorage.getItem('osat.canvas.last.v1') } catch { return null } })() || canvases[0]?.id
   // "New board" from ⌘K: the name is written right here.
   useEffect(() => { if (newBoard) setNaming({}) }, [newBoard])
   const counts = useMemo(() => ({
@@ -54,9 +59,40 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
       if (value) change(`Renamed to “${value}”`, (state) => renameFolder(state, id, value))
     },
     starter: () => change('Made Personal, Home and Work', (state) => STARTER.reduce((next, name) => addBoard(next, name).state, state)),
+    newCanvas(name) {
+      setNaming(null)
+      const value = String(name || '').trim()
+      if (!value) return
+      let made = null
+      commit((state) => { const result = addCanvas(state, value); made = result.canvas; return result.state })
+      if (!made) return
+      navigate('Canvas', { canvasId: made.id })
+      showUndo(`Made the canvas “${value}”`, () => commit((state) => removeCanvas(state, made.id)))
+    },
+    canvasMenu(event, canvas) {
+      openMenu(event, [
+        { label: 'Rename', icon: NotePencil, onSelect: () => setNaming({ canvasId: canvas.id }) },
+        { divider: true },
+        {
+          label: 'Delete canvas', icon: Trash, danger: true,
+          onSelect: () => {
+            const spot = canvasesOf(workspace).findIndex((item) => item.id === canvas.id)
+            commit((state) => removeCanvas(state, canvas.id))
+            if (at.view === 'Canvas' && openCanvas === canvas.id) navigate('Today')
+            // Undo puts it back where it was, with everything that was on it.
+            showUndo(`Deleted “${canvas.name}”`, () => commit((state) => {
+              const list = canvasesOf(state).filter((item) => item.id !== canvas.id)
+              list.splice(spot, 0, canvas)
+              return { ...state, canvases: list }
+            }))
+          },
+        },
+      ])
+    },
     menu(event, folder) {
       openMenu(event, [
         { label: 'Rename', icon: NotePencil, onSelect: () => setNaming({ id: folder.id }) },
+        clientItem(folder, change),
         { divider: true },
         {
           label: 'Delete board', icon: Trash, hint: 'keeps its stickies', danger: true,
@@ -75,6 +111,21 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
     return next
   })
   const here = (id) => (id === 'Mindmap' ? false : at.view === id)
+  // A board keeps its paper by its place among all boards, whichever group it shows in.
+  const row = ({ folder, count }, index) => (naming?.id === folder.id
+    ? <NameForm key={folder.id} label={`Rename ${folder.name}`} initial={folder.name} onDone={(name) => actions.rename(folder.id, name)} />
+    : (
+      <BoardRow
+        key={folder.id}
+        folder={folder}
+        paper={paperOf(folder, index)}
+        count={count}
+        active={at.view === 'Mindmap' && at.board === folder.id}
+        onOpen={() => navigate('Mindmap', { folderId: folder.id })}
+        onMenu={(event) => actions.menu(event, folder)}
+        onDropNote={(id) => actions.moveTo(id, folder.id, folder.name)}
+      />
+    ))
 
   return (
     <nav className="side" aria-label="OSAT">
@@ -86,28 +137,45 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
       </div>
 
       <div className="side-scroll">
+        {boards.some(({ folder }) => isClient(folder)) && (
+          <section className="side-group" aria-label="Clients">
+            <header className="side-head"><span>Clients</span></header>
+            {boards.map(row).filter((_, index) => isClient(boards[index].folder))}
+          </section>
+        )}
         <section className="side-group" aria-label="Boards">
           <header className="side-head">
             <span>Boards</span>
             <button type="button" className="side-add" aria-label="New board" title="New board" onClick={() => setNaming({})}><Plus weight="bold" /></button>
           </header>
-          {boards.map(({ folder, count }, index) => (naming?.id === folder.id
-            ? <NameForm key={folder.id} label={`Rename ${folder.name}`} initial={folder.name} onDone={(name) => actions.rename(folder.id, name)} />
-            : (
-              <BoardRow
-                key={folder.id}
-                folder={folder}
-                paper={paperOf(folder, index)}
-                count={count}
-                active={at.view === 'Mindmap' && at.board === folder.id}
-                onOpen={() => navigate('Mindmap', { folderId: folder.id })}
-                onMenu={(event) => actions.menu(event, folder)}
-                onDropNote={(id) => actions.moveTo(id, folder.id, folder.name)}
-              />
-            )))}
-          {naming && !naming.id && <NameForm label="New board’s name" placeholder="Name it: Fortis, Home…" onDone={actions.newBoard} />}
+          {boards.map(row).filter((_, index) => !isClient(boards[index].folder))}
+          {naming && !naming.id && !naming.canvas && !naming.canvasId && <NameForm label="New board’s name" placeholder="Name it: Fortis, Home…" onDone={actions.newBoard} />}
           {!boards.length && !naming && (
             <button type="button" className="side-row side-starter" onClick={actions.starter}><Plus /> <span>Add {STARTER.join(', ')}</span></button>
+          )}
+        </section>
+
+        <section className="side-group" aria-label="Canvases">
+          <header className="side-head">
+            <span>Canvases</span>
+            <button type="button" className="side-add" aria-label="New canvas" title="New canvas" onClick={() => setNaming({ canvas: true })}><Plus weight="bold" /></button>
+          </header>
+          {canvases.map((canvas) => (naming?.canvasId === canvas.id
+            ? <NameForm key={canvas.id} label={`Rename ${canvas.name}`} initial={canvas.name} onDone={(name) => {
+              setNaming(null)
+              if (!String(name).trim() || String(name).trim() === canvas.name) return
+              commit((state) => renameCanvas(state, canvas.id, name))
+              showUndo(`Renamed to “${String(name).trim()}”`, () => commit((state) => renameCanvas(state, canvas.id, canvas.name)))
+            }} />
+            : (
+              <button key={canvas.id} type="button" className="side-row" aria-current={at.view === 'Canvas' && openCanvas === canvas.id ? 'page' : undefined} onClick={() => navigate('Canvas', { canvasId: canvas.id })} onContextMenu={(event) => actions.canvasMenu(event, canvas)}>
+                <Shapes aria-hidden="true" />
+                <span>{canvas.name}</span>
+              </button>
+            )))}
+          {naming?.canvas && <NameForm label="New canvas’s name" placeholder="Name it: Q4 plan, Ideas…" onDone={actions.newCanvas} />}
+          {!canvases.length && !naming?.canvas && (
+            <button type="button" className="side-row side-starter" onClick={() => actions.newCanvas('My canvas')}><Plus /> <span>New canvas</span></button>
           )}
         </section>
 

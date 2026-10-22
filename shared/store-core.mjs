@@ -6,18 +6,18 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 15
+export const SCHEMA = 17
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
-  'notes', 'folders', 'habits', 'goals', 'reflections', 'projects', 'chats',
+  'notes', 'folders', 'habits', 'goals', 'reflections', 'projects', 'chats', 'canvases',
   'sorter.boards', 'calendar.events', 'budget.transactions', 'budget.recurring',
 ]
 
 /* Top-level keys a window may change. `rev` and `schema` belong to the store. */
 export const ROOTS = [
   'theme', 'notes', 'folders', 'habits', 'goals', 'reflections', 'focus', 'projects',
-  'sorter', 'calendar', 'budget', 'settings', 'chats',
+  'sorter', 'calendar', 'budget', 'settings', 'chats', 'canvases',
 ]
 
 /* Schema changes, as { from, run(doc) → doc }. Each runs once, in order. */
@@ -85,6 +85,11 @@ export const migrations = [
   { from: 13, run: (doc) => doc },
   // 15 (Phase 75): goals, the few big things, each fed by a board or a habit. An older OSAT would drop them.
   { from: 14, run: (doc) => ({ ...doc, goals: Array.isArray(doc.goals) ? doc.goals : [] }) },
+  // 16 (Phase 83): a board may be a client (`client: true`). Nothing starts marked; an older OSAT would drop it.
+  { from: 15, run: (doc) => doc },
+  // 17 (Phase 85, 87): canvases (whiteboards of shapes, text, arrows and stickies), and Money's budgets per category
+  // (`budget.limits`) and the bank an entry came from (`bank`). An older OSAT would drop them.
+  { from: 16, run: (doc) => ({ ...doc, canvases: Array.isArray(doc.canvases) ? doc.canvases : [] }) },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding
@@ -139,6 +144,7 @@ export function createEmptyDoc() {
     budget: { currency: 'USD', transactions: [], recurring: [] },
     settings: {},
     chats: [],
+    canvases: [],
   }
 }
 

@@ -1,6 +1,7 @@
 /* To-dos from Granola (Phase 74): when Granola is connected (Settings → Connections, its own MCP server, signed in in the
    browser), OSAT looks once an hour while online for meetings that have notes since it last looked, reads each one's
-   Next steps (shared/meeting-model.mjs: granolaMeetings, granolaMeeting, granolaSteps) and puts each step in Just in
+   Next steps (shared/meeting-model.mjs: granolaMeetings, granolaMeeting, granolaSteps; a summary without that heading
+   is read by the AI on this Mac, `chat`, Phase 82) and puts each step in Just in
    as a To-do sticky (source Granola), with a link back to the meeting. A meeting is read once (`seen`); one without
    notes yet is read again next time. The first look goes back a week only, so an old history doesn't flood Just in.
    Nothing is written to Granola, and nothing is read while OSAT is offline.
@@ -17,7 +18,7 @@ const NO_ANSWER = 'Granola didn’t answer just now. OSAT looks again within the
 // Granola reads a day as a date where you are.
 const localDay = (ms) => { const day = new Date(ms); return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}` }
 
-async function createGranola({ dataDir, sharedModule, apps, commitNotes, removeNotes, offline = () => false, handle, fail, send = () => {}, now = () => Date.now(), timers = { setTimeout, setInterval, clearTimeout, clearInterval } }) {
+async function createGranola({ dataDir, sharedModule, apps, chat = null, commitNotes, removeNotes, offline = () => false, handle, fail, send = () => {}, now = () => Date.now(), timers = { setTimeout, setInterval, clearTimeout, clearInterval } }) {
   const model = await sharedModule('meeting-model.mjs')
   const file = path.join(dataDir, 'granola.json')
   let state = { on: true, since: 0, seen: [], last: null }
@@ -60,18 +61,32 @@ async function createGranola({ dataDir, sharedModule, apps, commitNotes, removeN
       const fresh = listed.filter((meeting) => !state.seen.includes(meeting.id) && (Date.parse(meeting.at) || now()) >= from).slice(0, MOST_MEETINGS)
       const made = []
       let meetings = 0
+      // The oldest meeting left for next time (no notes yet, or the AI asleep), so the next look still reaches back to it.
+      let held = Infinity
+      const hold = (meeting) => { held = Math.min(held, Date.parse(meeting.at) || now()) }
       for (const meeting of fresh) {
         const one = model.granolaMeeting(await ask(app, 'get_meetings', { meeting_ids: [meeting.id] }), meeting.id)
-        if (!one?.summary) continue // no notes yet: next time
+        if (!one?.summary) { hold(meeting); continue } // no notes yet: next time
         const link = one.url ? `From Granola: [${one.title}](${one.url})` : `From Granola: ${one.title}`
-        const steps = model.followUps(model.granolaSteps(one.summary), { from: link, me: one.creator ? [one.creator] : [] })
+        let found = model.granolaSteps(one.summary)
+        // No Next steps heading: the AI on this Mac reads the summary for them (Phase 82). Asleep or busy: next time.
+        if (!found.length && chat) {
+          try {
+            found = model.readNotes(await chat(model.stepsMessages(one.summary, { me: one.creator }), model.STEPS_SCHEMA))?.actions || []
+          } catch (error) {
+            console.error('Granola:', error?.message || error)
+            hold(meeting)
+            continue
+          }
+        }
+        const steps = model.followUps(found, { from: link, me: one.creator ? [one.creator] : [] })
         // Written on the meeting's day, so "tomorrow" in a step means the day after the meeting.
         made.push(...steps.map((step) => ({ ...step, createdAt: one.at })))
         if (steps.length) meetings += 1
         state.seen = [...state.seen, meeting.id].slice(-500)
       }
       const ids = made.length ? await commitNotes(made, 'Granola') : []
-      state = { ...state, since: now(), last: ids.length ? { at: now(), count: ids.length, meetings, ids } : state.last }
+      state = { ...state, since: Math.min(now(), held + HOUR), last: ids.length ? { at: now(), count: ids.length, meetings, ids } : state.last }
       await save()
     } catch (error) {
       console.error('Granola:', error?.message || error)

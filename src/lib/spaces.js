@@ -1,6 +1,6 @@
 import {
   BookOpenText, CalendarBlank, CheckCircle, CurrencyDollar, EnvelopeSimple, Files, GearSix, GithubLogo, Globe, Key, Kanban, ListChecks,
-  MapTrifold, Microphone, MusicNotes, NotePencil, Sparkle, Stack, Sun, Target, TerminalWindow, Tray, UploadSimple,
+  MapTrifold, Microphone, Shapes, MusicNotes, NotePencil, Sparkle, Stack, Sun, Target, TerminalWindow, Tray, UploadSimple,
 } from '@phosphor-icons/react'
 
 /* The one definition of where things live (Phase 73: one window, one sidebar). The sidebar, ⌘K, the keyboard and the
@@ -25,6 +25,7 @@ export const TOOLS = [
   { id: 'Budget', tint: 'green', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },
   { id: 'Journal', tint: 'orange', label: 'Journal', icon: BookOpenText, hint: 'A page for every day' },
   { id: 'Mindmap', tint: 'teal', label: 'Boards', icon: Kanban, hint: 'Your boards: OSAT, Fortis, Home…' },
+  { id: 'Canvas', tint: 'yellow', label: 'Canvases', icon: Shapes, hint: 'Whiteboards: stickies, shapes, mind maps and kanbans' },
   { id: 'Assistant', tint: 'violet', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac' },
   { id: 'Browser', tint: 'blue', label: 'Web', icon: Globe, hint: 'The web, with a clipper into Notes' },
   { id: 'Terminal', tint: 'graphite', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
@@ -50,8 +51,8 @@ export const HIDDEN = [
 
 const ALL = [...SPACES, ...TOOLS, SETTINGS, ...HIDDEN]
 
-/* The boards were the canvas, once the Map, then the Sky; the desk is Today now. */
-const ALIASES = { Sky: 'Mindmap', Canvas: 'Mindmap', Desk: 'Today' }
+/* The boards were once the Map, then the Sky; the desk is Today now. Canvas is the whiteboards again (Phase 85). */
+const ALIASES = { Sky: 'Mindmap', Desk: 'Today' }
 
 export function spaceFor(view) {
   const id = ALIASES[view] || view

@@ -209,6 +209,9 @@ const ALLOWED = {
   'desktop/main.cjs': [
     // Refused offline: the check sits on the same line.
     'if (!under.on && /^https:\\/\\//i.test(url)) shell.openExternal(url)',
+    // Gmail (Phase 86) and banks (Phase 87): Google's sign-in, a message in Gmail, Plaid's bank sign-in, in Nate's own
+    // browser. Refused offline on the same line.
+    'const openOut = async (url) => { if (!under.on && /^https:\\/\\//i.test(url)) await shell.openExternal(url) }',
     // The lock itself. Anything else that wants to see requests belongs inside it.
     'ses.webRequest.onBeforeRequest((details, callback) => callback({ cancel: under.on && !isLocal(details.url) }))',
   ],

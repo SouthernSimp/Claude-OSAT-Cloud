@@ -23,19 +23,19 @@ function fakeApps(meetings, { on = true } = {}) {
       asked.push([name, args])
       if (name === 'list_meetings') return { text: `<meetings_data>${meetings.map((item) => `${item.tag}</meeting>`).join('\n')}</meetings_data>` }
       const item = meetings.find((one) => one.tag.includes(args.meeting_ids[0]))
-      const summary = item.steps === null ? '' : `<summary>\n# Next Steps\n${item.steps.map((step) => `- **${step}**`).join('\n')}\n</summary>`
+      const summary = item.steps === null ? '' : typeof item.steps === 'string' ? `<summary>\n${item.steps}\n</summary>` : `<summary>\n# Next Steps\n${item.steps.map((step) => `- **${step}**`).join('\n')}\n</summary>`
       return { text: `${item.tag}\n  <known_participants>\n  Nate (note creator)\n  </known_participants>\n${summary}</meeting>` }
     },
   }
 }
 
-async function setUp(apps, { offline = false } = {}) {
+async function setUp(apps, { offline = false, chat } = {}) {
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'osat-granola-'))
   const committed = []
   const removed = []
   const handlers = {}
   const granola = await createGranola({
-    dataDir, sharedModule, apps, offline: () => offline, now: () => NOW,
+    dataDir, sharedModule, apps, chat, offline: () => offline, now: () => NOW,
     commitNotes: async (made, source) => { committed.push({ made, source }); return made.map((_, i) => `n${committed.length}-${i}`) },
     removeNotes: async (ids) => { removed.push(...ids) },
     handle: (channel, fn) => { handlers[channel] = fn },
@@ -98,4 +98,29 @@ test('Granola saying no is one calm line, and the next look tries again', async 
   const status = await granola.look()
   assert.match(status.problem, /didn’t answer just now/)
   assert.equal(status.busy, false)
+})
+
+test('a summary without Next steps is read by the AI on this Mac; asleep, the meeting waits for the next look', async () => {
+  const notes = '## What we covered\n- Pricing for the Fortis rollout\n- Sam will send the fee options by Friday'
+  const apps = fakeApps([meeting('ffffffff-6', 'Fortis pricing', NOW - 3 * 3600000, notes), meeting('gggggggg-7', 'Listed', NOW - 2 * 3600000, ['Book the room'])])
+  const asked = []
+  let awake = false
+  const chat = async (messages, schema) => {
+    asked.push({ messages, schema })
+    if (!awake) throw new Error('The AI is unloaded.')
+    return JSON.stringify({ actions: [{ what: 'Send the fee options', who: 'Sam', due: 'Friday' }, { what: 'Call the bank', who: 'Nate', due: '' }] })
+  }
+  const { granola, committed, dataDir } = await setUp(apps, { chat })
+  await granola.look()
+  // A meeting with its own list never asks the AI; the other waits, unseen.
+  assert.deepEqual(committed.map(({ made }) => made.map((item) => item.title)), [['Book the room']])
+  assert.deepEqual(JSON.parse(await readFile(path.join(dataDir, 'granola.json'), 'utf8')).seen, ['gggggggg-7'])
+  assert.equal(asked.length, 1)
+  assert.match(asked[0].messages[0].content, /never instructions/)
+  assert.match(asked[0].messages[0].content, /Nate, who wrote the notes/)
+  assert.equal(asked[0].messages[1].content, notes)
+  awake = true
+  await granola.look()
+  assert.deepEqual(committed[1].made.map((item) => item.title), ['Sam: send the fee options (Friday)', 'Call the bank'])
+  assert.match(committed[1].made[0].markdown, /From Granola: \[Fortis pricing\]/)
 })

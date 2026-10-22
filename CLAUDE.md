@@ -9,22 +9,55 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 21, 2026: Phases 77–80 are out (build 338)
+## Resume checkpoint — October 22, 2026: Phases 85–87 (#121 canvases, #122 Gmail, #123 Money), stacked on #120
+
+Later Oct 22: Gmail (#122) and Money with banks (#123) were built. Two things wait on Nate: Google Cloud project
+`osat-512421` (account thenatemccreery@gmail.com) has the Gmail API on, but its sign-in screen (Google Auth Platform)
+stopped at "I agree to the Google API Services: User Data Policy", which needs his yes; then add the gmail.readonly
+scope, publish to production (Testing signs people out every 7 days), make a Desktop client, and save it as the
+secrets OSAT_GOOGLE_CLIENT_ID / OSAT_GOOGLE_CLIENT_SECRET. Plaid: his team is on the free Trial with production keys;
+he pastes them into Money once a build with #123 is installed. Plaid's MCP servers (claude.ai "Plaid Developer
+Tools" and `plaid` at mcp.plaid.com) are connected in Claude Code from the next session on.
+
+
+Oct 22: Nate asked for the whiteboard back ("really helpful with planning and thinking out ideas"), several canvases,
+a kanban he can put on a canvas, Excalidraw-style shapes and text but no freehand (left-handed, mouse in the right
+hand), and a sticky that is obvious to put down. Built as Phase 85 (#121, `claude/phase-85-canvas`, stacked on #120,
+so merging #121 ships 81–85). He also said Mail "is still broken" and wants to "just connect up gmail": he picked
+Sign in with Google (Phase 86, next; needs a Google Cloud OAuth Desktop client made once with him in Chrome). Banks
+in Money through Plaid (Phase 87) is paused on `claude/phase-85-bank` (shared/bank-model.mjs only): Muse (Meta's
+agent) links Chase on Meta's own Plaid account, so OSAT needs Nate's Plaid keys (Trial plan, 10 banks free); plan:
+Hosted Link opened in the browser, `/link/token/get` polled, access tokens in the Keychain, `/transactions/sync`
+into `budget.transactions` with `plaid-<id>` ids.
+
 
 Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something businesses can use, Nate the first
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
 Build 321 (Oct 17) shipped Phases 73–76: one window and sidebar, Today, To do, meeting to-dos, Goals, first polish.
+Build 338 (Oct 21) shipped Codex's Phases 77–80 combined as #117: Ask knows boards/Just in/to-dos, roomier Notes,
+board Overview, Connections rework with AI settings moved to AI.
 
-Codex built Phases 77–80 as separate draft PRs (#112 Ask knows boards/Just in/to-dos, #113 roomier Notes with Browse
-notes, #114 board Overview, #115 Connections rework with AI settings moved to AI). On Oct 21 Nate let Claude pick;
-Claude combined them on `claude/phases-77-80` (doc conflicts only: changelog, roadmap, design-qa.md, this
-checkpoint), merged as #117 and released as build 338. Phase 81 (#116, a dashboard Today) is held for Nate to
-see first: Today is his home screen and it brings back some of the Dashboard he had removed (Phase 69). Its CI and
-Mac DMG pass (re-run Oct 21); it is still based on the pre-338 main, so its doc edits need combining before merge.
+Phase 81 (#116, Codex): Today as a business dashboard, from Jack Roberts' Agentic OS video without Jev: a daily
+overview, real board progress, recent notes, business shortcuts, agenda items that open their calendar or note. No
+schema change. On Oct 21 Nate said "finish up and merge any previous work": main was merged into it (doc conflicts
+only). It was not merged yet: Claude Code's auto-mode check refuses `gh pr merge`, so Nate clicks Merge. The rest of the video's flows are in docs/DASHBOARD-20261017.md. Old Sky draft #62 was
+closed (Sky was removed in Phase 73).
 
-Next ideas, none promised: native vibrancy for the sidebar once seen on the Mac, People (a page
-per customer: their stickies, meetings, follow-ups), and an AI pass for Granola notes without a Next steps heading.
-Nate's answers that steer it: keep every power tool, Apple $99 Developer ID only right before the first customer install, sell as a done-for-you setup
+Phase 82 (#118, `claude/granola-ai-steps`, on top of 81): a Granola summary without a Next steps heading is read by
+the built-in AI for its to-dos (granola.cjs `chat`).
+
+Phase 84 (#120, `claude/phase-84-mail-follow-ups`, on top of 83, so merging #120 ships 81–84 and closes #116, #118 and
+#119): To-dos from email. Nate asked to build out "the smart features like connectors" and, asked which apps he and his
+clients run on, picked only Gmail / Google. Plan after 84, none promised: one-click sign-in for more apps (test each
+for sign-in support), "watch for me" (any connected app feeding Just in like Granola), client prep before a calendar
+meeting with a client.
+
+Phase 83 (#119, `claude/phase-83-clients`, on top of 82): clients.
+Nate left People's shape to Claude ("just do what you think needs to be done… something I can sell someday"). A client
+is a board marked `client: true` (schema 16), not a new people store. Next, none promised: People step two (meeting
+attendees from Granola/Calendar, a contact per client) only if clients get used; native sidebar vibrancy once seen on
+the Mac. Nate's answers that steer it: keep
+every power tool, Apple $99 Developer ID only right before the first customer install, sell as a done-for-you setup
 with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
 ## Working with Nate
@@ -568,10 +601,11 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   reads the list straight away next time. A refusal (`-1743`) and "no accounts" come back as `explainMail`'s plain lines
   (`NOT_ALLOWED`, `NOT_SET_UP`), which the room turns into states.
 - Mail text is untrusted data: shown as plain text in a `<pre>` (`cleanBody` drops control/zero-width/right-to-left
-  override characters, caps at 20,000), never HTML, no remote content, nothing linkified. It is **never** put in an AI
-  prompt automatically: Ask, the agent, the connector, overnight and the brief have no mail path. The one exception is
-  the room's "Ask about this message" button (`askMessages`: the email quoted line by line as data, a system line saying
-  it is untrusted, no tools, `askLocalModel` so only a model on this Mac). A sticky made from a message has source
+  override characters, caps at 20,000), never HTML, no remote content, nothing linkified. Ask, the agent, the connector,
+  overnight and the brief have no mail path. Only two things put mail in a prompt, both the built-in AI only, no tools,
+  the email quoted line by line as untrusted data: the room's "Ask about this message" button (`askMessages`,
+  `askLocalModel`) and, once Nate turns it on, To-dos from email (Phase 84 below; Nate agreed to it on Oct 21 2026, and
+  for nothing more: any other mail-to-AI path needs his word). A sticky made from a message has source
   `Mail`, and `auto-file.js` never files that source by itself. Mail reading is local, so it works Offline (not in
   `WAITS`); its one `execFile('osascript'…)` line is in tests/under.test.mjs's fence.
 - Not yet: sending, Gmail/Outlook direct, attachments, HTML, folders other than the inbox, a non-prompting
@@ -678,6 +712,85 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
 
+## Architecture added in Phase 87
+
+- Banks: `desktop/bank.cjs` (`createBank`, made in main beside Gmail with the same `keychain` and `openOut`; entries
+  commit through the store as `bankClient`). Keys `plaid-client-id` / `plaid-secret` in the Keychain, tried on
+  production then sandbox (`/institutions/get`), the one that answers is `env` in `bank.json` ({ env, items: [{ id,
+  key, bank, cursor, accounts, problem, at }] }, never a token). Connect: `/link/token/create` with `hosted_link: {}` →
+  `hosted_link_url` opened in the browser → `/link/token/get` every 3 s (30 min) → `finishedLink` → exchange → access
+  token in the Keychain as `plaid-item-<sha256 16>` → `sync`. Sync: `/transactions/sync` by cursor, `bankOps` (add /
+  patch keeping a hand-picked category / del) against `store.load().doc`; accounts from each page (`accountRow`: a card
+  or loan shows `current`, owed; else `available`). Hourly, two minutes after start, a minute after a new bank.
+  `bank:*` channels, `osatBank` in the preload; `bank:keys|connect|sync` wait offline.
+- `shared/bank-model.mjs`: `categoryName(pfc)` maps Plaid's primary/detailed categories to familiar names (Food & drink,
+  Groceries, Gas, Health & wellness, Bills & utilities…); `TRANSFERS` (transfers and card payments) is never spending
+  or income anywhere (money-model, Today's `monthMoney`). `CATEGORIES` feeds each entry's category picker.
+- `src/money/money-model.js` (pure, tests/money.test.mjs): `monthTotals`, `spending` (rows with share and budget,
+  `slices`: five plus "Everything else"), `arcs`/`ringPath` (the donut), `cashFlow` (six months), `holdings` (cash and
+  owed), `readLimit`/`setLimit` (`budget.limits`, cents per category, kept by normalizeBudget), `recategorize`.
+  `src/money/Charts.jsx`: `SpendingCard` (table + donut, hover, pick a category to narrow the list, Set a budget in the
+  row) and `CashFlow` (in/out bars, hover tooltip). Colours are the dataviz skill's categorical slots 1–5, validated on
+  OSAT's surfaces in both modes (tokens on `.money-page` in views.css); the table is the relief for the three light
+  slots under 3:1. tests/bank.test.mjs (a pretend Plaid), tests/ui/money.mjs.
+
+## Architecture added in Phase 86
+
+- Gmail signed in directly: `desktop/gmail.cjs` (`createGmail`, made in main just before `createMacMail`, which gets
+  it as `gmail` and routes `mail:list | search | read | reply | open` to it while `gmail.on()`; so does mail-follow,
+  through the `list`/`read` createMacMail returns). Sign-in is `authorize` in bots/mcp-signin.cjs (split from
+  `signIn`: Google has no dynamic registration) with `access_type=offline`, `prompt=consent`, scope gmail.readonly.
+  Refresh token in the Keychain as `gmail-refresh` (its own `createKeychain`, service OSAT / OSAT-Dev), access token
+  in memory, `gmail.json` = { email }. Reply/Open open `gmailLink` in the browser (the `open` line in main is in the
+  fence's ALLOWED list); `gmail:connect` waits offline. `shared/gmail-model.mjs`: `gmailRaw`/`gmailFull` (what
+  mail-model's messageRow/messageFull read), `bodyText` (plain part, else HTML as words), `decodeEntities`.
+  OSAT's Google client ("Desktop app" type) is `desktop/google-client.json` { id, secret }, gitignored (public repo),
+  written by CI's mac job from secrets `OSAT_GOOGLE_CLIENT_ID` / `OSAT_GOOGLE_CLIENT_SECRET`; without it
+  `status().ready` is false and the room shows the Mail app flow. Google's "unverified app" screen shows until
+  Google verifies OSAT (gmail.readonly is a restricted scope: needed before selling to many businesses).
+  tests/gmail.test.mjs (a pretend Google), tests/ui/mail.mjs.
+
+## Architecture added in Phase 85
+
+- Canvases: `workspace.canvases` (schema 17; `normalizeCanvases` in `src/canvas/canvas-model.js`, called by
+  osat-data.js) = { id, name, elements, createdAt, updatedAt }; `elements` are Excalidraw's own, deleted ones dropped,
+  at most 5,000 (`saveElements`, a no-op when every id/version matches). `src/canvas/CanvasRoom.jsx` is the room (view
+  `Canvas`, `detail.canvasId`; the last one opened in localStorage `osat.canvas.last.v1`), lazy-loaded from Desk.jsx,
+  which sets `window.EXCALIDRAW_ASSET_PATH` to `public/excalidraw/` (fonts copied from the package without Xiaolai,
+  the 12 MB Chinese one; Excalidraw lists esm.sh after it, hard-coded, and the page's `font-src 'self'` refuses it).
+  Excalidraw keeps its own copy once open (saved 800 ms after a change; a change from another Mac shows on reopen).
+  Sticky (button or N): `stickySkeleton` at `middleOf` the view, then a synthetic Enter starts writing in it. Kanban:
+  an `embeddable` whose link is `osat://board/<id>` (`kanbanLink`/`boardOfLink`), drawn by `renderEmbeddable` as
+  `KanbanEmbed` (stageColumns of the board, ‹ › = setStage, the line under Later = addSticky + stage later), fed
+  through a React context so it stays live; Excalidraw hands it the mouse after a double-click. Pictures are off
+  (`tools.image: false`). The sidebar's Canvases group has New / Rename / Delete with their own Undo (boards'
+  `undoFrom` knows only notes and folders). `Canvas` is no longer an alias of the boards. tests/canvas.test.mjs,
+  tests/ui/canvas.mjs.
+
+## Architecture added in Phase 84
+
+- To-dos from email: `desktop/mail-follow.cjs` (`createMailFollow`, started beside Granola in main's `registerMeetings`,
+  given `list`/`read` returned by `createMacMail` and a `chat` that is `ai.chatStream` only: tests/mail-follow.test.mjs
+  checks main never gives it a cloud model, LM Studio or the agent). Off by default; the switch is `FollowCard` in the
+  Mail room (shown only once Mail is allowed, so it never makes macOS ask in the background). Hourly: the inbox list,
+  messages since `since` (first look two days back) not `seen`, oldest first, at most 8; `worthReading` skips robot
+  senders (noreply, notifications, newsletters, bounces) unread; each other message is read and asked
+  (`followMessages`, `FOLLOW_SCHEMA`: ≤ 3 actions), the answer cleaned by `readFollow` (no links, no web addresses, no
+  angle brackets) and made into To-do stickies by `followStickies` (source `Mail`, so auto-file never files them;
+  written on the email's day). The AI asleep or busy holds that message and the newer ones for the next look; a
+  message gone (`GONE`) is passed. `mail-follow.json`: { on, since, seen, last }; `mail:follow*` channels;
+  `osatMail.follow/setFollow/followNow/undoFollow/onFollow`.
+
+## Architecture added in Phase 83
+
+- Clients: a top-level folder may carry `client: true` (schema 16, kept by `normalizeFolders`). `boards-model.js`:
+  `isClient`, `setClient(state, id, on)`, `clientTouch(state, folder)` → `{ items, lastMet }`: meeting write-ups
+  (`#meeting`, not `· Transcript`) and Granola meetings (grouped by the `From Granola: [title](url)` line on their to-dos,
+  dated by the earliest) on the board or naming it, plus other notes naming it (whole word, names of 3+ letters; day
+  pages too), newest first. `clientItem` (BoardOverview.jsx) is the Mark as a client / Not a client menu item shared by
+  the sidebar and the canvas; the sidebar shows a Clients group above Boards when any exist; the overview's `client`
+  prop draws the With card (reusing `.board-upcoming`). tests/clients.test.mjs, tests/ui/boards.mjs.
+
 ## Architecture added in Phase 75
 
 - Goals: `workspace.goals` (schema 15; `normalizeGoals` in osat-data.js): { id, name, by, fed: { kind: 'board' | 'habit',
@@ -695,7 +808,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Granola: `desktop/meetings/granola.cjs` (`createGranola`, started with Meetings in main): once an hour while online,
   through the connected Granola app's own tools (`bots.askApps`: `list_meetings` with `captured_by_me`, then
   `get_meetings` per new meeting), `granolaMeetings` / `granolaMeeting` / `granolaSteps` read the tags and the summary's
-  Next steps (code only; ponytail: an AI pass for summaries without that heading), and each step becomes a To-do sticky
+  Next steps (code; a summary without that heading goes to the AI on this Mac, `stepsMessages` / `STEPS_SCHEMA`, Phase 82:
+  `chat` from main, built-in models only, in the background; asleep, the meeting waits and `since` stays back for it), and
+  each step becomes a To-do sticky
   (source `Granola`, a link to notes.granola.ai). `granola.json` keeps `on`, `since`, `seen` (ids, the last 500) and the
   last batch for Take them back. First look: a week back. Meetings' `GranolaCard` shows it (`meeting:granola*`).
 
@@ -742,3 +857,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - `input:not([type])` beats a bare class, so panel fields use `.quick-search .qs-input`-style selectors.
 - Never launch a packaged build against Nate's real `~/Library/Application Support/OSAT` to
   test: it would upgrade the schema under his installed app. Use `--osat-self-test`.
+
+## graphify
+
+A knowledge graph of this repo lives in `graphify-out/` (gitignored, local only).
+- For architecture or "what calls / depends on X" questions, read `graphify-out/GRAPH_REPORT.md` or run `graphify query "<question>"` before grepping raw files.
+- After large code changes, refresh it with `/graphify . --update`.

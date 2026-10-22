@@ -72,3 +72,9 @@
 .mail-setup .mail-said { max-width: 52ch; text-align: left; }
 .mail-accounts { margin: 0 12px 6px; }
 .mail-list > .mail-said { margin: 0 12px 8px; }
+
+/* To-dos from email (Phase 84): a small card under the accounts line. */
+.mail-follow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; margin: 0 12px 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-raised); }
+.mail-follow > div { display: grid; gap: 2px; min-width: 0; }
+.mail-follow small { color: var(--muted); font-size: var(--t-xs); line-height: var(--lh-normal); }
+.mail-follow-actions { grid-column: 1 / -1; color: var(--muted); font-size: var(--t-xs); }

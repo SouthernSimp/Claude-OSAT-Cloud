@@ -4,6 +4,31 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
+## Next build · October 22, 2026 — Canvases are back, Connect Gmail, your bank in Money, a clearer view of your work, clients, and to-dos from Granola and email
+
+- **Canvases:** whiteboards in the sidebar, as many as you like. Stickies (the Sticky button or N), shapes, text
+  boxes and arrows that hold on, for mind maps, and a live kanban of any board right on the canvas. Everything saves
+  by itself and works offline. (#121)
+- **The Board tab is called Kanban,** so it's easy to find: Later, Next, Doing, Done. (#121)
+- **Connect Gmail:** Mail signs in to Gmail directly with Google's own sign-in, instead of going through the Mac's
+  Mail app. Your inbox, Gmail's search and To-dos from email, read only: nothing is sent or changed. (#122)
+- **Money, fully built out:** connect your bank through Plaid (your keys stay in the Mac's Keychain) and your
+  accounts, balances and spending come in by themselves every hour. Spending by category as a donut and a table,
+  a budget for any category, six months of cash flow, find any entry, and move one to another category with Undo.
+  Transfers between your own accounts are never counted as spending. (#123)
+
+- **Today brings your work together:** your boards with their real progress, recently edited notes, your day at a
+  glance and shortcuts to Mail, Meetings and Files. Open a board or note straight from Today. Calendar entries
+  open the calendar; dated stickies open their note. To-dos still tick off with Undo; habits, goals and money stay. (#116)
+- **Every Granola meeting gives its to-dos:** notes written without a Next steps list are now read by the AI on
+  this Mac, so the things promised still come into Just in. If the AI is asleep, OSAT tries again within the hour. (#118)
+- **Clients:** right-click a board → Mark as a client. It moves to Clients in the sidebar, says when you last met,
+  and its Overview lists every meeting with them and every note that names them. (#119)
+- **Links read as words on cards:** a Granola to-do says "From Granola: Fortis kickoff", not a web address. (#119)
+- **To-dos from email:** turn it on in Mail and, once an hour, what new mail asks of you comes into Just in as
+  to-dos, saying which email. Only the AI on your Mac reads it; newsletters and robots are skipped; nothing is sent
+  or changed in Mail; Take them back puts a batch in the Bin. (#120)
+
 ## Build 338 · October 21, 2026 — Ask knows the new OSAT, board overviews, roomier Notes, clearer Connections
 
 - **Ask uses today's words:** boards and Just in, with directions for the sidebar and meeting follow-ups. It no
