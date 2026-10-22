@@ -33,3 +33,6 @@ outputs/unsorted-concepts-20261004/
 
 # The listening helper, built from desktop/meetings/osat-listen.swift (scripts/build-listen.mjs)
 build/helpers/
+
+# graphify knowledge graph output
+graphify-out/

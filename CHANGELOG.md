@@ -4,7 +4,12 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 21, 2026 — A clearer view of your work, clients, and to-dos from Granola and email
+## Next build · October 22, 2026 — Canvases are back, a clearer view of your work, clients, and to-dos from Granola and email
+
+- **Canvases:** whiteboards in the sidebar, as many as you like. Stickies (the Sticky button or N), shapes, text
+  boxes and arrows that hold on, for mind maps, and a live kanban of any board right on the canvas. Everything saves
+  by itself and works offline. (#121)
+- **The Board tab is called Kanban,** so it's easy to find: Later, Next, Doing, Done. (#121)
 
 - **Today brings your work together:** your boards with their real progress, recently edited notes, your day at a
   glance and shortcuts to Mail, Meetings and Files. Open a board or note straight from Today. Calendar entries

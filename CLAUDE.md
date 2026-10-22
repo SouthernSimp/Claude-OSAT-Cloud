@@ -9,7 +9,18 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 21, 2026: Phases 81–84 ready in one PR (#120); smart connectors, Google first
+## Resume checkpoint — October 22, 2026: Phase 85 canvases (#121, on top of #120); Gmail sign-in next, then banks
+
+Oct 22: Nate asked for the whiteboard back ("really helpful with planning and thinking out ideas"), several canvases,
+a kanban he can put on a canvas, Excalidraw-style shapes and text but no freehand (left-handed, mouse in the right
+hand), and a sticky that is obvious to put down. Built as Phase 85 (#121, `claude/phase-85-canvas`, stacked on #120,
+so merging #121 ships 81–85). He also said Mail "is still broken" and wants to "just connect up gmail": he picked
+Sign in with Google (Phase 86, next; needs a Google Cloud OAuth Desktop client made once with him in Chrome). Banks
+in Money through Plaid (Phase 87) is paused on `claude/phase-85-bank` (shared/bank-model.mjs only): Muse (Meta's
+agent) links Chase on Meta's own Plaid account, so OSAT needs Nate's Plaid keys (Trial plan, 10 banks free); plan:
+Hosted Link opened in the browser, `/link/token/get` polled, access tokens in the Keychain, `/transactions/sync`
+into `budget.transactions` with `plaid-<id>` ids.
+
 
 Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something businesses can use, Nate the first
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
@@ -692,6 +703,23 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
 
+## Architecture added in Phase 85
+
+- Canvases: `workspace.canvases` (schema 17; `normalizeCanvases` in `src/canvas/canvas-model.js`, called by
+  osat-data.js) = { id, name, elements, createdAt, updatedAt }; `elements` are Excalidraw's own, deleted ones dropped,
+  at most 5,000 (`saveElements`, a no-op when every id/version matches). `src/canvas/CanvasRoom.jsx` is the room (view
+  `Canvas`, `detail.canvasId`; the last one opened in localStorage `osat.canvas.last.v1`), lazy-loaded from Desk.jsx,
+  which sets `window.EXCALIDRAW_ASSET_PATH` to `public/excalidraw/` (fonts copied from the package without Xiaolai,
+  the 12 MB Chinese one; Excalidraw lists esm.sh after it, hard-coded, and the page's `font-src 'self'` refuses it).
+  Excalidraw keeps its own copy once open (saved 800 ms after a change; a change from another Mac shows on reopen).
+  Sticky (button or N): `stickySkeleton` at `middleOf` the view, then a synthetic Enter starts writing in it. Kanban:
+  an `embeddable` whose link is `osat://board/<id>` (`kanbanLink`/`boardOfLink`), drawn by `renderEmbeddable` as
+  `KanbanEmbed` (stageColumns of the board, ‹ › = setStage, the line under Later = addSticky + stage later), fed
+  through a React context so it stays live; Excalidraw hands it the mouse after a double-click. Pictures are off
+  (`tools.image: false`). The sidebar's Canvases group has New / Rename / Delete with their own Undo (boards'
+  `undoFrom` knows only notes and folders). `Canvas` is no longer an alias of the boards. tests/canvas.test.mjs,
+  tests/ui/canvas.mjs.
+
 ## Architecture added in Phase 84
 
 - To-dos from email: `desktop/mail-follow.cjs` (`createMailFollow`, started beside Granola in main's `registerMeetings`,
@@ -782,3 +810,9 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - `input:not([type])` beats a bare class, so panel fields use `.quick-search .qs-input`-style selectors.
 - Never launch a packaged build against Nate's real `~/Library/Application Support/OSAT` to
   test: it would upgrade the schema under his installed app. Use `--osat-self-test`.
+
+## graphify
+
+A knowledge graph of this repo lives in `graphify-out/` (gitignored, local only).
+- For architecture or "what calls / depends on X" questions, read `graphify-out/GRAPH_REPORT.md` or run `graphify query "<question>"` before grepping raw files.
+- After large code changes, refresh it with `/graphify . --update`.
