@@ -159,4 +159,5 @@ test('a card says where a sticky came from in today’s words, and a picture as 
   assert.equal(sourceWords('Quick bar'), 'Quick bar')
   assert.equal(sourceWords(undefined), '')
   assert.equal(cardWords('Test\n![Screenshot](osat-picture:8405cf2f.png) and ![](osat-picture:a.png)'), 'Test\n[Screenshot] and [Picture]')
+  assert.equal(cardWords('From Granola: [Fortis kickoff](https://notes.granola.ai/d/1)'), 'From Granola: Fortis kickoff')
 })

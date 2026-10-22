@@ -34,6 +34,8 @@ const NOTES = [
   sticky('n8', 'milk, bread, eggs, turkey', 'home', 'buy'),
   sticky('n9', 'What time does the DMV open?', null, 'question', { unsorted: true, source: 'Quick bar' }),
   sticky('n10', 'Call mom about the roof', null, 'todo', { unsorted: true, source: 'iPhone' }),
+  sticky('n11', 'Send Fortis the deck\n\nFrom Granola: [Fortis kickoff](https://notes.granola.ai/d/kickoff)', 'fortis', 'todo', { source: 'Granola' }),
+  sticky('n12', 'Lunch with Fortis went well', 'home', 'note'),
   // Fictional job for the overview screenshots; never added to a user's workspace.
   sticky('g1', 'Finish & materials\nMatte black powder coat. Cedar infill panels.', 'gate', 'note'),
   sticky('g2', 'Which latch does the customer prefer?', 'gate', 'question'),
@@ -243,6 +245,27 @@ async function light(page) {
   // Esc with nothing to step back from leaves the board where it is.
   await page.keyboard.press('Escape')
   check(await page.locator('.boards').count() === 1, 'Esc closed the board')
+
+  // Mark a board as a client (Phase 83): it moves to Clients, and its page says when you last met and where it comes up.
+  await side(page, 'Fortis').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Mark as a client' }).click()
+  const client = page.locator('nav.side .side-group[aria-label="Clients"]').getByRole('button', { name: /^Fortis\b/ })
+  await client.waitFor({ timeout: 3000 }).catch(() => problems.push('a client didn’t move to Clients'))
+  check((await readDoc(page)).folders.find((folder) => folder.id === 'fortis')?.client === true, 'the client mark wasn’t saved')
+  await client.click()
+  await page.getByRole('tab', { name: 'Overview' }).click()
+  check(await page.getByRole('tab', { name: 'Overview' }).getAttribute('aria-selected') === 'true', 'the client’s Overview tab wasn’t the one shown as picked')
+  check(!(await page.locator('.board-steps').innerText()).includes('](https://'), 'a link showed as raw Markdown in Next up')
+  const touch = page.getByRole('region', { name: 'With Fortis' })
+  await touch.waitFor({ timeout: 3000 }).catch(() => problems.push('a client’s page had no With section'))
+  const words = await touch.innerText()
+  check(words.includes('Fortis kickoff') && words.includes('From Granola'), 'a Granola meeting wasn’t on the client’s page')
+  check(words.includes('Lunch with Fortis') && words.includes('On Home'), 'a mention on another board wasn’t on the client’s page')
+  check((await page.locator('.boards-title p').innerText()).startsWith('Client · last met'), 'the client line didn’t say when you last met')
+  await page.screenshot({ path: `${OUT}/light-client.png` })
+  await client.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Not a client' }).click()
+  await side(page, 'Fortis').waitFor({ timeout: 3000 }).catch(() => problems.push('Not a client didn’t put it back in Boards'))
 }
 
 async function main() {

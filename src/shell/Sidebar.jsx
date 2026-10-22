@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CaretRight, NotePencil, Plus, Trash, WifiHigh, WifiSlash } from '@phosphor-icons/react'
 
-import { addBoard, boardsOf, JUST_IN, paperOf, stickiesOn, undoFrom } from '../boards/boards-model.js'
+import { clientItem } from '../boards/BoardOverview.jsx'
+import { addBoard, boardsOf, isClient, JUST_IN, paperOf, stickiesOn, undoFrom } from '../boards/boards-model.js'
 import { placeFrom } from '../boards/just-in.js'
 import { useDrop } from '../lib/carry.js'
 import { useContextMenu } from '../lib/ContextMenu.jsx'
@@ -57,6 +58,7 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
     menu(event, folder) {
       openMenu(event, [
         { label: 'Rename', icon: NotePencil, onSelect: () => setNaming({ id: folder.id }) },
+        clientItem(folder, change),
         { divider: true },
         {
           label: 'Delete board', icon: Trash, hint: 'keeps its stickies', danger: true,
@@ -75,6 +77,21 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
     return next
   })
   const here = (id) => (id === 'Mindmap' ? false : at.view === id)
+  // A board keeps its paper by its place among all boards, whichever group it shows in.
+  const row = ({ folder, count }, index) => (naming?.id === folder.id
+    ? <NameForm key={folder.id} label={`Rename ${folder.name}`} initial={folder.name} onDone={(name) => actions.rename(folder.id, name)} />
+    : (
+      <BoardRow
+        key={folder.id}
+        folder={folder}
+        paper={paperOf(folder, index)}
+        count={count}
+        active={at.view === 'Mindmap' && at.board === folder.id}
+        onOpen={() => navigate('Mindmap', { folderId: folder.id })}
+        onMenu={(event) => actions.menu(event, folder)}
+        onDropNote={(id) => actions.moveTo(id, folder.id, folder.name)}
+      />
+    ))
 
   return (
     <nav className="side" aria-label="OSAT">
@@ -86,25 +103,18 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
       </div>
 
       <div className="side-scroll">
+        {boards.some(({ folder }) => isClient(folder)) && (
+          <section className="side-group" aria-label="Clients">
+            <header className="side-head"><span>Clients</span></header>
+            {boards.map(row).filter((_, index) => isClient(boards[index].folder))}
+          </section>
+        )}
         <section className="side-group" aria-label="Boards">
           <header className="side-head">
             <span>Boards</span>
             <button type="button" className="side-add" aria-label="New board" title="New board" onClick={() => setNaming({})}><Plus weight="bold" /></button>
           </header>
-          {boards.map(({ folder, count }, index) => (naming?.id === folder.id
-            ? <NameForm key={folder.id} label={`Rename ${folder.name}`} initial={folder.name} onDone={(name) => actions.rename(folder.id, name)} />
-            : (
-              <BoardRow
-                key={folder.id}
-                folder={folder}
-                paper={paperOf(folder, index)}
-                count={count}
-                active={at.view === 'Mindmap' && at.board === folder.id}
-                onOpen={() => navigate('Mindmap', { folderId: folder.id })}
-                onMenu={(event) => actions.menu(event, folder)}
-                onDropNote={(id) => actions.moveTo(id, folder.id, folder.name)}
-              />
-            )))}
+          {boards.map(row).filter((_, index) => !isClient(boards[index].folder))}
           {naming && !naming.id && <NameForm label="New board’s name" placeholder="Name it: Fortis, Home…" onDone={actions.newBoard} />}
           {!boards.length && !naming && (
             <button type="button" className="side-row side-starter" onClick={actions.starter}><Plus /> <span>Add {STARTER.join(', ')}</span></button>

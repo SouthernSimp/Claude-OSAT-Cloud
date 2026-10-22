@@ -22,11 +22,16 @@ import { useAutoFileStatus } from '../sky/useAutoFile.js'
 import { useOvernight } from '../sky/useOvernight.js'
 import '../styles/boards.css'
 import {
-  addBoard, boardsOf, cardWords, COLUMN, findOn, JUST_IN, mapColumns, moveToBoard, onBoard, paperOf, rankIn, setStage, sourceWords, stageColumns, stageOf, STAGES, stickiesOn, undoFrom,
+  addBoard, boardsOf, cardWords, clientTouch, COLUMN, findOn, isClient, JUST_IN, mapColumns, moveToBoard, onBoard, paperOf, rankIn, setStage, sourceWords, stageColumns, stageOf, STAGES, stickiesOn, undoFrom,
 } from './boards-model.js'
 import { JustIn } from './JustIn.jsx'
-import { BoardOverview } from './BoardOverview.jsx'
+import { BoardOverview, clientItem } from './BoardOverview.jsx'
 import { mergeStickies, placeFrom, samePair } from './just-in.js'
+
+/* A client's line under its name: when you last met, never a scold. */
+const clientLine = ({ lastMet }) => (lastMet
+  ? `Client · last met ${new Date(lastMet).toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(new Date(lastMet).getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) })}`
+  : 'Client · no meetings yet')
 
 const BOARD_KEY = 'osat.boards.board.v1'
 const VIEW_KEY = 'osat.boards.view.v1'
@@ -82,6 +87,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const all = useMemo(() => stickiesOn(workspace, boardId), [workspace, boardId])
   const shown = useMemo(() => findOn(all, query), [all, query])
   const waiting = useMemo(() => stickiesOn(workspace, JUST_IN).length, [workspace])
+  const touch = useMemo(() => (isClient(board) ? clientTouch(workspace, board) : null), [workspace, board])
   const same = useMemo(() => samePair(all, keptPairs), [all, keptPairs])
   const filing = useAutoFileStatus()
 
@@ -202,6 +208,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
     boardMenu(event, folder) {
       openMenu(event, [
         { label: 'Rename', icon: NotePencil, onSelect: () => setNaming({ id: folder.id }) },
+        clientItem(folder, change),
         { divider: true },
         { label: 'Delete board', icon: Trash, hint: 'keeps its stickies', danger: true, onSelect: () => actions.deleteBoard(folder) },
       ])
@@ -340,6 +347,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
             <h1>{title}</h1>
             <p>{boardId === JUST_IN
               ? justInLine(filing)
+              : touch ? clientLine(touch)
               : (all.length ? (view === 'overview' ? 'Your next steps, dates and notes, together.' : count) : `Nothing on ${title} yet. Write the first sticky below.`)}</p>
           </div>
           <label className="boards-find">
@@ -385,7 +393,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
           {boardId === JUST_IN && <JustIn workspace={workspace} boards={boards} query={query} editing={editing} card={card} actions={actions} navigate={navigate} />}
           {boardId !== JUST_IN && view === 'overview' && (query.trim()
             ? <div className="board-overview-results"><p>{shown.length} {shown.length === 1 ? 'match' : 'matches'}</p><ListView notes={shown} actions={actions} onOpen={actions.startEdit} /></div>
-            : <BoardOverview key={boardId} notes={all} onOpen={(noteId) => navigate('Notes', { noteId })} onTick={actions.tick} onShow={setView} onWrite={() => writeField.current?.focus()} />)}
+            : <BoardOverview key={boardId} notes={all} client={touch && { name: board.name, items: touch.items }} onOpen={(noteId) => navigate('Notes', { noteId })} onTick={actions.tick} onShow={setView} onWrite={() => writeField.current?.focus()} />)}
           {boardId !== JUST_IN && view === 'map' && (
             <div className="boards-map">
               {mapColumns(shown).map((column) => <MapColumn key={column.what} column={column} boardId={boardId} actions={actions}>{column.notes.map(card)}</MapColumn>)}

@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 15
+export const SCHEMA = 16
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -85,6 +85,8 @@ export const migrations = [
   { from: 13, run: (doc) => doc },
   // 15 (Phase 75): goals, the few big things, each fed by a board or a habit. An older OSAT would drop them.
   { from: 14, run: (doc) => ({ ...doc, goals: Array.isArray(doc.goals) ? doc.goals : [] }) },
+  // 16 (Phase 83): a board may be a client (`client: true`). Nothing starts marked; an older OSAT would drop it.
+  { from: 15, run: (doc) => doc },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding

@@ -4,7 +4,7 @@
    List. Just in is a board of its own: what came in and has no home yet. Pure. */
 
 import { WHAT_PAPER, WHATS, whatOf } from '../../shared/what-model.mjs'
-import { comingUp, folderChildren, folderSubtree, isActiveNote, isUnsorted } from '../notes-model.js'
+import { comingUp, folderChildren, folderPath, folderSubtree, isActiveNote, isUnsorted } from '../notes-model.js'
 import { addFolder, moveSticky, nodesOf, rankAt } from '../nodes-model.js'
 import { PAPERS, rankOf } from '../note-core.js'
 
@@ -26,8 +26,10 @@ const newest = (a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdA
 const SOURCE_NOW = { Home: 'Typed', Desk: 'Typed', Sky: 'Board', Canvas: 'Board' }
 export const sourceWords = (source) => SOURCE_NOW[source] || source || ''
 
-/* A sticky's words on a card: a picture in it reads as [Screenshot], never as its file's name. */
-export const cardWords = (text) => String(text || '').replace(/!\[([^\]]*)\]\([^)]*\)/g, (_, alt) => `[${alt || 'Picture'}]`)
+/* A sticky's words on a card: a picture in it reads as [Screenshot], never as its file's name; a link as its words. */
+export const cardWords = (text) => String(text || '')
+  .replace(/!\[([^\]]*)\]\([^)]*\)/g, (_, alt) => `[${alt || 'Picture'}]`)
+  .replace(/\[([^\]]+)\]\([^)\s]+\)/g, '$1')
 
 /* A board's paper: its own colour, else one of the papers in turn. */
 export const paperOf = (folder, index) => folder.color || PAPERS[index % PAPERS.length]
@@ -110,6 +112,58 @@ export function addBoard(state, name) {
 /* Stickies onto a board (Just in: back to no home). */
 export function moveToBoard(state, ids, boardId) {
   return ids.reduce((next, id) => moveSticky(next, id, boardId === JUST_IN ? null : boardId), state)
+}
+
+/* Clients (Phase 83): any board can be a client. Marking one again, or un-marking one that isn't, changes nothing. */
+export const isClient = (folder) => folder?.client === true
+export function setClient(state, id, on) {
+  return {
+    ...state,
+    folders: state.folders.map((folder) => {
+      if (folder.id !== id || isClient(folder) === on) return folder
+      if (on) return { ...folder, client: true }
+      const { client, ...rest } = folder
+      return rest
+    }),
+  }
+}
+
+const GRANOLA_LINK = /^From Granola: (?:\[([^\]]+)\]\(([^)]+)\)|(.+))$/m
+const at = (note) => Date.parse(note.createdAt) || 0
+const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/* A client's meetings and mentions, newest first: { items: [{ id, noteId, title, at, from }], lastMet }.
+   A meeting is a write-up (#meeting, not its transcript) or a Granola meeting (its to-dos link back to it, so
+   one item per meeting), on the board or naming the client. A mention is any other note that names the client,
+   a day page included ("lunch with Fortis"). `from` is 'meeting', 'granola' or where the note is. */
+export function clientTouch(state, folder) {
+  const on = folderSubtree(state.folders, folder.id)
+  const name = folder.name.trim()
+  // A name of one or two letters would be found everywhere.
+  const names = name.length > 2 ? new RegExp(`(?<![\\p{L}\\p{N}])${escape(name)}(?![\\p{L}\\p{N}])`, 'iu') : null
+  const items = []
+  const granola = new Map()
+  for (const note of state.notes) {
+    if (!isActiveNote(note)) continue
+    const here = !note.kind && on.has(note.folderId)
+    const named = Boolean(names?.test(`${note.title}\n${note.markdown}`))
+    if (!here && !named) continue
+    const link = !note.kind && note.markdown.match(GRANOLA_LINK)
+    if (link) {
+      const title = link[1] || link[3]
+      const key = link[2] || title
+      const seen = granola.get(key)
+      if (!seen) granola.set(key, { id: `granola:${key}`, noteId: note.id, title, at: at(note), from: 'granola' })
+      else if (at(note) < seen.at) seen.at = at(note)
+    } else if (note.tags?.includes('meeting') && !/· Transcript$/.test(note.title)) {
+      items.push({ id: note.id, noteId: note.id, title: note.title, at: at(note), from: 'meeting' })
+    } else if (!here) {
+      items.push({ id: note.id, noteId: note.id, title: note.title, at: at(note), from: note.kind === 'day' ? 'Day page' : note.folderId ? folderPath(state.folders, note.folderId)[0] || 'Just in' : 'Just in' })
+    }
+  }
+  const all = [...items, ...granola.values()].sort((a, b) => b.at - a.at)
+  const met = all.find((item) => item.from === 'meeting' || item.from === 'granola')
+  return { items: all, lastMet: met ? met.at : null }
 }
 
 /* Find on a board: stickies whose words have every word asked. */

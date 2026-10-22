@@ -41,6 +41,8 @@ export function normalizeFolders(value) {
       ...(folder.packed === true ? { packed: true } : {}),
       ...(folder.fresh === true ? { fresh: true } : {}),
       ...(fromOf(folder.from) ? { from: fromOf(folder.from) } : {}),
+      // A board that is a client (schema 16): its page says when you last met and where they come up.
+      ...(folder.client === true ? { client: true } : {}),
     }]
   })
   // A parent must exist and must not create a cycle; otherwise the folder moves to the root.

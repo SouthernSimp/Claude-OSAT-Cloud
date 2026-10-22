@@ -1,16 +1,27 @@
-import { ArrowRight, CalendarBlank, CaretRight, Circle, NotePencil } from '@phosphor-icons/react'
+import { ArrowRight, Briefcase, CalendarBlank, CaretRight, Circle, NotePencil, UsersThree } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
 
 import { WHAT_LABEL, WHAT_PAPER, whatOf } from '../../shared/what-model.mjs'
 import { whenLine } from '../intake/dates.js'
-import { boardOverview, cardWords, stageOf } from './boards-model.js'
+import { boardOverview, cardWords, isClient, setClient, stageOf } from './boards-model.js'
 
-/* A view of the same stickies, with the detailed Board and Map one click away. */
-export function BoardOverview({ notes, onOpen, onTick, onShow, onWrite }) {
+/* The board menus' Mark as a client / Not a client (Phase 83), with Undo. */
+export function clientItem(folder, change) {
+  return isClient(folder)
+    ? { label: 'Not a client', icon: Briefcase, onSelect: () => change(`“${folder.name}” is a board again`, (state) => setClient(state, folder.id, false)) }
+    : { label: 'Mark as a client', icon: Briefcase, onSelect: () => change(`“${folder.name}” is a client`, (state) => setClient(state, folder.id, true)) }
+}
+
+const FROM = { meeting: 'Meeting', granola: 'From Granola' }
+
+/* A view of the same stickies, with the detailed Board and Map one click away. A client's (`client`: { name,
+   items } from clientTouch) adds its meetings and the notes elsewhere that name it. */
+export function BoardOverview({ notes, client = null, onOpen, onTick, onShow, onWrite }) {
   const nextHeading = useRef(null)
   const [allDates, setAllDates] = useState(false)
+  const [allTouch, setAllTouch] = useState(false)
   const { steps, done, total, upcoming, recent } = boardOverview(notes)
-  if (!notes.length) return (
+  if (!notes.length && !client?.items.length) return (
     <div className="board-overview-empty">
       <NotePencil aria-hidden="true" />
       <h2>Good work starts with a thought.</h2>
@@ -57,7 +68,20 @@ export function BoardOverview({ notes, onOpen, onTick, onShow, onWrite }) {
         </section>
       </div>
 
-      <section className="board-recent" aria-label="Recent notes">
+      {client && <section className="board-upcoming board-client" aria-label={`With ${client.name}`}>
+        <h2>With {client.name}</h2>
+        {client.items.length ? <ul>{(allTouch ? client.items : client.items.slice(0, 5)).map((item) => {
+          const day = new Date(item.at)
+          return <li key={item.id}><button type="button" onClick={() => onOpen(item.noteId)}>
+            <time dateTime={day.toISOString()} className="board-date"><span>{day.toLocaleDateString(undefined, { month: 'short' })}</span><b>{day.getDate()}</b></time>
+            <span><strong>{item.title}</strong><small>{FROM[item.from] || `On ${item.from}`}</small></span>
+            <CaretRight aria-hidden="true" />
+          </button></li>
+        })}</ul> : <p className="board-overview-quiet"><UsersThree aria-hidden="true" />Meetings with {client.name}, and notes anywhere that name them, will appear here.</p>}
+        {client.items.length > 5 && <button type="button" className="text-button board-see-all" aria-expanded={allTouch} onClick={() => setAllTouch((value) => !value)}>{allTouch ? 'Show fewer' : `See all ${client.items.length}`} <ArrowRight /></button>}
+      </section>}
+
+      {notes.length > 0 && <section className="board-recent" aria-label="Recent notes">
         <header><h2>Recent notes</h2><button type="button" className="text-button" onClick={() => onShow('map')}>See all {notes.length} {notes.length === 1 ? 'note' : 'notes'} <ArrowRight /></button></header>
         <div className="board-recent-notes">{recent.slice(0, 3).map((note) => {
           const what = whatOf(note)
@@ -68,7 +92,7 @@ export function BoardOverview({ notes, onOpen, onTick, onShow, onWrite }) {
             {preview && <p>{preview}</p>}
           </button>
         })}</div>
-      </section>
+      </section>}
     </div>
   )
 }
