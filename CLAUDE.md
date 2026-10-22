@@ -717,6 +717,15 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
 
+## Architecture added in Phase 90
+
+- Money, redone (Nate: "lack luster and disorganized"; it sat in a 720px column): `BudgetView` is a welcome
+  (`.money-welcome`: the bank card plus add by hand / import) until there is an entry, a plan or a bank, then
+  `.money-layout`: `.money-main` (`MonthSummary`, SpendingCard, CashFlow, the Transactions card with Find / Import /
+  Add and entries `byDay`) beside `.money-side` (BankCard, which now holds the In your banks total, and BillsCard;
+  sticky, first in one column under 960px). `MonthStepper` replaces the month input (never past this month). The old
+  shared `.project-row, .money-row` rules no longer touch Money rows.
+
 ## Architecture added in Phase 89
 
 - Bills & subscriptions: `bills(transactions, today, { ignore, plans })` in src/money/money-model.js groups money out

@@ -4,11 +4,15 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 22, 2026 — Bills & subscriptions
+## Next build · October 22, 2026 — Bills & subscriptions, Money redone
 
 - **Bills & subscriptions:** Money finds what charges you again and again (Netflix, the phone bill, the gym) and
   lists it with your own plans, soonest first, with about what they come to a month. Not a bill puts one away, with
   Undo. Today names the bill due this week. (#125)
+- **Money, redone:** one page that uses the whole window: the month at a glance (what's left over, money in and
+  out), spending by category and cash flow in the middle, your accounts and bills beside them, and every entry
+  grouped by day like your bank's own list. ‹ › steps through the months. With nothing in yet, one clear start:
+  connect your bank, or add an entry by hand. (#PR90)
 
 ## Build 356 · October 22, 2026 — Canvases are back, Connect Gmail, your bank in Money, a clearer view of your work, clients, and to-dos from Granola and email
 

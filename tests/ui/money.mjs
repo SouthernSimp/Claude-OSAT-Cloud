@@ -156,6 +156,16 @@ async function main() {
     await page.locator('.toast button', { hasText: 'Undo' }).click()
     check((await readDoc(page)).budget.transactions.find((entry) => entry.label === 'Target').category === 'Shopping', 'Undo didn’t put the category back')
 
+    await page.getByRole('region', { name: 'Transactions' }).screenshot({ path: `${OUT}/transactions.png` })
+    check(await page.locator('.money-day h3').count() >= 6, 'the entries weren’t grouped by day')
+
+    // The month stepper: back a month shows September's two entries, forward again comes back; never past this month.
+    check(await page.getByRole('button', { name: 'Next month' }).isDisabled(), 'Next month went past this month')
+    await page.getByRole('button', { name: 'Previous month' }).click()
+    check(await page.locator('.money-row').count() === 2, 'Previous month didn’t show last month’s entries')
+    await page.getByRole('button', { name: 'Next month' }).click()
+    check(await page.locator('.money-row').count() === 8, 'Next month didn’t come back')
+
     // Find.
     await page.getByLabel('Find an entry').fill('blue')
     check(await page.locator('.money-row').count() === 1, 'Find didn’t narrow the list')
@@ -201,6 +211,16 @@ async function main() {
   await page.locator('nav.side').getByRole('button', { name: 'Today' }).first().click()
   await page.getByText('Next bill: Gym, $25.00', { exact: false }).waitFor({ timeout: 3000 }).catch(() => problems.push('Today didn’t name the bill due this week'))
   await page.close()
+
+  // A first visit with nothing yet: one welcome, Connect your bank inside it, no rows of $0.00.
+  const empty = await openRoom(browser, url, 'light', [])
+  const welcome = empty.getByRole('region', { name: 'Get started with Money' })
+  check(await welcome.getByRole('heading', { name: 'Connect your bank' }).count() === 1, 'the welcome didn’t hold the bank card')
+  check(await empty.locator('.money-overview').count() === 0, 'an empty Money showed the month’s totals')
+  await welcome.getByRole('button', { name: 'add an entry by hand' }).click()
+  check(await welcome.getByLabel('Description').count() === 1, 'add an entry by hand didn’t open the form')
+  await empty.screenshot({ path: `${OUT}/welcome.png` })
+  await empty.close()
   await browser.close()
 }
 
