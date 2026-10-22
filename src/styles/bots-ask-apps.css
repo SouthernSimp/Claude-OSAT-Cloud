@@ -52,7 +52,8 @@
 .ask-apps-picker > .button-row { margin-top: 16px; gap: 12px; }
 .ask-apps-picker > .button-row button { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-xs); }
 .ask-apps-picker > .button-row svg { width: 14px; height: 14px; }
-.ask-apps-presets { display: grid; margin-top: 16px; }
+.ask-apps-find { width: 100%; margin-top: 14px; }
+.ask-apps-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); column-gap: 24px; margin-top: 8px; }
 .ask-apps-presets > div { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 68px; border-bottom: 1px solid var(--line-soft); }
 .ask-apps-presets > div > svg { width: 22px; height: 22px; color: var(--accent); }
 .ask-apps-presets > div > span { display: grid; gap: 3px; }

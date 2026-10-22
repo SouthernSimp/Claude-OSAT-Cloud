@@ -78,6 +78,19 @@ finally feels fully built out", with a bank's Spending by category donut and tab
 the free Trial (10 banks, production keys on dashboard.plaid.com); he pastes the Client ID and Secret into Money once.
 OSAT opens Plaid's Hosted Link page in the browser, syncs every hour, never counts transfers as spending.
 
+Phase 88 (in review, PR #124): one-click sign-in for your apps. Nate asked for it, and for OSAT to wow people the
+way Muse (Meta's agent) does. Connect an app now lists 18 apps a business runs on, each tested on Oct 22 to answer as
+an AI-app server and to let OSAT sign in without registering by hand (Slack, HubSpot, Asana, Box and GitHub need that,
+so they wait). Connect opens the app's own sign-in in the browser; Ask can then use it, and changes ask first.
+
+What Muse gets right, and what OSAT can take from it (proposed, none promised, Nate picks): it acts instead of
+chatting, and keeps working after you look away (a job runs in the background and reports back); apps connect one
+at a time in a click (Phase 88); a business mode reads the business's own numbers. Where Muse is weak is OSAT's
+edge: Muse trains on chats by default and shared chats leaked; OSAT keeps the AI on the Mac. Candidate next phase:
+"Hand it a job": write a job in the bar ("pull this week's Stripe payments into Money", "make a Notion page from this
+board"), OSAT works it in the background with the connected apps, asks before changing anything outside OSAT, and
+leaves the result in Just in with Undo.
+
 Next, in Nate's order (Oct 22): Phase 86, Gmail signed in directly (he picked Sign in with Google over an app password;
 the Mac Mail app route was slow on a big Gmail inbox and kept breaking), then Phase 87, banks in Money through Plaid
 (started on branch `claude/phase-85-bank`: the transaction model is written; OSAT needs Nate's own Plaid keys, since
@@ -289,6 +302,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 85 | Canvases: whiteboards with stickies, shapes, text, arrows for mind maps and a live kanban of any board; the Board tab renamed Kanban | Merged (PR #121), build 356, Oct 22 |
 | 86 | Gmail, signed in directly: Connect Gmail with Google's own sign-in, instead of reading it through the Mac's Mail app | Merged (PR #122), build 356, Oct 22 |
 | 87 | Money, fully built out: banks through Plaid (accounts, balances, transactions each hour), spending by category (donut and table), budgets per category, six months of cash flow, find and recategorize | Merged (PR #123), build 356, Oct 22 |
+| 88 | One-click sign-in for 18 apps (Notion, Airtable, monday.com, ClickUp, Todoist, Linear, Jira and Confluence, Calendly, Stripe, Square, PayPal, Canva, Figma, Intercom, Webflow, Wix, Zapier, Granola), each checked to sign in on its own; Find an app | In review (#124) |
 | 89 | Bills & subscriptions: repeat charges found in the bank's entries plus your plans, soonest first, about what they come to a month; Today names the bill due this week | In review (#125) |
 | 90 | Money, redone: the whole window in two columns (the month, spending, cash flow and entries by day; accounts and bills beside), a month stepper, and one welcome when nothing is in yet | In review (#126) |
 

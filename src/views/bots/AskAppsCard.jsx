@@ -8,8 +8,30 @@ import '../../styles/bots-ask-apps.css'
 
 const KINDS = [['http', 'A web address'], ['command', 'A command on this Mac']]
 const things = (count) => (count === 1 ? '1 thing it can do' : `${count} things it can do`)
-// Apps whose own servers sign in in the browser (Phase 71b): one tap adds and signs in.
-const SIGN_IN_APPS = [['Granola', 'https://mcp.granola.ai/mcp'], ['Notion', 'https://mcp.notion.com/mcp']]
+// Apps whose own servers sign in in the browser (Phase 71b): one tap adds and signs in. Each was checked on Oct 22
+// 2026 (Phase 88) to answer as an MCP server and to let OSAT register itself; Slack, HubSpot, Asana, Box and GitHub
+// don't (they want OSAT registered by hand), so they aren't here.
+const SIGN_IN_APPS = [
+  ['Granola', 'https://mcp.granola.ai/mcp', 'Meeting notes and follow-ups'],
+  ['Notion', 'https://mcp.notion.com/mcp', 'Pages and notes'],
+  ['Airtable', 'https://mcp.airtable.com/mcp', 'Bases and records'],
+  ['monday.com', 'https://mcp.monday.com/mcp', 'Boards and projects'],
+  ['ClickUp', 'https://mcp.clickup.com/mcp', 'Tasks and docs'],
+  ['Todoist', 'https://ai.todoist.net/mcp', 'Tasks and projects'],
+  ['Linear', 'https://mcp.linear.app/mcp', 'Issues and projects'],
+  ['Jira and Confluence', 'https://mcp.atlassian.com/v1/mcp', 'Atlassian work and pages'],
+  ['Calendly', 'https://mcp.calendly.com', 'Bookings and meeting links'],
+  ['Stripe', 'https://mcp.stripe.com', 'Payments and invoices'],
+  ['Square', 'https://mcp.squareup.com/mcp', 'Sales, orders and customers'],
+  ['PayPal', 'https://mcp.paypal.com/mcp', 'Invoices and payments'],
+  ['Canva', 'https://mcp.canva.com/mcp', 'Designs'],
+  ['Figma', 'https://mcp.figma.com/mcp', 'Design files'],
+  ['Intercom', 'https://mcp.intercom.com/mcp', 'Customer conversations'],
+  ['Webflow', 'https://mcp.webflow.com/mcp', 'Your website'],
+  ['Wix', 'https://mcp.wix.com/mcp', 'Your website and store'],
+  ['Zapier', 'https://mcp.zapier.com/api/mcp/mcp', 'Thousands more apps'],
+]
+const sameAddress = (a, b) => { try { return new URL(a).href === new URL(b).href } catch { return false } }
 
 /* Apps OSAT can use (Phase 48): the apps Claude uses (Google Calendar, Gmail, Notion…), each off
    until Nate turns it on. Main keeps the list (desktop/bots/ask-apps.cjs); keys and a command's
@@ -27,10 +49,13 @@ export function AskAppsCard({ apps = [], offline = false }) {
   const [offers, setOffers] = useState(null) // what Claude Desktop has, while importing
   const [picked, setPicked] = useState(() => new Set())
   const [signing, setSigning] = useState('') // the app's name while its sign-in page is open in the browser
+  const [find, setFind] = useState('')
   useEffect(() => { if (adding) picker.current?.focus() }, [adding])
   if (!bridge) return null
 
-  const closeAdd = () => { setAdding(false); setForm(null); setOffers(null); connectButton.current?.focus() }
+  const shown = SIGN_IN_APPS.filter(([name, , what]) => `${name} ${what}`.toLowerCase().includes(find.trim().toLowerCase()))
+
+  const closeAdd = () => { setAdding(false); setForm(null); setOffers(null); setFind(''); connectButton.current?.focus() }
 
   const act = async (work, done) => {
     setBusy(true)
@@ -155,10 +180,12 @@ export function AskAppsCard({ apps = [], offline = false }) {
       {adding && <div ref={picker} tabIndex={-1} role="region" className="ask-apps-picker" id="connect-an-app" aria-label="Connect an app">
         <header><h3>Connect an app</h3><button type="button" className="icon-button" aria-label="Close Connect an app" onClick={closeAdd}><X /></button></header>
         {!form && !offers && <>
-          <div className="ask-apps-presets">{SIGN_IN_APPS.map(([name, url]) => {
-            const existing = apps.find((app) => app.where === url)
-            return <div key={name}><PuzzlePiece aria-hidden="true" /><span><b>{name}</b><small>{name === 'Granola' ? 'Meeting notes and follow-ups' : 'Pages and notes'}</small></span><button className="outline-button" type="button" disabled={busy || offline || Boolean(existing)} onClick={() => signInTo(name)}>{existing ? 'Added' : 'Connect'}</button></div>
+          <input className="ask-apps-find" type="search" value={find} placeholder="Find an app" aria-label="Find an app" onChange={(event) => setFind(event.target.value)} />
+          <div className="ask-apps-presets">{shown.map(([name, url, what]) => {
+            const existing = apps.find((app) => sameAddress(app.where, url))
+            return <div key={name}><PuzzlePiece aria-hidden="true" /><span><b>{name}</b><small>{what}</small></span><button className="outline-button" type="button" disabled={busy || offline || Boolean(existing)} onClick={() => signInTo(name)}>{existing ? 'Added' : 'Connect'}</button></div>
           })}</div>
+          {!shown.length && <p className="ai-note">Not in the list yet. If the app gives you a web address for AI apps (often called MCP), use it below.</p>}
           <p className="ai-note">Signing in connects the app and turns it on. You can turn it off here any time.</p>
           <div className="button-row"><button className="text-button" type="button" disabled={busy} onClick={startImport}><DownloadSimple /> Import from Claude Desktop</button><button className="text-button" type="button" disabled={busy} onClick={() => setForm({ kind: 'http', name: '', url: '', key: '', command: '' })}>Use a web address or command <CaretRight /></button></div>
         </>}

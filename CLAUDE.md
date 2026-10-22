@@ -9,11 +9,18 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 22, 2026: Phases 81–87 shipped as build 356; Phase 89 bills (#125) in review
+## Resume checkpoint — October 22, 2026: Phases 81–87 shipped as build 356; 88–90 in one PR (#126)
 
-Build 356 (Oct 22) shipped #116–#123. Open: #125 (Phase 89, bills & subscriptions, Claude) and #124 (Phase 88, one-click
-sign-in for 18 apps, opened by another session on Nate's account the same afternoon); both target main and both edit
-CHANGELOG/ROADMAP/CLAUDE.md, so the second to merge needs main merged in first.
+Build 356 (Oct 22) shipped #116–#123. Then three phases, all folded into #126 so one Merge ships them (GitHub marks
+#124 and #125 merged with it): Phase 88 (#124, one-click sign-in for 18 apps), Phase 89 (#125, bills & subscriptions,
+another session) and Phase 90 (#126, Money redone). Nate asked to merge everything and then test; Claude Code's
+auto-mode check refuses `gh pr merge`, so Nate clicks Merge on #126.
+
+Phase 88: Nate asked for one-click sign-in for his apps and for more "wow", learning from what made Muse (Meta's
+agent) successful. `SIGN_IN_APPS` in AskAppsCard.jsx grew from 2 to 18 apps, each probed (RFC 9728/8414 metadata
+with a `registration_endpoint`, and a 401 to an unsigned MCP initialize). Not supported without hand registration:
+Slack, HubSpot, Asana, Box, GitHub. The Muse lessons and the proposed next phase ("Hand it a job", background jobs
+with connected apps) are in docs/ROADMAP.md; ask Nate before building it.
 
 
 Later Oct 22: Gmail (#122) and Money with banks (#123) were built. Two things wait on Nate: Google Cloud project
