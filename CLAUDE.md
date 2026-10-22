@@ -9,9 +9,9 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 22, 2026: Phases 85–88 (#121 canvases, #122 Gmail, #123 Money, #PR88 apps), stacked on #120
+## Resume checkpoint — October 22, 2026: Phases 85–88 (#121 canvases, #122 Gmail, #123 Money, #124 apps), stacked on #120
 
-Phase 88 (#PR88, `claude/phase-88-wow`, on top of #123): Nate asked for one-click sign-in for his apps and for more
+Phase 88 (#124, `claude/phase-88-wow`, on top of #123): Nate asked for one-click sign-in for his apps and for more
 "wow", learning from what made Muse (Meta's agent) successful. Built: `SIGN_IN_APPS` in AskAppsCard.jsx grew from 2
 to 18 apps, each probed (RFC 9728/8414 metadata with a `registration_endpoint`, and a 401 to an unsigned MCP
 initialize). Not supported without hand registration: Slack, HubSpot, Asana, Box, GitHub. The Muse lessons and the

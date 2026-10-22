@@ -18,7 +18,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   Transfers between your own accounts are never counted as spending. (#123)
 - **18 apps, one click each:** Connect an app now lists Notion, Airtable, monday.com, ClickUp, Todoist, Linear,
   Jira and Confluence, Calendly, Stripe, Square, PayPal, Canva, Figma, Intercom, Webflow, Wix, Zapier and Granola.
-  Connect, sign in in your browser, done; Find an app narrows the list. (#PR88)
+  Connect, sign in in your browser, done; Find an app narrows the list. (#124)
 
 - **Today brings your work together:** your boards with their real progress, recently edited notes, your day at a
   glance and shortcuts to Mail, Meetings and Files. Open a board or note straight from Today. Calendar entries

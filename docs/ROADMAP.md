@@ -78,7 +78,7 @@ finally feels fully built out", with a bank's Spending by category donut and tab
 the free Trial (10 banks, production keys on dashboard.plaid.com); he pastes the Client ID and Secret into Money once.
 OSAT opens Plaid's Hosted Link page in the browser, syncs every hour, never counts transfers as spending.
 
-Phase 88 (in review, PR #PR88): one-click sign-in for your apps. Nate asked for it, and for OSAT to wow people the
+Phase 88 (in review, PR #124): one-click sign-in for your apps. Nate asked for it, and for OSAT to wow people the
 way Muse (Meta's agent) does. Connect an app now lists 18 apps a business runs on, each tested on Oct 22 to answer as
 an AI-app server and to let OSAT sign in without registering by hand (Slack, HubSpot, Asana, Box and GitHub need that,
 so they wait). Connect opens the app's own sign-in in the browser; Ask can then use it, and changes ask first.
@@ -302,7 +302,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 85 | Canvases: whiteboards with stickies, shapes, text, arrows for mind maps and a live kanban of any board; the Board tab renamed Kanban | In review (#121) |
 | 86 | Gmail, signed in directly: Connect Gmail with Google's own sign-in, instead of reading it through the Mac's Mail app | In review (#122) |
 | 87 | Money, fully built out: banks through Plaid (accounts, balances, transactions each hour), spending by category (donut and table), budgets per category, six months of cash flow, find and recategorize | In review (#123) |
-| 88 | One-click sign-in for 18 apps (Notion, Airtable, monday.com, ClickUp, Todoist, Linear, Jira and Confluence, Calendly, Stripe, Square, PayPal, Canva, Figma, Intercom, Webflow, Wix, Zapier, Granola), each checked to sign in on its own; Find an app | In review (#PR88) |
+| 88 | One-click sign-in for 18 apps (Notion, Airtable, monday.com, ClickUp, Todoist, Linear, Jira and Confluence, Calendly, Stripe, Square, PayPal, Canva, Figma, Intercom, Webflow, Wix, Zapier, Granola), each checked to sign in on its own; Find an app | In review (#124) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
