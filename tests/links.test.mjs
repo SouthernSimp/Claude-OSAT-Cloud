@@ -68,7 +68,7 @@ test('schema 10: a place kept by something with a parent is laid out afresh; not
   assert.deepEqual(doc.notes.map((item) => item.at || null), [{ x: 5, y: 6 }, null, null])
   assert.deepEqual(doc.folders.map((item) => item.at || null), [{ x: 100, y: 0 }, null, { x: -50, y: 20 }])
   assert.equal(doc.notes[1].folderId, 'n', 'nothing is re-filed')
-  assert.deepEqual(migrate({ ...old, notes: [], folders: [] }), { ...old, notes: [], folders: [], goals: [], schema: SCHEMA, rev: 0 })
+  assert.deepEqual(migrate({ ...old, notes: [], folders: [] }), { ...old, notes: [], folders: [], goals: [], canvases: [], schema: SCHEMA, rev: 0 })
 })
 
 test('a new home lays a sticky or branch out afresh; moving inside the same home keeps its place', () => {

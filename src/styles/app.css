@@ -512,3 +512,36 @@
 @media (max-width: 1080px) {
   .ask-panel { position: absolute; z-index: 30; top: 8px; right: 8px; bottom: 8px; box-shadow: var(--card-rim), 0 30px 60px -20px rgb(0 0 0 / 40%); }
 }
+
+/* Canvases (Phase 85): the whiteboard fills the room under a slim head; Excalidraw draws inside `.canvas-board`. */
+.app-room > .canvas-room { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 0; }
+.canvas-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px 10px; }
+.canvas-head h1 { margin: 0; overflow: hidden; font-size: 20px; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.canvas-actions { display: flex; align-items: center; gap: 8px; }
+.canvas-actions button { display: inline-flex; align-items: center; gap: 6px; }
+.canvas-pick { position: relative; }
+.canvas-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--z-menu, 50); min-width: 200px; max-height: 320px; overflow: auto; margin: 0; padding: 6px; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgb(0 0 0 / 18%); }
+.canvas-menu button { width: 100%; padding: 8px 10px; text-align: left; background: none; border: 0; border-radius: 6px; color: var(--ink); }
+.canvas-menu button:hover, .canvas-menu button:focus-visible { background: var(--line); }
+.canvas-board { position: relative; flex: 1; min-height: 0; border-top: 1px solid var(--line); }
+.canvas-board .excalidraw { --color-primary: var(--accent); }
+.app-room > .canvas-empty { display: grid; place-content: center; justify-items: center; gap: 12px; height: 100%; padding: 32px; text-align: center; }
+.canvas-empty h1 { margin: 0; }
+.canvas-empty p { max-width: 420px; margin: 0; color: var(--muted); }
+.canvas-empty .primary-button { display: inline-flex; align-items: center; gap: 6px; }
+
+/* A board's kanban on a canvas. */
+.canvas-kanban { display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font-size: 13px; }
+.canvas-kanban.is-gone { align-items: center; justify-content: center; color: var(--muted); }
+.canvas-kanban > header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.canvas-kanban > header strong { font-size: 15px; }
+.canvas-kanban > header small { margin-left: auto; margin-right: 10px; color: var(--muted); }
+.canvas-kanban-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; flex: 1; min-height: 0; padding: 10px; }
+.canvas-kanban-cols section { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: auto; padding: 8px; background: var(--line); border-radius: 8px; }
+.canvas-kanban-cols h2 { display: flex; justify-content: space-between; margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.canvas-kanban-cols article { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px; padding: 8px 10px; background: var(--page, #fff); border: 1px solid var(--line); border-radius: 6px; }
+.canvas-kanban-cols article p { margin: 0; overflow-wrap: anywhere; }
+.canvas-kanban-cols article span { display: flex; }
+.canvas-kanban-cols article button { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; color: var(--muted); background: none; border: 0; border-radius: 4px; }
+.canvas-kanban-cols article button:hover { color: var(--ink); background: var(--line); }
+.canvas-kanban-cols input { width: 100%; padding: 7px 9px; color: var(--ink); background: var(--page, #fff); border: 1px dashed var(--line); border-radius: 6px; font: inherit; }

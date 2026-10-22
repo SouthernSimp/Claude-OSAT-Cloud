@@ -4,6 +4,7 @@
    are written back. */
 import { createEmptyDoc, migrate, SCHEMA } from '../shared/store-core.mjs'
 import { normalizeChat } from './assistant/chats.js'
+import { normalizeCanvases } from './canvas/canvas-model.js'
 import { normalizeHabits, normalizeReflections } from './daily-practice.js'
 import { normalizeFocusSession } from './focus-session.js'
 import { normalizeNote, parseTags } from './note-core.js'
@@ -108,6 +109,7 @@ export function normalizeWorkspace(value) {
     theme: ['system', 'light', 'dark'].includes(input.theme) ? input.theme : 'system',
     habits: normalizeHabits(input.habits),
     goals: normalizeGoals(input.goals),
+    canvases: normalizeCanvases(input.canvases),
     reflections: normalizeReflections(input.reflections),
     focus: normalizeFocusSession(input.focus),
     notes,
@@ -133,7 +135,7 @@ export function makeBackup(workspace, exportedAt = new Date().toISOString()) {
 
 export function readWorkspaceBackup(payload) {
   const raw = payload?.workspace
-  const lists = ['notes', 'folders', 'projects', 'habits', 'goals', 'chats']
+  const lists = ['notes', 'folders', 'projects', 'habits', 'goals', 'chats', 'canvases']
   // Backups from an earlier schema are upgraded; ones from a newer OSAT are refused.
   const input = isObject(raw) && Number.isInteger(raw.schema) && raw.schema <= SCHEMA ? migrate(raw) : null
   if (payload?.format !== BACKUP_FORMAT || payload.version !== 1 || !isObject(input)

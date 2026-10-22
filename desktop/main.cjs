@@ -358,6 +358,7 @@ function buildMenu() {
         room('Files', 'Files', 'CmdOrCtrl+6'),
         { type: 'separator' },
         room('Boards', 'Mindmap'),
+        room('Canvases', 'Canvas'),
         room('Ask', 'Assistant'),
         room('Meetings', 'Meetings'),
         room('Mail', 'Mail'),

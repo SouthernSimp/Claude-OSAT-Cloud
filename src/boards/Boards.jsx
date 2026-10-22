@@ -43,7 +43,7 @@ const readList = (key) => { try { return JSON.parse(localStorage.getItem(key) ||
 // What two of a kind are called in "Two ideas say the same thing".
 const PLURAL = { idea: 'ideas', question: 'questions', problem: 'problems', todo: 'to-dos', date: 'dates', buy: 'things to buy', note: 'notes' }
 
-const VIEWS = [['overview', 'Overview', StackSimple], ['map', 'Map', SquaresFour], ['board', 'Board', Kanban], ['list', 'List', ListBullets]]
+const VIEWS = [['overview', 'Overview', StackSimple], ['map', 'Map', SquaresFour], ['board', 'Kanban', Kanban], ['list', 'List', ListBullets]]
 const STARTER = ['Personal', 'Home', 'Work']
 const KEPT = [['questions', 'Questions', Question], ['buy', 'To buy', ShoppingCart], ['coming', 'Coming up', CalendarCheck]]
 

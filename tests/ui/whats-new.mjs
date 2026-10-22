@@ -98,7 +98,7 @@ async function coming(page, phases) {
   const [top, moved] = later
   await room(page).getByRole('button', { name: 'Open the board' }).click()
   await page.locator('.boards-title h1', { hasText: 'Coming to OSAT' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Open the board didn’t open it'))
-  check(await page.getByRole('tab', { name: 'Board' }).getAttribute('aria-selected') === 'true', 'the plan board didn’t open as a Board')
+  check(await page.getByRole('tab', { name: 'Kanban' }).getAttribute('aria-selected') === 'true', 'the plan board didn’t open as a Kanban')
   const card = (phase) => page.locator('.boards-card', { hasText: `${phase} ·` })
   const from = await card(moved).boundingBox()
   const to = await card(top).boundingBox()

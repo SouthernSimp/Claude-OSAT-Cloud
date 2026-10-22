@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { ErrorBoundary } from '../lib/ErrorBoundary.jsx'
 import { Database, Sparkle } from '@phosphor-icons/react'
 
@@ -37,6 +37,11 @@ import { PasswordsView } from '../views/Passwords.jsx'
 import { MeetingsView } from '../views/Meetings.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { Sidebar } from './Sidebar.jsx'
+// Canvases load Excalidraw only when one is opened; its fonts come from inside OSAT (public/excalidraw), never the web.
+const CanvasRoom = lazy(() => {
+  window.EXCALIDRAW_ASSET_PATH = new URL('excalidraw/', document.baseURI).href
+  return import('../canvas/CanvasRoom.jsx')
+})
 import { Welcome } from './Welcome.jsx'
 import { needsTour, Tour } from './Tour.jsx'
 
@@ -48,7 +53,7 @@ import { needsTour, Tour } from './Tour.jsx'
 
 // The rooms that can't do anything offline; they say so instead of opening.
 const ONLINE_ONLY = new Set(['Browser', 'Terminal', 'NowPlaying', 'GitHub'])
-const ROOMS = new Set(['Today', 'Todo', 'JustIn', 'Mindmap', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile'])
+const ROOMS = new Set(['Today', 'Todo', 'JustIn', 'Mindmap', 'Canvas', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile'])
 const BOARD_KEY = 'osat.boards.board.v1'
 
 export function Desk() {
@@ -223,8 +228,8 @@ export function Desk() {
     else if (view === 'Obsidian') go('Settings', { section: 'data' })
     else if (view === 'Reflection') go('Journal', { tab: 'reflect' })
     // A new board is named in the sidebar.
-    else if ((view === 'Mindmap' || view === 'Canvas') && detail?.action === 'new-node') setNewBoard(Date.now())
-    else if (view === 'Mindmap' || view === 'Sky' || view === 'Canvas') {
+    else if (view === 'Mindmap' && detail?.action === 'new-node') setNewBoard(Date.now())
+    else if (view === 'Mindmap' || view === 'Sky') {
       // A note sent to the boards opens the board it's on (Boards finds it); no board yet means Just in.
       const board = detail?.noteId ? null : boardFor(detail)
       if (!board && !detail?.noteId) go('JustIn', detail)
@@ -333,6 +338,7 @@ function Room({ at, common, storage, command, covered, boardsRef, setBoard }) {
     case 'Habits': return <HabitsView {...common} />
     case 'Goals': return <GoalsView {...common} />
     case 'Budget': return <BudgetView {...common} />
+    case 'Canvas': return <Suspense fallback={null}><CanvasRoom {...common} target={target} /></Suspense>
     case 'Settings': return <SettingsView {...common} storage={storage} target={at.detail?.section ? target : null} />
     case 'Roadmap': return <RoadmapView {...common} target={target} />
     case 'GitHub': return <GitHubView />
