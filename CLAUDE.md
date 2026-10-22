@@ -703,6 +703,22 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
 
+## Architecture added in Phase 86
+
+- Gmail signed in directly: `desktop/gmail.cjs` (`createGmail`, made in main just before `createMacMail`, which gets
+  it as `gmail` and routes `mail:list | search | read | reply | open` to it while `gmail.on()`; so does mail-follow,
+  through the `list`/`read` createMacMail returns). Sign-in is `authorize` in bots/mcp-signin.cjs (split from
+  `signIn`: Google has no dynamic registration) with `access_type=offline`, `prompt=consent`, scope gmail.readonly.
+  Refresh token in the Keychain as `gmail-refresh` (its own `createKeychain`, service OSAT / OSAT-Dev), access token
+  in memory, `gmail.json` = { email }. Reply/Open open `gmailLink` in the browser (the `open` line in main is in the
+  fence's ALLOWED list); `gmail:connect` waits offline. `shared/gmail-model.mjs`: `gmailRaw`/`gmailFull` (what
+  mail-model's messageRow/messageFull read), `bodyText` (plain part, else HTML as words), `decodeEntities`.
+  OSAT's Google client ("Desktop app" type) is `desktop/google-client.json` { id, secret }, gitignored (public repo),
+  written by CI's mac job from secrets `OSAT_GOOGLE_CLIENT_ID` / `OSAT_GOOGLE_CLIENT_SECRET`; without it
+  `status().ready` is false and the room shows the Mail app flow. Google's "unverified app" screen shows until
+  Google verifies OSAT (gmail.readonly is a restricted scope: needed before selling to many businesses).
+  tests/gmail.test.mjs (a pretend Google), tests/ui/mail.mjs.
+
 ## Architecture added in Phase 85
 
 - Canvases: `workspace.canvases` (schema 17; `normalizeCanvases` in `src/canvas/canvas-model.js`, called by

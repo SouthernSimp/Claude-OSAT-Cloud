@@ -282,7 +282,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 83 | Clients: mark a board as a client; it gets its own sidebar group, a last-met line and a With card of its meetings and mentions | In review (#119) |
 | 84 | To-dos from email: once an hour, what new mail asks of you becomes a to-do in Just in; only the AI on this Mac reads it, robots skipped, Take them back | In review (#120) |
 | 85 | Canvases: whiteboards with stickies, shapes, text, arrows for mind maps and a live kanban of any board; the Board tab renamed Kanban | In review (#121) |
-| 86 | Gmail, signed in directly: Connect Gmail with Google's own sign-in, instead of reading it through the Mac's Mail app | Planned |
+| 86 | Gmail, signed in directly: Connect Gmail with Google's own sign-in, instead of reading it through the Mac's Mail app | In review (#122) |
 | 87 | Banks in Money: connect a bank through Plaid; accounts, balances and transactions sync into Money with categories | Planned |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
