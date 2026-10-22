@@ -712,7 +712,7 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
 
-## Architecture added in Phase 88
+## Architecture added in Phase 89
 
 - Bills & subscriptions: `bills(transactions, today, { ignore, plans })` in src/money/money-model.js groups money out
   (not Transfers, the last 400 days) by `billKey(label)` (digits and punctuation dropped), takes the median gap

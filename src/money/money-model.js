@@ -112,7 +112,7 @@ export function recategorize(state, id, category) {
   return { ...state, budget: { ...state.budget, transactions: state.budget.transactions.map((entry) => (entry.id === id ? { ...entry, category: name } : entry)) } }
 }
 
-/* Bills and subscriptions (Phase 88): the same merchant charging about the same amount every week, month or year,
+/* Bills and subscriptions (Phase 89): the same merchant charging about the same amount every week, month or year,
    found in the entries; plus the plans kept by hand. Each with when it's next due, soonest first. A charge that
    stopped (none for half a cadence past when it was due) isn't listed; one Nate said isn't a bill (`ignore`, by key)
    neither. Amounts of a bill may wander a little (a phone bill); two charges only count when they match closely. */

@@ -57,7 +57,7 @@ export function TodayView({ workspace, commit, navigate }) {
   const habits = workspace.habits || []
   const kept = habits.filter((habit) => isHabitDone(habit, today)).length
   const money = monthMoney(workspace.budget, today.slice(0, 7))
-  // The next bill due this week (Phase 88), so it never surprises.
+  // The next bill due this week (Phase 89), so it never surprises.
   const bill = bills(workspace.budget.transactions, today, { ignore: workspace.budget.notBills || [], plans: workspace.budget.recurring }).find((item) => daysUntil(item.next, today) <= 7)
   const brief = todaysBrief(workspace, now)
   const line = dayLine({ todos: todos.length, late: todos.filter((item) => item.late).length, events: plan.length, waiting: waiting.length, habitsLeft: habits.length - kept })

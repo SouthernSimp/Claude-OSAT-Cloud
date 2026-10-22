@@ -14,7 +14,7 @@ export function dueWords(iso, today) {
   return `${DATE.format(new Date(`${iso}T12:00`))} · in ${days} days`;
 }
 
-/* Bills & subscriptions (Phase 88): what charges again and again, found in the bank's entries, and the plans kept by
+/* Bills & subscriptions (Phase 89): what charges again and again, found in the bank's entries, and the plans kept by
    hand, soonest first, with about what they come to in a month. "Not a bill" puts a found one away (with Undo); a
    plan is deleted the way it always was. */
 export function BillsCard({ budget, today, onNotBill, onDeletePlan }) {
