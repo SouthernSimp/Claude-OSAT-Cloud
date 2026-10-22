@@ -123,6 +123,11 @@ contextBridge.exposeInMainWorld('osatMail', Object.freeze({
   followNow: () => ipcRenderer.invoke('mail:follow-now'),
   undoFollow: () => ipcRenderer.invoke('mail:follow-undo'),
   onFollow: (listener) => listen('mail:follow-changed', listener),
+  // Gmail signed in directly (desktop/gmail.cjs, Phase 86): the token stays in main.
+  gmail: () => ipcRenderer.invoke('gmail:status'),
+  connectGmail: () => ipcRenderer.invoke('gmail:connect'),
+  disconnectGmail: () => ipcRenderer.invoke('gmail:disconnect'),
+  onGmail: (listener) => listen('gmail:changed', listener),
 }))
 
 // Tools → Passwords (desktop/passwords.cjs): locked until the master password. The window gets titles and usernames;

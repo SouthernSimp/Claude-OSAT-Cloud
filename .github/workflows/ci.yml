@@ -107,6 +107,15 @@ jobs:
           # With no file to write to, it says so and ends: it runs, and asks macOS for nothing.
           OUT="$(build/helpers/osat-listen < /dev/null || true)"
           test "$OUT" = "mic unavailable"
+      - name: OSAT's Google sign-in client for Gmail, from repository secrets (never committed; the repo is public)
+        env:
+          OSAT_GOOGLE_CLIENT_ID: ${{ secrets.OSAT_GOOGLE_CLIENT_ID }}
+          OSAT_GOOGLE_CLIENT_SECRET: ${{ secrets.OSAT_GOOGLE_CLIENT_SECRET }}
+        run: |
+          # Without them the build still works: Mail says Gmail sign-in isn't set up and reads the Mail app.
+          if [ -n "$OSAT_GOOGLE_CLIENT_ID" ]; then
+            node -e "require('fs').writeFileSync('desktop/google-client.json', JSON.stringify({ id: process.env.OSAT_GOOGLE_CLIENT_ID, secret: process.env.OSAT_GOOGLE_CLIENT_SECRET }))"
+          fi
       - name: Build the DMG
         env:
           # electron-builder skips all signing on pull requests by default, which

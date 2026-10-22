@@ -13,7 +13,7 @@ import { openRoom as openPlace } from './window.mjs'
 const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/mail`
 const PORT = Number(process.env.OSAT_PORT || 4327)
 
-function fakeMail({ denied = false, empty = false } = {}) {
+function fakeMail({ denied = false, empty = false, google = false } = {}) {
   const minutes = (n) => new Date(Date.now() - n * 60000).toISOString()
   const rows = [
     { id: 301, subject: 'Quote for the deck', from: { name: 'Sam Lee', address: 'sam@example.com' }, date: minutes(20), unread: true, snippet: 'Here is the price we talked about.' },
@@ -29,7 +29,11 @@ function fakeMail({ denied = false, empty = false } = {}) {
   window.__asked = []
   const wrap = (message) => new Error(`Error invoking remote method 'mail:x': Error: ${message}`)
   window.osatMail = {
-    status: async () => ({ available: true }),
+    status: async () => ({ available: true, gmail: google ? window.__gmail : null }),
+    // Gmail signed in directly (Phase 86): Connect Gmail "signs in" at once here; Gmail's ids are hex words.
+    connectGmail: async () => { window.__gmail = { ready: true, connected: true, email: 'nate@gmail.com', busy: false }; return window.__gmail },
+    disconnectGmail: async () => { window.__gmail = { ready: true, connected: false, email: '', busy: false }; return window.__gmail },
+    onGmail: () => () => {},
     allow: async () => {
       window.__mail.allowed += 1
       if (denied) throw wrap('OSAT isn’t allowed to control Mail. You can turn it on in System Settings → Privacy & Security → Automation → OSAT → Mail.')
@@ -55,6 +59,7 @@ function fakeMail({ denied = false, empty = false } = {}) {
     onFollow: () => () => {},
   }
   window.__follow = { on: false, busy: false, problem: '', last: null }
+  window.__gmail = { ready: true, connected: false, email: '', busy: false }
   window.osatLocalAI = {
     status: async () => ({ chosen: 'balanced', tiers: [], download: null }),
     onStatus: () => () => {},
@@ -85,10 +90,10 @@ async function start() {
 const problems = []
 const check = (ok, what) => { if (!ok) problems.push(what) }
 
-async function openRoom(browser, url, { theme, denied = false, empty = false }) {
+async function openRoom(browser, url, { theme, denied = false, empty = false, google = false }) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: theme })
   page.on('pageerror', (error) => problems.push(`${theme}: ${error.message}`))
-  await page.addInitScript(fakeMail, { denied, empty })
+  await page.addInitScript(fakeMail, { denied, empty, google })
   await page.addInitScript(() => { for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen') })
   await page.goto(`${url}?fresh=1`)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
@@ -213,6 +218,30 @@ async function main() {
   await empty.evaluate(() => window.dispatchEvent(new Event('focus')))
   await empty.locator('.mail-list li').first().waitFor({ timeout: 5000 }).catch(() => problems.push('after adding Gmail the inbox didn’t open'))
   await empty.close()
+
+  // Gmail, signed in directly: Connect Gmail comes first, nothing is read before it, and once connected the room says
+  // which address it reads; Open and Reply go to Gmail; Disconnect goes back to the start.
+  for (const theme of ['light', 'dark']) {
+    const gmail = await openRoom(browser, url, { theme, google: true })
+    await gmail.getByRole('heading', { name: 'Read your Gmail here' }).waitFor({ timeout: 5000 }).catch(() => problems.push(`${theme}: Connect Gmail wasn’t offered first`))
+    check(await gmail.locator('.mail-setup .primary-button').innerText() === 'Connect Gmail', `${theme}: Connect Gmail wasn’t the one primary action`)
+    check(await gmail.evaluate(() => window.__mail.list) === 0, `${theme}: mail was read before Connect Gmail`)
+    await sleep(400) // the room settles in
+    await gmail.screenshot({ path: `${OUT}/${theme}-gmail-connect.png` })
+    if (theme === 'dark') { await gmail.close(); continue }
+    await gmail.getByRole('button', { name: 'Connect Gmail' }).click()
+    await gmail.locator('.mail-list li').first().waitFor({ timeout: 5000 }).catch(() => problems.push('Connect Gmail didn’t open the inbox'))
+    await gmail.locator('.mail-accounts', { hasText: 'Reading Gmail (nate@gmail.com)' }).waitFor({ timeout: 3000 }).catch(() => problems.push('the room didn’t say it reads Gmail'))
+    await gmail.locator('.mail-list li button', { hasText: 'Lunch on Friday?' }).click()
+    await gmail.locator('.mail-body').waitFor({ timeout: 3000 })
+    await gmail.getByRole('button', { name: 'Reply' }).click()
+    await gmail.getByText('Opened in Gmail: reply there.').waitFor({ timeout: 3000 }).catch(() => problems.push('Reply with Gmail didn’t say it opened Gmail'))
+    check(await gmail.getByRole('button', { name: 'Open in Gmail' }).count() === 1, 'no Open in Gmail')
+    await gmail.screenshot({ path: `${OUT}/gmail-inbox.png` })
+    await gmail.locator('.mail-accounts').getByRole('button', { name: 'Disconnect' }).click()
+    await gmail.getByRole('heading', { name: 'Read your Gmail here' }).waitFor({ timeout: 3000 }).catch(() => problems.push('Disconnect didn’t go back to Connect Gmail'))
+    await gmail.close()
+  }
 
   // A Mac that says no: calm words and a way forward, not an error.
   const denied = await openRoom(browser, url, { theme: 'light', denied: true })

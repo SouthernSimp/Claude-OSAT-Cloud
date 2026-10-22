@@ -50,11 +50,11 @@ test('the script reads and replies; it cannot send, delete, move, mark or reach 
 
 test('status never asks the Mac, and says it is missing off the Mac or without Mail', async () => {
   const off = await setup(() => { throw new Error('should not run') }, { platform: 'linux' })
-  assert.deepEqual(await off.call('mail:status'), { available: false })
+  assert.deepEqual(await off.call('mail:status'), { available: false, gmail: null })
   const none = await setup(() => { throw new Error('should not run') }, { installed: () => false })
-  assert.deepEqual(await none.call('mail:status'), { available: false })
+  assert.deepEqual(await none.call('mail:status'), { available: false, gmail: null })
   const mac = await setup(() => { throw new Error('should not run') })
-  assert.deepEqual(await mac.call('mail:status'), { available: true })
+  assert.deepEqual(await mac.call('mail:status'), { available: true, gmail: null })
   assert.equal(mac.calls.length, 0)
 })
 

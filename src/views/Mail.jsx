@@ -14,9 +14,10 @@ const ALLOWED_KEY = 'osat.mail.allowed.v1'
 const wasAllowed = () => { try { return localStorage.getItem(ALLOWED_KEY) === '1' } catch { return false } }
 const keepAllowed = (on) => { try { on ? localStorage.setItem(ALLOWED_KEY, '1') : localStorage.removeItem(ALLOWED_KEY) } catch { /* the button just shows again */ } }
 
-/* Tools → Mail (Phase 59, desktop/mac-mail.cjs): your inbox, read through the Mail app on this Mac. Plain text
-   only: a message is never drawn as a page, and nothing in it is loaded or opened. Reply starts a draft in
-   Mail itself and sends nothing. Only in the Mac app. */
+/* Tools → Mail (Phase 59, desktop/mac-mail.cjs): your inbox, read through the Mail app on this Mac, or (Phase 86,
+   desktop/gmail.cjs) Gmail signed in directly, which comes first when this build can. Plain text only: a message is
+   never drawn as a page, and nothing in it is loaded or opened. Reply starts a draft in Mail, or opens the message in
+   Gmail; nothing is sent. Only in the Mac app. */
 export function MailView({ commit }) {
   const bridge = window.osatMail
   if (!bridge) return <p className="pop-gone">Your inbox shows here in OSAT on your Mac.</p>
@@ -43,6 +44,9 @@ function MailRoom({ bridge, commit }) {
   const [adding, setAdding] = useState(false)
   const [toast, showUndo] = useUndoToast()
   const latest = useRef(0)
+  // Gmail signed in directly (Phase 86): { ready, connected, email, busy }. Connected, it is what the room reads.
+  const [gmail, setGmail] = useState(null)
+  const google = gmail?.connected === true
 
   // Why Mail can't be read becomes a state of the room, not an error to dismiss.
   const explain = useCallback((error) => {
@@ -73,10 +77,39 @@ function MailRoom({ bridge, commit }) {
 
   useEffect(() => {
     bridge.status().then((next) => {
-      setAvailable(next?.available === true)
-      if (next?.available === true && wasAllowed()) { load(); lookAtAccounts() }
+      setGmail(next?.gmail || null)
+      setAvailable(next?.available === true || next?.gmail?.ready === true)
+      if (next?.gmail?.connected) { setAccess('allowed'); load() }
+      else if (next?.available === true && wasAllowed()) { load(); lookAtAccounts() }
     }, () => setAvailable(false))
+    return bridge.onGmail?.(setGmail)
   }, [bridge, load, lookAtAccounts])
+
+  async function connectGmail() {
+    setBusy(true)
+    setProblem('')
+    try {
+      const next = await bridge.connectGmail()
+      setGmail(next)
+      if (next?.connected) { setAccess('allowed'); setSelected(null); await load() }
+    } catch (error) {
+      setProblem(cleanError(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function disconnectGmail() {
+    setProblem('')
+    try {
+      setGmail(await bridge.disconnectGmail())
+      setRows(null)
+      setSelected(null)
+      setAccess(wasAllowed() ? 'allowed' : 'notAsked')
+      if (wasAllowed()) load()
+    } catch (error) {
+      setProblem(cleanError(error))
+    }
+  }
 
   /* Gmail is a Google account added to the Mac: System Settings signs in to Google itself, so OSAT never sees a
      password or a token, and the same sign-in brings Google Calendar to the Mac's Calendar. Coming back to OSAT
@@ -148,8 +181,9 @@ function MailRoom({ bridge, commit }) {
     setProblem('')
     try { await work(); setSaid(done) } catch (error) { setProblem(cleanError(error)) }
   }
-  const reply = act(() => bridge.reply(message.id), 'A reply is open in Mail. Nothing has been sent.')
-  const openInMail = act(() => bridge.open(message.id), 'Opened in Mail.')
+  const reply = act(() => bridge.reply(message.id), google ? 'Opened in Gmail: reply there.' : 'A reply is open in Mail. Nothing has been sent.')
+  const openInMail = act(() => bridge.open(message.id), google ? 'Opened in Gmail.' : 'Opened in Mail.')
+  const where = google ? 'Gmail' : 'Mail'
 
   function makeSticky() {
     const text = stickyText(message)
@@ -200,6 +234,19 @@ function MailRoom({ bridge, commit }) {
   const shown = useMemo(() => (rows || []).filter((row) => filter === 'all' || row.unread), [rows, filter])
 
   if (available === null) return <p className="pop-gone">Looking for Mail…</p>
+  // Gmail can be connected here: it comes first, with the Mail app as the other way.
+  if (gmail?.ready && !google && access !== 'allowed') {
+    return (
+      <div className="mail-setup">
+        <GoogleLogo weight="bold" aria-hidden="true" />
+        <h2>Read your Gmail here</h2>
+        <p>Sign in with Google in your browser and OSAT shows your inbox, finds any email and turns what it asks of you into to-dos. Read only: OSAT never sends, deletes or marks anything.</p>
+        <button type="button" className="primary-button" disabled={busy || gmail.busy} onClick={connectGmail}><GoogleLogo weight="bold" /> {busy || gmail.busy ? 'Finish signing in in your browser…' : 'Connect Gmail'}</button>
+        {problem && <p className="mail-said is-problem" role="alert"><Warning /> {problem}</p>}
+        {available && <p className="mail-quiet">Another kind of email? <button type="button" className="mail-link" disabled={busy} onClick={allow}>Read the Mail app on this Mac instead</button></p>}
+      </div>
+    )
+  }
   if (!available) {
     return (
       <div className="mail-setup">
@@ -260,7 +307,15 @@ function MailRoom({ bridge, commit }) {
           <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>All</button>
           <button type="button" aria-pressed={filter === 'unread'} onClick={() => setFilter('unread')}>Unread</button>
         </div>
-        {accounts && (
+        {google && (
+          <p className="mail-quiet mail-accounts">
+            Reading Gmail{gmail.email ? ` (${gmail.email})` : ''} · <button type="button" className="mail-link" onClick={disconnectGmail}>Disconnect</button>
+          </p>
+        )}
+        {!google && gmail?.ready && (
+          <p className="mail-quiet mail-accounts">Gmail is quicker signed in directly · <button type="button" className="mail-link" disabled={busy} onClick={connectGmail}>Connect Gmail</button></p>
+        )}
+        {accounts && !google && (
           <p className="mail-quiet mail-accounts">
             {accounts.length ? <>Reading {accounts.map((account) => account.gmail ? `Gmail${account.address ? ` (${account.address})` : ''}` : account.name).join(', ')}</> : 'No account is turned on in Mail.'}
             {!accounts.some((account) => account.gmail) && <> · <button type="button" className="mail-link" onClick={addGmail}>Add Gmail</button></>}
@@ -271,11 +326,11 @@ function MailRoom({ bridge, commit }) {
         {searched && (
           <p className="mail-quiet mail-searched">
             Results for “{searched.words}”
-            {!searched.inside && <> · <button type="button" className="mail-link" onClick={() => load(searched.words, true)}>Look inside messages too</button></>}
+            {!searched.inside && !google && <> · <button type="button" className="mail-link" onClick={() => load(searched.words, true)}>Look inside messages too</button></>}
             {' · '}<button type="button" className="mail-link" onClick={clearSearch}>Clear</button>
           </p>
         )}
-        {rows === null && !problem && <p className="mail-quiet">{loading ? 'Looking in Mail… the first time can take a moment.' : ''}</p>}
+        {rows === null && !problem && <p className="mail-quiet">{loading ? (google ? 'Looking in Gmail…' : 'Looking in Mail… the first time can take a moment.') : ''}</p>}
         <ul>
           {shown.map((row) => (
             <li key={row.id}>
@@ -305,13 +360,13 @@ function MailRoom({ bridge, commit }) {
             <div className="mail-actions">
               <button type="button" className="primary-button" onClick={reply}><ArrowBendUpLeft /> Reply</button>
               <button type="button" className="outline-button" onClick={makeSticky}><NotePencil /> Make a sticky</button>
-              <button type="button" className="outline-button" onClick={openInMail}><ArrowSquareOut /> Open in Mail</button>
+              <button type="button" className="outline-button" onClick={openInMail}><ArrowSquareOut /> Open in {where}</button>
               <button type="button" className="outline-button" aria-expanded={Boolean(asking)} onClick={() => (asking ? setAsking(null) : setAsking({ controller: null, question: '', text: '', done: true, error: '' }))}><Sparkle /> Ask about this message</button>
             </div>
             {said && <p className="mail-said" role="status">{said}</p>}
             {asking && <AskBox key={message.id} asking={asking} onAsk={ask} onClose={() => setAsking(null)} />}
             <pre className="mail-body" tabIndex={0} role="region" aria-label="Message text">{message.body || '(This message has no text.)'}</pre>
-            {message.truncated && <p className="mail-quiet">This is the start of a long message. Open in Mail to read all of it.</p>}
+            {message.truncated && <p className="mail-quiet">This is the start of a long message. Open in {where} to read all of it.</p>}
             <p className="mail-quiet">Shown as plain text. Pictures and links in a message aren’t loaded or opened here.</p>
           </article>
         )}

@@ -63,7 +63,8 @@ function loopback() {
 }
 
 async function token(fetch, url, client, fields) {
-  const body = new URLSearchParams({ ...fields, client_id: client.id })
+  // A field left out (no `resource` for Google) is never sent as the word "undefined".
+  const body = new URLSearchParams(Object.entries({ ...fields, client_id: client.id }).filter(([, value]) => value !== undefined && value !== ''))
   if (client.secret) body.set('client_secret', client.secret)
   const got = await readJson(fetch, url, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body })
     .catch((error) => { throw plain(error.body?.error === 'invalid_grant' ? 'The sign-in ran out. Sign in again.' : 'The app didn’t finish the sign-in. Try again.') })
@@ -75,7 +76,6 @@ async function token(fetch, url, client, fields) {
 async function signIn(url, { fetch, open, listen = loopback, wait = WAIT }) {
   const { resource, scope, meta } = await discover(url, fetch)
   const back = await listen()
-  let timer
   try {
     if (!https(meta.registration_endpoint)) throw plain('That app wants OSAT registered by hand first. Give it a key instead.')
     const made = await readJson(fetch, meta.registration_endpoint, {
@@ -85,22 +85,34 @@ async function signIn(url, { fetch, open, listen = loopback, wait = WAIT }) {
     }).catch(() => { throw plain('The app wouldn’t let OSAT sign in. Try again later, or give it a key.') })
     const client = { id: String(made.client_id || ''), secret: typeof made.client_secret === 'string' ? made.client_secret : '' }
     if (!client.id) throw plain('The app wouldn’t let OSAT sign in. Try again later, or give it a key.')
+    return await authorize({ meta, client, scope, resource }, { fetch, open, back, wait })
+  } finally {
+    back.close()
+  }
+}
 
+/* The browser part, for a client OSAT already has (registered above, or OSAT's own Google one, gmail.cjs): the
+   sign-in page with PKCE, the answer on 127.0.0.1, the code traded for tokens. `extra` adds to the page's address. */
+async function authorize({ meta, client, scope, resource, extra = {} }, { fetch, open, back, listen = loopback, wait = WAIT }) {
+  const own = back ? null : await listen()
+  const here = back || own
+  let timer
+  try {
     const verifier = b64url(randomBytes(32))
     const state = b64url(randomBytes(16))
     const page = new URL(meta.authorization_endpoint)
-    for (const [name, value] of Object.entries({ response_type: 'code', client_id: client.id, redirect_uri: back.redirect, code_challenge: b64url(createHash('sha256').update(verifier).digest()), code_challenge_method: 'S256', state, resource, ...(scope ? { scope } : {}) })) page.searchParams.set(name, value)
+    for (const [name, value] of Object.entries({ response_type: 'code', client_id: client.id, redirect_uri: here.redirect, code_challenge: b64url(createHash('sha256').update(verifier).digest()), code_challenge_method: 'S256', state, ...(resource ? { resource } : {}), ...(scope ? { scope } : {}), ...extra })) page.searchParams.set(name, value)
     await open(page.href)
 
-    const answer = await Promise.race([back.answer, new Promise((_, reject) => { timer = setTimeout(() => reject(plain('The sign-in took too long. Try again.')), wait) })])
+    const answer = await Promise.race([here.answer, new Promise((_, reject) => { timer = setTimeout(() => reject(plain('The sign-in took too long. Try again.')), wait) })])
     if (answer.get('state') !== state) throw plain('That sign-in wasn’t the one OSAT started. Try again.')
     if (answer.get('error')) throw plain(answer.get('error') === 'access_denied' ? 'The sign-in was cancelled.' : `The sign-in didn’t finish (${String(answer.get('error')).slice(0, 60)}).`)
     if (!answer.get('code')) throw plain('The app didn’t finish the sign-in. Try again.')
-    const tokens = await token(fetch, meta.token_endpoint, client, { grant_type: 'authorization_code', code: answer.get('code'), redirect_uri: back.redirect, code_verifier: verifier, resource })
+    const tokens = await token(fetch, meta.token_endpoint, client, { grant_type: 'authorization_code', code: answer.get('code'), redirect_uri: here.redirect, code_verifier: verifier, resource })
     return { ...tokens, clientId: client.id, clientSecret: client.secret, tokenUrl: meta.token_endpoint, resource }
   } finally {
     clearTimeout(timer)
-    back.close()
+    own?.close()
   }
 }
 
@@ -111,4 +123,4 @@ async function refreshed(saved, { fetch }) {
   return { ...saved, ...tokens, refresh: tokens.refresh || saved.refresh }
 }
 
-module.exports = { signIn, refreshed, discover, loopback }
+module.exports = { signIn, authorize, refreshed, discover, loopback }

@@ -11,6 +11,9 @@ work/
 test-results/
 # Mac helpers compiled by scripts/build-helpers.mjs, and llama.cpp's release it fetches
 build/helpers/
+
+# OSAT's Google sign-in client (desktop/gmail.cjs): written by CI from repository secrets, never committed
+desktop/google-client.json
 build/cache/
 # The iPhone app's generated project, its copy of the web app, and builds (see ios/project.yml)
 ios/Web/

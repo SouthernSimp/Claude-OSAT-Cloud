@@ -64,6 +64,8 @@ const WAITS = [
   [/^askapps:(call|check|sign-in)$/, 'Apps OSAT uses wait until you’re back online.'],
   // Tools → GitHub: every call goes to github.com.
   [/^github:/, 'GitHub waits until you’re back online.'],
+  // Gmail signed in directly: connecting goes to Google (reading says so on its own, through main's fetch).
+  [/^gmail:connect$/, 'Connecting Gmail waits until you’re back online.'],
 ]
 const refusal = (channel) => WAITS.find(([pattern]) => pattern.test(channel))?.[1] || null
 

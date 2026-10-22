@@ -63,6 +63,8 @@ const { createUpdater } = require('./updater.cjs')
 const { createMacCalendar } = require('./mac-calendar.cjs')
 const { createMacMail } = require('./mac-mail.cjs')
 const { createMailFollow } = require('./mail-follow.cjs')
+const { createGmail } = require('./gmail.cjs')
+const { createKeychain } = require('./bots/keychain.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
 const APP_URL = pathToFileURL(APP_ENTRY).href
@@ -1532,7 +1534,14 @@ app.whenReady().then(async () => {
   // Tools → GitHub (desktop/github.cjs, Phase 55): through the gh signed in on this Mac.
   await part('GitHub', () => createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on }))
   // Tools → Mail (desktop/mac-mail.cjs, Phase 59): the Mac's own Mail app. Local to this Mac, so it works Offline too.
-  macMail = await part('Mail', () => createMacMail({ sharedModule, handle, fail }))
+  // Gmail signed in directly (desktop/gmail.cjs, Phase 86); once connected, Mail reads it instead of the Mail app.
+  const gmail = await part('Gmail', () => createGmail({
+    dataDir: app.getPath('userData'), sharedModule, handle, fail, send: sendToAllWindows, fetch: globalThis.fetch,
+    keychain: createKeychain({ service: app.isPackaged ? 'OSAT' : 'OSAT-Dev' }),
+    // Google's sign-in page and a message in Gmail open in Nate's own browser. Refused offline on the same line.
+    open: async (url) => { if (!under.on && /^https:\/\//i.test(url)) await shell.openExternal(url) },
+  }))
+  macMail = await part('Mail', () => createMacMail({ sharedModule, handle, fail, gmail }))
   // Tools → Passwords (desktop/passwords.cjs, Phase 58): locked at every launch; locks on sleep, screen lock, the desk
   // put away, and quit. Its sealed file is read by nothing else.
   passwords = await part('Passwords', () => createPasswords({

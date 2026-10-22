@@ -19,8 +19,10 @@ const HIDDEN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F­؜᠎​-�
 
 const oneLine = (value, max) => (typeof value === 'string' ? value.replace(HIDDEN, '').replace(/\s+/g, ' ').trim().slice(0, max) : '')
 
-/* A Mail message id is a whole number; anything else never reaches the Mac. */
-export const validMessageId = (id) => typeof id === 'number' && Number.isSafeInteger(id) && id > 0 && id < 1e12
+/* A Mail message id is a whole number, a Gmail one (Phase 86) a short hex word; anything else never reaches the Mac
+   or Google. */
+export const validMessageId = (id) => (typeof id === 'number' && Number.isSafeInteger(id) && id > 0 && id < 1e12)
+  || (typeof id === 'string' && /^[0-9a-f]{6,32}$/.test(id))
 
 /* What may be typed into the search box and sent on: one line of plain words, no longer than QUERY_MAX.
    It is only ever passed to the Mac as data (JSON on the command line), never joined into a script. */
