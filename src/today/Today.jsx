@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, CalendarBlank, Check, CheckCircle, ClockCounterClockwise, CurrencyDollar, EnvelopeSimple, Files, ListChecks, Microphone, Plus, Target, Tray } from '@phosphor-icons/react'
+import { ArrowRight, CalendarBlank, Check, CheckCircle, ClockCounterClockwise, CurrencyDollar, ListChecks, Plus, Target, Tray } from '@phosphor-icons/react'
 
 import { WHAT_LABEL, WHAT_PAPER, whatOf } from '../../shared/what-model.mjs'
 import { sourceWords } from '../boards/boards-model.js'
@@ -68,18 +68,7 @@ export function TodayView({ workspace, commit, navigate }) {
         <p className="today-date">{now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         <h1>{greeting(now)}</h1>
         {brief ? <Markdown className="today-brief" text={brief} /> : <p className="today-line">{line}</p>}
-        <nav className="today-shortcuts" aria-label="Business shortcuts">
-          <button type="button" onClick={() => navigate('Mail')}><EnvelopeSimple aria-hidden="true" />Mail</button>
-          <button type="button" onClick={() => navigate('Meetings')}><Microphone aria-hidden="true" />Meetings</button>
-          <button type="button" onClick={() => navigate('Files')}><Files aria-hidden="true" />Files</button>
-        </nav>
       </header>
-
-      <nav className="today-overview" aria-label="Your day at a glance">
-        {[[CheckCircle, 'To do', todos.length, 'Todo'], [Tray, 'Just in', waiting.length, 'JustIn'], [CalendarBlank, 'Calendar', plan.length, 'Calendar']].map(([Icon, label, count, room]) => (
-          <button type="button" key={room} onClick={() => navigate(room)}><Icon aria-hidden="true" /><span>{label}</span><strong>{count}</strong><ArrowRight aria-hidden="true" /></button>
-        ))}
-      </nav>
 
       {boards.length > 0 && <section className="today-boards" aria-label="Your boards">
         <header><h2>Your boards</h2>{boards.length > 3 && <button type="button" className="today-more" aria-expanded={allBoards} aria-controls="today-board-list" onClick={() => setAllBoards(!allBoards)}>{allBoards ? 'Show fewer' : `All ${boards.length}`}<ArrowRight aria-hidden="true" /></button>}</header>
@@ -125,10 +114,6 @@ export function TodayView({ workspace, commit, navigate }) {
               </button>
             </li>)}</ul>
           </Card>}
-
-          <Card tint="violet" icon={Target} title="Goals" more="Open" onMore={() => navigate('Goals')}>
-            <GoalsSummary workspace={workspace} />
-          </Card>
         </div>
 
         <div className="today-col">
@@ -163,6 +148,10 @@ export function TodayView({ workspace, commit, navigate }) {
                 </ul>
               </div>
             )}
+          </Card>
+
+          <Card tint="violet" icon={Target} title="Goals" more="Open" onMore={() => navigate('Goals')}>
+            <GoalsSummary workspace={workspace} />
           </Card>
 
           <Card tint="orange" icon={ListChecks} title="Habits" more={habits.length ? 'Open' : ''} onMore={() => navigate('Habits')}>

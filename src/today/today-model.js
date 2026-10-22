@@ -18,8 +18,9 @@ export function dashboardBoards(state) {
   })
 }
 
+/* The notes touched last; to-dos are left to the To do card beside it. */
 export function recentWork(state) {
-  return state.notes.filter((note) => isActiveNote(note) && !note.kind)
+  return state.notes.filter((note) => isActiveNote(note) && !note.kind && whatOf(note) !== 'todo')
     .sort((a, b) => (Date.parse(b.updatedAt || b.createdAt) || 0) - (Date.parse(a.updatedAt || a.createdAt) || 0))
     .slice(0, 4)
 }

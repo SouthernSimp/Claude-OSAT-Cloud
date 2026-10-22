@@ -86,13 +86,14 @@ test('dashboard board progress includes branch steps and matches the Board, with
   ])
 })
 
-test('recent work uses edit time, omits deleted and journal pages, limits to four and leaves source order alone', () => {
+test('recent work uses edit time, omits deleted notes, journal pages and to-dos, limits to four and leaves source order alone', () => {
   const notes = [
     sticky('old', 'Older', {}, 5 * HOUR),
     sticky('edited', 'Edited', { updatedAt: iso(NOW + HOUR) }, 8 * HOUR),
     sticky('latest', 'Latest'), sticky('third', 'Third', {}, HOUR), sticky('fourth', 'Fourth', {}, 2 * HOUR),
     sticky('deleted', 'Deleted', { trashedAt: iso(NOW), updatedAt: iso(NOW + 3 * HOUR) }),
     sticky('journal', 'Day', { kind: 'day', updatedAt: iso(NOW + 4 * HOUR) }),
+    sticky('todo', 'Call Sam', { what: 'todo', updatedAt: iso(NOW + 5 * HOUR) }),
   ]
   const before = notes.map((note) => note.id)
   assert.deepEqual(recentWork({ notes }).map((note) => note.id), ['edited', 'latest', 'third', 'fourth'])

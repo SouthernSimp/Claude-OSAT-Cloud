@@ -305,6 +305,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 88 | One-click sign-in for 18 apps (Notion, Airtable, monday.com, ClickUp, Todoist, Linear, Jira and Confluence, Calendly, Stripe, Square, PayPal, Canva, Figma, Intercom, Webflow, Wix, Zapier, Granola), each checked to sign in on its own; Find an app | In review (#124) |
 | 89 | Bills & subscriptions: repeat charges found in the bank's entries plus your plans, soonest first, about what they come to a month; Today names the bill due this week | In review (#125) |
 | 90 | Money, redone: the whole window in two columns (the month, spending, cash flow and entries by day; accounts and bills beside), a month stepper, and one welcome when nothing is in yet | In review (#126) |
+| 91 | Today, tidied: one centred page, no repeated counts or shortcuts, Recent work without to-dos | In review (#127) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

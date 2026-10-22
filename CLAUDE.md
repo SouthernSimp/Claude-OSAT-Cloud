@@ -9,15 +9,13 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 22, 2026: Phases 81–87 shipped as build 356; 88–90 in one PR (#126)
+## Resume checkpoint — October 22, 2026: Phases 81–87 shipped as build 356; 88–91 in one PR (#126)
 
 Build 356 (Oct 22) shipped #116–#123. Then three phases, all folded into #126 so one Merge ships them (GitHub marks
 #124 and #125 merged with it): Phase 88 (#124, one-click sign-in for 18 apps), Phase 89 (#125, bills & subscriptions,
 another session) and Phase 90 (#126, Money redone). Nate asked to merge everything and then test; Claude Code's
 auto-mode check refuses `gh pr merge`, so Nate clicks Merge on #126.
-Also open: #127 (Phase 91, Today tidied, another session, base main). Its code merges cleanly with #126; only
-CHANGELOG.md and docs/ROADMAP.md conflict. After #126 merges, merge main into `claude/phase-91-today-layout` (with
-Nate's OK: it's that session's branch), put its line under the same Next build entry, then Nate merges #127.
+Phase 91 (#127, Today tidied, another session) is folded into #126 too, so merging #126 ships 88–91.
 Next, Nate agreed (Oct 22): make an OSAT design system in Claude Design (Artifact quickstart, intent "other") from
 src/styles/tokens.css and the Calm rules, then mock the next screen there before coding it.
 
@@ -27,6 +25,12 @@ with a `registration_endpoint`, and a 401 to an unsigned MCP initialize). Not su
 Slack, HubSpot, Asana, Box, GitHub. The Muse lessons and the proposed next phase ("Hand it a job", background jobs
 with connected apps) are in docs/ROADMAP.md; ask Nate before building it.
 
+
+Evening Oct 22: Nate called Today's layout "awful". Phase 91 (#127, `claude/phase-91-today-layout`, off main): one
+centred column (the two-column grid had stranded the counts strip on the far right), no counts strip or Mail /
+Meetings / Files buttons (the sidebar has both), Goals under Your day, Recent work without to-dos. Waits for Nate to
+see it. CI's Electron e2e failed on "the second OSAT did not hear the first one's rename" here and on #126 alike:
+not this change; look into it if it keeps failing.
 
 Later Oct 22: Gmail (#122) and Money with banks (#123) were built. Two things wait on Nate: Google Cloud project
 `osat-512421` (account thenatemccreery@gmail.com) has the Gmail API on, but its sign-in screen (Google Auth Platform)

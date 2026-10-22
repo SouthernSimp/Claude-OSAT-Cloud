@@ -1,20 +1,8 @@
-.today-dashboard { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: start; column-gap: 24px; }
-.today-dashboard > .today-boards, .today-dashboard > .today-grid { grid-column: 1 / -1; }
-.today-dashboard .today-head { position: relative; padding: 8px 0 0; }
+/* Today's dashboard: one centred column, so a wide window never strands the cards on one side. */
+.today.today-dashboard > * { max-width: 1080px; margin-inline: auto; }
+.today-dashboard .today-head { padding: 8px 0 0; }
 .today-dashboard .today-date { color: var(--muted); font-weight: 500; }
 .today-dashboard .today-line, .today-dashboard .today-brief { color: var(--muted); font-size: 14px; }
-.today-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-.today-shortcuts button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; }
-.today-shortcuts svg { width: 15px; height: 15px; }
-.today-shortcuts button:hover { background: var(--card); color: var(--ink); }
-.today-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-self: center; border-block: 1px solid var(--line); margin-bottom: 28px; padding: 16px 0; }
-.today-overview button { display: flex; align-items: center; gap: 10px; padding: 3px 20px; border-right: 1px solid var(--line); color: var(--muted); font-size: 14px; }
-.today-overview button:first-child { padding-left: 0; }
-.today-overview button:last-child { border-right: 0; }
-.today-overview svg { flex: none; width: 18px; height: 18px; color: var(--accent); }
-.today-overview strong { margin-left: auto; color: var(--ink-strong); font-size: 25px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.today-overview svg:last-child { width: 13px; color: var(--faint); }
-.today-overview button:hover span { color: var(--ink-strong); }
 .today-boards { margin-bottom: 28px; }
 .today-boards > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .today-boards h2 { font-size: 15px; font-weight: 600; color: var(--ink); }
@@ -34,12 +22,6 @@
 .today-dashboard .today-kicker svg { color: var(--kicker); }
 .today-dashboard .today-list > li { padding-block: 11px; }
 .today-dashboard .today-agenda li { padding-block: 10px; }
-@container room (max-width: 1000px) {
-  .today-dashboard { grid-template-columns: minmax(0, 1fr); }
-}
 @container room (max-width: 620px) {
   .today-board-list { grid-template-columns: minmax(0, 1fr); }
-  .today-overview button { flex-wrap: wrap; gap: 7px; padding-inline: 12px; font-size: 12px; }
-  .today-overview svg:last-child { display: none; }
-  .today-overview strong { font-size: 20px; }
 }
