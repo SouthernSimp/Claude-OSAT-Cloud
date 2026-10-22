@@ -75,23 +75,23 @@ const readDoc = (page) => page.evaluate(async () => {
   return new Promise((resolve) => { const request = db.transaction('workspace').objectStore('workspace').get('doc'); request.onsuccess = () => resolve(request.result) })
 })
 
-async function openRoom(browser, url, theme) {
+async function openRoom(browser, url, theme, entries = ENTRIES, recurring = []) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, colorScheme: theme })
   page.on('pageerror', (error) => problems.push(`${theme}: ${error.message}`))
   await page.addInitScript(fakeBank)
   await page.addInitScript(() => { for (const name of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(name, 'seen') })
   await page.route('**/seed.html', (route) => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>seed</title>' }))
   await page.goto(`${url}seed.html`)
-  await page.evaluate(async (transactions) => {
+  await page.evaluate(async ({ transactions, recurring }) => {
     const db = await new Promise((resolve, reject) => { const request = indexedDB.open('osat-preview', 1); request.onupgradeneeded = () => request.result.createObjectStore('workspace'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
     await new Promise((resolve, reject) => {
       const transaction = db.transaction('workspace', 'readwrite')
-      transaction.objectStore('workspace').put({ schema: 17, rev: 0, theme: 'system', notes: [], folders: [], habits: [], goals: [], canvases: [], reflections: [], focus: { status: 'idle' }, projects: [], sorter: null, calendar: { events: [] }, budget: { currency: 'USD', transactions, recurring: [] }, settings: { autoFile: { on: false }, seeded: { direction: true } }, chats: [] }, 'doc')
+      transaction.objectStore('workspace').put({ schema: 17, rev: 0, theme: 'system', notes: [], folders: [], habits: [], goals: [], canvases: [], reflections: [], focus: { status: 'idle' }, projects: [], sorter: null, calendar: { events: [] }, budget: { currency: 'USD', transactions, recurring }, settings: { autoFile: { on: false }, seeded: { direction: true } }, chats: [] }, 'doc')
       transaction.oncomplete = resolve
       transaction.onerror = () => reject(transaction.error)
     })
     db.close()
-  }, ENTRIES)
+  }, { transactions: entries, recurring })
   await page.goto(url)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
   await openPlace(page, 'Money')
@@ -176,6 +176,31 @@ async function main() {
     check(await banks.locator('.money-bank').count() === 1, 'Keep disconnected the bank')
     await page.close()
   }
+
+  // Bills & subscriptions: Netflix each month and the gym each week are found, the rent plan joins them, soonest first;
+  // Not a bill puts one away with Undo; Today names the bill due this week.
+  const iso = (days) => { const date = new Date(); date.setDate(date.getDate() + days); return `${key(date)}-${String(date.getDate()).padStart(2, '0')}` }
+  const repeats = [
+    ...[-62, -32, -2].map((days, index) => ({ id: `plaid-n${index}`, label: 'NETFLIX.COM', amountMinor: -1549, category: 'Entertainment', date: iso(days), bank: 'Chase' })),
+    ...[-15, -8, -1].map((days, index) => ({ id: `plaid-g${index}`, label: 'Gym', amountMinor: -2500, category: 'Health & wellness', date: iso(days), bank: 'Chase' })),
+  ]
+  const page = await openRoom(browser, url, 'light', repeats, [{ id: 'recurring-rent', label: 'Rent', amountMinor: -180000, category: 'Bills & utilities', date: iso(20), cadence: 'monthly' }])
+  const card = page.getByRole('region', { name: 'Bills and subscriptions' })
+  await card.waitFor({ timeout: 3000 }).catch(() => problems.push('Bills & subscriptions didn’t show'))
+  const names = await card.locator('li strong').allInnerTexts()
+  check(JSON.stringify(names) === '["Gym","Rent","NETFLIX.COM"]', `the bills weren’t soonest first: ${JSON.stringify(names)}`)
+  check((await card.locator('li').first().innerText()).includes('every week'), 'the gym wasn’t weekly')
+  check((await card.locator('li', { hasText: 'Rent' }).innerText()).includes('your plan'), 'the plan didn’t say it was yours')
+  await card.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `${OUT}/bills.png` })
+  await card.locator('li', { hasText: 'NETFLIX.COM' }).getByRole('button', { name: 'Not a bill' }).click()
+  check(await card.locator('li', { hasText: 'NETFLIX.COM' }).count() === 0, 'Not a bill didn’t put Netflix away')
+  check(JSON.stringify((await readDoc(page)).budget.notBills) === '["netflix com"]', 'Not a bill wasn’t remembered')
+  await page.locator('.toast button', { hasText: 'Undo' }).click()
+  check(await card.locator('li', { hasText: 'NETFLIX.COM' }).count() === 1, 'Undo didn’t bring Netflix back')
+  await page.locator('nav.side').getByRole('button', { name: 'Today' }).first().click()
+  await page.getByText('Next bill: Gym, $25.00', { exact: false }).waitFor({ timeout: 3000 }).catch(() => problems.push('Today didn’t name the bill due this week'))
+  await page.close()
   await browser.close()
 }
 

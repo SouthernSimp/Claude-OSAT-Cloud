@@ -709,3 +709,13 @@
 .money-only { margin: -4px 0 10px; }
 .money-cat { field-sizing: content; max-width: 180px; padding: 0 2px; color: var(--muted); background: none; border: 0; border-radius: 4px; font: inherit; font-size: var(--t-xs); cursor: pointer; }
 .money-cat:hover, .money-cat:focus-visible { color: var(--ink); background: var(--line); }
+
+/* Bills & subscriptions (Phase 88). */
+.money-bills ul { display: grid; margin: 0; padding: 0; list-style: none; }
+.money-bills li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px dashed var(--line); }
+.money-bills li:last-child { border-bottom: 0; }
+.money-bills li strong { display: block; overflow: hidden; font-size: var(--t-sm); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.money-bills li small { color: var(--muted); font-size: var(--t-xs); }
+.money-bills li b { font-size: var(--t-sm); font-variant-numeric: tabular-nums; }
+.money-bills .money-link { font-size: var(--t-xs); }
+.money-banks + .money-card { margin-top: 16px; }

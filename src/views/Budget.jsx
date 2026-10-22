@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { cleanError } from "../assistant/useAi.js";
 import { CATEGORIES } from "../../shared/bank-model.mjs";
 import { CashFlow, SpendingCard } from "../money/Charts.jsx";
-import { holdings, monthTotals, recategorize, setLimit } from "../money/money-model.js";
+import { BillsCard } from "../money/Bills.jsx";
+import { holdings, monthTotals, recategorize, setLimit, setNotBill } from "../money/money-model.js";
 import { makeId } from "../lib/ui.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { localDateKey } from "../daily-practice.js";
@@ -51,6 +52,10 @@ export function BudgetView({ workspace, commit }) {
     if (before === minor) return;
     commit((state) => setLimit(state, category, minor));
     showUndo(minor ? `${category}: ${formatMinor(minor)} a month` : `No budget for ${category}`, () => commit((state) => setLimit(state, category, before)));
+  }
+  function notBill(bill) {
+    commit((state) => setNotBill(state, bill.key, true));
+    showUndo(`“${bill.label}” isn’t a bill`, () => commit((state) => setNotBill(state, bill.key, false)));
   }
   function changeCategory(entry, category) {
     commit((state) => recategorize(state, entry.id, category));
@@ -122,6 +127,7 @@ export function BudgetView({ workspace, commit }) {
       </header>
 
       <BankCard state={bank} setState={setBank} />
+      <BillsCard budget={workspace.budget} today={localDateKey()} onNotBill={notBill} onDeletePlan={(id) => removeFrom("recurring", workspace.budget.recurring.find((item) => item.id === id))} />
 
       <div className="money-period"><h2>This month</h2><input aria-label="Ledger month" type="month" value={month} onChange={(event) => setMonth(event.target.value || localDateKey().slice(0, 7))} /></div>
       <div className="money-overview"><article><ArrowDownLeft /><span>Money in</span><strong>{formatMinor(totals.in)}</strong></article><article><ArrowUpRight /><span>Money out</span><strong>{formatMinor(totals.out)}</strong></article><article><Wallet /><span>Left over</span><strong>{formatMinor(totals.net)}</strong></article></div>
@@ -194,25 +200,6 @@ export function BudgetView({ workspace, commit }) {
           <p className="money-empty">{monthly.length ? "Nothing matches. Try other words, or Show everything." : "No entries for this month. Connect a bank, or start with one thing you spent or earned."}</p>
         )}
       </div>
-
-      {workspace.budget.recurring.length > 0 ? (
-        <div className="money-plans">
-          <h2>Plans</h2>
-          {workspace.budget.recurring.map((item) => (
-            <div className="money-plan-row" key={item.id}>
-              <span>{item.label} · {formatMinor(item.amountMinor)} · {item.cadence}</span>
-              <button
-                className="icon-button"
-                type="button"
-                aria-label={`Delete ${item.label}`}
-                onClick={() => removeFrom("recurring", item)}
-              >
-                <Trash />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
 
       {showImport ? (
         <section className="money-import">

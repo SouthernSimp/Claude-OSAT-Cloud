@@ -712,6 +712,16 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
 
+## Architecture added in Phase 88
+
+- Bills & subscriptions: `bills(transactions, today, { ignore, plans })` in src/money/money-model.js groups money out
+  (not Transfers, the last 400 days) by `billKey(label)` (digits and punctuation dropped), takes the median gap
+  (weekly 6–8 days with 3+ charges, monthly 25–35, yearly 355–375) and amounts within 25% (5% for only two charges),
+  drops one that stopped (no charge for 1.5 gaps + 5 days), and adds the hand-kept plans (`budget.recurring`) with
+  their next date; `billsPerMonth`, `daysUntil`, `setNotBill` (`budget.notBills`, keys, kept by normalizeBudget).
+  `src/money/Bills.jsx`: `BillsCard` (Money, under the banks; replaces the old Plans list: a plan's row deletes it,
+  a found one has Not a bill with Undo) and `dueWords`. Today's money card names a bill due within seven days.
+
 ## Architecture added in Phase 87
 
 - Banks: `desktop/bank.cjs` (`createBank`, made in main beside Gmail with the same `keychain` and `openOut`; entries

@@ -12,6 +12,8 @@ import { captureThought, comingUp, isActiveNote, setDone, setWhat } from '../not
 import { formatMinor } from '../osat-data.js'
 import { useMacCalendar } from '../views/MacCalendar.jsx'
 import { dashboardBoards, dayLine, dayPlan, greeting, monthMoney, openTodos, recentWork } from './today-model.js'
+import { bills, daysUntil } from '../money/money-model.js'
+import { dueWords } from '../money/Bills.jsx'
 import './dashboard.css'
 
 const TICK_MS = 420
@@ -55,6 +57,8 @@ export function TodayView({ workspace, commit, navigate }) {
   const habits = workspace.habits || []
   const kept = habits.filter((habit) => isHabitDone(habit, today)).length
   const money = monthMoney(workspace.budget, today.slice(0, 7))
+  // The next bill due this week (Phase 88), so it never surprises.
+  const bill = bills(workspace.budget.transactions, today, { ignore: workspace.budget.notBills || [], plans: workspace.budget.recurring }).find((item) => daysUntil(item.next, today) <= 7)
   const brief = todaysBrief(workspace, now)
   const line = dayLine({ todos: todos.length, late: todos.filter((item) => item.late).length, events: plan.length, waiting: waiting.length, habitsLeft: habits.length - kept })
 
@@ -190,11 +194,12 @@ export function TodayView({ workspace, commit, navigate }) {
           </Card>
 
           <Card tint="teal" icon={CurrencyDollar} title={now.toLocaleDateString('en-US', { month: 'long' })} more="Money" onMore={() => navigate('Budget')}>
-            {money.spent || money.income
+            {money.spent || money.income || bill
               ? (
                 <div className="today-money">
                   <p><strong>{formatMinor(money.spent)}</strong> spent</p>
                   {money.income > 0 && <p className="today-sub">{formatMinor(money.income)} came in</p>}
+                  {bill && <p className="today-sub">Next bill: {bill.label}, {formatMinor(bill.amountMinor)}, {dueWords(bill.next, today)}</p>}
                 </div>
               )
               : <p className="today-empty">Nothing logged this month yet.</p>}

@@ -289,6 +289,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 85 | Canvases: whiteboards with stickies, shapes, text, arrows for mind maps and a live kanban of any board; the Board tab renamed Kanban | In review (#121) |
 | 86 | Gmail, signed in directly: Connect Gmail with Google's own sign-in, instead of reading it through the Mac's Mail app | In review (#122) |
 | 87 | Money, fully built out: banks through Plaid (accounts, balances, transactions each hour), spending by category (donut and table), budgets per category, six months of cash flow, find and recategorize | In review (#123) |
+| 88 | Bills & subscriptions: repeat charges found in the bank's entries plus your plans, soonest first, about what they come to a month; Today names the bill due this week | In review (#124) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
