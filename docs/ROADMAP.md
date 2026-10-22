@@ -290,7 +290,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 86 | Gmail, signed in directly: Connect Gmail with Google's own sign-in, instead of reading it through the Mac's Mail app | Merged (PR #122), build 356, Oct 22 |
 | 87 | Money, fully built out: banks through Plaid (accounts, balances, transactions each hour), spending by category (donut and table), budgets per category, six months of cash flow, find and recategorize | Merged (PR #123), build 356, Oct 22 |
 | 89 | Bills & subscriptions: repeat charges found in the bank's entries plus your plans, soonest first, about what they come to a month; Today names the bill due this week | In review (#125) |
-| 90 | Money, redone: the whole window in two columns (the month, spending, cash flow and entries by day; accounts and bills beside), a month stepper, and one welcome when nothing is in yet | In review (#PR90) |
+| 90 | Money, redone: the whole window in two columns (the month, spending, cash flow and entries by day; accounts and bills beside), a month stepper, and one welcome when nothing is in yet | In review (#126) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
