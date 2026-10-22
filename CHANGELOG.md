@@ -18,7 +18,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   Transfers between your own accounts are never counted as spending. (#123)
 - **Bills & subscriptions:** Money finds what charges you again and again (Netflix, the phone bill, the gym) and
   lists it with your own plans, soonest first, with about what they come to a month. Not a bill puts one away, with
-  Undo. Today names the bill due this week. (#124)
+  Undo. Today names the bill due this week. (#125)
 
 - **Today brings your work together:** your boards with their real progress, recently edited notes, your day at a
   glance and shortcuts to Mail, Meetings and Files. Open a board or note straight from Today. Calendar entries
