@@ -15,6 +15,11 @@ Build 356 (Oct 22) shipped #116–#123. Then three phases, all folded into #126 
 #124 and #125 merged with it): Phase 88 (#124, one-click sign-in for 18 apps), Phase 89 (#125, bills & subscriptions,
 another session) and Phase 90 (#126, Money redone). Nate asked to merge everything and then test; Claude Code's
 auto-mode check refuses `gh pr merge`, so Nate clicks Merge on #126.
+Also open: #127 (Phase 91, Today tidied, another session, base main). Its code merges cleanly with #126; only
+CHANGELOG.md and docs/ROADMAP.md conflict. After #126 merges, merge main into `claude/phase-91-today-layout` (with
+Nate's OK: it's that session's branch), put its line under the same Next build entry, then Nate merges #127.
+Next, Nate agreed (Oct 22): make an OSAT design system in Claude Design (Artifact quickstart, intent "other") from
+src/styles/tokens.css and the Calm rules, then mock the next screen there before coding it.
 
 Phase 88: Nate asked for one-click sign-in for his apps and for more "wow", learning from what made Muse (Meta's
 agent) successful. `SIGN_IN_APPS` in AskAppsCard.jsx grew from 2 to 18 apps, each probed (RFC 9728/8414 metadata
