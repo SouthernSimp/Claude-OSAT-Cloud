@@ -87,7 +87,8 @@ export const migrations = [
   { from: 14, run: (doc) => ({ ...doc, goals: Array.isArray(doc.goals) ? doc.goals : [] }) },
   // 16 (Phase 83): a board may be a client (`client: true`). Nothing starts marked; an older OSAT would drop it.
   { from: 15, run: (doc) => doc },
-  // 17 (Phase 85): canvases, whiteboards of shapes, text, arrows and stickies. An older OSAT would drop them.
+  // 17 (Phase 85, 87): canvases (whiteboards of shapes, text, arrows and stickies), and Money's budgets per category
+  // (`budget.limits`) and the bank an entry came from (`bank`). An older OSAT would drop them.
   { from: 16, run: (doc) => ({ ...doc, canvases: Array.isArray(doc.canvases) ? doc.canvases : [] }) },
 ]
 

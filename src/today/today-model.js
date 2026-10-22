@@ -82,9 +82,10 @@ export function dayLine({ todos = 0, late = 0, events = 0, waiting = 0, habitsLe
   return `${line[0].toUpperCase()}${line.slice(1)}.`
 }
 
-/* Money this month, in minor units: { spent, income } from the ledger's entries dated in `month` (YYYY-MM). */
+/* Money this month, in minor units: { spent, income } from the ledger's entries dated in `month` (YYYY-MM). Transfers
+   between your own accounts are neither (Phase 87). */
 export function monthMoney(budget, month) {
-  const entries = (budget?.transactions || []).filter((entry) => String(entry.date).startsWith(month))
+  const entries = (budget?.transactions || []).filter((entry) => String(entry.date).startsWith(month) && entry.category !== 'Transfers')
   return {
     spent: entries.filter((entry) => entry.amountMinor < 0).reduce((sum, entry) => sum - entry.amountMinor, 0),
     income: entries.filter((entry) => entry.amountMinor > 0).reduce((sum, entry) => sum + entry.amountMinor, 0),

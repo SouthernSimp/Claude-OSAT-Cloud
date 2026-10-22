@@ -47,11 +47,17 @@ function normalizeBudget(value) {
       amountMinor: entry.amountMinor,
       category: cleanString(entry.category, 'Uncategorized').trim() || 'Uncategorized',
       date: cleanString(entry.date, new Date().toISOString().slice(0, 10)),
+      // The bank an entry came from (Phase 87, Plaid); a hand-kept entry has none.
+      ...(!recurring && cleanString(entry.bank).trim() ? { bank: entry.bank.trim().slice(0, 60) } : {}),
       ...(recurring ? { cadence: ['weekly', 'monthly', 'yearly'].includes(entry.cadence) ? entry.cadence : 'monthly' } : {}),
     }
   }
+  // A monthly budget per category (Phase 87): { "Food & drink": 30000 }, cents, only positive whole amounts.
+  const limits = Object.fromEntries(Object.entries(isObject(input.limits) ? input.limits : {})
+    .filter(([name, minor]) => name.trim() && name.length <= 60 && Number.isSafeInteger(minor) && minor > 0))
   return {
     currency: 'USD',
+    ...(Object.keys(limits).length ? { limits } : {}),
     transactions: (Array.isArray(input.transactions) ? input.transactions : []).map((entry) => cleanEntry(entry)).filter(Boolean),
     recurring: (Array.isArray(input.recurring) ? input.recurring : []).map((entry) => cleanEntry(entry, true)).filter(Boolean),
   }

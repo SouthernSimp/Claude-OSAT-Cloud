@@ -4,7 +4,7 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 22, 2026 — Canvases are back, Connect Gmail, a clearer view of your work, clients, and to-dos from Granola and email
+## Next build · October 22, 2026 — Canvases are back, Connect Gmail, your bank in Money, a clearer view of your work, clients, and to-dos from Granola and email
 
 - **Canvases:** whiteboards in the sidebar, as many as you like. Stickies (the Sticky button or N), shapes, text
   boxes and arrows that hold on, for mind maps, and a live kanban of any board right on the canvas. Everything saves
@@ -12,6 +12,10 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 - **The Board tab is called Kanban,** so it's easy to find: Later, Next, Doing, Done. (#121)
 - **Connect Gmail:** Mail signs in to Gmail directly with Google's own sign-in, instead of going through the Mac's
   Mail app. Your inbox, Gmail's search and To-dos from email, read only: nothing is sent or changed. (#122)
+- **Money, fully built out:** connect your bank through Plaid (your keys stay in the Mac's Keychain) and your
+  accounts, balances and spending come in by themselves every hour. Spending by category as a donut and a table,
+  a budget for any category, six months of cash flow, find any entry, and move one to another category with Undo.
+  Transfers between your own accounts are never counted as spending. (#123)
 
 - **Today brings your work together:** your boards with their real progress, recently edited notes, your day at a
   glance and shortcuts to Mail, Meetings and Files. Open a board or note straight from Today. Calendar entries

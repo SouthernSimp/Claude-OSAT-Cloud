@@ -9,7 +9,16 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 22, 2026: Phase 85 canvases (#121, on top of #120); Gmail sign-in next, then banks
+## Resume checkpoint — October 22, 2026: Phases 85–87 (#121 canvases, #122 Gmail, #123 Money), stacked on #120
+
+Later Oct 22: Gmail (#122) and Money with banks (#123) were built. Two things wait on Nate: Google Cloud project
+`osat-512421` (account thenatemccreery@gmail.com) has the Gmail API on, but its sign-in screen (Google Auth Platform)
+stopped at "I agree to the Google API Services: User Data Policy", which needs his yes; then add the gmail.readonly
+scope, publish to production (Testing signs people out every 7 days), make a Desktop client, and save it as the
+secrets OSAT_GOOGLE_CLIENT_ID / OSAT_GOOGLE_CLIENT_SECRET. Plaid: his team is on the free Trial with production keys;
+he pastes them into Money once a build with #123 is installed. Plaid's MCP servers (claude.ai "Plaid Developer
+Tools" and `plaid` at mcp.plaid.com) are connected in Claude Code from the next session on.
+
 
 Oct 22: Nate asked for the whiteboard back ("really helpful with planning and thinking out ideas"), several canvases,
 a kanban he can put on a canvas, Excalidraw-style shapes and text but no freehand (left-handed, mouse in the right
@@ -702,6 +711,28 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phase 87
+
+- Banks: `desktop/bank.cjs` (`createBank`, made in main beside Gmail with the same `keychain` and `openOut`; entries
+  commit through the store as `bankClient`). Keys `plaid-client-id` / `plaid-secret` in the Keychain, tried on
+  production then sandbox (`/institutions/get`), the one that answers is `env` in `bank.json` ({ env, items: [{ id,
+  key, bank, cursor, accounts, problem, at }] }, never a token). Connect: `/link/token/create` with `hosted_link: {}` →
+  `hosted_link_url` opened in the browser → `/link/token/get` every 3 s (30 min) → `finishedLink` → exchange → access
+  token in the Keychain as `plaid-item-<sha256 16>` → `sync`. Sync: `/transactions/sync` by cursor, `bankOps` (add /
+  patch keeping a hand-picked category / del) against `store.load().doc`; accounts from each page (`accountRow`: a card
+  or loan shows `current`, owed; else `available`). Hourly, two minutes after start, a minute after a new bank.
+  `bank:*` channels, `osatBank` in the preload; `bank:keys|connect|sync` wait offline.
+- `shared/bank-model.mjs`: `categoryName(pfc)` maps Plaid's primary/detailed categories to familiar names (Food & drink,
+  Groceries, Gas, Health & wellness, Bills & utilities…); `TRANSFERS` (transfers and card payments) is never spending
+  or income anywhere (money-model, Today's `monthMoney`). `CATEGORIES` feeds each entry's category picker.
+- `src/money/money-model.js` (pure, tests/money.test.mjs): `monthTotals`, `spending` (rows with share and budget,
+  `slices`: five plus "Everything else"), `arcs`/`ringPath` (the donut), `cashFlow` (six months), `holdings` (cash and
+  owed), `readLimit`/`setLimit` (`budget.limits`, cents per category, kept by normalizeBudget), `recategorize`.
+  `src/money/Charts.jsx`: `SpendingCard` (table + donut, hover, pick a category to narrow the list, Set a budget in the
+  row) and `CashFlow` (in/out bars, hover tooltip). Colours are the dataviz skill's categorical slots 1–5, validated on
+  OSAT's surfaces in both modes (tokens on `.money-page` in views.css); the table is the relief for the three light
+  slots under 3:1. tests/bank.test.mjs (a pretend Plaid), tests/ui/money.mjs.
 
 ## Architecture added in Phase 86
 

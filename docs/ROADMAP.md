@@ -73,6 +73,11 @@ Now: as many canvases as he likes in the sidebar, each a whiteboard (Excalidraw)
 arrows for mind maps and a live kanban of any board; the tab is called Kanban. No freehand drawing needed (he
 uses a mouse right-handed, being left-handed).
 
+Phase 87 (in review, PR #123): Money, fully built out, Nate's ask ("a PFM app inside OSAT so the financials area
+finally feels fully built out", with a bank's Spending by category donut and table as the reference). His Plaid team is on
+the free Trial (10 banks, production keys on dashboard.plaid.com); he pastes the Client ID and Secret into Money once.
+OSAT opens Plaid's Hosted Link page in the browser, syncs every hour, never counts transfers as spending.
+
 Next, in Nate's order (Oct 22): Phase 86, Gmail signed in directly (he picked Sign in with Google over an app password;
 the Mac Mail app route was slow on a big Gmail inbox and kept breaking), then Phase 87, banks in Money through Plaid
 (started on branch `claude/phase-85-bank`: the transaction model is written; OSAT needs Nate's own Plaid keys, since
@@ -283,7 +288,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 84 | To-dos from email: once an hour, what new mail asks of you becomes a to-do in Just in; only the AI on this Mac reads it, robots skipped, Take them back | In review (#120) |
 | 85 | Canvases: whiteboards with stickies, shapes, text, arrows for mind maps and a live kanban of any board; the Board tab renamed Kanban | In review (#121) |
 | 86 | Gmail, signed in directly: Connect Gmail with Google's own sign-in, instead of reading it through the Mac's Mail app | In review (#122) |
-| 87 | Banks in Money: connect a bank through Plaid; accounts, balances and transactions sync into Money with categories | Planned |
+| 87 | Money, fully built out: banks through Plaid (accounts, balances, transactions each hour), spending by category (donut and table), budgets per category, six months of cash flow, find and recategorize | In review (#123) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

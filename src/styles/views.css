@@ -628,3 +628,84 @@
 .roadmap-room .md th {
   white-space: nowrap;
 }
+
+/* Money's banks and Where it went (Phase 87). */
+.money-banks { display: grid; gap: 12px; margin: 24px 0 0; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.money-banks > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+.money-banks > header > svg { width: 22px; height: 22px; margin-top: 2px; color: var(--accent); }
+.money-banks h2 { margin: 0; font-size: var(--t-md); }
+.money-banks h2 small { color: var(--muted); font-weight: 400; }
+.money-banks header p { margin: 4px 0 0; color: var(--muted); font-size: var(--t-sm); }
+.money-banks-actions { display: flex; gap: 8px; align-items: center; }
+.money-banks-actions button { display: inline-flex; align-items: center; gap: 6px; }
+.money-keys { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
+.money-keys input { padding: 9px 12px; color: var(--ink); background: var(--page, #fff); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: var(--t-sm); }
+.money-quiet { margin: 0; color: var(--muted); font-size: var(--t-xs); }
+.money-problem { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--critical); font-size: var(--t-sm); }
+.money-link { padding: 0; color: var(--accent); background: none; border: 0; font: inherit; cursor: pointer; }
+.money-bank { padding: 12px 14px; background: var(--page, #fff); border: 1px solid var(--line); border-radius: 10px; }
+.money-bank-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: var(--t-sm); }
+.money-bank ul { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.money-bank li { display: flex; justify-content: space-between; gap: 12px; font-size: var(--t-sm); }
+.money-bank li span { color: var(--muted); }
+.money-bank li b { font-variant-numeric: tabular-nums; }
+@container room (max-width: 560px) {
+  .money-keys { grid-template-columns: minmax(0, 1fr); }
+  .money-banks > header { grid-template-columns: minmax(0, 1fr); }
+  .money-spending-body { grid-template-columns: minmax(0, 1fr); }
+  .money-donut { order: -1; justify-self: center; }
+  .money-find { flex: 1 1 100%; margin-left: 0; }
+}
+
+/* Money's charts (Phase 87): the dataviz skill's validated categorical slots 1–5 (light and dark, each validated on
+   OSAT's surface), a neutral for "Everything else". Text stays in ink colours; a coloured dot beside it names it. */
+.money-page { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100; --series-5: #e87ba4; --series-0: #c3c2b7; --meter-track: #ebebea; }
+:root[data-theme="dark"] .money-page { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; --series-0: #4a4a47; --meter-track: #2c2c2a; }
+.money-page [data-slot="1"] { --c: var(--series-1); } .money-page [data-slot="2"] { --c: var(--series-2); } .money-page [data-slot="3"] { --c: var(--series-3); }
+.money-page [data-slot="4"] { --c: var(--series-4); } .money-page [data-slot="5"] { --c: var(--series-5); } .money-page [data-slot="0"] { --c: var(--series-0); }
+.money-card { margin: 0 0 24px; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.money-card > header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; margin-bottom: 14px; }
+.money-card h2 { margin: 0; font-size: 15px; letter-spacing: -.02em; }
+.money-card header p { margin: 0; color: var(--muted); font-size: var(--t-xs); }
+.money-spending-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 24px; }
+.money-spending table { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
+.money-spending th, .money-spending td { padding: 6px 8px; text-align: right; border-bottom: 1px dashed var(--line); font-variant-numeric: tabular-nums; }
+.money-spending thead th { color: var(--muted); font-size: var(--t-2xs); font-weight: 600; border-bottom-style: solid; }
+.money-spending th:first-child { text-align: left; }
+.money-spending td:last-child { width: 150px; }
+.money-spending tr[aria-current] { background: var(--line); }
+.money-cat-pick { display: inline-flex; align-items: center; gap: 8px; padding: 0; color: var(--ink); background: none; border: 0; font: inherit; font-weight: 500; text-align: left; cursor: pointer; }
+.money-cat-pick:hover { text-decoration: underline; }
+.money-dot { width: 10px; height: 10px; flex: none; background: var(--c); border-radius: 50%; }
+.money-dot[data-slot="0"] { background: none; border: 1.5px dashed var(--series-0); }
+.money-donut { position: relative; margin: 0; }
+.money-donut svg { display: block; }
+.money-donut path { fill: var(--c); cursor: pointer; transition: opacity 120ms; }
+.money-donut path[data-dim] { opacity: .35; }
+.money-donut figcaption { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 2px; pointer-events: none; text-align: center; }
+.money-donut figcaption small { max-width: 120px; overflow: hidden; color: var(--muted); font-size: var(--t-2xs); text-overflow: ellipsis; white-space: nowrap; }
+.money-donut figcaption strong { font-family: var(--font-display); font-size: 20px; font-variant-numeric: tabular-nums; }
+.money-limit { display: grid; gap: 3px; width: 100%; padding: 0; color: var(--muted); background: none; border: 0; font: inherit; text-align: right; cursor: pointer; }
+.money-limit small { font-size: var(--t-2xs); }
+.money-meter { display: block; height: 6px; overflow: hidden; background: var(--meter-track); border-radius: 3px; }
+.money-meter i { display: block; height: 100%; background: var(--series-1); border-radius: 3px; }
+.money-meter i[data-over] { background: var(--critical); }
+.money-limit-form input { width: 100%; padding: 4px 8px; color: var(--ink); background: var(--page, #fff); border: 1px solid var(--line); border-radius: 6px; font: inherit; text-align: right; }
+.money-limit-form input[aria-invalid] { border-color: var(--critical); }
+.money-legend { display: flex; gap: 14px; }
+.money-legend span, .money-tip span { display: inline-flex; align-items: center; gap: 6px; }
+.money-legend i, .money-tip i { width: 10px; height: 10px; background: var(--c); border-radius: 2px; }
+.money-flow-plot { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: end; height: calc(var(--plot) + 24px); border-bottom: 0; }
+.money-flow-month { display: grid; justify-items: center; gap: 6px; height: 100%; align-content: end; border-radius: 6px; outline-offset: 2px; }
+.money-flow-month:hover, .money-flow-month:focus-visible { background: var(--line); }
+.money-flow-bars { display: flex; align-items: flex-end; gap: 2px; height: var(--plot); border-bottom: 1px solid var(--line); padding: 0 6px; }
+.money-flow-bars i { width: 18px; background: var(--c); border-radius: 4px 4px 0 0; }
+.money-flow-month small { color: var(--muted); font-size: var(--t-2xs); }
+.money-flow-month[data-now] small { color: var(--ink); font-weight: 600; }
+.money-tip { position: absolute; top: 0; left: var(--at); z-index: 2; display: grid; gap: 2px; padding: 8px 10px; transform: translateX(-50%); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / 14%); font-size: var(--t-2xs); font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; }
+.money-find { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 0 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.money-find svg { color: var(--muted); }
+.money-find input { width: 200px; padding: 8px 0; color: var(--ink); background: none; border: 0; outline: 0; font: inherit; font-size: var(--t-sm); }
+.money-only { margin: -4px 0 10px; }
+.money-cat { field-sizing: content; max-width: 180px; padding: 0 2px; color: var(--muted); background: none; border: 0; border-radius: 4px; font: inherit; font-size: var(--t-xs); cursor: pointer; }
+.money-cat:hover, .money-cat:focus-visible { color: var(--ink); background: var(--line); }

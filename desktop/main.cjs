@@ -64,6 +64,7 @@ const { createMacCalendar } = require('./mac-calendar.cjs')
 const { createMacMail } = require('./mac-mail.cjs')
 const { createMailFollow } = require('./mail-follow.cjs')
 const { createGmail } = require('./gmail.cjs')
+const { createBank } = require('./bank.cjs')
 const { createKeychain } = require('./bots/keychain.cjs')
 
 const APP_ENTRY = path.join(__dirname, '..', 'dist', 'client', 'index.html')
@@ -1535,12 +1536,20 @@ app.whenReady().then(async () => {
   await part('GitHub', () => createGitHub({ sharedModule, handle, fail, shell, offline: () => under.on }))
   // Tools → Mail (desktop/mac-mail.cjs, Phase 59): the Mac's own Mail app. Local to this Mac, so it works Offline too.
   // Gmail signed in directly (desktop/gmail.cjs, Phase 86); once connected, Mail reads it instead of the Mail app.
+  // Google's sign-in page, a message in Gmail and Plaid's bank sign-in open in Nate's own browser. Refused offline on
+  // the same line.
+  const openOut = async (url) => { if (!under.on && /^https:\/\//i.test(url)) await shell.openExternal(url) }
+  const keychain = createKeychain({ service: app.isPackaged ? 'OSAT' : 'OSAT-Dev' })
   const gmail = await part('Gmail', () => createGmail({
-    dataDir: app.getPath('userData'), sharedModule, handle, fail, send: sendToAllWindows, fetch: globalThis.fetch,
-    keychain: createKeychain({ service: app.isPackaged ? 'OSAT' : 'OSAT-Dev' }),
-    // Google's sign-in page and a message in Gmail open in Nate's own browser. Refused offline on the same line.
-    open: async (url) => { if (!under.on && /^https:\/\//i.test(url)) await shell.openExternal(url) },
+    dataDir: app.getPath('userData'), sharedModule, handle, fail, send: sendToAllWindows, fetch: globalThis.fetch, keychain, open: openOut,
   }))
+  // Banks in Money (desktop/bank.cjs, Phase 87): Plaid, with Nate's own keys; entries commit through the store.
+  const bankClient = store.connect(() => {})
+  const bank = await part('Banks', () => createBank({
+    dataDir: app.getPath('userData'), sharedModule, handle, fail, send: sendToAllWindows, fetch: globalThis.fetch, keychain, open: openOut,
+    readDoc: () => store.load().doc, commitOps: (ops) => store.commit(bankClient, ops),
+  }))
+  bank?.start()
   macMail = await part('Mail', () => createMacMail({ sharedModule, handle, fail, gmail }))
   // Tools → Passwords (desktop/passwords.cjs, Phase 58): locked at every launch; locks on sleep, screen lock, the desk
   // put away, and quit. Its sealed file is read by nothing else.

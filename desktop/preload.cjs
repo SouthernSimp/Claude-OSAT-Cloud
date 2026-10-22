@@ -130,6 +130,18 @@ contextBridge.exposeInMainWorld('osatMail', Object.freeze({
   onGmail: (listener) => listen('gmail:changed', listener),
 }))
 
+// Money's banks (desktop/bank.cjs, Phase 87): Plaid keys and bank tokens stay in main and the Keychain.
+contextBridge.exposeInMainWorld('osatBank', Object.freeze({
+  status: () => ipcRenderer.invoke('bank:status'),
+  setKeys: (clientId, secret) => ipcRenderer.invoke('bank:keys', String(clientId || ''), String(secret || '')),
+  forgetKeys: () => ipcRenderer.invoke('bank:forget-keys'),
+  connect: () => ipcRenderer.invoke('bank:connect'),
+  cancel: () => ipcRenderer.invoke('bank:cancel'),
+  sync: () => ipcRenderer.invoke('bank:sync'),
+  disconnect: (id) => ipcRenderer.invoke('bank:disconnect', String(id || '')),
+  onChange: (listener) => listen('bank:changed', listener),
+}))
+
 // Tools → Passwords (desktop/passwords.cjs): locked until the master password. The window gets titles and usernames;
 // a password comes only from reveal (shown for ten seconds) or copy (done in main).
 contextBridge.exposeInMainWorld('osatPasswords', Object.freeze({

@@ -5,10 +5,44 @@
 
 export const PREFIX = 'plaid-'
 
-/* FOOD_AND_DRINK → "Food and drink". */
-export function categoryName(code) {
-  const words = String(code || '').toLowerCase().replace(/_/g, ' ').trim()
-  return words ? words[0].toUpperCase() + words.slice(1) : 'General'
+/* Plaid's categories (personal_finance_category: primary, detailed) as the ones people know from their bank's own app.
+   Moving money between your own accounts, and paying a card off, is "Transfers": never spending, never income. */
+export const TRANSFERS = 'Transfers'
+const DETAILED = {
+  FOOD_AND_DRINK_GROCERIES: 'Groceries',
+  TRANSPORTATION_GAS: 'Gas',
+  TRANSPORTATION_PARKING: 'Automotive',
+  TRANSPORTATION_TOLLS: 'Automotive',
+  GENERAL_SERVICES_AUTOMOTIVE: 'Automotive',
+  GENERAL_SERVICES_EDUCATION: 'Education',
+  PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS: 'Health & wellness',
+  GOVERNMENT_AND_NON_PROFIT_DONATIONS: 'Gifts & donations',
+  GENERAL_MERCHANDISE_GIFTS_AND_NOVELTIES: 'Gifts & donations',
+  LOAN_PAYMENTS_CREDIT_CARD_PAYMENT: TRANSFERS,
+}
+const PRIMARY = {
+  INCOME: 'Income',
+  TRANSFER_IN: TRANSFERS,
+  TRANSFER_OUT: TRANSFERS,
+  LOAN_PAYMENTS: 'Loan payments',
+  BANK_FEES: 'Fees',
+  ENTERTAINMENT: 'Entertainment',
+  FOOD_AND_DRINK: 'Food & drink',
+  GENERAL_MERCHANDISE: 'Shopping',
+  HOME_IMPROVEMENT: 'Home',
+  MEDICAL: 'Health & wellness',
+  PERSONAL_CARE: 'Personal',
+  GENERAL_SERVICES: 'Professional services',
+  GOVERNMENT_AND_NON_PROFIT: 'Taxes & government',
+  TRANSPORTATION: 'Travel',
+  TRAVEL: 'Travel',
+  RENT_AND_UTILITIES: 'Bills & utilities',
+}
+// Every name a bank entry can have, for picking a category by hand.
+export const CATEGORIES = [...new Set([...Object.values(PRIMARY), ...Object.values(DETAILED), 'Miscellaneous'])].sort((a, b) => a.localeCompare(b))
+
+export function categoryName(pfc) {
+  return DETAILED[pfc?.detailed] || PRIMARY[pfc?.primary] || 'Miscellaneous'
 }
 
 export function fromPlaid(t, bank) {
@@ -17,7 +51,7 @@ export function fromPlaid(t, bank) {
     id: PREFIX + t.transaction_id,
     label: String(t.merchant_name || t.name || 'Bank entry').slice(0, 120),
     amountMinor: -Math.round(t.amount * 100),
-    category: categoryName(t.personal_finance_category?.primary),
+    category: categoryName(t.personal_finance_category),
     date: t.date,
     bank: String(bank || 'Bank').slice(0, 60),
   }
@@ -46,24 +80,19 @@ export function bankOps(transactions, { added = [], modified = [], removed = [] 
   return ops
 }
 
-/* Where the month's money went: money out by category, largest first. */
-export function spentByCategory(transactions, month) {
-  const totals = new Map()
-  for (const entry of transactions || []) {
-    if (!String(entry.date).startsWith(month) || !(entry.amountMinor < 0)) continue
-    totals.set(entry.category || 'General', (totals.get(entry.category || 'General') || 0) - entry.amountMinor)
-  }
-  return [...totals].map(([category, spentMinor]) => ({ category, spentMinor })).sort((a, b) => b.spentMinor - a.spentMinor)
-}
 
 /* An account from Plaid, as Money shows it: no numbers beyond the last four. */
 export function accountRow(a) {
-  const balance = a?.balances?.available ?? a?.balances?.current
+  // A card or a loan: what is owed (current); checking and savings: what can be spent (available).
+  const owed = a?.type === 'credit' || a?.type === 'loan'
+  const balance = owed ? a?.balances?.current : a?.balances?.available ?? a?.balances?.current
   return {
     id: String(a?.account_id || ''),
     name: String(a?.name || 'Account').slice(0, 60),
     mask: String(a?.mask || '').slice(-4),
     type: String(a?.subtype || a?.type || ''),
+    // depository (cash), credit (owed), loan, investment: what the total in Money adds up.
+    kind: String(a?.type || ''),
     balanceMinor: Number.isFinite(balance) ? Math.round(balance * 100) : null,
   }
 }
