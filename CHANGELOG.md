@@ -4,13 +4,16 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 21, 2026 — A clearer view of your work, and every Granola meeting's to-dos
+## Next build · October 21, 2026 — A clearer view of your work, every Granola meeting's to-dos, and clients
 
 - **Today brings your work together:** your boards with their real progress, recently edited notes, your day at a
   glance and shortcuts to Mail, Meetings and Files. Open a board or note straight from Today. Calendar entries
   open the calendar; dated stickies open their note. To-dos still tick off with Undo; habits, goals and money stay. (#116)
 - **Every Granola meeting gives its to-dos:** notes written without a Next steps list are now read by the AI on
   this Mac, so the things promised still come into Just in. If the AI is asleep, OSAT tries again within the hour. (#118)
+- **Clients:** right-click a board → Mark as a client. It moves to Clients in the sidebar, says when you last met,
+  and its Overview lists every meeting with them and every note that names them. (#119)
+- **Links read as words on cards:** a Granola to-do says "From Granola: Fortis kickoff", not a web address. (#119)
 
 ## Build 338 · October 21, 2026 — Ask knows the new OSAT, board overviews, roomier Notes, clearer Connections
 

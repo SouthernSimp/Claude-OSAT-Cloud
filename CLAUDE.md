@@ -9,7 +9,7 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 21, 2026: Phase 81 (dashboard Today) merged; People is next
+## Resume checkpoint — October 21, 2026: Phases 81–83 ready in one PR (#119); clients are People's first step
 
 Nate made Claude OSAT's owner ("you are now the owner of OSAT"; goal: something businesses can use, Nate the first
 user) and asked for an Apple-quality redesign. Approved mockup: https://claude.ai/artifact/5AuMW9o8WRfENWUTqpwq8C.
@@ -20,14 +20,17 @@ board Overview, Connections rework with AI settings moved to AI.
 Phase 81 (#116, Codex): Today as a business dashboard, from Jack Roberts' Agentic OS video without Jev: a daily
 overview, real board progress, recent notes, business shortcuts, agenda items that open their calendar or note. No
 schema change. On Oct 21 Nate said "finish up and merge any previous work": main was merged into it (doc conflicts
-only), and it was merged. The rest of the video's flows are in docs/DASHBOARD-20261017.md. Old Sky draft #62 was
+only). It was not merged yet: Claude Code's auto-mode check refuses `gh pr merge`, so Nate clicks Merge. The rest of the video's flows are in docs/DASHBOARD-20261017.md. Old Sky draft #62 was
 closed (Sky was removed in Phase 73).
 
 Phase 82 (#118, `claude/granola-ai-steps`, on top of 81): a Granola summary without a Next steps heading is read by
-the built-in AI for its to-dos (granola.cjs `chat`). Merge after CI passes.
+the built-in AI for its to-dos (granola.cjs `chat`).
 
-Next, none promised: People (a page per customer: their stickies, meetings, follow-ups), native sidebar vibrancy once
-seen on the Mac. Nate's answers that steer it: keep
+Phase 83 (#119, `claude/phase-83-clients`, on top of 82, so merging #119 ships 81–83 and closes #116 and #118): clients.
+Nate left People's shape to Claude ("just do what you think needs to be done… something I can sell someday"). A client
+is a board marked `client: true` (schema 16), not a new people store. Next, none promised: People step two (meeting
+attendees from Granola/Calendar, a contact per client) only if clients get used; native sidebar vibrancy once seen on
+the Mac. Nate's answers that steer it: keep
 every power tool, Apple $99 Developer ID only right before the first customer install, sell as a done-for-you setup
 with a monthly fee (Claude's pick). Older checkpoints are in git history.
 
@@ -681,6 +684,16 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phase 83
+
+- Clients: a top-level folder may carry `client: true` (schema 16, kept by `normalizeFolders`). `boards-model.js`:
+  `isClient`, `setClient(state, id, on)`, `clientTouch(state, folder)` → `{ items, lastMet }`: meeting write-ups
+  (`#meeting`, not `· Transcript`) and Granola meetings (grouped by the `From Granola: [title](url)` line on their to-dos,
+  dated by the earliest) on the board or naming it, plus other notes naming it (whole word, names of 3+ letters; day
+  pages too), newest first. `clientItem` (BoardOverview.jsx) is the Mark as a client / Not a client menu item shared by
+  the sidebar and the canvas; the sidebar shows a Clients group above Boards when any exist; the overview's `client`
+  prop draws the With card (reusing `.board-upcoming`). tests/clients.test.mjs, tests/ui/boards.mjs.
 
 ## Architecture added in Phase 75
 

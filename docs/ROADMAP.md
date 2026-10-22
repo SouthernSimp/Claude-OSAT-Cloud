@@ -55,8 +55,14 @@ items) heading went unread; now the AI on this Mac reads it for what was promise
 like the listed ones. Only the built-in AI reads it, in the background; if it's asleep the meeting waits for the next
 look instead of being skipped (also true now for a meeting whose notes take over an hour to appear).
 
-Coming next, none promised: People (a page per customer with their notes, meetings and follow-ups). Native sidebar
-vibrancy waits for a Mac review. Keep each step small enough to use before adding the next.
+Phase 83 (in review, PR #119): clients, the first step of People. Any board can be marked a client (right-click,
+with Undo). Clients get their own sidebar group, a line saying when you last met, and a With card on the Overview:
+meeting write-ups and Granola meetings (one line each), plus notes anywhere that name the client. No new database:
+a client is a board (schema 16 keeps the mark). Cards also show a link's words instead of its Markdown.
+
+Coming next, none promised: People, step two, only if clients prove useful: who was in each meeting (Granola and the
+Mac's Calendar know), a contact per client, and a calm line on Today for a client you haven't met in a while. Native sidebar vibrancy waits for a Mac
+review. Keep each step small enough to use before adding the next.
 
 ## October 15: the rework — write it down, OSAT puts it where it goes
 
@@ -255,6 +261,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 80 | Connections, made clear: app names and switches first, setup on demand, sharing and automations folded, cloud AI under AI | Merged (PR #115), build 338, Oct 21 |
 | 81 | Today as a business dashboard: boards with real progress, recent work, daily overview and business shortcuts; calendar and note links; existing habits, goals, money and Undo | Merged (PR #116), Oct 21 |
 | 82 | Every Granola meeting's to-dos: a summary without a Next steps list is read by the AI on this Mac; a meeting left for later is looked at again | In review (#118) |
+| 83 | Clients: mark a board as a client; it gets its own sidebar group, a last-met line and a With card of its meetings and mentions | In review (#119) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
