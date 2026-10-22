@@ -17,7 +17,8 @@ permissions:
 jobs:
   test:
     name: Tests, build and screenshots
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04 (Oct 2026), where Playwright's Chromium won't install yet.
+    runs-on: ubuntu-24.04
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       # The AI engine ships prebuilt; its install step would only test-load it.
