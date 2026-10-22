@@ -8,7 +8,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 
 - **Today, tidied:** one centred page that sits in the middle of a wide window instead of hugging the left, with your
   boards, then to-dos beside your day, goals, habits and money. The row of counts and the Mail / Meetings / Files
-  buttons are gone (the sidebar already has both), and Recent work no longer repeats your to-dos. (#PR)
+  buttons are gone (the sidebar already has both), and Recent work no longer repeats your to-dos. (#127)
 
 ## Build 356 · October 22, 2026 — Canvases are back, Connect Gmail, your bank in Money, a clearer view of your work, clients, and to-dos from Granola and email
 
