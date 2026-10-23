@@ -4,7 +4,7 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied
+## Build 368 · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied
 
 - **Bills & subscriptions:** Money finds what charges you again and again (Netflix, the phone bill, the gym) and
   lists it with your own plans, soonest first, with about what they come to a month. Not a bill puts one away, with
