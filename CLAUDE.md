@@ -9,7 +9,28 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 22, 2026: Phases 85–87 (#121 canvases, #122 Gmail, #123 Money), stacked on #120
+## Resume checkpoint — October 22, 2026: Phases 81–87 shipped as build 356; 88–91 in one PR (#126)
+
+Build 356 (Oct 22) shipped #116–#123. Then three phases, all folded into #126 so one Merge ships them (GitHub marks
+#124 and #125 merged with it): Phase 88 (#124, one-click sign-in for 18 apps), Phase 89 (#125, bills & subscriptions,
+another session) and Phase 90 (#126, Money redone). Nate asked to merge everything and then test; Claude Code's
+auto-mode check refuses `gh pr merge`, so Nate clicks Merge on #126.
+Phase 91 (#127, Today tidied, another session) is folded into #126 too, so merging #126 ships 88–91.
+Next, Nate agreed (Oct 22): make an OSAT design system in Claude Design (Artifact quickstart, intent "other") from
+src/styles/tokens.css and the Calm rules, then mock the next screen there before coding it.
+
+Phase 88: Nate asked for one-click sign-in for his apps and for more "wow", learning from what made Muse (Meta's
+agent) successful. `SIGN_IN_APPS` in AskAppsCard.jsx grew from 2 to 18 apps, each probed (RFC 9728/8414 metadata
+with a `registration_endpoint`, and a 401 to an unsigned MCP initialize). Not supported without hand registration:
+Slack, HubSpot, Asana, Box, GitHub. The Muse lessons and the proposed next phase ("Hand it a job", background jobs
+with connected apps) are in docs/ROADMAP.md; ask Nate before building it.
+
+
+Evening Oct 22: Nate called Today's layout "awful". Phase 91 (#127, `claude/phase-91-today-layout`, off main): one
+centred column (the two-column grid had stranded the counts strip on the far right), no counts strip or Mail /
+Meetings / Files buttons (the sidebar has both), Goals under Your day, Recent work without to-dos. Waits for Nate to
+see it. CI's Electron e2e failed on "the second OSAT did not hear the first one's rename" here and on #126 alike:
+not this change; look into it if it keeps failing.
 
 Later Oct 22: Gmail (#122) and Money with banks (#123) were built. Two things wait on Nate: Google Cloud project
 `osat-512421` (account thenatemccreery@gmail.com) has the Gmail API on, but its sign-in screen (Google Auth Platform)
@@ -711,6 +732,25 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phase 90
+
+- Money, redone (Nate: "lack luster and disorganized"; it sat in a 720px column): `BudgetView` is a welcome
+  (`.money-welcome`: the bank card plus add by hand / import) until there is an entry, a plan or a bank, then
+  `.money-layout`: `.money-main` (`MonthSummary`, SpendingCard, CashFlow, the Transactions card with Find / Import /
+  Add and entries `byDay`) beside `.money-side` (BankCard, which now holds the In your banks total, and BillsCard;
+  sticky, first in one column under 960px). `MonthStepper` replaces the month input (never past this month). The old
+  shared `.project-row, .money-row` rules no longer touch Money rows.
+
+## Architecture added in Phase 89
+
+- Bills & subscriptions: `bills(transactions, today, { ignore, plans })` in src/money/money-model.js groups money out
+  (not Transfers, the last 400 days) by `billKey(label)` (digits and punctuation dropped), takes the median gap
+  (weekly 6–8 days with 3+ charges, monthly 25–35, yearly 355–375) and amounts within 25% (5% for only two charges),
+  drops one that stopped (no charge for 1.5 gaps + 5 days), and adds the hand-kept plans (`budget.recurring`) with
+  their next date; `billsPerMonth`, `daysUntil`, `setNotBill` (`budget.notBills`, keys, kept by normalizeBudget).
+  `src/money/Bills.jsx`: `BillsCard` (Money, under the banks; replaces the old Plans list: a plan's row deletes it,
+  a found one has Not a bill with Undo) and `dueWords`. Today's money card names a bill due within seven days.
 
 ## Architecture added in Phase 87
 

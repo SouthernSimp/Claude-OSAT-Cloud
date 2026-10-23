@@ -67,3 +67,47 @@ test('an entry moves to another category by hand; a blank name changes nothing',
   assert.equal(recategorize(state, 'a', 'Groceries').budget.transactions[0].category, 'Groceries')
   assert.equal(recategorize(state, 'a', '  '), state)
 })
+
+const charge = (label, amountMinor, date, category = 'Entertainment') => ({ id: `${label}-${date}`, label, amountMinor, category, date })
+
+test('bills: the same charge each month or week is found, with when it’s next due; one-offs and stopped ones aren’t', async () => {
+  const { bills, billKey, billsPerMonth, daysUntil } = await import('../src/money/money-model.js')
+  const today = '2026-10-22'
+  const entries = [
+    charge('NETFLIX.COM 866-579', -1549, '2026-08-05'), charge('Netflix.com 866-579', -1549, '2026-09-05'), charge('NETFLIX.COM #12', -1549, '2026-10-05'),
+    charge('Verizon', -8512, '2026-08-20', 'Bills & utilities'), charge('Verizon', -9230, '2026-09-20', 'Bills & utilities'), charge('Verizon', -8811, '2026-10-20', 'Bills & utilities'),
+    charge('Gym', -2500, '2026-10-01'), charge('Gym', -2500, '2026-10-08'), charge('Gym', -2500, '2026-10-15'),
+    charge('Blue Bottle', -450, '2026-09-21', 'Food & drink'), charge('Blue Bottle', -1220, '2026-10-21', 'Food & drink'),
+    charge('Old Streaming', -999, '2026-05-01'), charge('Old Streaming', -999, '2026-06-01'), charge('Old Streaming', -999, '2026-07-01'),
+    charge('Card payment', -50000, '2026-09-10', 'Transfers'), charge('Card payment', -50000, '2026-10-10', 'Transfers'),
+    charge('Target', -3200, '2026-10-07', 'Shopping'),
+  ]
+  const found = bills(entries, today, { plans: [{ id: 'recurring-1', label: 'Rent', amountMinor: -180000, cadence: 'monthly', date: '2026-01-01', category: 'Bills & utilities' }] })
+  assert.deepEqual(found.map((bill) => [bill.label, bill.cadence, bill.next, bill.from]), [
+    ['Gym', 'weekly', '2026-10-22', 'bank'],
+    ['Rent', 'monthly', '2026-11-01', 'plan'],
+    ['NETFLIX.COM #12', 'monthly', '2026-11-05', 'bank'],
+    ['Verizon', 'monthly', '2026-11-20', 'bank'],
+  ])
+  assert.equal(billKey('NETFLIX.COM 866-579'), 'netflix com')
+  assert.deepEqual(bills(entries, today, { ignore: ['gym'] }).map((bill) => bill.label), ['NETFLIX.COM #12', 'Verizon'])
+  assert.equal(billsPerMonth([{ amountMinor: 1200, cadence: 'monthly' }, { amountMinor: 1200, cadence: 'yearly' }, { amountMinor: 1000, cadence: 'weekly' }]), 1200 + 100 + 4333)
+  assert.equal(daysUntil('2026-11-05', today), 14)
+  assert.equal(daysUntil('2026-10-20', today), -2)
+})
+
+test('a month keeps its day, clamped to a short month', async () => {
+  const { bills } = await import('../src/money/money-model.js')
+  const found = bills([charge('Rent', -1000, '2026-11-30'), charge('Rent', -1000, '2026-12-31'), charge('Rent', -1000, '2027-01-31')], '2027-02-10')
+  assert.equal(found[0].next, '2027-02-28')
+})
+
+test('“Not a bill” is remembered by key, can be taken back, and survives opening the workspace', async () => {
+  const { setNotBill } = await import('../src/money/money-model.js')
+  const state = { budget: { transactions: [], recurring: [] } }
+  const off = setNotBill(state, 'gym', true)
+  assert.deepEqual(off.budget.notBills, ['gym'])
+  assert.deepEqual(setNotBill(off, 'gym', true).budget.notBills, ['gym'], 'never twice')
+  assert.deepEqual(setNotBill(off, 'gym', false).budget.notBills, [])
+  assert.deepEqual(normalizeWorkspace({ budget: { notBills: ['gym', '', 7, 'x'.repeat(81)] } }).budget.notBills, ['gym'])
+})

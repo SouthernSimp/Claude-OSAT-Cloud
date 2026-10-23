@@ -137,6 +137,13 @@ async function exercise(page) {
 
   await page.evaluate(() => { const test = window.__connectionsTest; test.state.askApps = test.state.askApps.filter((app) => app.name !== 'Notion'); test.emit() })
   await connect.click()
+  const find = picker.getByRole('searchbox', { name: 'Find an app' })
+  await find.fill('payments')
+  assert.equal(await picker.locator('.ask-apps-presets > div').count(), 2, 'Find an app should leave Stripe and PayPal')
+  await find.fill('nothing like this')
+  await picker.getByText('Not in the list yet.').waitFor()
+  await find.fill('')
+  await picker.screenshot({ path: `${OUT}/connect-an-app.png` })
   await picker.locator('.ask-apps-presets > div', { hasText: 'Notion' }).getByRole('button', { name: 'Connect', exact: true }).click()
   await row(page, 'Notion').waitFor()
   assert.equal(await row(page, 'Notion').getByRole('switch').isChecked(), true, 'sign-in did not show the backend’s enabled state')

@@ -69,19 +69,14 @@ async function exercise(page) {
   await page.waitForFunction(() => document.querySelector('.today-board progress')?.value === 2)
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
   await page.waitForFunction(() => document.querySelector('.today-board progress')?.value === 1)
-  await root.getByRole('navigation', { name: 'Your day at a glance' }).getByRole('button', { name: /^To do/ }).click()
+  await root.locator('.today-card[aria-label="To do"]').getByRole('button', { name: 'All', exact: true }).click()
   await page.locator('.today.is-list').waitFor()
   await openRoom(page, 'Today')
-  await root.getByRole('navigation', { name: 'Your day at a glance' }).getByRole('button', { name: /^Just in/ }).click()
+  await root.locator('.today-card[aria-label="Waiting in Just in"]').getByRole('button', { name: 'Open', exact: true }).click()
   await page.locator('.justin').waitFor()
   await openRoom(page, 'Today')
   await root.locator('.today-agenda').getByRole('button', { name: 'Site visit', exact: true }).click()
   await page.locator('.app-room[data-view="Calendar"]').waitFor()
-  for (const [label, view] of [['Mail', 'Mail'], ['Meetings', 'Meetings'], ['Files', 'Files']]) {
-    await openRoom(page, 'Today')
-    await dashboard(page).getByRole('navigation', { name: 'Business shortcuts' }).getByRole('button', { name: label, exact: true }).click()
-    await page.locator(`.app-room[data-view="${view}"]`).waitFor()
-  }
 }
 async function main() {
   await mkdir(OUT, { recursive: true })

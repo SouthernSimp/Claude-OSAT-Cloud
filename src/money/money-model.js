@@ -111,3 +111,79 @@ export function recategorize(state, id, category) {
   if (!name) return state
   return { ...state, budget: { ...state.budget, transactions: state.budget.transactions.map((entry) => (entry.id === id ? { ...entry, category: name } : entry)) } }
 }
+
+/* Bills and subscriptions (Phase 89): the same merchant charging about the same amount every week, month or year,
+   found in the entries; plus the plans kept by hand. Each with when it's next due, soonest first. A charge that
+   stopped (none for half a cadence past when it was due) isn't listed; one Nate said isn't a bill (`ignore`, by key)
+   neither. Amounts of a bill may wander a little (a phone bill); two charges only count when they match closely. */
+const DAY = 86400000
+const dayOf = (iso) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / DAY)
+const isoOf = (day) => new Date(day * DAY).toISOString().slice(0, 10)
+const middle = (list) => [...list].sort((a, b) => a - b)[Math.floor(list.length / 2)]
+const CADENCES = [['weekly', 6, 8, 3], ['monthly', 25, 35, 2], ['yearly', 355, 375, 2]]
+const PER_MONTH = { weekly: 52 / 12, monthly: 1, yearly: 1 / 12 }
+
+/* "NETFLIX.COM 866-579", "Netflix.com #123" → "netflix com". */
+export const billKey = (label) => String(label || '').toLowerCase().replace(/[#*]?\d[\d\-/.]*/g, ' ').replace(/[^a-z& ]+/g, ' ').replace(/\s+/g, ' ').trim()
+
+/* The next date on or after `from` for a cadence, counted from `last` (a month keeps its day, clamped to the month). */
+function nextDue(last, cadence, from) {
+  let at = last
+  for (let step = 1; step < 600; step += 1) {
+    if (cadence === 'weekly') at = isoOf(dayOf(last) + 7 * step)
+    else {
+      const [year, month, day] = last.split('-').map(Number)
+      const months = cadence === 'yearly' ? 12 * step : step
+      const first = new Date(Date.UTC(year, month - 1 + months, 1))
+      const length = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate()
+      at = `${first.getUTCFullYear()}-${String(first.getUTCMonth() + 1).padStart(2, '0')}-${String(Math.min(day, length)).padStart(2, '0')}`
+    }
+    if (at >= from) return at
+  }
+  return at
+}
+
+export function bills(transactions, today, { ignore = [], plans = [] } = {}) {
+  const skip = new Set(ignore)
+  const groups = new Map()
+  for (const entry of transactions || []) {
+    if (!counted(entry) || entry.amountMinor >= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(entry.date) || dayOf(today) - dayOf(entry.date) > 400) continue
+    const key = billKey(entry.label)
+    if (!key || skip.has(key)) continue
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(entry)
+  }
+  const found = []
+  for (const [key, entries] of groups) {
+    const byDay = [...new Map(entries.map((entry) => [entry.date, entry])).values()].sort((a, b) => a.date.localeCompare(b.date))
+    if (byDay.length < 2) continue
+    const gaps = byDay.slice(1).map((entry, index) => dayOf(entry.date) - dayOf(byDay[index].date))
+    const gap = middle(gaps)
+    const cadence = CADENCES.find(([, low, high, least]) => gap >= low && gap <= high && byDay.length >= least)?.[0]
+    if (!cadence) continue
+    const amounts = byDay.map((entry) => -entry.amountMinor)
+    const usual = middle(amounts)
+    const room = byDay.length === 2 ? 0.05 : 0.25
+    if (amounts.some((amount) => Math.abs(amount - usual) > usual * room)) continue
+    const last = byDay.at(-1)
+    if (dayOf(today) - dayOf(last.date) > gap * 1.5 + 5) continue
+    found.push({ key, label: last.label, amountMinor: -last.amountMinor, cadence, last: last.date, next: nextDue(last.date, cadence, isoOf(dayOf(today) - 3)), category: last.category, from: 'bank' })
+  }
+  for (const plan of plans || []) {
+    if (!PER_MONTH[plan?.cadence] || !/^\d{4}-\d{2}-\d{2}$/.test(plan.date) || !Number.isSafeInteger(plan.amountMinor)) continue
+    found.push({ key: `plan:${plan.id}`, id: plan.id, label: plan.label, amountMinor: Math.abs(plan.amountMinor), cadence: plan.cadence, last: plan.date, next: plan.date >= today ? plan.date : nextDue(plan.date, plan.cadence, today), category: plan.category, from: 'plan' })
+  }
+  return found.sort((a, b) => a.next.localeCompare(b.next) || b.amountMinor - a.amountMinor)
+}
+
+/* About how much the bills come to in a month. */
+export const billsPerMonth = (list) => Math.round(list.reduce((sum, bill) => sum + bill.amountMinor * PER_MONTH[bill.cadence], 0))
+
+/* Days from today to a bill's date: 0 today, negative when it's late. */
+export const daysUntil = (iso, today) => dayOf(iso) - dayOf(today)
+
+/* A charge Nate says isn't a bill (by its key), or is one again. */
+export function setNotBill(state, key, on) {
+  const list = (state.budget.notBills || []).filter((item) => item !== key)
+  return { ...state, budget: { ...state.budget, notBills: on ? [...list, key] : list } }
+}

@@ -55,9 +55,12 @@ function normalizeBudget(value) {
   // A monthly budget per category (Phase 87): { "Food & drink": 30000 }, cents, only positive whole amounts.
   const limits = Object.fromEntries(Object.entries(isObject(input.limits) ? input.limits : {})
     .filter(([name, minor]) => name.trim() && name.length <= 60 && Number.isSafeInteger(minor) && minor > 0))
+  // Charges Nate said aren't bills (Phase 89), by their key (money-model's billKey).
+  const notBills = (Array.isArray(input.notBills) ? input.notBills : []).filter((key) => typeof key === 'string' && key && key.length <= 80).slice(-500)
   return {
     currency: 'USD',
     ...(Object.keys(limits).length ? { limits } : {}),
+    ...(notBills.length ? { notBills } : {}),
     transactions: (Array.isArray(input.transactions) ? input.transactions : []).map((entry) => cleanEntry(entry)).filter(Boolean),
     recurring: (Array.isArray(input.recurring) ? input.recurring : []).map((entry) => cleanEntry(entry, true)).filter(Boolean),
   }

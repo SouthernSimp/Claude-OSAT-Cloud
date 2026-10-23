@@ -13,7 +13,7 @@
 .check-row input, .bridge-source-list input {
   accent-color: var(--accent);
 }
-.project-row, .money-row {
+.project-row {
   min-height: 96px;
   display: flex;
   align-items: center;
@@ -21,15 +21,15 @@
   padding: 20px 0;
   border-top: 1px solid var(--line);
 }
-.project-row > div:first-child, .money-row > div:first-child {
+.project-row > div:first-child {
   min-width: 0;
   flex: 1;
 }
-.project-row h3, .money-row h3 {
+.project-row h3 {
   margin: 7px 0 4px;
   font-size: var(--t-lg);
 }
-.project-row p, .money-row p {
+.project-row p {
   margin: 0;
   color: var(--muted);
   font-size: var(--t-sm);
@@ -143,20 +143,6 @@
 }
 .form-error {
   color: var(--critical);
-}
-
-.money-row > strong {
-  font:
-    650 15px/1 ui-monospace,
-    "SFMono-Regular",
-    Menlo,
-    monospace;
-}
-.money-row > strong.negative {
-  color: var(--critical);
-}
-.money-row > strong.positive {
-  color: var(--positive);
 }
 
 .csv-result {
@@ -318,7 +304,7 @@
 }
 @container room (max-width: 560px) {
   .bridge-preview { padding: 20px; border-radius: 10px; }
-  .project-row, .money-row { align-items: flex-start; flex-wrap: wrap; }
+  .project-row { align-items: flex-start; flex-wrap: wrap; }
   .project-row .row-actions { width: 100%; }
   .project-row .row-actions button { flex: 1; }
   .bridge-steps { grid-template-columns: minmax(0, 1fr); }
@@ -435,68 +421,46 @@
 
 /* ===== Paper Desk: Money ===== */
 .money-page {
-  max-width: 720px !important;
-  padding-top: 40px !important;
+  max-width: 1180px !important;
+  padding-top: 36px !important;
 }
-.money-hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: center;
-  margin-bottom: 28px;
-}
-.money-hero h1 {
-  margin: 0 0 8px;
-  font-size: 26px;
-  letter-spacing: -0.02em;
-}
-.money-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--t-md);
-}
-.money-balance {
-  text-align: right;
-  padding: 16px 18px;
-  border-radius: 12px;
-  background: var(--surface-raised);
-  border: 1px solid var(--line-soft);
-  box-shadow: var(--e-1);
-  min-width: 160px;
-}
-.money-balance span {
-  display: block;
-  color: var(--faint);
-  font-size: var(--t-2xs);
-  font-weight: 600;
-  letter-spacing: 0;
-}
-.money-balance strong {
-  display: block;
-  margin: 4px 0;
-  font-size: 28px;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
+.money-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 24px; }
+.money-head h1 { margin: 0 0 6px; font-family: var(--font-display); font-size: 28px; letter-spacing: -0.02em; }
+.money-note { margin: 0; color: var(--muted); font-size: var(--t-sm); }
+.money-month { display: inline-flex; align-items: center; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.money-month-name { min-width: 128px; padding: 6px 10px; color: var(--ink); background: none; border: 0; border-radius: 7px; font: inherit; font-size: var(--t-sm); font-weight: 600; cursor: pointer; }
+.money-month-name:disabled { color: var(--ink); opacity: 1; cursor: default; }
+.money-month-name:not(:disabled):hover { background: var(--line); }
+.money-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px); gap: 20px; align-items: start; }
+.money-main, .money-side { display: grid; gap: 20px; min-width: 0; }
+.money-main > .money-card, .money-side > * { margin: 0; }
+.money-side { position: sticky; top: 0; }
+.money-balance { display: grid; gap: 2px; padding: 14px 16px; background: var(--page, #fff); border: 1px solid var(--line); border-radius: 10px; }
+.money-balance span { color: var(--muted); font-size: var(--t-2xs); }
+.money-balance strong { font-family: var(--font-display); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .money-balance small { color: var(--muted); font-size: var(--t-xs); }
-
-.money-toolbar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 18px;
-}
+.money-welcome { display: grid; justify-items: center; gap: 12px; max-width: 620px; margin: 24px auto 0; padding: 36px 32px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.money-welcome > svg { width: 40px; height: 40px; color: var(--accent); }
+.money-welcome h2 { margin: 0; font-family: var(--font-display); font-size: 22px; letter-spacing: -0.02em; }
+.money-welcome > p:not(.money-quiet) { max-width: 460px; margin: 0; color: var(--muted); font-size: var(--t-sm); line-height: 1.5; }
+.money-welcome > .money-banks, .money-welcome > .money-composer, .money-welcome > .money-import { width: 100%; margin: 8px 0 0; text-align: left; }
+.money-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.money-toolbar button { display: inline-flex; align-items: center; gap: 6px; }
+.money-entries > header { align-items: center; }
+.money-entries h2 small { margin-left: 4px; color: var(--muted); font-size: var(--t-xs); font-weight: 500; }
 
 .money-composer {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
   gap: 10px;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
   padding: 14px;
   border: 1px solid var(--line-soft);
   border-radius: 12px;
   background: var(--surface-raised);
   box-shadow: var(--e-1);
 }
+.money-composer-actions { display: flex; gap: 8px; grid-column: 1 / -1; }
 .money-composer input,
 .money-composer select {
   min-height: 40px;
@@ -506,31 +470,29 @@
   background: var(--surface-sunken);
 }
 .money-composer .check-row,
-.money-composer .form-error,
-.money-composer .primary-button {
+.money-composer .form-error {
   grid-column: 1 / -1;
 }
 
-.money-ledger {
-  display: grid;
-  border: 1px solid var(--line-soft);
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--surface-raised);
-}
+.money-ledger { display: grid; gap: 14px; }
+.money-day { display: grid; }
+.money-day h3 { margin: 0 0 2px; padding-bottom: 6px; color: var(--muted); font-size: var(--t-2xs); font-weight: 600; letter-spacing: .02em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
 .money-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
   gap: 12px;
   align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--line-soft);
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line);
 }
 .money-row:last-child { border-bottom: 0; }
-.money-row strong { display: block; font-size: var(--t-md); }
+.money-initial { display: grid; place-items: center; width: 32px; height: 32px; color: var(--muted); background: var(--line); border-radius: 50%; font-size: var(--t-xs); font-style: normal; font-weight: 600; }
+.money-row .icon-button { opacity: 0; }
+.money-row:hover .icon-button, .money-row .icon-button:focus-visible { opacity: 1; }
+.money-row strong { display: block; overflow: hidden; font-size: var(--t-sm); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .money-row small { color: var(--muted); font-size: var(--t-xs); }
-.money-row b { font-variant-numeric: tabular-nums; font-size: var(--t-md); }
-.money-row b.negative { color: var(--critical); }
+.money-row b { font-variant-numeric: tabular-nums; font-size: var(--t-sm); font-weight: 600; }
+.money-row b.negative { color: var(--ink); }
 .money-row b.positive { color: var(--positive); }
 .money-empty {
   padding: 28px 16px;
@@ -559,7 +521,7 @@
 }
 
 .money-import {
-  margin-top: 28px;
+  margin: 0 0 16px;
   padding: 18px;
   border-radius: 12px;
   border: 1px dashed var(--line);
@@ -583,22 +545,32 @@
 
 /* Earlier pages: the list sits above the page once the room is too narrow for both. */
 @container room (max-width: 760px) { .journal-history { grid-template-columns: minmax(0, 1fr); gap: 18px; } }
-.money-hero h1 { font-family: var(--font-display); font-size: 26px; }
-.money-period { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin: 28px 0 18px; }.money-period h2 { font-size: 15px; letter-spacing: -.02em; }.money-period input { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: var(--t-xs); padding: 8px 12px; }
-.money-overview { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 28px; }.money-overview article { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }.money-overview article svg { grid-column: 2; grid-row: 1; color: var(--accent); width: 20px; height: 20px; }.money-overview article span { grid-column: 1; grid-row: 1; color: var(--muted); font-size: var(--t-2xs); }.money-overview article strong { grid-column: 1/-1; font-family: var(--font-display); font-size: clamp(23px, 3cqi, 35px); font-weight: 600; margin-top: 19px; }
-/* Money in a narrower room: the entry form goes to two columns, then one, and the
-   month's three totals become three short lines. */
+.money-overview { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px 32px; }
+.money-left { display: grid; gap: 4px; }
+.money-left span { color: var(--muted); font-size: var(--t-xs); }
+.money-left strong { font-family: var(--font-display); font-size: clamp(30px, 4cqi, 44px); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.money-left small { color: var(--muted); font-size: var(--t-sm); }
+.money-overview dl { display: grid; gap: 12px; margin: 0; }
+.money-overview dl div { display: grid; gap: 2px; }
+.money-overview dt { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--t-xs); }
+.money-overview dt svg { width: 14px; height: 14px; color: var(--accent); }
+.money-overview dd { margin: 0; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.money-ratio { grid-column: 1 / -1; display: block; height: 6px; overflow: hidden; background: var(--meter-track); border-radius: 3px; }
+.money-ratio i { display: block; height: 100%; background: var(--series-2); border-radius: 3px; }
+/* Money in a narrower room: accounts and bills come first in one column, the entry form goes to two columns, then
+   one, and the month's numbers stack. */
+@container room (max-width: 960px) {
+  .money-layout { grid-template-columns: minmax(0, 1fr); }
+  .money-side { position: static; order: -1; }
+}
 @container room (max-width: 760px) {
   .money-composer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container room (max-width: 560px) {
-  .money-hero { flex-direction: column; align-items: stretch; gap: 20px; }
-  .money-balance { text-align: left; }
+  .money-head { flex-direction: column; align-items: stretch; gap: 14px; }
   .money-composer { grid-template-columns: minmax(0, 1fr); }
-  .money-overview { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .money-overview article { align-items: center; padding: 12px 16px; }
-  .money-overview article svg { display: none; }
-  .money-overview article strong { grid-column: 2; grid-row: 1; margin-top: 0; font-size: 22px; }
+  .money-overview { grid-template-columns: minmax(0, 1fr); }
+  .money-overview dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Obsidian lives inside Settings → Data: one calm column, no card inside a card. */
@@ -630,7 +602,7 @@
 }
 
 /* Money's banks and Where it went (Phase 87). */
-.money-banks { display: grid; gap: 12px; margin: 24px 0 0; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.money-banks { display: grid; gap: 12px; margin: 0; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .money-banks > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; }
 .money-banks > header > svg { width: 22px; height: 22px; margin-top: 2px; color: var(--accent); }
 .money-banks h2 { margin: 0; font-size: var(--t-md); }
@@ -703,9 +675,26 @@
 .money-flow-month small { color: var(--muted); font-size: var(--t-2xs); }
 .money-flow-month[data-now] small { color: var(--ink); font-weight: 600; }
 .money-tip { position: absolute; top: 0; left: var(--at); z-index: 2; display: grid; gap: 2px; padding: 8px 10px; transform: translateX(-50%); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / 14%); font-size: var(--t-2xs); font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; }
-.money-find { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 0 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.money-find { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
 .money-find svg { color: var(--muted); }
-.money-find input { width: 200px; padding: 8px 0; color: var(--ink); background: none; border: 0; outline: 0; font: inherit; font-size: var(--t-sm); }
+.money-find input { width: 160px; padding: 8px 0; color: var(--ink); background: none; border: 0; outline: 0; font: inherit; font-size: var(--t-sm); }
 .money-only { margin: -4px 0 10px; }
-.money-cat { field-sizing: content; max-width: 180px; padding: 0 2px; color: var(--muted); background: none; border: 0; border-radius: 4px; font: inherit; font-size: var(--t-xs); cursor: pointer; }
+.money-cat { field-sizing: content; width: auto; min-height: 0; max-width: 180px; padding: 0 2px; background-image: none; color: var(--muted); background: none; border: 0; border-radius: 4px; font: inherit; font-size: var(--t-xs); cursor: pointer; }
 .money-cat:hover, .money-cat:focus-visible { color: var(--ink); background: var(--line); }
+
+/* Bills & subscriptions (Phase 89). */
+.money-bills ul { display: grid; margin: 0; padding: 0; list-style: none; }
+.money-bills li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px dashed var(--line); }
+.money-bills li:last-child { border-bottom: 0; }
+.money-bills li strong { display: block; overflow: hidden; font-size: var(--t-sm); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.money-bills li small { color: var(--muted); font-size: var(--t-xs); }
+.money-bills li b { font-size: var(--t-sm); font-variant-numeric: tabular-nums; }
+.money-bills .money-link { font-size: var(--t-xs); }
+.money-banks + .money-card { margin-top: 16px; }
+
+/* Money in two columns (Phase 90): the side is narrow, so the banks' header and the keys stack there. */
+.money-side .money-banks > header { grid-template-columns: auto minmax(0, 1fr); }
+.money-side .money-banks-actions { grid-column: 1 / -1; }
+.money-side .money-keys { grid-template-columns: minmax(0, 1fr); }
+.money-side .money-bills li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
+.money-side .money-bills li > :last-child { grid-column: 2; justify-self: end; }

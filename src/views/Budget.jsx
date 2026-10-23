@@ -1,9 +1,10 @@
-import { ArrowClockwise, ArrowDownLeft, ArrowUpRight, Bank, MagnifyingGlass, Plus, Trash, Wallet, Warning } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowDownLeft, ArrowUpRight, Bank, CaretLeft, CaretRight, MagnifyingGlass, Plus, Trash, Wallet, Warning } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { cleanError } from "../assistant/useAi.js";
 import { CATEGORIES } from "../../shared/bank-model.mjs";
 import { CashFlow, SpendingCard } from "../money/Charts.jsx";
-import { holdings, monthTotals, recategorize, setLimit } from "../money/money-model.js";
+import { BillsCard } from "../money/Bills.jsx";
+import { holdings, monthTotals, recategorize, setLimit, setNotBill } from "../money/money-model.js";
 import { makeId } from "../lib/ui.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { localDateKey } from "../daily-practice.js";
@@ -42,8 +43,6 @@ export function BudgetView({ workspace, commit }) {
   const words = find.trim().toLowerCase();
   const shown = monthly.filter((entry) => (!only || (entry.category || "General") === only) && (!words || `${entry.label} ${entry.category} ${entry.bank || ""}`.toLowerCase().includes(words)));
   const totals = monthTotals(workspace.budget.transactions, month);
-  const held = holdings(bank?.items);
-  const total = workspace.budget.transactions.reduce((sum, item) => sum + item.amountMinor, 0);
   const categories = [...new Set([...CATEGORIES, ...workspace.budget.transactions.map((entry) => entry.category).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
   // A budget and a category changed by hand: one Undo each, putting back what was there.
   function changeLimit(category, minor) {
@@ -51,6 +50,10 @@ export function BudgetView({ workspace, commit }) {
     if (before === minor) return;
     commit((state) => setLimit(state, category, minor));
     showUndo(minor ? `${category}: ${formatMinor(minor)} a month` : `No budget for ${category}`, () => commit((state) => setLimit(state, category, before)));
+  }
+  function notBill(bill) {
+    commit((state) => setNotBill(state, bill.key, true));
+    showUndo(`“${bill.label}” isn’t a bill`, () => commit((state) => setNotBill(state, bill.key, false)));
   }
   function changeCategory(entry, category) {
     commit((state) => recategorize(state, entry.id, category));
@@ -99,146 +102,191 @@ export function BudgetView({ workspace, commit }) {
     setShowImport(false);
   }
 
+  const started = workspace.budget.transactions.length > 0 || workspace.budget.recurring.length > 0 || (bank?.items?.length ?? 0) > 0;
+  const days = byDay(shown);
+  const composer = adding ? (
+    <form className="money-composer" onSubmit={save}>
+      <input aria-label="Description" placeholder="Description" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+      <input aria-label="Amount" inputMode="decimal" placeholder="-12.50" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+      <input aria-label="Category" placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+      <input aria-label="Date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+      <label className="check-row">
+        <input type="checkbox" checked={form.recurring} onChange={(e) => setForm({ ...form, recurring: e.target.checked })} />
+        It repeats (a bill or a plan)
+      </label>
+      {form.recurring ? (
+        <select aria-label="How often" value={form.cadence} onChange={(e) => setForm({ ...form, cadence: e.target.value })}>
+          <option value="weekly">Every week</option>
+          <option value="monthly">Every month</option>
+          <option value="yearly">Every year</option>
+        </select>
+      ) : null}
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      <div className="money-composer-actions">
+        <button className="primary-button" type="submit">Save entry</button>
+        <button className="ghost-button" type="button" onClick={() => setAdding(false)}>Cancel</button>
+      </div>
+    </form>
+  ) : null;
+  const importer = showImport ? (
+    <section className="money-import">
+      <h2>Import a CSV</h2>
+      <p>Columns: date, label or description, amount, and a category if you have one. You see it before anything is added.</p>
+      <textarea
+        rows="5"
+        value={csv}
+        onChange={(e) => { setCsv(e.target.value); setReview(null); }}
+        placeholder={"date,label,amount,category\n2026-08-31,Software,-29.00,Tools"}
+      />
+      {review ? (
+        <div className={`csv-result ${review.errors.length ? "blocked" : "ready"}`}>
+          <strong>{review.rows.length} valid rows</strong>
+          {review.errors.map((item) => <p key={item}>{item}</p>)}
+        </div>
+      ) : null}
+      <div className="row-actions">
+        <button type="button" onClick={reviewCsv} disabled={!csv.trim()}>Review</button>
+        <button className="primary-button" type="button" onClick={importCsv} disabled={!review?.rows.length || review.errors.length}>
+          Confirm import
+        </button>
+      </div>
+    </section>
+  ) : null;
+
   return (
     <section className="money-page">
-      <header className="money-hero">
+      <header className="money-head">
         <div>
           <h1>Money</h1>
           <p className="money-note">Your banks and what you keep by hand, in one place. It stays on this Mac.</p>
         </div>
-        {held ? (
-          <div className="money-balance">
-            <span>In your banks</span>
-            <strong>{formatMinor(held.cash)}</strong>
-            {held.owed > 0 && <small>{formatMinor(held.owed)} owed on cards and loans</small>}
-          </div>
-        ) : (
-          <div className="money-balance">
-            <span>All-time recorded net</span>
-            <strong>{formatMinor(total)}</strong>
-            <small>{workspace.budget.transactions.length} entries</small>
-          </div>
-        )}
+        {started && <MonthStepper month={month} onMonth={setMonth} />}
       </header>
 
-      <BankCard state={bank} setState={setBank} />
-
-      <div className="money-period"><h2>This month</h2><input aria-label="Ledger month" type="month" value={month} onChange={(event) => setMonth(event.target.value || localDateKey().slice(0, 7))} /></div>
-      <div className="money-overview"><article><ArrowDownLeft /><span>Money in</span><strong>{formatMinor(totals.in)}</strong></article><article><ArrowUpRight /><span>Money out</span><strong>{formatMinor(totals.out)}</strong></article><article><Wallet /><span>Left over</span><strong>{formatMinor(totals.net)}</strong></article></div>
-
-      <SpendingCard transactions={workspace.budget.transactions} month={month} limits={workspace.budget.limits || {}} only={only} onPick={setOnly} onLimit={changeLimit} />
-      <CashFlow transactions={workspace.budget.transactions} month={month} />
-
-      <div className="money-toolbar">
-        <button type="button" className="primary-button" onClick={() => setAdding((v) => !v)}>
-          <Plus /> {adding ? "Close" : "Add entry"}
-        </button>
-        <button type="button" className="ghost-button" onClick={() => setShowImport((v) => !v)}>
-          {showImport ? "Hide import" : "Import CSV"}
-        </button>
-        <label className="money-find">
-          <MagnifyingGlass aria-hidden="true" />
-          <input type="search" aria-label="Find an entry" placeholder="Find an entry" value={find} onChange={(event) => setFind(event.target.value)} />
-        </label>
-      </div>
-      {only && <p className="money-quiet money-only">Showing {only} · <button type="button" className="money-link" onClick={() => setOnly(null)}>Show everything</button></p>}
-
-      {adding ? (
-        <form className="money-composer" onSubmit={save}>
-          <input aria-label="Description" placeholder="Description" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
-          <input aria-label="Amount" inputMode="decimal" placeholder="-12.50" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-          <input aria-label="Category" placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-          <input aria-label="Date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-          <label className="check-row">
-            <input type="checkbox" checked={form.recurring} onChange={(e) => setForm({ ...form, recurring: e.target.checked })} />
-            Recurring plan
-          </label>
-          {form.recurring ? (
-            <select value={form.cadence} onChange={(e) => setForm({ ...form, cadence: e.target.value })}>
-              <option value="weekly">weekly</option>
-              <option value="monthly">monthly</option>
-              <option value="yearly">yearly</option>
-            </select>
-          ) : null}
-          {error ? <p className="form-error" role="alert">{error}</p> : null}
-          <button className="primary-button" type="submit">Save entry</button>
-        </form>
-      ) : null}
-
-      <div className="money-ledger">
-        {shown.length ? (
-          shown.map((entry) => (
-            <article className="money-row" key={entry.id}>
-              <div>
-                <strong>{entry.label}</strong>
-                <small>
-                  {entry.date} ·{" "}
-                  <select className="money-cat" aria-label={`Category of ${entry.label}`} value={entry.category} onChange={(event) => changeCategory(entry, event.target.value)}>
-                    {(categories.includes(entry.category) ? categories : [entry.category, ...categories]).map((name) => <option key={name} value={name}>{name}</option>)}
-                  </select>
-                  {entry.bank ? ` · ${entry.bank}` : ""}
-                </small>
-              </div>
-              <b className={entry.amountMinor < 0 ? "negative" : "positive"}>{formatMinor(entry.amountMinor)}</b>
-              <button
-                className="icon-button"
-                type="button"
-                aria-label={`Delete ${entry.label}`}
-                onClick={() => removeFrom("transactions", entry)}
-              >
-                <Trash />
-              </button>
-            </article>
-          ))
-        ) : (
-          <p className="money-empty">{monthly.length ? "Nothing matches. Try other words, or Show everything." : "No entries for this month. Connect a bank, or start with one thing you spent or earned."}</p>
-        )}
-      </div>
-
-      {workspace.budget.recurring.length > 0 ? (
-        <div className="money-plans">
-          <h2>Plans</h2>
-          {workspace.budget.recurring.map((item) => (
-            <div className="money-plan-row" key={item.id}>
-              <span>{item.label} · {formatMinor(item.amountMinor)} · {item.cadence}</span>
-              <button
-                className="icon-button"
-                type="button"
-                aria-label={`Delete ${item.label}`}
-                onClick={() => removeFrom("recurring", item)}
-              >
-                <Trash />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {showImport ? (
-        <section className="money-import">
-          <h2>Import CSV</h2>
-          <p>Headers: date, label or description, amount. Category optional. Review before confirming.</p>
-          <textarea
-            rows="5"
-            value={csv}
-            onChange={(e) => { setCsv(e.target.value); setReview(null); }}
-            placeholder={"date,label,amount,category\n2026-08-31,Software,-29.00,Tools"}
-          />
-          {review ? (
-            <div className={`csv-result ${review.errors.length ? "blocked" : "ready"}`}>
-              <strong>{review.rows.length} valid rows</strong>
-              {review.errors.map((item) => <p key={item}>{item}</p>)}
-            </div>
-          ) : null}
-          <div className="row-actions">
-            <button type="button" onClick={reviewCsv} disabled={!csv.trim()}>Review</button>
-            <button className="primary-button" type="button" onClick={importCsv} disabled={!review?.rows.length || review.errors.length}>
-              Confirm import
-            </button>
-          </div>
+      {!started ? (
+        <section className="money-welcome" aria-label="Get started with Money">
+          <Wallet aria-hidden="true" />
+          <h2>See where your money goes</h2>
+          <p>Connect your bank and your accounts, spending, bills and cash flow come in by themselves every hour. Everything stays on this Mac.</p>
+          <BankCard state={bank} setState={setBank} />
+          <p className="money-quiet">
+            Or <button type="button" className="money-link" onClick={() => { setAdding(true); setShowImport(false); }}>add an entry by hand</button>
+            {" · "}<button type="button" className="money-link" onClick={() => { setShowImport(true); setAdding(false); }}>import a CSV</button>
+          </p>
+          {composer}
+          {importer}
         </section>
-      ) : null}
+      ) : (
+        <div className="money-layout">
+          <div className="money-main">
+            <MonthSummary totals={totals} month={month} />
+            <SpendingCard transactions={workspace.budget.transactions} month={month} limits={workspace.budget.limits || {}} only={only} onPick={setOnly} onLimit={changeLimit} />
+            <CashFlow transactions={workspace.budget.transactions} month={month} />
+
+            <section className="money-card money-entries" aria-label="Transactions">
+              <header>
+                <h2>Transactions <small>{monthly.length}</small></h2>
+                <div className="money-toolbar">
+                  <label className="money-find">
+                    <MagnifyingGlass aria-hidden="true" />
+                    <input type="search" aria-label="Find an entry" placeholder="Find an entry" value={find} onChange={(event) => setFind(event.target.value)} />
+                  </label>
+                  <button type="button" className="ghost-button" onClick={() => { setShowImport((v) => !v); setAdding(false); }}>{showImport ? "Hide import" : "Import CSV"}</button>
+                  <button type="button" className="outline-button" onClick={() => { setAdding((v) => !v); setShowImport(false); }}><Plus /> Add entry</button>
+                </div>
+              </header>
+              {composer}
+              {importer}
+              {only && <p className="money-quiet money-only">Showing {only} · <button type="button" className="money-link" onClick={() => setOnly(null)}>Show everything</button></p>}
+              <div className="money-ledger">
+                {days.length ? days.map(([date, entries]) => (
+                  <div className="money-day" key={date}>
+                    <h3>{dayWords(date)}</h3>
+                    {entries.map((entry) => (
+                      <article className="money-row" key={entry.id}>
+                        <i className="money-initial" aria-hidden="true">{(entry.label.match(/[A-Za-z0-9]/)?.[0] || "·").toUpperCase()}</i>
+                        <div>
+                          <strong>{entry.label}</strong>
+                          <small>
+                            <select className="money-cat" aria-label={`Category of ${entry.label}`} value={entry.category} onChange={(event) => changeCategory(entry, event.target.value)}>
+                              {(categories.includes(entry.category) ? categories : [entry.category, ...categories]).map((name) => <option key={name} value={name}>{name}</option>)}
+                            </select>
+                            {entry.bank ? ` · ${entry.bank}` : ""}
+                          </small>
+                        </div>
+                        <b className={entry.amountMinor < 0 ? "negative" : "positive"}>{entry.amountMinor > 0 ? "+" : ""}{formatMinor(entry.amountMinor)}</b>
+                        <button className="icon-button" type="button" aria-label={`Delete ${entry.label}`} onClick={() => removeFrom("transactions", entry)}><Trash /></button>
+                      </article>
+                    ))}
+                  </div>
+                )) : (
+                  <p className="money-empty">{monthly.length ? "Nothing matches. Try other words, or Show everything." : `Nothing in ${monthWords(month)} yet.`}</p>
+                )}
+              </div>
+            </section>
+          </div>
+
+          <aside className="money-side">
+            <BankCard state={bank} setState={setBank} />
+            <BillsCard budget={workspace.budget} today={localDateKey()} onNotBill={notBill} onDeletePlan={(id) => removeFrom("recurring", workspace.budget.recurring.find((item) => item.id === id))} />
+          </aside>
+        </div>
+      )}
       {toast}
+    </section>
+  );
+}
+
+const MONTH_WORDS = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" });
+const DAY_WORDS = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "short", day: "numeric" });
+const monthWords = (month) => MONTH_WORDS.format(new Date(`${month}-15T12:00`));
+const shiftMonth = (month, by) => { const date = new Date(`${month}-15T12:00`); date.setMonth(date.getMonth() + by); return localDateKey(date).slice(0, 7); };
+function dayWords(date) {
+  const today = localDateKey();
+  if (date === today) return "Today";
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  if (date === localDateKey(yesterday)) return "Yesterday";
+  return DAY_WORDS.format(new Date(`${date}T12:00`));
+}
+// Entries (already newest first) as [date, entries] by day, like a bank's own list.
+function byDay(entries) {
+  const days = new Map();
+  for (const entry of entries) days.set(entry.date, [...(days.get(entry.date) || []), entry]);
+  return [...days];
+}
+
+/* ‹ October 2026 ›: the month everything below shows. Never past this month; the name brings this month back. */
+function MonthStepper({ month, onMonth }) {
+  const now = localDateKey().slice(0, 7);
+  return (
+    <div className="money-month" role="group" aria-label="Month">
+      <button type="button" className="icon-button" aria-label="Previous month" onClick={() => onMonth(shiftMonth(month, -1))}><CaretLeft /></button>
+      <button type="button" className="money-month-name" title="Back to this month" disabled={month === now} onClick={() => onMonth(now)}>{monthWords(month)}</button>
+      <button type="button" className="icon-button" aria-label="Next month" disabled={month >= now} onClick={() => onMonth(shiftMonth(month, 1))}><CaretRight /></button>
+    </div>
+  );
+}
+
+/* The month in one card: what was left over, large, with what came in and went out beside it, and a bar of how much
+   of the money in went out. Never a scold: going over is said as a plain number. */
+function MonthSummary({ totals, month }) {
+  const kept = totals.in > 0 && totals.net >= 0 ? Math.round((totals.net / totals.in) * 100) : null;
+  const line = !totals.in && !totals.out ? "Nothing yet this month."
+    : !totals.in ? "Nothing has come in yet this month."
+    : kept !== null ? `You kept ${kept}% of what came in.`
+    : `${formatMinor(-totals.net)} more went out than came in.`;
+  return (
+    <section className="money-card money-overview" aria-label="This month">
+      <div className="money-left">
+        <span>Left over in {monthWords(month).split(" ")[0]}</span>
+        <strong>{formatMinor(totals.net)}</strong>
+        <small>{line}</small>
+      </div>
+      <dl>
+        <div><dt><ArrowDownLeft aria-hidden="true" /> Money in</dt><dd>{formatMinor(totals.in)}</dd></div>
+        <div><dt><ArrowUpRight aria-hidden="true" /> Money out</dt><dd>{formatMinor(totals.out)}</dd></div>
+      </dl>
+      {totals.in > 0 && <span className="money-ratio" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.round((totals.out / totals.in) * 100))}%` }} /></span>}
     </section>
   );
 }
@@ -266,6 +314,7 @@ function BankCard({ state, setState }) {
   const act = (work) => { setProblem(""); return work().then(setState, (error) => setProblem(cleanError(error))); };
   const saveKeys = (event) => { event.preventDefault(); act(() => bridge.setKeys(keys.id, keys.secret)).then(() => setKeys({ id: "", secret: "" })); };
   const trouble = problem || state.problem;
+  const held = holdings(state.items);
 
   if (!state.keys) {
     return (
@@ -297,6 +346,13 @@ function BankCard({ state, setState }) {
             : <button type="button" className="primary-button" disabled={state.busy} onClick={() => act(bridge.connect)}><Plus /> Connect a bank</button>}
         </span>
       </header>
+      {held && (
+        <div className="money-balance">
+          <span>In your banks</span>
+          <strong>{formatMinor(held.cash)}</strong>
+          {held.owed > 0 && <small>{formatMinor(held.owed)} owed on cards and loans</small>}
+        </div>
+      )}
       {state.items.map((item) => (
         <article className="money-bank" key={item.id}>
           <div className="money-bank-head">
