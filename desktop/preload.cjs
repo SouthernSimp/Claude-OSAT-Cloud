@@ -97,6 +97,12 @@ contextBridge.exposeInMainWorld('osatAgent', Object.freeze({
   apps: () => ipcRenderer.invoke('agent:apps'),
 }))
 
+// Power tools → Activity (desktop/activity.cjs): memory, processor, disk, specs and the apps using the most.
+contextBridge.exposeInMainWorld('osatActivity', Object.freeze({
+  now: () => ipcRenderer.invoke('activity:now'),
+  quit: (appPath, force) => ipcRenderer.invoke('activity:quit', appPath, force === true),
+}))
+
 // Tools → GitHub (desktop/github.cjs): repos and pull requests through the gh on this Mac.
 contextBridge.exposeInMainWorld('osatGitHub', Object.freeze({
   status: () => ipcRenderer.invoke('github:status'),

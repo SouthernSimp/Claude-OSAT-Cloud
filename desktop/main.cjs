@@ -374,6 +374,7 @@ function buildMenu() {
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         room('GitHub', 'GitHub'),
         room('Passwords', 'Passwords'),
+        room('Activity', 'Activity'),
         room('Roadmap', 'Roadmap'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
