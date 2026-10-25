@@ -13,7 +13,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 - **Been a while:** Today lists a client you've met before but not in three weeks, with when you last met, so no
   one slips. Click one to open their board. (#128)
 - **Activity** (Power tools → Activity): how your Mac is doing without opening Activity Monitor. Memory used and
-  whether there's room to spare, how busy the processor is, free disk space, the apps using the most memory with
+  whether there's room to spare, how busy the processor is, free disk space, the apps using the most memory or processor with
   Quit (then Force quit if one won't go), and your Mac's specs. (#129)
 - **Right-click words you picked,** anywhere in a room (a note, an email, Today): Ask about this (the words
   quoted in Ask, ready for your question), Explain this, Save as a sticky (with Undo) and Copy. (#130)

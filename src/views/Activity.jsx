@@ -21,6 +21,7 @@ function ActivityRoom({ bridge }) {
   const [problem, setProblem] = useState('')
   // Apps asked to quit that are still running: their button becomes Force quit.
   const [asked, setAsked] = useState(() => new Set())
+  const [by, setBy] = useState('memory')
 
   const read = useCallback(() => bridge.now().then((next) => { setNow(next); setProblem('') }, (error) => setProblem(cleanError(error))), [bridge])
   useEffect(() => {
@@ -42,6 +43,7 @@ function ActivityRoom({ bridge }) {
   if (!now.mac) return <p className="pop-gone">Activity reads a Mac’s memory and processor; this computer isn’t one.</p>
   const { memory, cpu, disk, specs, apps } = now
   const used = disk.total - disk.free
+  const shown = [...apps].sort((a, b) => (by === 'cpu' ? b.cpu - a.cpu : b.bytes - a.bytes)).slice(0, 12)
 
   return (
     <div className="activity">
@@ -59,10 +61,16 @@ function ActivityRoom({ bridge }) {
           state={disk.free / disk.total < 0.1 ? 'warn' : 'normal'} />
       </div>
 
-      <section className="activity-card" aria-label="Using the most memory">
-        <h2>Using the most memory</h2>
+      <section className="activity-card" aria-label="Apps">
+        <header className="activity-card-head">
+          <h2>Using the most {by === 'cpu' ? 'processor' : 'memory'}</h2>
+          <div className="activity-by" role="group" aria-label="Sort apps by">
+            <button type="button" aria-pressed={by === 'memory'} onClick={() => setBy('memory')}>Memory</button>
+            <button type="button" aria-pressed={by === 'cpu'} onClick={() => setBy('cpu')}>CPU</button>
+          </div>
+        </header>
         <ul className="activity-apps">
-          {apps.map((app) => (
+          {shown.map((app) => (
             <li key={app.path}>
               <span className="activity-app-name">{app.name}{app.count > 1 && <small>{app.count} processes</small>}</span>
               <span className="activity-num">{bytesWords(app.bytes)}</span>

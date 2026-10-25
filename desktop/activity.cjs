@@ -33,7 +33,7 @@ function createActivity({ model, processes, exec, handle, fail, platform = proce
       cpu: { busy, cores: fresh.length },
       disk: { total: disk.blocks * disk.bsize, free: disk.bavail * disk.bsize },
       specs: { ...specs, cores: fresh.length, uptime: os.uptime() },
-      apps: apps.slice(0, 12).map(({ path, name, count, kb, cpu }) => ({ path, name, count, bytes: kb * 1024, cpu })),
+      apps: apps.slice(0, 60).map(({ path, name, count, kb, cpu }) => ({ path, name, count, bytes: kb * 1024, cpu })),
     }
   }
 

@@ -19,6 +19,11 @@
 .activity-meter meter::-moz-meter-bar { background: var(--level); border-radius: 6px; }
 
 .activity-card h2 { margin-bottom: 8px; }
+.activity-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.activity-card-head h2 { margin: 0; }
+.activity-by { display: inline-flex; padding: 2px; border-radius: var(--r-sm); background: var(--surface-sunken); }
+.activity-by button { padding: 3px 10px; border-radius: calc(var(--r-sm) - 2px); color: var(--muted); font-size: var(--t-xs); font-weight: 500; }
+.activity-by button[aria-pressed="true"] { background: var(--surface-raised); color: var(--ink); box-shadow: var(--e-1); }
 .activity-apps { margin: 0; padding: 0; list-style: none; }
 .activity-apps li { display: grid; grid-template-columns: minmax(0, 1fr) 90px 80px 80px; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line-soft); font-size: var(--t-sm); }
 .activity-apps li:first-child { border-top: 0; }
