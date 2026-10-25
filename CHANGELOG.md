@@ -10,6 +10,8 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   kickoff"), Today puts a card on top until it's over: when you last met (click to open that meeting), what's still
   open with them (tick it off right there, with Undo) and where they came up lately. Open the client's board from
   the card. (#128)
+- **Been a while:** Today lists a client you've met before but not in three weeks, with when you last met, so no
+  one slips. Click one to open their board. (#128)
 
 ## Build 368 · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
-import { dashboardBoards, dayLine, dayPlan, greeting, meetingPrep, monthMoney, openTodos, recentWork } from '../src/today/today-model.js'
+import { dashboardBoards, dayLine, dayPlan, greeting, meetingPrep, quietClients, monthMoney, openTodos, recentWork } from '../src/today/today-model.js'
 
 const NOW = new Date(2026, 9, 19, 9, 0).getTime()
 const iso = (ms) => new Date(ms).toISOString()
@@ -129,4 +129,17 @@ test('before a client meeting: the next one not over yet, with when you last met
   assert.deepEqual(ready.notes.map((item) => item.noteId), ['lunch'])
   assert.equal(meetingPrep(prep, plan.slice(1, 2), NOW), null)
   assert.equal(meetingPrep(state, plan, NOW), null, 'no clients, no prep')
+})
+
+test('clients gone quiet: met before, not in three weeks, longest first; never met is left out', () => {
+  const ago = (days) => iso(NOW - days * 24 * HOUR)
+  const met = (id, folderId, days) => ({ id, title: 'Call', markdown: 'Call\n\n#meeting', tags: ['meeting'], folderId, createdAt: ago(days), updatedAt: ago(days) })
+  const quiet = normalizeWorkspace({
+    ...createDefaultWorkspace(),
+    folders: ['acme', 'fortis', 'new', 'home'].map((id) => ({ id, name: id, client: id !== 'home', createdAt: iso(NOW) })),
+    notes: [met('a', 'acme', 40), met('f', 'fortis', 25), met('h', 'home', 90), met('f2', 'fortis', 30)],
+  })
+  assert.deepEqual(quietClients(quiet, NOW).map(({ folder }) => folder.id), ['acme', 'fortis'])
+  const fresh = { ...quiet, notes: [...quiet.notes, met('f3', 'fortis', 2)] }
+  assert.deepEqual(quietClients(fresh, NOW).map(({ folder }) => folder.id), ['acme'])
 })

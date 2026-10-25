@@ -120,3 +120,12 @@ export function meetingPrep(state, plan, now = Date.now()) {
   }
   return null
 }
+
+/* Clients gone quiet (Phase 92): the ones you've met before but not in three weeks, longest first, as
+   [{ folder, lastMet }]. A client never met in OSAT isn't listed: there's nothing to go on. */
+export function quietClients(state, now = Date.now(), days = 21) {
+  return state.folders.filter(isClient)
+    .map((folder) => ({ folder, lastMet: clientTouch(state, folder).lastMet }))
+    .filter(({ lastMet }) => lastMet && now - lastMet >= days * DAY)
+    .sort((a, b) => a.lastMet - b.lastMet)
+}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, CalendarBlank, Check, CheckCircle, ClockCounterClockwise, CurrencyDollar, Handshake, ListChecks, Plus, Target, Tray } from '@phosphor-icons/react'
+import { ArrowRight, CalendarBlank, Check, CheckCircle, ClockCounterClockwise, CurrencyDollar, Handshake, UsersThree, ListChecks, Plus, Target, Tray } from '@phosphor-icons/react'
 
 import { WHAT_LABEL, WHAT_PAPER, whatOf } from '../../shared/what-model.mjs'
 import { sourceWords } from '../boards/boards-model.js'
@@ -11,7 +11,7 @@ import { useUndoToast } from '../lib/UndoToast.jsx'
 import { captureThought, comingUp, isActiveNote, setDone, setWhat } from '../notes-model.js'
 import { formatMinor } from '../osat-data.js'
 import { useMacCalendar } from '../views/MacCalendar.jsx'
-import { dashboardBoards, dayLine, dayPlan, greeting, meetingPrep, monthMoney, openTodos, recentWork } from './today-model.js'
+import { dashboardBoards, dayLine, dayPlan, greeting, meetingPrep, monthMoney, quietClients, openTodos, recentWork } from './today-model.js'
 import { bills, daysUntil } from '../money/money-model.js'
 import { dueWords } from '../money/Bills.jsx'
 import './dashboard.css'
@@ -51,6 +51,7 @@ export function TodayView({ workspace, commit, navigate }) {
   const waiting = useMemo(() => cameIn(workspace, now.getTime()).waiting, [workspace, now])
   const plan = useMemo(() => dayPlan({ mac: mac.events, hidden: mac.hidden, own: workspace.calendar.events, notes: workspace.notes }, now.getTime()), [mac.events, mac.hidden, workspace, now])
   const prep = useMemo(() => meetingPrep(workspace, plan, now.getTime()), [workspace, plan, now])
+  const quiet = useMemo(() => quietClients(workspace, now.getTime()), [workspace, now])
   const later = useMemo(() => {
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
     return comingUp(workspace.notes.filter(isActiveNote), now.getTime()).filter(({ when }) => when.start.getTime() >= end).slice(0, 3)
@@ -125,6 +126,15 @@ export function TodayView({ workspace, commit, navigate }) {
               {waiting.length > 4 && <p className="today-more-line">And {waiting.length - 4} more.</p>}
             </Card>
           )}
+
+          {quiet.length > 0 && <Card tint="violet" icon={UsersThree} title="Been a while">
+            <ul className="today-list">{quiet.slice(0, 3).map(({ folder, lastMet }) => <li key={folder.id}>
+              <button type="button" className="today-item" onClick={() => navigate('Mindmap', { folderId: folder.id, open: true })}>
+                <span className="today-item-text">{folder.name}</span>
+                <small>Last met {shortDay(new Date(lastMet))} · {Math.floor((now.getTime() - lastMet) / (7 * 86400000))} weeks ago</small>
+              </button>
+            </li>)}</ul>
+          </Card>}
 
           {recent.length > 0 && <Card tint="indigo" icon={ClockCounterClockwise} title="Recent work" more="Notes" onMore={() => navigate('Notes')}>
             <ul className="today-list">{recent.map((note) => <li key={note.id}>

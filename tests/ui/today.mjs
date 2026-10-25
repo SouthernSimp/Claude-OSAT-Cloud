@@ -38,7 +38,8 @@ async function seeded(browser, url, theme, empty = false) {
         note('finish', 'Finish and materials', 'welding', 'note', { updatedAt: new Date(now.getTime() + 1000).toISOString() }),
         note('loose', 'A new customer enquiry', null),
         note('met', 'Fortis call', 'fortis', 'note', { tags: ['meeting'], source: 'Meeting', createdAt: new Date(now.getTime() - 3 * 86400000).toISOString() }),
-      ], folders: empty ? [] : ['Jackalope Welding', 'Fortis', 'OSAT', 'Home'].map((name, i) => ({ id: ['welding', 'fortis', 'osat', 'home'][i], name, rank: i, ...(name === 'Fortis' ? { client: true } : {}) })),
+        note('old', 'OSAT review', 'osat', 'note', { tags: ['meeting'], source: 'Meeting', createdAt: new Date(now.getTime() - 30 * 86400000).toISOString() }),
+      ], folders: empty ? [] : ['Jackalope Welding', 'Fortis', 'OSAT', 'Home'].map((name, i) => ({ id: ['welding', 'fortis', 'osat', 'home'][i], name, rank: i, ...(name === 'Fortis' || name === 'OSAT' ? { client: true } : {}) })),
       calendar: { events: empty ? [] : [{ id: 'visit', title: 'Site visit', start: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14).toISOString(), end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15).toISOString() },
         { id: 'fortis-demo', title: 'Fortis demo', start: iso, end: new Date(now.getTime() + 3600000).toISOString() }] },
       settings: { seeded: { direction: true }, autoFile: { on: false }, dates: { on: false } }, budget: { transactions: [] }, habits: [], goals: [], chats: [],
@@ -58,6 +59,9 @@ async function exercise(page) {
   const prep = root.locator('.today-card[aria-label^="Before Fortis demo"]')
   await prep.getByRole('button', { name: 'Done: Prepare the demo', exact: true }).waitFor()
   await prep.getByRole('button', { name: 'Fortis call', exact: true }).waitFor()
+  await root.locator('.today-card[aria-label="Been a while"]').getByRole('button', { name: /^OSAT/ }).click()
+  await page.locator('.boards-title h1', { hasText: 'OSAT' }).waitFor()
+  await openRoom(page, 'Today')
   await prep.getByRole('button', { name: 'Open Fortis', exact: true }).click()
   await page.locator('.boards-title h1', { hasText: 'Fortis' }).waitFor()
   await openRoom(page, 'Today')
