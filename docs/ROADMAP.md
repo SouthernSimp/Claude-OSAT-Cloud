@@ -97,7 +97,7 @@ ends: when you last met (opens that meeting), the open to-dos on that board or n
 there) and the two newest notes that mention them. Matched by the title for now; who's invited waits for People. Today also lists, calmly, a client met before but not
 in three weeks (Been a while).
 
-Phase 93 (in review): Activity, from Nate's own stickies on the OSAT board (Oct 6 and Oct 17: "monitor ram usage
+Phase 93 (in review, PR #129): Activity, from Nate's own stickies on the OSAT board (Oct 6 and Oct 17: "monitor ram usage
 and system specs without needing another app… making OSAT into a power tool"). Power tools → Activity: memory the way
 Activity Monitor counts it and how full macOS feels, the processor, the startup disk, the apps using the most memory
 (Quit, then Force quit) and the specs, read every two seconds while it shows. Read with the Mac's own vm_stat, sysctl

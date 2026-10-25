@@ -14,8 +14,8 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   one slips. Click one to open their board. (#128)
 - **Activity** (Power tools → Activity): how your Mac is doing without opening Activity Monitor. Memory used and
   whether there's room to spare, how busy the processor is, free disk space, the apps using the most memory with
-  Quit (then Force quit if one won't go), and your Mac's specs. (#PR)
-- Fix: Kill Process and Uninstall in the quick bar couldn't list running apps on the Mac. (#PR)
+  Quit (then Force quit if one won't go), and your Mac's specs. (#129)
+- Fix: Kill Process and Uninstall in the quick bar couldn't list running apps on the Mac. (#129)
 
 ## Build 368 · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied
 

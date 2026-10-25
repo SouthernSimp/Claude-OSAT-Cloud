@@ -9,7 +9,14 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 22, 2026: Phases 81–87 shipped as build 356, 88–91 as build 368
+## Resume checkpoint — October 24, 2026: Phases 92–93 in #129 (one Merge ships both)
+
+Oct 24, Nate out on an errand ("really focus on delivering features"). Built: Phase 92 (#128, `claude/phase-92-meeting-prep`):
+Today's Before-a-client-meeting card and Been a while. Phase 93 (#129, `claude/phase-93-activity`, stacked on 92): Activity
+under Power tools, from his own OSAT-board stickies (Oct 6, Oct 17), plus the launcher `exec` fix for Kill Process and
+Uninstall. Nate clicks Merge on #129. Build 368 (Oct 22) shipped Phases 88–91.
+
+### Earlier: October 22, 2026: Phases 81–87 shipped as build 356, 88–91 as build 368
 
 Build 356 (Oct 22) shipped #116–#123. Then three phases, all folded into #126 so one Merge ships them (GitHub marks
 #124 and #125 merged with it): Phase 88 (#124, one-click sign-in for 18 apps), Phase 89 (#125, bills & subscriptions,
