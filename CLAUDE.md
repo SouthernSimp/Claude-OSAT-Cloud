@@ -39,8 +39,8 @@ with connected apps) are in docs/ROADMAP.md; ask Nate before building it.
 Evening Oct 22: Nate called Today's layout "awful". Phase 91 (#127, `claude/phase-91-today-layout`, off main): one
 centred column (the two-column grid had stranded the counts strip on the far right), no counts strip or Mail /
 Meetings / Files buttons (the sidebar has both), Goals under Your day, Recent work without to-dos. Waits for Nate to
-see it. CI's Electron e2e failed on "the second OSAT did not hear the first one's rename" here and on #126 alike:
-not this change; look into it if it keeps failing.
+see it. CI's Electron e2e failed now and then on "the second OSAT did not hear the first one's rename" (#126, #127,
+#131): sync polls every 20 s, the test waited 30 s; it waits 60 s since Oct 25.
 
 Later Oct 22: Gmail (#122) and Money with banks (#123) were built. Two things wait on Nate: Google Cloud project
 `osat-512421` (account thenatemccreery@gmail.com) has the Gmail API on, but its sign-in screen (Google Auth Platform)
