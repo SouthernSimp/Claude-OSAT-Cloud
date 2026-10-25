@@ -320,7 +320,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 90 | Money, redone: the whole window in two columns (the month, spending, cash flow and entries by day; accounts and bills beside), a month stepper, and one welcome when nothing is in yet | Merged (PR #126), build 368, Oct 22 |
 | 91 | Today, tidied: one centred page, no repeated counts or shortcuts, Recent work without to-dos | Merged (PR #127), build 368, Oct 22 |
 | 92 | Before a client meeting: Today shows when you last met, what's open with them and where they came up, for the next meeting today with a client; Been a while lists clients not met in three weeks | In review (#128) |
-| 93 | Activity: memory (with pressure), processor, disk, the apps using the most memory with Quit, and the Mac's specs, under Power tools | In review |
+| 93 | Activity: memory (with pressure), processor, disk, the apps using the most memory with Quit, and the Mac's specs, under Power tools | In review (#129) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
