@@ -109,7 +109,7 @@ Phase 94 (in review, PR #130): right-click on picked words, from Nate's sticky "
 (quoted in the Ask panel, waiting for the question), Explain this (asked at once), Save as a sticky (Just in, with
 Undo), Copy.
 
-Phase 95 (in review): Web picks, from Nate's sticky "Allow users to select default site for browsing" (Oct 6): the
+Phase 95 (in review, PR #131): Web picks, from Nate's sticky "Allow users to select default site for browsing" (Oct 6): the
 start page picks the search engine and a home page (kept on this Mac), and a Home button shows once one is set.
 
 Next, in Nate's order (Oct 22): Phase 86, Gmail signed in directly (he picked Sign in with Google over an app password;
@@ -330,7 +330,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 92 | Before a client meeting: Today shows when you last met, what's open with them and where they came up, for the next meeting today with a client; Been a while lists clients not met in three weeks | In review (#128) |
 | 93 | Activity: memory (with pressure), processor, disk, the apps using the most memory with Quit, and the Mac's specs, under Power tools | In review (#129) |
 | 94 | Right-click words you picked anywhere in a room: Ask about this, Explain this, Save as a sticky, Copy | In review (#130) |
-| 95 | Web: pick the search (DuckDuckGo, Google, Bing, Brave, Kagi) and a home page, with a Home button | In review |
+| 95 | Web: pick the search (DuckDuckGo, Google, Bing, Brave, Kagi) and a home page, with a Home button | In review (#131) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
