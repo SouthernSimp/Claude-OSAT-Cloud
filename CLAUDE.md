@@ -9,12 +9,15 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 24, 2026: Phases 92–93 in #129 (one Merge ships both)
+## Resume checkpoint — October 24, 2026: Phases 92–94 in #130 (one Merge ships all three)
 
 Oct 24, Nate out on an errand ("really focus on delivering features"). Built: Phase 92 (#128, `claude/phase-92-meeting-prep`):
 Today's Before-a-client-meeting card and Been a while. Phase 93 (#129, `claude/phase-93-activity`, stacked on 92): Activity
 under Power tools, from his own OSAT-board stickies (Oct 6, Oct 17), plus the launcher `exec` fix for Kill Process and
-Uninstall. Nate clicks Merge on #129. Build 368 (Oct 22) shipped Phases 88–91.
+Uninstall. Phase 94 (#130, `claude/phase-94-picked-words`, on 93): right-click picked words anywhere in a room (Desk.jsx
+`pickedWords`, `selectedWords` in lib/ui.js): Ask about this, Explain this, Save as a sticky, Copy. Nate clicks Merge on
+#130. Build 368 (Oct 22) shipped Phases 88–91. Nate's open stickies on the OSAT board still not built: default site for
+browsing, scroll a collapsed stack, import cookies/autofill, annotate a copied picture, apps on the desk/dock (desk gone).
 
 ### Earlier: October 22, 2026: Phases 81–87 shipped as build 356, 88–91 as build 368
 

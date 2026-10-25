@@ -16,7 +16,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   whether there's room to spare, how busy the processor is, free disk space, the apps using the most memory with
   Quit (then Force quit if one won't go), and your Mac's specs. (#129)
 - **Right-click words you picked,** anywhere in a room (a note, an email, Today): Ask about this (the words
-  quoted in Ask, ready for your question), Explain this, Save as a sticky (with Undo) and Copy. (#PR)
+  quoted in Ask, ready for your question), Explain this, Save as a sticky (with Undo) and Copy. (#130)
 - Fix: Kill Process and Uninstall in the quick bar couldn't list running apps on the Mac. (#129)
 
 ## Build 368 · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied
