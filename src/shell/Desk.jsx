@@ -31,6 +31,7 @@ import { JournalView } from '../views/Journal.jsx'
 import { NowPlayingView } from '../views/NowPlaying.jsx'
 import { PileView } from '../views/Pile.jsx'
 import { RoadmapView } from '../views/Roadmap.jsx'
+import { ActivityView } from '../views/Activity.jsx'
 import { GitHubView } from '../views/GitHub.jsx'
 import { MailView } from '../views/Mail.jsx'
 import { PasswordsView } from '../views/Passwords.jsx'
@@ -53,7 +54,7 @@ import { needsTour, Tour } from './Tour.jsx'
 
 // The rooms that can't do anything offline; they say so instead of opening.
 const ONLINE_ONLY = new Set(['Browser', 'Terminal', 'NowPlaying', 'GitHub'])
-const ROOMS = new Set(['Today', 'Todo', 'JustIn', 'Mindmap', 'Canvas', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile'])
+const ROOMS = new Set(['Today', 'Todo', 'JustIn', 'Mindmap', 'Canvas', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile', 'Activity'])
 const BOARD_KEY = 'osat.boards.board.v1'
 
 export function Desk() {
@@ -342,6 +343,7 @@ function Room({ at, common, storage, command, covered, boardsRef, setBoard }) {
     case 'Settings': return <SettingsView {...common} storage={storage} target={at.detail?.section ? target : null} />
     case 'Roadmap': return <RoadmapView {...common} target={target} />
     case 'GitHub': return <GitHubView />
+    case 'Activity': return <ActivityView />
     case 'Mail': return <MailView {...common} />
     case 'Passwords': return <PasswordsView />
     case 'Meetings': return <MeetingsView {...common} />

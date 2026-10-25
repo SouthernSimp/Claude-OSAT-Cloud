@@ -9,7 +9,14 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 22, 2026: Phases 81–87 shipped as build 356, 88–91 as build 368
+## Resume checkpoint — October 24, 2026: Phases 92–93 in #129 (one Merge ships both)
+
+Oct 24, Nate out on an errand ("really focus on delivering features"). Built: Phase 92 (#128, `claude/phase-92-meeting-prep`):
+Today's Before-a-client-meeting card and Been a while. Phase 93 (#129, `claude/phase-93-activity`, stacked on 92): Activity
+under Power tools, from his own OSAT-board stickies (Oct 6, Oct 17), plus the launcher `exec` fix for Kill Process and
+Uninstall. Nate clicks Merge on #129. Build 368 (Oct 22) shipped Phases 88–91.
+
+### Earlier: October 22, 2026: Phases 81–87 shipped as build 356, 88–91 as build 368
 
 Build 356 (Oct 22) shipped #116–#123. Then three phases, all folded into #126 so one Merge ships them (GitHub marks
 #124 and #125 merged with it): Phase 88 (#124, one-click sign-in for 18 apps), Phase 89 (#125, bills & subscriptions,
@@ -732,6 +739,18 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phase 93
+
+- Activity (Power tools → Activity): `shared/activity-model.mjs` (pure: `readVmStat` = Activity Monitor's Memory Used,
+  app (anonymous less purgeable) + wired + compressed; `pressureOf` for `kern.memorystatus_vm_pressure_level`; `cpuBusy`
+  between two `os.cpus()`; `readSpecs`, `readMachineName`, words) + `desktop/activity.cjs` (`createActivity`, made in
+  launcher/index.cjs beside `processes`, whose list and `end` it reuses; `activity:now`, `activity:quit`, `from: 'app'`;
+  specs read once) + `src/views/Activity.jsx` (`osatActivity`; reads every 2 s while visible; Quit, then Force quit).
+  The launcher's `exec` defaults to mac-files' `run` (main passes none; processes.cjs and uninstall.cjs have no default).
+  tests/activity.test.mjs, tests/ui/activity.mjs.
+- Before a client meeting (Phase 92): `meetingPrep(state, plan, now)` and `quietClients` in today-model.js;
+  `clientName(folder)` in boards-model.js is the whole-word matcher clientTouch uses.
 
 ## Architecture added in Phase 90
 

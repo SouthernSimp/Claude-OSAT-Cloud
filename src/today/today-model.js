@@ -3,8 +3,8 @@
    calendar yet), and one plain line that says it all. Pure. */
 
 import { whatOf, whenOf } from '../../shared/what-model.mjs'
-import { boardsOf, onBoard, stageOf, stickiesOn } from '../boards/boards-model.js'
-import { folderPath, isActiveNote } from '../notes-model.js'
+import { boardsOf, clientName, clientTouch, isClient, onBoard, stageOf, stickiesOn } from '../boards/boards-model.js'
+import { folderPath, folderSubtree, isActiveNote } from '../notes-model.js'
 
 const STAGE_FIRST = { doing: 0, next: 1, later: 2 }
 const startOfDay = (time) => { const day = new Date(time); return new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime() }
@@ -91,4 +91,41 @@ export function monthMoney(budget, month) {
     spent: entries.filter((entry) => entry.amountMinor < 0).reduce((sum, entry) => sum - entry.amountMinor, 0),
     income: entries.filter((entry) => entry.amountMinor > 0).reduce((sum, entry) => sum + entry.amountMinor, 0),
   }
+}
+
+/* Before a client meeting (Phase 92): the next thing on the day, not over yet, whose title names a client board
+   ("Fortis kickoff"). { item, folder, lastMeeting, todos, notes }: the last time you met, the open to-dos on that
+   board or naming them (theirs read "Sam: send the price list"), and the two newest notes that name them. null
+   when nothing today is with a client. */
+export function meetingPrep(state, plan, now = Date.now()) {
+  const clients = state.folders.filter(isClient).map((folder) => ({ folder, names: clientName(folder) })).filter((client) => client.names)
+  if (!clients.length) return null
+  for (const item of plan) {
+    const end = Date.parse(item.end) || Date.parse(item.start) + 3600000
+    if (end <= now) continue
+    const client = clients.find(({ names }) => names.test(item.title))
+    if (!client) continue
+    const { folder, names } = client
+    const on = folderSubtree(state.folders, folder.id)
+    const touch = clientTouch(state, folder).items.filter((touched) => touched.at < Date.parse(item.start) || item.allDay)
+    const todos = openTodos(state, now).filter(({ note }) => on.has(note.folderId) || names.test(note.title))
+    const listed = new Set(todos.map(({ note }) => note.id))
+    return {
+      item,
+      folder,
+      lastMeeting: touch.find((touched) => touched.from === 'meeting' || touched.from === 'granola') || null,
+      todos,
+      notes: touch.filter((touched) => touched.from !== 'meeting' && touched.from !== 'granola' && !listed.has(touched.noteId)).slice(0, 2),
+    }
+  }
+  return null
+}
+
+/* Clients gone quiet (Phase 92): the ones you've met before but not in three weeks, longest first, as
+   [{ folder, lastMet }]. A client never met in OSAT isn't listed: there's nothing to go on. */
+export function quietClients(state, now = Date.now(), days = 21) {
+  return state.folders.filter(isClient)
+    .map((folder) => ({ folder, lastMet: clientTouch(state, folder).lastMet }))
+    .filter(({ lastMet }) => lastMet && now - lastMet >= days * DAY)
+    .sort((a, b) => a.lastMet - b.lastMet)
 }
