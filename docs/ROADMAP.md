@@ -78,7 +78,7 @@ finally feels fully built out", with a bank's Spending by category donut and tab
 the free Trial (10 banks, production keys on dashboard.plaid.com); he pastes the Client ID and Secret into Money once.
 OSAT opens Plaid's Hosted Link page in the browser, syncs every hour, never counts transfers as spending.
 
-Phase 88 (in review, PR #124): one-click sign-in for your apps. Nate asked for it, and for OSAT to wow people the
+Phase 88 (merged, build 368): one-click sign-in for your apps. Nate asked for it, and for OSAT to wow people the
 way Muse (Meta's agent) does. Connect an app now lists 18 apps a business runs on, each tested on Oct 22 to answer as
 an AI-app server and to let OSAT sign in without registering by hand (Slack, HubSpot, Asana, Box and GitHub need that,
 so they wait). Connect opens the app's own sign-in in the browser; Ask can then use it, and changes ask first.
@@ -90,6 +90,24 @@ edge: Muse trains on chats by default and shared chats leaked; OSAT keeps the AI
 "Hand it a job": write a job in the bar ("pull this week's Stripe payments into Money", "make a Notion page from this
 board"), OSAT works it in the background with the connected apps, asks before changing anything outside OSAT, and
 leaves the result in Just in with Undo.
+
+Phase 92 (in review, PR #128): before a client meeting, the last connector idea on the list that needs nothing new from
+Nate. When something on today's calendar names a client board ("Fortis kickoff"), Today puts a card on top until it
+ends: when you last met (opens that meeting), the open to-dos on that board or naming them (tick them off right
+there) and the two newest notes that mention them. Matched by the title for now; who's invited waits for People. Today also lists, calmly, a client met before but not
+in three weeks (Been a while).
+
+Phase 93 (in review, PR #129): Activity, from Nate's own stickies on the OSAT board (Oct 6 and Oct 17: "monitor ram usage
+and system specs without needing another app… making OSAT into a power tool"). Power tools → Activity: memory the way
+Activity Monitor counts it and how full macOS feels, the processor, the startup disk, the apps using the most memory
+(Quit, then Force quit) and the specs, read every two seconds while it shows. Read with the Mac's own vm_stat, sysctl
+and system_profiler; nothing leaves the Mac. Also fixed: the quick bar's Kill Process and Uninstall got no way to run
+`ps` on the Mac (the launcher now defaults `exec` to mac-files' `run`).
+
+Phase 94 (in review, PR #130): right-click on picked words, from Nate's sticky "Drag select text and have right click option to
+'Ask AI more'" (Oct 6). Anywhere in a room, over plain words (a card or board keeps its own menu): Ask about this
+(quoted in the Ask panel, waiting for the question), Explain this (asked at once), Save as a sticky (Just in, with
+Undo), Copy.
 
 Next, in Nate's order (Oct 22): Phase 86, Gmail signed in directly (he picked Sign in with Google over an app password;
 the Mac Mail app route was slow on a big Gmail inbox and kept breaking), then Phase 87, banks in Money through Plaid
@@ -302,10 +320,13 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 85 | Canvases: whiteboards with stickies, shapes, text, arrows for mind maps and a live kanban of any board; the Board tab renamed Kanban | Merged (PR #121), build 356, Oct 22 |
 | 86 | Gmail, signed in directly: Connect Gmail with Google's own sign-in, instead of reading it through the Mac's Mail app | Merged (PR #122), build 356, Oct 22 |
 | 87 | Money, fully built out: banks through Plaid (accounts, balances, transactions each hour), spending by category (donut and table), budgets per category, six months of cash flow, find and recategorize | Merged (PR #123), build 356, Oct 22 |
-| 88 | One-click sign-in for 18 apps (Notion, Airtable, monday.com, ClickUp, Todoist, Linear, Jira and Confluence, Calendly, Stripe, Square, PayPal, Canva, Figma, Intercom, Webflow, Wix, Zapier, Granola), each checked to sign in on its own; Find an app | In review (#124) |
-| 89 | Bills & subscriptions: repeat charges found in the bank's entries plus your plans, soonest first, about what they come to a month; Today names the bill due this week | In review (#125) |
-| 90 | Money, redone: the whole window in two columns (the month, spending, cash flow and entries by day; accounts and bills beside), a month stepper, and one welcome when nothing is in yet | In review (#126) |
-| 91 | Today, tidied: one centred page, no repeated counts or shortcuts, Recent work without to-dos | In review (#127) |
+| 88 | One-click sign-in for 18 apps (Notion, Airtable, monday.com, ClickUp, Todoist, Linear, Jira and Confluence, Calendly, Stripe, Square, PayPal, Canva, Figma, Intercom, Webflow, Wix, Zapier, Granola), each checked to sign in on its own; Find an app | Merged (PR #124), build 368, Oct 22 |
+| 89 | Bills & subscriptions: repeat charges found in the bank's entries plus your plans, soonest first, about what they come to a month; Today names the bill due this week | Merged (PR #125), build 368, Oct 22 |
+| 90 | Money, redone: the whole window in two columns (the month, spending, cash flow and entries by day; accounts and bills beside), a month stepper, and one welcome when nothing is in yet | Merged (PR #126), build 368, Oct 22 |
+| 91 | Today, tidied: one centred page, no repeated counts or shortcuts, Recent work without to-dos | Merged (PR #127), build 368, Oct 22 |
+| 92 | Before a client meeting: Today shows when you last met, what's open with them and where they came up, for the next meeting today with a client; Been a while lists clients not met in three weeks | In review (#128) |
+| 93 | Activity: memory (with pressure), processor, disk, the apps using the most memory with Quit, and the Mac's specs, under Power tools | In review (#129) |
+| 94 | Right-click words you picked anywhere in a room: Ask about this, Explain this, Save as a sticky, Copy | In review (#130) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

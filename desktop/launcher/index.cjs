@@ -29,7 +29,8 @@ const { createRing } = require('./ring-window.cjs')
 const { createSnap } = require('./snap.cjs')
 const { createProcesses } = require('./processes.cjs')
 const { createUninstall } = require('./uninstall.cjs')
-const { restoreItem, trashItem } = require('../mac-files.cjs')
+const { restoreItem, run, trashItem } = require('../mac-files.cjs')
+const { createActivity } = require('../activity.cjs')
 const { createSystem } = require('./system.cjs')
 const { createSnippets } = require('./snippets.cjs')
 const { readSelection } = require('./selection.cjs')
@@ -39,7 +40,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 async function createLauncher({
   app, BrowserWindow, screen, clipboard, nativeImage, shell, systemPreferences, globalShortcut, platform = process.platform,
   dataDir, preload, load, files, handle, fail, sharedModule, mainWindow, command, sendToAllWindows,
-  offline = () => false, hideOnBlur = false, isTaken = () => false, onShow = () => {}, onHide = () => {}, exec, notify = () => {},
+  offline = () => false, hideOnBlur = false, isTaken = () => false, onShow = () => {}, onHide = () => {}, exec = run, notify = () => {},
   // What the ring does that only main can: the desk, the Sky, Files.
   ringActions = {},
   // What starts the middle-click helper (child_process's spawn, from main); the tests give none, so no process starts.
@@ -80,6 +81,8 @@ async function createLauncher({
   // The Mac's own commands (lock, sleep, dark mode…): system.cjs.
   const system = createSystem({ exec, keys, platform, trusted, model: systemModel })
   const processes = createProcesses({ exec, platform, model: processModel })
+  // Power tools → Activity (Phase 93): the Mac's memory, processor, disk and the apps using the most.
+  createActivity({ model: await sharedModule('activity-model.mjs'), processes, exec, handle, fail, platform })
   // Uninstall (uninstall.cjs): an app and what it left in ~/Library, to the Bin, with Undo.
   const uninstall = createUninstall({ model: await sharedModule('uninstall-model.mjs'), apps, processes, exec, platform, fail, trash: (file) => trashItem(file), restore: (bin, to) => restoreItem(bin, to) })
   // Snippets: pasted from the bar, and (once turned on) typed in any app: snippets.cjs.

@@ -132,15 +132,19 @@ const GRANOLA_LINK = /^From Granola: (?:\[([^\]]+)\]\(([^)]+)\)|(.+))$/m
 const at = (note) => Date.parse(note.createdAt) || 0
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
+/* Finds a client's name as a whole word, any case; null for a name of one or two letters (it would be found everywhere). */
+export function clientName(folder) {
+  const name = folder.name.trim()
+  return name.length > 2 ? new RegExp(`(?<![\\p{L}\\p{N}])${escape(name)}(?![\\p{L}\\p{N}])`, 'iu') : null
+}
+
 /* A client's meetings and mentions, newest first: { items: [{ id, noteId, title, at, from }], lastMet }.
    A meeting is a write-up (#meeting, not its transcript) or a Granola meeting (its to-dos link back to it, so
    one item per meeting), on the board or naming the client. A mention is any other note that names the client,
    a day page included ("lunch with Fortis"). `from` is 'meeting', 'granola' or where the note is. */
 export function clientTouch(state, folder) {
   const on = folderSubtree(state.folders, folder.id)
-  const name = folder.name.trim()
-  // A name of one or two letters would be found everywhere.
-  const names = name.length > 2 ? new RegExp(`(?<![\\p{L}\\p{N}])${escape(name)}(?![\\p{L}\\p{N}])`, 'iu') : null
+  const names = clientName(folder)
   const items = []
   const granola = new Map()
   for (const note of state.notes) {

@@ -25,3 +25,4 @@
 @container room (max-width: 620px) {
   .today-board-list { grid-template-columns: minmax(0, 1fr); }
 }
+.today-dashboard > .today-card { margin-bottom: 28px; }
