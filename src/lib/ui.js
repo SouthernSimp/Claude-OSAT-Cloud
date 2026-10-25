@@ -8,6 +8,15 @@ export const inputActive = () =>
   ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName) ||
   document.activeElement?.isContentEditable;
 
+/* The words picked under a right-click: in a text box its selection, else the page's. '' when nothing is picked. */
+export function selectedWords(target) {
+  const box = target?.closest?.("textarea, input");
+  const words = box && typeof box.selectionStart === "number"
+    ? box.value.slice(box.selectionStart, box.selectionEnd)
+    : window.getSelection()?.toString() || "";
+  return words.trim().slice(0, 4000);
+}
+
 export function downloadFile(name, content, type = "text/plain;charset=utf-8") {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const link = document.createElement("a");

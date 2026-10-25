@@ -87,6 +87,18 @@ async function exercise(page) {
   await root.locator('.today-card[aria-label="Waiting in Just in"]').getByRole('button', { name: 'Open', exact: true }).click()
   await page.locator('.justin').waitFor()
   await openRoom(page, 'Today')
+  // Words picked anywhere: right-click → Save as a sticky (with Undo), Ask about this (quoted in Ask).
+  const pick = () => page.evaluate(() => { const range = document.createRange(); range.selectNodeContents(document.querySelector('.today-head h1')); getSelection().removeAllRanges(); getSelection().addRange(range) })
+  await pick()
+  await root.locator('.today-head h1').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Save as a sticky', exact: true }).click()
+  await page.getByText('Saved to Just in').waitFor()
+  await pick()
+  await root.locator('.today-head h1').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Ask about this', exact: true }).click()
+  await page.waitForFunction(() => [...document.querySelectorAll('.ask-panel textarea')].some((box) => box.value.startsWith('> Good')))
+  await page.keyboard.press('Escape')
+  await page.locator('.ask-panel').waitFor({ state: 'detached' }).catch(() => page.getByRole('button', { name: 'Ask', exact: true }).click())
   await root.locator('.today-agenda').getByRole('button', { name: 'Site visit', exact: true }).click()
   await page.locator('.app-room[data-view="Calendar"]').waitFor()
 }

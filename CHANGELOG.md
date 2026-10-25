@@ -4,7 +4,7 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 24, 2026 — Ready for your client meetings, and Activity
+## Next build · October 24, 2026 — Client meeting prep, Activity, and right-click to ask
 
 - **Before a client meeting:** when today's calendar has a meeting whose name names one of your clients ("Fortis
   kickoff"), Today puts a card on top until it's over: when you last met (click to open that meeting), what's still
@@ -15,6 +15,8 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 - **Activity** (Power tools → Activity): how your Mac is doing without opening Activity Monitor. Memory used and
   whether there's room to spare, how busy the processor is, free disk space, the apps using the most memory with
   Quit (then Force quit if one won't go), and your Mac's specs. (#129)
+- **Right-click words you picked,** anywhere in a room (a note, an email, Today): Ask about this (the words
+  quoted in Ask, ready for your question), Explain this, Save as a sticky (with Undo) and Copy. (#PR)
 - Fix: Kill Process and Uninstall in the quick bar couldn't list running apps on the Mac. (#129)
 
 ## Build 368 · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied

@@ -104,6 +104,11 @@ Activity Monitor counts it and how full macOS feels, the processor, the startup 
 and system_profiler; nothing leaves the Mac. Also fixed: the quick bar's Kill Process and Uninstall got no way to run
 `ps` on the Mac (the launcher now defaults `exec` to mac-files' `run`).
 
+Phase 94 (in review): right-click on picked words, from Nate's sticky "Drag select text and have right click option to
+'Ask AI more'" (Oct 6). Anywhere in a room, over plain words (a card or board keeps its own menu): Ask about this
+(quoted in the Ask panel, waiting for the question), Explain this (asked at once), Save as a sticky (Just in, with
+Undo), Copy.
+
 Next, in Nate's order (Oct 22): Phase 86, Gmail signed in directly (he picked Sign in with Google over an app password;
 the Mac Mail app route was slow on a big Gmail inbox and kept breaking), then Phase 87, banks in Money through Plaid
 (started on branch `claude/phase-85-bank`: the transaction model is written; OSAT needs Nate's own Plaid keys, since
@@ -321,6 +326,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 91 | Today, tidied: one centred page, no repeated counts or shortcuts, Recent work without to-dos | Merged (PR #127), build 368, Oct 22 |
 | 92 | Before a client meeting: Today shows when you last met, what's open with them and where they came up, for the next meeting today with a client; Been a while lists clients not met in three weeks | In review (#128) |
 | 93 | Activity: memory (with pressure), processor, disk, the apps using the most memory with Quit, and the Mac's specs, under Power tools | In review (#129) |
+| 94 | Right-click words you picked anywhere in a room: Ask about this, Explain this, Save as a sticky, Copy | In review |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
