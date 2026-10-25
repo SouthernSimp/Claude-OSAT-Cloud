@@ -9,7 +9,7 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 - **Before a client meeting:** when today's calendar has a meeting whose name names one of your clients ("Fortis
   kickoff"), Today puts a card on top until it's over: when you last met (click to open that meeting), what's still
   open with them (tick it off right there, with Undo) and where they came up lately. Open the client's board from
-  the card. (#PR)
+  the card. (#128)
 
 ## Build 368 · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied
 

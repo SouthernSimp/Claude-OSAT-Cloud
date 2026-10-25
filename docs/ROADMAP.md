@@ -91,7 +91,7 @@ edge: Muse trains on chats by default and shared chats leaked; OSAT keeps the AI
 board"), OSAT works it in the background with the connected apps, asks before changing anything outside OSAT, and
 leaves the result in Just in with Undo.
 
-Phase 92 (in review): before a client meeting, the last connector idea on the list that needs nothing new from
+Phase 92 (in review, PR #128): before a client meeting, the last connector idea on the list that needs nothing new from
 Nate. When something on today's calendar names a client board ("Fortis kickoff"), Today puts a card on top until it
 ends: when you last met (opens that meeting), the open to-dos on that board or naming them (tick them off right
 there) and the two newest notes that mention them. Matched by the title for now; who's invited waits for People.
@@ -311,7 +311,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 89 | Bills & subscriptions: repeat charges found in the bank's entries plus your plans, soonest first, about what they come to a month; Today names the bill due this week | Merged (PR #125), build 368, Oct 22 |
 | 90 | Money, redone: the whole window in two columns (the month, spending, cash flow and entries by day; accounts and bills beside), a month stepper, and one welcome when nothing is in yet | Merged (PR #126), build 368, Oct 22 |
 | 91 | Today, tidied: one centred page, no repeated counts or shortcuts, Recent work without to-dos | Merged (PR #127), build 368, Oct 22 |
-| 92 | Before a client meeting: Today shows when you last met, what's open with them and where they came up, for the next meeting today with a client | In review |
+| 92 | Before a client meeting: Today shows when you last met, what's open with them and where they came up, for the next meeting today with a client | In review (#128) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
