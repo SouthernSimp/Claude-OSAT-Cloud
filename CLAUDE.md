@@ -17,8 +17,7 @@ under Power tools, from his own OSAT-board stickies (Oct 6, Oct 17), plus the la
 Uninstall. Phase 94 (#130, `claude/phase-94-picked-words`, on 93): right-click picked words anywhere in a room (Desk.jsx
 `pickedWords`, `selectedWords` in lib/ui.js): Ask about this, Explain this, Save as a sticky, Copy. Phase 95 (#131, `claude/phase-95-web-picks`, on 94): Web's start page picks the search engine (`SEARCHES`,
 `searchUrl` in tools/address.js) and a home page (localStorage `osat.browser.picks.v1`), Home button. Nate clicks Merge
-on #131. Build 368 (Oct 22) shipped Phases 88–91. Nate's open stickies on the OSAT board still not built: default site for
-scroll a collapsed stack (stacks are gone with the desk), import cookies/autofill, annotate a copied picture, apps on the desk/dock (desk gone).
+on #131. Build 368 (Oct 22) shipped Phases 88–91. Nate's open stickies on the OSAT board still not built: scroll a collapsed stack (stacks are gone with the desk), import cookies/autofill, annotate a copied picture, apps on the desk/dock (desk gone).
 
 ### Earlier: October 22, 2026: Phases 81–87 shipped as build 356, 88–91 as build 368
 
