@@ -17,6 +17,8 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   Quit (then Force quit if one won't go), and your Mac's specs. (#129)
 - **Right-click words you picked,** anywhere in a room (a note, an email, Today): Ask about this (the words
   quoted in Ask, ready for your question), Explain this, Save as a sticky (with Undo) and Copy. (#130)
+- **Web: your search and your home page.** The Web room's start page picks where searches go (DuckDuckGo, Google,
+  Bing, Brave Search or Kagi) and a home page; once set, a Home button sits beside Back and Forward. (#PR)
 - Fix: Kill Process and Uninstall in the quick bar couldn't list running apps on the Mac. (#129)
 
 ## Build 368 · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied

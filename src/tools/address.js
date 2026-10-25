@@ -3,6 +3,16 @@
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/.*)?$/i
 const DOMAIN = /^[\p{L}\p{N}-]+(\.[\p{L}\p{N}-]+)+(:\d+)?([/?#].*)?$/u
 
+/* Where a search goes (Nate's sticky, Oct 6: "select default site for browsing"). DuckDuckGo unless picked. */
+export const SEARCHES = [
+  { id: 'duckduckgo', name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' },
+  { id: 'google', name: 'Google', url: 'https://www.google.com/search?q=' },
+  { id: 'bing', name: 'Bing', url: 'https://www.bing.com/search?q=' },
+  { id: 'brave', name: 'Brave Search', url: 'https://search.brave.com/search?q=' },
+  { id: 'kagi', name: 'Kagi', url: 'https://kagi.com/search?q=' },
+]
+export const searchUrl = (id) => (SEARCHES.find((item) => item.id === id) || SEARCHES[0]).url
+
 export function toAddress(input, search = 'https://duckduckgo.com/?q=') {
   const text = String(input || '').trim()
   if (!text) return ''

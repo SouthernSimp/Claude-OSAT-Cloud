@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { clipMarkdown, toAddress } from '../src/tools/address.js'
+import { clipMarkdown, searchUrl, toAddress } from '../src/tools/address.js'
 
 test('the address bar opens addresses and searches everything else', () => {
   assert.equal(toAddress('https://example.com/a'), 'https://example.com/a')
@@ -9,6 +9,8 @@ test('the address bar opens addresses and searches everything else', () => {
   assert.equal(toAddress('localhost:5239'), 'http://localhost:5239')
   assert.equal(toAddress('best notes app'), 'https://duckduckgo.com/?q=best%20notes%20app')
   assert.equal(toAddress('javascript:alert(1)'), 'https://duckduckgo.com/?q=javascript%3Aalert(1)')
+  assert.equal(toAddress('best notes app', searchUrl('google')), 'https://www.google.com/search?q=best%20notes%20app')
+  assert.equal(searchUrl('nope'), 'https://duckduckgo.com/?q=')
   assert.equal(toAddress('   '), '')
 })
 

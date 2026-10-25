@@ -110,6 +110,11 @@
 .browser-start { height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 12cqh 24px 40px; text-align: center; }
 .browser-start > svg { width: 44px; height: 44px; color: var(--accent); }
 .browser-start h2 { margin-top: 14px; font-size: var(--t-2xl); letter-spacing: -0.02em; }
+.browser-picks { display: grid; gap: 10px; margin-top: 18px; font-size: var(--t-sm); color: var(--muted); }
+.browser-picks label { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.browser-picks form { display: flex; align-items: center; gap: 8px; }
+.browser-picks select, .browser-picks input { min-height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--ink); font-size: var(--t-sm); }
+.browser-picks input, .browser-picks select { width: 220px; }
 .browser-start > p { max-width: 460px; margin-top: 10px; font-size: var(--t-md); line-height: 1.5; color: var(--muted); }
 .browser-clips { width: min(560px, 100%); margin-top: 36px; display: grid; gap: 4px; text-align: left; }
 .browser-clips h3 { padding: 0 10px 6px; font-family: var(--font); font-size: var(--t-2xs); font-weight: 650; letter-spacing: 0; color: var(--faint); }
