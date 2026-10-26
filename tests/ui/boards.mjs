@@ -266,6 +266,27 @@ async function light(page) {
   await client.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Not a client' }).click()
   await side(page, 'Fortis').waitFor({ timeout: 3000 }).catch(() => problems.push('Not a client didn’t put it back in Boards'))
+
+  // A favorite (Phase 99): Favorites on top of the sidebar, the same colour; Undo, or Remove from favorites, puts it back in Boards.
+  const paper = await side(page, 'Fortis').locator('.side-dot').getAttribute('data-paper')
+  const favorite = page.locator('nav.side .side-group[aria-label="Favorites"]').getByRole('button', { name: /^Fortis\b/ })
+  await side(page, 'Fortis').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click()
+  await favorite.waitFor({ timeout: 3000 }).catch(() => problems.push('a favorite didn’t move to Favorites'))
+  check(await page.locator('nav.side .side-group').first().getAttribute('aria-label') === 'Favorites', 'Favorites wasn’t the first group')
+  check(await side(page, 'Fortis').count() === 0, 'a favorite showed in Boards too')
+  check(await favorite.locator('.side-dot').getAttribute('data-paper') === paper, 'a favorite changed colour')
+  check((await readDoc(page)).folders.find((folder) => folder.id === 'fortis')?.favorite === true, 'the favorite mark wasn’t saved')
+  await page.screenshot({ path: `${OUT}/light-favorites.png` })
+  await page.locator('.toast', { hasText: 'favorites' }).getByRole('button', { name: 'Undo', exact: true }).click()
+  await side(page, 'Fortis').waitFor({ timeout: 3000 }).catch(() => problems.push('Undo didn’t take the favorite off'))
+  check(await page.locator('nav.side .side-group[aria-label="Favorites"]').count() === 0, 'Favorites showed with nothing in it')
+  check(!('favorite' in (await readDoc(page)).folders.find((folder) => folder.id === 'fortis')), 'Undo didn’t take the saved mark off')
+  await side(page, 'Fortis').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click()
+  await favorite.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Remove from favorites' }).click()
+  await side(page, 'Fortis').waitFor({ timeout: 3000 }).catch(() => problems.push('Remove from favorites didn’t put it back in Boards'))
 }
 
 async function main() {

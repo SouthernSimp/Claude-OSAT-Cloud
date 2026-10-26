@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CaretRight, NotePencil, Plus, Shapes, Trash, WifiHigh, WifiSlash } from '@phosphor-icons/react'
+import { CaretRight, NotePencil, Plus, Shapes, Star, Trash, WifiHigh, WifiSlash } from '@phosphor-icons/react'
 
 import { clientItem } from '../boards/BoardOverview.jsx'
-import { addBoard, boardsOf, isClient, JUST_IN, paperOf, stickiesOn, undoFrom } from '../boards/boards-model.js'
+import { addBoard, boardsOf, isClient, isFavorite, JUST_IN, paperOf, setFavorite, stickiesOn, undoFrom } from '../boards/boards-model.js'
 import { placeFrom } from '../boards/just-in.js'
 import { addCanvas, canvasesOf, removeCanvas, renameCanvas } from '../canvas/canvas-model.js'
 import { useDrop } from '../lib/carry.js'
@@ -90,8 +90,14 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
       ])
     },
     menu(event, folder) {
+      const favorite = isFavorite(folder)
       openMenu(event, [
         { label: 'Rename', icon: NotePencil, onSelect: () => setNaming({ id: folder.id }) },
+        // A favorite sits on top, in Favorites (Phase 99); the quick bar's own words for its favorites.
+        {
+          label: favorite ? 'Remove from favorites' : 'Add to favorites', icon: Star,
+          onSelect: () => change(favorite ? `Took “${folder.name}” off your favorites` : `“${folder.name}” is in your favorites`, (state) => setFavorite(state, folder.id, !favorite)),
+        },
         clientItem(folder, change),
         { divider: true },
         {
@@ -126,6 +132,9 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
         onDropNote={(id) => actions.moveTo(id, folder.id, folder.name)}
       />
     ))
+  // Each board shows once: a favorite on top, then a client, then the rest.
+  const groupOf = (folder) => (isFavorite(folder) ? 'Favorites' : isClient(folder) ? 'Clients' : 'Boards')
+  const rows = (group) => boards.map(row).filter((_, index) => groupOf(boards[index].folder) === group)
 
   return (
     <nav className="side" aria-label="OSAT">
@@ -137,18 +146,18 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
       </div>
 
       <div className="side-scroll">
-        {boards.some(({ folder }) => isClient(folder)) && (
-          <section className="side-group" aria-label="Clients">
-            <header className="side-head"><span>Clients</span></header>
-            {boards.map(row).filter((_, index) => isClient(boards[index].folder))}
+        {['Favorites', 'Clients'].map((group) => boards.some(({ folder }) => groupOf(folder) === group) && (
+          <section key={group} className="side-group" aria-label={group}>
+            <header className="side-head"><span>{group}</span></header>
+            {rows(group)}
           </section>
-        )}
+        ))}
         <section className="side-group" aria-label="Boards">
           <header className="side-head">
             <span>Boards</span>
             <button type="button" className="side-add" aria-label="New board" title="New board" onClick={() => setNaming({})}><Plus weight="bold" /></button>
           </header>
-          {boards.map(row).filter((_, index) => !isClient(boards[index].folder))}
+          {rows('Boards')}
           {naming && !naming.id && !naming.canvas && !naming.canvasId && <NameForm label="New board’s name" placeholder="Name it: Fortis, Home…" onDone={actions.newBoard} />}
           {!boards.length && !naming && (
             <button type="button" className="side-row side-starter" onClick={actions.starter}><Plus /> <span>Add {STARTER.join(', ')}</span></button>
