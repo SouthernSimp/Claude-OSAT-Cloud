@@ -57,6 +57,7 @@ test('the quick search finds captures by plain words, only the ones this Mac can
   assert.equal(rows[0].kind, 'capture')
   assert.deepEqual(actionsFor(rows[0]).map((action) => action.id), ['capture'])
   assert.deepEqual(actionsFor({ kind: 'shot', title: 'a.mp4', data: {} }).map((action) => action.id), ['shot-open', 'shot-reveal'], 'a recording drags, it isn’t copied')
+  assert.deepEqual(actionsFor({ kind: 'shot', title: 'a.png', data: {} }).map((action) => [action.id, action.keys]), [['shot-open', '↵'], ['shot-reveal', '⇧↵'], ['shot-copy', '⇧⌘C'], ['markup', '⌘E']], 'a picture copies, or opens in CleanShot X to mark up')
 })
 
 test('recent captures: pictures and videos, newest first, ids that stay inside CleanShot’s folder', () => {

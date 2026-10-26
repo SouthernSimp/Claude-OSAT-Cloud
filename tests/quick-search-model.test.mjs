@@ -126,6 +126,10 @@ test('Return does the obvious thing, and ⌘K lists the rest', () => {
   assert.equal(offered[2].label, 'Add to Jordan')
   assert.deepEqual(actionsFor({ kind: 'link', data: clip('l', 'https://x.example', { kind: 'link' }) }).map((action) => action.id), ['paste', 'copy', 'open-link', 'add', 'save-snippet', 'pin', 'delete'])
   assert.deepEqual(actionsFor({ kind: 'image', data: { id: 'i', kind: 'image', pinned: true } }).map((action) => action.label), ['Paste', 'Copy', 'Unpin', 'Delete'])
+  // Phase 101: with CleanShot X taking the screenshots, a copied picture can be marked up in it, right after Copy.
+  const markUp = actionsFor({ kind: 'image', data: { id: 'i', kind: 'image', pinned: true } }, { markup: true })
+  assert.deepEqual(markUp.map((action) => [action.label, action.keys]), [['Paste', '↵'], ['Copy', '⇧↵'], ['Mark up', '⌘E'], ['Unpin', '⌘P'], ['Delete', '⌘⌫']])
+  assert.deepEqual(actionsFor(copy, { markup: true }).map((action) => action.id), ['paste', 'copy', 'add', 'save-snippet', 'pin', 'delete'], 'words are never marked up')
   assert.equal(actionsFor({ kind: 'app', data: {} })[0].id, 'open-app')
   assert.equal(actionsFor({ kind: 'node', data: {} })[0].label, 'Open the board')
   assert.equal(actionsFor({ kind: 'calc', data: {} })[0].label, 'Copy the answer')

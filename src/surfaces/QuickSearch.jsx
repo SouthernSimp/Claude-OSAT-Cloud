@@ -112,7 +112,7 @@ export function QuickSearchSurface() {
   const row = rows[active] || null
   // "Add to Jordan": a copied email or phone number that belongs to a node that already exists.
   const offer = useMemo(() => (row && ['text', 'email', 'phone'].includes(row.kind) && settings.clipboard.offers !== false ? offerFor(row.data, workspace || {}) : null), [row, settings, workspace])
-  const actions = useMemo(() => actionsFor(row, { offer, canAsk: row?.kind === 'file' && canAsk({ kind: 'file', name: row.title }) }), [row, offer])
+  const actions = useMemo(() => actionsFor(row, { offer, canAsk: row?.kind === 'file' && canAsk({ kind: 'file', name: row.title }), markup: shooting?.cleanshot === true }), [row, offer, shooting])
   const full = !mode && (opened === 'full' || text.trim().length > 0 || scope !== 'all' || Boolean(picker))
   const size = chatOn ? 'chat' : full || mode === 'sticky' ? 'full' : 'bar'
   const tabs = scopesOn(settings)
@@ -301,6 +301,12 @@ export function QuickSearchSurface() {
           break
         }
         case 'copy': await bridge.copyClip(d.id); said('Copied'); hideLater(500); break
+        // Mark up (Phase 101): the picture goes back on the clipboard, then CleanShot X opens it from there to mark up
+        // (main puts the bar away first). CleanShot's ⌘C brings the marked-up picture back to the top of the list.
+        case 'markup':
+          if (!(await (target.kind === 'shot' ? bridge.captureCopy(d.id) : bridge.copyClip(d.id)))) { said('That copy is gone.'); break }
+          if (!(await bridge.capture('from-clipboard')).ok) said('Mark up needs CleanShot X.')
+          break
         case 'copy-text': await bridge.copyText(d.plain); said('Copied the answer'); hideLater(500); break
         case 'paste-text': {
           const result = await bridge.pasteText(d.plain)
