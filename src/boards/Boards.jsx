@@ -61,7 +61,7 @@ const KEPT = [['questions', 'Questions', Question], ['buy', 'To buy', ShoppingCa
    top of the screen). Your boards down the side; the one open as a Map (a column per kind), a Board
    (Later, Next, Doing, Done) or a List. Write a sticky at the bottom and it goes in the right column.
    Every change has Undo. `target` says what to show on arriving ({ folderId }, { noteId }, or an
-   action from the desk); Esc steps back (an edit, the search, a board being named) and then goes down
+   action from the desk); Esc steps back (the picks, an edit, the search, a board being named) and then goes down
    (Desk.jsx asks `back()`). `onFiled` hears when a sticky from the desk went onto a board. */
 /* In OSAT's window (Phase 73) the sidebar holds the boards: `board` says which is open and `onOpenBoard` hears a move to
    another (a note's board, a new one, Just in), and the canvas's own side list and Ask button step aside. */

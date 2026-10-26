@@ -78,7 +78,7 @@ function Row({ note, workspace, guesses, nameOf, picked, actions }) {
   const undo = undoOf(note)
   return (
     <article
-      className={`justin-row ${carrying?.id === note.id || carrying?.data?.ids?.includes(note.id) ? 'is-carried' : ''} ${picked ? 'is-picked' : ''}`}
+      className={`justin-row ${carrying?.id === note.id || carrying?.data?.ids?.includes(note.id) ? 'is-carried' : ''} ${note.doneAt ? 'is-done' : ''} ${picked ? 'is-picked' : ''}`}
       data-note={note.id}
       tabIndex={0}
       aria-label={picked ? `${note.title}, picked` : note.title}
