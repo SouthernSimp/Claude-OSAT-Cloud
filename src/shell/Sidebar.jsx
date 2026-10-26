@@ -18,8 +18,8 @@ const readOpen = () => { try { return JSON.parse(localStorage.getItem(FOLD_KEY) 
 
 /* The sidebar (Phase 73), the way Apple's own apps are built: four tiles (Today, Just in, Calendar, To do), your
    boards, then Work, Life, Library and the power tools (folded until you open them), Settings and Online at the foot.
-   `at` is where you are: { view, board }. A sticky dropped on a board moves there; right-click a board to rename or
-   delete it (its stickies go back to Just in). Every change has Undo. */
+   `at` is where you are: { view, board }. A sticky dropped on a board moves there (with the others picked, Phase 97);
+   right-click a board to rename or delete it (its stickies go back to Just in). Every change has Undo. */
 export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, newBoard = 0 }) {
   const [menu, openMenu] = useContextMenu()
   const [toast, showUndo] = useUndoToast()
@@ -44,7 +44,7 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
     if (before && next !== before) showUndo(line, () => commit(undoFrom(before, next)))
   }
   const actions = {
-    moveTo: (id, boardId, name) => change(`Moved to ${name}`, (state) => placeFrom(state, [id], boardId)),
+    moveTo: (ids, boardId, name) => change(`Moved ${ids.length > 1 ? `${ids.length} ` : ''}to ${name}`, (state) => placeFrom(state, ids, boardId)),
     newBoard(name) {
       setNaming(null)
       const value = String(name || '').trim()
@@ -123,7 +123,7 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
         active={at.view === 'Mindmap' && at.board === folder.id}
         onOpen={() => navigate('Mindmap', { folderId: folder.id })}
         onMenu={(event) => actions.menu(event, folder)}
-        onDropNote={(id) => actions.moveTo(id, folder.id, folder.name)}
+        onDropNote={(ids) => actions.moveTo(ids, folder.id, folder.name)}
       />
     ))
 
@@ -132,7 +132,7 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
       <div className="side-top" aria-hidden="true" />
       <div className="side-tiles">
         {SPACES.slice(0, 4).map((space) => (
-          <SideTile key={space.id} space={space} count={counts[space.id] ?? ''} active={here(space.id)} navigate={navigate} onDropNote={space.id === 'JustIn' ? (id) => actions.moveTo(id, JUST_IN, 'Just in') : null} />
+          <SideTile key={space.id} space={space} count={counts[space.id] ?? ''} active={here(space.id)} navigate={navigate} onDropNote={space.id === 'JustIn' ? (ids) => actions.moveTo(ids, JUST_IN, 'Just in') : null} />
         ))}
       </div>
 
@@ -216,7 +216,7 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
 }
 
 function SideTile({ space, count, active, navigate, onDropNote }) {
-  const drop = useDrop(`side:${space.id}`, { accepts: onDropNote ? (carried) => carried.kind === 'note' : [], onDrop: (carried) => onDropNote?.(carried.id) })
+  const drop = useDrop(`side:${space.id}`, { accepts: onDropNote ? (carried) => carried.kind === 'note' : [], onDrop: (carried) => onDropNote?.(carried.data?.ids || [carried.id]) })
   return (
     <button type="button" className="side-tile" data-tint={space.tint} aria-current={active ? 'page' : undefined} title={space.hint} onClick={() => navigate(space.id)} {...(onDropNote ? drop : {})}>
       <span className="side-tile-icon"><space.icon weight="fill" aria-hidden="true" /></span>
@@ -236,7 +236,7 @@ function SideRow({ space, active, navigate }) {
 }
 
 function BoardRow({ folder, paper, count, active, onOpen, onMenu, onDropNote }) {
-  const drop = useDrop(`side:board:${folder.id}`, { accepts: (carried) => carried.kind === 'note', onDrop: (carried) => onDropNote(carried.id) })
+  const drop = useDrop(`side:board:${folder.id}`, { accepts: (carried) => carried.kind === 'note', onDrop: (carried) => onDropNote(carried.data?.ids || [carried.id]) })
   return (
     <button type="button" className="side-row" aria-current={active ? 'page' : undefined} onClick={onOpen} onContextMenu={onMenu} {...drop}>
       <i className="side-dot" data-paper={paper} aria-hidden="true" />

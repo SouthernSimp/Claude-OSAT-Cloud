@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDown, ArrowsMerge, CalendarCheck, Camera, Kanban, ListBullets, MagnifyingGlass, NotePencil, Plus, Question, ShoppingCart, Sparkle, SquaresFour, StackSimple, Trash, Tray, X,
+  ArrowBendUpRight, ArrowDown, ArrowsMerge, CalendarCheck, Camera, Check, Kanban, ListBullets, MagnifyingGlass, NotePencil, Plus, Question, ShoppingCart, Sparkle, SquaresFour, StackSimple, Trash, Tray, X,
 } from '@phosphor-icons/react'
 
 import { photoMessages, readPhotoAnswer, readUnpackAnswer, unpackMessages } from '../../shared/ai-tasks.mjs'
@@ -11,7 +11,8 @@ import { cleanError, useAi } from '../assistant/useAi.js'
 import { datesSettings, whenLine } from '../intake/dates.js'
 import { putOnCalendar, takeOffCalendar } from '../intake/useDates.js'
 import { carryable, useCarrying, useDrop } from '../lib/carry.js'
-import { useContextMenu } from '../lib/ContextMenu.jsx'
+import { menuEvent, useContextMenu } from '../lib/ContextMenu.jsx'
+import { inputActive } from '../lib/ui.js'
 import { useUndoToast } from '../lib/UndoToast.jsx'
 import { connect, recordOf } from '../links-model.js'
 import { getLocalModels, streamLocalMessage } from '../local-ai.js'
@@ -26,7 +27,7 @@ import {
 } from './boards-model.js'
 import { JustIn } from './JustIn.jsx'
 import { BoardOverview, clientItem } from './BoardOverview.jsx'
-import { mergeStickies, placeFrom, samePair } from './just-in.js'
+import { mergeAll, mergeStickies, placeFrom, samePair } from './just-in.js'
 
 /* A client's line under its name: when you last met, never a scold. */
 const clientLine = ({ lastMet }) => (lastMet
@@ -42,6 +43,15 @@ const keep = (key, value) => { try { localStorage.setItem(key, value) } catch { 
 const readList = (key) => { try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] } }
 // What two of a kind are called in "Two ideas say the same thing".
 const PLURAL = { idea: 'ideas', question: 'questions', problem: 'problems', todo: 'to-dos', date: 'dates', buy: 'things to buy', note: 'notes' }
+
+// Picking several (Phase 97): a click with ⌘ (Ctrl elsewhere) or ⇧ picks a sticky rather than opening it.
+const picking = (event) => event.metaKey || event.ctrlKey || event.shiftKey
+// The stickies on screen in the order they show, for ⇧-click's run and ⌘A.
+const shownIds = () => [...document.querySelectorAll('.boards-body [data-note]')].map((element) => element.dataset.note)
+// What a carry holds: every picked sticky along with the one carried, else just that one.
+const carriedIds = (carried) => carried.data?.ids || [carried.id]
+// The "3 " in "Moved 3 to Fortis"; nothing for one.
+const several = (ids) => (ids.length > 1 ? `${ids.length} ` : '')
 
 const VIEWS = [['overview', 'Overview', StackSimple], ['map', 'Map', SquaresFour], ['board', 'Kanban', Kanban], ['list', 'List', ListBullets]]
 const STARTER = ['Personal', 'Home', 'Work']
@@ -69,6 +79,9 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const [unpacking, setUnpacking] = useState(null)
   const [reading, setReading] = useState(null)
   const [keptPairs, setKeptPairs] = useState(() => readList(SAME_KEY))
+  // Picked stickies (Phase 97), each with the home it had when picked, and the last one picked (⇧-click's start).
+  const [picks, setPicks] = useState(() => new Map())
+  const anchor = useRef(null)
   const photoField = useRef(null)
   const [menu, openMenu] = useContextMenu()
   const [toast, showUndo] = useUndoToast()
@@ -90,18 +103,42 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const touch = useMemo(() => (isClient(board) ? clientTouch(workspace, board) : null), [workspace, board])
   const same = useMemo(() => samePair(all, keptPairs), [all, keptPairs])
   const filing = useAutoFileStatus()
+  // The picks still where they were and not hidden by Find: one moved meanwhile (dropped on the sidebar, filed by the
+  // AI, changed in another window) or put in the Bin drops out by itself.
+  const pickedIds = useMemo(() => (picks.size
+    ? findOn(workspace.notes.filter((note) => isActiveNote(note) && picks.get(note.id) === (note.folderId || null)), query).map((note) => note.id)
+    : []), [workspace, query, picks])
+  const pickOnly = (ids) => {
+    const home = new Map(latest.current.notes.map((note) => [note.id, note.folderId || null]))
+    setPicks(new Map(ids.map((id) => [id, home.get(id)])))
+  }
+  const unpick = () => { setPicks(new Map()); anchor.current = null }
 
   const open = (id) => { setPicked(id); keep(BOARD_KEY, id); setQuery(''); setEditing(null); if (id !== wanted) onOpenBoard?.(id) }
-  const setView = (id) => { setViewState(id); keep(VIEW_KEY, id) }
+  // Picks belong to one view: the Kanban hides what isn't to be done.
+  const setView = (id) => { setViewState(id); keep(VIEW_KEY, id); unpick() }
   useEffect(() => { if (board?.fresh) commit((state) => markOpened(state, board.id)) }, [board?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  // Another board from the sidebar: its own Find and edit start fresh.
-  useEffect(() => { setQuery(''); setEditing(null) }, [boardId])
+  // Another board from the sidebar: its own Find, edit and picks start fresh.
+  useEffect(() => { setQuery(''); setEditing(null); unpick() }, [boardId]) // eslint-disable-line react-hooks/exhaustive-deps
+  // ⌘A on a board (not in a field or Ask) picks every sticky shown. preventDefault keeps the Mac's Edit → Select All out.
+  useEffect(() => {
+    const key = (event) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'a' || inputActive() || document.activeElement?.closest('.ask-panel')) return
+      const shown = shownIds()
+      if (!shown.length) return
+      event.preventDefault()
+      pickOnly(shown)
+    }
+    addEventListener('keydown', key)
+    return () => removeEventListener('keydown', key)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* One change, one line, one Undo that only takes back what this change touched. */
+  /* One change, one line, one Undo that only takes back what this change touched. A change lets go of the picks. */
   function change(line, updater, after) {
     let before = null
     let next = null
     commit((state) => { before = state; next = updater(state); return next })
+    unpick()
     if (!before || next === before) return
     const undo = undoFrom(before, next)
     showUndo(line, () => { commit(undo); after?.() })
@@ -109,17 +146,31 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const nameOf = (id) => (id === JUST_IN ? 'Just in' : boards.find(({ folder }) => folder.id === id)?.folder.name || 'the board')
 
   const actions = {
+    /* Picking several (Phase 97): ⌘-click (Ctrl elsewhere) or Space picks one more, or lets it go; ⇧-click picks the
+       run from the last one picked, in the order they show. */
+    pick(event, id) {
+      // ⇧-click also picks the words in between; it was the stickies that were meant.
+      if (event.shiftKey) getSelection()?.removeAllRanges()
+      const shown = shownIds()
+      const [from, to] = [shown.indexOf(anchor.current), shown.indexOf(id)].sort((a, b) => a - b)
+      if (event.shiftKey && from >= 0) { pickOnly(shown.slice(from, to + 1)); return }
+      anchor.current = id
+      pickOnly(pickedIds.includes(id) ? pickedIds.filter((item) => item !== id) : [...pickedIds, id])
+    },
+    // What a right-click or a carry acts on: every picked sticky, when this one is picked.
+    idsFor: (id) => (pickedIds.includes(id) ? pickedIds : [id]),
     moveTo(ids, toId) {
       const restores = ids.map((id) => onFiled?.(id)).filter((restore) => typeof restore === 'function')
-      change(`Moved to ${nameOf(toId)}`, (state) => placeFrom(state, ids, toId), () => restores.forEach((restore) => restore()))
+      change(`Moved ${several(ids)}to ${nameOf(toId)}`, (state) => placeFrom(state, ids, toId), () => restores.forEach((restore) => restore()))
     },
     setKind(ids, what) {
       change(`Now ${ids.length === 1 ? 'it is' : 'they are'} ${COLUMN[what].toLowerCase()}`, (state) => setWhat(state, ids, what))
     },
-    setStage(id, stage, list, index) {
-      change(`Moved to ${STAGES.find(([key]) => key === stage)?.[1] || stage}`, (state) => {
-        const staged = setStage(state, [id], stage)
-        return Number.isFinite(index) ? rankIn(staged, id, list, index) : staged
+    setStage(ids, stage, list, index) {
+      change(`Moved ${several(ids)}to ${STAGES.find(([key]) => key === stage)?.[1] || stage}`, (state) => {
+        const staged = setStage(state, ids, stage)
+        // ponytail: several carried at once keep their own order in the stage (rankIn places one); rank each in turn if that matters.
+        return Number.isFinite(index) && ids.length === 1 ? rankIn(staged, ids[0], list, index) : staged
       })
     },
     write(text) {
@@ -137,10 +188,10 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
       const title = value.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 120) || note.title
       change('Changed the sticky', (state) => updateNote(state, id, { markdown: value, title }))
     },
-    trash(id) {
-      change('Moved to Trash', (state) => trashNotes(state, [id]))
+    trash(ids) {
+      change(`Moved ${several(ids)}to Trash`, (state) => trashNotes(state, ids))
     },
-    startEdit(id) { if (view === 'overview' || view === 'list') setView('map'); setEditing(id); setLit(id) },
+    startEdit(id) { unpick(); if (view === 'overview' || view === 'list') setView('map'); setEditing(id); setLit(id) },
     /* Just in's Undo on one row: what the AI filed goes back to Just in; a date comes off the calendar. */
     undoRow(note) {
       if (note.filed && note.folderId === note.filed.into) { actions.moveTo([note.id], JUST_IN); return }
@@ -148,20 +199,27 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
       takeOffCalendar(commit, note.id)
       showUndo('Took it off your calendar', when ? () => putOnCalendar(commit, note, when, datesSettings(latest.current.settings).calendar) : null)
     },
-    tick(id) {
-      change('Ticked off', (state) => setDone(state, [id], true))
+    tick(ids) {
+      change(`Ticked off${ids.length > 1 ? ` ${ids.length}` : ''}`, (state) => setDone(state, ids, true))
     },
     merge(pair) {
       change('Merged into one sticky. Both sets of words are in it.', (state) => mergeStickies(state, pair.a.id, pair.b.id))
       setLit(pair.a.id)
+    },
+    // Combining (Nate's sticky "Make combining nodes a thing"): the oldest keeps every one's words.
+    mergeAll(ids) {
+      change(`Merged ${ids.length} stickies into one. All their words are in it.`, (state) => mergeAll(state, ids))
     },
     keepBoth(key) {
       const next = [...keptPairs, key].slice(-500)
       setKeptPairs(next)
       keep(SAME_KEY, JSON.stringify(next))
     },
-    moveMenu(event, note) {
-      openMenu(event, boards.map(({ folder }) => ({ label: folder.name, onSelect: () => actions.moveTo([note.id], folder.id) })))
+    moveMenu(event, ids) {
+      openMenu(event, [
+        ...boards.filter(({ folder }) => folder.id !== boardId).map(({ folder }) => ({ label: folder.name, onSelect: () => actions.moveTo(ids, folder.id) })),
+        boardId !== JUST_IN && { label: 'Just in', onSelect: () => actions.moveTo(ids, JUST_IN) },
+      ])
     },
     /* A photo of paper stickies: the AI on this Mac reads it (the photo never leaves the Mac and isn't
        kept), and each sticky it finds lands here on its own, filed like any other. One Undo takes them all. */
@@ -243,22 +301,27 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
         setUnpacking({ id: folder.id, line: cleanError(error) })
       }
     },
+    /* Right-click: on a picked sticky, every choice is for all the picked ones (Edit and Open in Notes are for one). */
     menuFor(event, note) {
+      const ids = actions.idsFor(note.id)
+      const one = ids.length === 1
       const here = note.folderId ? folderPath(latest.current.folders, note.folderId)[0] : null
       openMenu(event, [
-        { label: 'What it is', items: WHATS.map((what) => ({ label: WHAT_LABEL[what], checked: whatOf(note) === what, onSelect: () => actions.setKind([note.id], what) })) },
-        onBoard(note) ? { label: 'Stage', items: STAGES.map(([stage, label]) => ({ label, checked: stageOf(note) === stage, onSelect: () => actions.setStage(note.id, stage) })) } : null,
+        { label: 'What it is', items: WHATS.map((what) => ({ label: WHAT_LABEL[what], checked: one && whatOf(note) === what, onSelect: () => actions.setKind(ids, what) })) },
+        onBoard(note) ? { label: 'Stage', items: STAGES.map(([stage, label]) => ({ label, checked: one && stageOf(note) === stage, onSelect: () => actions.setStage(ids, stage) })) } : null,
         {
           label: 'Move to',
           items: [
-            ...boards.filter(({ folder }) => folder.name !== here).map(({ folder }) => ({ label: folder.name, onSelect: () => actions.moveTo([note.id], folder.id) })),
-            note.folderId ? { label: 'Just in', onSelect: () => actions.moveTo([note.id], JUST_IN) } : null,
+            ...boards.filter(({ folder }) => folder.name !== here).map(({ folder }) => ({ label: folder.name, onSelect: () => actions.moveTo(ids, folder.id) })),
+            note.folderId ? { label: 'Just in', onSelect: () => actions.moveTo(ids, JUST_IN) } : null,
           ].filter(Boolean),
         },
-        { label: 'Edit', icon: NotePencil, onSelect: () => actions.startEdit(note.id) },
-        { label: 'Open in Notes', onSelect: () => navigate('Notes', { noteId: note.id }) },
+        one && { label: 'Edit', icon: NotePencil, onSelect: () => actions.startEdit(note.id) },
+        one && { label: 'Open in Notes', onSelect: () => navigate('Notes', { noteId: note.id }) },
+        !one && { label: 'Merge', icon: ArrowsMerge, onSelect: () => actions.mergeAll(ids) },
+        !one && { label: 'Mark done', icon: Check, onSelect: () => actions.tick(ids) },
         { divider: true },
-        { label: 'Delete', icon: Trash, danger: true, onSelect: () => actions.trash(note.id) },
+        { label: 'Delete', icon: Trash, danger: true, onSelect: () => actions.trash(ids) },
       ])
     },
   }
@@ -266,6 +329,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   useImperativeHandle(ref, () => ({
     find() { findField.current?.focus(); findField.current?.select() },
     back() {
+      if (pickedIds.length) { unpick(); return true }
       if (editing) { setEditing(null); return true }
       if (query) { setQuery(''); return true }
       if (naming) { setNaming(null); return true }
@@ -320,7 +384,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
   const title = boardId === JUST_IN ? 'Just in' : board?.name || 'Just in'
   const count = `${all.length} ${all.length === 1 ? 'sticky' : 'stickies'}`
   const card = (note) => (
-    <Card key={note.id} note={note} view={view} lit={lit === note.id} editing={editing === note.id} workspace={workspace} boardId={boardId} actions={actions} onEdit={() => setEditing(note.id)} />
+    <Card key={note.id} note={note} view={view} lit={lit === note.id} editing={editing === note.id} picked={pickedIds.includes(note.id)} workspace={workspace} boardId={boardId} actions={actions} onEdit={() => { unpick(); setEditing(note.id) }} />
   )
 
   return (
@@ -389,11 +453,22 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
           </div>
         )}
 
+        {pickedIds.length > 0 && (
+          <div className="bulk-bar" role="toolbar" aria-label="Picked stickies">
+            <span>{pickedIds.length} picked</span>
+            <button type="button" onClick={(event) => actions.moveMenu(menuEvent(event), pickedIds)}><ArrowBendUpRight /> Move to…</button>
+            {pickedIds.length > 1 && <button type="button" onClick={() => actions.mergeAll(pickedIds)}><ArrowsMerge /> Merge</button>}
+            <button type="button" onClick={() => actions.tick(pickedIds)}><Check /> Done</button>
+            <button type="button" className="danger" onClick={() => actions.trash(pickedIds)}><Trash /> Delete</button>
+            <button type="button" className="icon-button" aria-label="Stop picking" title="Stop picking (Esc)" onClick={unpick}><X /></button>
+          </div>
+        )}
+
         <div className={`boards-body is-${boardId === JUST_IN ? 'justin' : view}`}>
-          {boardId === JUST_IN && <JustIn workspace={workspace} boards={boards} query={query} editing={editing} card={card} actions={actions} navigate={navigate} />}
+          {boardId === JUST_IN && <JustIn workspace={workspace} boards={boards} query={query} editing={editing} picked={pickedIds} card={card} actions={actions} navigate={navigate} />}
           {boardId !== JUST_IN && view === 'overview' && (query.trim()
-            ? <div className="board-overview-results"><p>{shown.length} {shown.length === 1 ? 'match' : 'matches'}</p><ListView notes={shown} actions={actions} onOpen={actions.startEdit} /></div>
-            : <BoardOverview key={boardId} notes={all} client={touch && { name: board.name, items: touch.items }} onOpen={(noteId) => navigate('Notes', { noteId })} onTick={actions.tick} onShow={setView} onWrite={() => writeField.current?.focus()} />)}
+            ? <div className="board-overview-results"><p>{shown.length} {shown.length === 1 ? 'match' : 'matches'}</p><ListView notes={shown} picked={pickedIds} actions={actions} onOpen={actions.startEdit} /></div>
+            : <BoardOverview key={boardId} notes={all} client={touch && { name: board.name, items: touch.items }} onOpen={(noteId) => navigate('Notes', { noteId })} onTick={(id) => actions.tick([id])} onShow={setView} onWrite={() => writeField.current?.focus()} />)}
           {boardId !== JUST_IN && view === 'map' && (
             <div className="boards-map">
               {mapColumns(shown).map((column) => <MapColumn key={column.what} column={column} boardId={boardId} actions={actions}>{column.notes.map(card)}</MapColumn>)}
@@ -404,7 +479,7 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
               {stageColumns(shown).map((column) => <StageColumn key={column.stage} column={column} actions={actions}>{column.notes.map(card)}</StageColumn>)}
             </div>
           )}
-          {boardId !== JUST_IN && view === 'list' && <ListView notes={shown} actions={actions} onOpen={actions.startEdit} />}
+          {boardId !== JUST_IN && view === 'list' && <ListView notes={shown} picked={pickedIds} actions={actions} onOpen={actions.startEdit} />}
         </div>
 
         <form className="boards-write" onSubmit={(event) => { event.preventDefault(); actions.write(writeField.current.value); writeField.current.value = '' }}>
@@ -472,7 +547,7 @@ function NameForm({ label, placeholder, initial = '', onDone }) {
 }
 
 function BoardRow({ id, name, icon: Icon, paper, count, active, onOpen, onMenu, actions, fresh }) {
-  const drop = useDrop(`boards:${id}`, { accepts: (carried) => carried.kind === 'note', onDrop: (carried) => actions.moveTo([carried.id], id) })
+  const drop = useDrop(`boards:${id}`, { accepts: (carried) => carried.kind === 'note', onDrop: (carried) => actions.moveTo(carriedIds(carried), id) })
   return (
     <button type="button" className={`boards-row ${active ? 'is-active' : ''}`} aria-current={active || undefined} onClick={onOpen} onContextMenu={onMenu} {...drop}>
       {Icon ? <Icon weight={active ? 'fill' : 'regular'} /> : <span className="boards-dot" data-paper={paper} aria-hidden="true" />}
@@ -489,8 +564,8 @@ function MapColumn({ column, boardId, actions, children }) {
     accepts: (carried) => carried.kind === 'note',
     onDrop: (carried) => {
       const from = carried.data?.folderId ?? null
-      if (boardId !== JUST_IN && from !== boardId && !carried.data?.onBoard) actions.moveTo([carried.id], boardId)
-      actions.setKind([carried.id], column.what)
+      if (boardId !== JUST_IN && from !== boardId && !carried.data?.onBoard) actions.moveTo(carriedIds(carried), boardId)
+      actions.setKind(carriedIds(carried), column.what)
     },
   })
   return (
@@ -506,7 +581,7 @@ function StageColumn({ column, actions, children }) {
   const drop = useDrop(`stage:${column.stage}`, {
     accepts: (carried) => carried.kind === 'note',
     axis: 'y',
-    onDrop: (carried) => actions.setStage(carried.id, column.stage, column.notes, carried.index),
+    onDrop: (carried) => actions.setStage(carriedIds(carried), column.stage, column.notes, carried.index),
   })
   return (
     <section className="stage-column" aria-label={column.title} {...drop}>
@@ -516,15 +591,16 @@ function StageColumn({ column, actions, children }) {
   )
 }
 
-function ListView({ notes, actions, onOpen }) {
+function ListView({ notes, picked, actions, onOpen }) {
   return (
     <div className="boards-list" role="table" aria-label="Stickies">
       <div role="row" className="boards-list-head"><span role="columnheader">Sticky</span><span role="columnheader">What it is</span><span role="columnheader">Came from</span><span role="columnheader">Added</span></div>
       {notes.map((note) => {
         const what = whatOf(note)
+        const on = picked.includes(note.id)
         return (
-          <div role="row" key={note.id} className="boards-list-row" data-note={note.id} onContextMenu={(event) => actions.menuFor(event, note)} onDoubleClick={() => onOpen(note.id)}>
-            <span role="cell" className="boards-list-words"><button type="button" onClick={() => onOpen(note.id)}>{note.title}</button></span>
+          <div role="row" key={note.id} className={`boards-list-row ${on ? 'is-picked' : ''}`} data-note={note.id} onClick={(event) => { if (picking(event)) actions.pick(event, note.id) }} onContextMenu={(event) => actions.menuFor(event, note)} onDoubleClick={() => onOpen(note.id)}>
+            <span role="cell" className="boards-list-words"><button type="button" aria-label={on ? `${note.title}, picked` : undefined} onClick={(event) => { if (!picking(event)) onOpen(note.id) }}>{note.title}</button></span>
             <span role="cell"><span className="meta-kind" data-paper={WHAT_PAPER[what]}>{WHAT_LABEL[what]}</span></span>
             <span role="cell">{note.source || '—'}</span>
             <span role="cell">{new Date(note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
@@ -536,8 +612,9 @@ function ListView({ notes, actions, onOpen }) {
 }
 
 /* A sticky on a board: carried to another column, stage or board; clicked to write in it; right-click
-   for what it is, its stage, where it goes, Notes, Delete. */
-function Card({ note, view, lit, editing, workspace, boardId, actions, onEdit }) {
+   for what it is, its stage, where it goes, Notes, Delete. ⌘- or ⇧-click (or Space) picks it, and the
+   picked ones go together. */
+function Card({ note, view, lit, editing, picked, workspace, boardId, actions, onEdit }) {
   const carrying = useCarrying()
   const field = useRef(null)
   useEffect(() => { if (editing) { field.current?.focus(); field.current?.select() } }, [editing])
@@ -565,15 +642,18 @@ function Card({ note, view, lit, editing, workspace, boardId, actions, onEdit })
   }
   return (
     <article
-      className={`boards-card ${lit ? 'is-lit' : ''} ${carrying?.id === note.id ? 'is-carried' : ''} ${note.doneAt ? 'is-done' : ''}`}
+      className={`boards-card ${lit ? 'is-lit' : ''} ${carrying?.id === note.id || carrying?.data?.ids?.includes(note.id) ? 'is-carried' : ''} ${note.doneAt ? 'is-done' : ''} ${picked ? 'is-picked' : ''}`}
       data-paper={WHAT_PAPER[what]}
       data-note={note.id}
       tabIndex={0}
-      aria-label={note.title}
-      onClick={onEdit}
-      onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); onEdit() } }}
+      aria-label={picked ? `${note.title}, picked` : note.title}
+      onClick={(event) => (picking(event) ? actions.pick(event, note.id) : onEdit())}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') { event.preventDefault(); onEdit() }
+        if (event.key === ' ') { event.preventDefault(); actions.pick(event, note.id) }
+      }}
       onContextMenu={(event) => actions.menuFor(event, note)}
-      {...carryable({ kind: 'note', id: note.id, data: { folderId: note.folderId || null, onBoard: boardId !== JUST_IN } })}
+      {...carryable({ kind: 'note', id: note.id, data: { folderId: note.folderId || null, onBoard: boardId !== JUST_IN, ids: actions.idsFor(note.id) } })}
     >
       <p>{note.gist || cardWords(note.markdown)}</p>
       <footer>

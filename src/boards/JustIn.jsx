@@ -15,8 +15,8 @@ const dayOf = (note) => { const when = whenOf(note); return when ? whenLine(when
 /* Just in (Phase 72), the screen: today's morning brief on top; what waits for a home, each with the two
    boards it most looks like; what OSAT put somewhere this week, by day, each with where it went and Undo;
    and beside them the lists OSAT keeps (To buy, Coming up, Questions). `editing` and `card` come from the
-   canvas, so a row is written in the same way a sticky on a board is. */
-export function JustIn({ workspace, boards, query, editing, card, actions, navigate }) {
+   canvas, so a row is written in the same way a sticky on a board is; `picked` (Phase 97) comes from there too. */
+export function JustIn({ workspace, boards, query, editing, picked, card, actions, navigate }) {
   const [more, setMore] = useState(false)
   const { waiting, days } = useMemo(() => cameIn(workspace), [workspace])
   const shownWaiting = findOn(waiting, query)
@@ -26,7 +26,7 @@ export function JustIn({ workspace, boards, query, editing, card, actions, navig
   const nameOf = (id) => boards.find(({ folder }) => folder.id === id)?.folder.name
   const row = (note, guesses) => (editing === note.id
     ? card(note)
-    : <Row key={note.id} note={note} workspace={workspace} guesses={guesses} nameOf={nameOf} actions={actions} />)
+    : <Row key={note.id} note={note} workspace={workspace} guesses={guesses} nameOf={nameOf} picked={picked.includes(note.id)} actions={actions} />)
 
   return (
     <div className="justin">
@@ -69,22 +69,27 @@ export function JustIn({ workspace, boards, query, editing, card, actions, navig
 }
 
 /* One sticky that came in: its kind, its words, where it went (or the boards it looks like), where it
-   came from and when, and Undo. Click to write in it; drag it onto a board; right-click for the rest. */
-function Row({ note, workspace, guesses, nameOf, actions }) {
+   came from and when, and Undo. Click to write in it; ⌘- or ⇧-click (or Space) to pick it with others; drag it
+   onto a board; right-click for the rest. */
+function Row({ note, workspace, guesses, nameOf, picked, actions }) {
   const carrying = useCarrying()
   const what = whatOf(note)
   const to = whereTo(workspace, note, dayOf)
   const undo = undoOf(note)
   return (
     <article
-      className={`justin-row ${carrying?.id === note.id ? 'is-carried' : ''}`}
+      className={`justin-row ${carrying?.id === note.id || carrying?.data?.ids?.includes(note.id) ? 'is-carried' : ''} ${picked ? 'is-picked' : ''}`}
       data-note={note.id}
       tabIndex={0}
-      aria-label={note.title}
-      onClick={() => actions.startEdit(note.id)}
-      onKeyDown={(event) => { if (event.key === 'Enter' && event.target === event.currentTarget) { event.preventDefault(); actions.startEdit(note.id) } }}
+      aria-label={picked ? `${note.title}, picked` : note.title}
+      onClick={(event) => (event.metaKey || event.ctrlKey || event.shiftKey ? actions.pick(event, note.id) : actions.startEdit(note.id))}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return
+        if (event.key === 'Enter') { event.preventDefault(); actions.startEdit(note.id) }
+        if (event.key === ' ') { event.preventDefault(); actions.pick(event, note.id) }
+      }}
       onContextMenu={(event) => actions.menuFor(event, note)}
-      {...carryable({ kind: 'note', id: note.id, data: { folderId: note.folderId || null, onBoard: false } })}
+      {...carryable({ kind: 'note', id: note.id, data: { folderId: note.folderId || null, onBoard: false, ids: actions.idsFor(note.id) } })}
     >
       <span className="meta-kind" data-paper={WHAT_PAPER[what]}>{WHAT_LABEL[what]}</span>
       <p className="justin-words">{note.gist || note.title}</p>
@@ -92,7 +97,7 @@ function Row({ note, workspace, guesses, nameOf, actions }) {
       {guesses && (
         <span className="justin-guess" onClick={(event) => event.stopPropagation()}>
           {guesses.map((id) => <button key={id} type="button" className="outline-button" onClick={() => actions.moveTo([note.id], id)}>{nameOf(id)}</button>)}
-          <button type="button" className="text-button" onClick={(event) => actions.moveMenu(event, note)}>{guesses.length ? 'Other…' : 'Move to…'}</button>
+          <button type="button" className="text-button" onClick={(event) => actions.moveMenu(event, [note.id])}>{guesses.length ? 'Other…' : 'Move to…'}</button>
         </span>
       )}
       <span className="justin-from">{[sourceWords(note.source), timeOf(note.createdAt)].filter(Boolean).join(' · ')}</span>
@@ -117,7 +122,7 @@ function Kept({ workspace, actions, navigate }) {
           {head('buy', 'To buy', WHAT_PAPER.buy)}
           {buy.map((note) => (
             <label key={note.id} className="justin-tick">
-              <input type="checkbox" checked={false} onChange={() => actions.tick(note.id)} aria-label={`Bought: ${note.title}`} />
+              <input type="checkbox" checked={false} onChange={() => actions.tick([note.id])} aria-label={`Bought: ${note.title}`} />
               <span>{note.gist || note.title}</span>
             </label>
           ))}
