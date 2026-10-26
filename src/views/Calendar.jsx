@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { calendarMonthDays, localDateKey } from "../daily-practice.js";
 import { calendarToIcs } from "../osat-data.js";
+import { datesSettings } from "../intake/dates.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { MacCalendarBar, MacReminders, macError, useMacCalendar } from "./MacCalendar.jsx";
 import { macCalendarChoices, mergeEvents, newMacEvent } from "../../shared/mac-calendar-model.mjs";
@@ -55,12 +56,16 @@ export function CalendarView({ workspace, commit, initialDate }) {
   const [composing, setComposing] = useState(false);
   const [toast, showUndo] = useUndoToast();
   const [menuFor, setMenuFor] = useState(null);
-  const [form, setForm] = useState({ title: "", start: "", end: "", notes: "", where: "osat" });
+  const [form, setForm] = useState({ title: "", start: "", end: "", notes: "", where: null });
   const mac = useMacCalendar(cursor);
 
   const own = workspace.calendar.events;
   const events = useMemo(() => mergeEvents(own, mac.events, mac.hidden), [own, mac.events, mac.hidden]);
   const macChoices = macCalendarChoices(mac.calendars);
+  // Phase 96: until Nate picks one, a new event goes where new dates go when the Mac offers that calendar here.
+  // Worked out on each draw: the Mac's calendars can arrive after the form opened.
+  const datesCalendar = datesSettings(workspace.settings).calendar;
+  const where = form.where ?? (macChoices.some((calendar) => calendar.id === datesCalendar) ? datesCalendar : "osat");
   const byDay = useMemo(() => groupByDay(events), [events]);
   const days = useMemo(
     () => calendarMonthDays(cursor.getFullYear(), cursor.getMonth()),
@@ -88,7 +93,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
 
   function openComposer(dayKey = selected, hour = 9) {
     setSelected(dayKey);
-    setForm({ title: "", start: `${dayKey}T${String(hour).padStart(2, "0")}:00`, end: "", notes: "", where: "osat" });
+    setForm({ title: "", start: `${dayKey}T${String(hour).padStart(2, "0")}:00`, end: "", notes: "", where: null });
     setComposing(true);
   }
 
@@ -99,7 +104,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
 
   async function saveToMac() {
     const payload = newMacEvent({
-      calendar: form.where,
+      calendar: where,
       title: form.title,
       start: new Date(form.start).toISOString(),
       end: form.end ? new Date(form.end).toISOString() : "",
@@ -108,11 +113,11 @@ export function CalendarView({ workspace, commit, initialDate }) {
     if (!payload) return;
     try {
       const { id } = await mac.bridge.addEvent(payload);
-      const name = mac.calendars.find((calendar) => calendar.id === form.where)?.name || "your Mac";
+      const name = mac.calendars.find((calendar) => calendar.id === where)?.name || "your Mac";
       showUndo(`Put “${payload.title}” on ${name}`, () => mac.bridge.removeEvent(id).then(mac.refresh, (error) => mac.setNotice(macError(error))));
       mac.refresh();
       setSelected(localDateKey(new Date(payload.start)));
-      setForm({ title: "", start: "", end: "", notes: "", where: "osat" });
+      setForm({ title: "", start: "", end: "", notes: "", where: null });
       setComposing(false);
     } catch (error) {
       mac.setNotice(macError(error));
@@ -122,7 +127,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
   function save(submitEvent) {
     submitEvent.preventDefault();
     if (!form.title.trim() || !form.start) return;
-    if (form.where !== "osat") return saveToMac();
+    if (where !== "osat") return saveToMac();
     const item = {
       id: makeId("event"),
       title: form.title.trim(),
@@ -140,7 +145,7 @@ export function CalendarView({ workspace, commit, initialDate }) {
       },
     }));
     setSelected(localDateKey(new Date(item.start)));
-    setForm({ title: "", start: "", end: "", notes: "", where: "osat" });
+    setForm({ title: "", start: "", end: "", notes: "", where: null });
     setComposing(false);
   }
 
@@ -333,11 +338,11 @@ export function CalendarView({ workspace, commit, initialDate }) {
             {mac.access?.events === "allowed" && macChoices.length > 0 && (
               <label>
                 Keep it
-                <select value={form.where} onChange={(e) => setForm({ ...form, where: e.target.value })}>
+                <select value={where} onChange={(e) => setForm({ ...form, where: e.target.value })}>
                   <option value="osat">In OSAT</option>
                   {macChoices.map((calendar) => (
                     <option value={calendar.id} key={calendar.id}>
-                      On my Mac: {calendar.name}
+                      On my Mac: {calendar.name}{calendar.source ? ` · ${calendar.source}` : ""}
                     </option>
                   ))}
                 </select>
