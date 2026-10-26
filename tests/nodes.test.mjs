@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createEmptyDoc, migrate, SCHEMA } from '../shared/store-core.mjs'
+import { createEmptyDoc, diffDocs, migrate, SCHEMA, validateOps } from '../shared/store-core.mjs'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
-import { addFolder, addSticky, findMentions, freeNodeName, importNode, linkMentions, mentionedIn, moveFolder, moveSticky, moveToItems, nodesMentioned, nodesOf, pileOf, rankAt, removeFolder, renameFolder, splitMentions } from '../src/nodes-model.js'
+import { addFolder, addSticky, findMentions, freeNodeName, homeOf, importNode, linkMentions, mentionedIn, mentionPicks, moveFolder, moveSticky, moveToItems, nodesMentioned, nodesOf, pileOf, rankAt, removeFolder, renameFolder, splitMentions } from '../src/nodes-model.js'
 
 const at = (minute) => new Date(Date.UTC(2026, 8, 28, 9, minute)).toISOString()
 const note = (id, extra = {}) => ({ id, title: id, markdown: id, createdAt: at(1), updatedAt: at(1), ...extra })
@@ -128,6 +128,23 @@ test('@ only links: nothing is filed, nothing is made from a typo, and the note 
   assert.equal(mentionedIn(filed).has('g'), false, 'its own topic does not list it twice')
   const day = space([note('day-2026-09-28', { kind: 'day', date: '2026-09-28', markdown: 'walked @Garden' })], [folder('g', { name: 'Garden' })])
   assert.deepEqual(mentionedIn(day).get('g')?.map((item) => item.id), ['day-2026-09-28'])
+})
+
+test('@ as it is typed: boards, then branches, a client marked; and the one board or branch the words name', () => {
+  const folders = [folder('f', { name: 'Fortis', client: true }), folder('h', { name: 'Home' }), folder('i', { name: 'Invoices', parentId: 'f' }), folder('p', { name: 'Project Direction' })]
+  assert.deepEqual(mentionPicks(folders, 'fo').map(({ value, hint }) => [value, hint]), [['Fortis', 'Client'], ['Fortis/Invoices', 'Branch']])
+  assert.deepEqual(mentionPicks(folders, 'Fortis/inv'), [{ value: 'Fortis/Invoices', label: 'Fortis › Invoices', hint: 'Branch' }])
+  assert.deepEqual(mentionPicks(folders, 'proj'), [{ value: 'Project Direction', label: 'Project Direction', hint: 'Board' }])
+  assert.deepEqual(mentionPicks(folders, '').map((pick) => pick.value), ['Fortis', 'Home', 'Project Direction', 'Fortis/Invoices'], 'nothing after the @: every one')
+  assert.equal(homeOf('Call Sam about @Fortis tomorrow', folders), 'f')
+  assert.equal(homeOf('send @Fortis/Invoices, then @fortis/invoices again', folders), 'i')
+  for (const text of ['@Fortis and @Home', 'see @Fortsi', 'mail sam@fortis.com', 'no board here']) assert.equal(homeOf(text, folders), null, text)
+  // What the bar then saves onto it travels through the store and survives a reload, its link kept.
+  const before = space([], folders)
+  const { state, note: made } = addSticky(before, 'Call Sam about @Fortis', homeOf('Call Sam about @Fortis', before.folders), { source: 'Typed' })
+  assert.deepEqual([made.folderId, made.unsorted, made.refs], ['f', false, { fortis: 'f' }])
+  assert.ok(validateOps(diffDocs(before, state)).every((op) => op.c === 'notes'))
+  assert.deepEqual(normalizeWorkspace(state).notes.find((item) => item.id === made.id).refs, { fortis: 'f' })
 })
 
 test('renaming a topic changes no words, and its @mentions still point at it', () => {

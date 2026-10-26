@@ -74,6 +74,7 @@ export function Desk() {
   const [offline, setOffline] = useState({ on: false })
   const [notice, setNotice] = useState('')
   const [newBoard, setNewBoard] = useState(0)
+  const [newCanvas, setNewCanvas] = useState(0)
   // Scans that came in: [{ name, folderId, noteId }]. Their line stays until looked at.
   const [arrived, setArrived] = useState([])
   const boardsRef = useRef(null)
@@ -249,8 +250,9 @@ export function Desk() {
     else if (view === 'Clipboard') { if (window.osatSearch) window.osatSearch.show('clipboard'); else setNotice('The clipboard history is in the Mac app.') }
     else if (view === 'Obsidian') go('Settings', { section: 'data' })
     else if (view === 'Reflection') go('Journal', { tab: 'reflect' })
-    // A new board is named in the sidebar.
+    // A new board is named in the sidebar, and so is a new canvas (Phase 98, from either bar).
     else if (view === 'Mindmap' && detail?.action === 'new-node') setNewBoard(Date.now())
+    else if (view === 'Canvas' && detail?.action === 'new') setNewCanvas(Date.now())
     else if (view === 'Mindmap' || view === 'Sky') {
       // A note sent to the boards opens the board it's on (Boards finds it); no board yet means Just in.
       const board = detail?.noteId ? null : boardFor(detail)
@@ -286,7 +288,7 @@ export function Desk() {
     <main className={`app ${ask ? 'has-ask' : ''}`} data-native={window.osatDesk ? '' : undefined}>
       <SaveStatus recovery />
       <div className="app-frame" inert={welcome || tour || undefined}>
-        <Sidebar workspace={workspace} commit={commit} navigate={navigate} at={at} offline={on} onOffline={() => askOffline(!on)} newBoard={newBoard} />
+        <Sidebar workspace={workspace} commit={commit} navigate={navigate} at={at} offline={on} onOffline={() => askOffline(!on)} newBoard={newBoard} newCanvas={newCanvas} />
 
         <section className="app-main">
           <header className="app-bar">

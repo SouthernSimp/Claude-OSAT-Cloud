@@ -20,7 +20,7 @@ const readOpen = () => { try { return JSON.parse(localStorage.getItem(FOLD_KEY) 
    boards, then Work, Life, Library and the power tools (folded until you open them), Settings and Online at the foot.
    `at` is where you are: { view, board }. A sticky dropped on a board moves there; right-click a board to rename or
    delete it (its stickies go back to Just in). Every change has Undo. */
-export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, newBoard = 0 }) {
+export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, newBoard = 0, newCanvas = 0 }) {
   const [menu, openMenu] = useContextMenu()
   const [toast, showUndo] = useUndoToast()
   const [naming, setNaming] = useState(null)
@@ -29,8 +29,9 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
   const canvases = canvasesOf(workspace)
   // The canvas open now: the one named, else the one the room opened last.
   const openCanvas = at.detail?.canvasId || (() => { try { return localStorage.getItem('osat.canvas.last.v1') } catch { return null } })() || canvases[0]?.id
-  // "New board" from ⌘K: the name is written right here.
+  // "New board" or "New canvas" from ⌘K or "/": the name is written right here.
   useEffect(() => { if (newBoard) setNaming({}) }, [newBoard])
+  useEffect(() => { if (newCanvas) setNaming({ canvas: true }) }, [newCanvas])
   const counts = useMemo(() => ({
     JustIn: stickiesOn(workspace, JUST_IN).length || '',
     Calendar: new Date().getDate(),

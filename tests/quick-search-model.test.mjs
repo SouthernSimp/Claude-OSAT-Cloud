@@ -235,6 +235,22 @@ test('one bar: commands come right after an app named by the words, and the word
   }
 })
 
+test('"/" shows the commands alone, the first one picked; words that start none are as always', () => {
+  const commands = [
+    { key: 'act:new-folder', label: 'New board', kind: 'action', go: ['Mindmap', { action: 'new-node' }] },
+    { key: 'act:new-canvas', label: 'New canvas', kind: 'action', go: ['Canvas', { action: 'new' }] },
+  ]
+  const ready = { state: 'ready', label: 'Light' }
+  const slash = readTyped('/', settings)
+  const found = { commands, notes: [{ key: 'note:n', label: 'See /r/ideas', kind: 'note', go: ['Notes', { noteId: 'n' }] }], clipboard: { items: [clip('a', 'a/b')] } }
+  const rows = buildRows(slash, found, settings, { now, ai: ready })
+  assert.deepEqual(rows.map((row) => [row.section, row.title]), [['Commands', 'New board'], ['Commands', 'New canvas']])
+  assert.equal(startRow(rows, slash), 0)
+  assert.deepEqual(actionsFor(rows[0])[0], { id: 'go', label: 'Open', keys: '↵' })
+  const words = readTyped('/r/ideas', settings)
+  assert.deepEqual(buildRows(words, { ...found, commands: [] }, settings, { now, ai: ready }).map((row) => row.kind), ['note', 'ask', 'sticky'])
+})
+
 test('anything in the bar can be a favorite, or have its own key and word, set from ⌘K', async () => {
   const { customize, idOf, keysOf, ownKeyOf, ownWordOf, wordsOf, applyPatch } = await import('../shared/launcher-model.mjs')
   const layout = { key: 'layout:left-half', kind: 'layout', title: 'Left half', data: { layout: 'left-half' } }
