@@ -25,7 +25,7 @@ function fakeMac({ calendars }) {
   window.osatMacCalendar = {
     status: async () => ({ events: 'allowed', reminders: 'notAsked' }),
     allow: async () => 'allowed',
-    calendars: () => new Promise((resolve) => setTimeout(() => resolve(calendars), 300)),
+    calendars: () => new Promise((resolve) => setTimeout(() => { window.__mac.listed = true; resolve(calendars) }, 300)),
     events: async () => [],
     addEvent: async (event) => { window.__mac.added.push(event); return { id: `mac-${window.__mac.added.length}` } },
     removeEvent: async () => ({ ok: true }),
@@ -102,7 +102,8 @@ async function main() {
   // No calendars on the Mac: no menu, and the event stays in OSAT (its own, with Download .ics and Delete).
   const none = await openRoom(browser, url, { theme: 'light', calendars: [] })
   await none.getByText('Your Mac’s calendars are read on this Mac', { exact: false }).waitFor({ timeout: 5000 }).catch(() => problems.push('the Mac’s calendars were never allowed'))
-  await sleep(500) // the Mac's (empty) list comes in
+  // Wait for the Mac's (empty) list itself: there is no menu before it comes either, so a fixed wait couldn't tell.
+  await none.waitForFunction(() => window.__mac.listed, null, { timeout: 5000 }).catch(() => problems.push('the Mac never listed its calendars'))
   await none.getByRole('button', { name: 'Add an event on this day', exact: true }).click()
   const composer = none.locator('.agenda-composer')
   check(await composer.getByLabel('Keep it').count() === 0, 'a Keep it menu showed with no calendars to offer')
