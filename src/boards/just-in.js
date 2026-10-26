@@ -129,3 +129,11 @@ export function mergeStickies(state, keepId, goneId) {
   if (!isActiveNote(keep) || !isActiveNote(gone)) return state
   return trashNotes(updateNote(state, keepId, { markdown: `${keep.markdown.trim()}\n\n${gone.markdown.trim()}` }), [goneId])
 }
+
+/* Several picked stickies into one (Phase 97): the oldest keeps them all, the others' words go under its own in the
+   order they were written, and the others go to the Bin. One already in the Bin is left out; one alone changes nothing. */
+export function mergeAll(state, ids) {
+  const [keep, ...rest] = state.notes.filter((note) => ids.includes(note.id) && isActiveNote(note))
+    .sort((a, b) => (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0))
+  return rest.reduce((next, note) => mergeStickies(next, keep.id, note.id), state)
+}

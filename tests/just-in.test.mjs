@@ -2,8 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { readPhotoAnswer } from '../shared/ai-tasks.mjs'
-import { JUST_IN } from '../src/boards/boards-model.js'
-import { cameIn, dayLabel, guessBoards, mergeStickies, placeFrom, samePair, todayFlow, todaysBrief, undoOf, whereTo } from '../src/boards/just-in.js'
+import { JUST_IN, undoFrom } from '../src/boards/boards-model.js'
+import { cameIn, dayLabel, guessBoards, mergeAll, mergeStickies, placeFrom, samePair, todayFlow, todaysBrief, undoOf, whereTo } from '../src/boards/just-in.js'
+import { trashNotes } from '../src/notes-model.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 
 const NOW = new Date(2026, 9, 15, 9, 0).getTime()
@@ -95,6 +96,18 @@ test('merging keeps both sets of words in the older sticky and bins the newer on
   assert.equal(note('mine').markdown, 'Ship the canvas\n\nThe canvas is hard to read')
   assert.ok(note('canvas').trashedAt)
   assert.equal(mergeStickies(merged, 'mine', 'canvas'), merged)
+})
+
+test('merging several picked: the oldest keeps every one’s words in the order written, the rest go to the Bin, one Undo brings all back', () => {
+  const binned = trashNotes(state, ['logo'])
+  const merged = mergeAll(binned, ['canvas', 'logo', 'mine', 'slides'])
+  const note = (id) => merged.notes.find((item) => item.id === id)
+  assert.equal(note('slides').markdown, 'Fortis slides for the demo call\n\nShip the canvas\n\nThe canvas is hard to read', 'the one in the Bin is left out')
+  assert.ok(!note('slides').trashedAt && note('mine').trashedAt && note('canvas').trashedAt)
+  assert.equal(note('logo').trashedAt, binned.notes.find((item) => item.id === 'logo').trashedAt)
+  assert.deepEqual(undoFrom(binned, merged)(merged).notes, binned.notes)
+  assert.equal(mergeAll(binned, ['mine']), binned, 'one alone changes nothing')
+  assert.equal(mergeAll(binned, ['mine', 'logo']), binned, 'nor one beside one in the Bin')
 })
 
 test('a photo’s answer: one sticky a line, bullets gone, each once, none is nothing', () => {
