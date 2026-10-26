@@ -4,6 +4,7 @@ import { cleanError } from "../assistant/useAi.js";
 import { CATEGORIES } from "../../shared/bank-model.mjs";
 import { CashFlow, SpendingCard } from "../money/Charts.jsx";
 import { BillsCard } from "../money/Bills.jsx";
+import { WorthCard } from "../money/Worth.jsx";
 import { holdings, monthTotals, recategorize, setLimit, setNotBill } from "../money/money-model.js";
 import { makeId } from "../lib/ui.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
@@ -27,14 +28,15 @@ export function BudgetView({ workspace, commit }) {
   const [month, setMonth] = useState(localDateKey().slice(0, 7));
   const [only, setOnly] = useState(null);
   const [find, setFind] = useState("");
+  const [asked, setAsked] = useState(false);
   const [bank, setBank] = useBank();
   const [toast, showUndo] = useUndoToast();
-  // Removes one entry from a budget list at once; Undo puts it back where it was.
+  // Removes one entry from a budget list at once; Undo puts it back where it was. (`balances` may not be there yet.)
   function removeFrom(list, entry) {
-    const at = workspace.budget[list].findIndex((item) => item.id === entry.id);
-    commit((state) => ({ ...state, budget: { ...state.budget, [list]: state.budget[list].filter((item) => item.id !== entry.id) } }));
+    const at = (workspace.budget[list] || []).findIndex((item) => item.id === entry.id);
+    commit((state) => ({ ...state, budget: { ...state.budget, [list]: (state.budget[list] || []).filter((item) => item.id !== entry.id) } }));
     showUndo(`Removed “${entry.label}”`, () => commit((state) => {
-      const items = state.budget[list].filter((item) => item.id !== entry.id);
+      const items = (state.budget[list] || []).filter((item) => item.id !== entry.id);
       items.splice(at, 0, entry);
       return { ...state, budget: { ...state.budget, [list]: items } };
     }));
@@ -104,6 +106,9 @@ export function BudgetView({ workspace, commit }) {
 
   const started = workspace.budget.transactions.length > 0 || workspace.budget.recurring.length > 0 || (bank?.items?.length ?? 0) > 0;
   const days = byDay(shown);
+  // What you have and owe (Phase 100). Answering the questions doesn't count as started: no $0.00 month rows for it.
+  const kept = workspace.budget.balances || [];
+  const worthCard = (more) => <WorthCard balances={kept} held={holdings(bank?.items)} commit={commit} onRemove={(item) => removeFrom("balances", item)} {...more} />;
   const composer = adding ? (
     <form className="money-composer" onSubmit={save}>
       <input aria-label="Description" placeholder="Description" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
@@ -172,14 +177,18 @@ export function BudgetView({ workspace, commit }) {
           <p className="money-quiet">
             Or <button type="button" className="money-link" onClick={() => { setAdding(true); setShowImport(false); }}>add an entry by hand</button>
             {" · "}<button type="button" className="money-link" onClick={() => { setShowImport(true); setAdding(false); }}>import a CSV</button>
+            {!asked && !kept.length && <>{" · "}<button type="button" className="money-link" onClick={() => { setAsked(true); setAdding(false); setShowImport(false); }}>say what you have and owe</button></>}
           </p>
           {composer}
           {importer}
+          {(asked || kept.length > 0) && worthCard({ start: asked, onClose: () => setAsked(false) })}
         </section>
       ) : (
         <div className="money-layout">
           <div className="money-main">
             <MonthSummary totals={totals} month={month} />
+            {/* In the main column: beside the banks and bills it made the sticky side taller than the window. */}
+            {worthCard()}
             <SpendingCard transactions={workspace.budget.transactions} month={month} limits={workspace.budget.limits || {}} only={only} onPick={setOnly} onLimit={changeLimit} />
             <CashFlow transactions={workspace.budget.transactions} month={month} />
 

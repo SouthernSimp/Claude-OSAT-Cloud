@@ -443,10 +443,10 @@
 .money-welcome > svg { width: 40px; height: 40px; color: var(--accent); }
 .money-welcome h2 { margin: 0; font-family: var(--font-display); font-size: 22px; letter-spacing: -0.02em; }
 .money-welcome > p:not(.money-quiet) { max-width: 460px; margin: 0; color: var(--muted); font-size: var(--t-sm); line-height: 1.5; }
-.money-welcome > .money-banks, .money-welcome > .money-composer, .money-welcome > .money-import { width: 100%; margin: 8px 0 0; text-align: left; }
+.money-welcome > .money-banks, .money-welcome > .money-composer, .money-welcome > .money-import, .money-welcome > .money-worth { width: 100%; margin: 8px 0 0; text-align: left; }
 .money-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .money-toolbar button { display: inline-flex; align-items: center; gap: 6px; }
-.money-entries > header { align-items: center; }
+.money-entries > header, .money-worth > header { align-items: center; }
 .money-entries h2 small { margin-left: 4px; color: var(--muted); font-size: var(--t-xs); font-weight: 500; }
 
 .money-composer {
@@ -698,3 +698,13 @@
 .money-side .money-keys { grid-template-columns: minmax(0, 1fr); }
 .money-side .money-bills li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
 .money-side .money-bills li > :last-child { grid-column: 2; justify-self: end; }
+
+/* What you have and owe (Phase 100): Bills' rows and the entry form; a row's name opens it in the question. The
+   trash's column is kept on the banks' rows too, so every amount lines up. */
+.money-worth li { grid-template-columns: minmax(0, 1fr) auto 32px; }
+.money-worth li > button:first-child { display: grid; min-width: 0; text-align: left; }
+.money-worth li > button:first-child:hover strong { text-decoration: underline; }
+/* Two fields a row: four would cut "Least a month" short in the welcome. */
+.money-worth .money-composer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.money-worth .money-composer > :is(h3, .money-quiet) { grid-column: 1 / -1; }
+.money-worth .money-composer > h3 { font-size: var(--t-md); }
