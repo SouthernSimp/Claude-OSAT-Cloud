@@ -167,6 +167,12 @@ jobs:
           fi
           kill "$PID"
           test -f "$HOME/Library/Application Support/OSAT/osat-data-folder.json"
+      - name: Check the app can ask for Calendar and Reminders
+        run: |
+          APP="$(ls -d release/mac-arm64/OSAT.app)"
+          # Phase 96: under the hardened runtime macOS refuses them without asking unless the signature carries this. Every
+          # signing path above uses build/entitlements.mac.plist (electron-builder passes it for an ad-hoc "-" one too).
+          codesign -d --entitlements - --xml "$APP" | grep -q com.apple.security.personal-information.calendars
       - name: Check the AI engine loads inside the app
         run: |
           APP="$(ls -d release/mac-arm64/OSAT.app)"

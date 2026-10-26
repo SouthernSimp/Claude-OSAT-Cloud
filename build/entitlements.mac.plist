@@ -16,5 +16,8 @@
     <!-- Meetings: the microphone, only while Nate is recording one (macOS asks first). -->
     <key>com.apple.security.device.audio-input</key>
     <true/>
+    <!-- Calendar and Reminders: Nate's events and reminders on this Mac, Google's too through Internet Accounts (macOS asks first). -->
+    <key>com.apple.security.personal-information.calendars</key>
+    <true/>
   </dict>
 </plist>
