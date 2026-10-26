@@ -86,6 +86,14 @@ test('dashboard board progress includes branch steps and matches the Board, with
   ])
 })
 
+test('your boards: favorites first (Phase 99), each in board order', () => {
+  const workspace = normalizeWorkspace({ ...createDefaultWorkspace(), folders: [
+    { id: 'a', name: 'A', rank: 1 }, { id: 'b', name: 'B', rank: 2, favorite: true },
+    { id: 'c', name: 'C', rank: 3 }, { id: 'd', name: 'D', rank: 4, favorite: true },
+  ] })
+  assert.deepEqual(dashboardBoards(workspace).map(({ folder }) => folder.name), ['B', 'D', 'A', 'C'])
+})
+
 test('recent work uses edit time, omits deleted notes, journal pages and to-dos, limits to four and leaves source order alone', () => {
   const notes = [
     sticky('old', 'Older', {}, 5 * HOUR),

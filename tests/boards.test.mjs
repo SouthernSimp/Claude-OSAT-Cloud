@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { addBoard, boardOverview, boardsOf, findOn, JUST_IN, mapColumns, moveToBoard, rankIn, setStage, stageColumns, stageOf, stickiesOn } from '../src/boards/boards-model.js'
+import { addBoard, boardOverview, boardsOf, findOn, isFavorite, JUST_IN, mapColumns, moveToBoard, rankIn, setFavorite, setStage, stageColumns, stageOf, stickiesOn } from '../src/boards/boards-model.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 import { normalizeNote } from '../shared/note-core.mjs'
-import { createEmptyDoc, migrate, SCHEMA } from '../shared/store-core.mjs'
+import { applyOps, createEmptyDoc, diffDocs, migrate, SCHEMA, validateOps } from '../shared/store-core.mjs'
 
 const T0 = Date.UTC(2026, 9, 15, 9, 0)
 const iso = (ms) => new Date(ms).toISOString()
@@ -137,6 +137,26 @@ test('schema 14: a sticky keeps its stage; nothing else', () => {
   assert.deepEqual(migrate(old).notes, old.notes)
   assert.equal(normalizeNote({ id: 'a', markdown: 'x', stage: 'doing' }).stage, 'doing')
   assert.equal('stage' in normalizeNote({ id: 'a', markdown: 'x', stage: 'done' }), false, 'Done is doneAt')
+})
+
+test('a favorite board (Phase 99): added and taken off, saved through the store; only favorite: true is kept', () => {
+  const home = (s) => s.folders.find((folder) => folder.id === 'home')
+  const on = setFavorite(state, 'home', true)
+  assert.equal(isFavorite(home(on)), true)
+  assert.equal(setFavorite(on, 'home', true), on, 'marking again changes nothing')
+  assert.equal(setFavorite(state, 'home', false), state, 'nothing to take off')
+  const off = setFavorite(on, 'home', false)
+  assert.equal('favorite' in home(off), false)
+  assert.equal(home(applyOps(state, validateOps(diffDocs(state, on))).doc).favorite, true)
+  assert.equal('favorite' in home(applyOps(on, validateOps(diffDocs(on, off))).doc), false, 'taken off in the store too')
+  assert.equal(home(normalizeWorkspace(on)).favorite, true)
+  assert.equal(normalizeWorkspace({ ...state, folders: [{ id: 'x', name: 'X', favorite: 'yes' }] }).folders[0].favorite, undefined)
+})
+
+test('schema 18: nothing changes on the way up', () => {
+  assert.ok(SCHEMA >= 18)
+  const old = { ...createEmptyDoc(), schema: 17, rev: 3, folders: [{ id: 'a', name: 'A', parentId: null, createdAt: iso(T0), collapsed: false }] }
+  assert.deepEqual(migrate(old), { ...old, schema: SCHEMA })
 })
 
 test('Undo on the canvas puts back only what the change touched', async () => {
