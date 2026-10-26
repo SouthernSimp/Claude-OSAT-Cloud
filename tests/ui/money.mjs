@@ -229,8 +229,8 @@ async function main() {
   await empty.close()
 
   // What you have and owe (Phase 100), from the welcome: two plain questions, kept in cents; the net worth below zero is
-  // a plain number, with one payoff line; a row opens in the same form; Esc closes a question; the trash has Undo; and
-  // answering doesn't start the month's rows. The bank card keeps the one primary action.
+  // a plain number, with one payoff line (the highest rate first); a row opens in the same form; Esc closes a question;
+  // the trash has Undo; and answering doesn't start the month's rows. The bank card keeps the one primary action.
   for (const theme of ['light', 'dark']) {
     const page = await openRoom(browser, url, theme, [])
     const welcome = page.getByRole('region', { name: 'Get started with Money' })
@@ -249,16 +249,21 @@ async function main() {
     await owe.getByLabel('Least a month').fill('250')
     await owe.getByLabel('Least a month').press('Enter')
     check(await owe.getByLabel('Name').inputValue() === '', `${theme}: Add didn’t make room for another debt`)
+    await owe.getByLabel('Name').fill('Store card')
+    await owe.getByLabel('Owed').fill('1200')
+    await owe.getByLabel('Rate %').fill('24.99%')
+    await owe.getByLabel('Least a month').fill('35')
+    await owe.getByRole('button', { name: 'Add' }).click()
     await page.screenshot({ path: `${OUT}/${theme}-worth-question.png` })
     await page.keyboard.press('Escape')
     check(await card.locator('form').count() === 0, `${theme}: Esc didn’t close the question`)
     const kept = (await readDoc(page)).budget.balances || []
-    check(JSON.stringify(kept.map(({ id, ...rest }) => rest)) === '[{"label":"Cash","owe":false,"amountMinor":30000},{"label":"Car loan","owe":true,"amountMinor":910000,"rate":6.5,"minimumMinor":25000}]', `${theme}: the answers weren’t kept in cents: ${JSON.stringify(kept)}`)
+    check(JSON.stringify(kept.map(({ id, ...rest }) => rest)) === '[{"label":"Cash","owe":false,"amountMinor":30000},{"label":"Car loan","owe":true,"amountMinor":910000,"rate":6.5,"minimumMinor":25000},{"label":"Store card","owe":true,"amountMinor":120000,"rate":24.99,"minimumMinor":3500}]', `${theme}: the answers weren’t kept in cents: ${JSON.stringify(kept)}`)
     const sum = await card.locator('.money-balance').innerText()
-    check(sum.includes('Net worth') && sum.includes('-$8,800.00') && sum.includes('Pay at least $250.00 a month.'), `${theme}: the net worth or the payoff line was wrong: ${sum}`)
+    check(sum.includes('Net worth') && sum.includes('-$10,000.00') && sum.includes('Pay at least $285.00 a month, and anything more to Store card first: at 24.99% it costs the most.'), `${theme}: the net worth or the payoff line was wrong: ${sum}`)
     check(await card.locator('.money-balance strong').evaluate((node) => getComputedStyle(node).color === getComputedStyle(document.body).color), `${theme}: a net worth below zero wasn’t in the plain ink`)
     check(await page.locator('.money-overview').count() === 0, `${theme}: answering started the month’s rows`)
-    await page.screenshot({ path: `${OUT}/${theme}-worth.png` })
+    await card.screenshot({ path: `${OUT}/${theme}-worth.png` })
 
     // A row opens in the same form: the loan is $9,000 now.
     await card.getByRole('button', { name: /^Car loan/ }).click()
@@ -266,12 +271,12 @@ async function main() {
     await owe.getByLabel('Owed').fill('9,000')
     await owe.getByRole('button', { name: 'Save' }).click()
     check(((await readDoc(page)).budget.balances || []).find((item) => item.label === 'Car loan')?.amountMinor === 900000, `${theme}: the change wasn’t kept`)
-    check((await card.locator('.money-balance').innerText()).includes('-$8,700.00'), `${theme}: the net worth didn’t follow the change`)
+    check((await card.locator('.money-balance').innerText()).includes('-$9,900.00'), `${theme}: the net worth didn’t follow the change`)
 
     // The trash takes a row off at once; Undo puts it back where it was.
     await card.getByRole('button', { name: 'Delete Cash' }).click()
     check(await card.getByRole('button', { name: 'Delete Cash' }).count() === 0, `${theme}: the trash didn’t take Cash off`)
-    check(((await readDoc(page)).budget.balances || []).length === 1, `${theme}: Cash wasn’t taken off`)
+    check(!((await readDoc(page)).budget.balances || []).some((item) => item.label === 'Cash'), `${theme}: Cash wasn’t taken off`)
     await page.locator('.toast button', { hasText: 'Undo' }).click()
     check(((await readDoc(page)).budget.balances || [])[0]?.label === 'Cash', `${theme}: Undo didn’t put Cash back first`)
     await page.close()
