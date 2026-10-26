@@ -9,7 +9,8 @@ const blank = (owe) => ({ owe, label: "", amount: "", rate: "", minimum: "" });
 /* What you have and owe (Phase 100, Nate's sticky: "budget should use a questioning system 1. What do you currently
    have 2. What are your current debts"). Two plain questions, one after the other; then both sides listed with the
    connected banks' totals first, your net worth (below zero is a plain number), and one line on paying debts down.
-   A row opens in the same form; the trash takes it off with the room's Undo. Esc closes a question. */
+   A row opens in the same form; the trash takes it off with the room's Undo (and closes that row's form, so a Save
+   can't quietly miss it). Esc closes a question. */
 export function WorthCard({ balances = [], held, commit, onRemove, start = false, onClose }) {
   const [form, setForm] = useState(() => (start ? blank(false) : null));
   const [bad, setBad] = useState(false);
@@ -45,12 +46,12 @@ export function WorthCard({ balances = [], held, commit, onRemove, start = false
     ] : []),
     ...balances.filter((item) => item.owe === owe).map((item) => (
       <li key={item.id}>
-        <button type="button" onClick={() => edit(item)}>
+        <button type="button" title={`Change ${item.label}`} onClick={() => edit(item)}>
           <strong>{item.label}</strong>
           {item.rate || item.minimumMinor ? <small>{[item.rate && `${item.rate}%`, item.minimumMinor && `at least ${formatMinor(item.minimumMinor)} a month`].filter(Boolean).join(" · ")}</small> : null}
         </button>
         <b>{formatMinor(item.amountMinor)}</b>
-        <button type="button" className="icon-button" aria-label={`Delete ${item.label}`} onClick={() => onRemove(item)}><Trash /></button>
+        <button type="button" className="icon-button" aria-label={`Delete ${item.label}`} onClick={() => { if (form?.id === item.id) close(); onRemove(item); }}><Trash /></button>
       </li>
     )),
   ];
@@ -77,7 +78,7 @@ export function WorthCard({ balances = [], held, commit, onRemove, start = false
           <input aria-label={form.owe ? "Owed" : "Amount"} inputMode="decimal" placeholder={form.owe ? "Owed" : "Amount"} value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
           {form.owe && <input aria-label="Rate %" inputMode="decimal" placeholder="Rate %" value={form.rate} onChange={(event) => setForm({ ...form, rate: event.target.value })} />}
           {form.owe && <input aria-label="Least a month" inputMode="decimal" placeholder="Least a month" value={form.minimum} onChange={(event) => setForm({ ...form, minimum: event.target.value })} />}
-          {bad && <p className="form-error" role="alert">Add a name and an amount like 1,250.00{form.owe ? ", and a rate from 0 to 100" : ""}.</p>}
+          {bad && <p className="form-error" role="alert">Add a name and an amount like 1,250.00{form.owe ? ", a rate from 0 to 100, and the least a month like 35" : ""}.</p>}
           <div className="money-composer-actions">
             <button className="outline-button" type="submit">{form.id ? "Save" : <><Plus /> Add</>}</button>
             <button className="ghost-button" type="button" onClick={form.id ? close : onward}>{form.id ? "Cancel" : form.owe ? "Done" : "Next: what you owe"}</button>

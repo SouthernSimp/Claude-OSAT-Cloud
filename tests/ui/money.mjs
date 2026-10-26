@@ -273,9 +273,11 @@ async function main() {
     check(((await readDoc(page)).budget.balances || []).find((item) => item.label === 'Car loan')?.amountMinor === 900000, `${theme}: the change wasn’t kept`)
     check((await card.locator('.money-balance').innerText()).includes('-$9,900.00'), `${theme}: the net worth didn’t follow the change`)
 
-    // The trash takes a row off at once; Undo puts it back where it was.
+    // The trash takes a row off at once, and closes its form if it was open; Undo puts it back where it was.
+    await card.getByRole('button', { name: /^Cash/ }).click()
     await card.getByRole('button', { name: 'Delete Cash' }).click()
     check(await card.getByRole('button', { name: 'Delete Cash' }).count() === 0, `${theme}: the trash didn’t take Cash off`)
+    check(await card.locator('form').count() === 0, `${theme}: the trash left Cash’s form open`)
     check(!((await readDoc(page)).budget.balances || []).some((item) => item.label === 'Cash'), `${theme}: Cash wasn’t taken off`)
     await page.locator('.toast button', { hasText: 'Undo' }).click()
     check(((await readDoc(page)).budget.balances || [])[0]?.label === 'Cash', `${theme}: Undo didn’t put Cash back first`)

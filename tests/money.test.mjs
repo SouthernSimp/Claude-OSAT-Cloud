@@ -88,13 +88,19 @@ test('paying debts down: the minimums added up, anything extra to the highest ra
 test('what you have and owe survives opening the workspace and saves through the store; a rate stays on a debt', () => {
   const before = { ...createEmptyDoc(), schema: 18 }
   const after = { ...before, budget: { ...before.budget, balances: [cash, car] } }
-  const { doc } = applyOps(before, validateOps(diffDocs(before, after)))
+  const ops = validateOps(diffDocs(before, after))
+  assert.deepEqual(ops.map((op) => `${op.t} ${op.c}`), ['add budget.balances', 'add budget.balances'], 'line by line, so two Macs adding at once keep both')
+  const { doc } = applyOps(before, ops)
   assert.deepEqual(normalizeWorkspace(doc).budget.balances, [cash, car])
+  // Taking the last one off is a delete, and opening the workspace again leaves the empty list be (never a wipe).
+  const emptied = { ...after, budget: { ...after.budget, balances: [] } }
+  assert.deepEqual(diffDocs({ ...after, budget: { ...after.budget, balances: [cash] } }, emptied), [{ t: 'del', c: 'budget.balances', id: 'balance-1' }])
+  assert.deepEqual(diffDocs(emptied, normalizeWorkspace(emptied)).filter((op) => (op.c || op.p) === 'budget.balances'), [])
   const kept = normalizeWorkspace({ budget: { balances: [
     { ...cash, rate: 3, minimumMinor: 100 }, { ...car, rate: 140, minimumMinor: -5 }, { ...cash, label: '  ' }, { ...cash, amountMinor: -100 }, { ...cash, amountMinor: 1.5 }, 'x',
   ] } }).budget.balances
   assert.deepEqual(kept, [cash, { id: 'balance-2', label: 'Car loan', owe: true, amountMinor: 900000 }], 'no label, below zero or not whole cents goes; a rate only on a debt, 0–100')
-  assert.equal('balances' in normalizeWorkspace({ budget: { balances: [] } }).budget, false)
+  assert.deepEqual(normalizeWorkspace({ budget: {} }).budget.balances, [])
 })
 
 test('an entry moves to another category by hand; a blank name changes nothing', () => {

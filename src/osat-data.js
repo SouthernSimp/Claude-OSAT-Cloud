@@ -58,7 +58,8 @@ function normalizeBudget(value) {
   // Charges Nate said aren't bills (Phase 89), by their key (money-model's billKey).
   const notBills = (Array.isArray(input.notBills) ? input.notBills : []).filter((key) => typeof key === 'string' && key && key.length <= 80).slice(-500)
   // What you have and owe beyond the banks (Phase 100): cash, an account no bank shows, a loan. Cents, never below 0;
-  // `owe` says which side, and only a debt keeps its rate (APR %, 0–100) and the least it takes a month.
+  // `owe` says which side, and only a debt keeps its rate (APR %, 0–100) and the least it takes a month. Always a list
+  // (even empty), like the entries: the store diffs it record by record, so two Macs adding at once keep both.
   const balances = (Array.isArray(input.balances) ? input.balances : []).flatMap((item) => {
     if (!isObject(item) || !cleanString(item.label).trim() || !Number.isSafeInteger(item.amountMinor) || item.amountMinor < 0) return []
     const owe = item.owe === true
@@ -75,7 +76,7 @@ function normalizeBudget(value) {
     currency: 'USD',
     ...(Object.keys(limits).length ? { limits } : {}),
     ...(notBills.length ? { notBills } : {}),
-    ...(balances.length ? { balances } : {}),
+    balances,
     transactions: (Array.isArray(input.transactions) ? input.transactions : []).map((entry) => cleanEntry(entry)).filter(Boolean),
     recurring: (Array.isArray(input.recurring) ? input.recurring : []).map((entry) => cleanEntry(entry, true)).filter(Boolean),
   }

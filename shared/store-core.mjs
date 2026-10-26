@@ -11,7 +11,7 @@ export const SCHEMA = 18
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
   'notes', 'folders', 'habits', 'goals', 'reflections', 'projects', 'chats', 'canvases',
-  'sorter.boards', 'calendar.events', 'budget.transactions', 'budget.recurring',
+  'sorter.boards', 'calendar.events', 'budget.transactions', 'budget.recurring', 'budget.balances',
 ]
 
 /* Top-level keys a window may change. `rev` and `schema` belong to the store. */
