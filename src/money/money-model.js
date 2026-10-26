@@ -1,7 +1,7 @@
 /* Money's numbers (Phase 87), pure: what came in and went out in a month, where it went by category (the donut and
-   its table), six months of cash flow, each category against its budget, and what the banks hold. Transfers between
-   your own accounts (and paying a card off) are neither: they would count the same dollar twice. Amounts are minor
-   units (cents); an entry is { amountMinor, category, date: 'YYYY-MM-DD' }. */
+   its table), six months of cash flow, each category against its budget, what the banks hold, and what you have and
+   owe beyond them (Phase 100). Transfers between your own accounts (and paying a card off) are neither: they would
+   count the same dollar twice. Amounts are minor units (cents); an entry is { amountMinor, category, date: 'YYYY-MM-DD' }. */
 import { TRANSFERS } from '../../shared/bank-model.mjs'
 
 export const SLICES = 5 // the donut's own colours; the rest is "Everything else"
@@ -95,6 +95,35 @@ export function readLimit(text) {
   if (!/^\d+(\.\d{1,2})?$/.test(value)) return null
   const minor = Math.round(Number(value) * 100)
   return Number.isSafeInteger(minor) ? minor : null
+}
+
+/* What you have and owe (Phase 100): the banks' totals (holdings) plus what you keep by hand (`budget.balances`), and
+   the difference, your net worth, which can go below zero. null with no bank and nothing kept. */
+export function worth(held, balances) {
+  const list = balances || []
+  if (!held && !list.length) return null
+  const sum = (owe) => list.filter((item) => item.owe === owe).reduce((total, item) => total + item.amountMinor, 0)
+  const have = (held?.cash || 0) + sum(false)
+  const owe = (held?.owed || 0) + sum(true)
+  return { have, owe, net: have - owe }
+}
+
+/* Paying debts down: the least a month (the minimums added up) and, with two debts or more, the one anything extra
+   goes to first: the highest rate, which costs the most (the "avalanche" order). null with no debt left.
+   ponytail: no debt-free date yet; add months-to-zero at the least (plus an extra) when Nate asks for one. */
+export function payoff(balances) {
+  const debts = (balances || []).filter((item) => item.owe && item.amountMinor > 0)
+  if (!debts.length) return null
+  const top = debts.reduce((best, item) => ((item.rate || 0) > (best.rate || 0) ? item : best))
+  return { leastMinor: debts.reduce((total, item) => total + (item.minimumMinor || 0), 0), first: debts.length > 1 && top.rate > 0 ? top : null }
+}
+
+/* A yearly rate typed in Money: "24.99%", "6.5"; 0 when blank, null for anything else or over 100. */
+export function readRate(text) {
+  const value = String(text ?? '').trim().replace(/[%\s]/g, '')
+  if (value === '') return 0
+  if (!/^\d+(\.\d{1,3})?$/.test(value) || Number(value) > 100) return null
+  return Number(value)
 }
 
 /* The workspace with one category's budget set (or taken off at 0). */

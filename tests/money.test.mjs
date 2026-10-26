@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { arcs, cashFlow, holdings, monthTotals, readLimit, recategorize, ringPath, setLimit, SLICES, spending } from '../src/money/money-model.js'
+import { arcs, cashFlow, holdings, monthTotals, payoff, readLimit, readRate, recategorize, ringPath, setLimit, SLICES, spending, worth } from '../src/money/money-model.js'
 import { normalizeWorkspace } from '../src/osat-data.js'
 import { monthMoney } from '../src/today/today-model.js'
-import { createEmptyDoc, diffDocs, validateOps } from '../shared/store-core.mjs'
+import { applyOps, createEmptyDoc, diffDocs, validateOps } from '../shared/store-core.mjs'
 
 const entry = (amountMinor, category, date = '2026-10-10', id = `t-${Math.random()}`) => ({ id, label: category, amountMinor, category, date })
 const OCTOBER = [
@@ -60,6 +60,41 @@ test('a budget is typed in plain money, kept per category, taken off at 0, and s
   validateOps(diffDocs(before, set))
   assert.deepEqual(normalizeWorkspace(set).budget.limits, { 'Food & drink': 30000 })
   assert.equal('limits' in normalizeWorkspace({ budget: { limits: { Gas: -5, '': 10, Food: 1.5 } } }).budget, false)
+})
+
+const cash = { id: 'balance-1', label: 'Cash', owe: false, amountMinor: 30000 }
+const car = { id: 'balance-2', label: 'Car loan', owe: true, amountMinor: 900000, rate: 6.5, minimumMinor: 25000 }
+const card = { id: 'balance-3', label: 'Store card', owe: true, amountMinor: 120000, rate: 24.99, minimumMinor: 3500 }
+
+test('what you have and owe: the banks plus what you keep by hand; net worth can go below zero; nothing without either', () => {
+  assert.equal(worth(null, []), null)
+  assert.deepEqual(worth({ cash: 158236, owed: 51240 }, []), { have: 158236, owe: 51240, net: 106996 })
+  assert.deepEqual(worth(null, [cash, car]), { have: 30000, owe: 900000, net: -870000 })
+  assert.deepEqual(worth({ cash: 158236, owed: 51240 }, [cash, car]), { have: 188236, owe: 951240, net: -763004 })
+})
+
+test('paying debts down: the minimums added up, anything extra to the highest rate first; a debt at $0 doesn’t count', () => {
+  assert.equal(payoff([cash]), null)
+  assert.equal(payoff([{ ...car, amountMinor: 0 }]), null)
+  assert.deepEqual(payoff([car]), { leastMinor: 25000, first: null }, 'one debt has no order')
+  assert.deepEqual(payoff([car, card, { ...card, id: 'paid', amountMinor: 0, rate: 30 }, cash]), { leastMinor: 28500, first: card })
+  assert.deepEqual(payoff([{ ...car, rate: undefined }, { ...card, rate: undefined, minimumMinor: undefined }]), { leastMinor: 25000, first: null }, 'no rates, no order')
+  assert.equal(readRate('24.99%'), 24.99)
+  assert.equal(readRate(' 6.5 '), 6.5)
+  assert.equal(readRate(''), 0)
+  for (const bad of ['abc', '-2', '101', '6.5.1']) assert.equal(readRate(bad), null, bad)
+})
+
+test('what you have and owe survives opening the workspace and saves through the store; a rate stays on a debt', () => {
+  const before = { ...createEmptyDoc(), schema: 18 }
+  const after = { ...before, budget: { ...before.budget, balances: [cash, car] } }
+  const { doc } = applyOps(before, validateOps(diffDocs(before, after)))
+  assert.deepEqual(normalizeWorkspace(doc).budget.balances, [cash, car])
+  const kept = normalizeWorkspace({ budget: { balances: [
+    { ...cash, rate: 3, minimumMinor: 100 }, { ...car, rate: 140, minimumMinor: -5 }, { ...cash, label: '  ' }, { ...cash, amountMinor: -100 }, { ...cash, amountMinor: 1.5 }, 'x',
+  ] } }).budget.balances
+  assert.deepEqual(kept, [cash, { id: 'balance-2', label: 'Car loan', owe: true, amountMinor: 900000 }], 'no label, below zero or not whole cents goes; a rate only on a debt, 0–100')
+  assert.equal('balances' in normalizeWorkspace({ budget: { balances: [] } }).budget, false)
 })
 
 test('an entry moves to another category by hand; a blank name changes nothing', () => {

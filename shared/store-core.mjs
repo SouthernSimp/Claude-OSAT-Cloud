@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 17
+export const SCHEMA = 18
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -90,6 +90,9 @@ export const migrations = [
   // 17 (Phase 85, 87): canvases (whiteboards of shapes, text, arrows and stickies), and Money's budgets per category
   // (`budget.limits`) and the bank an entry came from (`bank`). An older OSAT would drop them.
   { from: 16, run: (doc) => ({ ...doc, canvases: Array.isArray(doc.canvases) ? doc.canvases : [] }) },
+  // 18 (Phase 100): Money keeps what you have and owe beyond the banks (`budget.balances`: cash, a loan, its rate and
+  // the least a month). Nothing starts with any; an older OSAT would drop them.
+  { from: 17, run: (doc) => doc },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding
