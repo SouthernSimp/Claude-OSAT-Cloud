@@ -837,6 +837,16 @@ async function main() {
     await search.locator('.qs-picture').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a recent capture showed no picture`))
     if (await search.locator('.qs-row[draggable="true"]').count() !== 2) problems.push(`${room}: the recent captures could not be dragged out`)
     if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-captures.png` })
+    // What the bar asked the Mac app for when some keys were pressed (the stand-in keeps every call).
+    const pressed = async (keys) => {
+      const from = (await search.evaluate(() => window.__calls)).length
+      await search.keyboard.press(keys)
+      await sleep(200)
+      return (await search.evaluate(() => window.__calls)).slice(from).map((call) => call.join(' ')).join(', ')
+    }
+    // Phase 101: ⌘E on a recent picture copies it, then CleanShot X opens it from the clipboard to mark up.
+    const shotMarkedUp = await pressed('Control+e')
+    if (shotMarkedUp !== 'captureCopy media_a/CleanShot 1.png, capture from-clipboard') problems.push(`${room}: ⌘E did not mark up the recent capture (${shotMarkedUp})`)
     await search.evaluate(() => window.osatSearch.saveSettings({ captures: { recent: false } }))
     // v is the clipboard: pins first, then the day; Return pastes (the stand-in says it needs Accessibility, so it says so).
     await search.fill('#qs-input', 'v')
@@ -845,6 +855,20 @@ async function main() {
     await search.getByRole('button', { name: 'Images' }).click()
     await search.locator('.qs-row', { hasText: 'Image' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the Images filter showed no picture`))
     await search.locator('.qs-picture').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the copied picture had no big preview`))
+    // Phase 101: ⌘K on the picture lists Mark up; ⌘E puts it back on the clipboard, then opens CleanShot X on it. With
+    // the Mac's own screenshots (next time the bar opens), it isn't offered.
+    await search.keyboard.press('Control+k')
+    if (!(await search.locator('.qs-actions').innerText().catch(() => '')).includes('Mark up')) problems.push(`${room}: ⌘K on a copied picture did not list Mark up`)
+    await search.keyboard.press('Escape')
+    const markedUp = await pressed('Control+e')
+    if (markedUp !== 'copyClip c4, capture from-clipboard') problems.push(`${room}: ⌘E did not put the picture back on the clipboard, then open CleanShot (${markedUp})`)
+    await search.evaluate(() => window.osatSearch.saveSettings({ captures: { using: 'mac' } }))
+    await search.evaluate(() => window.__shown({ scope: 'clipboard' }))
+    await search.locator('.qs-row', { hasText: 'Image' }).click()
+    await search.keyboard.press('Control+k')
+    const withoutCleanShot = await search.locator('.qs-actions').innerText().catch(() => '')
+    if (!withoutCleanShot.includes('Paste') || withoutCleanShot.includes('Mark up')) problems.push(`${room}: without CleanShot X, ⌘K on a picture still offered Mark up (${withoutCleanShot})`)
+    await search.keyboard.press('Escape')
     await search.getByRole('button', { name: 'All', exact: true }).click()
     await search.locator('.qs-row', { hasText: 'Jordan asked for the revised quote' }).click()
     if (!/Mail/.test(await search.locator('.qs-details').innerText().catch(() => ''))) problems.push(`${room}: the details of a copy did not say which app it came from`)
