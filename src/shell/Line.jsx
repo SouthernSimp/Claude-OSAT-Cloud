@@ -207,6 +207,14 @@ export function Line({
     setOpen(true)
   }, [summon, paused])
 
+  // A picked @ puts the caret after it as the new words land, before the next key can (a frame later is too late).
+  const caretTo = useRef(null)
+  useLayoutEffect(() => {
+    if (caretTo.current === null) return
+    box.current?.setSelectionRange(caretTo.current, caretTo.current)
+    caretTo.current = null
+  }, [draft])
+
   // The picked row stays in sight when the drawer has to scroll.
   useEffect(() => {
     const row = showing && document.getElementById(`home-row-${active}`)
@@ -279,10 +287,10 @@ export function Line({
   /* An @ picked (Tab, or ↓ then ↵): "@Name " takes the place of what was typed after the @, the caret after it. */
   function take(pick) {
     const next = applyAutocomplete({ text: draft, end: mention.from + 1 + mention.query.length }, mention, pick.value)
+    caretTo.current = next.start
     setDraft(next.text)
     setMention(null)
     setCursor(0)
-    requestAnimationFrame(() => { box.current?.focus(); box.current?.setSelectionRange(next.start, next.end) })
   }
 
   /* The sticky the words make: in Just in (one written offline says so), or straight onto the one board or branch
