@@ -4,8 +4,15 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 26, 2026 — Client meeting prep, Activity, right-click to ask, pick several stickies, / and @ in the bar, favorites, what you have and owe
+## Next build · October 26, 2026 — Pick your mail, events on your real calendar, client meeting prep, Activity, pick several stickies, favorites, what you have and owe
 
+- **Where's your mail?** Mail no longer assumes the Mac's Mail app. Pick Gmail, iCloud, Outlook, Yahoo or any mail
+  server; iCloud, Yahoo and others sign in with an app password and are read straight from the provider, much faster
+  than through the Mail app. Reply opens your provider's own page. Change it any time. (#131)
+- **Events go on your real calendar:** once your calendars are connected, a new event (and a date you write down) goes
+  on your Mac's default calendar, so it shows in iCloud or Google Calendar too. Pick another one any time. (#131)
+- **Settings → Mail and calendar:** one place for where your mail comes from and where new events go. Soul and
+  memory reads in plain words, and Data keeps the Obsidian exporter tucked behind one row. (#131)
 - **Before a client meeting:** when today's calendar has a meeting whose name names one of your clients ("Fortis
   kickoff"), Today puts a card on top until it's over: when you last met (click to open that meeting), what's still
   open with them (tick it off right there, with Undo) and where they came up lately. Open the client's board from

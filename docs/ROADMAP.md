@@ -119,6 +119,15 @@ favorite boards; 100, Money's What you have / What you owe with net worth and a 
 and a quiet bank sync keeps savings and cards; 101, Mark up a copied picture in CleanShot X. Phase 102 (fill a saved
 password in the Web room, import from Chrome / Apple Passwords) is half built in `wf_5462d08d-487-7`, uncommitted.
 
+Phases 103–105 (in review, also in PR #131, Oct 26), from Nate: "add an event to my calendar inside OSAT, it will
+update my Google and Apple Calendars", "the mail feature is still a little buggy" (slow), "the user should be able to
+pick their mail provider", "really enhance the settings menu". 103: new events and dates go on the Mac's default
+calendar once allowed (`'default'` in `settings.dates.calendar`), like Fantastical. 104: "Where's your mail?" (Gmail,
+iCloud, Outlook, Yahoo, Other, or the Mail app); IMAP with an app password (desktop/imap-mail.cjs), Outlook through the
+Mac's Internet Accounts until OSAT has a Microsoft app registration. 105: Settings → Mail and calendar, plain-word Soul
+groups, Obsidian folded on Data. Not yet: Outlook direct (needs an Azure app registration), Gmail direct still waits on
+the Google Cloud sign-in setup (Nate's yes on the User Data Policy).
+
 Next, in Nate's order (Oct 22): Phase 86, Gmail signed in directly (he picked Sign in with Google over an app password;
 the Mac Mail app route was slow on a big Gmail inbox and kept breaking), then Phase 87, banks in Money through Plaid
 (started on branch `claude/phase-85-bank`: the transaction model is written; OSAT needs Nate's own Plaid keys, since
@@ -344,6 +353,9 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 99 | Favorite boards, on top of the sidebar and Today | In review (#131) |
 | 100 | Money: what you have and what you owe, net worth and a payoff line; quiet bank sync keeps every account | In review (#131) |
 | 101 | Mark up a copied picture in CleanShot X from the quick bar | In review (#131) |
+| 103 | New events and dates go on your real (default) calendar, so they show in iCloud or Google | In review (#131) |
+| 104 | Where's your mail? Gmail, iCloud, Outlook, Yahoo or any IMAP server, read straight from the provider | In review (#131) |
+| 105 | Settings → Mail and calendar; Soul in plain words; Obsidian tucked away on Data | In review (#131) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

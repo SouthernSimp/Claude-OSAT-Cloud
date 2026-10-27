@@ -9,7 +9,14 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 26, 2026: Phases 92–101 in #131 (one Merge ships them all)
+## Resume checkpoint — October 26, 2026: Phases 92–105 in #131 (one Merge ships them all)
+
+Later Oct 26, Nate asked for calendar events that reach Google and Apple Calendar, a faster Mail with a provider
+picker, and a polished Settings; built as Phases 103–105 on `claude/phase-103-calendar-default` and pushed onto
+`claude/phase-95-web-picks` (#131). He rejected running the whole `npm run test:ui` locally (reason not given), so run
+single headless UI files only, and let CI run the suite. IMAP mail is `desktop/imap-mail.cjs` (imapflow 2.3.0 +
+mailparser 3.9.37, pinned; fenced in tests/under.test.mjs). Outlook direct needs an Azure app registration; Gmail
+direct still waits on the Google Cloud setup below.
 
 Oct 25–26, a workflow built Phases 96–101 in parallel worktrees off Phase 95; they were merged into
 `claude/phase-95-web-picks` (#131). 99 and 100 both stepped the store to schema 18; they share that one step. Phase 102
@@ -750,6 +757,20 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phases 103–105
+
+- Calendar (103): `settings.dates.calendar` unset is `'default'` (datesSettings); mac-calendar.cjs marks `isDefault`
+  (`store.defaultCalendarForNewEvents`) and `add-event` with calendar `'default'` writes there; `defaultCalendar()` in
+  mac-calendar-model. Not allowed yet, 'default' lands on OSAT's own (putOnCalendar's catch).
+- Mail over IMAP (104): `shared/imap-model.mjs` (PROVIDERS with host / web / compose / help, `providerFor`,
+  `cleanSignIn`, `imapRaw`, `replyLink`, `explainImap`) + `desktop/imap-mail.cjs` (`createImapMail`: one kept
+  connection, closed after 5 idle minutes; list = one fetch of the last 50 by sequence; read = `fetchOne` source by uid
+  (BODY.PEEK) through mailparser; `imap:status|connect|disconnect`; password in the Keychain as `imap-password`,
+  `imap.json` = { provider, email, host }). createMacMail takes `imap` and routes to Gmail, then IMAP, then the Mail
+  app. Mail.jsx: `ProviderPicker` (first screen, and Change), `ImapForm`, Outlook steps (Internet Accounts, then the
+  Mail app). The room opens on the picker for `target.pick` (Settings → Mail and calendar → Change…).
+- Settings (105): `settings/Accounts.jsx` (`AccountsPage`, page id `accounts`, "Mail and calendar").
 
 ## Architecture added in Phase 93
 
