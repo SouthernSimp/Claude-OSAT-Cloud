@@ -1,6 +1,7 @@
 // The Calendar room (Phase 96) in the built preview, with the Mac's Calendar faked: a new event starts on the calendar
 // new dates go to (Settings → Soul and memory → Calendar for new dates) once the Mac offers it, the menu names each
-// calendar's account ("Work · Google"), and Add event puts it there. With no calendars on the Mac it stays in OSAT.
+// calendar's account ("Work · Google"), and Add event puts it there. With nothing picked (Phase 103) it starts on the
+// Mac's default calendar. With no calendars on the Mac it stays in OSAT.
 // Light, then dark.
 // Fails on page errors or a step that didn't happen; screenshots land in test-results/ui/calendar/.
 // Run `npm run build` first.
@@ -14,7 +15,7 @@ const OUT = `${process.env.OSAT_SHOTS || 'test-results/ui'}/calendar`
 const PORT = Number(process.env.OSAT_PORT || 4353)
 
 const CALENDARS = [
-  { id: 'home-cal', title: 'Home', source: 'iCloud', color: '#34c759', writable: true },
+  { id: 'home-cal', title: 'Home', source: 'iCloud', color: '#34c759', writable: true, isDefault: true },
   { id: 'work-cal', title: 'Work', source: 'Google', color: '#0a84ff', writable: true },
 ]
 
@@ -48,23 +49,23 @@ const problems = []
 const check = (ok, what) => { if (!ok) problems.push(what) }
 
 // New dates go to Work, as if picked in Settings.
-async function openRoom(browser, url, { theme, calendars }) {
+async function openRoom(browser, url, { theme, calendars, dates = { calendar: 'work-cal' } }) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: theme })
   page.on('pageerror', (error) => problems.push(`${theme}: ${error.message}`))
   await page.addInitScript(fakeMac, { calendars })
   await page.addInitScript(() => { for (const key of ['osat.tour.v1', 'osat.sky.guide.v1']) localStorage.setItem(key, 'seen') })
   await page.route('**/seed.html', (route) => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>seed</title>' }))
   await page.goto(`${url}seed.html`)
-  await page.evaluate(async () => {
+  await page.evaluate(async (dates) => {
     const db = await new Promise((resolve, reject) => { const request = indexedDB.open('osat-preview', 1); request.onupgradeneeded = () => request.result.createObjectStore('workspace'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
     await new Promise((resolve, reject) => {
       const transaction = db.transaction('workspace', 'readwrite')
-      transaction.objectStore('workspace').put({ schema: 15, notes: [], folders: [], calendar: { events: [] }, settings: { autoFile: { on: false }, dates: { calendar: 'work-cal' } }, budget: { transactions: [] }, habits: [], goals: [], chats: [] }, 'doc')
+      transaction.objectStore('workspace').put({ schema: 15, notes: [], folders: [], calendar: { events: [] }, settings: { autoFile: { on: false }, dates }, budget: { transactions: [] }, habits: [], goals: [], chats: [] }, 'doc')
       transaction.oncomplete = resolve
       transaction.onerror = () => reject(transaction.error)
     })
     db.close()
-  })
+  }, dates)
   await page.goto(url)
   await page.waitForSelector('.workspace-content', { timeout: 15000 })
   await openPlace(page, 'Calendar')
@@ -98,6 +99,14 @@ async function main() {
     await page.screenshot({ path: `${OUT}/on-work.png` })
     await page.close()
   }
+
+  // Nothing picked for new dates: a new event starts on the Mac's default calendar (Home), like Calendar's own.
+  const fresh = await openRoom(browser, url, { theme: 'light', calendars: CALENDARS, dates: {} })
+  await fresh.getByRole('button', { name: 'Add an event on this day', exact: true }).click()
+  const freshKeep = fresh.locator('.agenda-composer').getByLabel('Keep it')
+  await freshKeep.waitFor({ timeout: 5000 }).catch(() => problems.push('fresh: no Keep it menu'))
+  check(await freshKeep.inputValue().catch(() => '') === 'home-cal', 'with nothing picked, a new event didn’t start on the Mac’s default calendar')
+  await fresh.close()
 
   // No calendars on the Mac: no menu, and the event stays in OSAT (its own, with Download .ics and Delete).
   const none = await openRoom(browser, url, { theme: 'light', calendars: [] })

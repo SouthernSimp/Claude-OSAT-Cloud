@@ -9,13 +9,15 @@ import { isActiveNote, uid } from '../notes-model.js'
 import { QUIET_MS } from '../sky/auto-file.js'
 
 /* `settings.dates`: on unless turned off; `since` is when it first ran (stickies from before only go
-   on by hand); `calendar` is a Mac calendar's id, or 'osat' for OSAT's own. */
+   on by hand); `calendar` is a Mac calendar's id, 'osat' for OSAT's own, or (unless chosen, Phase 103) 'default':
+   the Mac's own default calendar, so a new person's dates reach iCloud or Google without a setting. Until the Mac
+   is allowed, 'default' lands on OSAT's own (putOnCalendar). */
 export function datesSettings(settings) {
   const own = settings?.dates || {}
   return {
     on: own.on !== false,
     since: typeof own.since === 'string' ? own.since : null,
-    calendar: typeof own.calendar === 'string' && own.calendar ? own.calendar : 'osat',
+    calendar: typeof own.calendar === 'string' && own.calendar ? own.calendar : 'default',
   }
 }
 

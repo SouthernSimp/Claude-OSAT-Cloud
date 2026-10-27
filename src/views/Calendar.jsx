@@ -15,7 +15,7 @@ import { calendarToIcs } from "../osat-data.js";
 import { datesSettings } from "../intake/dates.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { MacCalendarBar, MacReminders, macError, useMacCalendar } from "./MacCalendar.jsx";
-import { macCalendarChoices, mergeEvents, newMacEvent } from "../../shared/mac-calendar-model.mjs";
+import { defaultCalendar, macCalendarChoices, mergeEvents, newMacEvent } from "../../shared/mac-calendar-model.mjs";
 import {
   downloadFile,
   makeId,
@@ -62,10 +62,13 @@ export function CalendarView({ workspace, commit, initialDate }) {
   const own = workspace.calendar.events;
   const events = useMemo(() => mergeEvents(own, mac.events, mac.hidden), [own, mac.events, mac.hidden]);
   const macChoices = macCalendarChoices(mac.calendars);
-  // Phase 96: until Nate picks one, a new event goes where new dates go when the Mac offers that calendar here.
+  // Phase 96, 103: until one is picked, a new event goes where new dates go when the Mac offers that calendar here,
+  // which for a new person is the Mac's default (iCloud, Google…), so it shows everywhere that calendar syncs.
   // Worked out on each draw: the Mac's calendars can arrive after the form opened.
   const datesCalendar = datesSettings(workspace.settings).calendar;
-  const where = form.where ?? (macChoices.some((calendar) => calendar.id === datesCalendar) ? datesCalendar : "osat");
+  const firstCalendar = defaultCalendar(macChoices);
+  const offered = (id) => (id === "default" ? Boolean(firstCalendar) : macChoices.some((calendar) => calendar.id === id));
+  const where = form.where ?? (offered(datesCalendar) ? (datesCalendar === "default" ? firstCalendar.id : datesCalendar) : "osat");
   const byDay = useMemo(() => groupByDay(events), [events]);
   const days = useMemo(
     () => calendarMonthDays(cursor.getFullYear(), cursor.getMonth()),
@@ -339,10 +342,10 @@ export function CalendarView({ workspace, commit, initialDate }) {
               <label>
                 Keep it
                 <select value={where} onChange={(e) => setForm({ ...form, where: e.target.value })}>
-                  <option value="osat">In OSAT</option>
+                  <option value="osat">Only in OSAT</option>
                   {macChoices.map((calendar) => (
                     <option value={calendar.id} key={calendar.id}>
-                      On my Mac: {calendar.name}{calendar.source ? ` · ${calendar.source}` : ""}
+                      {calendar.name}{calendar.source ? ` · ${calendar.source}` : ""}
                     </option>
                   ))}
                 </select>

@@ -109,8 +109,9 @@ test('a day with no time is half an hour at nine; the line says where it went', 
   assert.equal(addedLine([{ when: whenOf(note) }, { when: whenOf(note) }]), 'Put 2 dates on your calendar')
 })
 
-test('dates settings: on unless turned off, OSAT’s own calendar until one is chosen', () => {
-  assert.deepEqual(datesSettings({}), { on: true, since: null, calendar: 'osat' })
+test('dates settings: on unless turned off, the Mac’s default calendar until one is chosen', () => {
+  assert.deepEqual(datesSettings({}), { on: true, since: null, calendar: 'default' })
+  assert.equal(datesSettings(setDates(state, { calendar: 'osat' }).settings).calendar, 'osat')
   const chosen = setDates(state, { calendar: 'EK-CAL', since: iso(T0) })
   assert.deepEqual(datesSettings(chosen.settings), { on: true, since: iso(T0), calendar: 'EK-CAL' })
   assert.equal(datesSettings(setDates(chosen, { on: false }).settings).on, false)
