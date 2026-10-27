@@ -9,7 +9,15 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 24, 2026: Phases 92–95 in #131 (one Merge ships all four)
+## Resume checkpoint — October 26, 2026: Phases 92–101 in #131 (one Merge ships them all)
+
+Oct 25–26, a workflow built Phases 96–101 in parallel worktrees off Phase 95; they were merged into
+`claude/phase-95-web-picks` (#131). 99 and 100 both stepped the store to schema 18; they share that one step. Phase 102
+(fill a saved password in Web, ⌘\, and import a Chrome / Apple Passwords .csv) is half built and uncommitted in
+`.claude/worktrees/wf_5462d08d-487-7`: main, passwords.cjs, preload and skill-pages are done; the Browser view doesn't
+handle `fill-password` yet, and there are no tests or changelog line. Nate clicks Merge on #131.
+
+### Earlier: October 24, 2026: Phases 92–95
 
 Oct 24, Nate out on an errand ("really focus on delivering features"). Built: Phase 92 (#128, `claude/phase-92-meeting-prep`):
 Today's Before-a-client-meeting card and Been a while. Phase 93 (#129, `claude/phase-93-activity`, stacked on 92): Activity

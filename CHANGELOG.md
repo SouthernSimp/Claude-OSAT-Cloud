@@ -4,7 +4,7 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 24, 2026 — Client meeting prep, Activity, and right-click to ask
+## Next build · October 26, 2026 — Client meeting prep, Activity, right-click to ask, pick several stickies, / and @ in the bar, favorites, what you have and owe
 
 - **Before a client meeting:** when today's calendar has a meeting whose name names one of your clients ("Fortis
   kickoff"), Today puts a card on top until it's over: when you last met (click to open that meeting), what's still
@@ -19,6 +19,19 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   quoted in Ask, ready for your question), Explain this, Save as a sticky (with Undo) and Copy. (#130)
 - **Web: your search and your home page.** The Web room's start page picks where searches go (DuckDuckGo, Google,
   Bing, Brave Search or Kagi) and a home page; once set, a Home button sits beside Back and Forward. (#131)
+- **Pick several stickies** on a board or in Just in: ⌘-click or Space picks one, ⇧-click a run, ⌘A all shown. One
+  bar: Move to…, Merge (the oldest keeps everyone's words), Done, Delete. Carry them all onto a column or a board in
+  the sidebar. One Undo per change. (#131)
+- **"/" and "@" in the bar:** "/" lists every command ("/cal" narrows it, Return runs it); "@" offers your boards,
+  and "Save to Fortis" files the sticky straight onto that board. (#131)
+- **Favorite boards:** right-click a board, Add to favorites; Favorites sits on top of the sidebar and of Today's
+  boards. (#131)
+- **What you have and what you owe:** Money asks both (cash, a car loan, a card, with its rate and the least a month)
+  and shows your net worth and one payoff line: the minimums, then anything extra to the highest rate first. (#131)
+- **Mark up a copied picture** in CleanShot X from the quick bar (⌘E on a picture in Clipboard). (#131)
+- **Calendar:** a new event starts on the calendar you picked for new dates, and each Mac calendar names its account. (#131)
+- Fix: OSAT can now ask for your Mac's Calendar and Reminders (it was refused without asking). (#131)
+- Fix: a quiet bank sync no longer drops savings accounts and cards from Money. (#131)
 - Fix: Kill Process and Uninstall in the quick bar couldn't list running apps on the Mac. (#129)
 
 ## Build 368 · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied

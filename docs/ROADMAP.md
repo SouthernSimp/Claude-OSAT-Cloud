@@ -112,6 +112,13 @@ Undo), Copy.
 Phase 95 (in review, PR #131): Web picks, from Nate's sticky "Allow users to select default site for browsing" (Oct 6): the
 start page picks the search engine and a home page (kept on this Mac), and a Home button shows once one is set.
 
+Phases 96–101 (in review, folded into PR #131, Oct 26): 96, the Mac's Calendar and Reminders (the missing
+`personal-information.calendars` entitlement) and new events start on the picked calendar; 97, pick several stickies
+(⌘/⇧-click, one bar: Move, Merge, Done, Delete); 98, "/" lists commands and "@" files a sticky onto a board; 99,
+favorite boards; 100, Money's What you have / What you owe with net worth and a payoff line (schema 18, shared with 99),
+and a quiet bank sync keeps savings and cards; 101, Mark up a copied picture in CleanShot X. Phase 102 (fill a saved
+password in the Web room, import from Chrome / Apple Passwords) is half built in `wf_5462d08d-487-7`, uncommitted.
+
 Next, in Nate's order (Oct 22): Phase 86, Gmail signed in directly (he picked Sign in with Google over an app password;
 the Mac Mail app route was slow on a big Gmail inbox and kept breaking), then Phase 87, banks in Money through Plaid
 (started on branch `claude/phase-85-bank`: the transaction model is written; OSAT needs Nate's own Plaid keys, since
@@ -331,6 +338,12 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 93 | Activity: memory (with pressure), processor, disk, the apps using the most memory with Quit, and the Mac's specs, under Power tools | In review (#129) |
 | 94 | Right-click words you picked anywhere in a room: Ask about this, Explain this, Save as a sticky, Copy | In review (#130) |
 | 95 | Web: pick the search (DuckDuckGo, Google, Bing, Brave, Kagi) and a home page, with a Home button | In review (#131) |
+| 96 | The Mac's Calendar and Reminders can be asked for; a new event starts on the picked calendar | In review (#131) |
+| 97 | Pick several stickies on a board or in Just in: Move, Merge, Done, Delete, carry them all | In review (#131) |
+| 98 | The bar: "/" lists the commands, "@" files a sticky onto its board | In review (#131) |
+| 99 | Favorite boards, on top of the sidebar and Today | In review (#131) |
+| 100 | Money: what you have and what you owe, net worth and a payoff line; quiet bank sync keeps every account | In review (#131) |
+| 101 | Mark up a copied picture in CleanShot X from the quick bar | In review (#131) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
