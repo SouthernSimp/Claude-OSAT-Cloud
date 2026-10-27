@@ -22,6 +22,7 @@ const ACTIONS = [
   { key: 'act:new-note', label: 'New note', also: 'write page', go: ['Notes', { action: 'new' }] },
   { key: 'act:today', label: 'Today’s note', also: 'journal day page', go: ['Notes', { action: 'today' }] },
   { key: 'act:new-folder', label: 'New board', also: 'topic folder group pile project client', go: ['Mindmap', { action: 'new-node' }] },
+  { key: 'act:new-canvas', label: 'New canvas', also: 'whiteboard excalidraw draw sketch diagram shapes', go: ['Canvas', { action: 'new' }] },
   { key: 'act:reflect', label: 'Reflect', hint: 'Three quiet questions, in the Journal', also: 'reflection evening close the day', go: ['Journal', { tab: 'reflect' }] },
   { key: 'act:board', label: 'Open your boards', also: 'map mindmap topics board kanban canvas sort', go: ['Mindmap'] },
   { key: 'act:whats-new', label: 'What’s new', hint: 'Every build of OSAT, and how a change gets to you', also: 'whats changelog changes version build update release notes roadmap coming next plans', go: ['Roadmap', { tab: 'news' }] },
@@ -67,6 +68,10 @@ export function findAll(workspace, query, { files = [], limit = LIMIT, bar = fal
     const latest = [...notes].sort(newest).slice(0, 4).map((note) => noteRow(workspace, note))
     return [...latest, ...SPACES.filter((space) => space.id !== 'Today').map((space) => ({ key: `room:${space.id}`, label: space.label, hint: space.hint, kind: 'room', go: [space.id] }))]
   }
+  // "/" (Phase 98, Nate's sticky "I would like OSAT to have /commands"): the commands alone, not cut to `limit`. Words
+  // that start none are searched as always, so "/r/ideas" is still something to save.
+  const commands = q.startsWith('/') ? commandsFor(q.slice(1).split(/\s+/).filter(Boolean), bar) : []
+  if (commands.length) return commands
 
   const { tags, words } = parseQuery(q)
   const found = notes
@@ -76,12 +81,7 @@ export function findAll(workspace, query, { files = [], limit = LIMIT, bar = fal
     .map((note) => noteRow(workspace, note))
   if (tags.length) return found.slice(0, limit)
 
-  const places = [
-    ...EVERYWHERE.filter((route) => route.id !== 'Today' && startsWords(route.label, words))
-      .map((route) => ({ key: `room:${route.id}`, label: route.label, hint: route.hint, kind: 'room', go: [route.id] })),
-    ...ACTIONS.filter((action) => (bar || !action.bar) && startsWords(`${action.label} ${action.also}`, words))
-      .map(({ key, label, hint = '', also, go }) => ({ key, label, hint, kind: 'action', also, go })),
-  ]
+  const places = commandsFor(words, bar)
   const macFiles = files.map(fileRow)
   // Nodes and branches (by their name, every word of it) open laid out in the Sky. They come
   // before the notes: a name is what someone types when they know where it is.
@@ -91,4 +91,16 @@ export function findAll(workspace, query, { files = [], limit = LIMIT, bar = fal
   const nodeRows = folders.slice(0, limit === LIMIT ? 3 : 6)
   const fileRows = macFiles.slice(0, 2)
   return [...places, ...nodeRows, ...found.slice(0, Math.max(0, limit - places.length - nodeRows.length - fileRows.length)), ...fileRows].slice(0, limit)
+}
+
+/* The rooms and actions the words start. No words ("/" alone): every action but the Settings pages, whatever OSAT can do. */
+function commandsFor(words, bar) {
+  const actions = ACTIONS.filter((action) => bar || !action.bar)
+  const row = ({ key, label, hint = '', also, go }) => ({ key, label, hint, kind: 'action', also, go })
+  if (!words.length) return actions.filter((action) => !action.key.startsWith('settings:')).map(row)
+  return [
+    ...EVERYWHERE.filter((route) => route.id !== 'Today' && startsWords(route.label, words))
+      .map((route) => ({ key: `room:${route.id}`, label: route.label, hint: route.hint, kind: 'room', go: [route.id] })),
+    ...actions.filter((action) => startsWords(`${action.label} ${action.also}`, words)).map(row),
+  ]
 }

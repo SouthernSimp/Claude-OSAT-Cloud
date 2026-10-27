@@ -77,6 +77,19 @@ test('actions answer to their other words', () => {
   assert.ok(!findAll(workspace, 'pomodoro').some((row) => row.go[0] === 'Focus'))
 })
 
+test('"/" lists the commands alone: every action but the Settings pages, or the ones its words start', () => {
+  const all = findAll(workspace, '/')
+  assert.ok(all.length >= 10 && all.every((row) => row.kind === 'action'), 'every action, not cut to five')
+  for (const key of ['act:new-folder', 'act:new-canvas', 'act:new-note']) assert.ok(keys(all).includes(key), key)
+  assert.ok(!all.some((row) => row.key.startsWith('settings:') || row.key === 'act:sticky'), 'no Settings pages, nothing only the quick bar does')
+  assert.ok(keys(findAll(workspace, '/', { bar: true })).includes('act:sticky'), 'the quick bar lists its own as well')
+  assert.equal(findAll(workspace, '/cal')[0].key, 'room:Calendar')
+  assert.deepEqual(findAll(workspace, '/new can').map((row) => row.go), [['Canvas', { action: 'new' }]])
+  assert.deepEqual(findAll(workspace, '/tent'), [], 'words that start no command')
+  const reddit = { ...workspace, notes: [...workspace.notes, { id: 'n-reddit', title: 'Reddit', markdown: 'post it on /r/ideas', tags: [], updatedAt: at(4) }] }
+  assert.deepEqual(keys(findAll(reddit, '/r/ideas')), ['note:n-reddit'], 'are searched as always')
+})
+
 test('hidden rooms are found by name: Now playing', () => {
   assert.deepEqual(findAll(workspace, 'now playing')[0].go, ['NowPlaying'])
 })

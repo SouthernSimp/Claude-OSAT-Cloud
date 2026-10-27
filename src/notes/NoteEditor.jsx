@@ -6,7 +6,7 @@ import { Markdown } from "../lib/markdown.jsx";
 import { Menu } from "../lib/Menu.jsx";
 import { SaveStatus } from "../store/SaveStatus.jsx";
 import { formatRelativeTime } from "../lib/ui.js";
-import { nodesMentioned, splitMentions } from "../nodes-model.js";
+import { mentionPicks, nodesMentioned, splitMentions } from "../nodes-model.js";
 import { backlinks, folderPath, folderTree, isActiveNote, outgoingLinks, outline, resolveWikilink, wordCount } from "../notes-model.js";
 import { caretPosition } from "./caret.js";
 import { NoteAi } from "./NoteAi.jsx";
@@ -107,10 +107,7 @@ export function NoteEditor({ workspace, note, ui, setUi, actions, onBack }) {
         .slice(0, 8).map((item) => ({ value: item.title, label: item.title, hint: folderPath(workspace.folders, item.folderId).join(" / ") }));
       if (context.query.trim() && !items.some((item) => item.value.toLowerCase() === query)) items.push({ value: context.query.trim(), label: `Create “${context.query.trim()}”`, hint: "new note", create: true });
     } else if (context.kind === "mention") {
-      const paths = workspace.folders.map((folder) => folderPath(workspace.folders, folder.id));
-      const at = (path) => path.join("/").toLowerCase().indexOf(query);
-      items = paths.filter((path) => at(path) >= 0).sort((a, b) => a.length - b.length || at(a) - at(b)).slice(0, 8)
-        .map((path) => ({ value: path.join("/"), label: path.join(" › "), hint: path.length > 1 ? "branch" : "node" }));
+      items = mentionPicks(workspace.folders, context.query);
     } else {
       const counts = new Map();
       workspace.notes.filter(isActiveNote).forEach((item) => item.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1)));

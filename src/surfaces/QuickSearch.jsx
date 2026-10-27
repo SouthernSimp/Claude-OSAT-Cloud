@@ -15,7 +15,7 @@ import { streamLocalMessage } from '../local-ai.js'
 import { LocalAssistant, modelLabel } from '../assistant/LocalAssistant.jsx'
 import { cleanError, useAi } from '../assistant/useAi.js'
 import { findAll } from '../lib/find.js'
-import { addSticky, linkMentions } from '../nodes-model.js'
+import { addSticky, homeOf, linkMentions } from '../nodes-model.js'
 import { captureThought, folderPath } from '../notes-model.js'
 import { AppIcon, RowTile, typeOf } from '../search/icons.jsx'
 import { Preview } from '../search/Preview.jsx'
@@ -195,19 +195,22 @@ export function QuickSearchSurface() {
   }), [bridge, openChat])
   useEffect(() => { bridge?.ready() }, [bridge])
 
-  /* ⌥Return: the words go straight to Unsorted as a sticky, as on the desk's line. Nothing typed: write one. */
+  /* ⌥Return: the words go straight to Unsorted as a sticky, as on the desk's line; words that name exactly one board
+     or branch with @ go straight onto it (Phase 98). Nothing typed: write one. */
   const saveSticky = useCallback((words) => {
     const value = String(words || '').trim()
     if (!value) { setText(''); setMode('sticky'); return }
     if (!workspace) { said('Opening your notes… try again in a moment.'); return }
     let made = null
+    let home = null
     commit((state) => {
-      const result = captureThought(state, value.slice(0, 8000), 'Quick bar')
+      home = homeOf(value, state.folders)
+      const result = home ? addSticky(state, value.slice(0, 8000), home, { source: 'Quick bar' }) : captureThought(state, value.slice(0, 8000), 'Quick bar')
       made = result.note
-      return made ? linkMentions(result.state, made.id) : result.state
+      return made && !home ? linkMentions(result.state, made.id) : result.state
     })
     setText(''); setMode(null); setCursor(null)
-    said(made ? 'Saved to Just in' : 'Nothing to save', 1400)
+    said(made ? `Saved to ${home ? folderPath(workspace.folders, home).join(' › ') : 'Just in'}` : 'Nothing to save', 1400)
     if (made) hideLater(1100)
   }, [workspace, commit, said, hideLater])
 

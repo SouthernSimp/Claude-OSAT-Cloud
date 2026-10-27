@@ -273,6 +273,8 @@ export function buildRows(read, found, settings, { now = new Date(), fileFilter 
   const keys = settings.windows?.on ? settings.windows.hotkeys : {}
   if (read.scope === 'windows') return [...rows, ...findLayouts(read.query, layoutsOf(settings.windows)).map((layout) => layoutRow(layout, keys))]
   if (read.scope === 'notes') return [...rows, ...(found.notes || []).map((item) => noteRow(item, 'Notes'))]
+  // "/" (Phase 98): the commands alone, every one the words start (lib/find.js gives only those then).
+  if (read.query.startsWith('/') && found.commands?.length) return markFavorites(found.commands.map((item) => noteRow(item, 'Commands')), settings)
 
   // One list, no tabs (Oct 2026): Ask first, then what was found, each source a few rows with "See all" when there's more.
   const more = (scope, count, section) => ({ key: `more:${scope}`, source: 'more', kind: 'more', title: `See all ${count}`, subtitle: section, section, data: { scope } })

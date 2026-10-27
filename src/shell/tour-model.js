@@ -8,7 +8,7 @@ export const TOUR = [
     id: 'bar',
     target: '.app-bar .home-composer-wrap',
     title: 'Write it down, find it, or ask',
-    body: 'Type anything and press Return: it lands in Just in, and OSAT works out what it is and where it goes. ⌘Return asks the AI on this Mac.',
+    body: 'Type anything and press Return: it lands in Just in, and OSAT works out what it is and where it goes. ⌘Return asks the AI on this Mac. Type / for everything OSAT can do.',
   },
   {
     id: 'today',

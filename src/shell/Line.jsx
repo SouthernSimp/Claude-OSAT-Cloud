@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
-  AppWindow, ArrowUp, CalendarBlank, Calculator, ChatCircle, CheckCircle, Clipboard, File, FolderSimple, Globe, HourglassMedium, NotePencil,
+  AppWindow, ArrowUp, At, CalendarBlank, Calculator, ChatCircle, CheckCircle, Clipboard, File, FolderSimple, Globe, HourglassMedium, NotePencil,
   PictureInPicture, Plus, Robot, ShareNetwork, Sparkle, SquaresFour, Stop, WifiSlash, X,
 } from '@phosphor-icons/react'
 
@@ -20,8 +20,9 @@ import { findAll } from '../lib/find.js'
 import { Markdown } from '../lib/markdown.jsx'
 import { spaceFor } from '../lib/spaces.js'
 import { inputActive } from '../lib/ui.js'
-import { linkMentions } from '../nodes-model.js'
-import { captureThought, isActiveNote, setWhat } from '../notes-model.js'
+import { addSticky, homeOf, linkMentions, mentionPicks } from '../nodes-model.js'
+import { captureThought, folderPath, isActiveNote, setWhat } from '../notes-model.js'
+import { applyAutocomplete, autocompleteContext } from '../notes/editor-commands.js'
 
 const KINDS = {
   note: [NotePencil, 'Note'],
@@ -54,7 +55,9 @@ const iconFor = (row) => KINDS[row.kind]?.[0] || ACTION_ICONS[row.key] || spaceF
    It is also a launcher (Phase 13, Settings → Launcher): a sum answers in place (`2*49` shows = 98 in the line, ↓ then
    Return copies it), Nate's keywords open an app or a web search (`ss`, `g cats`), `v` lists what was copied, an app
    named as you type is one row, and `>` is for a bot (none can take a job yet, and it says so). "Save as a sticky"
-   stays first: only the arrows ever move to a launcher row, so Return never guesses. `onNote` says one calm line. */
+   stays first: only the arrows ever move to a launcher row, so Return never guesses. `onNote` says one calm line.
+   Phase 98: "/" lists the commands alone (Return runs the picked one), and "@" offers boards; words that name exactly
+   one board or branch are saved straight onto it ("Save to Fortis"). */
 export function Line({
   workspace, commit, navigate, greeting, storage, visit = 0, summon = 0, paused = false, offline = null, onOffline,
   raised = false, onLine, onOpenNote, onSaved, onNote, onAsk, typeAnywhere = true,
@@ -68,6 +71,7 @@ export function Line({
   const [open, setOpen] = useState(false)
   const [cursor, setCursor] = useState(0)
   const [found, setFound] = useState([])
+  const [mention, setMention] = useState(null) // the "@…" being typed: autocompleteContext's { query, from }
   const { models, status: aiStatus, refresh: checkAi } = useAi()
   const notes = workspace.notes.filter(isActiveNote)
   const text = draft.trim()
@@ -103,11 +107,18 @@ export function Line({
   }, [open, bridge, apps.length, text.length, launch.sources.apps.on])
 
   const matches = useMemo(() => (open && !clipboardScope ? findAll(workspace, words, { files: text ? found : [] }) : []), [open, workspace, words, text, found, clipboardScope])
+  // "/": findAll answered with the commands alone, so the drawer is Commands and Return runs the picked one.
+  const slash = text.startsWith('/') && matches.some((row) => row.kind === 'action' || row.kind === 'room')
+  // "@": boards to pick while the word at the caret starts with @, and the one board or branch the words name.
+  const picks = open && mention && !slash ? mentionPicks(workspace.folders, mention.query).slice(0, 4) : []
+  const home = homeOf(text, workspace.folders)
   const say = (message) => onNote?.(message)
   const attempt = (work) => Promise.resolve().then(work).catch((error) => say(cleanError(error)))
   const copyText = (value) => (bridge?.copyText ? bridge.copyText(value) : navigator.clipboard?.writeText(value))
-  // Right under Save, so only the arrows reach them: the answer to a sum, the app or search a keyword names, a bot job.
+  // Right under Save, so only the arrows (or Tab, for an @) reach them: a board for the @, the answer to a sum, the app
+  // or search a keyword names, a bot job.
   const launcherRows = [
+    ...picks.map((pick) => ({ key: `at:${pick.value}`, label: `@${pick.value}`, tag: pick.hint, icon: At, pick, run: () => take(pick) })),
     ...(line.sum ? [{ key: 'sum', label: `= ${line.sum.text}`, hint: 'Copy the answer', icon: Calculator, run: () => { reset(); attempt(async () => { await copyText(line.sum.plain); say(`Copied ${line.sum.text}`) }) } }] : []),
     ...(line.keyword && bridge ? [line.keyword.keyword.app
       ? { key: `kw:${line.keyword.keyword.id}`, label: `Open ${line.keyword.keyword.label}`, hint: line.keyword.keyword.keyword, icon: AppWindow, run: () => { reset(); attempt(() => bridge.openAppNamed(line.keyword.keyword.app)) } }
@@ -121,9 +132,10 @@ export function Line({
     ...(clipboardScope ? searchItems(copies, line.words).slice(0, 5).map((item) => ({ key: `clip:${item.id}`, label: titleOf(item), hint: [item.app, whenCopied(item.at)].filter(Boolean).join(' · '), tag: 'Clipboard', icon: Clipboard, run: () => { reset(); attempt(async () => { await bridge.copyClip(item.id); say('Copied. Press ⌘V in the app you want it in.') }) } })) : []),
     ...named.map((app) => ({ key: `app:${app.path}`, label: `Open ${app.name}`, tag: 'App', icon: AppWindow, run: () => { reset(); attempt(() => bridge.openApp(app.path)) } })),
   ]
-  const rows = [
+  const matchRows = matches.map((row) => ({ ...row, icon: iconFor(row), tag: KINDS[row.kind]?.[1], run: () => { reset(); navigate(...row.go) } }))
+  const rows = slash ? matchRows : [
     ...(text ? [
-      { key: 'save', label: 'Save as a sticky', keys: '↵', icon: NotePencil, run: save },
+      { key: 'save', label: home ? `Save to ${folderPath(workspace.folders, home).join(' › ')}` : 'Save as a sticky', keys: '↵', icon: NotePencil, run: save },
       ...launcherRows,
       ai.state === 'none' && !onAsk
         ? { key: 'ask', label: 'Set up the AI', hint: setupLine(aiStatus) || 'It runs on this Mac, nothing leaves it', keys: '⌘↵', icon: Sparkle, run: () => { setOpen(false); navigate('Settings', { section: 'ai' }) } }
@@ -131,10 +143,10 @@ export function Line({
       { key: 'next', label: 'Add as a to-do', keys: '⌥↵', icon: CheckCircle, run: addStep },
     ] : []),
     ...launchedRows,
-    ...matches.map((row) => ({ ...row, icon: iconFor(row), tag: KINDS[row.kind]?.[1], run: () => { reset(); navigate(...row.go) } })),
+    ...matchRows,
   ]
   // The hairline sits between what Return, ⌘↵ and ⌥↵ do (with the launcher's rows after Save) and what was found.
-  const firstMatch = text ? 3 + launcherRows.length : -1
+  const firstMatch = text && !slash ? 3 + launcherRows.length : -1
   const active = Math.min(cursor, rows.length - 1)
   const showing = open && rows.length > 0
 
@@ -195,6 +207,14 @@ export function Line({
     setOpen(true)
   }, [summon, paused])
 
+  // A picked @ puts the caret after it as the new words land, before the next key can (a frame later is too late).
+  const caretTo = useRef(null)
+  useLayoutEffect(() => {
+    if (caretTo.current === null) return
+    box.current?.setSelectionRange(caretTo.current, caretTo.current)
+    caretTo.current = null
+  }, [draft])
+
   // The picked row stays in sight when the drawer has to scroll.
   useEffect(() => {
     const row = showing && document.getElementById(`home-row-${active}`)
@@ -215,11 +235,11 @@ export function Line({
     setFound([]) // what Spotlight found for the last words never answers these
     const api = window.nateOSFiles
     const q = words.toLowerCase()
-    if (!open || !api?.search || q.length < 2 || /(^|\s)#\S/.test(q) || clipboardScope) return undefined
+    if (!open || !api?.search || q.length < 2 || /(^|\s)#\S/.test(q) || clipboardScope || slash) return undefined
     let current = true
     const timer = window.setTimeout(() => api.search(q).then((items) => { if (current) setFound(Array.isArray(items) ? items.slice(0, 8) : []) }, () => {}), 180)
     return () => { current = false; window.clearTimeout(timer) }
-  }, [words, open, clipboardScope])
+  }, [words, open, clipboardScope, slash])
 
   /* Esc, one step at a time: a picked row goes back to the first, the drawer closes (the
      words stay), the answer is put away. Then the desk takes over (the top pop-out, then
@@ -260,17 +280,37 @@ export function Line({
     setDraft('')
     setOpen(false)
     setCursor(0)
+    setMention(null)
     if (box.current) box.current.style.height = ''
+  }
+
+  /* An @ picked (Tab, or ↓ then ↵): "@Name " takes the place of what was typed after the @, the caret after it. */
+  function take(pick) {
+    const next = applyAutocomplete({ text: draft, end: mention.from + 1 + mention.query.length }, mention, pick.value)
+    caretTo.current = next.start
+    setDraft(next.text)
+    setMention(null)
+    setCursor(0)
+  }
+
+  /* The sticky the words make: in Just in (one written offline says so), or straight onto the one board or branch
+     its @s name (never a new board). { state, note } */
+  function sticky(state) {
+    const words = text.slice(0, 8000)
+    const source = isOffline ? 'Offline' : 'Typed'
+    const onto = homeOf(words, state.folders)
+    if (onto) return addSticky(state, words, onto, { source })
+    const made = captureThought(state, words, source)
+    return made.note ? { state: linkMentions(made.state, made.note.id), note: made.note } : made
   }
 
   function save() {
     if (!text) return
     let note
     commit((state) => {
-      // A sticky in Unsorted; one written offline says so.
-      const result = captureThought(state, text.slice(0, 8000), isOffline ? 'Offline' : 'Typed')
+      const result = sticky(state)
       note = result.note
-      return note ? linkMentions(result.state, note.id) : result.state
+      return result.state
     })
     reset()
     if (note) onSaved?.(note.id)
@@ -281,8 +321,8 @@ export function Line({
   function addStep() {
     if (!text) return
     commit((state) => {
-      const made = captureThought(state, text.slice(0, 8000), isOffline ? 'Offline' : 'Typed')
-      return made.note ? setWhat(linkMentions(made.state, made.note.id), [made.note.id], 'todo') : made.state
+      const made = sticky(state)
+      return made.note ? setWhat(made.state, [made.note.id], 'todo') : made.state
     })
     reset()
     box.current?.focus()
@@ -320,6 +360,12 @@ export function Line({
       else if (event.altKey) addStep()
       else if (showing) rows[active].run()
       else save()
+      return
+    }
+    // Tab takes an @'s board (the picked one, else the first), only while they show; otherwise it moves on as always.
+    if (event.key === 'Tab' && !event.shiftKey && showing && picks.length) {
+      event.preventDefault()
+      take(rows[active].pick || picks[0])
       return
     }
     // ↓ and ↑ walk the rows; in a longer thought they move the caret until its last line.
@@ -365,6 +411,8 @@ export function Line({
                 setCursor(0)
                 setOpen(Boolean(event.target.value.trim()))
                 const el = event.target
+                const typing = autocompleteContext(el.value, el.selectionEnd)
+                setMention(typing?.kind === 'mention' ? typing : null)
                 el.style.height = 'auto'
                 el.style.height = `${Math.min(el.scrollHeight, 180)}px`
               }}
@@ -389,8 +437,8 @@ export function Line({
           </div>
 
           {showing && (
-            <div id="home-drawer" className="home-drawer" role="listbox" aria-label={text ? 'What to do with it' : 'Jump to'}>
-              {!text && <p className="home-drawer-head" aria-hidden="true">Jump to</p>}
+            <div id="home-drawer" className="home-drawer" role="listbox" aria-label={slash ? 'Commands' : text ? 'What to do with it' : 'Jump to'}>
+              {(!text || slash) && <p className="home-drawer-head" aria-hidden="true">{slash ? 'Commands' : 'Jump to'}</p>}
               {rows.map((row, index) => (
                 <div
                   key={row.key}
