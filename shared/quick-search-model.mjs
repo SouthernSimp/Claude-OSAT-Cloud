@@ -332,16 +332,19 @@ function dedupe(rows) {
 }
 
 /* What ⌘K lists for a row; the first is what Return does (⇧↵ the second; ⌘↵ always asks and ⌥↵ always saves a
-   sticky, whatever the row). `offer` is a customer the copy could be added to ({ folderId, folderName }). */
+   sticky, whatever the row). `offer` is a customer the copy could be added to ({ folderId, folderName }); `markup`:
+   CleanShot X takes the screenshots, so a copied picture can be marked up in it. */
 export function actionsFor(row, options = {}) {
   const own = ownActions(row, options)
   // Anything that can be a favorite, or have its own key or word, offers it here, so it is done without Settings.
   return customizable(row) ? [...own, { id: 'favorite', label: row.favorite ? 'Remove from favorites' : 'Add to favorites', keys: '⇧⌘F' }, { id: 'set-key', label: 'Set a key…' }, { id: 'set-word', label: 'Set a word…' }] : own
 }
 
-function ownActions(row, { offer = null, canAsk = false } = {}) {
+function ownActions(row, { offer = null, canAsk = false, markup = false } = {}) {
   if (!row) return []
   const pin = (on) => ({ id: 'pin', label: on ? 'Unpin' : 'Pin', keys: '⌘P' })
+  // Mark up (Phase 101, Nate's sticky): CleanShot X's Annotate (arrows, boxes, text, blur, crop) on that picture.
+  const markUp = { id: 'markup', label: 'Mark up', hint: 'Opens it in CleanShot X', keys: '⌘E' }
   switch (row.kind) {
     case 'file':
     case 'folder':
@@ -358,6 +361,7 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
       return [
         { id: 'paste', label: 'Paste', keys: '↵' },
         { id: 'copy', label: 'Copy', keys: '⇧↵' },
+        ...(markup ? [markUp] : []),
         pin(row.data.pinned),
         { id: 'delete', label: 'Delete', hint: 'Forgets this copy', keys: '⌘⌫', danger: true },
       ]
@@ -377,7 +381,8 @@ function ownActions(row, { offer = null, canAsk = false } = {}) {
     case 'shot': return [
       { id: 'shot-open', label: 'Open', keys: '↵' },
       { id: 'shot-reveal', label: 'Show in Finder', keys: '⇧↵' },
-      ...(/\.(mp4|mov|gif)$/i.test(row.title) ? [] : [{ id: 'shot-copy', label: 'Copy', keys: '⇧⌘C' }]),
+      // Recent captures are CleanShot's own, listed only while it takes the screenshots.
+      ...(/\.(mp4|mov|gif)$/i.test(row.title) ? [] : [{ id: 'shot-copy', label: 'Copy', keys: '⇧⌘C' }, markUp]),
     ]
     case 'app': return [{ id: 'open-app', label: 'Open', keys: '↵' }, { id: 'reveal-app', label: 'Show in Finder', keys: '⇧↵' },
       ...(/^\/System\//.test(String(row.data?.path)) ? [] : [{ id: 'uninstall', label: 'Uninstall…', hint: 'The app and what it left behind go to the Bin', keys: '⌘⌫', danger: true }])]
