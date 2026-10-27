@@ -8,6 +8,7 @@ import {
 import { datesSettings, setDates } from "../intake/dates.js";
 import { putOnCalendar, takeOffCalendar } from "../intake/useDates.js";
 import { linkMentions, renameFolder } from "../nodes-model.js";
+import { undoFrom } from "../boards/boards-model.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { Organizer } from "./Organizer.jsx";
 import { NoteList, useVisibleNotes } from "./NoteList.jsx";
@@ -116,6 +117,14 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
   const bringBack = (gone) => commit((state) => ({ ...state, notes: [...state.notes.filter((note) => !gone.some((item) => item.id === note.id)), ...gone] }));
   const actions = useMemo(() => {
     const open = (id) => { setSelectedId(id); setSelection(new Set()); setPane("editor"); };
+    // One change to one or several notes, and one Undo that takes back only what it touched (Calm rule 2, Phase 97).
+    const change = (line, updater) => {
+      let before = null;
+      let next = null;
+      commit((state) => { before = state; next = updater(state); return next; });
+      if (before && next !== before) showUndo(line, () => commit(undoFrom(before, next)));
+    };
+    const some = (ids) => (ids.length > 1 ? ` ${ids.length} notes` : "");
     return {
       selectNote: open,
       // Filing on its own (Settings → AI): on or off, or `since: null`-free "File them too" for stickies from before.
@@ -147,7 +156,7 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
       keepNotes: (ids) => commit((state) => keepNotes(state, ids)),
       commit,
       // What a sticky is (Phase 67): Nate's pick wins over the AI's and code's.
-      setWhat: (ids, what) => commit((state) => setWhat(state, ids, what)),
+      setWhat: (ids, what) => change(ids.length > 1 ? `Changed what ${ids.length} notes are` : "Changed what it is", (state) => setWhat(state, ids, what)),
       // Answered, bought or done: it leaves the list it was ticked in; Undo puts it back.
       setDone(ids, done, word = "Done") {
         commit((state) => setDone(state, ids, done));
@@ -163,9 +172,9 @@ export function NotesView({ workspace, commit, navigate, target, today = localDa
         if (note?.cal?.id) showUndo("Taken off the calendar");
       },
       datesOn: (on) => commit((state) => setDates(state, { on })),
-      moveNotes: (ids, folderId) => commit((state) => moveNotes(state, ids, folderId)),
-      setPinned: (ids, pinned) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, pinned, unsorted: pinned ? false : note.unsorted } : note) })),
-      setArchived: (ids, archived) => commit((state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, archived, pinned: archived ? false : note.pinned } : note) })),
+      moveNotes: (ids, folderId) => change(`Moved${some(ids)} to ${workspace.folders.find((folder) => folder.id === folderId)?.name || "Just in"}`, (state) => moveNotes(state, ids, folderId)),
+      setPinned: (ids, pinned) => change(`${pinned ? "Pinned" : "Unpinned"}${some(ids)}`, (state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, pinned, unsorted: pinned ? false : note.unsorted } : note) })),
+      setArchived: (ids, archived) => change(`${archived ? "Archived" : "Unarchived"}${some(ids)}`, (state) => ({ ...state, notes: state.notes.map((note) => ids.includes(note.id) ? { ...note, archived, pinned: archived ? false : note.pinned } : note) })),
       trashNotes(ids) {
         const chosen = new Set(ids);
         const pinned = new Set(workspace.notes.filter((note) => chosen.has(note.id) && note.pinned).map((note) => note.id));
