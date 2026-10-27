@@ -35,15 +35,15 @@ export function SoulPage({ page, workspace, commit, showUndo }) {
 
   return (
     <Page page={page}>
-      <Group title="SOUL.md · who OSAT is and how it talks to you">
+      <Group title="Who OSAT is, and how it talks to you">
         <Row title="In your words" hint="The AI reads this before every answer. It never leaves this Mac." stacked words="soul personality voice tone how it talks">
-          <textarea className="soul-text" rows={12} value={soul} aria-label="SOUL.md" spellCheck={false}
+          <textarea className="soul-text" rows={12} value={soul} aria-label="Who OSAT is, in your words" spellCheck={false}
             onChange={(event) => setSoulText(event.target.value)}
             onBlur={() => soul !== soulOf(workspace.settings) && commit((state) => setSoul(state, soul))} />
         </Row>
       </Group>
 
-      <Group title="MEMORY.md · what OSAT knows about you">
+      <Group title="What OSAT knows about you">
         {memory.map((item) => (
           <Row key={item.id} title={item.text} hint={`${item.from || 'You told OSAT'}${when(item.at)}`} words="memory remember about you">
             <button type="button" className="outline-button" aria-label={`Forget ${item.text}`} onClick={() => forget(item)}><X /> Forget</button>
@@ -58,7 +58,7 @@ export function SoulPage({ page, workspace, commit, showUndo }) {
         </Row>
       </Group>
 
-      <Group title="RULES.md · what OSAT may do without asking" note="Ask me: new stickies wait in Just in with the boards they look like one tap away, and a date waits in Notes → Coming up. Only the AI's own picks ever move, and Undo takes any run back.">
+      <Group title="What OSAT may do without asking" note="Ask me: new stickies wait in Just in with the boards they look like one tap away, and a date waits in Notes → Coming up. Only the AI's own picks ever move, and Undo takes any run back.">
         <Row title="File new stickies" hint="Each sticky goes to its board when you pause." words="auto sort file organize unsorted just in">
           <Choice label="File new stickies" value={filing.on ? 'own' : 'ask'} options={RULE} onChange={(id) => setFiling(id === 'own')} />
         </Row>

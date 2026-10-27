@@ -349,7 +349,7 @@ async function main() {
   await page.screenshot({ path: `${OUT}/settings-ring.png` })
   // Soul and memory (Phase 70): SOUL.md to read and change, a line remembered and forgotten with Undo, the rules.
   await goTo('Soul and memory')
-  if (!(await page.getByLabel('SOUL.md').inputValue().catch(() => '')).startsWith('I am OSAT.')) problems.push('soul: SOUL.md did not start as OSAT’s own')
+  if (!(await page.getByLabel('Who OSAT is, in your words').inputValue().catch(() => '')).startsWith('I am OSAT.')) problems.push('soul: SOUL.md did not start as OSAT’s own')
   await page.getByLabel('Something to remember').fill('Food goes to Groceries')
   await page.getByRole('button', { name: 'Remember', exact: true }).click()
   const forget = page.getByRole('button', { name: 'Forget Food goes to Groceries' })
@@ -409,11 +409,16 @@ async function main() {
   await page.screenshot({ path: `${OUT}/settings-mouse.png` })
   await page.getByRole('switch', { name: 'Use these mouse changes' }).uncheck()
   await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.mouse.on === false && value.mouse.speed === 2), null, { timeout: 3000 }).catch(() => problems.push('settings: switching Mouse off lost its settings'))
-  for (const name of ['General', 'Appearance', 'AI', 'Soul and memory', 'Connections', 'Data', 'Scans', 'iPhone', 'About']) {
+  for (const name of ['General', 'Appearance', 'AI', 'Soul and memory', 'Connections', 'Mail and calendar', 'Data', 'Scans', 'iPhone', 'About']) {
     await goTo(name)
     if (!await page.locator('.settings-section .setting-head h2', { hasText: new RegExp(`^${name}$`) }).count()) problems.push(`settings: the ${name} page did not open`)
     await page.screenshot({ path: `${OUT}/settings-${name.toLowerCase()}.png` })
   }
+  // Data keeps Obsidian folded behind one row until it's wanted (Phase 105).
+  await goTo('Data')
+  if (await page.getByText('Exact Markdown').count()) problems.push('settings: Obsidian’s exporter showed before it was asked for')
+  await page.getByRole('button', { name: 'Send notes…' }).click()
+  await page.getByText('Exact Markdown').first().waitFor({ timeout: 3000 }).catch(() => problems.push('settings: Send notes… did not open Obsidian’s exporter'))
   await page.keyboard.press('Control+f')
   await page.getByRole('searchbox', { name: 'Search settings' }).waitFor({ timeout: 2000 }).catch(() => {})
   await page.keyboard.type('hyper')

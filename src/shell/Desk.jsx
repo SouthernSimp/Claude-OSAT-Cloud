@@ -369,7 +369,7 @@ function Room({ at, common, storage, command, covered, boardsRef, setBoard }) {
     case 'Roadmap': return <RoadmapView {...common} target={target} />
     case 'GitHub': return <GitHubView />
     case 'Activity': return <ActivityView />
-    case 'Mail': return <MailView {...common} />
+    case 'Mail': return <MailView {...common} target={target} />
     case 'Passwords': return <PasswordsView />
     case 'Meetings': return <MeetingsView {...common} />
     case 'Pile': return <PileView {...common} />

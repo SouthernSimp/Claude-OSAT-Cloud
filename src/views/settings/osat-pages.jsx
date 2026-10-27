@@ -406,6 +406,7 @@ function OfflineSwitch() {
 
 export function DataPage({ page, workspace, commit, storage, showUndo }) {
   const restoreInputRef = useRef(null);
+  const [obsidian, setObsidian] = useState(false);
   function backup() {
     const payload = makeBackup(workspace);
     downloadFile(`osat-backup-${localDateKey()}.json`, JSON.stringify(payload, null, 2), "application/json");
@@ -454,13 +455,18 @@ export function DataPage({ page, workspace, commit, storage, showUndo }) {
           <input ref={restoreInputRef} type="file" accept="application/json" hidden onChange={restore} />
         </Row>
       </Group>
-      <Legacy words="obsidian vault export notes">
-        <section className="content-card settings-obsidian">
-          <p className="eyebrow">Obsidian</p>
-          <h2>Send notes to a vault.</h2>
-          <ObsidianView workspace={workspace} commit={commit} />
-        </section>
-      </Legacy>
+      <Group title="Obsidian">
+        <Row title="Send notes to Obsidian" hint="Pick notes, see exactly what will be written, then save it into your vault." words="obsidian vault export notes markdown">
+          <button className="outline-button" type="button" aria-expanded={obsidian} onClick={() => setObsidian(!obsidian)}>{obsidian ? "Done" : "Send notes…"}</button>
+        </Row>
+      </Group>
+      {obsidian && (
+        <Legacy words="obsidian vault export notes">
+          <section className="content-card settings-obsidian">
+            <ObsidianView workspace={workspace} commit={commit} />
+          </section>
+        </Legacy>
+      )}
     </Page>
   );
 }

@@ -20,13 +20,13 @@ const keepAllowed = (on) => { try { on ? localStorage.setItem(ALLOWED_KEY, '1') 
    over IMAP with an app password. A new person picks first ("Where's your mail?"); Change brings the choice back. Plain text only: a message is
    never drawn as a page, and nothing in it is loaded or opened. Reply starts a draft in Mail, or opens the message in
    Gmail; nothing is sent. Only in the Mac app. */
-export function MailView({ commit }) {
+export function MailView({ commit, target }) {
   const bridge = window.osatMail
   if (!bridge) return <p className="pop-gone">Your inbox shows here in OSAT on your Mac.</p>
-  return <MailRoom bridge={bridge} commit={commit} />
+  return <MailRoom bridge={bridge} commit={commit} target={target} />
 }
 
-function MailRoom({ bridge, commit }) {
+function MailRoom({ bridge, commit, target }) {
   const [available, setAvailable] = useState(null)
   // 'notAsked' until the button is pressed once on this Mac; then 'allowed', or why not.
   const [access, setAccess] = useState(() => (wasAllowed() ? 'allowed' : 'notAsked'))
@@ -54,6 +54,8 @@ function MailRoom({ bridge, commit }) {
   const [imap, setImap] = useState(null)
   const [picking, setPicking] = useState(null)
   const direct = google || imap?.connected === true
+  // Settings → Mail and calendar → Change… opens the room on the choices.
+  useEffect(() => { if (target?.pick) setPicking(true) }, [target?.pick, target?.at])
 
   // Why Mail can't be read becomes a state of the room, not an error to dismiss.
   const explain = useCallback((error) => {
