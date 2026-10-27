@@ -97,6 +97,15 @@ export function accountRow(a) {
   }
 }
 
+/* The accounts after one page of /transactions/sync (Phase 100). Plaid lists only the accounts with entries in that
+   page ("Only accounts that have associated transactions will be shown"), so a quiet hour would drop savings and
+   cards: each account listed is brought up to date, the others are kept, and the order stays as it was. */
+export function mergeAccounts(kept, listed) {
+  const rows = new Map((kept || []).map((row) => [row.id, row]))
+  for (const row of (Array.isArray(listed) ? listed : []).map(accountRow)) rows.set(row.id, row)
+  return [...rows.values()]
+}
+
 /* The public token from a finished Hosted Link session (/link/token/get), with the bank's name. */
 export function finishedLink(response) {
   for (const session of response?.link_sessions || []) {
