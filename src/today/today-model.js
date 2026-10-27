@@ -3,19 +3,19 @@
    calendar yet), and one plain line that says it all. Pure. */
 
 import { whatOf, whenOf } from '../../shared/what-model.mjs'
-import { boardsOf, clientName, clientTouch, isClient, onBoard, stageOf, stickiesOn } from '../boards/boards-model.js'
+import { boardsOf, clientName, clientTouch, isClient, isFavorite, onBoard, stageOf, stickiesOn } from '../boards/boards-model.js'
 import { folderPath, folderSubtree, isActiveNote } from '../notes-model.js'
 
 const STAGE_FIRST = { doing: 0, next: 1, later: 2 }
 const startOfDay = (time) => { const day = new Date(time); return new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime() }
 const DAY = 86400000
 
-/* The same steps as each board, including branches, in the user's board order. */
+/* The same steps as each board, including branches, in the user's board order, favorites first (Phase 99). */
 export function dashboardBoards(state) {
   return boardsOf(state).map(({ folder, count }) => {
     const steps = stickiesOn(state, folder.id).filter(onBoard)
     return { folder, count, total: steps.length, done: steps.filter((note) => stageOf(note) === 'done').length }
-  })
+  }).sort((a, b) => Number(isFavorite(b.folder)) - Number(isFavorite(a.folder)))
 }
 
 /* The notes touched last; to-dos are left to the To do card beside it. */

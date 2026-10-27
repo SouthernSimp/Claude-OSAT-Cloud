@@ -43,6 +43,8 @@ export function normalizeFolders(value) {
       ...(fromOf(folder.from) ? { from: fromOf(folder.from) } : {}),
       // A board that is a client (schema 16): its page says when you last met and where they come up.
       ...(folder.client === true ? { client: true } : {}),
+      // A favorite board (schema 18): on top of the sidebar and of Today's boards.
+      ...(folder.favorite === true ? { favorite: true } : {}),
     }]
   })
   // A parent must exist and must not create a cycle; otherwise the folder moves to the root.

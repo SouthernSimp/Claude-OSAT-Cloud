@@ -114,19 +114,18 @@ export function moveToBoard(state, ids, boardId) {
   return ids.reduce((next, id) => moveSticky(next, id, boardId === JUST_IN ? null : boardId), state)
 }
 
-/* Clients (Phase 83): any board can be a client. Marking one again, or un-marking one that isn't, changes nothing. */
-export const isClient = (folder) => folder?.client === true
-export function setClient(state, id, on) {
-  return {
-    ...state,
-    folders: state.folders.map((folder) => {
-      if (folder.id !== id || isClient(folder) === on) return folder
-      if (on) return { ...folder, client: true }
-      const { client, ...rest } = folder
-      return rest
-    }),
-  }
+/* A board's marks: a client (Phase 83) or a favorite (Phase 99), any board either. Marking one again, or un-marking
+   one that isn't, changes nothing: the same state comes back. */
+function mark(state, id, key, on) {
+  const folder = state.folders.find((item) => item.id === id)
+  if (!folder || (folder[key] === true) === on) return state
+  const { [key]: _, ...rest } = folder
+  return { ...state, folders: state.folders.map((item) => (item === folder ? (on ? { ...rest, [key]: true } : rest) : item)) }
 }
+export const isClient = (folder) => folder?.client === true
+export const setClient = (state, id, on) => mark(state, id, 'client', on)
+export const isFavorite = (folder) => folder?.favorite === true
+export const setFavorite = (state, id, on) => mark(state, id, 'favorite', on)
 
 const GRANOLA_LINK = /^From Granola: (?:\[([^\]]+)\]\(([^)]+)\)|(.+))$/m
 const at = (note) => Date.parse(note.createdAt) || 0
