@@ -64,6 +64,7 @@ const { createMacCalendar } = require('./mac-calendar.cjs')
 const { createMacMail } = require('./mac-mail.cjs')
 const { createMailFollow } = require('./mail-follow.cjs')
 const { createGmail } = require('./gmail.cjs')
+const { createImapMail } = require('./imap-mail.cjs')
 const { createBank } = require('./bank.cjs')
 const { createKeychain } = require('./bots/keychain.cjs')
 
@@ -1551,7 +1552,12 @@ app.whenReady().then(async () => {
     readDoc: () => store.load().doc, commitOps: (ops) => store.commit(bankClient, ops),
   }))
   bank?.start()
-  macMail = await part('Mail', () => createMacMail({ sharedModule, handle, fail, gmail }))
+  // Any provider over IMAP (desktop/imap-mail.cjs, Phase 104): its web page, or a mailto: reply in the Mac's mail app.
+  const imap = await part('Mail over IMAP', () => createImapMail({
+    dataDir: app.getPath('userData'), sharedModule, handle, fail, send: sendToAllWindows, keychain, offline: () => under.on,
+    open: async (url) => { if (!under.on && /^mailto:/i.test(url)) await shell.openExternal(url); else await openOut(url) },
+  }))
+  macMail = await part('Mail', () => createMacMail({ sharedModule, handle, fail, gmail, imap }))
   // Tools → Passwords (desktop/passwords.cjs, Phase 58): locked at every launch; locks on sleep, screen lock, the desk
   // put away, and quit. Its sealed file is read by nothing else.
   passwords = await part('Passwords', () => createPasswords({

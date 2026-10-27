@@ -134,6 +134,10 @@ contextBridge.exposeInMainWorld('osatMail', Object.freeze({
   connectGmail: () => ipcRenderer.invoke('gmail:connect'),
   disconnectGmail: () => ipcRenderer.invoke('gmail:disconnect'),
   onGmail: (listener) => listen('gmail:changed', listener),
+  // Any provider over IMAP (desktop/imap-mail.cjs, Phase 104): the app password goes to main once, then the Keychain.
+  imap: () => ipcRenderer.invoke('imap:status'),
+  connectImap: (signIn) => ipcRenderer.invoke('imap:connect', signIn),
+  disconnectImap: () => ipcRenderer.invoke('imap:disconnect'),
 }))
 
 // Money's banks (desktop/bank.cjs, Phase 87): Plaid keys and bank tokens stay in main and the Keychain.

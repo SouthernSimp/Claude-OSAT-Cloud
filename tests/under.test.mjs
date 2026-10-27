@@ -186,6 +186,8 @@ const FENCE = [
   [/\brun\(file, args/, 'GitHub’s gh tool', (file) => file === 'desktop/github.cjs'],
   // The Mac's Mail app is another program, which fetches mail on its own where the fetch lock doesn't reach.
   [/\bexecFile\('osascript'/, 'a script run in the Mac’s Mail app', (file) => file === 'desktop/mac-mail.cjs'],
+  // IMAP opens its own sockets to the mail server, where the fetch lock doesn't reach.
+  [/\brequire\('(imapflow|nodemailer)'\)/, 'a mail server over its own sockets'],
   // The listening engine runs in its own process; given an address it could fetch a model there, past the lock.
   [/\bmodelUrl\b/, 'the listening engine fetching a model itself', (file) => file.startsWith('desktop/meetings/')],
 ]
@@ -200,6 +202,11 @@ const ALLOWED = {
     // never asks Mail to check for mail or send (tests/mac-mail.test.mjs); Mail fetches on its own schedule, as it always does.
     "execFile('osascript', osascriptArgs(command, args), { timeout, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {",
   ],
+  'desktop/imap-mail.cjs': [
+    // Mail over IMAP (Phase 104): every connection goes through `connection()`, whose first line refuses offline, and
+    // going offline never leaves one reading: imap:connect waits (under.cjs) and a dropped connection isn't reopened offline.
+    "connectTo = (options) => { const { ImapFlow } = require('imapflow'); return new ImapFlow(options) },",
+  ],
   'desktop/github.cjs': [
     // Tools → GitHub: only when Nate asks, never offline (the line above it checks, and under.cjs refuses github:*).
     "run(file, args, { timeout: 30000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, GH_PROMPT_DISABLED: '1', NO_COLOR: '1', GH_NO_UPDATE_NOTIFIER: '1' } }, (error, stdout, stderr) => {",
@@ -212,6 +219,9 @@ const ALLOWED = {
     // Gmail (Phase 86) and banks (Phase 87): Google's sign-in, a message in Gmail, Plaid's bank sign-in, in Nate's own
     // browser. Refused offline on the same line.
     'const openOut = async (url) => { if (!under.on && /^https:\\/\\//i.test(url)) await shell.openExternal(url) }',
+    // Mail over IMAP (Phase 104): Reply to a server with no web page is a mailto: link (imap-model `replyLink`) for the
+    // Mac's own mail app. Refused offline on the same line.
+    'open: async (url) => { if (!under.on && /^mailto:/i.test(url)) await shell.openExternal(url); else await openOut(url) },',
     // The lock itself. Anything else that wants to see requests belongs inside it.
     'ses.webRequest.onBeforeRequest((details, callback) => callback({ cancel: under.on && !isLocal(details.url) }))',
   ],
@@ -283,5 +293,6 @@ test('no new way out of the Mac slips past Offline', async () => {
   assert.ok(!caught("fetch('https://x')", 'desktop/media.cjs'), 'the main process fetch is locked already')
   assert.ok(caught("spawn('curl', [url])", 'desktop/bots/x.cjs'))
   assert.ok(caught("execFile('osascript', args, {})", 'desktop/mac-mail.cjs'))
+  assert.ok(caught("const { ImapFlow } = require('imapflow')"))
   assert.ok(caught('initWhisper({ filePath, modelUrl })', 'desktop/meetings/listen.cjs'))
 })
