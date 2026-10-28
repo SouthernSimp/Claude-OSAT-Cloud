@@ -116,8 +116,8 @@ Phases 96–101 (in review, folded into PR #131, Oct 26): 96, the Mac's Calendar
 `personal-information.calendars` entitlement) and new events start on the picked calendar; 97, pick several stickies
 (⌘/⇧-click, one bar: Move, Merge, Done, Delete); 98, "/" lists commands and "@" files a sticky onto a board; 99,
 favorite boards; 100, Money's What you have / What you owe with net worth and a payoff line (schema 18, shared with 99),
-and a quiet bank sync keeps savings and cards; 101, Mark up a copied picture in CleanShot X. Phase 102 (fill a saved
-password in the Web room, import from Chrome / Apple Passwords) is half built in `wf_5462d08d-487-7`, uncommitted.
+and a quiet bank sync keeps savings and cards; 101, Mark up a copied picture in CleanShot X. Phase 102 (Oct 28): fill a
+saved password in the Web room with ⌘\, and add passwords from a Chrome / Apple Passwords export.
 
 Phases 103–105 (in review, also in PR #131, Oct 26), from Nate: "add an event to my calendar inside OSAT, it will
 update my Google and Apple Calendars", "the mail feature is still a little buggy" (slow), "the user should be able to
@@ -353,6 +353,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 99 | Favorite boards, on top of the sidebar and Today | In review (#131) |
 | 100 | Money: what you have and what you owe, net worth and a payoff line; quiet bank sync keeps every account | In review (#131) |
 | 101 | Mark up a copied picture in CleanShot X from the quick bar | In review (#131) |
+| 102 | Fill a saved password in Web (⌘\\); add passwords from Chrome, Apple Passwords, Firefox or Bitwarden | In review (#131) |
 | 103 | New events and dates go on your real (default) calendar, so they show in iCloud or Google | In review (#131) |
 | 104 | Where's your mail? Gmail, iCloud, Outlook, Yahoo or any IMAP server, read straight from the provider | In review (#131) |
 | 105 | Settings → Mail and calendar; Soul in plain words; Obsidian tucked away on Data | In review (#131) |

@@ -9,7 +9,14 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 26, 2026: Phases 92–105 in #131 (one Merge ships them all)
+## Resume checkpoint — October 28, 2026: Phases 92–105 in #131 (one Merge ships them all)
+
+Oct 28 (Nate on errands, "continue working on OSAT"): Phase 102 finished and pushed onto #131. Web's ⌘\ / key button
+(`openFill` in tools/Browser.jsx) asks `osatPasswords.logins()` for main's own front tab, unlocks inline, then
+`passwords:fill` hands the login from main to the page (`fillLogin` in skill-pages.cjs, isolated world 1003, origin
+checked again in the page). `forSite`/`fromCsv` in shared/password-model.mjs; Browser.jsx is now allowed the bridge in
+tests/vault-fence.test.mjs (logins and fill only).
+
 
 Later Oct 26, Nate asked for calendar events that reach Google and Apple Calendar, a faster Mail with a provider
 picker, and a polished Settings; built as Phases 103–105 on `claude/phase-103-calendar-default` and pushed onto
@@ -19,10 +26,7 @@ mailparser 3.9.37, pinned; fenced in tests/under.test.mjs). Outlook direct needs
 direct still waits on the Google Cloud setup below.
 
 Oct 25–26, a workflow built Phases 96–101 in parallel worktrees off Phase 95; they were merged into
-`claude/phase-95-web-picks` (#131). 99 and 100 both stepped the store to schema 18; they share that one step. Phase 102
-(fill a saved password in Web, ⌘\, and import a Chrome / Apple Passwords .csv) is half built and uncommitted in
-`.claude/worktrees/wf_5462d08d-487-7`: main, passwords.cjs, preload and skill-pages are done; the Browser view doesn't
-handle `fill-password` yet, and there are no tests or changelog line. Nate clicks Merge on #131.
+`claude/phase-95-web-picks` (#131). 99 and 100 both stepped the store to schema 18; they share that one step. Nate clicks Merge on #131.
 
 ### Earlier: October 24, 2026: Phases 92–95
 

@@ -4,7 +4,7 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 26, 2026 — Pick your mail, events on your real calendar, client meeting prep, Activity, pick several stickies, favorites, what you have and owe
+## Next build · October 26, 2026 — Pick your mail, events on your real calendar, client meeting prep, Activity, pick several stickies, favorites, what you have and owe, fill passwords in Web
 
 - **Where's your mail?** Mail no longer assumes the Mac's Mail app. Pick Gmail, iCloud, Outlook, Yahoo or any mail
   server; iCloud, Yahoo and others sign in with an app password and are read straight from the provider, much faster
@@ -24,6 +24,12 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   Quit (then Force quit if one won't go), and your Mac's specs. (#129)
 - **Right-click words you picked,** anywhere in a room (a note, an email, Today): Ask about this (the words
   quoted in Ask, ready for your question), Explain this, Save as a sticky (with Undo) and Copy. (#130)
+- **Fill a saved password in Web:** on a sign-in page, press ⌘\ (or the key button beside Clip). If Passwords is
+  locked, unlock it right there; one saved login fills at once, several let you pick. It only fills a login saved for
+  that exact site, over a secure page. (#131)
+- **Bring your passwords from Chrome or Apple Passwords:** Passwords → More → Add from Chrome or Apple Passwords…
+  reads the file they export (Firefox and Bitwarden files work too), skips what's already there, and moves the file to
+  the Bin, since it holds every password in plain words. One Undo takes them all out again. (#131)
 - **Web: your search and your home page.** The Web room's start page picks where searches go (DuckDuckGo, Google,
   Bing, Brave Search or Kagi) and a home page; once set, a Home button sits beside Back and Forward. (#131)
 - **Pick several stickies** on a board or in Just in: ⌘-click or Space picks one, ⇧-click a run, ⌘A all shown. One
