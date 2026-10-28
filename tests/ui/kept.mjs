@@ -2,8 +2,9 @@
 // minute ago goes on the calendar on its own (one line, Undo takes it off); Notes → Kept for you
 // lists every open question, everything to buy and what's coming up; ticking a question off
 // hides it (Undo brings it back); a sticky's kind chip changes what it is; Coming up puts a day
-// back on the calendar. Fails on page errors or a step that didn't happen; screenshots land in
-// test-results/ui/kept/. Run `npm run build` first.
+// back on the calendar; two notes picked in the list move together, with one Undo (Phase 97).
+// Fails on page errors or a step that didn't happen; screenshots land in test-results/ui/kept/.
+// Run `npm run build` first.
 import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -134,6 +135,22 @@ async function main() {
   check(await rows().first().getByRole('button', { name: /Take off/ }).count() === 1, 'the row didn’t say it is on the calendar')
   doc = await saved(page)
   check(doc.calendar.events.length === 1, 'Put on calendar didn’t add the event')
+
+  // Several notes picked in the list (Phase 97): Move takes both, and one Undo brings both back (Calm rule 2).
+  await page.getByRole('button', { name: /^Browse notes:/ }).click()
+  await organizer.getByRole('button', { name: /^Just in/ }).click()
+  await sleep(300)
+  await rows().filter({ hasText: 'milk' }).click()
+  await rows().filter({ hasText: 'Spotlight Search' }).click({ modifiers: ['ControlOrMeta'] })
+  const bulk = page.getByRole('toolbar', { name: 'Selected notes' })
+  check((await bulk.innerText().catch(() => '')).includes('2 selected'), 'two notes picked in the list didn’t show the bar')
+  await bulk.getByRole('button', { name: 'Move' }).click()
+  await page.getByRole('menuitem', { name: 'OSAT' }).click()
+  doc = await saved(page)
+  check(['milk', 'spot'].every((id) => doc.notes.find((note) => note.id === id)?.folderId === 'osat'), 'Move didn’t move both')
+  await page.locator('.undo-toasts .toast', { hasText: 'Moved 2 notes to OSAT' }).getByRole('button', { name: 'Undo' }).click()
+  doc = await saved(page)
+  check(['milk', 'spot'].every((id) => { const note = doc.notes.find((item) => item.id === id); return !note.folderId && note.unsorted }), 'one Undo didn’t bring both back to Just in')
 
   await browser.close()
   server?.kill()

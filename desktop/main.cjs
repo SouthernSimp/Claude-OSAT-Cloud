@@ -64,6 +64,7 @@ const { createMacCalendar } = require('./mac-calendar.cjs')
 const { createMacMail } = require('./mac-mail.cjs')
 const { createMailFollow } = require('./mail-follow.cjs')
 const { createGmail } = require('./gmail.cjs')
+const { createImapMail } = require('./imap-mail.cjs')
 const { createBank } = require('./bank.cjs')
 const { createKeychain } = require('./bots/keychain.cjs')
 
@@ -341,6 +342,9 @@ function buildMenu() {
         { label: 'Search or Ask…', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
         { type: 'separator' },
         { label: 'New Browser Tab', accelerator: 'CmdOrCtrl+T', click: () => command({ view: 'Browser', action: 'new-tab' }) },
+        // A menu key, since a key pressed inside the page never reaches OSAT's window; the window takes the keys so the
+        // master password can be typed (Phase 102).
+        { label: 'Fill Password', accelerator: 'CmdOrCtrl+\\', click: () => { command({ view: 'Browser', action: 'fill-password' }); if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.focus() } },
         ...(terminals?.available ? [{ label: 'New Terminal', accelerator: 'CmdOrCtrl+Shift+T', click: () => command({ view: 'Terminal', action: 'new-terminal' }) }] : []),
         { type: 'separator' },
         { label: 'Search Everything', accelerator: 'CmdOrCtrl+K', click: () => command({ action: 'search' }) },
@@ -374,6 +378,7 @@ function buildMenu() {
         ...(terminals?.available ? [room('Terminal', 'Terminal')] : []),
         room('GitHub', 'GitHub'),
         room('Passwords', 'Passwords'),
+        room('Activity', 'Activity'),
         room('Roadmap', 'Roadmap'),
         { type: 'separator' },
         { label: under.on ? 'Go Online' : 'Go Offline', accelerator: 'CmdOrCtrl+Shift+U', click: () => toggleUnder() },
@@ -1550,12 +1555,21 @@ app.whenReady().then(async () => {
     readDoc: () => store.load().doc, commitOps: (ops) => store.commit(bankClient, ops),
   }))
   bank?.start()
-  macMail = await part('Mail', () => createMacMail({ sharedModule, handle, fail, gmail }))
+  // Any provider over IMAP (desktop/imap-mail.cjs, Phase 104): its web page, or a mailto: reply in the Mac's mail app.
+  const imap = await part('Mail over IMAP', () => createImapMail({
+    dataDir: app.getPath('userData'), sharedModule, handle, fail, send: sendToAllWindows, keychain, offline: () => under.on,
+    open: async (url) => { if (!under.on && /^mailto:/i.test(url)) await shell.openExternal(url); else await openOut(url) },
+  }))
+  macMail = await part('Mail', () => createMacMail({ sharedModule, handle, fail, gmail, imap }))
   // Tools → Passwords (desktop/passwords.cjs, Phase 58): locked at every launch; locks on sleep, screen lock, the desk
   // put away, and quit. Its sealed file is read by nothing else.
   passwords = await part('Passwords', () => createPasswords({
     dataDir: app.getPath('userData'), sharedModule, handle, fail, dialog, mainWindow: () => mainWindow, clipboard: require('electron').clipboard, writeConcealed,
     send: (channel) => send(channel),
+    // Phase 102: the Web room's front tab, as main knows it (a fill goes to it, never to an address the window names), and
+    // the Bin for a passwords file once it's read.
+    page: () => (mainWindow && !mainWindow.isDestroyed() ? browsers.get(mainWindow.webContents.id) : null),
+    trash: (file) => shell.trashItem(file),
   }))
   for (const event of ['suspend', 'lock-screen']) powerMonitor.on(event, () => passwords?.lock())
   await part('overnight ideas', registerOvernight)

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CaretRight, NotePencil, Plus, Shapes, Trash, WifiHigh, WifiSlash } from '@phosphor-icons/react'
+import { CaretRight, NotePencil, Plus, Shapes, Star, Trash, WifiHigh, WifiSlash } from '@phosphor-icons/react'
 
 import { clientItem } from '../boards/BoardOverview.jsx'
-import { addBoard, boardsOf, isClient, JUST_IN, paperOf, stickiesOn, undoFrom } from '../boards/boards-model.js'
+import { addBoard, boardsOf, isClient, isFavorite, JUST_IN, paperOf, setFavorite, stickiesOn, undoFrom } from '../boards/boards-model.js'
 import { placeFrom } from '../boards/just-in.js'
 import { addCanvas, canvasesOf, removeCanvas, renameCanvas } from '../canvas/canvas-model.js'
 import { useDrop } from '../lib/carry.js'
@@ -18,9 +18,9 @@ const readOpen = () => { try { return JSON.parse(localStorage.getItem(FOLD_KEY) 
 
 /* The sidebar (Phase 73), the way Apple's own apps are built: four tiles (Today, Just in, Calendar, To do), your
    boards, then Work, Life, Library and the power tools (folded until you open them), Settings and Online at the foot.
-   `at` is where you are: { view, board }. A sticky dropped on a board moves there; right-click a board to rename or
-   delete it (its stickies go back to Just in). Every change has Undo. */
-export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, newBoard = 0 }) {
+   `at` is where you are: { view, board }. A sticky dropped on a board moves there (with the others picked, Phase 97);
+   right-click a board to rename or delete it (its stickies go back to Just in). Every change has Undo. */
+export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, newBoard = 0, newCanvas = 0 }) {
   const [menu, openMenu] = useContextMenu()
   const [toast, showUndo] = useUndoToast()
   const [naming, setNaming] = useState(null)
@@ -29,8 +29,9 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
   const canvases = canvasesOf(workspace)
   // The canvas open now: the one named, else the one the room opened last.
   const openCanvas = at.detail?.canvasId || (() => { try { return localStorage.getItem('osat.canvas.last.v1') } catch { return null } })() || canvases[0]?.id
-  // "New board" from ⌘K: the name is written right here.
+  // "New board" or "New canvas" from ⌘K or "/": the name is written right here.
   useEffect(() => { if (newBoard) setNaming({}) }, [newBoard])
+  useEffect(() => { if (newCanvas) setNaming({ canvas: true }) }, [newCanvas])
   const counts = useMemo(() => ({
     JustIn: stickiesOn(workspace, JUST_IN).length || '',
     Calendar: new Date().getDate(),
@@ -44,7 +45,7 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
     if (before && next !== before) showUndo(line, () => commit(undoFrom(before, next)))
   }
   const actions = {
-    moveTo: (id, boardId, name) => change(`Moved to ${name}`, (state) => placeFrom(state, [id], boardId)),
+    moveTo: (ids, boardId, name) => change(`Moved ${ids.length > 1 ? `${ids.length} ` : ''}to ${name}`, (state) => placeFrom(state, ids, boardId)),
     newBoard(name) {
       setNaming(null)
       const value = String(name || '').trim()
@@ -90,8 +91,14 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
       ])
     },
     menu(event, folder) {
+      const favorite = isFavorite(folder)
       openMenu(event, [
         { label: 'Rename', icon: NotePencil, onSelect: () => setNaming({ id: folder.id }) },
+        // A favorite sits on top, in Favorites (Phase 99); the quick bar's own words for its favorites.
+        {
+          label: favorite ? 'Remove from favorites' : 'Add to favorites', icon: Star,
+          onSelect: () => change(favorite ? `Took “${folder.name}” off your favorites` : `“${folder.name}” is in your favorites`, (state) => setFavorite(state, folder.id, !favorite)),
+        },
         clientItem(folder, change),
         { divider: true },
         {
@@ -123,32 +130,35 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
         active={at.view === 'Mindmap' && at.board === folder.id}
         onOpen={() => navigate('Mindmap', { folderId: folder.id })}
         onMenu={(event) => actions.menu(event, folder)}
-        onDropNote={(id) => actions.moveTo(id, folder.id, folder.name)}
+        onDropNote={(ids) => actions.moveTo(ids, folder.id, folder.name)}
       />
     ))
+  // Each board shows once: a favorite on top, then a client, then the rest.
+  const groupOf = (folder) => (isFavorite(folder) ? 'Favorites' : isClient(folder) ? 'Clients' : 'Boards')
+  const rows = (group) => boards.map(row).filter((_, index) => groupOf(boards[index].folder) === group)
 
   return (
     <nav className="side" aria-label="OSAT">
       <div className="side-top" aria-hidden="true" />
       <div className="side-tiles">
         {SPACES.slice(0, 4).map((space) => (
-          <SideTile key={space.id} space={space} count={counts[space.id] ?? ''} active={here(space.id)} navigate={navigate} onDropNote={space.id === 'JustIn' ? (id) => actions.moveTo(id, JUST_IN, 'Just in') : null} />
+          <SideTile key={space.id} space={space} count={counts[space.id] ?? ''} active={here(space.id)} navigate={navigate} onDropNote={space.id === 'JustIn' ? (ids) => actions.moveTo(ids, JUST_IN, 'Just in') : null} />
         ))}
       </div>
 
       <div className="side-scroll">
-        {boards.some(({ folder }) => isClient(folder)) && (
-          <section className="side-group" aria-label="Clients">
-            <header className="side-head"><span>Clients</span></header>
-            {boards.map(row).filter((_, index) => isClient(boards[index].folder))}
+        {['Favorites', 'Clients'].map((group) => boards.some(({ folder }) => groupOf(folder) === group) && (
+          <section key={group} className="side-group" aria-label={group}>
+            <header className="side-head"><span>{group}</span></header>
+            {rows(group)}
           </section>
-        )}
+        ))}
         <section className="side-group" aria-label="Boards">
           <header className="side-head">
             <span>Boards</span>
             <button type="button" className="side-add" aria-label="New board" title="New board" onClick={() => setNaming({})}><Plus weight="bold" /></button>
           </header>
-          {boards.map(row).filter((_, index) => !isClient(boards[index].folder))}
+          {rows('Boards')}
           {naming && !naming.id && !naming.canvas && !naming.canvasId && <NameForm label="New board’s name" placeholder="Name it: Fortis, Home…" onDone={actions.newBoard} />}
           {!boards.length && !naming && (
             <button type="button" className="side-row side-starter" onClick={actions.starter}><Plus /> <span>Add {STARTER.join(', ')}</span></button>
@@ -216,7 +226,7 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
 }
 
 function SideTile({ space, count, active, navigate, onDropNote }) {
-  const drop = useDrop(`side:${space.id}`, { accepts: onDropNote ? (carried) => carried.kind === 'note' : [], onDrop: (carried) => onDropNote?.(carried.id) })
+  const drop = useDrop(`side:${space.id}`, { accepts: onDropNote ? (carried) => carried.kind === 'note' : [], onDrop: (carried) => onDropNote?.(carried.data?.ids || [carried.id]) })
   return (
     <button type="button" className="side-tile" data-tint={space.tint} aria-current={active ? 'page' : undefined} title={space.hint} onClick={() => navigate(space.id)} {...(onDropNote ? drop : {})}>
       <span className="side-tile-icon"><space.icon weight="fill" aria-hidden="true" /></span>
@@ -236,7 +246,7 @@ function SideRow({ space, active, navigate }) {
 }
 
 function BoardRow({ folder, paper, count, active, onOpen, onMenu, onDropNote }) {
-  const drop = useDrop(`side:board:${folder.id}`, { accepts: (carried) => carried.kind === 'note', onDrop: (carried) => onDropNote(carried.id) })
+  const drop = useDrop(`side:board:${folder.id}`, { accepts: (carried) => carried.kind === 'note', onDrop: (carried) => onDropNote(carried.data?.ids || [carried.id]) })
   return (
     <button type="button" className="side-row" aria-current={active ? 'page' : undefined} onClick={onOpen} onContextMenu={onMenu} {...drop}>
       <i className="side-dot" data-paper={paper} aria-hidden="true" />

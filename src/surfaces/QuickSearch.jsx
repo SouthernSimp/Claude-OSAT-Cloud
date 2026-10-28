@@ -15,7 +15,7 @@ import { streamLocalMessage } from '../local-ai.js'
 import { LocalAssistant, modelLabel } from '../assistant/LocalAssistant.jsx'
 import { cleanError, useAi } from '../assistant/useAi.js'
 import { findAll } from '../lib/find.js'
-import { addSticky, linkMentions } from '../nodes-model.js'
+import { addSticky, homeOf, linkMentions } from '../nodes-model.js'
 import { captureThought, folderPath } from '../notes-model.js'
 import { AppIcon, RowTile, typeOf } from '../search/icons.jsx'
 import { Preview } from '../search/Preview.jsx'
@@ -112,7 +112,7 @@ export function QuickSearchSurface() {
   const row = rows[active] || null
   // "Add to Jordan": a copied email or phone number that belongs to a node that already exists.
   const offer = useMemo(() => (row && ['text', 'email', 'phone'].includes(row.kind) && settings.clipboard.offers !== false ? offerFor(row.data, workspace || {}) : null), [row, settings, workspace])
-  const actions = useMemo(() => actionsFor(row, { offer, canAsk: row?.kind === 'file' && canAsk({ kind: 'file', name: row.title }) }), [row, offer])
+  const actions = useMemo(() => actionsFor(row, { offer, canAsk: row?.kind === 'file' && canAsk({ kind: 'file', name: row.title }), markup: shooting?.cleanshot === true }), [row, offer, shooting])
   const full = !mode && (opened === 'full' || text.trim().length > 0 || scope !== 'all' || Boolean(picker))
   const size = chatOn ? 'chat' : full || mode === 'sticky' ? 'full' : 'bar'
   const tabs = scopesOn(settings)
@@ -195,19 +195,22 @@ export function QuickSearchSurface() {
   }), [bridge, openChat])
   useEffect(() => { bridge?.ready() }, [bridge])
 
-  /* ⌥Return: the words go straight to Unsorted as a sticky, as on the desk's line. Nothing typed: write one. */
+  /* ⌥Return: the words go straight to Unsorted as a sticky, as on the desk's line; words that name exactly one board
+     or branch with @ go straight onto it (Phase 98). Nothing typed: write one. */
   const saveSticky = useCallback((words) => {
     const value = String(words || '').trim()
     if (!value) { setText(''); setMode('sticky'); return }
     if (!workspace) { said('Opening your notes… try again in a moment.'); return }
     let made = null
+    let home = null
     commit((state) => {
-      const result = captureThought(state, value.slice(0, 8000), 'Quick bar')
+      home = homeOf(value, state.folders)
+      const result = home ? addSticky(state, value.slice(0, 8000), home, { source: 'Quick bar' }) : captureThought(state, value.slice(0, 8000), 'Quick bar')
       made = result.note
-      return made ? linkMentions(result.state, made.id) : result.state
+      return made && !home ? linkMentions(result.state, made.id) : result.state
     })
     setText(''); setMode(null); setCursor(null)
-    said(made ? 'Saved to Just in' : 'Nothing to save', 1400)
+    said(made ? `Saved to ${home ? folderPath(workspace.folders, home).join(' › ') : 'Just in'}` : 'Nothing to save', 1400)
     if (made) hideLater(1100)
   }, [workspace, commit, said, hideLater])
 
@@ -301,6 +304,12 @@ export function QuickSearchSurface() {
           break
         }
         case 'copy': await bridge.copyClip(d.id); said('Copied'); hideLater(500); break
+        // Mark up (Phase 101): the picture goes back on the clipboard, then CleanShot X opens it from there to mark up
+        // (main puts the bar away first). CleanShot's ⌘C brings the marked-up picture back to the top of the list.
+        case 'markup':
+          if (!(await (target.kind === 'shot' ? bridge.captureCopy(d.id) : bridge.copyClip(d.id)))) { said('That copy is gone.'); break }
+          if (!(await bridge.capture('from-clipboard')).ok) said('Mark up needs CleanShot X.')
+          break
         case 'copy-text': await bridge.copyText(d.plain); said('Copied the answer'); hideLater(500); break
         case 'paste-text': {
           const result = await bridge.pasteText(d.plain)

@@ -9,7 +9,39 @@ owner"); the goal is something businesses can use, Nate himself the first user (
 The direction and the phase-by-phase plan live in [docs/ROADMAP.md](docs/ROADMAP.md).
 Read it before any substantial change and keep it current when a phase lands.
 
-## Resume checkpoint — October 22, 2026: Phases 81–87 shipped as build 356, 88–91 as build 368
+## Resume checkpoint — October 28, 2026: Phases 92–105 in #131 (one Merge ships them all)
+
+Oct 28 (Nate on errands, "continue working on OSAT"): Phase 102 finished and pushed onto #131. Web's ⌘\ / key button
+(`openFill` in tools/Browser.jsx) asks `osatPasswords.logins()` for main's own front tab, unlocks inline, then
+`passwords:fill` hands the login from main to the page (`fillLogin` in skill-pages.cjs, isolated world 1003, origin
+checked again in the page). `forSite`/`fromCsv` in shared/password-model.mjs; Browser.jsx is now allowed the bridge in
+tests/vault-fence.test.mjs (logins and fill only).
+Phase 106 (from Nate's stickies "Breakdown Sticky Note" and "Right click sticky → where does this belong?"): Boards'
+`menuFor` has Break it down (`actions.breakDown`: `breakdownMessages` / `readBreakdownAnswer` in ai-tasks.mjs through
+`askModel`, steps are To-do stickies with source `Breakdown`, one Undo) and Move to puts `guessBoards` first.
+
+
+Later Oct 26, Nate asked for calendar events that reach Google and Apple Calendar, a faster Mail with a provider
+picker, and a polished Settings; built as Phases 103–105 on `claude/phase-103-calendar-default` and pushed onto
+`claude/phase-95-web-picks` (#131). He rejected running the whole `npm run test:ui` locally (reason not given), so run
+single headless UI files only, and let CI run the suite. IMAP mail is `desktop/imap-mail.cjs` (imapflow 2.3.0 +
+mailparser 3.9.37, pinned; fenced in tests/under.test.mjs). Outlook direct needs an Azure app registration; Gmail
+direct still waits on the Google Cloud setup below.
+
+Oct 25–26, a workflow built Phases 96–101 in parallel worktrees off Phase 95; they were merged into
+`claude/phase-95-web-picks` (#131). 99 and 100 both stepped the store to schema 18; they share that one step. Nate clicks Merge on #131.
+
+### Earlier: October 24, 2026: Phases 92–95
+
+Oct 24, Nate out on an errand ("really focus on delivering features"). Built: Phase 92 (#128, `claude/phase-92-meeting-prep`):
+Today's Before-a-client-meeting card and Been a while. Phase 93 (#129, `claude/phase-93-activity`, stacked on 92): Activity
+under Power tools, from his own OSAT-board stickies (Oct 6, Oct 17), plus the launcher `exec` fix for Kill Process and
+Uninstall. Phase 94 (#130, `claude/phase-94-picked-words`, on 93): right-click picked words anywhere in a room (Desk.jsx
+`pickedWords`, `selectedWords` in lib/ui.js): Ask about this, Explain this, Save as a sticky, Copy. Phase 95 (#131, `claude/phase-95-web-picks`, on 94): Web's start page picks the search engine (`SEARCHES`,
+`searchUrl` in tools/address.js) and a home page (localStorage `osat.browser.picks.v1`), Home button. Nate clicks Merge
+on #131. Build 368 (Oct 22) shipped Phases 88–91. Nate's open stickies on the OSAT board still not built: scroll a collapsed stack (stacks are gone with the desk), import cookies/autofill, annotate a copied picture, apps on the desk/dock (desk gone).
+
+### Earlier: October 22, 2026: Phases 81–87 shipped as build 356, 88–91 as build 368
 
 Build 356 (Oct 22) shipped #116–#123. Then three phases, all folded into #126 so one Merge ships them (GitHub marks
 #124 and #125 merged with it): Phase 88 (#124, one-click sign-in for 18 apps), Phase 89 (#125, bills & subscriptions,
@@ -29,8 +61,8 @@ with connected apps) are in docs/ROADMAP.md; ask Nate before building it.
 Evening Oct 22: Nate called Today's layout "awful". Phase 91 (#127, `claude/phase-91-today-layout`, off main): one
 centred column (the two-column grid had stranded the counts strip on the far right), no counts strip or Mail /
 Meetings / Files buttons (the sidebar has both), Goals under Your day, Recent work without to-dos. Waits for Nate to
-see it. CI's Electron e2e failed on "the second OSAT did not hear the first one's rename" here and on #126 alike:
-not this change; look into it if it keeps failing.
+see it. CI's Electron e2e failed now and then on "the second OSAT did not hear the first one's rename" (#126, #127,
+#131): sync polls every 20 s, the test waited 30 s; it waits 60 s since Oct 25.
 
 Later Oct 22: Gmail (#122) and Money with banks (#123) were built. Two things wait on Nate: Google Cloud project
 `osat-512421` (account thenatemccreery@gmail.com) has the Gmail API on, but its sign-in screen (Google Auth Platform)
@@ -732,6 +764,32 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phases 103–105
+
+- Calendar (103): `settings.dates.calendar` unset is `'default'` (datesSettings); mac-calendar.cjs marks `isDefault`
+  (`store.defaultCalendarForNewEvents`) and `add-event` with calendar `'default'` writes there; `defaultCalendar()` in
+  mac-calendar-model. Not allowed yet, 'default' lands on OSAT's own (putOnCalendar's catch).
+- Mail over IMAP (104): `shared/imap-model.mjs` (PROVIDERS with host / web / compose / help, `providerFor`,
+  `cleanSignIn`, `imapRaw`, `replyLink`, `explainImap`) + `desktop/imap-mail.cjs` (`createImapMail`: one kept
+  connection, closed after 5 idle minutes; list = one fetch of the last 50 by sequence; read = `fetchOne` source by uid
+  (BODY.PEEK) through mailparser; `imap:status|connect|disconnect`; password in the Keychain as `imap-password`,
+  `imap.json` = { provider, email, host }). createMacMail takes `imap` and routes to Gmail, then IMAP, then the Mail
+  app. Mail.jsx: `ProviderPicker` (first screen, and Change), `ImapForm`, Outlook steps (Internet Accounts, then the
+  Mail app). The room opens on the picker for `target.pick` (Settings → Mail and calendar → Change…).
+- Settings (105): `settings/Accounts.jsx` (`AccountsPage`, page id `accounts`, "Mail and calendar").
+
+## Architecture added in Phase 93
+
+- Activity (Power tools → Activity): `shared/activity-model.mjs` (pure: `readVmStat` = Activity Monitor's Memory Used,
+  app (anonymous less purgeable) + wired + compressed; `pressureOf` for `kern.memorystatus_vm_pressure_level`; `cpuBusy`
+  between two `os.cpus()`; `readSpecs`, `readMachineName`, words) + `desktop/activity.cjs` (`createActivity`, made in
+  launcher/index.cjs beside `processes`, whose list and `end` it reuses; `activity:now`, `activity:quit`, `from: 'app'`;
+  specs read once) + `src/views/Activity.jsx` (`osatActivity`; reads every 2 s while visible; Quit, then Force quit).
+  The launcher's `exec` defaults to mac-files' `run` (main passes none; processes.cjs and uninstall.cjs have no default).
+  tests/activity.test.mjs, tests/ui/activity.mjs.
+- Before a client meeting (Phase 92): `meetingPrep(state, plan, now)` and `quietClients` in today-model.js;
+  `clientName(folder)` in boards-model.js is the whole-word matcher clientTouch uses.
 
 ## Architecture added in Phase 90
 

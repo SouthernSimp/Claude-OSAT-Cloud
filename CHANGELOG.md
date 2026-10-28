@@ -4,6 +4,53 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
+## Next build · October 26, 2026 — Pick your mail, events on your real calendar, client meeting prep, Activity, pick several stickies, favorites, what you have and owe, fill passwords in Web, break a sticky down
+
+- **Where's your mail?** Mail no longer assumes the Mac's Mail app. Pick Gmail, iCloud, Outlook, Yahoo or any mail
+  server; iCloud, Yahoo and others sign in with an app password and are read straight from the provider, much faster
+  than through the Mail app. Reply opens your provider's own page. Change it any time. (#131)
+- **Events go on your real calendar:** once your calendars are connected, a new event (and a date you write down) goes
+  on your Mac's default calendar, so it shows in iCloud or Google Calendar too. Pick another one any time. (#131)
+- **Settings → Mail and calendar:** one place for where your mail comes from and where new events go. Soul and
+  memory reads in plain words, and Data keeps the Obsidian exporter tucked behind one row. (#131)
+- **Before a client meeting:** when today's calendar has a meeting whose name names one of your clients ("Fortis
+  kickoff"), Today puts a card on top until it's over: when you last met (click to open that meeting), what's still
+  open with them (tick it off right there, with Undo) and where they came up lately. Open the client's board from
+  the card. (#128)
+- **Been a while:** Today lists a client you've met before but not in three weeks, with when you last met, so no
+  one slips. Click one to open their board. (#128)
+- **Activity** (Power tools → Activity): how your Mac is doing without opening Activity Monitor. Memory used and
+  whether there's room to spare, how busy the processor is, free disk space, the apps using the most memory or processor with
+  Quit (then Force quit if one won't go), and your Mac's specs. (#129)
+- **Right-click words you picked,** anywhere in a room (a note, an email, Today): Ask about this (the words
+  quoted in Ask, ready for your question), Explain this, Save as a sticky (with Undo) and Copy. (#130)
+- **Break it down:** right-click a sticky → Break it down, and the AI writes the few small steps that would get it
+  done as to-dos on the same board. The sticky stays; one Undo takes the steps away. (#131)
+- **Where does it go?** Right-click a sticky → Move to lists the boards it reads most like first, marked "looks like
+  it". (#131)
+- **Fill a saved password in Web:** on a sign-in page, press ⌘\ (or the key button beside Clip). If Passwords is
+  locked, unlock it right there; one saved login fills at once, several let you pick. It only fills a login saved for
+  that exact site, over a secure page. (#131)
+- **Bring your passwords from Chrome or Apple Passwords:** Passwords → More → Add from Chrome or Apple Passwords…
+  reads the file they export (Firefox and Bitwarden files work too), skips what's already there, and moves the file to
+  the Bin, since it holds every password in plain words. One Undo takes them all out again. (#131)
+- **Web: your search and your home page.** The Web room's start page picks where searches go (DuckDuckGo, Google,
+  Bing, Brave Search or Kagi) and a home page; once set, a Home button sits beside Back and Forward. (#131)
+- **Pick several stickies** on a board or in Just in: ⌘-click or Space picks one, ⇧-click a run, ⌘A all shown. One
+  bar: Move to…, Merge (the oldest keeps everyone's words), Done, Delete. Carry them all onto a column or a board in
+  the sidebar. One Undo per change. (#131)
+- **"/" and "@" in the bar:** "/" lists every command ("/cal" narrows it, Return runs it); "@" offers your boards,
+  and "Save to Fortis" files the sticky straight onto that board. (#131)
+- **Favorite boards:** right-click a board, Add to favorites; Favorites sits on top of the sidebar and of Today's
+  boards. (#131)
+- **What you have and what you owe:** Money asks both (cash, a car loan, a card, with its rate and the least a month)
+  and shows your net worth and one payoff line: the minimums, then anything extra to the highest rate first. (#131)
+- **Mark up a copied picture** in CleanShot X from the quick bar (⌘E on a picture in Clipboard). (#131)
+- **Calendar:** a new event starts on the calendar you picked for new dates, and each Mac calendar names its account. (#131)
+- Fix: OSAT can now ask for your Mac's Calendar and Reminders (it was refused without asking). (#131)
+- Fix: a quiet bank sync no longer drops savings accounts and cards from Money. (#131)
+- Fix: Kill Process and Uninstall in the quick bar couldn't list running apps on the Mac. (#129)
+
 ## Build 368 · October 22, 2026 — Bills & subscriptions, Money redone, 18 apps to sign in to, Today tidied
 
 - **Bills & subscriptions:** Money finds what charges you again and again (Netflix, the phone bill, the gym) and

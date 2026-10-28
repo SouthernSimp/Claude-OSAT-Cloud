@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, CalendarBlank, Check, CheckCircle, ClockCounterClockwise, CurrencyDollar, ListChecks, Plus, Target, Tray } from '@phosphor-icons/react'
+import { ArrowRight, CalendarBlank, Check, CheckCircle, ClockCounterClockwise, CurrencyDollar, Handshake, UsersThree, ListChecks, Plus, Target, Tray } from '@phosphor-icons/react'
 
 import { WHAT_LABEL, WHAT_PAPER, whatOf } from '../../shared/what-model.mjs'
 import { sourceWords } from '../boards/boards-model.js'
@@ -11,7 +11,7 @@ import { useUndoToast } from '../lib/UndoToast.jsx'
 import { captureThought, comingUp, isActiveNote, setDone, setWhat } from '../notes-model.js'
 import { formatMinor } from '../osat-data.js'
 import { useMacCalendar } from '../views/MacCalendar.jsx'
-import { dashboardBoards, dayLine, dayPlan, greeting, monthMoney, openTodos, recentWork } from './today-model.js'
+import { dashboardBoards, dayLine, dayPlan, greeting, meetingPrep, monthMoney, quietClients, openTodos, recentWork } from './today-model.js'
 import { bills, daysUntil } from '../money/money-model.js'
 import { dueWords } from '../money/Bills.jsx'
 import './dashboard.css'
@@ -50,6 +50,8 @@ export function TodayView({ workspace, commit, navigate }) {
   const todos = useMemo(() => openTodos(workspace, now.getTime()), [workspace, now])
   const waiting = useMemo(() => cameIn(workspace, now.getTime()).waiting, [workspace, now])
   const plan = useMemo(() => dayPlan({ mac: mac.events, hidden: mac.hidden, own: workspace.calendar.events, notes: workspace.notes }, now.getTime()), [mac.events, mac.hidden, workspace, now])
+  const prep = useMemo(() => meetingPrep(workspace, plan, now.getTime()), [workspace, plan, now])
+  const quiet = useMemo(() => quietClients(workspace, now.getTime()), [workspace, now])
   const later = useMemo(() => {
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
     return comingUp(workspace.notes.filter(isActiveNote), now.getTime()).filter(({ when }) => when.start.getTime() >= end).slice(0, 3)
@@ -69,6 +71,25 @@ export function TodayView({ workspace, commit, navigate }) {
         <h1>{greeting(now)}</h1>
         {brief ? <Markdown className="today-brief" text={brief} /> : <p className="today-line">{line}</p>}
       </header>
+
+      {prep && <Card tint="indigo" icon={Handshake} title={`Before ${prep.item.title}${prep.item.allDay ? '' : ` · ${time(prep.item.start)}`}`} more={`Open ${prep.folder.name}`} onMore={() => navigate('Mindmap', { folderId: prep.folder.id, open: true })}>
+        <p className="today-sub">{prep.lastMeeting
+          ? <>Last met {shortDay(new Date(prep.lastMeeting.at))}: <button type="button" className="text-button" onClick={() => navigate('Notes', { noteId: prep.lastMeeting.noteId })}>{prep.lastMeeting.title}</button></>
+          : `No earlier meeting with ${prep.folder.name} in OSAT yet.`}</p>
+        {prep.todos.length > 0
+          ? <ul className="today-list">{prep.todos.slice(0, 5).map((item) => <TodoRow key={item.note.id} item={item} ticked={leaving.has(item.note.id)} onTick={tick} navigate={navigate} board={false} />)}</ul>
+          : <p className="today-empty">Nothing open with {prep.folder.name}.</p>}
+        {prep.todos.length > 5 && <p className="today-more-line">And {prep.todos.length - 5} more on the board.</p>}
+        {prep.notes.length > 0 && <>
+          <p className="today-sub">Where they came up</p>
+          <ul className="today-list">{prep.notes.map((touched) => <li key={touched.id}>
+            <button type="button" className="today-item" onClick={() => navigate('Notes', { noteId: touched.noteId })}>
+              <span className="today-item-text">{touched.title || 'A sticky'}</span>
+              <small>{[touched.from, dayLabel(new Date(touched.at).toISOString(), now.getTime())].join(' · ')}</small>
+            </button>
+          </li>)}</ul>
+        </>}
+      </Card>}
 
       {boards.length > 0 && <section className="today-boards" aria-label="Your boards">
         <header><h2>Your boards</h2>{boards.length > 3 && <button type="button" className="today-more" aria-expanded={allBoards} aria-controls="today-board-list" onClick={() => setAllBoards(!allBoards)}>{allBoards ? 'Show fewer' : `All ${boards.length}`}<ArrowRight aria-hidden="true" /></button>}</header>
@@ -105,6 +126,15 @@ export function TodayView({ workspace, commit, navigate }) {
               {waiting.length > 4 && <p className="today-more-line">And {waiting.length - 4} more.</p>}
             </Card>
           )}
+
+          {quiet.length > 0 && <Card tint="violet" icon={UsersThree} title="Been a while">
+            <ul className="today-list">{quiet.slice(0, 3).map(({ folder, lastMet }) => <li key={folder.id}>
+              <button type="button" className="today-item" onClick={() => navigate('Mindmap', { folderId: folder.id, open: true })}>
+                <span className="today-item-text">{folder.name}</span>
+                <small>Last met {shortDay(new Date(lastMet))} · {Math.floor((now.getTime() - lastMet) / (7 * 86400000))} weeks ago</small>
+              </button>
+            </li>)}</ul>
+          </Card>}
 
           {recent.length > 0 && <Card tint="indigo" icon={ClockCounterClockwise} title="Recent work" more="Notes" onMore={() => navigate('Notes')}>
             <ul className="today-list">{recent.map((note) => <li key={note.id}>

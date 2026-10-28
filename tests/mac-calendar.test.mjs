@@ -38,7 +38,7 @@ test('status never asks the Mac and says unavailable off the Mac', async () => {
 
 test('a Mac that has not been allowed answers in plain words, and a failure is calm', async () => {
   const notYet = setup({ error: 'notAllowed' })
-  await assert.rejects(notYet.call('maccal:calendars'), /Show my Mac’s calendars/)
+  await assert.rejects(notYet.call('maccal:calendars'), /Connect my calendars/)
   const broken = setup(new Error('spawn osascript ENOENT'))
   await assert.rejects(broken.call('maccal:reminders'), /couldn’t be reached/)
   assert.deepEqual(await broken.call('maccal:status'), { events: 'unavailable', reminders: 'unavailable' })

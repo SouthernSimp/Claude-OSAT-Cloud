@@ -1,5 +1,5 @@
-// Tools → Mail (Phase 59) in the built preview, with the Mac's Mail bridge faked: nothing is read until Allow is
-// pressed, the inbox in plain words, Unread, a message as plain text only (markup stays words), Reply (opens a draft,
+// Tools → Mail (Phase 59) in the built preview, with the Mac's Mail bridge faked: "Where's your mail?" first (Phase 104),
+// nothing is read until a choice is made, iCloud over IMAP with an app password, the inbox in plain words, Unread, a message as plain text only (markup stays words), Reply (opens a draft,
 // sends nothing), Make a sticky with Undo, Ask about this message (the AI on this Mac only, the email quoted as data),
 // search, Esc backing out, and a Mac that said no. Light, then dark.
 // Fails on page errors or a step that didn't happen; screenshots land in test-results/ui/mail/.
@@ -29,7 +29,14 @@ function fakeMail({ denied = false, empty = false, google = false } = {}) {
   window.__asked = []
   const wrap = (message) => new Error(`Error invoking remote method 'mail:x': Error: ${message}`)
   window.osatMail = {
-    status: async () => ({ available: true, gmail: google ? window.__gmail : null }),
+    status: async () => ({ available: true, gmail: google ? window.__gmail : null, imap: window.__imap }),
+    // Any provider over IMAP (Phase 104): the right app password is "app-pass".
+    connectImap: async (sign) => {
+      if (sign.password !== 'app-pass') throw wrap('iCloud didn’t take that password. Use an app-specific password, not your Apple Account password.')
+      window.__imap = { connected: true, provider: sign.provider, email: sign.email, label: 'iCloud Mail' }
+      return window.__imap
+    },
+    disconnectImap: async () => { window.__imap = { connected: false, provider: '', email: '', label: 'Your mail' }; return window.__imap },
     // Gmail signed in directly (Phase 86): Connect Gmail "signs in" at once here; Gmail's ids are hex words.
     connectGmail: async () => { window.__gmail = { ready: true, connected: true, email: 'nate@gmail.com', busy: false }; return window.__gmail },
     disconnectGmail: async () => { window.__gmail = { ready: true, connected: false, email: '', busy: false }; return window.__gmail },
@@ -60,6 +67,7 @@ function fakeMail({ denied = false, empty = false, google = false } = {}) {
   }
   window.__follow = { on: false, busy: false, problem: '', last: null }
   window.__gmail = { ready: true, connected: false, email: '', busy: false }
+  window.__imap = { connected: false, provider: '', email: '', label: 'Your mail' }
   window.osatLocalAI = {
     status: async () => ({ chosen: 'balanced', tiers: [], download: null }),
     onStatus: () => () => {},
@@ -107,10 +115,12 @@ async function main() {
   const browser = await chromium.launch()
   for (const theme of ['light', 'dark']) {
     const page = await openRoom(browser, url, { theme })
-    await page.getByRole('button', { name: 'Allow OSAT to read Mail' }).waitFor({ timeout: 5000 }).catch(() => problems.push(`${theme}: no Allow button`))
-    check(await page.evaluate(() => window.__mail.list) === 0, 'the inbox was read before Allow was pressed')
-    await page.screenshot({ path: `${OUT}/${theme}-allow.png` })
-    await page.getByRole('button', { name: 'Allow OSAT to read Mail' }).click()
+    await page.getByRole('heading', { name: 'Where’s your mail?' }).waitFor({ timeout: 5000 }).catch(() => problems.push(`${theme}: Where’s your mail? wasn’t first`))
+    check(await page.locator('.mail-provider').count() === 5, `${theme}: not five providers to pick`)
+    check(await page.evaluate(() => window.__mail.list) === 0, 'the inbox was read before a choice was made')
+    await sleep(300)
+    await page.screenshot({ path: `${OUT}/${theme}-pick.png` })
+    await page.getByRole('button', { name: 'use the Mail app on this Mac' }).click()
     await page.locator('.mail-list li').first().waitFor({ timeout: 5000 }).catch(() => problems.push(`${theme}: no messages showed`))
     await sleep(300)
     await page.screenshot({ path: `${OUT}/${theme}-inbox.png` })
@@ -137,16 +147,9 @@ async function main() {
     await sleep(100)
     check(await follow.getByRole('button', { name: 'Take them back' }).count() === 0, 'Take them back stayed after taking them back')
 
-    // Gmail: the room says which accounts it reads and offers Gmail; Add Gmail opens Internet Accounts on the Mac,
-    // and coming back to OSAT looks again.
+    // The room says which accounts the Mail app reads, and offers the faster way: straight from the provider.
     await page.locator('.mail-accounts', { hasText: 'Reading iCloud' }).waitFor({ timeout: 3000 }).catch(() => problems.push('the room didn’t say which accounts it reads'))
-    await page.locator('.mail-accounts').getByRole('button', { name: 'Add Gmail' }).click()
-    check(await page.evaluate(() => window.__mail.added) === 1, 'Add Gmail didn’t open Internet Accounts')
-    await page.getByText('Choose Add Account → Google', { exact: false }).first().waitFor({ timeout: 3000 }).catch(() => problems.push('Add Gmail didn’t say what to do in System Settings'))
-    await page.screenshot({ path: `${OUT}/adding-gmail.png` })
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-    await page.locator('.mail-accounts', { hasText: 'Gmail (nate@gmail.com)' }).waitFor({ timeout: 3000 }).catch(() => problems.push('coming back didn’t find Gmail'))
-    check(await page.locator('.mail-accounts').getByRole('button', { name: 'Add Gmail' }).count() === 0, 'Add Gmail stayed once Gmail was there')
+    check(await page.locator('.mail-accounts').getByRole('button', { name: 'Faster: read it straight from your provider' }).count() === 1, 'no way to a faster provider')
     check(await page.locator('.mail-list li').count() === 3, 'the inbox didn’t list three messages')
     check(await page.locator('.mail-list li button.is-unread').count() === 1, 'unread wasn’t marked')
 
@@ -205,13 +208,29 @@ async function main() {
     check(JSON.stringify(await page.evaluate(() => window.__mail.searches)) === '[["invoice",false],["invoice",true]]', 'the searches weren’t asked as expected')
     await page.getByRole('button', { name: 'Clear' }).click()
     await page.waitForFunction(() => document.querySelectorAll('.mail-list li').length === 3, null, { timeout: 3000 }).catch(() => problems.push('Clear didn’t bring the inbox back'))
+
+    // Change to iCloud over IMAP: the form, a wrong password said plainly, then the inbox read straight from iCloud.
+    await page.locator('.mail-accounts').getByRole('button', { name: 'Faster: read it straight from your provider' }).click()
+    await page.locator('.mail-provider', { hasText: 'iCloud' }).click()
+    const form = page.locator('.mail-sign-in')
+    await form.getByLabel('Email address').fill('nate@icloud.com')
+    await form.getByLabel('App password').fill('wrong')
+    await form.getByRole('button', { name: 'Connect' }).click()
+    await form.getByText('Use an app-specific password', { exact: false }).waitFor({ timeout: 3000 }).catch(() => problems.push('a wrong app password wasn’t explained'))
+    await sleep(400)
+    await page.screenshot({ path: `${OUT}/icloud-form.png` })
+    await form.getByLabel('App password').fill('app-pass')
+    await form.getByRole('button', { name: 'Connect' }).click()
+    await page.locator('.mail-accounts', { hasText: 'Reading iCloud Mail (nate@icloud.com)' }).waitFor({ timeout: 3000 }).catch(() => problems.push('the room didn’t say it reads iCloud Mail'))
+    await page.locator('.mail-list li button', { hasText: 'Lunch on Friday?' }).click()
+    await page.getByRole('button', { name: 'Reply' }).click()
+    await page.getByText('Opened in iCloud Mail: reply there.').waitFor({ timeout: 3000 }).catch(() => problems.push('Reply over IMAP didn’t say where it opened'))
     await page.close()
   }
 
   // A Mac whose Mail has no accounts: Add Gmail is the way in, and coming back reads it.
   const empty = await openRoom(browser, url, { theme: 'light', empty: true })
-  await empty.getByText('Add Gmail to this Mac', { exact: false }).first().waitFor({ timeout: 3000 }).catch(() => problems.push('no Gmail hint before Allow'))
-  await empty.getByRole('button', { name: 'Allow OSAT to read Mail' }).click()
+  await empty.getByRole('button', { name: 'use the Mail app on this Mac' }).click()
   await empty.getByRole('heading', { name: 'Add your email' }).waitFor({ timeout: 3000 }).catch(() => problems.push('no accounts wasn’t explained'))
   await empty.screenshot({ path: `${OUT}/no-accounts.png` })
   await empty.locator('.mail-setup-actions').getByRole('button', { name: 'Add Gmail to this Mac' }).click()
@@ -219,17 +238,13 @@ async function main() {
   await empty.locator('.mail-list li').first().waitFor({ timeout: 5000 }).catch(() => problems.push('after adding Gmail the inbox didn’t open'))
   await empty.close()
 
-  // Gmail, signed in directly: Connect Gmail comes first, nothing is read before it, and once connected the room says
-  // which address it reads; Open and Reply go to Gmail; Disconnect goes back to the start.
-  for (const theme of ['light', 'dark']) {
-    const gmail = await openRoom(browser, url, { theme, google: true })
-    await gmail.getByRole('heading', { name: 'Read your Gmail here' }).waitFor({ timeout: 5000 }).catch(() => problems.push(`${theme}: Connect Gmail wasn’t offered first`))
-    check(await gmail.locator('.mail-setup .primary-button').innerText() === 'Connect Gmail', `${theme}: Connect Gmail wasn’t the one primary action`)
-    check(await gmail.evaluate(() => window.__mail.list) === 0, `${theme}: mail was read before Connect Gmail`)
-    await sleep(400) // the room settles in
-    await gmail.screenshot({ path: `${OUT}/${theme}-gmail-connect.png` })
-    if (theme === 'dark') { await gmail.close(); continue }
-    await gmail.getByRole('button', { name: 'Connect Gmail' }).click()
+  // Gmail, signed in directly: picking Gmail signs in with Google (this build can), nothing is read before it, and once
+  // connected the room says which address it reads; Open and Reply go to Gmail; Disconnect goes back to the start.
+  {
+    const gmail = await openRoom(browser, url, { theme: 'light', google: true })
+    await gmail.getByRole('heading', { name: 'Where’s your mail?' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Where’s your mail? wasn’t first with Gmail ready'))
+    check(await gmail.evaluate(() => window.__mail.list) === 0, 'mail was read before Gmail was picked')
+    await gmail.locator('.mail-provider', { hasText: 'Gmail' }).click()
     await gmail.locator('.mail-list li').first().waitFor({ timeout: 5000 }).catch(() => problems.push('Connect Gmail didn’t open the inbox'))
     await gmail.locator('.mail-accounts', { hasText: 'Reading Gmail (nate@gmail.com)' }).waitFor({ timeout: 3000 }).catch(() => problems.push('the room didn’t say it reads Gmail'))
     await gmail.locator('.mail-list li button', { hasText: 'Lunch on Friday?' }).click()
@@ -239,13 +254,13 @@ async function main() {
     check(await gmail.getByRole('button', { name: 'Open in Gmail' }).count() === 1, 'no Open in Gmail')
     await gmail.screenshot({ path: `${OUT}/gmail-inbox.png` })
     await gmail.locator('.mail-accounts').getByRole('button', { name: 'Disconnect' }).click()
-    await gmail.getByRole('heading', { name: 'Read your Gmail here' }).waitFor({ timeout: 3000 }).catch(() => problems.push('Disconnect didn’t go back to Connect Gmail'))
+    await gmail.getByRole('heading', { name: 'Where’s your mail?' }).waitFor({ timeout: 3000 }).catch(() => problems.push('Disconnect didn’t go back to the start'))
     await gmail.close()
   }
 
   // A Mac that says no: calm words and a way forward, not an error.
   const denied = await openRoom(browser, url, { theme: 'light', denied: true })
-  await denied.getByRole('button', { name: 'Allow OSAT to read Mail' }).click()
+  await denied.getByRole('button', { name: 'use the Mail app on this Mac' }).click()
   await denied.getByText('OSAT isn’t allowed to control Mail', { exact: false }).first().waitFor({ timeout: 3000 }).catch(() => problems.push('a refusal wasn’t explained'))
   check(await denied.getByRole('button', { name: 'Try again' }).count() === 1, 'a refusal had no Try again')
   await denied.screenshot({ path: `${OUT}/denied.png` })

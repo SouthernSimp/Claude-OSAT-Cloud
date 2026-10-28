@@ -186,7 +186,7 @@ async function createBank({ dataDir, keychain, fetch, open, sharedModule, readDo
             const ops = model.bankOps(readDoc().budget?.transactions || [], answer, item.bank)
             if (ops.length) commitOps(ops)
             added += ops.filter((op) => op.t === 'add').length
-            if (Array.isArray(answer.accounts) && answer.accounts.length) accounts = answer.accounts.map(model.accountRow)
+            accounts = model.mergeAccounts(accounts, answer.accounts)
             cursor = String(answer.next_cursor || cursor)
             more = answer.has_more === true
           }

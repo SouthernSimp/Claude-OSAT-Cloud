@@ -169,6 +169,16 @@ function Open({ bridge, status, list, setList, onStatus }) {
     } catch (error) { failed(error) }
   }
 
+  /* From Chrome or Apple Passwords (Phase 102): one toast, and Undo takes them all out again. */
+  function imported(result) {
+    setList(result.list)
+    setPanel(null)
+    const count = result.added.length
+    const undo = count ? () => bridge.remove(result.added).then((next) => setList(next.list), failed) : undefined
+    showUndo(`${count ? `Added ${count}` : 'Nothing new to add'}${result.binned ? ' · the file is in the Bin' : ''}`, undo)
+    if (!result.binned) setProblem(`OSAT couldn’t move “${result.name}” to the Bin. Please move it there yourself: it has your passwords in plain words.`)
+  }
+
   return (
     <div className="pw-room" onKeyDownCapture={touch} onPointerDownCapture={touch}>
       <header className="pw-bar">
@@ -201,14 +211,14 @@ function Open({ bridge, status, list, setList, onStatus }) {
               onFailed={failed}
             />
           )}
-          {editing === null && panel === 'more' && <More bridge={bridge} status={status} onStatus={onStatus} onPanel={setPanel} showUndo={showUndo} onFailed={failed} />}
+          {editing === null && panel === 'more' && <More bridge={bridge} status={status} onStatus={onStatus} onPanel={setPanel} showUndo={showUndo} onFailed={failed} onImported={imported} />}
           {editing === null && panel === 'master' && <ChangeMaster bridge={bridge} onDone={() => { setPanel('more'); showUndo('Your master password is changed.') }} onBack={() => setPanel('more')} />}
           {editing === null && panel === 'import' && <ImportBackup bridge={bridge} onDone={(result) => { setList(result.list); setPanel(null); showUndo(result.added ? `Added ${result.added} from the backup.` : 'Everything in that backup is already here.') }} onBack={() => setPanel('more')} />}
           {editing === null && !panel && picked && <Entry key={picked.id} bridge={bridge} entry={picked} onEdit={() => setEditing(picked.id)} onRemove={() => remove(picked)} showUndo={showUndo} onFailed={failed} />}
           {idle && (
             <div className="pw-empty">
               <Key aria-hidden="true" />
-              <p>{list.length ? 'Pick one to see it.' : 'Add the first one with New password.'}</p>
+              <p>{list.length ? 'Pick one to see it.' : 'Add the first one with New password, or bring yours from Chrome or Apple Passwords under More.'}</p>
               <p className="pw-quiet">Locks itself after {status.autoLockMinutes} minutes without use.</p>
             </div>
           )}
@@ -308,10 +318,11 @@ function EntryForm({ bridge, entry, onSaved, onCancel, onFailed }) {
   )
 }
 
-/* ---- More: the lock time, a backup, a new master password ---- */
+/* ---- More: the lock time, a backup, passwords from Chrome or Apple, a new master password ---- */
 
-function More({ bridge, status, onStatus, onPanel, showUndo, onFailed }) {
+function More({ bridge, status, onStatus, onPanel, showUndo, onFailed, onImported }) {
   const backup = () => bridge.exportBackup().then((name) => name && showUndo(`Saved ${name}. It can only be opened with your master password.`), onFailed)
+  const fromExport = () => bridge.importCsv().then((result) => result && onImported(result), onFailed)
   const setLock = (event) => bridge.setAutoLock(Number(event.target.value)).then(onStatus, onFailed)
   return (
     <div className="pw-more">
@@ -321,8 +332,10 @@ function More({ bridge, status, onStatus, onPanel, showUndo, onFailed }) {
       <div className="pw-actions is-stacked">
         <button type="button" className="outline-button" onClick={backup}>Back up…</button>
         <button type="button" className="outline-button" onClick={() => onPanel('import')}>Add from a backup…</button>
+        <button type="button" className="outline-button" onClick={fromExport}>Add from Chrome or Apple Passwords…</button>
         <button type="button" className="outline-button" onClick={() => onPanel('master')}>Change master password…</button>
       </div>
+      <p className="pw-quiet">From Chrome or Apple Passwords, export them first. Chrome: Password Manager → Settings → Export passwords. Apple Passwords: File → Export All Passwords. Once they’re in, the file goes to the Bin.</p>
       <p className="pw-quiet">A backup is an encrypted copy of your passwords. Nothing readable is ever saved, and there’s no plain-text export.</p>
     </div>
   )

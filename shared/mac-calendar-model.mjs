@@ -40,8 +40,12 @@ export function macCalendars(rows) {
       source: text(row.source, 120),
       color: /^#[0-9a-f]{6}$/i.test(row.color || '') ? row.color : '',
       writable: row.writable === true,
+      isDefault: row.isDefault === true,
     }))
 }
+
+/* The calendar the Mac puts new events on, when OSAT may write to it (Phase 103). */
+export const defaultCalendar = (calendars) => calendars.find((calendar) => calendar.isDefault && calendar.writable) || null
 
 /* Events in the room's own shape ({ id, title, start, end, notes }) plus what marks them as the Mac's. */
 export function macEvents(rows, calendars = []) {

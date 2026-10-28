@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
-import { dashboardBoards, dayLine, dayPlan, greeting, monthMoney, openTodos, recentWork } from '../src/today/today-model.js'
+import { dashboardBoards, dayLine, dayPlan, greeting, meetingPrep, quietClients, monthMoney, openTodos, recentWork } from '../src/today/today-model.js'
 
 const NOW = new Date(2026, 9, 19, 9, 0).getTime()
 const iso = (ms) => new Date(ms).toISOString()
@@ -86,6 +86,14 @@ test('dashboard board progress includes branch steps and matches the Board, with
   ])
 })
 
+test('your boards: favorites first (Phase 99), each in board order', () => {
+  const workspace = normalizeWorkspace({ ...createDefaultWorkspace(), folders: [
+    { id: 'a', name: 'A', rank: 1 }, { id: 'b', name: 'B', rank: 2, favorite: true },
+    { id: 'c', name: 'C', rank: 3 }, { id: 'd', name: 'D', rank: 4, favorite: true },
+  ] })
+  assert.deepEqual(dashboardBoards(workspace).map(({ folder }) => folder.name), ['B', 'D', 'A', 'C'])
+})
+
 test('recent work uses edit time, omits deleted notes, journal pages and to-dos, limits to four and leaves source order alone', () => {
   const notes = [
     sticky('old', 'Older', {}, 5 * HOUR),
@@ -99,4 +107,47 @@ test('recent work uses edit time, omits deleted notes, journal pages and to-dos,
   assert.deepEqual(recentWork({ notes }).map((note) => note.id), ['edited', 'latest', 'third', 'fourth'])
   assert.deepEqual(notes.map((note) => note.id), before)
   assert.deepEqual(recentWork({ notes: [] }), [])
+})
+
+test('before a client meeting: the next one not over yet, with when you last met, their to-dos and notes', () => {
+  const at = (h) => new Date(2026, 9, 19, h).toISOString()
+  const day = (d) => new Date(2026, 9, d, 10).toISOString()
+  const prep = normalizeWorkspace({
+    ...createDefaultWorkspace(),
+    folders: [{ id: 'fortis', name: 'Fortis', client: true, createdAt: iso(NOW) }, { id: 'home', name: 'Home', createdAt: iso(NOW) }],
+    notes: [
+      { id: 'call', title: 'Fortis call · Oct 14', markdown: 'Went well.\n\n#meeting', tags: ['meeting'], folderId: 'fortis', source: 'Meeting', createdAt: day(14), updatedAt: day(14) },
+      sticky('deck', 'Send the deck', { what: 'todo', folderId: 'fortis' }),
+      sticky('sam', 'Sam: send the price list', { what: 'todo', folderId: 'fortis' }),
+      sticky('named', 'Ask Fortis about the logo', { what: 'todo', folderId: 'home' }),
+      sticky('other', 'Call the plumber', { what: 'todo', folderId: 'home' }),
+      sticky('lunch', 'Lunch idea: Fortis likes tacos', { folderId: 'home' }, 24 * HOUR),
+    ],
+  })
+  const plan = [
+    { id: 'a', title: 'Fortis standup', start: at(7), end: at(8) },
+    { id: 'b', title: 'Dentist', start: at(10), end: at(11) },
+    { id: 'c', title: 'Fortis kickoff', start: at(14), end: at(15) },
+  ]
+  const ready = meetingPrep(prep, plan, NOW)
+  assert.equal(ready.item.id, 'c', 'the one that is over is skipped, and one not with a client')
+  assert.equal(ready.folder.id, 'fortis')
+  assert.equal(ready.lastMeeting.noteId, 'call')
+  assert.deepEqual(ready.todos.map((item) => item.note.id).sort(), ['deck', 'named', 'sam'])
+  assert.deepEqual(ready.notes.map((item) => item.noteId), ['lunch'])
+  assert.equal(meetingPrep(prep, plan.slice(1, 2), NOW), null)
+  assert.equal(meetingPrep(state, plan, NOW), null, 'no clients, no prep')
+})
+
+test('clients gone quiet: met before, not in three weeks, longest first; never met is left out', () => {
+  const ago = (days) => iso(NOW - days * 24 * HOUR)
+  const met = (id, folderId, days) => ({ id, title: 'Call', markdown: 'Call\n\n#meeting', tags: ['meeting'], folderId, createdAt: ago(days), updatedAt: ago(days) })
+  const quiet = normalizeWorkspace({
+    ...createDefaultWorkspace(),
+    folders: ['acme', 'fortis', 'new', 'home'].map((id) => ({ id, name: id, client: id !== 'home', createdAt: iso(NOW) })),
+    notes: [met('a', 'acme', 40), met('f', 'fortis', 25), met('h', 'home', 90), met('f2', 'fortis', 30)],
+  })
+  assert.deepEqual(quietClients(quiet, NOW).map(({ folder }) => folder.id), ['acme', 'fortis'])
+  const fresh = { ...quiet, notes: [...quiet.notes, met('f3', 'fortis', 2)] }
+  assert.deepEqual(quietClients(fresh, NOW).map(({ folder }) => folder.id), ['acme'])
 })

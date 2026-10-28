@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowBendUpLeft, ArrowClockwise, ArrowSquareOut, CaretLeft, EnvelopeSimple, GoogleLogo, MagnifyingGlass, NotePencil, Sparkle, Warning } from '@phosphor-icons/react'
+import { AppleLogo, ArrowBendUpLeft, ArrowClockwise, ArrowSquareOut, At, CaretLeft, EnvelopeSimple, GoogleLogo, MagnifyingGlass, MicrosoftOutlookLogo, NotePencil, Sparkle, Warning } from '@phosphor-icons/react'
 
 import { cleanError } from '../assistant/useAi.js'
 import { useUndoToast } from '../lib/UndoToast.jsx'
@@ -7,6 +7,7 @@ import { askLocalModel } from '../local-ai.js'
 import { addSticky } from '../nodes-model.js'
 import { purgeNotes } from '../notes-model.js'
 import { NOT_ALLOWED, NOT_SET_UP, askMessages, cleanQuery, dateLabel, fullDate, stickyText } from '../../shared/mail-model.mjs'
+import { PROVIDERS, providerFor } from '../../shared/imap-model.mjs'
 import { Switch } from './settings/parts.jsx'
 import '../styles/mail.css'
 
@@ -14,17 +15,18 @@ const ALLOWED_KEY = 'osat.mail.allowed.v1'
 const wasAllowed = () => { try { return localStorage.getItem(ALLOWED_KEY) === '1' } catch { return false } }
 const keepAllowed = (on) => { try { on ? localStorage.setItem(ALLOWED_KEY, '1') : localStorage.removeItem(ALLOWED_KEY) } catch { /* the button just shows again */ } }
 
-/* Tools → Mail (Phase 59, desktop/mac-mail.cjs): your inbox, read through the Mail app on this Mac, or (Phase 86,
-   desktop/gmail.cjs) Gmail signed in directly, which comes first when this build can. Plain text only: a message is
+/* Tools → Mail (Phase 59, desktop/mac-mail.cjs): your inbox, read through the Mail app on this Mac, (Phase 86,
+   desktop/gmail.cjs) Gmail signed in directly when this build can, or (Phase 104, desktop/imap-mail.cjs) any provider
+   over IMAP with an app password. A new person picks first ("Where's your mail?"); Change brings the choice back. Plain text only: a message is
    never drawn as a page, and nothing in it is loaded or opened. Reply starts a draft in Mail, or opens the message in
    Gmail; nothing is sent. Only in the Mac app. */
-export function MailView({ commit }) {
+export function MailView({ commit, target }) {
   const bridge = window.osatMail
   if (!bridge) return <p className="pop-gone">Your inbox shows here in OSAT on your Mac.</p>
-  return <MailRoom bridge={bridge} commit={commit} />
+  return <MailRoom bridge={bridge} commit={commit} target={target} />
 }
 
-function MailRoom({ bridge, commit }) {
+function MailRoom({ bridge, commit, target }) {
   const [available, setAvailable] = useState(null)
   // 'notAsked' until the button is pressed once on this Mac; then 'allowed', or why not.
   const [access, setAccess] = useState(() => (wasAllowed() ? 'allowed' : 'notAsked'))
@@ -47,6 +49,13 @@ function MailRoom({ bridge, commit }) {
   // Gmail signed in directly (Phase 86): { ready, connected, email, busy }. Connected, it is what the room reads.
   const [gmail, setGmail] = useState(null)
   const google = gmail?.connected === true
+  // Any provider over IMAP (Phase 104): { connected, provider, email, label }. `picking` is the "Where's your mail?"
+  // screen: null, true (the choices) or a provider being signed in to.
+  const [imap, setImap] = useState(null)
+  const [picking, setPicking] = useState(null)
+  const direct = google || imap?.connected === true
+  // Settings → Mail and calendar → Change… opens the room on the choices.
+  useEffect(() => { if (target?.pick) setPicking(true) }, [target?.pick, target?.at])
 
   // Why Mail can't be read becomes a state of the room, not an error to dismiss.
   const explain = useCallback((error) => {
@@ -78,8 +87,9 @@ function MailRoom({ bridge, commit }) {
   useEffect(() => {
     bridge.status().then((next) => {
       setGmail(next?.gmail || null)
-      setAvailable(next?.available === true || next?.gmail?.ready === true)
-      if (next?.gmail?.connected) { setAccess('allowed'); load() }
+      setImap(next?.imap || null)
+      setAvailable(next?.available === true || next?.gmail?.ready === true || Boolean(next?.imap))
+      if (next?.gmail?.connected || next?.imap?.connected) { setAccess('allowed'); load() }
       else if (next?.available === true && wasAllowed()) { load(); lookAtAccounts() }
     }, () => setAvailable(false))
     return bridge.onGmail?.(setGmail)
@@ -91,13 +101,42 @@ function MailRoom({ bridge, commit }) {
     try {
       const next = await bridge.connectGmail()
       setGmail(next)
-      if (next?.connected) { setAccess('allowed'); setSelected(null); await load() }
+      if (next?.connected) {
+        if (imap?.connected) setImap(await bridge.disconnectImap())
+        setPicking(null); setAccess('allowed'); setSelected(null); await load()
+      }
     } catch (error) {
       setProblem(cleanError(error))
     } finally {
       setBusy(false)
     }
   }
+  // The mail server said yes: the room reads it from now on (Gmail signed in directly steps aside, one at a time).
+  async function connectedImap(next) {
+    setImap(next)
+    if (google) setGmail(await bridge.disconnectGmail())
+    setPicking(null)
+    setAccess('allowed')
+    setSelected(null)
+    setRows(null)
+    await load()
+  }
+  // The Mail app on this Mac: anything read directly steps aside, then the Mac is asked as before.
+  async function readMailApp() {
+    setPicking(null)
+    if (google) setGmail(await bridge.disconnectGmail())
+    if (imap?.connected) setImap(await bridge.disconnectImap())
+    setRows(null)
+    setSelected(null)
+    await allow()
+  }
+  function pick(choice) {
+    setProblem('')
+    if (choice === 'mac') return readMailApp()
+    if (choice === 'gmail' && gmail?.ready) return connectGmail()
+    setPicking(choice)
+  }
+
   async function disconnectGmail() {
     setProblem('')
     try {
@@ -181,9 +220,9 @@ function MailRoom({ bridge, commit }) {
     setProblem('')
     try { await work(); setSaid(done) } catch (error) { setProblem(cleanError(error)) }
   }
-  const reply = act(() => bridge.reply(message.id), google ? 'Opened in Gmail: reply there.' : 'A reply is open in Mail. Nothing has been sent.')
-  const openInMail = act(() => bridge.open(message.id), google ? 'Opened in Gmail.' : 'Opened in Mail.')
-  const where = google ? 'Gmail' : 'Mail'
+  const where = google ? 'Gmail' : imap?.connected ? imap.label : 'Mail'
+  const reply = act(() => bridge.reply(message.id), direct ? `Opened in ${where}: reply there.` : 'A reply is open in Mail. Nothing has been sent.')
+  const openInMail = act(() => bridge.open(message.id), `Opened in ${where}.`)
 
   function makeSticky() {
     const text = stickyText(message)
@@ -234,18 +273,27 @@ function MailRoom({ bridge, commit }) {
   const shown = useMemo(() => (rows || []).filter((row) => filter === 'all' || row.unread), [rows, filter])
 
   if (available === null) return <p className="pop-gone">Looking for Mail…</p>
-  // Gmail can be connected here: it comes first, with the Mail app as the other way.
-  if (gmail?.ready && !google && access !== 'allowed') {
+  // "Where's your mail?": the first screen for a new person, and what Change brings back.
+  if (picking === true || (!direct && access === 'notAsked' && picking === null)) {
+    return <ProviderPicker gmailBusy={busy || gmail?.busy} macMail={available} problem={problem} onPick={pick} onBack={direct || access === 'allowed' ? () => setPicking(null) : null} />
+  }
+  if (picking === 'outlook') {
     return (
       <div className="mail-setup">
-        <GoogleLogo weight="bold" aria-hidden="true" />
-        <h2>Read your Gmail here</h2>
-        <p>Sign in with Google in your browser and OSAT shows your inbox, finds any email and turns what it asks of you into to-dos. Read only: OSAT never sends, deletes or marks anything.</p>
-        <button type="button" className="primary-button" disabled={busy || gmail.busy} onClick={connectGmail}><GoogleLogo weight="bold" /> {busy || gmail.busy ? 'Finish signing in in your browser…' : 'Connect Gmail'}</button>
-        {problem && <p className="mail-said is-problem" role="alert"><Warning /> {problem}</p>}
-        {available && <p className="mail-quiet">Another kind of email? <button type="button" className="mail-link" disabled={busy} onClick={allow}>Read the Mail app on this Mac instead</button></p>}
+        <MicrosoftOutlookLogo aria-hidden="true" />
+        <h2>Outlook signs in through your Mac</h2>
+        <p>Microsoft only lets apps it has approved read Outlook directly, so OSAT reads it through the Mail app: add your Outlook account to the Mac once, then allow OSAT to read Mail.</p>
+        <div className="mail-setup-actions">
+          <button type="button" className="outline-button" onClick={addGmail}>1. Add Outlook to this Mac</button>
+          <button type="button" className="primary-button" disabled={busy} onClick={readMailApp}>{busy ? 'Waiting for your Mac…' : '2. Allow OSAT to read Mail'}</button>
+        </div>
+        {adding && <p className="mail-said" role="status">System Settings is open on Internet Accounts. Choose Microsoft Exchange (or Outlook.com), sign in, and leave Mail turned on. Then come back here.</p>}
+        <p className="mail-quiet"><button type="button" className="mail-link" onClick={() => setPicking(true)}>Pick another</button></p>
       </div>
     )
+  }
+  if (picking) {
+    return <ImapForm key={picking} bridge={bridge} provider={picking} onDone={connectedImap} onBack={() => setPicking(true)} />
   }
   if (!available) {
     return (
@@ -265,8 +313,7 @@ function MailRoom({ bridge, commit }) {
             <h2>Read your email here</h2>
             <p>OSAT reads your inbox through the Mail app on this Mac, where your accounts are already signed in. It never sends anything and never keeps a password.</p>
             <button type="button" className="primary-button" disabled={busy} onClick={allow}>{busy ? 'Waiting for your Mac…' : 'Allow OSAT to read Mail'}</button>
-            <p className="mail-quiet">Your Mac asks once.</p>
-            <GmailHint adding={adding} onAdd={addGmail} />
+            <p className="mail-quiet">Your Mac asks once. <button type="button" className="mail-link" onClick={() => setPicking(true)}>Pick another way</button></p>
           </>
         )}
         {access === 'denied' && (
@@ -274,6 +321,7 @@ function MailRoom({ bridge, commit }) {
             <h2>Mail needs your OK</h2>
             <p>{NOT_ALLOWED}</p>
             <button type="button" className="primary-button" disabled={busy} onClick={allow}>Try again</button>
+            <p className="mail-quiet"><button type="button" className="mail-link" onClick={() => setPicking(true)}>Read it straight from Gmail, iCloud or another provider instead</button></p>
           </>
         )}
         {access === 'noAccounts' && (
@@ -309,16 +357,18 @@ function MailRoom({ bridge, commit }) {
         </div>
         {google && (
           <p className="mail-quiet mail-accounts">
-            Reading Gmail{gmail.email ? ` (${gmail.email})` : ''} · <button type="button" className="mail-link" onClick={disconnectGmail}>Disconnect</button>
+            Reading Gmail{gmail.email ? ` (${gmail.email})` : ''} · <button type="button" className="mail-link" onClick={() => setPicking(true)}>Change</button> · <button type="button" className="mail-link" onClick={disconnectGmail}>Disconnect</button>
           </p>
         )}
-        {!google && gmail?.ready && (
-          <p className="mail-quiet mail-accounts">Gmail is quicker signed in directly · <button type="button" className="mail-link" disabled={busy} onClick={connectGmail}>Connect Gmail</button></p>
-        )}
-        {accounts && !google && (
+        {!google && imap?.connected && (
           <p className="mail-quiet mail-accounts">
-            {accounts.length ? <>Reading {accounts.map((account) => account.gmail ? `Gmail${account.address ? ` (${account.address})` : ''}` : account.name).join(', ')}</> : 'No account is turned on in Mail.'}
-            {!accounts.some((account) => account.gmail) && <> · <button type="button" className="mail-link" onClick={addGmail}>Add Gmail</button></>}
+            Reading {imap.label} ({imap.email}) · <button type="button" className="mail-link" onClick={() => setPicking(true)}>Change</button>
+          </p>
+        )}
+        {accounts && !direct && (
+          <p className="mail-quiet mail-accounts">
+            {accounts.length ? <>Reading {accounts.map((account) => account.gmail ? `Gmail${account.address ? ` (${account.address})` : ''}` : account.name).join(', ')} in the Mail app</> : 'No account is turned on in Mail.'}
+            {' · '}<button type="button" className="mail-link" onClick={() => setPicking(true)}>Faster: read it straight from your provider</button>
           </p>
         )}
         {adding && <p className="mail-said" role="status">{ADDING}</p>}
@@ -330,7 +380,7 @@ function MailRoom({ bridge, commit }) {
             {' · '}<button type="button" className="mail-link" onClick={clearSearch}>Clear</button>
           </p>
         )}
-        {rows === null && !problem && <p className="mail-quiet">{loading ? (google ? 'Looking in Gmail…' : 'Looking in Mail… the first time can take a moment.') : ''}</p>}
+        {rows === null && !problem && <p className="mail-quiet">{loading ? (direct ? `Looking in ${where}…` : 'Looking in Mail… the first time can take a moment.') : ''}</p>}
         <ul>
           {shown.map((row) => (
             <li key={row.id}>
@@ -431,9 +481,75 @@ function AskBox({ asking, onAsk, onClose }) {
 
 const ADDING = 'System Settings is open on Internet Accounts. Choose Add Account → Google, sign in, and leave Mail turned on (Calendars too, for your Google Calendar). Then come back here: OSAT looks again.'
 
-/* Before Mail is allowed: Gmail is one sign-in on the Mac away. */
-function GmailHint({ adding, onAdd }) {
-  return adding
-    ? <p className="mail-said" role="status">{ADDING}</p>
-    : <p className="mail-quiet">Use Gmail? <button type="button" className="mail-link" onClick={onAdd}>Add Gmail to this Mac</button>. One sign-in brings your Google Calendar too.</p>
+const CHOICES = [
+  { id: 'gmail', label: 'Gmail', Icon: GoogleLogo },
+  { id: 'icloud', label: 'iCloud', Icon: AppleLogo },
+  { id: 'outlook', label: 'Outlook', Icon: MicrosoftOutlookLogo },
+  { id: 'yahoo', label: 'Yahoo', Icon: At },
+  { id: 'other', label: 'Other', Icon: EnvelopeSimple },
+]
+
+/* Where's your mail? (Phase 104) The provider first, like Mail and Spark ask; the Mail app on this Mac stays a choice. */
+function ProviderPicker({ gmailBusy, macMail, problem, onPick, onBack }) {
+  return (
+    <div className="mail-setup">
+      <EnvelopeSimple aria-hidden="true" />
+      <h2>Where’s your mail?</h2>
+      <p>OSAT shows your inbox, finds any email and turns what it asks of you into to-dos. Read only: it never sends, deletes or marks anything.</p>
+      <div className="mail-providers" role="group" aria-label="Where your mail is">
+        {CHOICES.map(({ id, label, Icon }) => (
+          <button key={id} type="button" className="mail-provider" disabled={id === 'gmail' && gmailBusy} onClick={() => onPick(id)}>
+            <Icon weight="bold" aria-hidden="true" /><span>{id === 'gmail' && gmailBusy ? 'Finish in your browser…' : label}</span>
+          </button>
+        ))}
+      </div>
+      {macMail && <p className="mail-quiet">Or <button type="button" className="mail-link" onClick={() => onPick('mac')}>use the Mail app on this Mac</button>, with the accounts it already has.</p>}
+      {problem && <p className="mail-said is-problem" role="alert"><Warning /> {problem}</p>}
+      {onBack && <p className="mail-quiet"><button type="button" className="mail-link" onClick={onBack}>Back to your inbox</button></p>}
+    </div>
+  )
+}
+
+/* Signing in with an app password: the provider's own page makes one, and OSAT checks it with the server before
+   keeping it in the Keychain. */
+function ImapForm({ bridge, provider, onDone, onBack }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [host, setHost] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState('')
+  const kind = PROVIDERS[provider] || PROVIDERS.other
+  const openHelp = () => window.osatSearch?.openLink?.(kind.help).catch(() => {})
+  async function submit(event) {
+    event.preventDefault()
+    setBusy(true)
+    setProblem('')
+    try {
+      // An address typed under Other that belongs to a known provider signs in there.
+      const which = provider === 'other' && providerFor(email) !== 'other' ? providerFor(email) : provider
+      onDone(await bridge.connectImap({ provider: which, email, password, host }))
+    } catch (error) {
+      setProblem(cleanError(error))
+      setBusy(false)
+    }
+  }
+  return (
+    <form className="mail-setup mail-sign-in" onSubmit={submit}>
+      <EnvelopeSimple aria-hidden="true" />
+      <h2>{provider === 'other' ? 'Your mail' : kind.label}</h2>
+      <p>{provider === 'other'
+        ? 'Any mail that offers IMAP works. Use the address and password your provider gives mail apps.'
+        : `${kind.label} asks apps like OSAT for an app password, not your usual one. It takes a minute to make, and you can take it back any time.`}</p>
+      {kind.help && <button type="button" className="mail-link" onClick={openHelp}>{kind.helpLabel} ↗</button>}
+      <label>Email address<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+      <label>App password<input type="password" autoComplete="off" required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+      {provider === 'other' && <label>Mail server<input placeholder="imap.example.com" required value={host} onChange={(event) => setHost(event.target.value)} /></label>}
+      {problem && <p className="mail-said is-problem" role="alert"><Warning /> {problem}</p>}
+      <div className="mail-setup-actions">
+        <button type="button" className="outline-button" onClick={onBack}>Back</button>
+        <button type="submit" className="primary-button" disabled={busy}>{busy ? 'Checking…' : 'Connect'}</button>
+      </div>
+      <p className="mail-quiet">The password stays in this Mac’s Keychain. OSAT only reads your inbox.</p>
+    </form>
+  )
 }

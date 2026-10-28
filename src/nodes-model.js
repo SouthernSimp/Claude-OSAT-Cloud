@@ -5,7 +5,7 @@
 
 import { freeNodeName, nodeRecords, nodeTree } from '../shared/node-file.mjs'
 import { rankOf } from './note-core.js'
-import { canMoveFolder, createFolder, createNote, deleteFolder, folderChildren, folderSubtree, isActiveNote, uid } from './notes-model.js'
+import { canMoveFolder, createFolder, createNote, deleteFolder, folderChildren, folderPath, folderSubtree, isActiveNote, uid } from './notes-model.js'
 
 export { rankOf }
 
@@ -240,8 +240,25 @@ export function splitMentions(text, folders, refs) {
   return parts
 }
 
-/* After a note is written, it remembers which node each of its @s means (by id). That
-   is all an @ does: nothing moves and nothing is made. */
+/* What "@" offers as it is typed (the Notes editor and the bar): boards first, then branches, the closest match
+   first. `value` is what goes after the @ ("Fortis/Invoices"). */
+export function mentionPicks(folders, query) {
+  const low = String(query || '').toLowerCase()
+  const at = (path) => path.join('/').toLowerCase().indexOf(low)
+  return folders.map((folder) => [folder, folderPath(folders, folder.id)]).filter(([, path]) => at(path) >= 0)
+    .sort(([, a], [, b]) => a.length - b.length || at(a) - at(b)).slice(0, 8)
+    .map(([folder, path]) => ({ value: path.join('/'), label: path.join(' › '), hint: path.length > 1 ? 'Branch' : folder.client ? 'Client' : 'Board' }))
+}
+
+/* The one board or branch the @s in `text` name, else null (two of them, a typo, an email or no @). */
+export function homeOf(text, folders) {
+  const named = new Set(findMentions(text, folders).map((mention) => mention.folderId))
+  return named.size === 1 ? [...named][0] : null
+}
+
+/* After a note is written, it remembers which board each of its @s means (by id), and that is all an @ does
+   there: nothing moves and nothing is made. Since Phase 98 the bar and the quick bar save a sticky that names
+   exactly one board or branch straight onto it (homeOf); a note written in Notes still only links. */
 export function linkMentions(state, noteId) {
   const note = state.notes.find((item) => item.id === noteId)
   if (!note) return state

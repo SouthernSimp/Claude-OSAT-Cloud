@@ -66,6 +66,8 @@ const WAITS = [
   [/^github:/, 'GitHub waits until you’re back online.'],
   // Gmail signed in directly: connecting goes to Google (reading says so on its own, through main's fetch).
   [/^gmail:connect$/, 'Connecting Gmail waits until you’re back online.'],
+  // Mail over IMAP: connecting signs in to the provider (reading refuses offline in imap-mail.cjs itself).
+  [/^imap:connect$/, 'Connecting your mail waits until you’re back online.'],
   // Banks in Money (Plaid): checking the keys, connecting a bank and syncing all go to Plaid.
   [/^bank:(keys|connect|sync)$/, 'Your bank waits until you’re back online.'],
 ]

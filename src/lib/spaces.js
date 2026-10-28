@@ -1,5 +1,5 @@
 import {
-  BookOpenText, CalendarBlank, CheckCircle, CurrencyDollar, EnvelopeSimple, Files, GearSix, GithubLogo, Globe, Key, Kanban, ListChecks,
+  BookOpenText, CalendarBlank, CheckCircle, CurrencyDollar, EnvelopeSimple, Files, Gauge, GearSix, GithubLogo, Globe, Key, Kanban, ListChecks,
   MapTrifold, Microphone, Shapes, MusicNotes, NotePencil, Sparkle, Stack, Sun, Target, TerminalWindow, Tray, UploadSimple,
 } from '@phosphor-icons/react'
 
@@ -31,6 +31,7 @@ export const TOOLS = [
   { id: 'Terminal', tint: 'graphite', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
   { id: 'GitHub', tint: 'graphite', label: 'GitHub', icon: GithubLogo, hint: 'Your repositories: what waits for you, and Merge' },
   { id: 'Passwords', tint: 'slate', label: 'Passwords', icon: Key, hint: 'Locked until you unlock them with your master password' },
+  { id: 'Activity', tint: 'green', label: 'Activity', icon: Gauge, hint: 'Memory, processor, disk and the apps using the most' },
   { id: 'Roadmap', tint: 'indigo', label: 'Roadmap', icon: MapTrifold, hint: 'What’s new, what’s coming next, and where OSAT is going' },
   { id: 'Pile', tint: 'orange', label: 'Sort a pile', icon: Stack, hint: 'Toss a pile of stickies down, group them, send them to a board' },
 ]
@@ -40,7 +41,7 @@ export const GROUPS = [
   { name: 'Business', items: ['Meetings', 'Mail'] },
   { name: 'Life', items: ['Habits', 'Goals', 'Budget', 'Journal'] },
   { name: 'Library', items: ['Notes', 'Files'] },
-  { name: 'Power tools', fold: true, items: ['Browser', 'Terminal', 'GitHub', 'Passwords', 'Roadmap'] },
+  { name: 'Power tools', fold: true, items: ['Browser', 'Terminal', 'GitHub', 'Passwords', 'Activity', 'Roadmap'] },
 ]
 
 export const SETTINGS = { id: 'Settings', tint: 'graphite', label: 'Settings', icon: GearSix, hint: 'AI, connections, keys, appearance' }

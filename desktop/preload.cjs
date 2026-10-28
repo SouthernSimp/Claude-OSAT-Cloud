@@ -97,6 +97,12 @@ contextBridge.exposeInMainWorld('osatAgent', Object.freeze({
   apps: () => ipcRenderer.invoke('agent:apps'),
 }))
 
+// Power tools → Activity (desktop/activity.cjs): memory, processor, disk, specs and the apps using the most.
+contextBridge.exposeInMainWorld('osatActivity', Object.freeze({
+  now: () => ipcRenderer.invoke('activity:now'),
+  quit: (appPath, force) => ipcRenderer.invoke('activity:quit', appPath, force === true),
+}))
+
 // Tools → GitHub (desktop/github.cjs): repos and pull requests through the gh on this Mac.
 contextBridge.exposeInMainWorld('osatGitHub', Object.freeze({
   status: () => ipcRenderer.invoke('github:status'),
@@ -128,6 +134,10 @@ contextBridge.exposeInMainWorld('osatMail', Object.freeze({
   connectGmail: () => ipcRenderer.invoke('gmail:connect'),
   disconnectGmail: () => ipcRenderer.invoke('gmail:disconnect'),
   onGmail: (listener) => listen('gmail:changed', listener),
+  // Any provider over IMAP (desktop/imap-mail.cjs, Phase 104): the app password goes to main once, then the Keychain.
+  imap: () => ipcRenderer.invoke('imap:status'),
+  connectImap: (signIn) => ipcRenderer.invoke('imap:connect', signIn),
+  disconnectImap: () => ipcRenderer.invoke('imap:disconnect'),
 }))
 
 // Money's banks (desktop/bank.cjs, Phase 87): Plaid keys and bank tokens stay in main and the Keychain.
@@ -143,7 +153,7 @@ contextBridge.exposeInMainWorld('osatBank', Object.freeze({
 }))
 
 // Tools → Passwords (desktop/passwords.cjs): locked until the master password. The window gets titles and usernames;
-// a password comes only from reveal (shown for ten seconds) or copy (done in main).
+// a password comes only from reveal (shown for ten seconds); copy and a fill in Web are done in main.
 contextBridge.exposeInMainWorld('osatPasswords', Object.freeze({
   status: () => ipcRenderer.invoke('passwords:status'),
   create: (password, again) => ipcRenderer.invoke('passwords:create', password, again),
@@ -162,6 +172,10 @@ contextBridge.exposeInMainWorld('osatPasswords', Object.freeze({
   exportBackup: () => ipcRenderer.invoke('passwords:export'),
   pickBackup: () => ipcRenderer.invoke('passwords:import-pick'),
   importBackup: (password) => ipcRenderer.invoke('passwords:import', password),
+  importCsv: () => ipcRenderer.invoke('passwords:import-csv'),
+  // The Web room (Phase 102): the logins for main's own front tab, and a fill that main hands straight to that tab.
+  logins: () => ipcRenderer.invoke('passwords:logins'),
+  fill: (id) => ipcRenderer.invoke('passwords:fill', id),
   onLocked: (listener) => listen('passwords:locked', listener),
 }))
 

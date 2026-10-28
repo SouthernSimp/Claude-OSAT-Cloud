@@ -174,6 +174,7 @@ async function light(page) {
 
   // Right-click: what it is.
   await card(page, 'Boards replace topics').click({ button: 'right' })
+  check(await page.getByRole('menuitem', { name: /Break it down/ }).count() === 1, 'right-click on one sticky didn’t offer Break it down')
   await page.getByRole('menuitem', { name: 'What it is' }).click()
   await page.getByRole('menuitem', { name: 'Question', exact: true }).click()
   await sleep(200)
@@ -195,7 +196,97 @@ async function light(page) {
   await page.getByRole('tab', { name: 'List' }).click()
   check(await page.locator('.boards-list-row').count() === 7, `the List didn’t show the board’s seven stickies (${await page.locator('.boards-list-row').count()})`)
   await page.screenshot({ path: `${OUT}/light-list.png` })
+  // Picking in the List (Phase 97): ⌘-click (Ctrl elsewhere) picks rows; picks belong to one view.
+  const bar = page.getByRole('toolbar', { name: 'Picked stickies' })
+  const barSays = () => bar.locator('span').innerText().catch(() => '')
+  await page.locator('.boards-list-row', { hasText: 'Ship the DMG' }).click({ modifiers: ['ControlOrMeta'] })
+  await page.locator('.boards-list-row', { hasText: 'Every line leaves' }).click({ modifiers: ['ControlOrMeta'] })
+  check(await barSays() === '2 picked', `two ⌘-clicked rows in the List weren’t picked (${await barSays()})`)
+  check(await page.getByRole('textbox', { name: 'Sticky', exact: true }).count() === 0, 'a ⌘-click in the List opened a sticky')
   await page.getByRole('tab', { name: 'Map' }).click()
+  check(await bar.count() === 0, 'picks from the List stayed on the Map')
+
+  // Picking on the Map: ⌘-click picks without opening, and one bar holds them.
+  await card(page, 'A kanban view').click({ modifiers: ['ControlOrMeta'] })
+  await card(page, 'Every line leaves one point').click({ modifiers: ['ControlOrMeta'] })
+  check(await page.getByRole('textbox', { name: 'Sticky', exact: true }).count() === 0, 'a ⌘-click opened a sticky to write in')
+  check(await barSays() === '2 picked', `two ⌘-clicked stickies didn’t show “2 picked” (${await barSays()})`)
+  check(await card(page, 'A kanban view').getAttribute('aria-label') === 'A kanban view for what is to be done, picked', 'a picked card didn’t say so')
+  await page.mouse.move(700, 600)
+  await sleep(300)
+  await page.screenshot({ path: `${OUT}/light-picked.png` })
+  // Right-click on a picked one is for both: no Edit or Open in Notes, but Merge. Esc closes the menu, then lets go.
+  await card(page, 'A kanban view').click({ button: 'right' })
+  check(await page.getByRole('menuitem', { name: 'Edit' }).count() === 0 && await page.getByRole('menuitem', { name: 'Open in Notes' }).count() === 0, 'right-click on a picked sticky offered Edit')
+  check(await page.getByRole('menuitem', { name: 'Merge' }).count() === 1, 'right-click on a picked sticky didn’t offer Merge')
+  await page.keyboard.press('Escape')
+  check(await barSays() === '2 picked', 'closing the menu let go of the picks')
+  await page.keyboard.press('Escape')
+  check(await bar.count() === 0, 'Esc didn’t let go of the picks')
+  check(await page.locator('.boards').count() === 1, 'Esc left the board while stickies were picked')
+  // ⇧-click picks the run from the last one picked, in the order they show (Ideas, then Questions…).
+  await card(page, 'A kanban view').click({ modifiers: ['ControlOrMeta'] })
+  await card(page, 'Should the Map show lines').click({ modifiers: ['Shift'] })
+  check(await barSays() === '4 picked', `⇧-click didn’t pick the run (${await barSays()})`)
+  check(await page.evaluate(() => String(getSelection())) === '', '⇧-click left words picked')
+  await page.keyboard.press('Escape')
+  // Space picks the sticky in focus, and lets it go; ⌘A picks every sticky shown.
+  await card(page, 'Every line leaves one point').focus()
+  await page.keyboard.press('Space')
+  check(await barSays() === '1 picked', 'Space didn’t pick the sticky in focus')
+  await page.keyboard.press('Space')
+  check(await bar.count() === 0, 'Space again didn’t let it go')
+  await page.keyboard.press('ControlOrMeta+a')
+  check(await barSays() === `${await page.locator('.boards-card').count()} picked`, `⌘A didn’t pick every sticky shown (${await barSays()})`)
+  await page.keyboard.press('Escape')
+
+  // Move to… takes both, the toast says how many, and one Undo brings both back (the branch's one to its branch).
+  await card(page, 'A kanban view').click({ modifiers: ['ControlOrMeta'] })
+  await card(page, 'Every line leaves one point').click({ modifiers: ['ControlOrMeta'] })
+  await bar.getByRole('button', { name: /Move to/ }).click()
+  await page.getByRole('menuitem', { name: 'Fortis', exact: true }).click()
+  await sleep(200)
+  check((await stored(page, 'n2')).folderId === 'fortis' && (await stored(page, 'n4')).folderId === 'fortis', 'Move to… didn’t move both picked stickies')
+  check((await page.locator('.toast').innerText()).includes('Moved 2 to Fortis'), 'the toast didn’t say how many moved')
+  check(await bar.count() === 0, 'the bar stayed after the picked stickies were moved')
+  await page.locator('.toast').getByRole('button', { name: 'Undo', exact: true }).click()
+  await sleep(200)
+  check((await stored(page, 'n2')).folderId === 'osat-canvas' && (await stored(page, 'n4')).folderId === 'osat', 'one Undo didn’t bring both back')
+
+  // Merge: the older one keeps both sets of words, the other goes to the Bin; one Undo brings both back.
+  await card(page, 'Do boards need colours?').click({ modifiers: ['ControlOrMeta'] })
+  await card(page, 'Should the Map show lines').click({ modifiers: ['ControlOrMeta'] })
+  await bar.getByRole('button', { name: 'Merge' }).click()
+  await sleep(200)
+  check((await stored(page, 'n3')).markdown === 'Should the Map show lines between related stickies?\n\nDo boards need colours?' && Boolean((await stored(page, written.id)).trashedAt), 'Merge didn’t put both in the older sticky')
+  check(await card(page, 'Do boards need colours?').count() === 1 && await page.locator('.boards-card').count() === 6, 'the merged one stayed on the board')
+  await page.locator('.toast').getByRole('button', { name: 'Undo', exact: true }).click()
+  await sleep(200)
+  check(!(await stored(page, written.id)).trashedAt && (await stored(page, 'n3')).markdown === 'Should the Map show lines between related stickies?', 'Undo didn’t bring both back')
+
+  // Delete takes the picked ones to the Trash, with one Undo.
+  await card(page, 'Do boards need colours?').click({ modifiers: ['ControlOrMeta'] })
+  await card(page, 'A kanban view').click({ modifiers: ['ControlOrMeta'] })
+  await bar.getByRole('button', { name: 'Delete' }).click()
+  await sleep(200)
+  check(Boolean((await stored(page, written.id)).trashedAt) && Boolean((await stored(page, 'n2')).trashedAt), 'Delete didn’t take both to the Trash')
+  await page.locator('.toast').getByRole('button', { name: 'Undo', exact: true }).click()
+  await sleep(200)
+  check(!(await stored(page, written.id)).trashedAt && !(await stored(page, 'n2')).trashedAt, 'Undo didn’t bring both back from the Trash')
+
+  // Carrying a picked one carries them all: onto Fortis in the sidebar, both go.
+  await card(page, 'A kanban view').click({ modifiers: ['ControlOrMeta'] })
+  await card(page, 'Every line leaves one point').click({ modifiers: ['ControlOrMeta'] })
+  await carry(page, card(page, 'A kanban view'), side(page, 'Fortis'))
+  check((await stored(page, 'n2')).folderId === 'fortis' && (await stored(page, 'n4')).folderId === 'fortis', 'carrying a picked sticky didn’t carry the other')
+  check((await page.locator('.toast').innerText()).includes('Moved 2 to Fortis'), 'the sidebar’s toast didn’t say how many')
+  check(await bar.count() === 0, 'the bar stayed after the picked stickies left')
+  await page.locator('.toast').getByRole('button', { name: 'Undo', exact: true }).click()
+  await sleep(200)
+  check((await stored(page, 'n2')).folderId === 'osat-canvas' && (await stored(page, 'n4')).folderId === 'osat', 'Undo didn’t bring both back from Fortis')
+  // The sidebar's Undo brings them back still picked (as the Mac's Finder does); let go before Find.
+  check(await barSays() === '2 picked', `the sidebar’s Undo didn’t bring them back picked (${await barSays()})`)
+  await page.keyboard.press('Escape')
 
   // Find on a board.
   await page.getByRole('textbox', { name: 'Find on OSAT' }).fill('kanban')
@@ -266,6 +357,27 @@ async function light(page) {
   await client.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Not a client' }).click()
   await side(page, 'Fortis').waitFor({ timeout: 3000 }).catch(() => problems.push('Not a client didn’t put it back in Boards'))
+
+  // A favorite (Phase 99): Favorites on top of the sidebar, the same colour; Undo, or Remove from favorites, puts it back in Boards.
+  const paper = await side(page, 'Fortis').locator('.side-dot').getAttribute('data-paper')
+  const favorite = page.locator('nav.side .side-group[aria-label="Favorites"]').getByRole('button', { name: /^Fortis\b/ })
+  await side(page, 'Fortis').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click()
+  await favorite.waitFor({ timeout: 3000 }).catch(() => problems.push('a favorite didn’t move to Favorites'))
+  check(await page.locator('nav.side .side-group').first().getAttribute('aria-label') === 'Favorites', 'Favorites wasn’t the first group')
+  check(await side(page, 'Fortis').count() === 0, 'a favorite showed in Boards too')
+  check(await favorite.locator('.side-dot').getAttribute('data-paper') === paper, 'a favorite changed colour')
+  check((await readDoc(page)).folders.find((folder) => folder.id === 'fortis')?.favorite === true, 'the favorite mark wasn’t saved')
+  await page.screenshot({ path: `${OUT}/light-favorites.png` })
+  await page.locator('.toast', { hasText: 'favorites' }).getByRole('button', { name: 'Undo', exact: true }).click()
+  await side(page, 'Fortis').waitFor({ timeout: 3000 }).catch(() => problems.push('Undo didn’t take the favorite off'))
+  check(await page.locator('nav.side .side-group[aria-label="Favorites"]').count() === 0, 'Favorites showed with nothing in it')
+  check(!('favorite' in (await readDoc(page)).folders.find((folder) => folder.id === 'fortis')), 'Undo didn’t take the saved mark off')
+  await side(page, 'Fortis').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click()
+  await favorite.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Remove from favorites' }).click()
+  await side(page, 'Fortis').waitFor({ timeout: 3000 }).catch(() => problems.push('Remove from favorites didn’t put it back in Boards'))
 }
 
 async function main() {

@@ -1,8 +1,10 @@
 // Money (Phase 87) in the built preview, seeded with a few months of entries and a stand-in for the Mac app's Plaid
 // bridge: the keys form (the Secret hidden), Connect a bank bringing Chase's accounts and the cash total, Spending by
 // category (table and donut, transfers left out), picking a category narrowing the list, Set a budget, moving an
-// entry to another category with Undo, Find, Cash flow's six months with a hover; light and dark. Fails on page
-// errors or a step that didn't happen; screenshots land in test-results/ui/money/. Run `npm run build` first.
+// entry to another category with Undo, Find, Cash flow's six months with a hover; light and dark. What you have and
+// owe (Phase 100): the welcome's two questions, net worth below zero, the payoff line, a row changed, Esc, the trash
+// with Undo, and the banks' totals first once Chase is in. Fails on page errors or a step that didn't happen;
+// screenshots land in test-results/ui/money/. Run `npm run build` first.
 import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -116,8 +118,12 @@ async function main() {
     await banks.getByRole('button', { name: 'Connect a bank' }).click()
     await banks.locator('.money-bank', { hasText: 'Chase' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${theme}: Chase didn’t show`))
     check((await banks.locator('.money-bank').innerText()).includes('Total Checking ••3523'), `${theme}: the account and its last four didn’t show`)
-    const hero = await page.locator('.money-balance').innerText()
+    const hero = await banks.locator('.money-balance').innerText()
     check(hero.includes('In your banks') && hero.includes('$1,582.36') && hero.includes('$512.40 owed'), `${theme}: the hero didn’t add up the banks: ${hero}`)
+    // What you have and owe starts from the banks' two totals: $1,582.36 less $512.40.
+    const worth = page.getByRole('region', { name: 'What you have and owe' })
+    check((await worth.locator('li').allInnerTexts()).join(' | ').replace(/\s+/g, ' ') === 'In your banks $1,582.36 | Cards and loans at your banks $512.40', `${theme}: what you have and owe didn’t start from the banks`)
+    check((await worth.locator('.money-balance').innerText()).includes('$1,069.96'), `${theme}: the net worth wasn’t the banks’ cash less what’s owed`)
 
     // Spending by category: transfers left out, largest first, five colours at most; the donut beside it.
     const card = page.getByRole('region', { name: 'Spending by category' })
@@ -157,7 +163,7 @@ async function main() {
     check((await readDoc(page)).budget.transactions.find((entry) => entry.label === 'Target').category === 'Shopping', 'Undo didn’t put the category back')
 
     await page.getByRole('region', { name: 'Transactions' }).screenshot({ path: `${OUT}/transactions.png` })
-    check(await page.locator('.money-day h3').count() >= 6, 'the entries weren’t grouped by day')
+    check(await page.getByRole('region', { name: 'Transactions' }).locator('.money-day h3').count() >= 6, 'the entries weren’t grouped by day')
 
     // The month stepper: back a month shows September's two entries, forward again comes back; never past this month.
     check(await page.getByRole('button', { name: 'Next month' }).isDisabled(), 'Next month went past this month')
@@ -221,6 +227,62 @@ async function main() {
   check(await welcome.getByLabel('Description').count() === 1, 'add an entry by hand didn’t open the form')
   await empty.screenshot({ path: `${OUT}/welcome.png` })
   await empty.close()
+
+  // What you have and owe (Phase 100), from the welcome: two plain questions, kept in cents; the net worth below zero is
+  // a plain number, with one payoff line (the highest rate first); a row opens in the same form; Esc closes a question;
+  // the trash has Undo; and answering doesn't start the month's rows. The bank card keeps the one primary action.
+  for (const theme of ['light', 'dark']) {
+    const page = await openRoom(browser, url, theme, [])
+    const welcome = page.getByRole('region', { name: 'Get started with Money' })
+    await welcome.getByRole('button', { name: 'say what you have and owe' }).click()
+    const card = welcome.getByRole('region', { name: 'What you have and owe' })
+    const have = card.getByRole('form', { name: 'What do you have?' })
+    check(await have.getByText('Cash, and accounts your banks don’t show.').count() === 1, `${theme}: the first question didn’t say what it means`)
+    check(await page.locator('.money-page .primary-button').count() === 1, `${theme}: the questions added a second primary action`)
+    await have.getByLabel('Name').fill('Cash')
+    await have.getByLabel('Amount').fill('300')
+    await have.getByRole('button', { name: 'Next: what you owe' }).click()
+    const owe = card.getByRole('form', { name: 'What do you owe?' })
+    await owe.getByLabel('Name').fill('Car loan')
+    await owe.getByLabel('Owed').fill('9,100')
+    await owe.getByLabel('Rate %').fill('6.5')
+    await owe.getByLabel('Least a month').fill('250')
+    await owe.getByLabel('Least a month').press('Enter')
+    check(await owe.getByLabel('Name').inputValue() === '', `${theme}: Add didn’t make room for another debt`)
+    await owe.getByLabel('Name').fill('Store card')
+    await owe.getByLabel('Owed').fill('1200')
+    await owe.getByLabel('Rate %').fill('24.99%')
+    await owe.getByLabel('Least a month').fill('35')
+    await owe.getByRole('button', { name: 'Add' }).click()
+    await page.screenshot({ path: `${OUT}/${theme}-worth-question.png` })
+    await page.keyboard.press('Escape')
+    check(await card.locator('form').count() === 0, `${theme}: Esc didn’t close the question`)
+    const kept = (await readDoc(page)).budget.balances || []
+    check(JSON.stringify(kept.map(({ id, ...rest }) => rest)) === '[{"label":"Cash","owe":false,"amountMinor":30000},{"label":"Car loan","owe":true,"amountMinor":910000,"rate":6.5,"minimumMinor":25000},{"label":"Store card","owe":true,"amountMinor":120000,"rate":24.99,"minimumMinor":3500}]', `${theme}: the answers weren’t kept in cents: ${JSON.stringify(kept)}`)
+    const sum = await card.locator('.money-balance').innerText()
+    check(sum.includes('Net worth') && sum.includes('-$10,000.00') && sum.includes('Pay at least $285.00 a month, and anything more to Store card first: at 24.99% it costs the most.'), `${theme}: the net worth or the payoff line was wrong: ${sum}`)
+    check(await card.locator('.money-balance strong').evaluate((node) => getComputedStyle(node).color === getComputedStyle(document.body).color), `${theme}: a net worth below zero wasn’t in the plain ink`)
+    check(await page.locator('.money-overview').count() === 0, `${theme}: answering started the month’s rows`)
+    await card.screenshot({ path: `${OUT}/${theme}-worth.png` })
+
+    // A row opens in the same form: the loan is $9,000 now.
+    await card.getByRole('button', { name: /^Car loan/ }).click()
+    check(await owe.getByLabel('Owed').inputValue() === '9100', `${theme}: the loan didn’t open in its question`)
+    await owe.getByLabel('Owed').fill('9,000')
+    await owe.getByRole('button', { name: 'Save' }).click()
+    check(((await readDoc(page)).budget.balances || []).find((item) => item.label === 'Car loan')?.amountMinor === 900000, `${theme}: the change wasn’t kept`)
+    check((await card.locator('.money-balance').innerText()).includes('-$9,900.00'), `${theme}: the net worth didn’t follow the change`)
+
+    // The trash takes a row off at once, and closes its form if it was open; Undo puts it back where it was.
+    await card.getByRole('button', { name: /^Cash/ }).click()
+    await card.getByRole('button', { name: 'Delete Cash' }).click()
+    check(await card.getByRole('button', { name: 'Delete Cash' }).count() === 0, `${theme}: the trash didn’t take Cash off`)
+    check(await card.locator('form').count() === 0, `${theme}: the trash left Cash’s form open`)
+    check(!((await readDoc(page)).budget.balances || []).some((item) => item.label === 'Cash'), `${theme}: Cash wasn’t taken off`)
+    await page.locator('.toast button', { hasText: 'Undo' }).click()
+    check(((await readDoc(page)).budget.balances || [])[0]?.label === 'Cash', `${theme}: Undo didn’t put Cash back first`)
+    await page.close()
+  }
   await browser.close()
 }
 

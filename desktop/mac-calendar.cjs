@@ -6,7 +6,7 @@
    The renderer's side (shapes, merging, words) is shared/mac-calendar-model.mjs. */
 const { execFile } = require('node:child_process')
 
-const NOT_ASKED = 'Your Mac hasn’t been asked yet. Press “Show my Mac’s calendars” first.'
+const NOT_ASKED = 'Your Mac hasn’t been asked yet. Press “Connect my calendars” in Calendar first.'
 const COULD_NOT = 'Your Mac’s calendars couldn’t be reached just now.'
 
 /* One script, one command per run: argv[0] is the command, argv[1] its JSON. It always prints one
@@ -31,6 +31,7 @@ const hex = (c) => {
     return "#" + h(rgb.redComponent) + h(rgb.greenComponent) + h(rgb.blueComponent)
   } catch (e) { return "" }
 }
+const attempt = (fn, otherwise) => { try { return fn() } catch (e) { return otherwise } }
 const each = (list, fn) => { const out = []; if (list && !(list.isNil && list.isNil())) for (let i = 0; i < list.count; i++) out.push(fn(list.objectAtIndex(i))); return out }
 
 function allow(kind) {
@@ -46,8 +47,10 @@ function allow(kind) {
 }
 
 function calendars() {
+  const first = attempt(() => str(store.defaultCalendarForNewEvents.calendarIdentifier), "")
   return each(store.calendarsForEntityType(0), (c) => ({
     id: str(c.calendarIdentifier), title: str(c.title), source: str(c.source.title), color: hex(c.color), writable: c.allowsContentModifications === true,
+    isDefault: str(c.calendarIdentifier) === first,
   }))
 }
 
@@ -68,7 +71,8 @@ function run(argv) {
       })).slice(0, 2000))
     }
     if (cmd === "add-event") {
-      const cal = store.calendarWithIdentifier(a.calendar)
+      // "default" is the calendar the Mac puts new events on (Calendar → Settings → Default calendar), wherever it syncs.
+      const cal = a.calendar === "default" ? store.defaultCalendarForNewEvents : store.calendarWithIdentifier(a.calendar)
       if (!cal || cal.isNil() || cal.allowsContentModifications !== true) return JSON.stringify({ error: "notWritable" })
       const e = $.EKEvent.eventWithEventStore(store)
       e.title = a.title; e.startDate = when(a.start); e.endDate = when(a.end); e.notes = a.notes || ""; e.calendar = cal

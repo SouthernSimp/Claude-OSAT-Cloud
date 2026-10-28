@@ -171,6 +171,13 @@ test('schema 6: a sticky keeps a real day it names to ask about; nothing else ch
   assert.equal('ask' in normalizeNote({ ...note('c'), ask: { event: { title: 'X', date: 'Oct 5' } } }), false)
 })
 
+test('schema 18: Money’s balances kept by hand come through unchanged; nothing starts with any', () => {
+  const balances = [{ id: 'balance-1', label: 'Car loan', owe: true, amountMinor: 900000, rate: 6.5, minimumMinor: 25000 }]
+  const old = { ...createEmptyDoc(), schema: 17, rev: 4, budget: { currency: 'USD', transactions: [], recurring: [], balances } }
+  assert.deepEqual(migrate(old), { ...old, schema: SCHEMA })
+  assert.equal('balances' in createEmptyDoc().budget, false)
+})
+
 test('schema 15: goals come in as a list of their own, kept from a newer copy and empty otherwise', () => {
   assert.deepEqual(migrate({ schema: 14, notes: [] }).goals, [])
   const goal = { id: 'g1', name: 'Get OSAT into three businesses' }

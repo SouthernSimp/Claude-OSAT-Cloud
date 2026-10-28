@@ -4,8 +4,7 @@ import test from 'node:test'
 
 import {
   AUTO_LOCK_CHOICES, DIGITS, FREE_TRIES, LOWER, MAX_LENGTH, MIN_LENGTH, SYMBOLS, UPPER, WORDS,
-  cleanEntry, cleanVault, findEntries, generate, generatePassphrase, generatePassword, listing, mergeEntries, strengthOf, waitFor, waitWords,
-} from '../shared/password-model.mjs'
+  cleanEntry, cleanVault, findEntries, generate, generatePassphrase, generatePassword, listing, mergeEntries, strengthOf, waitFor, waitWords, forSite, fromCsv, hostOf, loginKey } from '../shared/password-model.mjs'
 
 const randomInt = (n) => crypto.randomInt(n)
 
@@ -133,4 +132,32 @@ test('a passphrase is words from a plain list', () => {
   assert.equal(generate({ words: 5 }, randomInt).split('-').length, 5)
   assert.equal(generate({ length: 30 }, randomInt).length, 30)
   assert.equal(generate(undefined, randomInt).length, 20)
+})
+
+test('a login fills on its own host or one under it, only over https', () => {
+  assert.equal(hostOf('github.com'), 'github.com')
+  assert.equal(hostOf('https://GitHub.com/login'), 'github.com')
+  assert.equal(hostOf(''), '')
+  assert.equal(forSite('github.com', 'https://github.com/login'), true)
+  assert.equal(forSite('https://github.com', 'https://gist.github.com/'), true)
+  assert.equal(forSite('github.com', 'https://evilgithub.com/'), false)
+  assert.equal(forSite('github.com', 'https://github.com.evil.com/'), false)
+  assert.equal(forSite('github.com', 'http://github.com/'), false)
+  assert.equal(forSite('', 'https://github.com/'), false)
+  assert.equal(forSite('github.com', 'not a page'), false)
+  assert.equal(loginKey({ url: 'https://a.com/x', username: 'n', password: 'p' }), loginKey({ url: 'a.com', username: 'n', password: 'p' }))
+})
+
+test('exports from Chrome, Apple Passwords, Firefox and Bitwarden are read; a file without passwords is not', () => {
+  assert.deepEqual(fromCsv('\uFEFFname,url,username,password,note\r\nGitHub,https://github.com/,nate,"a,b""c\nd",\r\n'), [
+    { title: 'GitHub', url: 'https://github.com/', username: 'nate', password: 'a,b"c\nd' },
+  ])
+  assert.deepEqual(fromCsv('Title,URL,Username,Password,Notes,OTPAuth\nBank,https://bank.example,me,pw1,,\n'), [{ title: 'Bank', url: 'https://bank.example', username: 'me', password: 'pw1' }])
+  assert.deepEqual(fromCsv('"url","username","password","httpRealm"\n"https://mail.example","me","pw2",""\n'), [{ title: 'mail.example', url: 'https://mail.example', username: 'me', password: 'pw2' }])
+  assert.deepEqual(fromCsv('folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp\n,,login,Shop,,,0,https://shop.example,me,pw3,\n,,note,Secret note,words,,0,,,,\n'), [
+    { title: 'Shop', url: 'https://shop.example', username: 'me', password: 'pw3' },
+  ])
+  assert.deepEqual(fromCsv('name,url,username,password\nApp,android://abc@com.app/,me,pw\n'), [])
+  assert.equal(fromCsv('a,b,c\n1,2,3\n'), null)
+  assert.equal(fromCsv(''), null)
 })

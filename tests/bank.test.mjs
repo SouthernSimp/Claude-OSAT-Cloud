@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { accountRow, bankOps, CATEGORIES, categoryName, finishedLink, fromPlaid } from '../shared/bank-model.mjs'
+import { accountRow, bankOps, CATEGORIES, categoryName, finishedLink, fromPlaid, mergeAccounts } from '../shared/bank-model.mjs'
 import { normalizeWorkspace } from '../src/osat-data.js'
 import { applyOps, createEmptyDoc, validateOps } from '../shared/store-core.mjs'
 
@@ -139,6 +139,20 @@ test('Connect a bank: Plaid’s page in the browser, then its transactions and a
   await call('bank:sync')
   assert.equal(doc().budget.transactions.length, 2)
   assert.equal(plaid.seen.calls.filter((item) => item.path === '/transactions/sync').at(-1).body.cursor, 'c2')
+})
+
+test('a page that lists only checking keeps the card: Plaid lists just the accounts with entries in that page', async () => {
+  const checking = { account_id: 'a1', name: 'Total Checking', mask: '3523', type: 'depository', balances: { available: 82.35 } }
+  const card = { account_id: 'a3', name: 'Freedom', mask: '9911', type: 'credit', balances: { current: 512.4 } }
+  const { call } = await setUp(pretendPlaid({ syncPages: [
+    { added: [coffee], modified: [], removed: [], next_cursor: 'c1', has_more: true, accounts: [checking, card] },
+    { added: [pay], modified: [], removed: [], next_cursor: 'c2', has_more: false, accounts: [{ ...checking, balances: { available: 90 } }] },
+  ] }))
+  await call('bank:keys', 'clientid1234', 'sandboxsecret99')
+  const rows = (status) => status.items[0].accounts.map((account) => [account.name, account.balanceMinor])
+  assert.deepEqual(rows(await call('bank:connect')), [['Total Checking', 9000], ['Freedom', 51240]], 'checking brought up to date, the card kept, the order as it was')
+  assert.deepEqual(rows(await call('bank:sync')), [['Total Checking', 9000], ['Freedom', 51240]], 'a page with no accounts changes none')
+  assert.deepEqual(mergeAccounts([accountRow(card)], [checking]).map((account) => account.id), ['a3', 'a1'], 'a new account goes last')
 })
 
 test('Disconnect: Plaid forgets the bank, the token leaves the Keychain, its entries stay', async () => {

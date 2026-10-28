@@ -126,6 +126,10 @@ test('Return does the obvious thing, and ⌘K lists the rest', () => {
   assert.equal(offered[2].label, 'Add to Jordan')
   assert.deepEqual(actionsFor({ kind: 'link', data: clip('l', 'https://x.example', { kind: 'link' }) }).map((action) => action.id), ['paste', 'copy', 'open-link', 'add', 'save-snippet', 'pin', 'delete'])
   assert.deepEqual(actionsFor({ kind: 'image', data: { id: 'i', kind: 'image', pinned: true } }).map((action) => action.label), ['Paste', 'Copy', 'Unpin', 'Delete'])
+  // Phase 101: with CleanShot X taking the screenshots, a copied picture can be marked up in it, right after Copy.
+  const markUp = actionsFor({ kind: 'image', data: { id: 'i', kind: 'image', pinned: true } }, { markup: true })
+  assert.deepEqual(markUp.map((action) => [action.label, action.keys]), [['Paste', '↵'], ['Copy', '⇧↵'], ['Mark up', '⌘E'], ['Unpin', '⌘P'], ['Delete', '⌘⌫']])
+  assert.deepEqual(actionsFor(copy, { markup: true }).map((action) => action.id), ['paste', 'copy', 'add', 'save-snippet', 'pin', 'delete'], 'words are never marked up')
   assert.equal(actionsFor({ kind: 'app', data: {} })[0].id, 'open-app')
   assert.equal(actionsFor({ kind: 'node', data: {} })[0].label, 'Open the board')
   assert.equal(actionsFor({ kind: 'calc', data: {} })[0].label, 'Copy the answer')
@@ -233,6 +237,22 @@ test('one bar: commands come right after an app named by the words, and the word
     assert.equal(actionsFor(row).some((action) => action.keys === '⌘↵' || action.keys === '⌥↵'), false, row.kind)
     assert.equal(actionsFor(row)[1].keys, '⇧↵', row.kind)
   }
+})
+
+test('"/" shows the commands alone, the first one picked; words that start none are as always', () => {
+  const commands = [
+    { key: 'act:new-folder', label: 'New board', kind: 'action', go: ['Mindmap', { action: 'new-node' }] },
+    { key: 'act:new-canvas', label: 'New canvas', kind: 'action', go: ['Canvas', { action: 'new' }] },
+  ]
+  const ready = { state: 'ready', label: 'Light' }
+  const slash = readTyped('/', settings)
+  const found = { commands, notes: [{ key: 'note:n', label: 'See /r/ideas', kind: 'note', go: ['Notes', { noteId: 'n' }] }], clipboard: { items: [clip('a', 'a/b')] } }
+  const rows = buildRows(slash, found, settings, { now, ai: ready })
+  assert.deepEqual(rows.map((row) => [row.section, row.title]), [['Commands', 'New board'], ['Commands', 'New canvas']])
+  assert.equal(startRow(rows, slash), 0)
+  assert.deepEqual(actionsFor(rows[0])[0], { id: 'go', label: 'Open', keys: '↵' })
+  const words = readTyped('/r/ideas', settings)
+  assert.deepEqual(buildRows(words, { ...found, commands: [] }, settings, { now, ai: ready }).map((row) => row.kind), ['note', 'ask', 'sticky'])
 })
 
 test('anything in the bar can be a favorite, or have its own key and word, set from ⌘K', async () => {

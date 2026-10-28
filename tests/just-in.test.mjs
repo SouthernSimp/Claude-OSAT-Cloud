@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { readPhotoAnswer } from '../shared/ai-tasks.mjs'
-import { JUST_IN } from '../src/boards/boards-model.js'
-import { cameIn, dayLabel, guessBoards, mergeStickies, placeFrom, samePair, todayFlow, todaysBrief, undoOf, whereTo } from '../src/boards/just-in.js'
+import { breakdownMessages, readBreakdownAnswer, readPhotoAnswer } from '../shared/ai-tasks.mjs'
+import { JUST_IN, undoFrom } from '../src/boards/boards-model.js'
+import { cameIn, dayLabel, guessBoards, mergeAll, mergeStickies, placeFrom, samePair, todayFlow, todaysBrief, undoOf, whereTo } from '../src/boards/just-in.js'
+import { trashNotes } from '../src/notes-model.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
 
 const NOW = new Date(2026, 9, 15, 9, 0).getTime()
@@ -97,6 +98,18 @@ test('merging keeps both sets of words in the older sticky and bins the newer on
   assert.equal(mergeStickies(merged, 'mine', 'canvas'), merged)
 })
 
+test('merging several picked: the oldest keeps every one’s words in the order written, the rest go to the Bin, one Undo brings all back', () => {
+  const binned = trashNotes(state, ['logo'])
+  const merged = mergeAll(binned, ['canvas', 'logo', 'mine', 'slides'])
+  const note = (id) => merged.notes.find((item) => item.id === id)
+  assert.equal(note('slides').markdown, 'Fortis slides for the demo call\n\nShip the canvas\n\nThe canvas is hard to read', 'the one in the Bin is left out')
+  assert.ok(!note('slides').trashedAt && note('mine').trashedAt && note('canvas').trashedAt)
+  assert.equal(note('logo').trashedAt, binned.notes.find((item) => item.id === 'logo').trashedAt)
+  assert.deepEqual(undoFrom(binned, merged)(merged).notes, binned.notes)
+  assert.equal(mergeAll(binned, ['mine']), binned, 'one alone changes nothing')
+  assert.equal(mergeAll(binned, ['mine', 'logo']), binned, 'nor one beside one in the Bin')
+})
+
 test('a photo’s answer: one sticky a line, bullets gone, each once, none is nothing', () => {
   assert.deepEqual(readPhotoAnswer('Here are the notes:\n- Spotlight Search\n2. Audio player?\n• milk, bread\n- spotlight search\n\n'), ['Spotlight Search', 'Audio player?', 'milk, bread'])
   assert.deepEqual(readPhotoAnswer('none'), [])
@@ -104,4 +117,14 @@ test('a photo’s answer: one sticky a line, bullets gone, each once, none is no
 
 test('today’s intake in counts: what came in, and where it went', () => {
   assert.deepEqual(todayFlow(state, NOW), { came: 3, calendar: 1, questions: 1, buy: 0, board: 1, waiting: 2 })
+})
+
+test('Break it down: the sticky goes to the AI whole, and its steps come back as at most eight short lines', () => {
+  const [, ask] = breakdownMessages('Launch the Boutique site: domain, photos, contact form')
+  assert.match(ask.content, /Launch the Boutique site: domain, photos, contact form/)
+  assert.match(ask.content, /between 2 and 8/)
+  assert.deepEqual(readBreakdownAnswer('Here are the steps:\n1. Buy the domain\n2) Pick the photos\n- Hook up the contact form\n- buy the domain\n'), ['Buy the domain', 'Pick the photos', 'Hook up the contact form'])
+  assert.equal(readBreakdownAnswer(Array.from({ length: 12 }, (_, i) => `Step ${i}`).join('\n')).length, 8)
+  assert.equal(readBreakdownAnswer(`Do ${'x'.repeat(400)}`)[0].length, 200)
+  assert.deepEqual(readBreakdownAnswer('none'), [])
 })

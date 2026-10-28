@@ -145,7 +145,7 @@ const ACCOUNTS_PANE = 'x-apple.systempreferences:com.apple.Internet-Accounts-Set
 /* `run`, `installed`, `running`, `launch` and `openPane` are passed in so tests can answer as the Mac would.
    Off the Mac nothing is asked. */
 async function createMacMail({
-  sharedModule, handle, fail, gmail = null, run = osascript, platform = process.platform, installed = there,
+  sharedModule, handle, fail, gmail = null, imap = null, run = osascript, platform = process.platform, installed = there,
   running = () => quiet('pgrep', ['-x', 'Mail']),
   launch = () => quiet('open', ['-g', '-j', '-b', 'com.apple.mail']),
   openPane = () => quiet('open', [ACCOUNTS_PANE]),
@@ -174,26 +174,29 @@ async function createMacMail({
   }
   const need = (id) => (model.validMessageId(id) ? id : fail('That isn’t a message in your inbox.'))
 
-  // Gmail signed in directly (desktop/gmail.cjs, Phase 86) answers instead of the Mail app once it is connected.
+  // Gmail signed in directly (desktop/gmail.cjs, Phase 86) or any provider over IMAP (desktop/imap-mail.cjs, Phase 104)
+  // answers instead of the Mail app once it is connected; Gmail first, as the room only keeps one connected.
   const google = () => gmail?.on() === true
-  handle('mail:status', async () => ({ available: google() || (platform === 'darwin' && installed() === true), gmail: gmail?.status() || null }), { from: 'app' })
+  const direct = () => (google() ? gmail : imap?.on() === true ? imap : null)
+  handle('mail:status', async () => ({ available: Boolean(direct()) || (platform === 'darwin' && installed() === true), gmail: gmail?.status() || null, imap: imap?.status() || null }), { from: 'app' })
   handle('mail:allow', async () => ask('allow', {}, { timeout: 130000 }), { from: 'app' })
   handle('mail:accounts', async () => model.accountRows(await ask('accounts', {}, { timeout: 30000 })), { from: 'app' })
   // Adding Gmail: the Mac signs in to Google itself (OSAT never sees a password or a token), then Mail reads it.
   handle('mail:add-account', async () => (platform === 'darwin' ? openPane() : false), { from: 'app' })
-  const list = async () => (google() ? gmail.list() : model.messageRows(await ask('list', {}, { timeout: 90000 })))
-  const read = async (id) => (google() ? gmail.read(need(id)) : model.messageFull(await ask('read', { id: need(id) }, { timeout: 40000 })) || fail(model.GONE))
+  const list = async () => (direct() ? direct().list() : model.messageRows(await ask('list', {}, { timeout: 90000 })))
+  const read = async (id) => (direct() ? direct().read(need(id)) : model.messageFull(await ask('read', { id: need(id) }, { timeout: 40000 })) || fail(model.GONE))
   handle('mail:list', list, { from: 'app' })
   handle('mail:search', async (query, inside) => {
     const words = model.cleanQuery(query)
     if (!words) fail('Type a word to look for.')
-    if (google()) return gmail.search(words)
+    if (direct()) return direct().search(words, inside === true)
     return model.messageRows(await ask('search', { query: words, inside: inside === true }, { timeout: inside === true ? 180000 : 90000 }))
   }, { from: 'app' })
   handle('mail:read', read, { from: 'app' })
-  // With Gmail, Reply and Open both open the message in Gmail itself: OSAT reads Gmail, it never writes there.
-  handle('mail:reply', async (id) => (google() ? gmail.open(need(id)) : (await ask('reply', { id: need(id) }, { timeout: 40000 }), true)), { from: 'app' })
-  handle('mail:open', async (id) => (google() ? gmail.open(need(id)) : (await ask('open', { id: need(id) }, { timeout: 40000 }), true)), { from: 'app' })
+  // With Gmail, Reply and Open both open the message in Gmail itself: OSAT reads Gmail, it never writes there. Over IMAP
+  // they open the provider's own mail page (Reply: its compose page, else a mailto: link).
+  handle('mail:reply', async (id) => (google() ? gmail.open(need(id)) : imap?.on() ? imap.reply(need(id)) : (await ask('reply', { id: need(id) }, { timeout: 40000 }), true)), { from: 'app' })
+  handle('mail:open', async (id) => (direct() ? direct().open(need(id)) : (await ask('open', { id: need(id) }, { timeout: 40000 }), true)), { from: 'app' })
   return { list, read }
 }
 

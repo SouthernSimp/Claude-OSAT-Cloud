@@ -134,6 +134,27 @@ async function light(page) {
   check((await stored(page, 'f1')).folderId === null, 'Undo on a row didn’t take the filing back')
   check((await section(page, 'Waiting for a home').innerText()).includes('The canvas is hard'), 'it wasn’t waiting again')
 
+  // Picking several (Phase 97): ⌘-click (Ctrl elsewhere) two that wait, Move to… OSAT files both; one Undo, both wait again.
+  const bar = page.getByRole('toolbar', { name: 'Picked stickies' })
+  await row(page, 'Is a Mac mini').click({ modifiers: ['ControlOrMeta'] })
+  await row(page, 'The canvas is hard').click({ modifiers: ['ControlOrMeta'] })
+  check(await page.getByRole('textbox', { name: 'Sticky', exact: true }).count() === 0, 'a ⌘-click opened a row to write in')
+  check(await bar.locator('span').innerText().catch(() => '') === '2 picked', 'two ⌘-clicked rows weren’t picked')
+  await page.mouse.move(700, 880)
+  await sleep(300)
+  await page.screenshot({ path: `${OUT}/light-picked.png` })
+  await bar.getByRole('button', { name: /Move to/ }).click()
+  await page.getByRole('menuitem', { name: 'OSAT', exact: true }).click()
+  await sleep(200)
+  const [mini, canvas] = [await stored(page, 'w2'), await stored(page, 'f1')]
+  check(mini.folderId === 'osat' && canvas.folderId === 'osat' && mini.filed?.by === 'you' && canvas.filed?.by === 'you', 'Move to… didn’t file both picked rows')
+  check((await page.locator('.toast').innerText()).includes('Moved 2 to OSAT'), 'the toast didn’t say how many moved')
+  check((await row(page, 'Is a Mac mini').innerText()).includes('OSAT → Questions'), 'a picked row didn’t say where it went')
+  check(await bar.count() === 0, 'the bar stayed after the picked rows were filed')
+  await toastUndo(page).click()
+  await sleep(200)
+  check((await stored(page, 'w2')).folderId === null && (await stored(page, 'f1')).folderId === null, 'one Undo didn’t bring both back to wait')
+
   // A date off the calendar, and back.
   await row(page, 'Dentist').getByRole('button', { name: 'Take off calendar' }).click()
   await sleep(200)

@@ -115,9 +115,9 @@ export function MacCalendarBar({ mac }) {
       {mac.access.events === "notAsked" && (
         <>
           <button className="outline-button" type="button" disabled={mac.busy} onClick={() => mac.allow("events")}>
-            <CalendarCheck /> Show my Mac’s calendars
+            <CalendarCheck /> Connect my calendars
           </button>
-          <p className="mac-cal-note">Your Mac asks once. They are read here and go nowhere else.</p>
+          <p className="mac-cal-note">Your iCloud, Google and Outlook calendars on this Mac show here, and new events go on them. Your Mac asks once.</p>
         </>
       )}
       {line && <p className="mac-cal-note">{line}</p>}
@@ -133,6 +133,9 @@ export function MacCalendarBar({ mac }) {
               {calendar.source && <small>{calendar.source}</small>}
             </label>
           ))}
+          {window.osatMail?.addAccount && (
+            <button type="button" className="text-button" onClick={() => window.osatMail.addAccount()}>Add Google or Outlook…</button>
+          )}
         </div>
       )}
     </section>

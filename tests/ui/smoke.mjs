@@ -40,6 +40,12 @@ async function main() {
   let room = 'start'
   // The name of the drawer row Return would run.
   const picked = () => page.locator('.home-row[aria-selected="true"] .home-row-label').evaluate((node) => node.firstChild.textContent).catch(() => null)
+  // The workspace as the preview saved it, a moment after a change.
+  const readDoc = () => page.evaluate(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    const db = await new Promise((resolve) => { const request = indexedDB.open('osat-preview', 1); request.onsuccess = () => resolve(request.result) })
+    return new Promise((resolve) => { const request = db.transaction('workspace').objectStore('workspace').get('doc'); request.onsuccess = () => resolve(request.result) })
+  })
   // The Mac app's quick search bridge, so the desk can hear of a copy (the offer to add it to a node).
   await page.addInitScript(installSearchBridge, DEFAULT_SETTINGS)
   page.on('pageerror', (error) => problems.push(`${room}: ${error.message}`))
@@ -343,7 +349,7 @@ async function main() {
   await page.screenshot({ path: `${OUT}/settings-ring.png` })
   // Soul and memory (Phase 70): SOUL.md to read and change, a line remembered and forgotten with Undo, the rules.
   await goTo('Soul and memory')
-  if (!(await page.getByLabel('SOUL.md').inputValue().catch(() => '')).startsWith('I am OSAT.')) problems.push('soul: SOUL.md did not start as OSAT’s own')
+  if (!(await page.getByLabel('Who OSAT is, in your words').inputValue().catch(() => '')).startsWith('I am OSAT.')) problems.push('soul: SOUL.md did not start as OSAT’s own')
   await page.getByLabel('Something to remember').fill('Food goes to Groceries')
   await page.getByRole('button', { name: 'Remember', exact: true }).click()
   const forget = page.getByRole('button', { name: 'Forget Food goes to Groceries' })
@@ -403,11 +409,16 @@ async function main() {
   await page.screenshot({ path: `${OUT}/settings-mouse.png` })
   await page.getByRole('switch', { name: 'Use these mouse changes' }).uncheck()
   await page.waitForFunction(() => window.osatSearch.settings().then((value) => value.mouse.on === false && value.mouse.speed === 2), null, { timeout: 3000 }).catch(() => problems.push('settings: switching Mouse off lost its settings'))
-  for (const name of ['General', 'Appearance', 'AI', 'Soul and memory', 'Connections', 'Data', 'Scans', 'iPhone', 'About']) {
+  for (const name of ['General', 'Appearance', 'AI', 'Soul and memory', 'Connections', 'Mail and calendar', 'Data', 'Scans', 'iPhone', 'About']) {
     await goTo(name)
     if (!await page.locator('.settings-section .setting-head h2', { hasText: new RegExp(`^${name}$`) }).count()) problems.push(`settings: the ${name} page did not open`)
     await page.screenshot({ path: `${OUT}/settings-${name.toLowerCase()}.png` })
   }
+  // Data keeps Obsidian folded behind one row until it's wanted (Phase 105).
+  await goTo('Data')
+  if (await page.getByText('Exact Markdown').count()) problems.push('settings: Obsidian’s exporter showed before it was asked for')
+  await page.getByRole('button', { name: 'Send notes…' }).click()
+  await page.getByText('Exact Markdown').first().waitFor({ timeout: 3000 }).catch(() => problems.push('settings: Send notes… did not open Obsidian’s exporter'))
   await page.keyboard.press('Control+f')
   await page.getByRole('searchbox', { name: 'Search settings' }).waitFor({ timeout: 2000 }).catch(() => {})
   await page.keyboard.type('hyper')
@@ -489,6 +500,21 @@ async function main() {
   if ((await page.inputValue('#home-line')) !== '> research best CRMs') problems.push('launcher: the job was cleared though nothing took it')
   await page.fill('#home-line', 'a good idea for the shop')
   if (await picked() !== 'Save as a sticky' || await page.locator('.home-row', { hasText: 'Clipboard' }).count()) problems.push('launcher: a sentence starting with "a" was hijacked')
+  // "/" (Phase 98): the commands alone, and Return runs the picked one; words after it that start none are saved as always.
+  await page.fill('#home-line', '/')
+  await page.locator('.home-drawer-head', { hasText: 'Commands' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher: "/" did not list the commands'))
+  if (!await page.locator('.home-row', { hasText: 'New board' }).count() || await page.locator('.home-row', { hasText: 'Save as a sticky' }).count()) problems.push('launcher: "/" did not show the commands alone')
+  await sleep(350)
+  await page.screenshot({ path: `${OUT}/desk-launcher-commands.png` })
+  await page.fill('#home-line', '/new can')
+  if (await picked() !== 'New canvas') problems.push(`launcher: "/new can" did not pick New canvas (${await picked()})`)
+  await page.keyboard.press('Enter')
+  const canvasName = page.getByRole('textbox', { name: 'New canvas’s name' })
+  await canvasName.waitFor({ timeout: 3000 }).catch(() => problems.push('launcher: New canvas did not open the sidebar’s name field'))
+  await page.keyboard.press('Escape')
+  await canvasName.waitFor({ state: 'detached', timeout: 3000 }).catch(() => problems.push('launcher: Esc did not let the new canvas go'))
+  await page.fill('#home-line', '/r/ideas')
+  if (await picked() !== 'Save as a sticky') problems.push(`launcher: "/r/ideas" moved the pick off Save (${await picked()})`)
   await page.fill('#home-line', '')
 
   // A thought from the bar waits in Just in; carried onto a board in the sidebar, it's filed there.
@@ -513,11 +539,23 @@ async function main() {
   await page.locator('.boards-card', { hasText: 'Left in the bar' }).waitFor({ timeout: 3000 }).catch(() => problems.push('stickies: the sticky dropped on a board was not on it'))
   await page.screenshot({ path: `${OUT}/desk-stickies.png` })
 
-  // An @ only links: a typo makes no board.
+  // @ in the bar (Phase 98): boards are offered as it is typed and Tab takes one; words that name exactly one board
+  // are saved straight onto it, never Just in; a typo makes no board.
   room = 'mentions'
-  await page.fill('#home-line', 'Call about @Project Direction and @Projct')
-  await page.press('#home-line', 'Enter')
-  await sleep(300)
+  await page.fill('#home-line', 'Call about @Proj')
+  await page.locator('.home-row', { hasText: '@Project Direction' }).waitFor({ timeout: 3000 }).catch(() => problems.push('mentions: "@Proj" did not offer Project Direction'))
+  if (await picked() !== 'Save as a sticky') problems.push(`mentions: the offer moved the pick off Save (${await picked()})`)
+  await sleep(350)
+  await page.screenshot({ path: `${OUT}/desk-mentions.png` })
+  await page.keyboard.press('Tab')
+  if (await page.inputValue('#home-line') !== 'Call about @Project Direction ') problems.push(`mentions: Tab did not take the board (${await page.inputValue('#home-line')})`)
+  await page.keyboard.type('and @Projct')
+  if (await picked() !== 'Save to Project Direction') problems.push(`mentions: Save did not say where it goes (${await picked()})`)
+  await page.keyboard.press('Enter')
+  const doc = await readDoc()
+  const filedTo = doc.folders.find((folder) => folder.name === 'Project Direction')
+  const call = doc.notes.find((item) => item.markdown === 'Call about @Project Direction and @Projct')
+  if (!call || call.folderId !== filedTo?.id || call.unsorted || call.refs?.['project direction'] !== filedTo?.id) problems.push(`mentions: the sticky was not saved onto Project Direction with its link (${JSON.stringify(doc.notes.filter((item) => item.markdown.startsWith('Call about')))})`)
   if (await page.locator('nav.side .side-group[aria-label="Boards"]').getByRole('button', { name: /^Projct/ }).count()) problems.push('mentions: a typo made a board')
 
   // The Roadmap's Timeline: every phase of the Status table, in order, read from the same text the Roadmap shows;
@@ -837,6 +875,16 @@ async function main() {
     await search.locator('.qs-picture').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: a recent capture showed no picture`))
     if (await search.locator('.qs-row[draggable="true"]').count() !== 2) problems.push(`${room}: the recent captures could not be dragged out`)
     if (scheme === 'light') await search.screenshot({ path: `${OUT}/QuickSearch-captures.png` })
+    // What the bar asked the Mac app for when some keys were pressed (the stand-in keeps every call).
+    const pressed = async (keys) => {
+      const from = (await search.evaluate(() => window.__calls)).length
+      await search.keyboard.press(keys)
+      await sleep(200)
+      return (await search.evaluate(() => window.__calls)).slice(from).map((call) => call.join(' ')).join(', ')
+    }
+    // Phase 101: ⌘E on a recent picture copies it, then CleanShot X opens it from the clipboard to mark up.
+    const shotMarkedUp = await pressed('Control+e')
+    if (shotMarkedUp !== 'captureCopy media_a/CleanShot 1.png, capture from-clipboard') problems.push(`${room}: ⌘E did not mark up the recent capture (${shotMarkedUp})`)
     await search.evaluate(() => window.osatSearch.saveSettings({ captures: { recent: false } }))
     // v is the clipboard: pins first, then the day; Return pastes (the stand-in says it needs Accessibility, so it says so).
     await search.fill('#qs-input', 'v')
@@ -845,6 +893,20 @@ async function main() {
     await search.getByRole('button', { name: 'Images' }).click()
     await search.locator('.qs-row', { hasText: 'Image' }).waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the Images filter showed no picture`))
     await search.locator('.qs-picture').waitFor({ timeout: 3000 }).catch(() => problems.push(`${room}: the copied picture had no big preview`))
+    // Phase 101: ⌘K on the picture lists Mark up; ⌘E puts it back on the clipboard, then opens CleanShot X on it. With
+    // the Mac's own screenshots (next time the bar opens), it isn't offered.
+    await search.keyboard.press('Control+k')
+    if (!(await search.locator('.qs-actions').innerText().catch(() => '')).includes('Mark up')) problems.push(`${room}: ⌘K on a copied picture did not list Mark up`)
+    await search.keyboard.press('Escape')
+    const markedUp = await pressed('Control+e')
+    if (markedUp !== 'copyClip c4, capture from-clipboard') problems.push(`${room}: ⌘E did not put the picture back on the clipboard, then open CleanShot (${markedUp})`)
+    await search.evaluate(() => window.osatSearch.saveSettings({ captures: { using: 'mac' } }))
+    await search.evaluate(() => window.__shown({ scope: 'clipboard' }))
+    await search.locator('.qs-row', { hasText: 'Image' }).click()
+    await search.keyboard.press('Control+k')
+    const withoutCleanShot = await search.locator('.qs-actions').innerText().catch(() => '')
+    if (!withoutCleanShot.includes('Paste') || withoutCleanShot.includes('Mark up')) problems.push(`${room}: without CleanShot X, ⌘K on a picture still offered Mark up (${withoutCleanShot})`)
+    await search.keyboard.press('Escape')
     await search.getByRole('button', { name: 'All', exact: true }).click()
     await search.locator('.qs-row', { hasText: 'Jordan asked for the revised quote' }).click()
     if (!/Mail/.test(await search.locator('.qs-details').innerText().catch(() => ''))) problems.push(`${room}: the details of a copy did not say which app it came from`)

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { ErrorBoundary } from '../lib/ErrorBoundary.jsx'
-import { Database, Sparkle } from '@phosphor-icons/react'
+import { Copy, Database, NotePencil, Question, Sparkle } from '@phosphor-icons/react'
 
 import { LocalAssistant } from '../assistant/LocalAssistant.jsx'
 import { cleanError } from '../assistant/useAi.js'
@@ -8,7 +8,9 @@ import { localDateKey } from '../daily-practice.js'
 import { ClipboardOffer } from './ClipboardOffer.jsx'
 import { Line } from './Line.jsx'
 import { MorningBriefNote } from './MorningBriefNote.jsx'
-import { inputActive } from '../lib/ui.js'
+import { inputActive, selectedWords } from '../lib/ui.js'
+import { useContextMenu } from '../lib/ContextMenu.jsx'
+import { captureThought, trashNotes } from '../notes-model.js'
 import { SETTINGS, spaceForKey, titleFor } from '../lib/spaces.js'
 import { NotesView } from '../notes/NotesView.jsx'
 import { Boards } from '../boards/Boards.jsx'
@@ -31,6 +33,7 @@ import { JournalView } from '../views/Journal.jsx'
 import { NowPlayingView } from '../views/NowPlaying.jsx'
 import { PileView } from '../views/Pile.jsx'
 import { RoadmapView } from '../views/Roadmap.jsx'
+import { ActivityView } from '../views/Activity.jsx'
 import { GitHubView } from '../views/GitHub.jsx'
 import { MailView } from '../views/Mail.jsx'
 import { PasswordsView } from '../views/Passwords.jsx'
@@ -53,7 +56,7 @@ import { needsTour, Tour } from './Tour.jsx'
 
 // The rooms that can't do anything offline; they say so instead of opening.
 const ONLINE_ONLY = new Set(['Browser', 'Terminal', 'NowPlaying', 'GitHub'])
-const ROOMS = new Set(['Today', 'Todo', 'JustIn', 'Mindmap', 'Canvas', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile'])
+const ROOMS = new Set(['Today', 'Todo', 'JustIn', 'Mindmap', 'Canvas', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile', 'Activity'])
 const BOARD_KEY = 'osat.boards.board.v1'
 
 export function Desk() {
@@ -71,6 +74,7 @@ export function Desk() {
   const [offline, setOffline] = useState({ on: false })
   const [notice, setNotice] = useState('')
   const [newBoard, setNewBoard] = useState(0)
+  const [newCanvas, setNewCanvas] = useState(0)
   // Scans that came in: [{ name, folderId, noteId }]. Their line stays until looked at.
   const [arrived, setArrived] = useState([])
   const boardsRef = useRef(null)
@@ -80,6 +84,25 @@ export function Desk() {
   useAutoFile({ workspace, commit, hydrated, onToast: showFiled })
   // A sticky that is a date goes on the calendar on its own (Phase 67), with its own line and Undo.
   const [datesToast, showDates] = useUndoToast()
+  const [pickedToast, showPicked] = useUndoToast()
+  const [pickedMenu, openPickedMenu] = useContextMenu()
+  // Right-click on words you picked, anywhere in a room (Nate's sticky, Oct 6: "drag select text… Ask AI more"). A
+  // room's own menu (a card, a board) stops the click first, so this only shows over plain words.
+  function pickedWords(event) {
+    const words = event.defaultPrevented ? '' : selectedWords(event.target)
+    if (!words) return
+    const quote = words.split('\n').map((line) => `> ${line}`).join('\n')
+    openPickedMenu(event, [
+      { label: 'Ask about this', icon: Sparkle, onSelect: () => setAsk({ prompt: `${quote}\n\n`, stamp: Date.now() }) },
+      { label: 'Explain this', icon: Question, onSelect: () => setAsk({ prompt: `Explain this in plain words:\n\n${quote}`, send: true, stamp: Date.now() }) },
+      { label: 'Save as a sticky', icon: NotePencil, onSelect: () => {
+        let id = null
+        commit((state) => { const made = captureThought(state, words, 'Typed'); id = made.note?.id; return made.state })
+        if (id) showPicked('Saved to Just in', () => commit((state) => trashNotes(state, [id])))
+      } },
+      { label: 'Copy', icon: Copy, onSelect: () => navigator.clipboard?.writeText(words).catch(() => {}) },
+    ])
+  }
   useDates({ workspace, commit, hydrated, onToast: showDates })
 
   /* Main decides; the page only shows it, whoever asked: the sidebar's switch, ⇧⌘U or the menu-bar icon. */
@@ -227,8 +250,9 @@ export function Desk() {
     else if (view === 'Clipboard') { if (window.osatSearch) window.osatSearch.show('clipboard'); else setNotice('The clipboard history is in the Mac app.') }
     else if (view === 'Obsidian') go('Settings', { section: 'data' })
     else if (view === 'Reflection') go('Journal', { tab: 'reflect' })
-    // A new board is named in the sidebar.
+    // A new board is named in the sidebar, and so is a new canvas (Phase 98, from either bar).
     else if (view === 'Mindmap' && detail?.action === 'new-node') setNewBoard(Date.now())
+    else if (view === 'Canvas' && detail?.action === 'new') setNewCanvas(Date.now())
     else if (view === 'Mindmap' || view === 'Sky') {
       // A note sent to the boards opens the board it's on (Boards finds it); no board yet means Just in.
       const board = detail?.noteId ? null : boardFor(detail)
@@ -264,7 +288,7 @@ export function Desk() {
     <main className={`app ${ask ? 'has-ask' : ''}`} data-native={window.osatDesk ? '' : undefined}>
       <SaveStatus recovery />
       <div className="app-frame" inert={welcome || tour || undefined}>
-        <Sidebar workspace={workspace} commit={commit} navigate={navigate} at={at} offline={on} onOffline={() => askOffline(!on)} newBoard={newBoard} />
+        <Sidebar workspace={workspace} commit={commit} navigate={navigate} at={at} offline={on} onOffline={() => askOffline(!on)} newBoard={newBoard} newCanvas={newCanvas} />
 
         <section className="app-main">
           <header className="app-bar">
@@ -286,7 +310,7 @@ export function Desk() {
             </button>
           </header>
 
-          <div className="app-room popout-body workspace-content is-filled" data-view={room} key={room}>
+          <div className="app-room popout-body workspace-content is-filled" data-view={room} key={room} onContextMenu={pickedWords}>
             <ErrorBoundary where={titleFor(at.view)}>
               <Room at={at} common={common} storage={storage} command={roomCommand} covered={welcome || tour} boardsRef={boardsRef} setBoard={(board) => setAt((value) => ({ ...value, view: board === JUST_IN ? 'JustIn' : 'Mindmap', board }))} />
             </ErrorBoundary>
@@ -304,6 +328,8 @@ export function Desk() {
 
       <div className="toasts-above">{datesToast}</div>
       {filedToast}
+      {pickedToast}
+      {pickedMenu}
       {notice
         ? <p className="desk-note" role="status">{notice}</p>
         : arrived.length > 0 && (
@@ -342,7 +368,8 @@ function Room({ at, common, storage, command, covered, boardsRef, setBoard }) {
     case 'Settings': return <SettingsView {...common} storage={storage} target={at.detail?.section ? target : null} />
     case 'Roadmap': return <RoadmapView {...common} target={target} />
     case 'GitHub': return <GitHubView />
-    case 'Mail': return <MailView {...common} />
+    case 'Activity': return <ActivityView />
+    case 'Mail': return <MailView {...common} target={target} />
     case 'Passwords': return <PasswordsView />
     case 'Meetings': return <MeetingsView {...common} />
     case 'Pile': return <PileView {...common} />

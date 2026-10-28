@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowClockwise, ArrowLeft, ArrowRight, Check, Globe, ListChecks, MagnifyingGlass, Plus, Record, Scissors, X } from '@phosphor-icons/react'
+import { ArrowClockwise, ArrowLeft, ArrowRight, Check, Globe, House, Key, ListChecks, MagnifyingGlass, Plus, Record, Scissors, X } from '@phosphor-icons/react'
 
 import { createNote, excerpt, isActiveNote } from '../notes-model.js'
-import { clipMarkdown, toAddress } from './address.js'
+import { SEARCHES, clipMarkdown, searchUrl, toAddress } from './address.js'
 import { SkillBar, SkillList, useSkills } from './Skills.jsx'
+
+// Which search and which home page, kept on this Mac only.
+const PICKS_KEY = 'osat.browser.picks.v1'
+const readPicks = () => { try { return { search: 'duckduckgo', home: '', ...JSON.parse(localStorage.getItem(PICKS_KEY) || '{}') } } catch { return { search: 'duckduckgo', home: '' } } }
+const keepPicks = (picks) => { try { localStorage.setItem(PICKS_KEY, JSON.stringify(picks)) } catch { /* the next open starts with DuckDuckGo */ } }
 
 /* The page itself is a native Chromium view the Mac app lays over .browser-page.
    This room draws the tabs, the address bar and the clipper around it. */
@@ -14,6 +19,13 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
   const [editing, setEditing] = useState(false)
   const [toast, setToast] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [picks, setPicks] = useState(readPicks)
+  const [homeDraft, setHomeDraft] = useState(picks.home)
+  // Phase 102: ⌘\ or the key button. null, or { site, locked, logins } for the little panel under the bar.
+  const [fill, setFill] = useState(null)
+  const [master, setMaster] = useState('')
+  const passwords = window.osatPasswords
+  const pick = (next) => { const merged = { ...picks, ...next }; setPicks(merged); keepPicks(merged) }
   const skills = useSkills((text) => setToast({ tone: 'bad', text }))
   const page = useRef(null)
   const field = useRef(null)
@@ -69,6 +81,7 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
   useEffect(() => {
     if (!bridge || !command?.at) return
     if (command.action === 'new-tab') newTab()
+    if (command.action === 'fill-password') openFill()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [command?.at])
 
@@ -88,17 +101,59 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
 
   function go(event) {
     event.preventDefault()
-    const url = toAddress(address)
+    const url = toAddress(address, searchUrl(picks.search))
     if (!url) return
     setEditing(false)
     field.current?.blur()
     run(() => (tab ? bridge.navigate(url) : bridge.open(url)))
   }
 
+  function goHome() {
+    if (picks.home) run(() => (tab ? bridge.navigate(picks.home) : bridge.open(picks.home)))
+  }
+
+  function saveHome(event) {
+    event.preventDefault()
+    const home = toAddress(homeDraft, searchUrl(picks.search))
+    pick({ home })
+    setHomeDraft(home)
+  }
+
   function newTab() {
     run(async () => {
       await bridge.open('about:blank')
       requestAnimationFrame(() => field.current?.focus())
+    })
+  }
+
+  /* A saved password for the page in front. Main works out the site from its own tab and hands the password straight to the
+     page; this room only ever sees titles and usernames. One login fills at once; several are offered; locked asks here. */
+  function openFill() {
+    if (!passwords || blank) return
+    run(async () => {
+      const found = await passwords.logins()
+      if (!found.site) { setFill(null); setToast({ tone: 'bad', text: 'Saved passwords fill only on secure (https) pages.' }); return }
+      if (found.locked) { setMaster(''); setFill(found); return }
+      if (found.logins.length === 1) return fillWith(found.logins[0], found.site)
+      if (!found.logins.length) { setFill(null); setToast({ tone: 'bad', text: `No saved password for ${found.site}. Add one in Passwords.` }); return }
+      setFill(found)
+    })
+  }
+
+  function fillWith(login, site) {
+    run(async () => {
+      setFill(null)
+      await passwords.fill(login.id)
+      setToast({ tone: 'good', text: `Filled ${login.username || login.title} on ${site}` })
+    })
+  }
+
+  function unlockToFill(event) {
+    event.preventDefault()
+    run(async () => {
+      await passwords.unlock(master)
+      setMaster('')
+      openFill()
     })
   }
 
@@ -144,6 +199,7 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
         <div className="browser-row">
           <button type="button" className="browser-icon" aria-label="Back" disabled={!tab?.canBack} onClick={() => run(() => bridge.back())}><ArrowLeft /></button>
           <button type="button" className="browser-icon" aria-label="Forward" disabled={!tab?.canForward} onClick={() => run(() => bridge.forward())}><ArrowRight /></button>
+          {picks.home && <button type="button" className="browser-icon" aria-label="Home" title={picks.home} onClick={goHome}><House /></button>}
           <button type="button" className="browser-icon" aria-label={tab?.loading ? 'Stop loading' : 'Reload'} disabled={blank} onClick={() => run(() => (tab?.loading ? bridge.stop() : bridge.reload()))}>
             {tab?.loading ? <X /> : <ArrowClockwise />}
           </button>
@@ -172,11 +228,36 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
               <Record weight="fill" /> <span>Record a skill</span>
             </button>
           )}
+          {passwords && (
+            <button type="button" className="browser-icon" aria-label="Fill a saved password" title="Fill a saved password (⌘\)" disabled={blank} onClick={openFill}><Key /></button>
+          )}
           {skills.available && (
             <button type="button" className="browser-skill is-quiet" aria-label="Your skills" title="Your skills" onClick={newTab}><ListChecks /></button>
           )}
         </div>
         <SkillBar skills={skills} />
+        {fill && (
+          <div className="browser-fill" onKeyDown={(event) => { if (event.key === 'Escape') setFill(null) }}>
+            <Key aria-hidden="true" />
+            {fill.locked ? (
+              <form onSubmit={unlockToFill}>
+                <label htmlFor="browser-master">Unlock Passwords to fill {fill.site}</label>
+                <input id="browser-master" type="password" autoFocus autoComplete="off" value={master} onChange={(event) => setMaster(event.target.value)} placeholder="Master password" />
+                <button type="submit" className="text-button" disabled={!master}>Unlock</button>
+              </form>
+            ) : (
+              <>
+                <span>Fill on {fill.site}:</span>
+                {fill.logins.map((login) => (
+                  <button key={login.id} type="button" autoFocus={login === fill.logins[0]} onClick={() => fillWith(login, fill.site)}>
+                    <strong>{login.title}</strong>{login.username && <span>{login.username}</span>}
+                  </button>
+                ))}
+              </>
+            )}
+            <button type="button" className="browser-icon" aria-label="Close" onClick={() => setFill(null)}><X /></button>
+          </div>
+        )}
         {toast && (
           <p className={`browser-toast is-${toast.tone}`} role="status">
             {toast.tone === 'good' && <Check weight="bold" />}
@@ -193,6 +274,19 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
             <Globe weight="duotone" />
             <h2>Where to?</h2>
             <p>Search or type an address above. Pages open in their own private session, and nothing here reaches your notes unless you clip it.</p>
+            <div className="browser-picks">
+              <label>Search with
+                <select value={picks.search} onChange={(event) => pick({ search: event.target.value })}>
+                  {SEARCHES.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+              <form onSubmit={saveHome}>
+                <label htmlFor="browser-home">Home page</label>
+                <input id="browser-home" value={homeDraft} placeholder="fortispay.com" spellCheck={false} autoComplete="off" onChange={(event) => setHomeDraft(event.target.value)} />
+                <button type="submit" className="text-button" disabled={homeDraft.trim() === picks.home}>{homeDraft.trim() ? 'Save' : 'Clear'}</button>
+                {picks.home && <button type="button" className="text-button" onClick={goHome}>Open</button>}
+              </form>
+            </div>
             <SkillList skills={skills} onRemoved={(gone) => setToast({ tone: 'good', text: `Deleted “${gone.name}”`, undo: () => { skills.restore(gone); setToast(null) } })} />
             {clips.length > 0 && (
               <div className="browser-clips">

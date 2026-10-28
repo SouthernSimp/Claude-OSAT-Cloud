@@ -468,10 +468,12 @@ try {
     const now = new Date().toISOString()
     await window.osat.store.commit([{ t: 'add', c: 'notes', v: { id: 'from-other', title: 'Written on the other Mac', markdown: '', tags: [], createdAt: now, updatedAt: now, folderId: null, pinned: false, archived: false, trashedAt: null, unsorted: false, source: null, kind: null, date: null } }])
   })
-  check(await until(async () => (await notesIn(main)).includes('Written on the other Mac'), 30000),
+  check(await until(async () => (await notesIn(main)).includes('Written on the other Mac'), 60000),
     'the first OSAT did not hear the second one\'s new note')
   await main.evaluate(() => window.osat.store.commit([{ t: 'patch', c: 'notes', id: 'from-other', v: { title: 'Renamed on the first Mac' } }]))
-  check(await until(async () => (await notesIn(other.main)).includes('Renamed on the first Mac'), 30000),
+  // Sync looks again every 20 s when the folder watcher misses a change, after its own save delay; a busy CI
+  // runner went past 30 s here now and then (#126, #127, #131), so wait for two looks.
+  check(await until(async () => (await notesIn(other.main)).includes('Renamed on the first Mac'), 60000),
     'the second OSAT did not hear the first one\'s rename')
   await other.app.close()
   await app.close()

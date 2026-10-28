@@ -151,6 +151,7 @@ test('platform metadata uses the OSAT identity and its own data folder in both m
   assert.match(files, /if \(!isSafeOpenFilename\(path\.basename\(target\)\)\) \{\s+shell\.showItemInFolder\(target\)/)
   assert.match(entitlements, /com\.apple\.security\.app-sandbox/)
   assert.match(entitlements, /com\.apple\.security\.files\.user-selected\.read-write/)
+  assert.match(entitlements, /com\.apple\.security\.personal-information\.calendars/)
   assert.match(main, /globalShortcut\.register\(value, run\)/)
   assert.match(main, /layer: \{ value: null, failed: false, run: \(\) => toggleDesk\(\) \}/)
   // One bar (Phase 13c), and one key for it (Oct 2026): Search or Ask; there is no quick chat window or Ask key any more.
@@ -169,4 +170,25 @@ test('platform metadata uses the OSAT identity and its own data folder in both m
 
   const forbiddenExpansion = ['One', 'Step', 'Atta', 'Time'].join(' ')
   assert.equal([pkg.description, index, main].join('\n').includes(forbiddenExpansion), false)
+})
+
+// Phase 96: under the hardened runtime macOS refuses what a usage string asks for, without even asking, unless the
+// signature carries the entitlement too ("Deny for missing Hardened Runtime Entitlement"). Calendar's was missing.
+test('every usage string the hardened runtime ties to an entitlement has that entitlement', async () => {
+  const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))
+  const plist = (await readFile(path.join(root, 'build/entitlements.mac.plist'), 'utf8')).replace(/<!--[\s\S]*?-->/g, '').replace(/\s+/g, '')
+  const needs = [
+    [/^NS(Calendars|Reminders)/, 'com.apple.security.personal-information.calendars'],
+    [/^NSMicrophoneUsageDescription$/, 'com.apple.security.device.audio-input'],
+    [/^NSCameraUsageDescription$/, 'com.apple.security.device.camera'],
+    [/^NSContactsUsageDescription$/, 'com.apple.security.personal-information.addressbook'],
+    [/^NSLocation/, 'com.apple.security.personal-information.location'],
+    [/^NSPhotoLibrary/, 'com.apple.security.personal-information.photos-library'],
+    [/^NSAppleEventsUsageDescription$/, 'com.apple.security.automation.apple-events'],
+  ]
+  for (const usage of Object.keys(pkg.build.mac.extendInfo)) {
+    for (const [pattern, key] of needs) {
+      if (pattern.test(usage)) assert.ok(plist.includes(`<key>${key}</key><true/>`), `${usage} needs ${key} in build/entitlements.mac.plist`)
+    }
+  }
 })

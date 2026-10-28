@@ -110,6 +110,11 @@
 .browser-start { height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 12cqh 24px 40px; text-align: center; }
 .browser-start > svg { width: 44px; height: 44px; color: var(--accent); }
 .browser-start h2 { margin-top: 14px; font-size: var(--t-2xl); letter-spacing: -0.02em; }
+.browser-picks { display: grid; gap: 10px; margin-top: 18px; font-size: var(--t-sm); color: var(--muted); }
+.browser-picks label { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.browser-picks form { display: flex; align-items: center; gap: 8px; }
+.browser-picks select, .browser-picks input { min-height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--ink); font-size: var(--t-sm); }
+.browser-picks input, .browser-picks select { width: 220px; }
 .browser-start > p { max-width: 460px; margin-top: 10px; font-size: var(--t-md); line-height: 1.5; color: var(--muted); }
 .browser-clips { width: min(560px, 100%); margin-top: 36px; display: grid; gap: 4px; text-align: left; }
 .browser-clips h3 { padding: 0 10px 6px; font-family: var(--font); font-size: var(--t-2xs); font-weight: 650; letter-spacing: 0; color: var(--faint); }
@@ -273,3 +278,12 @@
 .skill-row button.skill-steps { border: 0; min-height: 0; padding: 0; font-weight: 500; color: var(--muted); }
 .skill-row button.skill-trash { padding: 0 8px; color: var(--muted); }
 .skill-row ol { margin: 0; padding: 0 14px 10px 36px; color: var(--muted); font-size: var(--t-sm); line-height: 1.6; }
+
+/* Phase 102: fill a saved password, under the bar (above the page, so the native view never hides it). */
+.browser-fill { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 12px; border-top: 1px solid var(--line); font-size: var(--t-sm); color: var(--muted); }
+.browser-fill > svg { width: 15px; height: 15px; color: var(--accent); }
+.browser-fill form { display: flex; align-items: center; gap: 8px; }
+.browser-fill input { min-height: 28px; width: 220px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--ink); }
+.browser-fill > button:not(.browser-icon) { display: inline-flex; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--ink); }
+.browser-fill > button span { color: var(--muted); }
+.browser-fill > .browser-icon { margin-left: auto; }

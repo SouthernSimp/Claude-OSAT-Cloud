@@ -1,6 +1,6 @@
 /* The Passwords room (Phase 58, Tools → Passwords), main process. Everything secret lives here and nowhere else.
      passwords:status · create · unlock · lock · touch · list · save · remove · restore · reveal · copy · generate
-     passwords:set-auto-lock · change-master · export · import-pick · import
+     passwords:set-auto-lock · change-master · export · import-pick · import · import-csv · logins · fill
    The file is `vault.json` in the data folder: this Mac only, mode 0600, written whole to a temporary file and moved into
    place. It is NEVER part of workspace.json, sync, snapshots, the iPhone folder, Ask, the connector, the agent, webhooks or
    the overnight/brief jobs: none of them import this file (tests/vault-fence.test.mjs fails if one does).
@@ -8,7 +8,8 @@
    * Locked at every launch. Locks: idle (a setting, 5 minutes), Mac sleep, screen lock, the desk put away, leaving the
      room, quit. A lock overwrites the key and drops the decrypted entries; the window is told (`passwords:locked`).
    * The window gets id/title/username/url/updatedAt and nothing more. A password leaves only for Reveal (the window hides it
-     after 10 seconds) or Copy (written here, concealed, cleared after 30 seconds if the clipboard still holds it).
+     after 10 seconds), Copy (written here, concealed, cleared after 30 seconds if the clipboard still holds it) or a fill in
+     the Web room (Phase 102: handed from here straight to the page in front, never through the window).
    * The master password is never kept: it derives the key and is let go. There is no way back in without it.
    * Nothing here is logged, and an error that reaches the window is one of this file's own calm sentences, never the
      underlying error (which could name a path or, one day, a value). */
@@ -46,6 +47,8 @@ async function writeAtomic(file, text, { fs = fsp } = {}) {
 async function createPasswords({
   dataDir, sharedModule, handle, fail, dialog, mainWindow = () => null, clipboard, writeConcealed, send = () => {},
   now = () => Date.now(), timers = { set: setTimeout, clear: clearTimeout }, fs = fsp,
+  // The Web room's front tab ({ url, fill }) and the Bin, both from main.
+  page = () => null, trash = async () => { throw new Error('no Bin') },
 }) {
   const format = await sharedModule('vault-format.mjs')
   const model = await sharedModule('password-model.mjs')
@@ -228,14 +231,15 @@ async function createPasswords({
     return { id: entry.id, list: publicList() }
   }))
 
-  /* Deleted entries wait in memory until the next lock, so Undo can bring one back. */
+  /* Deleted entries wait in memory until the next lock, so Undo can bring one back. A list of ids is an import's Undo. */
   register('passwords:remove', (id) => serial(async () => {
     const mine = unlocked()
-    const gone = mine.data.entries.find((entry) => entry.id === id)
-    if (!gone) throw new Calm('That password isn’t here any more.')
-    await commitData((next) => { next.entries = next.entries.filter((entry) => entry.id !== id) })
-    mine.deleted.push(gone)
-    return { id, title: gone.title, list: publicList() }
+    const ids = new Set(Array.isArray(id) ? id : [id])
+    const gone = mine.data.entries.filter((entry) => ids.has(entry.id))
+    if (!gone.length) throw new Calm('That password isn’t here any more.')
+    await commitData((next) => { next.entries = next.entries.filter((entry) => !ids.has(entry.id)) })
+    mine.deleted = [...mine.deleted, ...gone]
+    return { id, title: gone[0].title, list: publicList() }
   }))
   register('passwords:restore', (id) => serial(async () => {
     const mine = unlocked()
@@ -354,6 +358,48 @@ async function createPasswords({
       if (opened) format.wipe(opened)
     }
   }))
+
+  /* Phase 102: the file Chrome or Apple Passwords exports, read here, added to what is unlocked (a login already here is
+     skipped), then moved to the Bin, because it holds every password in plain words. → { added: ids, binned, name, list } */
+  register('passwords:import-csv', () => serial(async () => {
+    unlocked()
+    const where = await ask(dialog.showOpenDialog, { title: 'Choose the passwords file you exported', properties: ['openFile'], filters: [{ name: 'Exported passwords', extensions: ['csv'] }] })
+    if (where.canceled || !where.filePaths?.[0]) return null
+    const picked = where.filePaths[0]
+    if ((await fs.stat(picked)).size > 32 * 1024 * 1024) throw new Calm('That file is too big to be exported passwords.')
+    const rows = model.fromCsv(await fs.readFile(picked, 'utf8'))
+    if (!rows) throw new Calm('That isn’t a passwords file OSAT can read. Export it from Chrome or Apple Passwords as a .csv file.')
+    const here = new Set(unlocked().data.entries.map(model.loginKey))
+    const added = []
+    for (const row of rows) {
+      const entry = model.cleanEntry(row, { newId: () => crypto.randomUUID() })
+      if (!entry || here.has(model.loginKey(entry))) continue
+      here.add(model.loginKey(entry))
+      added.push(entry)
+    }
+    if (added.length) await commitData((next) => { next.entries = [...next.entries, ...added] })
+    const binned = await Promise.resolve().then(() => trash(picked)).then(() => true, () => false)
+    return { added: added.map((entry) => entry.id), binned, name: path.basename(picked), list: publicList() }
+  }))
+
+  /* The Web room's key (Phase 102). The site is main's own front tab, never an address the window sends. `logins` lists the
+     ones for it (never a password); `fill` checks the site again and hands the login straight to the tab, which fills only
+     while it is still on that page. */
+  register('passwords:logins', async () => {
+    const where = page()?.url() || ''
+    const site = /^https:/i.test(where) ? model.hostOf(where) : ''
+    if (!session) return { site, locked: (await readFile().catch(() => 'unreadable')) !== null, logins: [] }
+    return { site, locked: false, logins: session.data.entries.filter((entry) => model.forSite(entry.url, where)).map(model.listing).sort(model.byTitle) }
+  })
+  register('passwords:fill', async (id) => {
+    const entry = entryFor(id)
+    const tab = page()
+    const where = tab?.url() || ''
+    if (!model.forSite(entry.url, where)) throw new Calm('That password isn’t for this page.')
+    const filled = await tab.fill({ origin: new URL(where).origin, username: entry.username, password: entry.password }).catch(() => '')
+    if (!filled) throw new Calm('OSAT couldn’t find where this page takes a password.')
+    return true
+  })
 
   return { lock, locked: () => !session, stop: lock }
 }

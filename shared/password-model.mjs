@@ -2,7 +2,8 @@
    network, so the window can import it too (the strength hint, the words). The sealed file and the crypto are
    shared/vault-format.mjs; main alone uses that, through desktop/passwords.cjs.
    What a window may ever see of an entry: `listing()` — id, title, username, web address, when it changed.
-   A password crosses to the window only when asked (Reveal, or Copy, which is done in main). */
+   A password crosses to the window only when asked (Reveal, or Copy, which is done in main). Filling one in the Web room
+   (Phase 102) goes from main straight to the page, never through the window. */
 
 export const MIN_MASTER = 10
 export const MAX_MASTER = 512
@@ -76,6 +77,78 @@ export function findEntries(list, query) {
 }
 
 export const cleanSettings = (raw) => ({ autoLockMinutes: AUTO_LOCK_CHOICES.includes(raw?.autoLockMinutes) ? raw.autoLockMinutes : DEFAULT_AUTO_LOCK })
+
+/* ---- Sites (Phase 102): which logins belong on the page in front of the Web room ---- */
+
+/* The host of a web address, lower case; '' when there is none. An address saved without https:// still has one. */
+export function hostOf(url) {
+  const text = String(url ?? '').trim()
+  try { return new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(text) ? text : `https://${text}`).hostname.toLowerCase() } catch { return '' }
+}
+
+/* A login fills only on an https page whose host is the login's own, or one under it split at a dot: github.com fills on
+   gist.github.com, never on evilgithub.com or github.com.evil.com.
+   ponytail: no public-suffix list, so a login saved for a shared host (vercel.app) fills on every site under it; add one if that bites. */
+export function forSite(entryUrl, pageUrl) {
+  let page
+  try { page = new URL(pageUrl) } catch { return false }
+  const host = hostOf(entryUrl)
+  if (page.protocol !== 'https:' || !host) return false
+  return page.hostname === host || page.hostname.endsWith(`.${host}`)
+}
+
+/* The same login: same host, username and password (an import skips one that is already here). */
+export const loginKey = (entry) => JSON.stringify([hostOf(entry.url), entry.username, entry.password])
+
+/* ---- Passwords exported from Chrome, Safari / Apple Passwords, Firefox or Bitwarden (Phase 102) ---- */
+
+/* A CSV file as rows of fields: quoted fields, "" for a quote, line breaks inside quotes, CRLF and a BOM. */
+export function csvRows(text) {
+  const source = String(text ?? '').replace(/^﻿/, '')
+  const rows = []
+  let row = []
+  let field = ''
+  let quoted = false
+  for (let at = 0; at < source.length; at += 1) {
+    const c = source[at]
+    if (quoted) {
+      if (c !== '"') field += c
+      else if (source[at + 1] === '"') { field += '"'; at += 1 }
+      else quoted = false
+    } else if (c === '"' && field === '') quoted = true
+    else if (c === ',') { row.push(field); field = '' }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && source[at + 1] === '\n') at += 1
+      rows.push([...row, field])
+      row = []
+      field = ''
+    } else field += c
+  }
+  if (field || row.length) rows.push([...row, field])
+  return rows.filter((cells) => cells.some(Boolean))
+}
+
+// Each export names its columns on its first line (Chrome: name,url,username,password,note; Apple: Title,URL,Username,
+// Password,Notes,OTPAuth; Firefox: url,username,password,…; Bitwarden: …,name,…,login_uri,login_username,login_password,…).
+const COLUMNS = { title: ['name', 'title'], url: ['url', 'login_uri'], username: ['username', 'login_username'], password: ['password', 'login_password'] }
+
+/* An export's logins as entries for cleanEntry, or null when no column holds passwords. A row without a password
+   (Bitwarden's notes and cards) and an Android app's login (android://) are left out. Firefox has no name column, so a
+   login is named for its site. Notes, folders and one-time codes stay behind. */
+export function fromCsv(text) {
+  const [head = [], ...rows] = csvRows(text)
+  const names = head.map((name) => name.trim().toLowerCase())
+  const at = Object.fromEntries(Object.entries(COLUMNS).map(([key, words]) => [key, names.findIndex((name) => words.includes(name))]))
+  if (at.password < 0) return null
+  const cell = (row, key) => (at[key] >= 0 ? row[at[key]] ?? '' : '')
+  return rows.flatMap((row) => {
+    const url = cell(row, 'url').trim()
+    const password = cell(row, 'password')
+    if (!password || /^android(app)?:/i.test(url)) return []
+    const username = cell(row, 'username')
+    return [{ title: cell(row, 'title').trim() || hostOf(url) || username, url, username, password }]
+  })
+}
 
 /* What is sealed in the file, read back into shape. A mangled entry is dropped; a sealed file is never half-trusted:
    it only gets here after its tag has checked out. */

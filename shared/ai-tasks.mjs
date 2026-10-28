@@ -172,6 +172,23 @@ export function readGistAnswer(text) {
   return title || gist ? { title, gist } : null
 }
 
+/* ---------- Break it down (Phase 106, Nate's sticky "Breakdown Sticky Note") ---------- */
+
+/* One sticky as the few small steps that would get it done, each a to-do in the writer's own voice. */
+export function breakdownMessages(words) {
+  return [SYSTEM, {
+    role: 'user',
+    content: `This is one sticky someone wrote. Break it into the small next steps that would get it done: between 2 and 8, in order, each one thing a person can do, starting with a verb, at most 15 words. Use only what the sticky says or plainly needs; invent no names, dates or facts.
+
+${clip(words, 4000)}
+
+Write one step per line, nothing else.`,
+  }]
+}
+
+/* The steps: one per line, bullets and numbers gone, an introduction dropped, each once, at most 8. */
+export const readBreakdownAnswer = (text) => readPhotoAnswer(text).map((line) => line.slice(0, 200)).slice(0, 8)
+
 /* ---------- A photo of paper stickies (Phase 72) ---------- */
 
 /* The AI on this Mac looks at the photo (it goes with this question) and writes out each paper sticky. */
