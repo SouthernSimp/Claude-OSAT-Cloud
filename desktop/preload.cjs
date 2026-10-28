@@ -153,7 +153,7 @@ contextBridge.exposeInMainWorld('osatBank', Object.freeze({
 }))
 
 // Tools → Passwords (desktop/passwords.cjs): locked until the master password. The window gets titles and usernames;
-// a password comes only from reveal (shown for ten seconds) or copy (done in main).
+// a password comes only from reveal (shown for ten seconds); copy and a fill in Web are done in main.
 contextBridge.exposeInMainWorld('osatPasswords', Object.freeze({
   status: () => ipcRenderer.invoke('passwords:status'),
   create: (password, again) => ipcRenderer.invoke('passwords:create', password, again),
@@ -172,6 +172,10 @@ contextBridge.exposeInMainWorld('osatPasswords', Object.freeze({
   exportBackup: () => ipcRenderer.invoke('passwords:export'),
   pickBackup: () => ipcRenderer.invoke('passwords:import-pick'),
   importBackup: (password) => ipcRenderer.invoke('passwords:import', password),
+  importCsv: () => ipcRenderer.invoke('passwords:import-csv'),
+  // The Web room (Phase 102): the logins for main's own front tab, and a fill that main hands straight to that tab.
+  logins: () => ipcRenderer.invoke('passwords:logins'),
+  fill: (id) => ipcRenderer.invoke('passwords:fill', id),
   onLocked: (listener) => listen('passwords:locked', listener),
 }))
 

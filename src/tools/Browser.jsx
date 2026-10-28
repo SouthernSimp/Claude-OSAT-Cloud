@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowClockwise, ArrowLeft, ArrowRight, Check, Globe, House, ListChecks, MagnifyingGlass, Plus, Record, Scissors, X } from '@phosphor-icons/react'
+import { ArrowClockwise, ArrowLeft, ArrowRight, Check, Globe, House, Key, ListChecks, MagnifyingGlass, Plus, Record, Scissors, X } from '@phosphor-icons/react'
 
 import { createNote, excerpt, isActiveNote } from '../notes-model.js'
 import { SEARCHES, clipMarkdown, searchUrl, toAddress } from './address.js'
@@ -21,6 +21,10 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
   const [menuOpen, setMenuOpen] = useState(false)
   const [picks, setPicks] = useState(readPicks)
   const [homeDraft, setHomeDraft] = useState(picks.home)
+  // Phase 102: ⌘\ or the key button. null, or { site, locked, logins } for the little panel under the bar.
+  const [fill, setFill] = useState(null)
+  const [master, setMaster] = useState('')
+  const passwords = window.osatPasswords
   const pick = (next) => { const merged = { ...picks, ...next }; setPicks(merged); keepPicks(merged) }
   const skills = useSkills((text) => setToast({ tone: 'bad', text }))
   const page = useRef(null)
@@ -77,6 +81,7 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
   useEffect(() => {
     if (!bridge || !command?.at) return
     if (command.action === 'new-tab') newTab()
+    if (command.action === 'fill-password') openFill()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [command?.at])
 
@@ -118,6 +123,37 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
     run(async () => {
       await bridge.open('about:blank')
       requestAnimationFrame(() => field.current?.focus())
+    })
+  }
+
+  /* A saved password for the page in front. Main works out the site from its own tab and hands the password straight to the
+     page; this room only ever sees titles and usernames. One login fills at once; several are offered; locked asks here. */
+  function openFill() {
+    if (!passwords || blank) return
+    run(async () => {
+      const found = await passwords.logins()
+      if (!found.site) { setFill(null); setToast({ tone: 'bad', text: 'Saved passwords fill only on secure (https) pages.' }); return }
+      if (found.locked) { setMaster(''); setFill(found); return }
+      if (found.logins.length === 1) return fillWith(found.logins[0], found.site)
+      if (!found.logins.length) { setFill(null); setToast({ tone: 'bad', text: `No saved password for ${found.site}. Add one in Passwords.` }); return }
+      setFill(found)
+    })
+  }
+
+  function fillWith(login, site) {
+    run(async () => {
+      setFill(null)
+      await passwords.fill(login.id)
+      setToast({ tone: 'good', text: `Filled ${login.username || login.title} on ${site}` })
+    })
+  }
+
+  function unlockToFill(event) {
+    event.preventDefault()
+    run(async () => {
+      await passwords.unlock(master)
+      setMaster('')
+      openFill()
     })
   }
 
@@ -192,11 +228,36 @@ export function BrowserView({ workspace, commit, navigate, covered, command, fra
               <Record weight="fill" /> <span>Record a skill</span>
             </button>
           )}
+          {passwords && (
+            <button type="button" className="browser-icon" aria-label="Fill a saved password" title="Fill a saved password (⌘\)" disabled={blank} onClick={openFill}><Key /></button>
+          )}
           {skills.available && (
             <button type="button" className="browser-skill is-quiet" aria-label="Your skills" title="Your skills" onClick={newTab}><ListChecks /></button>
           )}
         </div>
         <SkillBar skills={skills} />
+        {fill && (
+          <div className="browser-fill" onKeyDown={(event) => { if (event.key === 'Escape') setFill(null) }}>
+            <Key aria-hidden="true" />
+            {fill.locked ? (
+              <form onSubmit={unlockToFill}>
+                <label htmlFor="browser-master">Unlock Passwords to fill {fill.site}</label>
+                <input id="browser-master" type="password" autoFocus autoComplete="off" value={master} onChange={(event) => setMaster(event.target.value)} placeholder="Master password" />
+                <button type="submit" className="text-button" disabled={!master}>Unlock</button>
+              </form>
+            ) : (
+              <>
+                <span>Fill on {fill.site}:</span>
+                {fill.logins.map((login) => (
+                  <button key={login.id} type="button" autoFocus={login === fill.logins[0]} onClick={() => fillWith(login, fill.site)}>
+                    <strong>{login.title}</strong>{login.username && <span>{login.username}</span>}
+                  </button>
+                ))}
+              </>
+            )}
+            <button type="button" className="browser-icon" aria-label="Close" onClick={() => setFill(null)}><X /></button>
+          </div>
+        )}
         {toast && (
           <p className={`browser-toast is-${toast.tone}`} role="status">
             {toast.tone === 'good' && <Check weight="bold" />}

@@ -1,4 +1,5 @@
 const { WebContentsView, session } = require('electron')
+const { fillLoginSource } = require('./skill-pages.cjs')
 
 /* The in-app browser: real Chromium tabs in their own session, laid over the
    Browser room. Pages never see OSAT's data, get no special permissions, and
@@ -123,6 +124,15 @@ function createBrowser({ window, emit }) {
     },
     loading: (id) => Boolean(tabs.get(id)?.view.webContents.isLoading()),
     watch(watcher) { watchers.add(watcher); return () => watchers.delete(watcher) },
+    // Passwords (Phase 102): main's Passwords side hands a login ({ origin, username, password }) straight to the page in
+    // front, in a world of its own; the page checks its origin again first. Then the page has the keys, so Return signs in.
+    async fill(login) {
+      const wc = current()
+      if (!wc) return ''
+      const filled = await wc.executeJavaScriptInIsolatedWorld(1003, [{ code: fillLoginSource(login) }])
+      if (filled) wc.focus()
+      return filled
+    },
     open: (url) => { open(url); return state() },
     activate,
     close,

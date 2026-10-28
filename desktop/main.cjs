@@ -342,6 +342,9 @@ function buildMenu() {
         { label: 'Search or Ask…', accelerator: shortcuts.search.value || undefined, registerAccelerator: false, click: () => launcher?.search.show() },
         { type: 'separator' },
         { label: 'New Browser Tab', accelerator: 'CmdOrCtrl+T', click: () => command({ view: 'Browser', action: 'new-tab' }) },
+        // A menu key, since a key pressed inside the page never reaches OSAT's window; the window takes the keys so the
+        // master password can be typed (Phase 102).
+        { label: 'Fill Password', accelerator: 'CmdOrCtrl+\\', click: () => { command({ view: 'Browser', action: 'fill-password' }); if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.focus() } },
         ...(terminals?.available ? [{ label: 'New Terminal', accelerator: 'CmdOrCtrl+Shift+T', click: () => command({ view: 'Terminal', action: 'new-terminal' }) }] : []),
         { type: 'separator' },
         { label: 'Search Everything', accelerator: 'CmdOrCtrl+K', click: () => command({ action: 'search' }) },
@@ -1563,6 +1566,10 @@ app.whenReady().then(async () => {
   passwords = await part('Passwords', () => createPasswords({
     dataDir: app.getPath('userData'), sharedModule, handle, fail, dialog, mainWindow: () => mainWindow, clipboard: require('electron').clipboard, writeConcealed,
     send: (channel) => send(channel),
+    // Phase 102: the Web room's front tab, as main knows it (a fill goes to it, never to an address the window names), and
+    // the Bin for a passwords file once it's read.
+    page: () => (mainWindow && !mainWindow.isDestroyed() ? browsers.get(mainWindow.webContents.id) : null),
+    trash: (file) => shell.trashItem(file),
   }))
   for (const event of ['suspend', 'lock-screen']) powerMonitor.on(event, () => passwords?.lock())
   await part('overnight ideas', registerOvernight)

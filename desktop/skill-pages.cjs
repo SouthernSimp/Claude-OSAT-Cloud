@@ -1,6 +1,7 @@
-/* The two scripts a skill runs inside a web page in OSAT's browser (Phase 19). `recorder` watches what the person does and
+/* The scripts OSAT runs inside a web page in its browser. A skill's two (Phase 19): `recorder` watches what the person does and
    reports each step through the console (`<prefix>{json}`, the prefix a secret only main knows, so the page can't write steps: the one door out of an isolated world); `replay` does one
-   step. They are ordinary functions written out as source, so tests/skills.test.mjs runs them in a real browser page.
+   step; `fillLogin` puts a saved login in (Phase 102). They are ordinary functions written out as source, so
+   tests/skills.test.mjs runs them in a real browser page.
    Nothing is read from the page except what a step names; a password field's words are never read. */
 
 function recorder(prefix) {
@@ -113,9 +114,38 @@ async function replay(step) {
   return { ok: true }
 }
 
+/* Fills a saved login (Phase 102), only when the person asks for it (the Web room's key or ⌘\), never on load, and only in
+   the top frame. Nothing is written once the page has moved off `origin`. The password box is the focused one, else the
+   first one shown; the username box is the one marked autocomplete=username, else the last text or email box before it.
+   A page that asks for the username first (Google, Microsoft) gets the username now and the password on the next press.
+   Values go in the way replay's do (the prototype's setter, which React-made pages notice, then input and change).
+   → what it filled: 'both', 'username', 'password' or ''. */
+function fillLogin(origin, username, password) {
+  if (location.origin !== origin) return ''
+  const shown = (el) => Boolean(el.offsetWidth || el.offsetHeight || el.getClientRects().length)
+  const boxes = [...document.querySelectorAll('input')].filter((el) => shown(el) && !el.disabled && !el.readOnly)
+  const secrets = boxes.filter((el) => el.type === 'password')
+  const secret = secrets.includes(document.activeElement) ? document.activeElement : secrets[0]
+  const before = secret ? boxes.slice(0, boxes.indexOf(secret)) : boxes
+  const named = boxes.find((el) => el.type !== 'password' && /\busername\b/i.test(el.getAttribute('autocomplete') || ''))
+  const user = username ? named || before.filter((el) => el.type === 'text' || el.type === 'email').at(-1) : null
+  const put = (el, value) => {
+    el.focus()
+    const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value')?.set
+    if (set) set.call(el, value)
+    else el.value = value
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+  if (user) put(user, username)
+  if (secret) put(secret, password)
+  return user && secret ? 'both' : user ? 'username' : secret ? 'password' : ''
+}
+
 /* `nonce` is made fresh for each recording. */
 const stepPrefix = (nonce) => `__osat_step_${nonce}__`
 const recorderSource = (nonce) => `(${recorder})(${JSON.stringify(stepPrefix(nonce))})`
 const replaySource = (step) => `(${replay})(${JSON.stringify(step)})`
+const fillLoginSource = ({ origin, username, password }) => `(${fillLogin})(${JSON.stringify(String(origin))}, ${JSON.stringify(String(username || ''))}, ${JSON.stringify(String(password))})`
 
-module.exports = { recorder, replay, recorderSource, replaySource, stepPrefix }
+module.exports = { recorder, replay, fillLogin, recorderSource, replaySource, fillLoginSource, stepPrefix }

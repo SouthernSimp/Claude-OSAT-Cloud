@@ -32,7 +32,7 @@ const WHO = [
   [/passwords\.cjs/, ['desktop/main.cjs', 'desktop/preload.cjs', 'desktop/passwords.cjs', 'desktop/conceal.cjs', 'shared/password-model.mjs', 'shared/vault-format.mjs'], 'the room’s main side: only main’s wiring requires it'],
   [/conceal\.cjs/, ['desktop/main.cjs', 'desktop/conceal.cjs', 'desktop/passwords.cjs'], 'the concealed clipboard write'],
   [/passwords:/, ['desktop/passwords.cjs', 'desktop/preload.cjs', 'desktop/main.cjs', 'src/views/Passwords.jsx'], 'the room’s channels'],
-  [/osatPasswords/, ['desktop/preload.cjs', 'src/views/Passwords.jsx'], 'the room’s bridge'],
+  [/osatPasswords/, ['desktop/preload.cjs', 'src/views/Passwords.jsx', 'src/tools/Browser.jsx'], 'the room’s bridge (Web only for logins and fill: titles and usernames, never a password)'],
   [/password-model/, ['desktop/passwords.cjs', 'shared/vault-format.mjs', 'src/views/Passwords.jsx', 'shared/password-model.mjs'], 'the pure rules'],
 ]
 

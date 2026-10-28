@@ -5,7 +5,7 @@ import test from 'node:test'
 import { addRecorded, cleanSkill, cleanSkills, cleanStep, needsYou, newSkill, skillForJob, stepWords } from '../shared/skill-model.mjs'
 
 const require = createRequire(import.meta.url)
-const { recorderSource, replaySource, stepPrefix } = require('../desktop/skill-pages.cjs')
+const { fillLoginSource, recorderSource, replaySource, stepPrefix } = require('../desktop/skill-pages.cjs')
 const PREFIX = stepPrefix('n1')
 
 const go = { do: 'go', url: 'https://example.com/rent' }
@@ -199,4 +199,29 @@ test('playing: opens the page, does each step, says calmly where it stopped, pau
     assert.equal(t.controller.state().result.at, 1)
     await assert.rejects(t.controller.run('nope'), /gone/)
   } finally { await t.done() }
+})
+
+test('a saved login goes into the page it was asked for, React-style, and nowhere once the page has moved on', async (t) => {
+  const chrome = await browser()
+  if (!chrome) { t.skip('Chromium is not installed here'); return }
+  try {
+    const page = await chrome.newPage()
+    await page.setContent(`<form><input id="q" type="search"><input id="u" type="email"><input id="p" type="password"></form><p id="seen"></p>
+<script>p.addEventListener('input', () => { seen.textContent = 'heard' })</script>`)
+    const origin = await page.evaluate(() => location.origin)
+    assert.equal(await page.evaluate(fillLoginSource({ origin: 'https://elsewhere.example', username: 'nate', password: 'pw' })), '')
+    assert.equal(await page.inputValue('#p'), '')
+    assert.equal(await page.evaluate(fillLoginSource({ origin, username: 'nate@x', password: 'p"w\'1' })), 'both')
+    assert.equal(await page.inputValue('#u'), 'nate@x')
+    assert.equal(await page.inputValue('#p'), 'p"w\'1')
+    assert.equal(await page.inputValue('#q'), '')
+    assert.equal(await page.textContent('#seen'), 'heard')
+
+    // Username first (Google, Microsoft): the username now, the password on the next press.
+    await page.setContent('<input id="u" type="text" autocomplete="username">')
+    assert.equal(await page.evaluate(fillLoginSource({ origin, username: 'nate', password: 'pw' })), 'username')
+    assert.equal(await page.inputValue('#u'), 'nate')
+  } finally {
+    await chrome.close()
+  }
 })

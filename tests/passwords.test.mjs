@@ -21,11 +21,11 @@ const SECRET = 'Zq9-SECRET-site-password-Zq9'
 const CHANNELS = [
   'passwords:status', 'passwords:create', 'passwords:unlock', 'passwords:lock', 'passwords:touch', 'passwords:list', 'passwords:save', 'passwords:remove',
   'passwords:restore', 'passwords:reveal', 'passwords:copy', 'passwords:generate', 'passwords:set-auto-lock', 'passwords:change-master', 'passwords:export',
-  'passwords:import-pick', 'passwords:import',
+  'passwords:import-pick', 'passwords:import', 'passwords:import-csv', 'passwords:logins', 'passwords:fill',
 ]
 
 /* Everything main would give it, made of stand-ins: a clock, timers that fire when told, a clipboard, a save dialog. */
-async function setup({ dir, fs = fsp, dialog = {}, conceal = null } = {}) {
+async function setup({ dir, fs = fsp, dialog = {}, conceal = null, page, trash } = {}) {
   dir ||= await mkdtemp(path.join(tmpdir(), 'osat-passwords-'))
   const handlers = new Map()
   const froms = new Map()
@@ -55,6 +55,8 @@ async function setup({ dir, fs = fsp, dialog = {}, conceal = null } = {}) {
     now: () => clock.t,
     timers,
     fs,
+    page,
+    trash,
   })
   const call = (channel, ...args) => handlers.get(channel)(...args)
   return { dir, call, handlers, froms, sent, clock, clipboard, written, timers, live, passwords, seen, file: path.join(dir, 'vault.json') }
@@ -389,4 +391,49 @@ test('Copy’s concealed write puts the words on the clipboard with the conceale
   assert.equal(isConcealed(got.types), true, 'the clipboard history skips it')
   assert.equal(SCRIPT.includes(text), false)
   await assert.rejects(writeConcealed(text, { platform: 'linux' }), /needs the Mac/)
+})
+
+test('Web fills only a login saved for the page in front, straight from main to that page', async () => {
+  const tab = { at: 'https://www.bank.example/login', given: [], url() { return this.at }, async fill(login) { this.given.push(login); return 'both' } }
+  const s = await open({ page: () => tab })
+  await add(s)
+  await add(s, { title: 'Other', url: 'https://evilbank.example', password: 'other-secret-123' })
+  const { logins, site, locked } = await s.call('passwords:logins')
+  assert.equal(site, 'www.bank.example')
+  assert.equal(locked, false)
+  assert.deepEqual(logins.map((login) => login.title), ['Bank'])
+  assert.doesNotMatch(JSON.stringify(logins), new RegExp(SECRET))
+  assert.equal(await s.call('passwords:fill', logins[0].id), true)
+  assert.deepEqual(tab.given, [{ origin: 'https://www.bank.example', username: 'nate', password: SECRET }])
+
+  const other = (await s.call('passwords:list')).find((entry) => entry.title === 'Other')
+  await assert.rejects(s.call('passwords:fill', other.id), /isn’t for this page/)
+  tab.at = 'http://www.bank.example/login'
+  await assert.rejects(s.call('passwords:fill', logins[0].id), /isn’t for this page/)
+  assert.equal(tab.given.length, 1)
+
+  tab.at = 'https://www.bank.example/login'
+  await s.call('passwords:lock')
+  assert.deepEqual(await s.call('passwords:logins'), { site: 'www.bank.example', locked: true, logins: [] })
+})
+
+test('a Chrome export is added (what is here already skipped), binned, and one Undo takes it all out', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'osat-csv-'))
+  const csv = path.join(dir, 'Chrome Passwords.csv')
+  await writeFile(csv, `name,url,username,password,note\nbank.example,https://bank.example/,nate,${SECRET},\nmail,https://mail.example/,nate@x,"pa,ss""word",hi\n`)
+  const binned = []
+  const s = await open({ dialog: { showOpenDialog: async () => ({ canceled: false, filePaths: [csv] }) }, trash: async (file) => { binned.push(file) } })
+  await add(s)
+  const result = await s.call('passwords:import-csv')
+  assert.equal(result.added.length, 1)
+  assert.equal(result.binned, true)
+  assert.deepEqual(binned, [csv])
+  assert.deepEqual(result.list.map((entry) => entry.title).sort(), ['Bank', 'mail'])
+  const after = await s.call('passwords:remove', result.added)
+  assert.deepEqual(after.list.map((entry) => entry.title), ['Bank'])
+
+  const failing = await open({ dialog: { showOpenDialog: async () => ({ canceled: false, filePaths: [csv] }) }, trash: async () => { throw new Error('no') } })
+  assert.equal((await failing.call('passwords:import-csv')).binned, false)
+  await writeFile(csv, 'just,some,words\n1,2,3\n')
+  await assert.rejects(failing.call('passwords:import-csv'), /isn’t a passwords file/)
 })
