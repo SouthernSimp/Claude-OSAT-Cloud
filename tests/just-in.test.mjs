@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { readPhotoAnswer } from '../shared/ai-tasks.mjs'
+import { breakdownMessages, readBreakdownAnswer, readPhotoAnswer } from '../shared/ai-tasks.mjs'
 import { JUST_IN, undoFrom } from '../src/boards/boards-model.js'
 import { cameIn, dayLabel, guessBoards, mergeAll, mergeStickies, placeFrom, samePair, todayFlow, todaysBrief, undoOf, whereTo } from '../src/boards/just-in.js'
 import { trashNotes } from '../src/notes-model.js'
@@ -117,4 +117,14 @@ test('a photo’s answer: one sticky a line, bullets gone, each once, none is no
 
 test('today’s intake in counts: what came in, and where it went', () => {
   assert.deepEqual(todayFlow(state, NOW), { came: 3, calendar: 1, questions: 1, buy: 0, board: 1, waiting: 2 })
+})
+
+test('Break it down: the sticky goes to the AI whole, and its steps come back as at most eight short lines', () => {
+  const [, ask] = breakdownMessages('Launch the Boutique site: domain, photos, contact form')
+  assert.match(ask.content, /Launch the Boutique site: domain, photos, contact form/)
+  assert.match(ask.content, /between 2 and 8/)
+  assert.deepEqual(readBreakdownAnswer('Here are the steps:\n1. Buy the domain\n2) Pick the photos\n- Hook up the contact form\n- buy the domain\n'), ['Buy the domain', 'Pick the photos', 'Hook up the contact form'])
+  assert.equal(readBreakdownAnswer(Array.from({ length: 12 }, (_, i) => `Step ${i}`).join('\n')).length, 8)
+  assert.equal(readBreakdownAnswer(`Do ${'x'.repeat(400)}`)[0].length, 200)
+  assert.deepEqual(readBreakdownAnswer('none'), [])
 })

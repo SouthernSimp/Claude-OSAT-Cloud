@@ -1,9 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
-  ArrowBendUpRight, ArrowDown, ArrowsMerge, CalendarCheck, Camera, Check, Kanban, ListBullets, MagnifyingGlass, NotePencil, Plus, Question, ShoppingCart, Sparkle, SquaresFour, StackSimple, Trash, Tray, X,
+  ArrowBendUpRight, ArrowDown, ArrowsMerge, ListChecks, CalendarCheck, Camera, Check, Kanban, ListBullets, MagnifyingGlass, NotePencil, Plus, Question, ShoppingCart, Sparkle, SquaresFour, StackSimple, Trash, Tray, X,
 } from '@phosphor-icons/react'
 
-import { photoMessages, readPhotoAnswer, readUnpackAnswer, unpackMessages } from '../../shared/ai-tasks.mjs'
+import { breakdownMessages, photoMessages, readBreakdownAnswer, readPhotoAnswer, readUnpackAnswer, unpackMessages } from '../../shared/ai-tasks.mjs'
 import { WHAT_LABEL, WHAT_PAPER, WHATS, whatOf, whenOf } from '../../shared/what-model.mjs'
 import { answeringLabel, askModel } from '../assistant/ask-model.js'
 import { pictureProblem, readPicture, withPictures } from '../assistant/pictures.js'
@@ -27,7 +27,7 @@ import {
 } from './boards-model.js'
 import { JustIn } from './JustIn.jsx'
 import { BoardOverview, clientItem } from './BoardOverview.jsx'
-import { mergeAll, mergeStickies, placeFrom, samePair } from './just-in.js'
+import { guessBoards, mergeAll, mergeStickies, placeFrom, samePair } from './just-in.js'
 
 /* A client's line under its name: when you last met, never a scold. */
 const clientLine = ({ lastMet }) => (lastMet
@@ -241,6 +241,23 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
         setReading(cleanError(error))
       }
     },
+    /* Break it down: the chosen AI writes the steps, each a To-do sticky on the same board (Just in for a sticky in none),
+       just after the sticky in the list. The sticky stays. One Undo takes the steps away. */
+    async breakDown(note) {
+      setReading(`Breaking it down with ${answering}…`)
+      try {
+        const steps = readBreakdownAnswer(await askModel(breakdownMessages(note.markdown || note.title)))
+        if (!steps.length) throw new Error('The AI didn’t find steps in that sticky. Try again, or write them yourself.')
+        change(`Broke it into ${steps.length} to-dos`, (state) => {
+          const made = []
+          const next = steps.reduce((current, line) => { const result = addSticky(current, line, note.folderId || null, { source: 'Breakdown' }); if (result.note) made.push(result.note.id); return result.state }, state)
+          return setWhat(next, made, 'todo')
+        })
+        setReading(null)
+      } catch (error) {
+        setReading(cleanError(error))
+      }
+    },
     newBoard(name) {
       const value = String(name || '').trim()
       setNaming(null)
@@ -306,18 +323,22 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
       const ids = actions.idsFor(note.id)
       const one = ids.length === 1
       const here = note.folderId ? folderPath(latest.current.folders, note.folderId)[0] : null
+      // Nate's sticky "where does this belong?": the boards it reads most like come first in Move to.
+      const likely = one ? guessBoards(latest.current, note).filter((id) => id !== note.folderId) : []
+      const ordered = [...likely.map((id) => boards.find(({ folder }) => folder.id === id)).filter(Boolean), ...boards.filter(({ folder }) => !likely.includes(folder.id))]
       openMenu(event, [
         { label: 'What it is', items: WHATS.map((what) => ({ label: WHAT_LABEL[what], checked: one && whatOf(note) === what, onSelect: () => actions.setKind(ids, what) })) },
         onBoard(note) ? { label: 'Stage', items: STAGES.map(([stage, label]) => ({ label, checked: one && stageOf(note) === stage, onSelect: () => actions.setStage(ids, stage) })) } : null,
         {
           label: 'Move to',
           items: [
-            ...boards.filter(({ folder }) => folder.name !== here).map(({ folder }) => ({ label: folder.name, onSelect: () => actions.moveTo(ids, folder.id) })),
+            ...ordered.filter(({ folder }) => folder.name !== here).map(({ folder }) => ({ label: folder.name, hint: likely.includes(folder.id) ? 'looks like it' : undefined, onSelect: () => actions.moveTo(ids, folder.id) })),
             note.folderId ? { label: 'Just in', onSelect: () => actions.moveTo(ids, JUST_IN) } : null,
           ].filter(Boolean),
         },
         one && { label: 'Edit', icon: NotePencil, onSelect: () => actions.startEdit(note.id) },
         one && { label: 'Open in Notes', onSelect: () => navigate('Notes', { noteId: note.id }) },
+        one && { label: 'Break it down', icon: ListChecks, hint: 'into to-dos', onSelect: () => actions.breakDown(note) },
         !one && { label: 'Merge', icon: ArrowsMerge, onSelect: () => actions.mergeAll(ids) },
         !one && { label: 'Mark done', icon: Check, onSelect: () => actions.tick(ids) },
         { divider: true },
@@ -485,10 +506,10 @@ export const Boards = forwardRef(function Boards({ workspace, commit, navigate, 
         <form className="boards-write" onSubmit={(event) => { event.preventDefault(); actions.write(writeField.current.value); writeField.current.value = '' }}>
           <label htmlFor="boards-write" className="visually-hidden">Write a sticky on {title}</label>
           <input id="boards-write" ref={writeField} autoComplete="off" placeholder={boardId === JUST_IN ? 'Write anything. OSAT works out what it is and where it goes.' : `Write a sticky on ${title}. OSAT puts it in the right column.`} />
-          <button type="button" className="outline-button" aria-label="Add a photo of paper stickies" disabled={reading === 'Reading the photo…'} onClick={() => photoField.current?.click()}><Camera /> Photo</button>
+          <button type="button" className="outline-button" aria-label="Add a photo of paper stickies" disabled={Boolean(reading?.endsWith('…'))} onClick={() => photoField.current?.click()}><Camera /> Photo</button>
           <input ref={photoField} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={(event) => { actions.photo(event.target.files?.[0]); event.target.value = '' }} />
           <button type="submit" className="primary-button">Add</button>
-          {reading && <p className="boards-write-line" role="status">{reading}{reading !== 'Reading the photo…' && <button type="button" className="text-button" onClick={() => setReading(null)}>OK</button>}</p>}
+          {reading && <p className="boards-write-line" role="status">{reading}{!reading.endsWith('…') && <button type="button" className="text-button" onClick={() => setReading(null)}>OK</button>}</p>}
         </form>
       </main>
       {menu}

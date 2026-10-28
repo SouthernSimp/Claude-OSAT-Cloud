@@ -16,6 +16,9 @@ Oct 28 (Nate on errands, "continue working on OSAT"): Phase 102 finished and pus
 `passwords:fill` hands the login from main to the page (`fillLogin` in skill-pages.cjs, isolated world 1003, origin
 checked again in the page). `forSite`/`fromCsv` in shared/password-model.mjs; Browser.jsx is now allowed the bridge in
 tests/vault-fence.test.mjs (logins and fill only).
+Phase 106 (from Nate's stickies "Breakdown Sticky Note" and "Right click sticky → where does this belong?"): Boards'
+`menuFor` has Break it down (`actions.breakDown`: `breakdownMessages` / `readBreakdownAnswer` in ai-tasks.mjs through
+`askModel`, steps are To-do stickies with source `Breakdown`, one Undo) and Move to puts `guessBoards` first.
 
 
 Later Oct 26, Nate asked for calendar events that reach Google and Apple Calendar, a faster Mail with a provider

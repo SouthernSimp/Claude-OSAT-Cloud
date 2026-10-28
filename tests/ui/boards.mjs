@@ -174,6 +174,7 @@ async function light(page) {
 
   // Right-click: what it is.
   await card(page, 'Boards replace topics').click({ button: 'right' })
+  check(await page.getByRole('menuitem', { name: /Break it down/ }).count() === 1, 'right-click on one sticky didn’t offer Break it down')
   await page.getByRole('menuitem', { name: 'What it is' }).click()
   await page.getByRole('menuitem', { name: 'Question', exact: true }).click()
   await sleep(200)

@@ -4,7 +4,7 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 26, 2026 — Pick your mail, events on your real calendar, client meeting prep, Activity, pick several stickies, favorites, what you have and owe, fill passwords in Web
+## Next build · October 26, 2026 — Pick your mail, events on your real calendar, client meeting prep, Activity, pick several stickies, favorites, what you have and owe, fill passwords in Web, break a sticky down
 
 - **Where's your mail?** Mail no longer assumes the Mac's Mail app. Pick Gmail, iCloud, Outlook, Yahoo or any mail
   server; iCloud, Yahoo and others sign in with an app password and are read straight from the provider, much faster
@@ -24,6 +24,10 @@ OSAT shows this page in Tools → Roadmap → What’s new.
   Quit (then Force quit if one won't go), and your Mac's specs. (#129)
 - **Right-click words you picked,** anywhere in a room (a note, an email, Today): Ask about this (the words
   quoted in Ask, ready for your question), Explain this, Save as a sticky (with Undo) and Copy. (#130)
+- **Break it down:** right-click a sticky → Break it down, and the AI writes the few small steps that would get it
+  done as to-dos on the same board. The sticky stays; one Undo takes the steps away. (#131)
+- **Where does it go?** Right-click a sticky → Move to lists the boards it reads most like first, marked "looks like
+  it". (#131)
 - **Fill a saved password in Web:** on a sign-in page, press ⌘\ (or the key button beside Clip). If Passwords is
   locked, unlock it right there; one saved login fills at once, several let you pick. It only fills a login saved for
   that exact site, over a secure page. (#131)
