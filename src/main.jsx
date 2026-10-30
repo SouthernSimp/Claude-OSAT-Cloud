@@ -17,6 +17,8 @@ import "./styles/glass.css";
 import "./styles/search.css";
 // The window itself last: it sets how every room sits in it.
 import "./styles/app.css";
+// Character on top: the wash, depth, small entrances and hovers.
+import "./styles/polish.css";
 
 // The Mac app draws its own title bar: leave room for the window buttons.
 if (window.osatApp) document.documentElement.classList.add("is-mac-app");

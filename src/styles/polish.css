@@ -1,0 +1,141 @@
+/* Polish (Oct 30): character for the one-window OSAT. Entrance, hover and press only: nothing here loops, and
+   nothing changes a layout. Everything that moves sits inside the no-preference block at the foot, so a Mac set to
+   reduce motion keeps the still look. Written after app.css; selectors start with `.app` so they win a tie with the
+   files a room imports for itself (today/dashboard.css). */
+
+:root {
+  --wash-k: 13%;
+  --sheen: rgb(255 255 255 / 0%);
+}
+:root[data-theme="dark"] {
+  --wash-k: 26%;
+  --sheen: rgb(255 255 255 / 3.5%);
+}
+
+/* ---- A soft colour wash behind the window: the flat grey gets depth, the sidebar glass picks it up ---- */
+
+.app { isolation: isolate; }
+.app::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(55% 48% at 34% -6%, color-mix(in srgb, var(--tint-indigo) var(--wash-k), transparent), transparent 74%),
+    radial-gradient(46% 46% at 104% 10%, color-mix(in srgb, var(--accent) calc(var(--wash-k) * 0.9), transparent), transparent 72%),
+    radial-gradient(50% 46% at 4% 104%, color-mix(in srgb, var(--tint-violet) calc(var(--wash-k) * 0.7), transparent), transparent 72%),
+    radial-gradient(52% 46% at 78% 108%, color-mix(in srgb, var(--tint-teal) calc(var(--wash-k) * 0.6), transparent), transparent 72%);
+}
+
+/* ---- Depth: a faint top light on the things that hold things ---- */
+
+.app :is(.today-card, .today-board, .board-next, .board-upcoming, .board-progress, .board-recent-note, .justin-card, .justin-brief) {
+  background-image: linear-gradient(180deg, var(--sheen), transparent 46%);
+}
+
+/* ---- Character: the greeting wears a little colour; the numbers stay crisp ---- */
+
+.app .today:not(.is-list) .today-head h1 {
+  background: linear-gradient(100deg, var(--ink-strong) 45%, color-mix(in srgb, var(--tint-indigo) 62%, var(--ink-strong)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.app .today-board-name svg,
+.app .today-more svg { transition: translate var(--d-base) var(--ease-spring); }
+.app .today-board:hover .today-board-name svg { translate: 3px 0; color: var(--accent); }
+
+/* ---- Sidebar: the page you are on carries a bar; tiles and icons respond ---- */
+
+.app .side-row { position: relative; }
+.app .side-row[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+.app .side-row > svg,
+.app .side-tile-icon { transition: scale var(--d-base) var(--ease-spring), rotate var(--d-base) var(--ease-spring); }
+.app .side-row:hover > svg { scale: 1.14; }
+.app .side-tile:hover .side-tile-icon { scale: 1.12; rotate: -6deg; }
+.app .side-tile[aria-current="page"] .side-tile-icon { box-shadow: 0 2px 8px -2px rgb(0 0 0 / 30%); }
+
+/* ---- Cards you can click lift a little ---- */
+
+.app :is(.today-board, .board-recent-note, .justin-row) {
+  transition: translate var(--d-base) var(--ease-spring), box-shadow var(--d-base) var(--ease-out),
+    border-color var(--d-fast), background-color var(--d-fast);
+}
+.app :is(.today-board, .board-recent-note):hover {
+  translate: 0 -2px;
+  box-shadow: 0 16px 30px -18px rgb(0 0 0 / 50%), 0 0 0 0.5px var(--accent-line);
+}
+.app :is(.today-board, .board-recent-note):active { translate: 0 0; box-shadow: none; }
+.app .justin-row:hover { translate: 3px 0; }
+
+/* ---- Notes: the list answers the pointer, and the open note wears an edge ---- */
+
+.app .note-row { transition: background var(--d-fast), translate var(--d-base) var(--ease-spring), box-shadow var(--d-fast); }
+.app .note-row:hover:not(.active) { translate: 2px 0; }
+.app .note-row.active:not(.checked) { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* ---- Buttons: a press, and the main one glows ---- */
+
+.app :is(.primary-button, .outline-button, .ghost-button, .app-ask-button, .home-send) {
+  transition: background var(--d-fast), border-color var(--d-fast), color var(--d-fast),
+    box-shadow var(--d-fast), translate var(--d-fast), scale 160ms var(--ease-spring);
+}
+.app :is(.primary-button, .outline-button, .ghost-button, .app-ask-button, .icon-button):active:not(:disabled) { scale: 0.96; }
+.app .primary-button:hover:not(:disabled) { translate: 0 -1px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%), 0 10px 22px -10px color-mix(in srgb, var(--accent) 70%, transparent); }
+.app .app-ask-button:hover { translate: 0 -1px; }
+
+/* ---- Progress fills in ---- */
+
+.app progress::-webkit-progress-value { transition: width 600ms var(--ease-out); transform-origin: 0 50%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rise { from { opacity: 0; translate: 0 12px; } }
+  @keyframes wash-in { from { opacity: 0; } }
+  @keyframes bar-in { from { scale: 1 0; opacity: 0; } }
+  @keyframes fill-in { from { transform: scaleX(0); } }
+  @keyframes tick-ring {
+    from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--kicker, var(--accent)) 55%, transparent); }
+    to { box-shadow: 0 0 0 9px transparent; }
+  }
+  @keyframes seg-pop { 40% { scale: 1.06; } }
+
+  .app::before { animation: wash-in 1100ms var(--ease-out) both; }
+
+  /* Things settle into a room one after another, the first dozen at most. */
+  .app :is(.today-head > *, .today-board, .today-col > *, .board-overview > *, .board-overview-columns > *,
+    .board-recent-note, .justin-main > *, .boards-head > *) {
+    animation: rise 520ms var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 55ms);
+  }
+  .app :is(.today-head > *, .today-board, .today-col > *, .board-overview > *, .board-overview-columns > *,
+    .board-recent-note, .justin-main > *, .boards-head > *):nth-child(2) { --i: 1; }
+  .app :is(.today-head > *, .today-board, .today-col > *, .board-overview > *, .board-overview-columns > *,
+    .board-recent-note, .justin-main > *, .boards-head > *):nth-child(3) { --i: 2; }
+  .app :is(.today-head > *, .today-board, .today-col > *, .board-overview > *, .board-overview-columns > *,
+    .board-recent-note, .justin-main > *, .boards-head > *):nth-child(4) { --i: 3; }
+  .app :is(.today-head > *, .today-board, .today-col > *, .board-overview > *, .board-overview-columns > *,
+    .board-recent-note, .justin-main > *, .boards-head > *):nth-child(n + 5) { --i: 4; }
+  /* The right-hand column follows the left. */
+  .app .today-col + .today-col > * { animation-delay: calc(var(--i, 0) * 55ms + 90ms); }
+
+  .app .side-row[aria-current="page"]::before { animation: bar-in 380ms var(--ease-spring) both; }
+  .app .today-check[aria-pressed="true"] { animation: tick-ring 520ms var(--ease-out); }
+  .app .segmented button.active { animation: seg-pop 300ms var(--ease-spring); }
+  .app progress::-webkit-progress-value { animation: fill-in 800ms var(--ease-out) 220ms backwards; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app :is(.today-board, .board-recent-note, .justin-row):hover,
+  .app .primary-button:hover:not(:disabled),
+  .app .side-tile:hover .side-tile-icon,
+  .app .side-row:hover > svg { translate: none; scale: none; rotate: none; }
+}

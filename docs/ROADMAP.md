@@ -358,6 +358,7 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 104 | Where's your mail? Gmail, iCloud, Outlook, Yahoo or any IMAP server, read straight from the provider | In review (#131) |
 | 105 | Settings → Mail and calendar; Soul in plain words; Obsidian tucked away on Data | In review (#131) |
 | 106 | Right-click a sticky: Break it down into to-dos with the AI; Move to lists the likely boards first | In review (#131) |
+| 107 | Character: a soft colour wash behind the window, light on the cards, small entrances, hovers and presses (stacked on #131) | In review |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password
