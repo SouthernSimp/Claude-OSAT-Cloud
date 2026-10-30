@@ -11,6 +11,15 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 28, 2026: Phases 92–105 in #131 (one Merge ships them all)
 
+Oct 30 (Nate: it "lost its character", wants it to look nice with small animations): **Phase 107** `claude/polish`, stacked on
+#131's branch (`claude/phase-95-web-picks`), is one new file, `src/styles/polish.css`, imported last in main.jsx: a colour wash
+behind `.app` (`::before`, `--wash-k`), a top sheen on cards, rise-in stagger for Today / board / Just in, hover lifts, a
+bar on the sidebar's current row, a ring when a to-do is ticked, a press on buttons. Entrance and hover only, nothing loops;
+all motion sits in `prefers-reduced-motion: no-preference`. Selectors start with `.app` so they beat room files imported
+later (today/dashboard.css). Notes: this checkout was stale (Phase 48) because iCloud made a duplicate ref
+`refs/heads/claude/bar-customize 2` that broke `git fetch`; it was moved aside. Always `git fetch` and check `gh pr list`
+before trusting the tree; Nate also works in `~/Desktop/Projects/OSAT V2` (not a git repo).
+
 Oct 28 (Nate on errands, "continue working on OSAT"): Phase 102 finished and pushed onto #131. Web's ⌘\ / key button
 (`openFill` in tools/Browser.jsx) asks `osatPasswords.logins()` for main's own front tab, unlocks inline, then
 `passwords:fill` hands the login from main to the page (`fillLogin` in skill-pages.cjs, isolated world 1003, origin
