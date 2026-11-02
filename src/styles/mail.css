@@ -35,15 +35,15 @@
 .mail-message header p span { color: var(--muted); }
 .mail-message header small { color: var(--muted); font-size: var(--t-xs); }
 .mail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.mail-message .mail-back { display: none; justify-self: start; }
+.mail-message .mail-back, .mail-ask-all .mail-back { display: none; justify-self: start; }
 .mail-body { margin: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-raised); color: var(--ink); font: inherit; font-size: var(--t-sm); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .mail-said { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--accent-soft); font-size: var(--t-sm); }
 .mail-said.is-problem { background: var(--critical-soft); }
 .mail-said svg { flex: none; width: 16px; height: 16px; margin-top: 1px; }
 
-.mail-ask { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
-.mail-ask form { display: flex; flex-wrap: wrap; gap: 8px; }
-.mail-room .mail-ask input { flex: 1; min-width: 12em; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--ink); font-size: var(--t-sm); }
+.mail-ask, .mail-ask-all { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.mail-ask form, .mail-ask-all form { display: flex; flex-wrap: wrap; gap: 8px; }
+.mail-room .mail-ask input, .mail-room .mail-ask-all input { flex: 1; min-width: 12em; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-raised); color: var(--ink); font-size: var(--t-sm); }
 .mail-answer { margin: 0; font-size: var(--t-sm); line-height: 1.55; white-space: pre-wrap; }
 
 .mail-setup { display: grid; justify-items: center; align-content: center; gap: 10px; height: 100%; padding: 32px; text-align: center; }
@@ -63,7 +63,7 @@
   .mail-room[data-open='message'] .mail-list { display: none; }
   .mail-list { border-right: 0; }
   .mail-main { padding: 14px 16px 24px; }
-  .mail-message .mail-back { display: inline-flex; }
+  .mail-message .mail-back, .mail-ask-all .mail-back { display: inline-flex; }
 }
 
 /* Adding Gmail (one sign-in on the Mac) and which accounts Mail reads. */
@@ -88,3 +88,12 @@
 .mail-provider:disabled { opacity: 0.6; cursor: progress; }
 .mail-sign-in label { display: grid; gap: 4px; width: min(100%, 340px); text-align: left; font-size: 13px; color: var(--muted); }
 .mail-sign-in input { width: 100%; }
+
+/* Ask your mail (Phase 108): the room's empty state, the same panel as asking about one message. */
+.mail-ask-all[hidden] { display: none; }
+.mail-ask-all h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--t-lg); }
+.mail-ask-all h2 svg { width: 18px; height: 18px; color: var(--accent); }
+.mail-sources { display: grid; gap: 4px; margin: 0; padding-left: 1.4em; font-size: var(--t-sm); }
+.mail-sources span { color: var(--muted); font-size: var(--t-xs); }
+.mail-account { margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--surface-hover); color: var(--muted); font-size: var(--t-xs); font-style: normal; font-weight: 400; }
+.mail-accounts p { margin: 0 0 2px; }

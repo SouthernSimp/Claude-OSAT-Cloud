@@ -17,7 +17,7 @@ function fakeMail({ denied = false, empty = false, google = false } = {}) {
   const minutes = (n) => new Date(Date.now() - n * 60000).toISOString()
   const rows = [
     { id: 301, subject: 'Quote for the deck', from: { name: 'Sam Lee', address: 'sam@example.com' }, date: minutes(20), unread: true, snippet: 'Here is the price we talked about.' },
-    { id: 302, subject: 'Lunch on Friday?', from: { name: 'Jordan', address: 'jordan@example.com' }, date: minutes(300), unread: false, snippet: 'Are you free at noon?' },
+    { id: 302, subject: 'Lunch on Friday?', account: 'work@fortis.com', from: { name: 'Jordan', address: 'jordan@example.com' }, date: minutes(300), unread: false, snippet: 'Are you free at noon?' },
     { id: 303, subject: 'Your invoice', from: { name: 'Billing', address: 'billing@example.org' }, date: minutes(3000), unread: false, snippet: 'Your invoice for October is ready.' },
   ]
   const bodies = {
@@ -38,8 +38,18 @@ function fakeMail({ denied = false, empty = false, google = false } = {}) {
     },
     disconnectImap: async () => { window.__imap = { connected: false, provider: '', email: '', label: 'Your mail' }; return window.__imap },
     // Gmail signed in directly (Phase 86): Connect Gmail "signs in" at once here; Gmail's ids are hex words.
-    connectGmail: async () => { window.__gmail = { ready: true, connected: true, email: 'nate@gmail.com', busy: false }; return window.__gmail },
-    disconnectGmail: async () => { window.__gmail = { ready: true, connected: false, email: '', busy: false }; return window.__gmail },
+    // Phase 108: Connect adds an address (the next of two); Disconnect takes one away, or all when none is named.
+    connectGmail: async () => {
+      const have = window.__gmail.accounts || []
+      const accounts = [...have, { email: ['nate@gmail.com', 'work@fortis.com'][have.length] || 'extra@gmail.com', problem: '' }]
+      window.__gmail = { ready: true, connected: true, email: accounts[0].email, busy: false, accounts }
+      return window.__gmail
+    },
+    disconnectGmail: async (email) => {
+      const accounts = email ? (window.__gmail.accounts || []).filter((item) => item.email !== email) : []
+      window.__gmail = { ready: true, connected: accounts.length > 0, email: accounts[0]?.email || '', busy: false, accounts }
+      return window.__gmail
+    },
     onGmail: () => () => {},
     allow: async () => {
       window.__mail.allowed += 1
@@ -66,7 +76,7 @@ function fakeMail({ denied = false, empty = false, google = false } = {}) {
     onFollow: () => () => {},
   }
   window.__follow = { on: false, busy: false, problem: '', last: null }
-  window.__gmail = { ready: true, connected: false, email: '', busy: false }
+  window.__gmail = { ready: true, connected: false, email: '', busy: false, accounts: [] }
   window.__imap = { connected: false, provider: '', email: '', label: 'Your mail' }
   window.osatLocalAI = {
     status: async () => ({ chosen: 'balanced', tiers: [], download: null }),
@@ -77,8 +87,10 @@ function fakeMail({ denied = false, empty = false, google = false } = {}) {
     ] }),
     chatStream: (payload, onDelta) => {
       window.__asked.push(payload)
-      onDelta('Sam is sending a price.')
-      return { done: Promise.resolve('Sam is sending a price.'), cancel() {} }
+      // Ask your mail's first question writes the search; its second answers from the quoted emails.
+      const reply = /You turn what Nate wants/.test(payload.messages[0].content) ? 'quote' : /Email \[1\]/.test(payload.messages[1].content) ? 'Sam sent a price of $4,200 [1].' : 'Sam is sending a price.'
+      onDelta(reply)
+      return { done: Promise.resolve(reply), cancel() {} }
     },
   }
 }
@@ -253,7 +265,40 @@ async function main() {
     await gmail.getByText('Opened in Gmail: reply there.').waitFor({ timeout: 3000 }).catch(() => problems.push('Reply with Gmail didn’t say it opened Gmail'))
     check(await gmail.getByRole('button', { name: 'Open in Gmail' }).count() === 1, 'no Open in Gmail')
     await gmail.screenshot({ path: `${OUT}/gmail-inbox.png` })
-    await gmail.locator('.mail-accounts').getByRole('button', { name: 'Disconnect' }).click()
+
+    // A second Gmail account: Add another Gmail signs one more in, both are named, and messages say which they are in.
+    await gmail.locator('.mail-accounts').getByRole('button', { name: 'Add another Gmail' }).click()
+    await gmail.locator('.mail-accounts', { hasText: 'Reading Gmail (nate@gmail.com, work@fortis.com)' }).waitFor({ timeout: 3000 }).catch(() => problems.push('the room didn’t name both Gmail accounts'))
+    await gmail.locator('.mail-list li .mail-account', { hasText: 'work' }).first().waitFor({ timeout: 3000 }).catch(() => problems.push('a message didn’t say which account it is in'))
+    await gmail.screenshot({ path: `${OUT}/gmail-two-accounts.png` })
+
+    // Ask your mail: the AI writes a search from the question (seeing no mail), then answers from what the search found.
+    await gmail.getByRole('button', { name: 'Ask your mail' }).click()
+    await gmail.getByRole('textbox', { name: 'Your question for your mail' }).fill('How much was the quote?')
+    await gmail.locator('.mail-ask-all').getByRole('button', { name: 'Ask', exact: true }).click()
+    await gmail.locator('.mail-answer', { hasText: 'Sam sent a price of $4,200' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Ask your mail gave no answer'))
+    check(await gmail.locator('.mail-ask-all', { hasText: 'Looked for quote' }).count() === 1, 'Ask your mail didn’t say what it looked for')
+    check(await gmail.locator('.mail-sources li').count() === 1, 'the answer didn’t list the email it read')
+    const prompts = await gmail.evaluate(() => window.__asked.map((payload) => JSON.stringify(payload.messages)))
+    check(!/price we talked about/.test(prompts.at(-2)) && /price we talked about/.test(prompts.at(-1)), 'the search step saw mail, or the answer step didn’t')
+    check(/untrusted/.test(prompts.at(-1)) && /> Subject: Quote for the deck/.test(prompts.at(-1)), 'the email wasn’t quoted as untrusted')
+    check(/operators|Gmail search/.test(prompts.at(-2)), 'Gmail’s search words weren’t asked for')
+    await gmail.screenshot({ path: `${OUT}/gmail-ask.png` })
+    await gmail.locator('.mail-sources li button').click()
+    await gmail.locator('.mail-body').waitFor({ timeout: 3000 }).catch(() => problems.push('a listed email didn’t open'))
+
+    // Find with AI: the box shows the search the AI wrote, and the list is what it finds.
+    await gmail.getByRole('button', { name: 'Ask your mail' }).click()
+    await gmail.getByLabel('Search your mail').fill('the price email')
+    await gmail.getByRole('button', { name: 'Find with AI' }).click()
+    await gmail.locator('.mail-searched', { hasText: 'Results for “quote”' }).waitFor({ timeout: 5000 }).catch(() => problems.push('Find with AI didn’t search for what the AI wrote'))
+    check(await gmail.getByLabel('Search your mail').inputValue() === 'quote', 'the search box didn’t show the AI’s search')
+
+    // Taking one address away leaves the other.
+    await gmail.locator('.mail-accounts').getByRole('button', { name: 'Disconnect work@fortis.com' }).click()
+    await gmail.locator('.mail-accounts', { hasText: 'Reading Gmail (nate@gmail.com)' }).waitFor({ timeout: 3000 }).catch(() => problems.push('Disconnecting one address left the wrong ones'))
+    check(await gmail.locator('.mail-list li').count() > 0, 'the inbox went away with one account')
+    await gmail.locator('.mail-accounts').getByRole('button', { name: 'Disconnect', exact: true }).click()
     await gmail.getByRole('heading', { name: 'Where’s your mail?' }).waitFor({ timeout: 3000 }).catch(() => problems.push('Disconnect didn’t go back to the start'))
     await gmail.close()
   }

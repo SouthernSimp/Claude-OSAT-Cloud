@@ -6,6 +6,13 @@ OSAT shows this page in Tools → Roadmap → What’s new.
 
 ## Next build · October 26, 2026 — Pick your mail, events on your real calendar, client meeting prep, Activity, pick several stickies, favorites, what you have and owe, fill passwords in Web, break a sticky down
 
+- **More than one Gmail account:** Connect Gmail now adds an account instead of replacing the one you have. Your inbox and
+  search read them all together, each message says which account it is in, and Reply and Open go to the right one. Take an
+  address away on its own any time. (#133)
+- **Ask your mail:** ask a question ("What did Sam say about the deck?") or tell it what to find ("invoices from last
+  month"). The AI on your Mac turns it into a search, reads the few best emails and answers, listing the emails it used.
+  The search box has a sparkle button that writes the search for you. It only runs when you press it, only the AI on your
+  Mac reads your mail, and it can't send, move or delete anything. (#133)
 - **Where's your mail?** Mail no longer assumes the Mac's Mail app. Pick Gmail, iCloud, Outlook, Yahoo or any mail
   server; iCloud, Yahoo and others sign in with an app password and are read straight from the provider, much faster
   than through the Mail app. Reply opens your provider's own page. Change it any time. (#131)

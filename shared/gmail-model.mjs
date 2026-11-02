@@ -2,7 +2,9 @@
    cleans them the same way as the Mac Mail app's). Plain text only: a message sent only as HTML has its tags, styles
    and scripts taken out, and nothing in it is loaded or turned into a link. Pure; desktop/gmail.cjs does the asking. */
 
-export const GMAIL_ID = /^[0-9a-f]{6,32}$/
+/* A Gmail id is 64 bits: at most 16 hex digits. The Mail room's ids are longer for every account but the first
+   (desktop/gmail.cjs puts the account's 8-digit tag in front), which is how a message finds its account. */
+export const GMAIL_ID = /^[0-9a-f]{6,16}$/
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
 export const decodeEntities = (text) => String(text || '').replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, name) => {

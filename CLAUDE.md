@@ -11,6 +11,12 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 28, 2026: Phases 92–105 in #131 (one Merge ships them all)
 
+Nov 2 (Nate: "make sure users can connect multiple gmail accounts" and "mail AI assisted so the user can ask it questions
+or ask it to find things"): **Phase 108** (#133) `claude/phase-108-mail-accounts-ask`, stacked on `claude/polish` (#132). Several
+Gmail accounts at once and Ask your mail; see "Architecture added in Phase 108". Not done / for Nate: while Google's sign-in
+screen is still in Testing, a second address can only sign in if it is listed as a test user in Google Cloud project
+`osat-512421` (or the app is published); the tests' pretend Google can't show that. Nate has not yet tried it on his Mac.
+
 Oct 30 (Nate: it "lost its character", wants it to look nice with small animations): **Phase 107** `claude/polish`, stacked on
 #131's branch (`claude/phase-95-web-picks`), is one new file, `src/styles/polish.css`, imported last in main.jsx: a colour wash
 behind `.app` (`::before`, `--wash-k`), a top sheen on cards, rise-in stagger for Today / board / Just in, hover lifts, a
@@ -666,8 +672,8 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   override characters, caps at 20,000), never HTML, no remote content, nothing linkified. Ask, the agent, the connector,
   overnight and the brief have no mail path. Only two things put mail in a prompt, both the built-in AI only, no tools,
   the email quoted line by line as untrusted data: the room's "Ask about this message" button (`askMessages`,
-  `askLocalModel`) and, once Nate turns it on, To-dos from email (Phase 84 below; Nate agreed to it on Oct 21 2026, and
-  for nothing more: any other mail-to-AI path needs his word). A sticky made from a message has source
+  `askLocalModel`), Ask your mail (Phase 108 below; Nate asked for it Nov 2 2026) and, once Nate turns it on, To-dos from
+  email (Phase 84 below; Nate agreed to it on Oct 21 2026, and for nothing more: any other mail-to-AI path needs his word). A sticky made from a message has source
   `Mail`, and `auto-file.js` never files that source by itself. Mail reading is local, so it works Offline (not in
   `WAITS`); its one `execFile('osascript'…)` line is in tests/under.test.mjs's fence.
 - Not yet: sending, Gmail/Outlook direct, attachments, HTML, folders other than the inbox, a non-prompting
@@ -773,6 +779,26 @@ Nate's Mac, Xcode's license isn't accepted yet, so don't try to build iOS locall
   the desk's `UpdateNote` offers Update and restart or Later.
 - Settings: `Group`'s `note` sits behind an ⓘ (`.setting-more`); `Row` hints clamp to two lines with the whole text in
   `title`; page blurbs are one short line.
+
+## Architecture added in Phase 108
+
+- Several Gmail accounts: `desktop/gmail.cjs` holds `accounts` ({ email, tag }, tag = 8 hex digits of sha256 of the
+  lowercased address; `gmail.json` = { accounts: [{ email }] }, the old { email } file reads as account one). Each has its own
+  Keychain refresh token (`gmail-refresh-<tag>`; the pre-108 `gmail-refresh` moves to the first account's name on first use)
+  and its own session. `gmail:connect` ADDS an account (Google's chooser, `prompt: 'select_account consent'`; an address
+  already here only renews; at most 5); `gmail:disconnect` takes an address (none named: all). `list` and `search` ask every
+  account at once and merge newest first; an account that fails is reported on `status().accounts[i].problem` and the rest
+  still answer (only all failing throws). A message id is the Gmail id, with the account's tag in front for every account
+  but the first, so ids from before stay valid (To-dos from email's `seen`); `locate` finds the account again for read /
+  Reply / Open. Rows carry `account` (messageRow keeps it); the room shows a small tag only with two or more accounts.
+  Gmail is still exclusive with IMAP and the Mac's Mail app (reading Gmail steps the others aside), as before.
+- Ask your mail: pure parts in `shared/mail-model.mjs` (`findMessages` / `readFind`: step one sees only Nate's words and
+  today's date and writes a search, with Gmail's operators when Gmail is read; `mailboxMessages`: the first
+  `ASK_MAIL_COUNT` found messages quoted line by line as untrusted, numbered, within `ASK_MAIL_CHARS`), the flow in
+  `src/views/mail-ai.js` (`writeSearch`, `findMail`, `askMail`, `ask` injectable), the panel `src/views/MailAsk.jsx` (the
+  room's empty state and the list's Ask your mail button; the answer is plain text, the emails read are listed and open).
+  The search box's Find with AI button only writes the search into the box and runs it. `askLocalModel` only: the AI on
+  this Mac, never a cloud model, no tools, only when pressed. tests/mail-ask.test.mjs, tests/gmail.test.mjs, tests/ui/mail.mjs.
 
 ## Architecture added in Phases 103–105
 
