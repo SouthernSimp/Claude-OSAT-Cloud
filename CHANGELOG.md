@@ -4,8 +4,17 @@ Every time work is merged, GitHub builds a new version of OSAT. Settings → Abo
 build 280), and Check for updates installs the newest. Newest first. Each line ends with the pull request it came from.
 OSAT shows this page in Tools → Roadmap → What’s new.
 
-## Next build · October 26, 2026 — Pick your mail, events on your real calendar, client meeting prep, Activity, pick several stickies, favorites, what you have and owe, fill passwords in Web, break a sticky down
+## Next build · November 2, 2026 — Chat in a whole window, the Brain, Settings redone, one Boards list with mind maps, a quick resource monitor, new AI models, several Gmail accounts, pick your mail, real calendars, and more
 
+- **Chat:** talk with OSAT in a whole window (sidebar → Chat), with folders, pinned chats, rename and Move to. The Ask panel's expand button carries a chat over. (#134)
+- **The Brain:** after each answer OSAT quietly remembers the lasting things (your clients, people, plans, how you like to work) and reads the ones that fit before it answers. Sidebar → Brain shows everything it knows as a graph; forget anything with Undo, or turn learning off. (#134)
+- **Settings, redone:** a home of tiles in four plain groups with one search over every setting; pages open across the window and Esc goes back. Your version is a little paper ticket, buttons and switches feel like you're pressing them, and deleting a model is a hold instead of an "Are you sure?" box. (#134)
+- **One Boards list:** kanbans and canvases live together under Boards; the + makes either. The kanban that sat on a canvas is gone, so there's one kind of kanban. (#134)
+- **Mind maps on a canvas:** pick a sticky and press Tab for a joined idea, ready to type; ⇧Tab adds one beside it. (#134)
+- **A quick look at your Mac:** Activity now shows the graphics chip, the battery with its temperature and health, and how warm the Mac is running. (#134)
+- **Check for Updates** is in the OSAT menu, top left, and OSAT looks for an update as it opens. (#134)
+- **New AI models:** Qwen 3.8 27B (reads pictures, for 32 GB Macs) and IBM's Granite 4.1 3B and 8B (quick, words only), in Settings → AI. (#134)
+- **Lighter inside:** leftovers of the old desk and a few unused pieces removed. (#134)
 - **More than one Gmail account:** Connect Gmail now adds an account instead of replacing the one you have. Your inbox and
   search read them all together, each message says which account it is in, and Reply and Open go to the right one. Take an
   address away on its own any time. (#133)

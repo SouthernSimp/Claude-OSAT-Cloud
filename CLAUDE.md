@@ -11,6 +11,19 @@ Read it before any substantial change and keep it current when a phase lands.
 
 ## Resume checkpoint — October 28, 2026: Phases 92–105 in #131 (one Merge ships them all)
 
+Nov 2 (Nate's list: over-engineering, a whole chat window, finish the canvas, Settings "looks like crap", brain graph,
+new LM Studio models, Check for Updates, a resource monitor): **Phases 109–115** in draft #134 `claude/phase-109-character`,
+stacked on #133. Chat is view `Chat` (LocalAssistant full, rail with `groupChats`/pins/folders in chats.js,
+`settings.chatFolders`, schema 19); `Assistant` is still the panel. Brain: `src/brain/` (`learnMessages`/`readLearned`
+after each answer, `memoryFor` in `aiPreamble(settings, question)`, `brainGraph` drawn by a canvas force layout;
+memory lines carry `chatId`; `settings.learnFromChats`). Boards: one sidebar list (boards + canvases, + menu); canvas
+kanban embeds show as links (`OldKanban`); Tab/⇧Tab in CanvasRoom drive Excalidraw's ⌘→ flowchart. Settings: home of
+tiles (`section` null), `.settings-back`, Esc via a bubble listener after the page's own; kit in src/lib/kit.jsx +
+styles/kit.css (HoldButton replaces window.confirm). Nate's Kitchen choice: all four (tactile + hold, motion, pickers
+and lists, paper); Kitchen code is unlicensed, never copy it. The six repos are installed by session free-repos
+(skills openui, bama, hallmark, motionsites; egm agents; ~/Developer/free-repos). Not done: a model picker in the
+Kitchen style for Settings → AI; a deeper over-engineering audit (the big workflow hit the usage limit).
+
 Nov 2 (Nate: "make sure users can connect multiple gmail accounts" and "mail AI assisted so the user can ask it questions
 or ask it to find things"): **Phase 108** (#133) `claude/phase-108-mail-accounts-ask`, stacked on `claude/polish` (#132). Several
 Gmail accounts at once and Ask your mail; see "Architecture added in Phase 108". Not done / for Nate: while Google's sign-in
