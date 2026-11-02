@@ -34,7 +34,7 @@ function MailGroup({ navigate }) {
       </Group>
     )
   }
-  const reading = status?.gmail?.connected ? `Gmail${status.gmail.email ? ` · ${status.gmail.email}` : ''}`
+  const reading = status?.gmail?.connected ? `Gmail${status.gmail.email ? ` · ${(status.gmail.accounts?.length ? status.gmail.accounts.map((item) => item.email) : [status.gmail.email]).join(', ')}` : ''}`
     : status?.imap?.connected ? `${status.imap.label} · ${status.imap.email}`
       : status ? 'The Mail app on this Mac, or not set up yet' : 'Looking…'
   return (

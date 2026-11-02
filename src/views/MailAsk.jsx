@@ -53,6 +53,7 @@ export function MailAsk({ bridge, operators, hidden, onOpen, onBack }) {
         <p className="mail-quiet" role="status">
           {found.query ? <>Looked for <strong>{cleanQuery(found.query)}</strong>.</> : 'Looked at your newest mail.'}
           {state.done && !found.rows.length && ' Nothing matched. Try other words.'}
+          {state.done && state.sources.length > 0 && found.rows.length > state.sources.length && ` Read ${state.sources.length} of ${found.rows.length >= 50 ? 'the newest 50' : found.rows.length} matches.`}
         </p>
       )}
       {state?.text && <p className="mail-answer" role="status">{state.text}</p>}

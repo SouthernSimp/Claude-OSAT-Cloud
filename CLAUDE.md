@@ -12,7 +12,7 @@ Read it before any substantial change and keep it current when a phase lands.
 ## Resume checkpoint — October 28, 2026: Phases 92–105 in #131 (one Merge ships them all)
 
 Nov 2 (Nate: "make sure users can connect multiple gmail accounts" and "mail AI assisted so the user can ask it questions
-or ask it to find things"): **Phase 108** `claude/phase-108-mail-accounts-ask`, stacked on `claude/polish` (#132). Several
+or ask it to find things"): **Phase 108** (#133) `claude/phase-108-mail-accounts-ask`, stacked on `claude/polish` (#132). Several
 Gmail accounts at once and Ask your mail; see "Architecture added in Phase 108". Not done / for Nate: while Google's sign-in
 screen is still in Testing, a second address can only sign in if it is listed as a test user in Google Cloud project
 `osat-512421` (or the app is published); the tests' pretend Google can't show that. Nate has not yet tried it on his Mac.
