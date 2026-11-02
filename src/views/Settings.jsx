@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { MagnifyingGlass } from "@phosphor-icons/react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { CaretLeft, MagnifyingGlass } from "@phosphor-icons/react";
 import { useUndoToast } from "../lib/UndoToast.jsx";
 import { ErrorBoundary } from "../lib/ErrorBoundary.jsx";
 import { ClipboardPage, KeyboardPage, LauncherProvider, QuickLinksPage, QuickSearchPage, RingPage, SnippetsPage, WindowLayoutsPage } from "./settings/launcher.jsx";
@@ -13,10 +13,10 @@ import { SoulPage } from "./settings/Soul.jsx";
 import { AccountsPage } from "./settings/Accounts.jsx";
 import "../styles/settings.css";
 
-/* Settings (Phase 13b), in Raycast's shape: a sidebar with a search box and one page for each thing, and on the right
-   groups of rows, each a bold title with a grey line and its one control. The search box narrows every row on every
-   page by its title and its line (⌘F, and Esc clears it). Older names for a page still land where they should
-   (`sectionFor`: the menu-bar icon opens "general", Tools → Appearance opens "appearance"). */
+/* Settings (Phase 113, after Phase 13b's sidebar): a home of tiles, one for each page in four plain groups, with one
+   search box over every row on every page (⌘F; Esc clears it). A tile opens its page across the room, groups of rows
+   each with one control; "All settings" or Esc goes back. A link into Settings opens its page straight away; older
+   names still land where they should (`sectionFor`: the menu-bar icon opens "general"). */
 
 export { AiSizes } from "./settings/osat-pages.jsx";
 export { sectionFor };
@@ -46,9 +46,12 @@ const PAGES = {
 
 export function SettingsView({ workspace, commit, storage, target, navigate }) {
   const [toast, showUndo] = useUndoToast();
-  const [section, setSection] = useState(() => sectionFor(target?.section));
+  // null is Settings' home: every page as a tile (Phase 113). A link into Settings opens its page straight away.
+  const [section, setSection] = useState(() => (target?.section ? sectionFor(target.section) : null));
   const [text, setText] = useState("");
   const [none, setNone] = useState(false);
+  // ⌘F asked for the search box: it takes the keys the moment home is drawn.
+  const [find, setFind] = useState(0);
   const root = useRef(null);
   const field = useRef(null);
   const main = useRef(null);
@@ -56,20 +59,30 @@ export function SettingsView({ workspace, commit, storage, target, navigate }) {
 
   const query = useMemo(() => text.toLowerCase().split(/\s+/).filter(Boolean), [text]);
   const searching = query.length > 0;
+  const go = (id) => { setSection(id); setText(""); main.current?.scrollTo?.(0, 0); };
 
-  // ⌘F searches these settings while they are open in front.
+  // ⌘F searches every setting (from a page, it goes home first). Esc on a page goes back home, once the page itself
+  // has had its turn (an open detail closes first and stops it there).
   useEffect(() => {
-    const onKey = (event) => {
-      if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey || event.key.toLowerCase() !== "f") return;
-      const pop = root.current?.closest(".popout");
-      if (!root.current?.isConnected || (pop && !pop.classList.contains("is-top"))) return;
+    const onFind = (event) => {
+      if (!root.current?.isConnected || !(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey || event.key.toLowerCase() !== "f") return;
       event.preventDefault();
-      field.current?.focus();
-      field.current?.select();
+      setSection(null);
+      setFind((count) => count + 1);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const onEscape = (event) => {
+      if (event.key !== "Escape" || event.defaultPrevented || !root.current?.querySelector(".settings-back")) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.target.isContentEditable) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      go(null);
+    };
+    window.addEventListener("keydown", onFind, true);
+    window.addEventListener("keydown", onEscape);
+    return () => { window.removeEventListener("keydown", onFind, true); window.removeEventListener("keydown", onEscape); };
   }, []);
+
+  useLayoutEffect(() => { if (find) { field.current?.focus(); field.current?.select(); } }, [find]);
 
   // A search that finds nothing says so, once the pages have drawn what they have.
   useEffect(() => {
@@ -78,54 +91,69 @@ export function SettingsView({ workspace, commit, storage, target, navigate }) {
     return () => cancelAnimationFrame(frame);
   }, [searching, text, section]);
 
-  const go = (id) => { setSection(id); setText(""); main.current?.scrollTo?.(0, 0); };
-  const shown = searching ? SETTINGS_PAGES : [pageById(section)];
+  const body = (page) => {
+    const PageBody = PAGES[page.id];
+    return <ErrorBoundary key={page.id} where={page.label}><PageBody page={page} workspace={workspace} commit={commit} storage={storage} showUndo={showUndo} navigate={navigate} /></ErrorBoundary>;
+  };
+  const open = section && !searching ? pageById(section) : null;
 
   return (
-    <div className="settings" ref={root} data-searching={searching || undefined}>
-      <aside className="settings-rail">
-        <div className="settings-search">
-          <MagnifyingGlass aria-hidden="true" />
-          <input
-            ref={field}
-            type="search"
-            value={text}
-            placeholder="Search settings…"
-            aria-label="Search settings"
-            spellCheck={false}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => { if (event.key === "Escape" && text) { event.preventDefault(); setText(""); } }}
-          />
-          {!text && <kbd aria-hidden="true">⌘F</kbd>}
-        </div>
-        <nav className="settings-nav" aria-label="Settings sections">
-          {SETTINGS_GROUPS.map((group) => (
-            <div key={group.id} className="settings-nav-group">
-              {group.label && <h3>{group.label}</h3>}
-              {SETTINGS_PAGES.filter((page) => page.group === group.id).map((page) => {
-                const Icon = page.icon;
-                const on = !searching && section === page.id;
-                return (
-                  <button key={page.id} type="button" aria-current={on ? "page" : undefined} onClick={() => go(page.id)}>
-                    <i aria-hidden="true" data-tint={page.tint}><Icon weight="fill" /></i>
-                    <span>{page.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-      </aside>
-      <div className="settings-main" ref={main}>
+    <div className="settings" ref={root} data-searching={searching || undefined} data-home={open ? undefined : ""}>
+      <div className="settings-main scroll-fade" ref={main}>
         <QueryContext.Provider value={query}>
           <LauncherProvider showUndo={showUndo}>
-            <div className="settings-page" key={searching ? "search" : section}>
-              {shown.map((page) => {
-                const PageBody = PAGES[page.id];
-                return <ErrorBoundary key={page.id} where={page.label}><PageBody page={page} workspace={workspace} commit={commit} storage={storage} showUndo={showUndo} navigate={navigate} /></ErrorBoundary>;
-              })}
-              {searching && none && <p className="settings-none" role="status">Nothing in Settings matches “{text.trim()}”.</p>}
-            </div>
+            {open ? (
+              <div className="settings-page" key={open.id}>
+                <button type="button" className="settings-back" onClick={() => go(null)} title="Back to all settings  esc"><CaretLeft weight="bold" aria-hidden="true" /> All settings</button>
+                {body(open)}
+              </div>
+            ) : (
+              <div className="settings-home">
+                <header className="settings-home-head">
+                  <h1>Settings</h1>
+                  <div className="settings-search">
+                    <MagnifyingGlass aria-hidden="true" />
+                    <input
+                      ref={field}
+                      type="search"
+                      value={text}
+                      placeholder="Search every setting…"
+                      aria-label="Search settings"
+                      spellCheck={false}
+                      onChange={(event) => setText(event.target.value)}
+                      onKeyDown={(event) => { if (event.key === "Escape" && text) { event.preventDefault(); event.stopPropagation(); setText(""); } }}
+                    />
+                    {!text && <kbd aria-hidden="true">⌘F</kbd>}
+                  </div>
+                </header>
+                {searching ? (
+                  <div className="settings-page" key="search">
+                    {SETTINGS_PAGES.map(body)}
+                    {none && <p className="settings-none" role="status">Nothing in Settings matches “{text.trim()}”.</p>}
+                  </div>
+                ) : (
+                  <nav className="settings-nav" aria-label="Settings sections">
+                    {SETTINGS_GROUPS.map((group) => (
+                      <section key={group.id} className="settings-nav-group" aria-label={group.label}>
+                        <h2>{group.label}</h2>
+                        <div className="settings-tiles">
+                          {SETTINGS_PAGES.filter((page) => page.group === group.id).map((page) => {
+                            const Icon = page.icon;
+                            return (
+                              <button key={page.id} type="button" className="settings-tile" aria-label={page.label} aria-describedby={`set-${page.id}`} onClick={() => go(page.id)}>
+                                <i aria-hidden="true" data-tint={page.tint}><Icon weight="fill" /></i>
+                                <b aria-hidden="true">{page.label}</b>
+                                <small id={`set-${page.id}`}>{page.blurb}</small>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </nav>
+                )}
+              </div>
+            )}
           </LauncherProvider>
         </QueryContext.Provider>
       </div>

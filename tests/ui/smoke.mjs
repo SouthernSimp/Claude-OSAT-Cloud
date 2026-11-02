@@ -217,8 +217,14 @@ async function main() {
   const calls = () => page.evaluate(() => window.__calls)
   await page.keyboard.press('Control+,')
   const rail = page.getByRole('navigation', { name: 'Settings sections' })
-  const goTo = async (name) => { await rail.getByRole('button', { name, exact: true }).click(); await sleep(350) }
-  await rail.getByRole('button', { name: 'Quick bar', exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: the sidebar had no Quick bar page'))
+  // Settings (Phase 113) opens on its home of tiles; a page has "All settings" back to it.
+  const goTo = async (name) => {
+    const back = page.getByRole('button', { name: 'All settings' })
+    if (await back.count()) await back.click()
+    await rail.getByRole('button', { name, exact: true }).click()
+    await sleep(350)
+  }
+  await rail.getByRole('button', { name: 'Quick bar', exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: the home had no Quick bar tile'))
   await goTo('Quick bar')
   const names = (await page.locator('.setting-group', { hasText: 'Where it looks' }).locator('.setting-text b').allInnerTexts().catch(() => [])).join(', ')
   if (names !== 'Files, Clipboard, Apps, Notes and boards, Calculator, Window layouts') problems.push(`settings: the places were ${names}`)
@@ -1021,7 +1027,7 @@ async function main() {
   const memory = 64 * 1024 ** 3
   const fakeStatus = {
     recommended: pickTier(memory).id, best: recommendFor(memory).id, chosen: 'light', startup: false, totalMemory: memory, queued: [], download: null, engine: 'idle', message: '',
-    tiers: TIERS.map((tier) => ({ id: tier.id, label: tier.label, model: tier.model, blurb: tier.blurb, starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best, minMemory: tier.minMemory, fits: fits(tier, memory), size: tier.size, ready: tier.id === 'light', state: 'idle', busy: false, retained: false, blocked: false, message: '', sees: false, visionSize: tier.vision.size, can: tier.can })),
+    tiers: TIERS.map((tier) => ({ id: tier.id, label: tier.label, model: tier.model, blurb: tier.blurb, starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best, minMemory: tier.minMemory, fits: fits(tier, memory), size: tier.size, ready: tier.id === 'light', state: 'idle', busy: false, retained: false, blocked: false, message: '', sees: !tier.vision, visionSize: tier.vision?.size || 0, can: tier.can })),
   }
   await models.addInitScript((status) => {
     window.__installs = []

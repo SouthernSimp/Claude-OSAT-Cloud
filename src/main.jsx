@@ -19,6 +19,7 @@ import "./styles/search.css";
 import "./styles/app.css";
 // Character on top: the wash, depth, small entrances and hovers.
 import "./styles/polish.css";
+import "./styles/kit.css";
 
 // The Mac app draws its own title bar: leave room for the window buttons.
 if (window.osatApp) document.documentElement.classList.add("is-mac-app");
