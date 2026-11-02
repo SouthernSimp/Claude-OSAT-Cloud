@@ -32,17 +32,17 @@ function fakeDownload(log) {
   }
 }
 
-test('every model comes with its picture part, from the same pinned revision, checked the same way', () => {
+test('every model that reads pictures comes with its picture part, from the same pinned revision, checked the same way', () => {
   const files = new Set()
   for (const tier of TIERS) {
-    assert.ok(tier.vision, `${tier.id} has its picture part`)
+    assert.equal(Boolean(tier.vision), tier.can.pictures === true, `${tier.id}: a picture part exactly when it reads pictures`)
+    if (!tier.vision) continue
     const [, repo, rev] = /^https:\/\/huggingface\.co\/(.+?)\/resolve\/([0-9a-f]{40})\//.exec(tier.url)
     assert.match(tier.vision.url, new RegExp(`^https://huggingface\\.co/${repo.replace(/[.]/g, '\\.')}/resolve/${rev}/[^/]+\\.gguf$`), `${tier.id}: same repository and revision as the model`)
     assert.match(tier.vision.sha256, /^[0-9a-f]{64}$/)
     assert.ok(tier.vision.size > 100e6 && tier.vision.size < 2e9, `${tier.id}: a believable size`)
     assert.ok(!files.has(tier.vision.file), `${tier.id}: its own file name (three Qwen parts share one name upstream)`)
     files.add(tier.vision.file)
-    assert.equal(tier.can.pictures, true)
     assert.ok([null, 'on', 'off'].includes(tier.can.thinking))
   }
   assert.equal(TIERS.filter((tier) => tier.can.code === 'best').length, 1, 'one model is the one for code')
