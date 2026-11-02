@@ -9,6 +9,8 @@ import { purgeNotes } from '../notes-model.js'
 import { NOT_ALLOWED, NOT_SET_UP, askMessages, cleanQuery, dateLabel, fullDate, stickyText } from '../../shared/mail-model.mjs'
 import { PROVIDERS, providerFor } from '../../shared/imap-model.mjs'
 import { Switch } from './settings/parts.jsx'
+import { MailAsk } from './MailAsk.jsx'
+import { writeSearch } from './mail-ai.js'
 import '../styles/mail.css'
 
 const ALLOWED_KEY = 'osat.mail.allowed.v1'
@@ -41,6 +43,9 @@ function MailRoom({ bridge, commit, target }) {
   const [problem, setProblem] = useState('')
   const [said, setSaid] = useState('')
   const [asking, setAsking] = useState(null)
+  // Ask your mail (Phase 108): `askOpen` brings its panel up on a narrow room; `finding` is the AI writing a search.
+  const [askOpen, setAskOpen] = useState(false)
+  const [finding, setFinding] = useState(false)
   // The accounts Mail reads ([{ name, address, gmail }]), and whether Nate went off to add Gmail.
   const [accounts, setAccounts] = useState(null)
   const [adding, setAdding] = useState(false)
@@ -49,6 +54,8 @@ function MailRoom({ bridge, commit, target }) {
   // Gmail signed in directly (Phase 86): { ready, connected, email, busy }. Connected, it is what the room reads.
   const [gmail, setGmail] = useState(null)
   const google = gmail?.connected === true
+  // The connected addresses ([{ email, problem }]): one, until Add another Gmail.
+  const gmailAccounts = gmail?.accounts?.length ? gmail.accounts : gmail?.email ? [{ email: gmail.email, problem: '' }] : []
   // Any provider over IMAP (Phase 104): { connected, provider, email, label }. `picking` is the "Where's your mail?"
   // screen: null, true (the choices) or a provider being signed in to.
   const [imap, setImap] = useState(null)
@@ -137,12 +144,15 @@ function MailRoom({ bridge, commit, target }) {
     setPicking(choice)
   }
 
-  async function disconnectGmail() {
+  // One address (several can be connected), or all of them when none is named.
+  async function disconnectGmail(email) {
     setProblem('')
     try {
-      setGmail(await bridge.disconnectGmail())
+      const next = await bridge.disconnectGmail(email)
+      setGmail(next)
       setRows(null)
       setSelected(null)
+      if (next?.connected) { load(); return }
       setAccess(wasAllowed() ? 'allowed' : 'notAsked')
       if (wasAllowed()) load()
     } catch (error) {
@@ -210,6 +220,23 @@ function MailRoom({ bridge, commit, target }) {
     setSelected(null)
     load(words)
   }
+  // The AI on this Mac writes the search (Gmail's own words when Gmail is read); the box then shows it, to change or keep.
+  async function findWithAi() {
+    const words = cleanQuery(query)
+    if (!words || finding) return
+    setFinding(true)
+    setProblem('')
+    try {
+      const wrote = await writeSearch(words, { operators: google })
+      setQuery(wrote)
+      setSelected(null)
+      await load(wrote)
+    } catch (error) {
+      setProblem(cleanError(error))
+    } finally {
+      setFinding(false)
+    }
+  }
   function clearSearch() {
     setQuery('')
     setSelected(null)
@@ -255,7 +282,7 @@ function MailRoom({ bridge, commit, target }) {
   // Esc backs out one step: the question, then the message. (The desk then closes the room.)
   function onKeyDown(event) {
     if (event.key !== 'Escape' || event.defaultPrevented) return
-    if (event.target.closest?.('input, textarea') && !event.target.closest('.mail-ask')) {
+    if (event.target.closest?.('input, textarea') && !event.target.closest('.mail-ask, .mail-ask-all')) {
       if (!query) return
       event.preventDefault()
       clearSearch()
@@ -270,12 +297,13 @@ function MailRoom({ bridge, commit, target }) {
 
   // Only the message that is picked now: never the last one while the next is still being read.
   const open = selected !== null && message?.id === selected ? message : null
+  const many = gmailAccounts.length > 1
   const shown = useMemo(() => (rows || []).filter((row) => filter === 'all' || row.unread), [rows, filter])
 
   if (available === null) return <p className="pop-gone">Looking for Mail…</p>
   // "Where's your mail?": the first screen for a new person, and what Change brings back.
   if (picking === true || (!direct && access === 'notAsked' && picking === null)) {
-    return <ProviderPicker gmailBusy={busy || gmail?.busy} macMail={available} problem={problem} onPick={pick} onBack={direct || access === 'allowed' ? () => setPicking(null) : null} />
+    return <ProviderPicker gmailBusy={busy || gmail?.busy} gmailMore={google} macMail={available} problem={problem} onPick={pick} onBack={direct || access === 'allowed' ? () => setPicking(null) : null} />
   }
   if (picking === 'outlook') {
     return (
@@ -341,7 +369,7 @@ function MailRoom({ bridge, commit, target }) {
   }
 
   return (
-    <div className="mail-room" data-open={selected !== null ? 'message' : 'list'} onKeyDown={onKeyDown}>
+    <div className="mail-room" data-open={selected !== null || askOpen ? 'message' : 'list'} onKeyDown={onKeyDown}>
       {problem && <p className="mail-said is-problem" role="alert"><Warning /> {problem}</p>}
       <aside className="mail-list" aria-label="Your inbox">
         <form className="mail-find" role="search" onSubmit={search}>
@@ -349,6 +377,7 @@ function MailRoom({ bridge, commit, target }) {
             <MagnifyingGlass aria-hidden="true" />
             <input value={query} placeholder="Search your mail" aria-label="Search your mail" maxLength={200} onChange={(event) => setQuery(event.target.value)} />
           </label>
+          <button type="button" className="outline-button" disabled={finding || !cleanQuery(query)} onClick={findWithAi} aria-label="Find with AI" title="Let the AI on this Mac write the search"><Sparkle className={finding ? 'is-spinning' : ''} /></button>
           <button type="button" className="outline-button" disabled={loading} onClick={() => (searched ? load(searched.words, searched.inside) : load())} aria-label="Look again"><ArrowClockwise className={loading ? 'is-spinning' : ''} /></button>
         </form>
         <div className="mail-filter" role="group" aria-label="Show">
@@ -356,10 +385,21 @@ function MailRoom({ bridge, commit, target }) {
           <button type="button" aria-pressed={filter === 'unread'} onClick={() => setFilter('unread')}>Unread</button>
         </div>
         {google && (
-          <p className="mail-quiet mail-accounts">
-            Reading Gmail{gmail.email ? ` (${gmail.email})` : ''} · <button type="button" className="mail-link" onClick={() => setPicking(true)}>Change</button> · <button type="button" className="mail-link" onClick={disconnectGmail}>Disconnect</button>
-          </p>
+          <div className="mail-quiet mail-accounts">
+            <p>
+              Reading Gmail ({gmailAccounts.map((item) => item.email).join(', ')}) · <button type="button" className="mail-link" onClick={() => pick('gmail')}>Add another Gmail</button> · <button type="button" className="mail-link" onClick={() => setPicking(true)}>Change</button>
+              {gmailAccounts.length < 2 && <> · <button type="button" className="mail-link" onClick={() => disconnectGmail()}>Disconnect</button></>}
+            </p>
+            {gmailAccounts.length > 1 && (
+              gmailAccounts.map((item) => (
+                <p key={item.email}>
+                  {item.email}{item.problem ? ` — ${item.problem}` : ''} · <button type="button" className="mail-link" aria-label={`Disconnect ${item.email}`} onClick={() => disconnectGmail(item.email)}>Disconnect</button>
+                </p>
+              ))
+            )}
+          </div>
         )}
+        {gmailAccounts.length === 1 && gmailAccounts[0].problem && <p className="mail-said is-problem" role="alert"><Warning /> {gmailAccounts[0].problem}</p>}
         {!google && imap?.connected && (
           <p className="mail-quiet mail-accounts">
             Reading {imap.label} ({imap.email}) · <button type="button" className="mail-link" onClick={() => setPicking(true)}>Change</button>
@@ -372,6 +412,7 @@ function MailRoom({ bridge, commit, target }) {
           </p>
         )}
         {adding && <p className="mail-said" role="status">{ADDING}</p>}
+        <button type="button" className="outline-button mail-ask-open" onClick={() => { setSelected(null); setAskOpen(true) }}><Sparkle /> Ask your mail</button>
         {bridge.follow && <FollowCard bridge={bridge} />}
         {searched && (
           <p className="mail-quiet mail-searched">
@@ -385,7 +426,7 @@ function MailRoom({ bridge, commit, target }) {
           {shown.map((row) => (
             <li key={row.id}>
               <button type="button" className={row.unread ? 'is-unread' : ''} aria-current={row.id === selected ? 'true' : undefined} aria-label={`${row.unread ? 'Unread. ' : ''}${row.subject}, from ${row.from.name}`} onClick={() => { setProblem(''); setSelected(row.id) }}>
-                <span className="mail-from"><i aria-hidden="true" />{row.from.name}<time dateTime={row.date}>{dateLabel(row.date)}</time></span>
+                <span className="mail-from"><i aria-hidden="true" />{row.from.name}{many && row.account && <em className="mail-account">{row.account.split('@')[0]}</em>}<time dateTime={row.date}>{dateLabel(row.date)}</time></span>
                 <span className="mail-subject">{row.subject}</span>
                 {row.snippet && <span className="mail-snippet">{row.snippet}</span>}
               </button>
@@ -397,11 +438,12 @@ function MailRoom({ bridge, commit, target }) {
       </aside>
 
       <main className="mail-main">
-        {selected === null && <p className="mail-empty">{rows?.length ? 'Pick a message to read it.' : ''}</p>}
+        <MailAsk bridge={bridge} operators={google} hidden={selected !== null} onOpen={(id) => { setProblem(''); setSelected(id) }} onBack={() => setAskOpen(false)} />
+        {selected === null && rows?.length > 0 && <p className="mail-empty">Pick a message to read it.</p>}
         {selected !== null && !open && !problem && <p className="mail-quiet">Opening…</p>}
         {open && (
           <article className="mail-message">
-            <button type="button" className="mail-back outline-button" onClick={() => setSelected(null)}><CaretLeft /> Inbox</button>
+            <button type="button" className="mail-back outline-button" onClick={() => { setSelected(null); setAskOpen(false) }}><CaretLeft /> Inbox</button>
             <header>
               <h2>{message.subject}</h2>
               <p>{message.from.name}{message.from.address && message.from.address !== message.from.name ? <span> &lt;{message.from.address}&gt;</span> : null}</p>
@@ -490,7 +532,7 @@ const CHOICES = [
 ]
 
 /* Where's your mail? (Phase 104) The provider first, like Mail and Spark ask; the Mail app on this Mac stays a choice. */
-function ProviderPicker({ gmailBusy, macMail, problem, onPick, onBack }) {
+function ProviderPicker({ gmailBusy, gmailMore, macMail, problem, onPick, onBack }) {
   return (
     <div className="mail-setup">
       <EnvelopeSimple aria-hidden="true" />
@@ -499,7 +541,7 @@ function ProviderPicker({ gmailBusy, macMail, problem, onPick, onBack }) {
       <div className="mail-providers" role="group" aria-label="Where your mail is">
         {CHOICES.map(({ id, label, Icon }) => (
           <button key={id} type="button" className="mail-provider" disabled={id === 'gmail' && gmailBusy} onClick={() => onPick(id)}>
-            <Icon weight="bold" aria-hidden="true" /><span>{id === 'gmail' && gmailBusy ? 'Finish in your browser…' : label}</span>
+            <Icon weight="bold" aria-hidden="true" /><span>{id === 'gmail' && gmailBusy ? 'Finish in your browser…' : id === 'gmail' && gmailMore ? 'Add another Gmail' : label}</span>
           </button>
         ))}
       </div>

@@ -132,7 +132,7 @@ contextBridge.exposeInMainWorld('osatMail', Object.freeze({
   // Gmail signed in directly (desktop/gmail.cjs, Phase 86): the token stays in main.
   gmail: () => ipcRenderer.invoke('gmail:status'),
   connectGmail: () => ipcRenderer.invoke('gmail:connect'),
-  disconnectGmail: () => ipcRenderer.invoke('gmail:disconnect'),
+  disconnectGmail: (email) => ipcRenderer.invoke('gmail:disconnect', typeof email === 'string' ? email : ''),
   onGmail: (listener) => listen('gmail:changed', listener),
   // Any provider over IMAP (desktop/imap-mail.cjs, Phase 104): the app password goes to main once, then the Keychain.
   imap: () => ipcRenderer.invoke('imap:status'),
