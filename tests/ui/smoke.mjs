@@ -171,9 +171,10 @@ async function main() {
       await boardsSide.getByRole('button', { name: /^Add Personal, Home, Work/ }).click()
       await boardsSide.getByRole('button', { name: /^Work\b/ }).waitFor({ timeout: 3000 }).catch(() => problems.push('boards: the starter boards were not made'))
       // The board the rest of this test files things into.
-      await page.locator('nav.side').getByRole('button', { name: 'New board', exact: true }).click()
-      await page.getByRole('textbox', { name: 'New board’s name' }).fill('Project Direction')
-      await page.getByRole('textbox', { name: 'New board’s name' }).press('Enter')
+      await page.locator('nav.side').getByRole('button', { name: 'New kanban or canvas' }).click()
+      await page.getByRole('menuitem', { name: /New kanban/ }).click()
+      await page.getByRole('textbox', { name: 'New kanban’s name' }).fill('Project Direction')
+      await page.getByRole('textbox', { name: 'New kanban’s name' }).press('Enter')
     }
     await boardsSide.getByRole('button', { name: /^Project Direction/ }).click().catch(() => problems.push(`boards: Project Direction was not there to open (${theme})`))
     await page.getByRole('tab', { name: 'Overview' }).click()
@@ -503,7 +504,7 @@ async function main() {
   // "/" (Phase 98): the commands alone, and Return runs the picked one; words after it that start none are saved as always.
   await page.fill('#home-line', '/')
   await page.locator('.home-drawer-head', { hasText: 'Commands' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher: "/" did not list the commands'))
-  if (!await page.locator('.home-row', { hasText: 'New board' }).count() || await page.locator('.home-row', { hasText: 'Save as a sticky' }).count()) problems.push('launcher: "/" did not show the commands alone')
+  if (!await page.locator('.home-row', { hasText: 'New kanban' }).count() || await page.locator('.home-row', { hasText: 'Save as a sticky' }).count()) problems.push('launcher: "/" did not show the commands alone')
   await sleep(350)
   await page.screenshot({ path: `${OUT}/desk-launcher-commands.png` })
   await page.fill('#home-line', '/new can')

@@ -1,7 +1,7 @@
-/* Canvases (Phase 85): whiteboards of shapes, text, arrows (mind maps), stickies and kanbans. Each is
+/* Canvases (Phase 85): whiteboards of shapes, text, arrows (mind maps) and stickies. Each is
    { id, name, elements, createdAt, updatedAt } in `workspace.canvases` (schema 17); `elements` are Excalidraw's own,
-   saved as they are, without the ones deleted. A kanban on a canvas is an embed whose link names a board
-   (`kanbanLink`), drawn live from that board's stickies, so it is the same kanban as the board's own tab. */
+   saved as they are, without the ones deleted. Until Phase 109 a canvas could hold a board's kanban, an embed whose link
+   names the board (`kanbanLink`); those now show as a link to the board, which is the one kanban. */
 import { makeId } from '../lib/ui.js'
 
 // ponytail: the whole list is saved on each change; split it per element if canvases get huge.
@@ -70,13 +70,6 @@ export function stickySkeleton({ x, y }, text = '') {
     customData: { sticky: true },
     label: { text: String(text).slice(0, 2000), fontSize: 20, strokeColor: '#1e1e1e' },
   }
-}
-
-/* A kanban: one board's Later / Next / Doing / Done, as an embed. `base` is any element made by Excalidraw itself
-   (a rectangle from convertToExcalidrawElements), so every field it expects is there. */
-export const KANBAN_SIZE = { width: 960, height: 520 }
-export function kanbanElement(base, boardId) {
-  return { ...base, type: 'embeddable', link: kanbanLink(boardId), backgroundColor: 'transparent', strokeColor: 'transparent', roundness: null, customData: { kanban: boardId } }
 }
 
 /* Each canvas kept as it should be: a name, its elements, its dates. */

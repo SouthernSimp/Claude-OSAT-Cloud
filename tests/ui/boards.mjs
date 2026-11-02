@@ -308,9 +308,10 @@ async function light(page) {
   await page.screenshot({ path: `${OUT}/light-justin.png` })
 
   // A new board, named in place.
-  await page.locator('nav.side').getByRole('button', { name: 'New board', exact: true }).click()
-  await page.getByRole('textbox', { name: 'New board’s name' }).fill('Garden')
-  await page.getByRole('textbox', { name: 'New board’s name' }).press('Enter')
+  await page.locator('nav.side').getByRole('button', { name: 'New kanban or canvas' }).click()
+      await page.getByRole('menuitem', { name: /New kanban/ }).click()
+  await page.getByRole('textbox', { name: 'New kanban’s name' }).fill('Garden')
+  await page.getByRole('textbox', { name: 'New kanban’s name' }).press('Enter')
   await page.locator('.boards-title h1', { hasText: 'Garden' }).waitFor({ timeout: 3000 }).catch(() => problems.push('a new board didn’t open'))
   check((await readDoc(page)).folders.some((folder) => folder.name === 'Garden' && !folder.parentId), 'the new board wasn’t saved')
   check((await page.locator('.boards-title p').innerText()).includes('Nothing on Garden yet'), 'an empty board didn’t say so')

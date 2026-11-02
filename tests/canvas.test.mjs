@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { addCanvas, boardOfLink, kanbanElement, kanbanLink, middleOf, normalizeCanvases, removeCanvas, renameCanvas, saveElements, stickySkeleton } from '../src/canvas/canvas-model.js'
+import { addCanvas, boardOfLink, kanbanLink, middleOf, normalizeCanvases, removeCanvas, renameCanvas, saveElements, stickySkeleton } from '../src/canvas/canvas-model.js'
 import { normalizeWorkspace } from '../src/osat-data.js'
 import { applyOps, createEmptyDoc, diffDocs, migrate, SCHEMA, validateOps } from '../shared/store-core.mjs'
 
@@ -44,12 +44,9 @@ test('a canvas travels through the store as small ops, like any other record', (
   assert.deepEqual(applyOps(before, ops).doc.canvases, after.canvases)
 })
 
-test('a kanban on a canvas names its board, and only an OSAT board link counts', () => {
+test('a kanban put on a canvas before Phase 109 names its board, and only an OSAT board link counts', () => {
   assert.equal(boardOfLink(kanbanLink('folder-abc')), 'folder-abc')
   for (const link of ['https://evil.example/board/x', 'osat://board/../x', 'osat://board/', null]) assert.equal(boardOfLink(link), null, String(link))
-  const made = kanbanElement(el('k'), 'folder-abc')
-  assert.equal(made.type, 'embeddable')
-  assert.equal(boardOfLink(made.link), 'folder-abc')
 })
 
 test('a new sticky lands in the middle of what is on screen, the next one a little lower', () => {

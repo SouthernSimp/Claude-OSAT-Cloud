@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CaretRight, NotePencil, Plus, Shapes, Star, Trash, WifiHigh, WifiSlash } from '@phosphor-icons/react'
+import { CaretRight, Kanban, NotePencil, Plus, Shapes, Star, Trash, WifiHigh, WifiSlash } from '@phosphor-icons/react'
 
 import { clientItem } from '../boards/BoardOverview.jsx'
 import { addBoard, boardsOf, isClient, isFavorite, JUST_IN, paperOf, setFavorite, stickiesOn, undoFrom } from '../boards/boards-model.js'
@@ -17,7 +17,8 @@ const STARTER = ['Personal', 'Home', 'Work']
 const readOpen = () => { try { return JSON.parse(localStorage.getItem(FOLD_KEY) || '[]') } catch { return [] } }
 
 /* The sidebar (Phase 73), the way Apple's own apps are built: four tiles (Today, Just in, Calendar, To do), your
-   boards, then Work, Life, Library and the power tools (folded until you open them), Settings and Online at the foot.
+   boards (one list, two kinds since Phase 109: kanbans, which are boards of stickies, and canvases, whiteboards drawn on;
+   the + makes either), then Work, Life, Library and the power tools (folded until you open them), Settings and Online at the foot.
    `at` is where you are: { view, board }. A sticky dropped on a board moves there (with the others picked, Phase 97);
    right-click a board to rename or delete it (its stickies go back to Just in). Every change has Undo. */
 export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, newBoard = 0, newCanvas = 0 }) {
@@ -29,7 +30,7 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
   const canvases = canvasesOf(workspace)
   // The canvas open now: the one named, else the one the room opened last.
   const openCanvas = at.detail?.canvasId || (() => { try { return localStorage.getItem('osat.canvas.last.v1') } catch { return null } })() || canvases[0]?.id
-  // "New board" or "New canvas" from ⌘K or "/": the name is written right here.
+  // "New kanban" or "New canvas" from ⌘K or "/": the name is written right here.
   useEffect(() => { if (newBoard) setNaming({}) }, [newBoard])
   useEffect(() => { if (newCanvas) setNaming({ canvas: true }) }, [newCanvas])
   const counts = useMemo(() => ({
@@ -52,7 +53,8 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
       if (!value) return
       let made = null
       change(`Made the board “${value}”`, (state) => { const result = addBoard(state, value); made = result.folder; return result.state })
-      if (made) navigate('Mindmap', { folderId: made.id })
+      // A new board opens as its kanban: the + in Boards calls it New kanban.
+      if (made) navigate('Mindmap', { folderId: made.id, view: 'board' })
     },
     rename(id, name) {
       setNaming(null)
@@ -156,20 +158,15 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
         <section className="side-group" aria-label="Boards">
           <header className="side-head">
             <span>Boards</span>
-            <button type="button" className="side-add" aria-label="New board" title="New board" onClick={() => setNaming({})}><Plus weight="bold" /></button>
+            <button
+              type="button" className="side-add" aria-label="New kanban or canvas" title="New kanban or canvas"
+              onClick={(event) => openMenu(event, [
+                { label: 'New kanban', icon: Kanban, hint: 'stickies in Later, Next, Doing, Done', onSelect: () => setNaming({}) },
+                { label: 'New canvas', icon: Shapes, hint: 'a whiteboard for mind maps', onSelect: () => setNaming({ canvas: true }) },
+              ])}
+            ><Plus weight="bold" /></button>
           </header>
           {rows('Boards')}
-          {naming && !naming.id && !naming.canvas && !naming.canvasId && <NameForm label="New board’s name" placeholder="Name it: Fortis, Home…" onDone={actions.newBoard} />}
-          {!boards.length && !naming && (
-            <button type="button" className="side-row side-starter" onClick={actions.starter}><Plus /> <span>Add {STARTER.join(', ')}</span></button>
-          )}
-        </section>
-
-        <section className="side-group" aria-label="Canvases">
-          <header className="side-head">
-            <span>Canvases</span>
-            <button type="button" className="side-add" aria-label="New canvas" title="New canvas" onClick={() => setNaming({ canvas: true })}><Plus weight="bold" /></button>
-          </header>
           {canvases.map((canvas) => (naming?.canvasId === canvas.id
             ? <NameForm key={canvas.id} label={`Rename ${canvas.name}`} initial={canvas.name} onDone={(name) => {
               setNaming(null)
@@ -178,13 +175,17 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
               showUndo(`Renamed to “${String(name).trim()}”`, () => commit((state) => renameCanvas(state, canvas.id, canvas.name)))
             }} />
             : (
-              <button key={canvas.id} type="button" className="side-row" aria-current={at.view === 'Canvas' && openCanvas === canvas.id ? 'page' : undefined} onClick={() => navigate('Canvas', { canvasId: canvas.id })} onContextMenu={(event) => actions.canvasMenu(event, canvas)}>
+              <button key={canvas.id} type="button" className="side-row is-canvas" title="Canvas" aria-current={at.view === 'Canvas' && openCanvas === canvas.id ? 'page' : undefined} onClick={() => navigate('Canvas', { canvasId: canvas.id })} onContextMenu={(event) => actions.canvasMenu(event, canvas)}>
                 <Shapes aria-hidden="true" />
                 <span>{canvas.name}</span>
               </button>
             )))}
+          {naming && !naming.id && !naming.canvas && !naming.canvasId && <NameForm label="New kanban’s name" placeholder="Name it: Fortis, Launch…" onDone={actions.newBoard} />}
           {naming?.canvas && <NameForm label="New canvas’s name" placeholder="Name it: Q4 plan, Ideas…" onDone={actions.newCanvas} />}
-          {!canvases.length && !naming?.canvas && (
+          {!boards.length && !naming && (
+            <button type="button" className="side-row side-starter" onClick={actions.starter}><Plus /> <span>Add {STARTER.join(', ')}</span></button>
+          )}
+          {!canvases.length && !naming && (
             <button type="button" className="side-row side-starter" onClick={() => actions.newCanvas('My canvas')}><Plus /> <span>New canvas</span></button>
           )}
         </section>

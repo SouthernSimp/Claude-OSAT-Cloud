@@ -1,20 +1,23 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { CaretLeft, CaretRight, Kanban, Note, Plus } from '@phosphor-icons/react'
+import { Kanban, Note, Plus } from '@phosphor-icons/react'
 import { convertToExcalidrawElements, Excalidraw } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 
-import { boardsOf, cardWords, setStage, stageColumns, stageOf, STAGES, stickiesOn } from '../boards/boards-model.js'
-import { addSticky } from '../nodes-model.js'
-import { addCanvas, boardOfLink, canvasesOf, KANBAN_SIZE, kanbanElement, middleOf, saveElements, stickySkeleton } from './canvas-model.js'
+import { boardsOf } from '../boards/boards-model.js'
+import { addCanvas, boardOfLink, canvasesOf, middleOf, saveElements, stickySkeleton } from './canvas-model.js'
 
 const LAST_KEY = 'osat.canvas.last.v1'
 const SAVE_MS = 800
-// The kanbans on a canvas read the workspace from here, so they change as the board does.
+// A kanban put on a canvas before Phase 109 reads its board's name from here.
 const Live = createContext(null)
+const ARROWS = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown']
 
-/* Canvases (Phase 85): a whiteboard each, drawn by Excalidraw. Shapes, text, arrows that hold on to what they point at
-   (a mind map: pick a shape and press ⌘→ for a new one joined to it), stickies (the Sticky button or N) and a live
-   kanban of any board. What is drawn is saved a moment after it changes; Excalidraw's own ⌘Z undoes on the canvas.
+/* Canvases (Phase 85): a whiteboard each, drawn by Excalidraw. Shapes, text, arrows that hold on to what they point at,
+   stickies (the Sticky button or N) and mind maps: pick a sticky and press Tab (or ⌘ and an arrow) for a new idea
+   joined to it, ready to type in; Esc, then Tab again, keeps it growing; ⇧Tab adds a sibling instead (another idea off
+   the same parent); ⌥ and an arrow walks between ideas.
+   Kanbans are boards since Phase 109 (one list, two kinds), so a kanban put on a canvas earlier is a link to its board.
+   What is drawn is saved a moment after it changes; Excalidraw's own ⌘Z undoes on the canvas.
    ponytail: the canvas reads the workspace when it opens; a change made on another Mac shows when it is opened again. */
 export default function CanvasRoom({ workspace, commit, navigate, target }) {
   const canvases = canvasesOf(workspace)
@@ -31,7 +34,7 @@ export default function CanvasRoom({ workspace, commit, navigate, target }) {
     return (
       <section className="canvas-empty">
         <h1>Canvases</h1>
-        <p>A whiteboard for thinking things out: stickies, shapes, text, mind maps and a kanban of any board.</p>
+        <p>A whiteboard for thinking things out: stickies, shapes, text and mind maps.</p>
         <button type="button" className="primary-button" onClick={first}><Plus weight="bold" /> New canvas</button>
       </section>
     )
@@ -41,15 +44,15 @@ export default function CanvasRoom({ workspace, commit, navigate, target }) {
 
 function Whiteboard({ canvas, workspace, commit, navigate }) {
   const [api, setApi] = useState(null)
-  const [picking, setPicking] = useState(false)
   const room = useRef(null)
+  // A new idea is on its way (⌘ and an arrow): once ⌘ lets go, Excalidraw picks it and we start writing in it.
+  const growing = useRef(null)
   const added = useRef(0)
   const pending = useRef(null)
   const timer = useRef(null)
   const latest = useRef(commit)
   latest.current = commit
-  const live = useMemo(() => ({ workspace, commit, navigate }), [workspace, commit, navigate])
-  const boards = useMemo(() => boardsOf(workspace), [workspace])
+  const live = useMemo(() => ({ workspace, navigate }), [workspace, navigate])
   // Excalidraw keeps its own copy once open: it only reads this on the way in.
   const initial = useMemo(() => ({ elements: canvas.elements, appState: { viewBackgroundColor: 'transparent' }, scrollToContent: true }), [canvas.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -82,42 +85,58 @@ function Whiteboard({ canvas, workspace, commit, navigate }) {
   function sticky() {
     if (!place([stickySkeleton(middleOf(api?.getAppState(), added.current++))]).length) return
     // Return on a selected shape starts writing in it, as in Excalidraw itself.
-    requestAnimationFrame(() => room.current?.querySelector('.excalidraw')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
+    writeIn()
   }
 
-  function kanban(boardId) {
-    setPicking(false)
-    const { x, y } = middleOf(api?.getAppState())
-    const [base] = convertToExcalidrawElements([{ type: 'rectangle', x: x - KANBAN_SIZE.width / 2, y: y - KANBAN_SIZE.height / 2, ...KANBAN_SIZE }], { regenerateIds: true })
-    api?.updateScene({ elements: [...api.getSceneElementsIncludingDeleted(), kanbanElement(base, boardId)] })
+  const writeIn = () => requestAnimationFrame(() => room.current?.querySelector('.excalidraw')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
+  const pickedOne = () => {
+    const ids = Object.keys(api?.getAppState().selectedElementIds || {})
+    return ids.length === 1 ? ids[0] : null
   }
 
-  // N writes a sticky, unless you are already typing somewhere.
+  // N writes a sticky; Tab grows a mind map from the one picked. Not while you are typing somewhere.
   function onKeyDown(event) {
-    if (event.key !== 'n' || event.metaKey || event.ctrlKey || event.altKey) return
-    if (api?.getAppState().editingTextElement || /^(INPUT|TEXTAREA)$/.test(event.target.tagName) || event.target.isContentEditable) return
-    event.preventDefault()
-    event.stopPropagation()
-    sticky()
+    const typing = api?.getAppState().editingTextElement || /^(INPUT|TEXTAREA)$/.test(event.target.tagName) || event.target.isContentEditable
+    if (ARROWS.includes(event.key) && (event.metaKey || event.ctrlKey) && !event.shiftKey && !typing && pickedOne()) growing.current = pickedOne()
+    if (typing || event.metaKey || event.ctrlKey || event.altKey) return
+    if (event.key === 'n') { event.preventDefault(); event.stopPropagation(); sticky(); return }
+    if (event.key === 'Tab' && pickedOne()) {
+      event.preventDefault()
+      event.stopPropagation()
+      // ⇧Tab: a sibling, grown from the idea this one hangs off (the arrow pointing at it), when it has one.
+      const from = event.shiftKey ? parentOf(api.getSceneElements(), pickedOne()) : pickedOne()
+      if (!from) return
+      if (from !== pickedOne()) api.updateScene({ appState: { selectedElementIds: { [from]: true } } })
+      growing.current = from
+      // Excalidraw's own mind-map key, ⌘→ then letting go of ⌘, so the new idea is joined and laid out its way.
+      requestAnimationFrame(() => {
+        const target = room.current?.querySelector('.excalidraw')
+        target?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', metaKey: true, ctrlKey: !/Mac/.test(navigator.platform), bubbles: true }))
+        target?.dispatchEvent(new KeyboardEvent('keyup', { key: 'Meta', code: 'MetaLeft', bubbles: true }))
+      })
+    }
   }
+
+  // ⌘ let go after an arrow: if a new idea is now the one picked, it opens for typing.
+  useEffect(() => {
+    const onKeyUp = (event) => {
+      if (!growing.current || event.metaKey || event.ctrlKey) return
+      const from = growing.current
+      growing.current = null
+      requestAnimationFrame(() => { const now = pickedOne(); if (now && now !== from) writeIn() })
+    }
+    window.addEventListener('keyup', onKeyUp)
+    return () => window.removeEventListener('keyup', onKeyUp)
+  }) // eslint-disable-line react-hooks/exhaustive-deps
 
   const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
   return (
     <section className="canvas-room" ref={room} onKeyDownCapture={onKeyDown}>
       <header className="canvas-head">
         <h1>{canvas.name}</h1>
+        <p className="canvas-hint">Pick a sticky, press <kbd>Tab</kbd> for an idea joined to it · <kbd>⇧Tab</kbd> for one beside it · <kbd>⌥</kbd> arrows move between them</p>
         <div className="canvas-actions">
           <button type="button" className="primary-button" onClick={sticky} title="A sticky in the middle of the canvas  N"><Note weight="fill" /> Sticky</button>
-          <div className="canvas-pick">
-            <button type="button" className="ghost-button" aria-expanded={picking} onClick={() => setPicking((open) => !open)} disabled={!boards.length} title={boards.length ? 'Put a board’s kanban on the canvas' : 'Make a board first'}>
-              <Kanban /> Kanban
-            </button>
-            {picking && (
-              <ul className="canvas-menu" role="menu">
-                {boards.map(({ folder }) => <li key={folder.id}><button type="button" role="menuitem" onClick={() => kanban(folder.id)}>{folder.name}</button></li>)}
-              </ul>
-            )}
-          </div>
         </div>
       </header>
       <div className="canvas-board">
@@ -129,10 +148,9 @@ function Whiteboard({ canvas, workspace, commit, navigate }) {
           theme={theme}
           UIOptions={{ tools: { image: false }, canvasActions: { loadScene: false, saveToActiveFile: false, export: false, toggleTheme: false } }}
           validateEmbeddable={(link) => Boolean(boardOfLink(link))}
-          renderEmbeddable={(element, appState) => {
+          renderEmbeddable={(element) => {
             const boardId = boardOfLink(element.link)
-            const active = appState.activeEmbeddable?.element?.id === element.id && appState.activeEmbeddable.state === 'active'
-            return boardId ? <KanbanEmbed boardId={boardId} active={active} /> : null
+            return boardId ? <OldKanban boardId={boardId} /> : null
           }}
         />
         </Live.Provider>
@@ -141,55 +159,24 @@ function Whiteboard({ canvas, workspace, commit, navigate }) {
   )
 }
 
-/* A board's kanban on a canvas: the same stickies as its Kanban tab. ‹ › move a card a stage; the line under Later adds
-   a to-do. Double-click it to use it (Excalidraw's way with anything embedded, so a single click and drag still moves it). */
-function KanbanEmbed({ boardId, active }) {
-  const { workspace, commit, navigate } = useContext(Live)
-  const [words, setWords] = useState('')
+/* A kanban put on a canvas before Phase 109: the board it showed, a click away. */
+function OldKanban({ boardId }) {
+  const { workspace, navigate } = useContext(Live)
   const board = boardsOf(workspace).find(({ folder }) => folder.id === boardId)?.folder
   if (!board) return <div className="canvas-kanban is-gone">This board was deleted.</div>
-  const columns = stageColumns(stickiesOn(workspace, boardId))
-  const move = (note, step) => {
-    const at = STAGES.findIndex(([stage]) => stage === stageOf(note)) + step
-    if (STAGES[at]) commit((state) => setStage(state, [note.id], STAGES[at][0]))
-  }
-  const add = (event) => {
-    event.preventDefault()
-    const value = words.trim()
-    if (!value) return
-    commit((state) => { const { state: next, note } = addSticky(state, value, boardId, { source: 'Canvas' }); return setStage({ ...next }, [note.id], 'later') })
-    setWords('')
-  }
   return (
-    <div className="canvas-kanban">
-      <header>
-        <strong>{board.name}</strong>
-        {!active && <small>Double-click to use</small>}
-        <button type="button" className="ghost-button" onClick={() => navigate('Mindmap', { folderId: boardId, view: 'board' })}>Open board</button>
-      </header>
-      <div className="canvas-kanban-cols">
-        {columns.map((column, index) => (
-          <section key={column.stage}>
-            <h2>{column.title} <small>{column.notes.length || ''}</small></h2>
-            {column.notes.map((note) => (
-              <article key={note.id}>
-                <p>{note.gist || cardWords(note.markdown)}</p>
-                <span>
-                  {index > 0 && <button type="button" aria-label={`Back to ${STAGES[index - 1][1]}`} onClick={() => move(note, -1)}><CaretLeft /></button>}
-                  {index < STAGES.length - 1 && <button type="button" aria-label={`On to ${STAGES[index + 1][1]}`} onClick={() => move(note, 1)}><CaretRight /></button>}
-                </span>
-              </article>
-            ))}
-            {index === 0 && (
-              <form onSubmit={add}>
-                <input aria-label={`Add a to-do to ${board.name}`} placeholder="Add a to-do…" value={words} onChange={(event) => setWords(event.target.value)} />
-              </form>
-            )}
-          </section>
-        ))}
-      </div>
+    <div className="canvas-kanban is-gone">
+      <Kanban weight="duotone" aria-hidden="true" />
+      <p><strong>{board.name}</strong> is a kanban in Boards now.</p>
+      <button type="button" className="ghost-button" onClick={() => navigate('Mindmap', { folderId: boardId, view: 'board' })}>Open {board.name}</button>
     </div>
   )
+}
+
+/* The idea an idea hangs off in a mind map: where the arrow that points at it starts. */
+export function parentOf(elements, id) {
+  const arrow = elements.find((element) => element.type === 'arrow' && !element.isDeleted && element.endBinding?.elementId === id && element.startBinding?.elementId)
+  return arrow?.startBinding.elementId || null
 }
 
 function readLast() {
