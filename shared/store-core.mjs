@@ -6,7 +6,7 @@
 
 import { normalizeNote } from './note-core.mjs'
 
-export const SCHEMA = 18
+export const SCHEMA = 19
 
 /* Arrays of records with a string `id`, diffed record by record. */
 export const COLLECTIONS = [
@@ -93,6 +93,9 @@ export const migrations = [
   // 18 (Phase 99, 100): a board may be a favorite (`favorite: true`), and Money keeps what you have and owe beyond the
   // banks (`budget.balances`: cash, a loan, its rate and the least a month). Nothing starts with any; an older OSAT would drop them.
   { from: 17, run: (doc) => doc },
+  // 19 (Phase 111): a chat may be pinned (`pinned: true`) or put in a folder (`folderId`, one of
+  // `settings.chatFolders`). Nothing starts with any; an older OSAT would drop them.
+  { from: 18, run: (doc) => doc },
 ]
 
 /* Each project becomes a node of the same name (or "name 2" when one is taken) holding

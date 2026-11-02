@@ -82,7 +82,11 @@ function fakeConnections() {
 const problems = []
 const section = (page) => page.locator('.settings-section[data-page="bots"]')
 const row = (page, name) => section(page).locator('.ask-apps > li').filter({ has: page.locator('.ask-app-name b', { hasText: new RegExp(`^${name}$`) }) })
-const choosePage = (page, name) => page.getByRole('navigation', { name: 'Settings sections' }).getByRole('button', { name, exact: true }).click()
+const choosePage = async (page, name) => {
+  const back = page.getByRole('button', { name: 'All settings' })
+  if (await back.count()) await back.click()
+  await page.getByRole('navigation', { name: 'Settings sections' }).getByRole('button', { name, exact: true }).click()
+}
 
 async function exercise(page) {
   const root = section(page)

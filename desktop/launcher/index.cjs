@@ -82,7 +82,7 @@ async function createLauncher({
   const system = createSystem({ exec, keys, platform, trusted, model: systemModel })
   const processes = createProcesses({ exec, platform, model: processModel })
   // Power tools → Activity (Phase 93): the Mac's memory, processor, disk and the apps using the most.
-  createActivity({ model: await sharedModule('activity-model.mjs'), processes, exec, handle, fail, platform })
+  createActivity({ model: await sharedModule('activity-model.mjs'), processes, exec, handle, fail, platform, thermal: () => require('electron').powerMonitor.getCurrentThermalState?.() })
   // Uninstall (uninstall.cjs): an app and what it left in ~/Library, to the Bin, with Undo.
   const uninstall = createUninstall({ model: await sharedModule('uninstall-model.mjs'), apps, processes, exec, platform, fail, trash: (file) => trashItem(file), restore: (bin, to) => restoreItem(bin, to) })
   // Snippets: pasted from the bar, and (once turned on) typed in any app: snippets.cjs.

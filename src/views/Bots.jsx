@@ -5,6 +5,7 @@ import { OTHER, PRESETS } from '../../shared/providers.mjs'
 import { cleanError, useAi } from '../assistant/useAi.js'
 import { formatRelativeTime } from '../lib/ui.js'
 import { AskAppsCard } from './bots/AskAppsCard.jsx'
+import { HoldButton } from '../lib/kit.jsx'
 import { ConnectorCard } from './bots/ConnectorCard.jsx'
 import { WebhooksCard } from './bots/WebhooksCard.jsx'
 import { ShortcutsCard } from './bots/ShortcutsCard.jsx'
@@ -238,7 +239,7 @@ function CloudCard({ bridge, cloud }) {
                 <small>{usageLine(provider)}</small>
               </span>
               {provider.usagePage && <button type="button" className="text-button" onClick={() => bridge.openPage(provider.usagePage).catch(() => {})}>See the bill</button>}
-              <button type="button" className="text-button" onClick={() => bridge.removeProvider(provider.id).catch((error) => setMessage({ ok: false, text: cleanError(error) }))}>Remove</button>
+              <HoldButton title="Hold to take this key out of the Keychain" onConfirm={() => bridge.removeProvider(provider.id).catch((error) => setMessage({ ok: false, text: cleanError(error) }))}>Hold to remove</HoldButton>
             </li>
           ))}
         </ul>

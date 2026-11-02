@@ -1,5 +1,5 @@
 import {
-  BookOpenText, CalendarBlank, CheckCircle, CurrencyDollar, EnvelopeSimple, Files, Gauge, GearSix, GithubLogo, Globe, Key, Kanban, ListChecks,
+  BookOpenText, Brain, CalendarBlank, ChatsCircle, CheckCircle, CurrencyDollar, EnvelopeSimple, Files, Gauge, GearSix, GithubLogo, Globe, Key, Kanban, ListChecks,
   MapTrifold, Microphone, Shapes, MusicNotes, NotePencil, Sparkle, Stack, Sun, Target, TerminalWindow, Tray, UploadSimple,
 } from '@phosphor-icons/react'
 
@@ -24,14 +24,16 @@ export const TOOLS = [
   { id: 'Goals', tint: 'violet', label: 'Goals', icon: Target, hint: 'The few big things, each moving with a board or a habit' },
   { id: 'Budget', tint: 'green', label: 'Money', icon: CurrencyDollar, hint: 'A ledger you keep by hand' },
   { id: 'Journal', tint: 'orange', label: 'Journal', icon: BookOpenText, hint: 'A page for every day' },
-  { id: 'Mindmap', tint: 'teal', label: 'Boards', icon: Kanban, hint: 'Your boards: OSAT, Fortis, Home…' },
-  { id: 'Canvas', tint: 'yellow', label: 'Canvases', icon: Shapes, hint: 'Whiteboards: stickies, shapes, mind maps and kanbans' },
+  { id: 'Mindmap', tint: 'teal', label: 'Boards', icon: Kanban, hint: 'Your kanbans and canvases: OSAT, Fortis, Home…' },
+  { id: 'Canvas', tint: 'yellow', label: 'Canvases', icon: Shapes, hint: 'Whiteboards for mind maps: stickies, shapes and arrows' },
+  { id: 'Chat', tint: 'violet', label: 'Chat', icon: ChatsCircle, hint: 'Talk with OSAT in a whole window: folders and pinned chats' },
+  { id: 'Brain', tint: 'green', label: 'Brain', icon: Brain, hint: 'Everything OSAT knows, as a graph, and what it remembers from your chats' },
   { id: 'Assistant', tint: 'violet', label: 'Ask', icon: Sparkle, hint: 'Think out loud with the AI on this Mac' },
   { id: 'Browser', tint: 'blue', label: 'Web', icon: Globe, hint: 'The web, with a clipper into Notes' },
   { id: 'Terminal', tint: 'graphite', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
   { id: 'GitHub', tint: 'graphite', label: 'GitHub', icon: GithubLogo, hint: 'Your repositories: what waits for you, and Merge' },
   { id: 'Passwords', tint: 'slate', label: 'Passwords', icon: Key, hint: 'Locked until you unlock them with your master password' },
-  { id: 'Activity', tint: 'green', label: 'Activity', icon: Gauge, hint: 'Memory, processor, disk and the apps using the most' },
+  { id: 'Activity', tint: 'green', label: 'Activity', icon: Gauge, hint: 'A quick look: memory, processor, graphics, battery and its temperature' },
   { id: 'Roadmap', tint: 'indigo', label: 'Roadmap', icon: MapTrifold, hint: 'What’s new, what’s coming next, and where OSAT is going' },
   { id: 'Pile', tint: 'orange', label: 'Sort a pile', icon: Stack, hint: 'Toss a pile of stickies down, group them, send them to a board' },
 ]

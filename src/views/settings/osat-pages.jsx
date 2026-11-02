@@ -3,6 +3,7 @@ import { Check, DeviceMobile, DownloadSimple, FolderOpen, LockSimple, Monitor, M
 import { cleanError, setupLine, useAi } from "../../assistant/useAi.js";
 import { memoryResult } from "../../assistant/ModelMenu.jsx";
 import { downloadFile, formatRelativeTime } from "../../lib/ui.js";
+import { GlideButton, HoldButton, ScrambleText } from "../../lib/kit.jsx";
 import { localDateKey } from "../../daily-practice.js";
 import { makeBackup, readWorkspaceBackup } from "../../osat-data.js";
 import { workspaceClient } from "../../store/useWorkspace.js";
@@ -94,8 +95,8 @@ function AiCard() {
               onChange={(value) => act(tier.id, () => bridge.keepLoaded(tier.id, value))} /> Keep loaded</label>
             <button type="button" className="text-button" disabled={Boolean(working) || status.chosen === tier.id}
               onClick={() => act(tier.id, () => bridge.select(tier.id))}>{status.chosen === tier.id ? "Default for new chats" : "Use for new chats"}</button>
-            <button type="button" className="text-button" disabled={Boolean(working) || tier.busy}
-              onClick={() => { if (window.confirm("Delete the " + tier.model + " download (" + gb(tier.size) + ")? You will need to download it again. Conversations stay here.")) act(tier.id, () => bridge.remove(tier.id)); }}>Delete download</button>
+            <HoldButton disabled={Boolean(working) || tier.busy} title={`Hold to delete the ${tier.model} download (${gb(tier.size)}). You can download it again; conversations stay here.`}
+              onConfirm={() => act(tier.id, () => bridge.remove(tier.id))}>Hold to delete download</HoldButton>
           </div>
         </Row>)}
       </Group>
@@ -514,8 +515,8 @@ function UpdateRow() {
     <Row title="Updates" hint={line} words="update version new build check">
       {status.state === "available"
         ? <button type="button" className="outline-button" onClick={() => run(() => bridge.install())}>Update and restart</button>
-        : <button type="button" className="outline-button" disabled={busy || status.state === "unavailable"}
-            onClick={() => { setStatus({ state: "checking-for-update" }); run(() => bridge.check()); }}>Check for updates</button>}
+        : <GlideButton disabled={busy || status.state === "unavailable"}
+            onClick={() => { setStatus({ state: "checking-for-update" }); run(() => bridge.check()); }}>{busy ? "Looking…" : status.state === "current" ? "Look again" : "Check for updates"}</GlideButton>}
     </Row>
   );
 }
@@ -524,8 +525,17 @@ export function AboutPage({ page, navigate }) {
   const about = useAbout();
   return (
     <Page page={page}>
+      {/* The version as a ticket (Phase 113): paper, a torn line, and a stamp that says where your things live. */}
+      <div className="ticket" role="group" aria-label={`OSAT ${about?.version || ""}`}>
+        <div className="ticket-main">
+          <small>Admit one · your Mac</small>
+          <strong>{about?.version ? <ScrambleText text={`OSAT ${about.version}`} /> : "OSAT"}</strong>
+          <p>A calm layer over your Mac. Everything, the AI included, stays on this Mac unless you pick a cloud model.</p>
+        </div>
+        <div className="ticket-stub"><span className="stamp">Private</span><small>On this Mac</small></div>
+      </div>
       <Group>
-        <Row title={`OSAT${about?.version ? ` ${about.version}` : ""}`} hint="A calm layer over your Mac. Everything, the AI included, stays on this Mac unless you pick a cloud model." words="version privacy" />
+        <Row title={`OSAT${about?.version ? ` ${about.version}` : ""}`} hint="Your version. It looks for a newer one as it opens, and you can look any time here or from the OSAT menu." words="version privacy" />
         <UpdateRow />
         {navigate && (
           <Row title="What’s new" hint="Every build of OSAT in plain words, and how a change gets to you." words="changelog changes release notes build">

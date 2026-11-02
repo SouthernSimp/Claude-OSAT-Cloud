@@ -308,9 +308,10 @@ async function light(page) {
   await page.screenshot({ path: `${OUT}/light-justin.png` })
 
   // A new board, named in place.
-  await page.locator('nav.side').getByRole('button', { name: 'New board', exact: true }).click()
-  await page.getByRole('textbox', { name: 'New board’s name' }).fill('Garden')
-  await page.getByRole('textbox', { name: 'New board’s name' }).press('Enter')
+  await page.locator('nav.side').getByRole('button', { name: 'New kanban or canvas' }).click()
+      await page.getByRole('menuitem', { name: /New kanban/ }).click()
+  await page.getByRole('textbox', { name: 'New kanban’s name' }).fill('Garden')
+  await page.getByRole('textbox', { name: 'New kanban’s name' }).press('Enter')
   await page.locator('.boards-title h1', { hasText: 'Garden' }).waitFor({ timeout: 3000 }).catch(() => problems.push('a new board didn’t open'))
   check((await readDoc(page)).folders.some((folder) => folder.name === 'Garden' && !folder.parentId), 'the new board wasn’t saved')
   check((await page.locator('.boards-title p').innerText()).includes('Nothing on Garden yet'), 'an empty board didn’t say so')
@@ -364,7 +365,8 @@ async function light(page) {
   await side(page, 'Fortis').click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Add to favorites' }).click()
   await favorite.waitFor({ timeout: 3000 }).catch(() => problems.push('a favorite didn’t move to Favorites'))
-  check(await page.locator('nav.side .side-group').first().getAttribute('aria-label') === 'Favorites', 'Favorites wasn’t the first group')
+  // Chat and Brain sit above the boards (Phase 111); among the boards' groups, Favorites comes first.
+  check(await page.locator('nav.side .side-group:not([aria-label="Chat and Brain"])').first().getAttribute('aria-label') === 'Favorites', 'Favorites wasn’t the first group')
   check(await side(page, 'Fortis').count() === 0, 'a favorite showed in Boards too')
   check(await favorite.locator('.side-dot').getAttribute('data-paper') === paper, 'a favorite changed colour')
   check((await readDoc(page)).folders.find((folder) => folder.id === 'fortis')?.favorite === true, 'the favorite mark wasn’t saved')

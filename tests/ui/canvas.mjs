@@ -1,6 +1,6 @@
 // Canvases (Phase 85) in the built preview: the first canvas from the sidebar, a sticky from the Sticky button typed into
-// straight away, another from N, a board's kanban put on the canvas and a card moved along it, all saved; a second
-// canvas, Rename and Delete with Undo; dark. Fails on page errors or a step that didn't happen; screenshots land in
+// straight away, another from N, a mind map grown from it with Tab, all saved; a new kanban and a second canvas from the
+// Boards list's +, Rename and Delete with Undo; dark. Fails on page errors or a step that didn't happen; screenshots land in
 // test-results/ui/canvas/. Run `npm run build` first.
 import { spawn } from 'node:child_process'
 import { mkdir } from 'node:fs/promises'
@@ -69,7 +69,7 @@ const room = (page) => page.locator('.app-room[data-view="Canvas"]')
 async function light(browser, url) {
   const page = await openPage(browser, url, 'light')
   // The first canvas: the sidebar offers it.
-  await page.locator('nav.side').getByRole('button', { name: 'New canvas', exact: true }).last().click()
+  await page.locator('nav.side').getByRole('button', { name: 'New canvas', exact: true }).click()
   await room(page).locator('.excalidraw').waitFor({ timeout: 20000 })
   check(await room(page).locator('.canvas-head h1').innerText() === 'My canvas', 'the first canvas wasn’t “My canvas”')
   await sleep(800)
@@ -88,39 +88,50 @@ async function light(browser, url) {
   await page.keyboard.type('Ask Sam')
   await page.keyboard.press('Escape')
 
-  // A kanban of Fortis on the canvas; Send the deck moves on to Next.
-  await room(page).getByRole('button', { name: 'Kanban' }).click()
-  await room(page).getByRole('menuitem', { name: 'Fortis' }).click()
-  const kanban = room(page).locator('.canvas-kanban')
-  await kanban.waitFor({ timeout: 5000 })
-  check(await kanban.locator('article').filter({ hasText: 'Send the deck' }).count() === 1, 'the kanban didn’t show Fortis’s to-do')
-  check(await kanban.getByText('Double-click to use').count() === 1, 'the kanban didn’t say how to use it')
-  // A person double-clicks the canvas where the kanban is; Excalidraw hands the kanban the mouse from then on.
-  const box = await kanban.boundingBox()
-  await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
-  await kanban.getByRole('button', { name: 'On to Next' }).waitFor({ timeout: 5000 })
-  await kanban.getByRole('button', { name: 'On to Next' }).click()
-  await kanban.getByRole('textbox', { name: 'Add a to-do to Fortis' }).fill('Book the demo')
-  await kanban.getByRole('textbox', { name: 'Add a to-do to Fortis' }).press('Enter')
-  await sleep(300)
-  check(await kanban.locator('section').nth(0).locator('article').filter({ hasText: 'Book the demo' }).count() === 1, 'a to-do added on the kanban didn’t land in Later')
-  await page.screenshot({ path: `${OUT}/kanban.png` })
+  // A mind map: Tab on the picked sticky makes a joined idea, ready to type; Esc, Tab again, another.
+  await page.keyboard.press('Tab')
+  await page.locator('.excalidraw-textEditorContainer textarea').waitFor({ timeout: 5000 })
+  await page.keyboard.type('Call Fortis')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Tab')
+  await page.locator('.excalidraw-textEditorContainer textarea').waitFor({ timeout: 5000 })
+  await page.keyboard.type('Book the demo')
+  await page.keyboard.press('Escape')
+  // ⇧Tab: a sibling of Book the demo, also off Call Fortis.
+  await page.keyboard.press('Shift+Tab')
+  await page.locator('.excalidraw-textEditorContainer textarea').waitFor({ timeout: 5000 })
+  await page.keyboard.type('Send pricing')
+  await page.keyboard.press('Escape')
+  await sleep(900)
+  await page.screenshot({ path: `${OUT}/mind-map.png` })
 
   const doc = await readDoc(page)
   const saved = doc.canvases?.[0]
   const texts = (saved?.elements || []).filter((element) => element.type === 'text').map((element) => element.text)
-  check(texts.includes('Pricing idea') && texts.includes('Ask Sam'), `the stickies’ words weren’t saved: ${JSON.stringify(texts)}`)
-  check((saved?.elements || []).some((element) => element.type === 'embeddable' && element.link === 'osat://board/folder-fortis'), 'the kanban wasn’t saved on the canvas')
-  check(doc.notes.find((note) => note.id === 'note-deck')?.stage === 'next', 'moving a card on the kanban didn’t move the sticky')
-  check(doc.notes.some((note) => note.folderId === 'folder-fortis' && note.markdown === 'Book the demo'), 'the to-do added on the kanban isn’t on Fortis')
+  check(['Pricing idea', 'Ask Sam', 'Call Fortis', 'Book the demo', 'Send pricing'].every((words) => texts.includes(words)), `the stickies’ words weren’t saved: ${JSON.stringify(texts)}`)
+  check((saved?.elements || []).filter((element) => element.type === 'arrow').length >= 3, 'Tab didn’t join the new ideas with arrows')
+  const shapes = (saved?.elements || [])
+  const boxOf = (words) => shapes.find((element) => element.id === shapes.find((text) => text.type === 'text' && text.text === words)?.containerId)
+  const parentOfBox = (box) => shapes.find((element) => element.type === 'arrow' && element.endBinding?.elementId === box?.id)?.startBinding?.elementId
+  check(parentOfBox(boxOf('Send pricing')) === boxOf('Call Fortis')?.id, '⇧Tab didn’t hang the sibling off the same idea')
+  check(!await room(page).getByRole('button', { name: 'Kanban' }).count(), 'the canvas still offers a kanban of its own')
 
   // The board's own tab is called Kanban now.
   await sideButton(page, 'Fortis').click()
   await page.getByRole('tab', { name: 'Kanban' }).click()
   check(await page.locator('.app-room').getByText('Send the deck').count() > 0, 'the Kanban tab didn’t show the sticky')
 
-  // A second canvas, renamed, then deleted with Undo; the first still has its stickies.
-  await page.locator('nav.side').getByRole('button', { name: 'New canvas', exact: true }).first().click()
+  // A new kanban from the Boards list's +: it opens as a kanban.
+  await page.locator('nav.side').getByRole('button', { name: 'New kanban or canvas' }).click()
+  await page.getByRole('menuitem', { name: /New kanban/ }).click()
+  await page.getByRole('textbox', { name: 'New kanban’s name' }).fill('Launch')
+  await page.getByRole('textbox', { name: 'New kanban’s name' }).press('Enter')
+  await page.getByRole('tab', { name: 'Kanban', selected: true }).waitFor({ timeout: 5000 })
+  check(await sideButton(page, 'Launch').count() === 1, 'the new kanban isn’t in Boards')
+
+  // A second canvas from the same +, renamed, then deleted with Undo; the first still has its stickies.
+  await page.locator('nav.side').getByRole('button', { name: 'New kanban or canvas' }).click()
+  await page.getByRole('menuitem', { name: /New canvas/ }).click()
   await page.getByRole('textbox', { name: 'New canvas’s name' }).fill('Q4 plan')
   await page.getByRole('textbox', { name: 'New canvas’s name' }).press('Enter')
   await room(page).locator('.canvas-head h1').filter({ hasText: 'Q4 plan' }).waitFor({ timeout: 10000 })
@@ -139,7 +150,7 @@ async function light(browser, url) {
 
 async function dark(browser, url) {
   const page = await openPage(browser, url, 'dark')
-  await page.locator('nav.side').getByRole('button', { name: 'New canvas', exact: true }).last().click()
+  await page.locator('nav.side').getByRole('button', { name: 'New canvas', exact: true }).click()
   await room(page).locator('.excalidraw.theme--dark').waitFor({ timeout: 20000 })
   await room(page).getByRole('button', { name: 'Sticky' }).click()
   await page.locator('.excalidraw-textEditorContainer textarea').waitFor({ timeout: 5000 })

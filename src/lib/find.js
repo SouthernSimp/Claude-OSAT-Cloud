@@ -21,7 +21,7 @@ const ACTIONS = [
   { key: 'act:tidy-desktop', label: 'Tidy my Desktop', hint: 'Review a plan before moving files', also: 'clean organize files', go: ['Files', { rootId: 'desktop', tidy: true }] },
   { key: 'act:new-note', label: 'New note', also: 'write page', go: ['Notes', { action: 'new' }] },
   { key: 'act:today', label: 'Today’s note', also: 'journal day page', go: ['Notes', { action: 'today' }] },
-  { key: 'act:new-folder', label: 'New board', also: 'topic folder group pile project client', go: ['Mindmap', { action: 'new-node' }] },
+  { key: 'act:new-folder', label: 'New kanban', also: 'board topic folder group pile project client', go: ['Mindmap', { action: 'new-node' }] },
   { key: 'act:new-canvas', label: 'New canvas', also: 'whiteboard excalidraw draw sketch diagram shapes', go: ['Canvas', { action: 'new' }] },
   { key: 'act:reflect', label: 'Reflect', hint: 'Three quiet questions, in the Journal', also: 'reflection evening close the day', go: ['Journal', { tab: 'reflect' }] },
   { key: 'act:board', label: 'Open your boards', also: 'map mindmap topics board kanban canvas sort', go: ['Mindmap'] },

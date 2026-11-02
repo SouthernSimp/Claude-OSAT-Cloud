@@ -4,7 +4,7 @@
 .activity-head p, .activity-quiet { margin: 4px 0 0; color: var(--muted); font-size: var(--t-sm); }
 .activity-problem { margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--critical-soft); font-size: var(--t-sm); }
 
-.activity-meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.activity-meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .activity-meter, .activity-card { padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }
 .activity-meter { display: grid; gap: 8px; --level: var(--accent); }
 .activity-meter[data-state="warn"] { --level: var(--caution); }

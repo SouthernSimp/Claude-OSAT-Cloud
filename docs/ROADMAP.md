@@ -360,6 +360,13 @@ checks do not establish real-model quality or packaged/offline acceptance.
 | 106 | Right-click a sticky: Break it down into to-dos with the AI; Move to lists the likely boards first | In review (#131) |
 | 107 | Character: a soft colour wash behind the window, light on the cards, small entrances, hovers and presses (stacked on #131) | In review |
 | 108 | Mail: connect several Gmail accounts (read together, each message tagged with its account, disconnect one at a time) and Ask your mail: ask a question or tell it what to find, and the AI on this Mac searches, reads a few messages and answers with the emails it used (stacked on #132) | In review (#133) |
+| 109 | Check for Updates in the OSAT menu and as OSAT opens; Activity shows graphics, battery temperature and warmth (stacked on #133) | In review (#134) |
+| 110 | One Boards list with two kinds, kanbans and canvases; the canvas's own kanban goes; Tab grows a mind map, ⇧Tab a sibling | In review (#134) |
+| 111 | Chat: Ask in a whole window, with folders, pinned chats, rename and Move to | In review (#134) |
+| 112 | The Brain: OSAT remembers the lasting things from chats and reads the ones that fit; everything as a graph | In review (#134) |
+| 113 | Settings redone: a home of tiles, one search, pages across the window, the version as a ticket, hold to delete, tactile buttons | In review (#134) |
+| 114 | New models from LM Studio: Qwen 3.8 27B, Granite 4.1 3B and 8B | In review (#134) |
+| 115 | Over-engineering out: the old desk's leftovers and unused pieces | In review (#134) |
 
 **Passwords, later steps (Phase 58 is the room only):** filling a password into a web page or app (Browser autofill and a browser
 extension), one-time codes (TOTP), a copy on your iPhone or another Mac, a change-your-password reminder, and checking a password

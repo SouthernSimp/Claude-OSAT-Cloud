@@ -171,9 +171,10 @@ async function main() {
       await boardsSide.getByRole('button', { name: /^Add Personal, Home, Work/ }).click()
       await boardsSide.getByRole('button', { name: /^Work\b/ }).waitFor({ timeout: 3000 }).catch(() => problems.push('boards: the starter boards were not made'))
       // The board the rest of this test files things into.
-      await page.locator('nav.side').getByRole('button', { name: 'New board', exact: true }).click()
-      await page.getByRole('textbox', { name: 'New board’s name' }).fill('Project Direction')
-      await page.getByRole('textbox', { name: 'New board’s name' }).press('Enter')
+      await page.locator('nav.side').getByRole('button', { name: 'New kanban or canvas' }).click()
+      await page.getByRole('menuitem', { name: /New kanban/ }).click()
+      await page.getByRole('textbox', { name: 'New kanban’s name' }).fill('Project Direction')
+      await page.getByRole('textbox', { name: 'New kanban’s name' }).press('Enter')
     }
     await boardsSide.getByRole('button', { name: /^Project Direction/ }).click().catch(() => problems.push(`boards: Project Direction was not there to open (${theme})`))
     await page.getByRole('tab', { name: 'Overview' }).click()
@@ -216,8 +217,14 @@ async function main() {
   const calls = () => page.evaluate(() => window.__calls)
   await page.keyboard.press('Control+,')
   const rail = page.getByRole('navigation', { name: 'Settings sections' })
-  const goTo = async (name) => { await rail.getByRole('button', { name, exact: true }).click(); await sleep(350) }
-  await rail.getByRole('button', { name: 'Quick bar', exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: the sidebar had no Quick bar page'))
+  // Settings (Phase 113) opens on its home of tiles; a page has "All settings" back to it.
+  const goTo = async (name) => {
+    const back = page.getByRole('button', { name: 'All settings' })
+    if (await back.count()) await back.click()
+    await rail.getByRole('button', { name, exact: true }).click()
+    await sleep(350)
+  }
+  await rail.getByRole('button', { name: 'Quick bar', exact: true }).waitFor({ timeout: 3000 }).catch(() => problems.push('settings: the home had no Quick bar tile'))
   await goTo('Quick bar')
   const names = (await page.locator('.setting-group', { hasText: 'Where it looks' }).locator('.setting-text b').allInnerTexts().catch(() => [])).join(', ')
   if (names !== 'Files, Clipboard, Apps, Notes and boards, Calculator, Window layouts') problems.push(`settings: the places were ${names}`)
@@ -503,7 +510,7 @@ async function main() {
   // "/" (Phase 98): the commands alone, and Return runs the picked one; words after it that start none are saved as always.
   await page.fill('#home-line', '/')
   await page.locator('.home-drawer-head', { hasText: 'Commands' }).waitFor({ timeout: 3000 }).catch(() => problems.push('launcher: "/" did not list the commands'))
-  if (!await page.locator('.home-row', { hasText: 'New board' }).count() || await page.locator('.home-row', { hasText: 'Save as a sticky' }).count()) problems.push('launcher: "/" did not show the commands alone')
+  if (!await page.locator('.home-row', { hasText: 'New kanban' }).count() || await page.locator('.home-row', { hasText: 'Save as a sticky' }).count()) problems.push('launcher: "/" did not show the commands alone')
   await sleep(350)
   await page.screenshot({ path: `${OUT}/desk-launcher-commands.png` })
   await page.fill('#home-line', '/new can')
@@ -1020,7 +1027,7 @@ async function main() {
   const memory = 64 * 1024 ** 3
   const fakeStatus = {
     recommended: pickTier(memory).id, best: recommendFor(memory).id, chosen: 'light', startup: false, totalMemory: memory, queued: [], download: null, engine: 'idle', message: '',
-    tiers: TIERS.map((tier) => ({ id: tier.id, label: tier.label, model: tier.model, blurb: tier.blurb, starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best, minMemory: tier.minMemory, fits: fits(tier, memory), size: tier.size, ready: tier.id === 'light', state: 'idle', busy: false, retained: false, blocked: false, message: '', sees: false, visionSize: tier.vision.size, can: tier.can })),
+    tiers: TIERS.map((tier) => ({ id: tier.id, label: tier.label, model: tier.model, blurb: tier.blurb, starter: Boolean(tier.starter), maker: tier.maker, speed: tier.speed, smarts: tier.smarts, best: tier.best, minMemory: tier.minMemory, fits: fits(tier, memory), size: tier.size, ready: tier.id === 'light', state: 'idle', busy: false, retained: false, blocked: false, message: '', sees: !tier.vision, visionSize: tier.vision?.size || 0, can: tier.can })),
   }
   await models.addInitScript((status) => {
     window.__installs = []

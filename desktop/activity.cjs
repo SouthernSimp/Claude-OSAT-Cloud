@@ -1,17 +1,17 @@
 /* Activity (Phase 93, Power tools → Activity): how this Mac is doing, read with the Mac's own vm_stat and sysctl,
    Node's os and statfs, and the bar's running-apps list (processes.cjs). Quit asks an app to quit (Force quit ends
    it), by the path the list gave, so a made-up path ends nothing. Read-only otherwise; nothing leaves the Mac.
-     activity:now → { memory, cpu, disk, specs, apps } · activity:quit (path, force) → how many processes */
+     activity:now → { memory, cpu, gpu, battery, disk, specs, apps } · activity:quit (path, force) → how many processes */
 const fs = require('node:fs')
 const os = require('node:os')
 
-function createActivity({ model, processes, exec, handle, fail, platform = process.platform }) {
+function createActivity({ model, processes, exec, handle, fail, thermal = () => null, platform = process.platform }) {
   let cpus = os.cpus()
   let specs = null
 
   async function now() {
     if (platform !== 'darwin') return { mac: false }
-    const [vm, pressure, info, disk, apps] = await Promise.all([
+    const [vm, pressure, info, disk, apps, battery, gpu] = await Promise.all([
       exec('/usr/bin/vm_stat', []),
       exec('/usr/sbin/sysctl', ['-n', 'kern.memorystatus_vm_pressure_level']).catch(() => '1'),
       specs || Promise.all([
@@ -21,6 +21,9 @@ function createActivity({ model, processes, exec, handle, fail, platform = proce
       ]).then(([read, name]) => ({ ...read, name })),
       fs.promises.statfs(fs.existsSync('/System/Volumes/Data') ? '/System/Volumes/Data' : '/'),
       processes.list(),
+      // Battery charge, health and temperature, and how busy the graphics chip is: the Mac's registry, no password.
+      exec('/usr/sbin/ioreg', ['-rn', 'AppleSmartBattery', '-l']).then(model.readBattery, () => null),
+      exec('/usr/sbin/ioreg', ['-r', '-d', '1', '-c', 'IOAccelerator']).then(model.readGpu, () => null),
     ])
     specs = info
     const fresh = os.cpus()
@@ -30,7 +33,9 @@ function createActivity({ model, processes, exec, handle, fail, platform = proce
     return {
       mac: true,
       memory: { total, ...model.readVmStat(vm), pressure: model.pressureOf(pressure.trim()) },
-      cpu: { busy, cores: fresh.length },
+      cpu: { busy, cores: fresh.length, thermal: thermal() || null },
+      gpu,
+      battery,
       disk: { total: disk.blocks * disk.bsize, free: disk.bavail * disk.bsize },
       specs: { ...specs, cores: fresh.length, uptime: os.uptime() },
       apps: apps.slice(0, 60).map(({ path, name, count, kb, cpu }) => ({ path, name, count, bytes: kb * 1024, cpu })),

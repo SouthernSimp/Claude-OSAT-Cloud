@@ -12,17 +12,3 @@ export function normalizeFocusSession(value, now = Date.now()) {
   return remainingMs > 0 ? { ...value, remainingMs } : { status: 'idle' }
 }
 
-export function startFocusSession(now = Date.now()) {
-  const remainingMs = FOCUS_MINUTES * 60_000
-  return { status: 'running', endsAt: now + remainingMs, remainingMs }
-}
-
-export function pauseFocusSession(session, now = Date.now()) {
-  const remainingMs = focusRemaining(session, now)
-  return remainingMs > 0 ? { status: 'paused', remainingMs } : { status: 'idle' }
-}
-
-export function resumeFocusSession(session, now = Date.now()) {
-  const remainingMs = focusRemaining(session, now)
-  return remainingMs > 0 ? { status: 'running', endsAt: now + remainingMs, remainingMs } : { status: 'idle' }
-}

@@ -1,10 +1,10 @@
 /* The AI models OSAT can set up by itself. Each is one file, pinned to an exact revision
    and checked against its SHA-256 after download; all are Apache 2.0 and run on the engine
-   OSAT ships (node-llama-cpp's llama.cpp: gemma4, qwen35, qwen35moe, mistral3).
+   OSAT ships (node-llama-cpp's llama.cpp: gemma4, qwen35, qwen35moe, mistral3, granite).
    The three `starter` sizes (Google's Gemma 4: Light, Balanced, Deep) are what the welcome
    offers; the rest are there to browse and compare in Settings → AI. `speed` and `smarts`
    are 1–5, relative to each other, for that comparison; `best` says what each is good at.
-   Each also comes with its picture part (`vision`, Phase 37b), from the same pinned revision and checked the
+   Each that reads pictures also comes with its picture part (`vision`, Phase 37b; Granite reads words only), from the same pinned revision and checked the
    same way: OSAT downloads it with the model, and llama.cpp's own server (bundled, desktop/ai/vision.cjs) reads
    pictures with the two. `can` is what each does, from its makers' model cards: pictures, `thinking` ('on': it
    thinks before it answers; 'off': it can, but OSAT keeps it off for quick, direct answers; null: this version
@@ -192,6 +192,53 @@ const TIERS = [
       sha256: '8971ee4f331ff0a4c609374f32984b3d4e6dc086c0aa35f1d637fad1829e887f',
     },
     can: { pictures: true, thinking: 'on', code: 'best', tools: true },
+  },
+  // Added Nov 2026 (Phase 114), new in LM Studio's catalog: IBM's Granite 4.1 (words only: no picture part) and Qwen 3.8.
+  {
+    id: 'granite41-3b',
+    label: 'Granite 4.1 3B',
+    model: 'Granite 4.1 3B',
+    blurb: 'Small, steady and quick. Words only.',
+    maker: 'IBM', speed: 5, smarts: 2, best: 'Quick sorting and short answers on any Mac',
+    file: 'granite-4.1-3b-Q4_K_M.gguf',
+    url: 'https://huggingface.co/ibm-granite/granite-4.1-3b-GGUF/resolve/ab4701481089b58a082ef63cc1cee738887293ff/granite-4.1-3b-Q4_K_M.gguf',
+    size: 2099501664,
+    sha256: '662b0626cd58f443baea23559b469df6576a81d349649c59413b36a9fb32eb29',
+    minMemory: 8 * GB,
+    can: { pictures: false, thinking: null, code: true, tools: true },
+  },
+  {
+    id: 'granite41-8b',
+    label: 'Granite 4.1 8B',
+    model: 'Granite 4.1 8B',
+    blurb: 'Made for work: tidy, dependable answers. Words only.',
+    maker: 'IBM', speed: 4, smarts: 3, best: 'Business writing and using your apps',
+    file: 'granite-4.1-8b-Q4_K_M.gguf',
+    url: 'https://huggingface.co/ibm-granite/granite-4.1-8b-GGUF/resolve/865b82c2e7970d82e3731278c88c57ae7138359c/granite-4.1-8b-Q4_K_M.gguf',
+    size: 5347914400,
+    sha256: 'ed902ac9eb6adce5a90c6a08c8ea201b50e23fdc5976d1cd0362006afac5309e',
+    minMemory: 16 * GB,
+    can: { pictures: false, thinking: null, code: true, tools: true },
+  },
+  {
+    id: 'qwen38-27b',
+    label: 'Qwen 3.8 27B',
+    model: 'Qwen 3.8 27B',
+    blurb: 'The newest Qwen: careful answers and pictures. Takes its time.',
+    maker: 'Qwen (Alibaba)', speed: 2, smarts: 5, best: 'Thoughtful answers about your notes and pictures, on a 32 GB+ Mac',
+    file: 'Qwen3.8-27B-Q4_K_M.gguf',
+    url: 'https://huggingface.co/lmstudio-community/Qwen3.8-27B-GGUF/resolve/5a7da681f60570ab5b439a587e912d2e5eddb582/Qwen3.8-27B-Q4_K_M.gguf',
+    size: 16810714336,
+    sha256: 'e00082f779fa385cee8c68a3ec8833a75778cc87272240b942f74e0b8243e520',
+    minMemory: 32 * GB,
+    // Its picture part (the vision projector): without it the model reads words only.
+    vision: {
+      file: 'mmproj-Qwen3.8-27B-BF16.gguf',
+      url: 'https://huggingface.co/lmstudio-community/Qwen3.8-27B-GGUF/resolve/5a7da681f60570ab5b439a587e912d2e5eddb582/mmproj-Qwen3.8-27B-BF16.gguf',
+      size: 931145856,
+      sha256: '97ba9d70e7407f08c880def231fd360a312c76d0053387733f10dcf6affd75a1',
+    },
+    can: { pictures: true, thinking: 'on', code: true, tools: true },
   },
 ]
 

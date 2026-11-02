@@ -5,6 +5,7 @@
    shown in Settings → Soul and memory. Pure. */
 
 import { makeId } from './lib/ui.js'
+import { memoryFor } from './brain/brain-model.js'
 
 export const DEFAULT_SOUL = `I am OSAT. I live on this Mac and work offline.
 
@@ -32,18 +33,22 @@ const withSettings = (state, patch) => ({ ...state, settings: { ...(state.settin
 
 export const setSoul = (state, soul) => withSettings(state, { soul })
 
-export function addMemory(state, text, from = 'You told OSAT', at = new Date().toISOString()) {
+export function addMemory(state, text, from = 'You told OSAT', at = new Date().toISOString(), chatId = null) {
   const words = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 500)
   if (!words) return state
-  return withSettings(state, { memory: [...memoryOf(state.settings), { id: makeId('mem'), text: words, from, at }] })
+  return withSettings(state, { memory: [...memoryOf(state.settings), { id: makeId('mem'), text: words, from, at, ...(chatId ? { chatId } : {}) }] })
 }
+
+/* Learning from chats (Phase 112) is on unless turned off in Settings → Soul and memory. */
+export const learnsFromChats = (settings) => settings?.learnFromChats !== false
+export const setLearnFromChats = (state, on) => withSettings(state, { learnFromChats: on })
 
 export const forgetMemory = (state, id) => withSettings(state, { memory: memoryOf(state.settings).filter((line) => line.id !== id) })
 
-/* What the AI reads first, for Ask's system prompt. */
-export function aiPreamble(settings) {
+/* What the AI reads first, for Ask's system prompt; with `question`, the memories that fit it come first (brain-model). */
+export function aiPreamble(settings, question = '') {
   const soul = soulOf(settings).trim()
-  const memory = memoryOf(settings)
+  const memory = memoryFor(memoryOf(settings), question)
   return [
     soul && `Who you are and how you talk (SOUL.md, the person can change it):\n${soul.slice(0, MAX)}`,
     memory.length && `What you know about the person (MEMORY.md; use it quietly to fit your answers, never repeat it back):\n${memory.map((line) => `- ${line.text}`).join('\n').slice(0, MAX)}`,

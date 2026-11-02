@@ -39,7 +39,7 @@ export function useAskHere({ workspace, commit, modelId, context, local = true }
     try {
       await streamLocalMessage({
         model: modelId,
-        messages: outbound(systemPrompt(new Date(), aiPreamble(workspace.settings), askContext(workspace, question, { ...context, noteIds })), [], question, active, noteIds, [], workspace.folders, found.text),
+        messages: outbound(systemPrompt(new Date(), aiPreamble(workspace.settings, question), askContext(workspace, question, { ...context, noteIds })), [], question, active, noteIds, [], workspace.folders, found.text),
         signal: controller.signal,
         onDelta: (delta) => { full += delta; update({ text: extractActions(full).body }) },
       })

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { applyOps, diffDocs, migrate, SCHEMA, validateOps } from '../shared/store-core.mjs'
-import { connect, connected, disconnect, edgePath, folderKey, linksAt, linksOf, noteKey } from '../src/links-model.js'
+import { connect, connected, disconnect, folderKey, linksAt, linksOf, noteKey } from '../src/links-model.js'
 import { addFolder, addSticky, moveFolder, moveSticky, placeSticky, removeFolder } from '../src/nodes-model.js'
 import { trashNotes } from '../src/notes-model.js'
 import { createDefaultWorkspace, normalizeWorkspace } from '../src/osat-data.js'
@@ -91,12 +91,4 @@ test('a new home lays a sticky or branch out afresh; moving inside the same home
   const placed = { ...hung, folders: hung.folders.map((item) => (item.id === tommy ? { ...item, at: { x: 300, y: 0 } } : item)) }
   assert.deepEqual(moveFolder(placed, tommy, clients, 0).folders.find((item) => item.id === tommy).at, { x: 300, y: 0 })
   assert.equal('at' in moveFolder(placed, tommy, null, Infinity, { loose: true }).folders.find((item) => item.id === tommy), false)
-})
-
-test('edgePath joins the sides that face each other', () => {
-  const left = { x: 0, y: 0, w: 100, h: 60 }
-  assert.match(edgePath(left, { x: 300, y: 10, w: 100, h: 60 }).d, /^M100 30 C/, 'side by side: from the right edge')
-  assert.match(edgePath({ x: 300, y: 10, w: 100, h: 60 }, left).d, /^M300 40 C/, 'from the left edge going left')
-  assert.match(edgePath(left, { x: 10, y: 400, w: 100, h: 60 }).d, /^M50 60 C/, 'one above the other: from the bottom edge')
-  assert.deepEqual(edgePath(left, { x: 300, y: 0, w: 100, h: 60 }).mid, { x: 200, y: 30 })
 })

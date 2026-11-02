@@ -24,7 +24,9 @@ function fakeActivity() {
     now: async () => ({
       mac: true,
       memory: { total: 64 * GB, used: 26.3 * GB, app: 18 * GB, wired: 5 * GB, compressed: 2.3 * GB, cached: 24 * GB, pressure: 'normal' },
-      cpu: { busy: 0.23, cores: 18 },
+      cpu: { busy: 0.23, cores: 18, thermal: 'nominal' },
+      gpu: 0.19,
+      battery: { percent: 0.87, charging: false, plugged: true, cycles: 26, health: 0.96, temp: 25.79 },
       disk: { total: 994 * GB, free: 277 * GB },
       specs: { name: 'MacBook Pro', model: 'Mac17,8', chip: 'Apple M5 Pro', macos: '27.2', memory: 64 * GB, cores: 18, uptime: 1043691 },
       apps,
@@ -64,6 +66,8 @@ async function main() {
       await room.getByText('Plenty of room').waitFor()
       await room.getByText('Apple M5 Pro · macOS 27.2 · on for 12 days, 1 hour').waitFor()
       assert.equal(await room.getByRole('meter', { name: 'Processor: 23%' }).count(), 1)
+      assert.equal(await room.getByRole('meter', { name: 'Graphics: 19%' }).count(), 1)
+      assert.match(await room.getByLabel('Battery', { exact: true }).innerText(), /25.8 °C · 96% health · 26 cycles/)
       await room.getByRole('button', { name: 'CPU', exact: true }).click()
       assert.equal(await room.locator('.activity-apps li').nth(1).locator('.activity-app-name').innerText().then((text) => text.startsWith('Figma')), true, 'CPU puts Figma (7%) above ChatGPT (2%)')
       await room.getByRole('button', { name: 'Memory', exact: true }).click()
