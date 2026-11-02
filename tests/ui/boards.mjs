@@ -365,7 +365,8 @@ async function light(page) {
   await side(page, 'Fortis').click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Add to favorites' }).click()
   await favorite.waitFor({ timeout: 3000 }).catch(() => problems.push('a favorite didn’t move to Favorites'))
-  check(await page.locator('nav.side .side-group').first().getAttribute('aria-label') === 'Favorites', 'Favorites wasn’t the first group')
+  // Chat and Brain sit above the boards (Phase 111); among the boards' groups, Favorites comes first.
+  check(await page.locator('nav.side .side-group:not([aria-label="Chat and Brain"])').first().getAttribute('aria-label') === 'Favorites', 'Favorites wasn’t the first group')
   check(await side(page, 'Fortis').count() === 0, 'a favorite showed in Boards too')
   check(await favorite.locator('.side-dot').getAttribute('data-paper') === paper, 'a favorite changed colour')
   check((await readDoc(page)).folders.find((folder) => folder.id === 'fortis')?.favorite === true, 'the favorite mark wasn’t saved')
