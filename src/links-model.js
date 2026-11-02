@@ -78,32 +78,3 @@ export function disconnect(state, a, b) {
   return next
 }
 
-/* A soft curve between two boxes ({ x, y, w, h }), from the sides that face each other:
-   left and right when they sit side by side, top and bottom when one is above the other.
-   Returns the path and its middle point. */
-export function edgePath(from, to) {
-  const a = { x: from.x + from.w / 2, y: from.y + from.h / 2 }
-  const b = { x: to.x + to.w / 2, y: to.y + to.h / 2 }
-  const across = Math.abs(b.x - a.x) - (from.w + to.w) / 2 >= Math.abs(b.y - a.y) - (from.h + to.h) / 2
-  let start
-  let end
-  let bend
-  if (across) {
-    const right = b.x >= a.x
-    start = { x: right ? from.x + from.w : from.x, y: a.y }
-    end = { x: right ? to.x : to.x + to.w, y: b.y }
-    const pull = Math.max(24, Math.abs(end.x - start.x) / 2) * (right ? 1 : -1)
-    bend = [{ x: start.x + pull, y: start.y }, { x: end.x - pull, y: end.y }]
-  } else {
-    const down = b.y >= a.y
-    start = { x: a.x, y: down ? from.y + from.h : from.y }
-    end = { x: b.x, y: down ? to.y : to.y + to.h }
-    const pull = Math.max(24, Math.abs(end.y - start.y) / 2) * (down ? 1 : -1)
-    bend = [{ x: start.x, y: start.y + pull }, { x: end.x, y: end.y - pull }]
-  }
-  const r = (value) => Math.round(value * 10) / 10
-  return {
-    d: `M${r(start.x)} ${r(start.y)} C${r(bend[0].x)} ${r(bend[0].y)},${r(bend[1].x)} ${r(bend[1].y)},${r(end.x)} ${r(end.y)}`,
-    mid: { x: r((start.x + end.x) / 2), y: r((start.y + end.y) / 2) },
-  }
-}

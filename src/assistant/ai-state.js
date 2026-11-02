@@ -76,5 +76,3 @@ export function aiState({ status = null, model = null, models = null, offline = 
   return say('none', `The AI isn’t set up yet. ${fallback}`, { action: 'setup' })
 }
 
-/* The words on the way-forward button. */
-export const actionLabel = (action) => ({ setup: 'Set up the AI', download: 'See the download', resume: 'Resume download', retry: 'Try the AI again', stop: 'Stop' }[action] || '')

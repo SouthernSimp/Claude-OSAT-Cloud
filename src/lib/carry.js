@@ -32,12 +32,6 @@ export function useCarrying() {
   return useSyncExternalStore(subscribe, snapshot, snapshot)
 }
 
-/* The desk says what the top and bottom edges do ('up' / 'down'). */
-export function onCarryEdge(handler) {
-  edgeHandler = handler
-  return () => { if (edgeHandler === handler) edgeHandler = null }
-}
-
 /* A place things can be dropped. Returns the props for its element. */
 export function useDrop(id, spec) {
   const latest = useRef(spec)

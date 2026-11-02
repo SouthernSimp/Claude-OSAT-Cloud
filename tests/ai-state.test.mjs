@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { actionLabel, aiState, engineOf, localModel, WAKE_GIVE_UP_MS, WAKE_SLOW_MS } from '../src/assistant/ai-state.js'
+import { aiState, engineOf, localModel, WAKE_GIVE_UP_MS, WAKE_SLOW_MS } from '../src/assistant/ai-state.js'
 
 const GB = 1024 ** 3
 const tier = (state, extra = {}) => ({ id: 'balanced', ready: true, state, blocked: false, message: '', ...extra })
@@ -29,7 +29,6 @@ test('every state says something, and the ones that can be fixed say how', () =>
     assert.equal(state.key, key, JSON.stringify(input))
     assert.equal(state.action, action, key)
     assert.ok(state.line.length > 10 && !/undefined|NaN/.test(state.line), `${key}: ${state.line}`)
-    if (action) assert.ok(actionLabel(action))
   }
   assert.match(aiState(cases[3][0]).line, /42%/)
   assert.match(aiState(cases[8][0]).line, /memory was freed/)
