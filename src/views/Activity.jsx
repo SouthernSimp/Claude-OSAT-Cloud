@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { cleanError } from '../assistant/useAi.js'
-import { PRESSURE_WORDS, bytesWords, uptimeWords } from '../../shared/activity-model.mjs'
+import { PRESSURE_WORDS, THERMAL_WORDS, bytesWords, uptimeWords } from '../../shared/activity-model.mjs'
 import '../styles/activity.css'
 
 const EVERY_MS = 2000
 const percent = (part) => `${Math.round(part * 100)}%`
 
 /* Power tools → Activity (Phase 93, desktop/activity.cjs): how this Mac is doing, without opening Activity Monitor.
-   Memory (and how full it feels to macOS), the processor, the startup disk, the apps using the most memory with
+   Memory (and how full it feels to macOS), the processor (and how warm the Mac runs), the graphics chip, the battery
+   (charge, health and temperature), the startup disk, the apps using the most memory with
    Quit, and the Mac's specs. Read every two seconds while it shows; only in the Mac app. */
 export function ActivityView() {
   const bridge = window.osatActivity
@@ -41,7 +42,7 @@ function ActivityRoom({ bridge }) {
 
   if (!now) return <div className="activity"><p className="activity-quiet">{problem || 'Looking at your Mac…'}</p></div>
   if (!now.mac) return <p className="pop-gone">Activity reads a Mac’s memory and processor; this computer isn’t one.</p>
-  const { memory, cpu, disk, specs, apps } = now
+  const { memory, cpu, gpu, battery, disk, specs, apps } = now
   const used = disk.total - disk.free
   const shown = [...apps].sort((a, b) => (by === 'cpu' ? b.cpu - a.cpu : b.bytes - a.bytes)).slice(0, 12)
 
@@ -56,7 +57,12 @@ function ActivityRoom({ bridge }) {
       <div className="activity-meters">
         <Meter label="Memory" value={memory.used / memory.total} big={bytesWords(memory.used)} of={`of ${bytesWords(memory.total)}`}
           note={PRESSURE_WORDS[memory.pressure]} state={memory.pressure} />
-        <Meter label="Processor" value={cpu.busy} big={percent(cpu.busy)} of="busy" note={`${cpu.cores} cores`} state={cpu.busy > 0.85 ? 'warn' : 'normal'} />
+        <Meter label="Processor" value={cpu.busy} big={percent(cpu.busy)} of="busy" note={THERMAL_WORDS[cpu.thermal] || `${cpu.cores} cores`}
+          state={cpu.busy > 0.85 || ['serious', 'critical'].includes(cpu.thermal) ? 'warn' : 'normal'} />
+        {gpu !== null && gpu !== undefined && <Meter label="Graphics" value={gpu} big={percent(gpu)} of="busy" note="The GPU, for video, games and the AI" state={gpu > 0.9 ? 'warn' : 'normal'} />}
+        {battery && <Meter label="Battery" value={battery.percent} big={percent(battery.percent)} of={battery.charging ? 'charging' : battery.plugged ? 'plugged in' : 'on battery'}
+          note={[battery.temp && `${battery.temp.toFixed(1)} °C`, battery.health && `${percent(battery.health)} health`, `${battery.cycles} cycles`].filter(Boolean).join(' · ')}
+          state={battery.temp > 40 || (!battery.plugged && battery.percent < 0.15) ? 'warn' : 'normal'} />}
         <Meter label="Disk" value={used / disk.total} big={bytesWords(disk.free)} of="free" note={`${bytesWords(used)} of ${bytesWords(disk.total)} used`}
           state={disk.free / disk.total < 0.1 ? 'warn' : 'normal'} />
       </div>

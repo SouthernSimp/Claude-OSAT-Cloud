@@ -31,7 +31,7 @@ export const TOOLS = [
   { id: 'Terminal', tint: 'graphite', label: 'Terminal', icon: TerminalWindow, hint: 'Your shell, in the Mac app' },
   { id: 'GitHub', tint: 'graphite', label: 'GitHub', icon: GithubLogo, hint: 'Your repositories: what waits for you, and Merge' },
   { id: 'Passwords', tint: 'slate', label: 'Passwords', icon: Key, hint: 'Locked until you unlock them with your master password' },
-  { id: 'Activity', tint: 'green', label: 'Activity', icon: Gauge, hint: 'Memory, processor, disk and the apps using the most' },
+  { id: 'Activity', tint: 'green', label: 'Activity', icon: Gauge, hint: 'A quick look: memory, processor, graphics, battery and its temperature' },
   { id: 'Roadmap', tint: 'indigo', label: 'Roadmap', icon: MapTrifold, hint: 'What’s new, what’s coming next, and where OSAT is going' },
   { id: 'Pile', tint: 'orange', label: 'Sort a pile', icon: Stack, hint: 'Toss a pile of stickies down, group them, send them to a board' },
 ]

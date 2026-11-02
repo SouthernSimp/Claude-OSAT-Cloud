@@ -321,6 +321,7 @@ function buildMenu() {
       label: 'OSAT',
       submenu: [
         { role: 'about' },
+        { label: 'Check for Updates…', click: () => updateFromTray() },
         { type: 'separator' },
         { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: () => command({ view: 'Settings' }) },
         { type: 'separator' },
@@ -1580,11 +1581,11 @@ app.whenReady().then(async () => {
   createWindow()
   createTray()
   launcher?.start().catch((error) => console.error('The launcher could not start:', error))
-  // Updates find you: a quiet look a minute after start and every six hours (refused while Offline, like any other
+  // Updates find you: a quiet look as OSAT opens and every six hours (refused while Offline, like any other
   // request); when one is ready the desk shows one calm line with Update and restart.
   if (app.isPackaged) {
     const lookForUpdate = () => checkForUpdates().then((found) => { if (found?.state === 'available') send('update:available', { version: found.version, size: found.size }) }, () => {})
-    setTimeout(lookForUpdate, 60000)
+    setTimeout(lookForUpdate, 5000)
     setInterval(lookForUpdate, 6 * 3600000)
   }
   // If the desk's shortcut is taken by another app, open Settings so a new one can be picked.

@@ -64,3 +64,12 @@ test('off the Mac it says so instead of guessing', async () => {
   createActivity({ model, processes: { list: async () => [] }, exec: async () => '', platform: 'linux', handle: (channel, run) => { handlers[channel] = run }, fail: () => {} })
   assert.deepEqual(await handlers['activity:now'](), { mac: false })
 })
+
+test('battery, graphics chip and warmth, as the Mac reports them', () => {
+  const battery = model.readBattery('"ExternalConnected" = Yes\n"CurrentCapacity" = 87\n"CycleCount" = 26\n"IsCharging" = No\n"BatteryData" = {"AppleRawMaxCapacity"=8268,"DesignCapacity"=8579}\n"VirtualTemperature"=9999\n"Temperature"=2579')
+  assert.deepEqual({ ...battery, health: Math.round(battery.health * 100) }, { percent: 0.87, charging: false, plugged: true, cycles: 26, health: 96, temp: 25.79 })
+  assert.equal(model.readBattery('no battery here'), null)
+  assert.equal(model.readGpu('"PerformanceStatistics" = {"Device Utilization %"=19,"Renderer Utilization %"=12}'), 0.19)
+  assert.equal(model.readGpu(''), null)
+  assert.equal(model.THERMAL_WORDS.nominal, 'Running cool')
+})

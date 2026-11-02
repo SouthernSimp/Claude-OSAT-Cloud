@@ -57,3 +57,31 @@ export function readSpecs(text) {
 export function readMachineName(text) {
   try { return String(JSON.parse(text).SPHardwareDataType?.[0]?.machine_name || '') } catch { return '' }
 }
+
+/* `ioreg -rn AppleSmartBattery -l` → { percent, charging, plugged, cycles, health, temp } (temp in °C, health 0–1), or
+   null on a Mac without a battery. Temperature is in hundredths of a degree; health is what it holds now against new. */
+export function readBattery(text) {
+  const value = (key) => { const found = new RegExp(`"${key}" ?= ?(\\w+)`).exec(text)?.[1]; return found === undefined ? null : found }
+  const percent = Number(value('CurrentCapacity'))
+  if (value('CurrentCapacity') === null || !Number.isFinite(percent)) return null
+  const raw = Number(value('AppleRawMaxCapacity'))
+  const design = Number(value('DesignCapacity'))
+  const temp = Number(value('Temperature'))
+  return {
+    percent: Math.min(100, Math.max(0, percent)) / 100,
+    charging: value('IsCharging') === 'Yes',
+    plugged: value('ExternalConnected') === 'Yes',
+    cycles: Number(value('CycleCount')) || 0,
+    health: raw > 0 && design > 0 ? Math.min(1, raw / design) : null,
+    temp: temp > 0 ? Math.round(temp) / 100 : null,
+  }
+}
+
+/* `ioreg -r -d 1 -c IOAccelerator` → how busy the graphics chip is, 0–1, or null when it doesn't say. */
+export function readGpu(text) {
+  const found = /"Device Utilization %"\s*=\s*(\d+)/.exec(text)
+  return found ? Math.min(100, Number(found[1])) / 100 : null
+}
+
+/* Electron's powerMonitor.getCurrentThermalState(): how warm macOS says the Mac is running. */
+export const THERMAL_WORDS = { nominal: 'Running cool', fair: 'A little warm', serious: 'Hot: slowing down to cool off', critical: 'Very hot' }
