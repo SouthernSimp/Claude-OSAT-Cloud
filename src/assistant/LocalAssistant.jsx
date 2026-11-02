@@ -7,7 +7,12 @@ import {
   ChatsCircle,
   Check,
   ArrowsOut,
+  CaretRight,
   CircleNotch,
+  DotsThree,
+  FolderPlus,
+  FolderSimple,
+  PushPin,
   Copy,
   FileText,
   ImageSquare,
@@ -39,7 +44,8 @@ import { AskSourcesNotice } from "./AskSourcesNotice.jsx";
 import { UsedSources } from "./UsedSources.jsx";
 import { notesForQuestion, relatedForAsk } from "./work-scope.js";
 import { useUndoToast } from "../lib/UndoToast.jsx";
-import { deriveTitle, fitToMemory, newChat, newestFirst, newMessage, outbound, putChat, removeChat, searchChats } from "./chats.js";
+import { addChatFolder, chatFoldersOf, deriveTitle, fitToMemory, groupChats, moveChat, newChat, newestFirst, newMessage, outbound, pinChat, putChat, removeChat, removeChatFolder, renameChat, renameChatFolder, searchChats } from "./chats.js";
+import { useContextMenu } from "../lib/ContextMenu.jsx";
 import { cleanError, setupLine, useAi } from "./useAi.js";
 import { ModelMenu } from './ModelMenu.jsx';
 import { AgentConfirm, AgentSteps } from "./AgentSteps.jsx";
@@ -144,6 +150,10 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
   const [search, setSearch] = useState("");
   const [pending, setPending] = useState({});
   const [railOpen, setRailOpen] = useState(false);
+  // The chat list's folders (Phase 111): naming one (a new folder, a folder or a chat being renamed), and which are folded.
+  const [naming, setNaming] = useState(null);
+  const [shut, setShut] = useState(readShut);
+  const [menu, openMenu] = useContextMenu();
   const [voiceHint, setVoiceHint] = useState(false);
   const [files, setFiles] = useState([]);
   // Pictures for this question and the ones after it in this chat (Phase 37b); only the AI on this Mac reads them.
@@ -443,6 +453,79 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
 
   const openNote = (noteId) => navigate?.("Notes", { noteId });
   const visible = useMemo(() => searchChats(chats, search), [chats, search]);
+  const chatFolders = chatFoldersOf(workspace.settings);
+  const groups = useMemo(() => groupChats(visible, chatFolders), [visible, workspace.settings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function fold(id) {
+    setShut((list) => {
+      const next = list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
+      try { localStorage.setItem(SHUT_KEY, JSON.stringify(next)); } catch { /* a convenience */ }
+      return next;
+    });
+  }
+
+  function newFolder(name) {
+    const moving = naming?.moving;
+    setNaming(null);
+    let made = null;
+    commit((state) => {
+      const result = addChatFolder(state, name);
+      made = result.folder;
+      return made && moving ? moveChat(result.state, moving, made.id) : result.state;
+    });
+    if (made) showUndo(`Made the folder “${made.name}”`, () => commit((state) => removeChatFolder(state, made.id)));
+  }
+
+  function folderMenu(event, folder) {
+    openMenu(event, [
+      { label: "Rename", icon: PencilSimple, onSelect: () => setNaming({ folderId: folder.id }) },
+      { divider: true },
+      {
+        label: "Delete folder", icon: Trash, hint: "keeps its chats", danger: true,
+        onSelect: () => {
+          const inside = (workspace.chats || []).filter((chat) => chat.folderId === folder.id).map((chat) => chat.id);
+          const spot = chatFolders.findIndex((item) => item.id === folder.id);
+          commit((state) => removeChatFolder(state, folder.id));
+          showUndo(`Deleted the folder “${folder.name}”. Its chats are in Chats.`, () => commit((state) => {
+            const list = chatFoldersOf(state.settings).filter((item) => item.id !== folder.id);
+            list.splice(spot, 0, folder);
+            return inside.reduce((next, id) => moveChat(next, id, folder.id), { ...state, settings: { ...(state.settings || {}), chatFolders: list } });
+          }));
+        },
+      },
+    ]);
+  }
+
+  function chatMenu(event, chat) {
+    openMenu(event, [
+      { label: chat.pinned ? "Unpin" : "Pin to the top", icon: PushPin, onSelect: () => commit((state) => pinChat(state, chat.id, !chat.pinned)) },
+      { label: "Rename", icon: PencilSimple, onSelect: () => setNaming({ chatId: chat.id }) },
+      {
+        label: "Move to", icon: FolderSimple, items: [
+          ...chatFolders.map((folder) => ({ label: folder.name, checked: chat.folderId === folder.id, onSelect: () => commit((state) => moveChat(state, chat.id, folder.id)) })),
+          chat.folderId && { label: "Out of its folder", onSelect: () => commit((state) => moveChat(state, chat.id, null)) },
+          chatFolders.length > 0 && { divider: true },
+          { label: "New folder…", icon: FolderPlus, onSelect: () => setNaming({ folder: true, moving: chat.id }) },
+        ],
+      },
+      { divider: true },
+      { label: "Delete", icon: Trash, danger: true, onSelect: () => deleteChat(chat.id) },
+    ]);
+  }
+
+  const railItem = (chat) => (naming?.chatId === chat.id
+    ? <RailName key={chat.id} label={`Rename ${deriveTitle(chat)}`} initial={deriveTitle(chat)} onDone={(name) => { setNaming(null); if (name.trim()) commit((state) => renameChat(state, chat.id, name)); }} />
+    : (
+      <div className={`rail-item ${chat.id === activeId ? "active" : ""}`} key={chat.id} onContextMenu={(event) => chatMenu(event, chat)}>
+        <button type="button" onClick={() => selectChat(chat.id)}>
+          <strong>{deriveTitle(chat)}</strong>
+          <small>{dayLabel(chat.updatedAt)} · {chat.messages.length} messages</small>
+        </button>
+        <button className="icon-button" type="button" aria-label={`More for ${deriveTitle(chat)}`} title="Pin, rename, move or delete" onClick={(event) => chatMenu(event, chat)}>
+          <DotsThree weight="bold" />
+        </button>
+      </div>
+    ));
   const lastPrompt = messages.at(-1)?.role === "user" ? messages.at(-1).content : "";
   const lastQuestion = [...messages].reverse().find((message) => message.role === "user") || null;
   const lastQuestionId = lastQuestion?.id;
@@ -469,6 +552,9 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
           <button className="new-chat" type="button" onClick={startChat}>
             <Plus weight="bold" /> New chat
           </button>
+          <button className="icon-button" type="button" aria-label="New folder" title="New folder: sections for your chats" onClick={() => setNaming({ folder: true })}>
+            <FolderPlus />
+          </button>
           <button className="icon-button rail-close" type="button" aria-label="Close conversations" onClick={() => setRailOpen(false)}>
             <X />
           </button>
@@ -478,17 +564,32 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
           <input type="search" value={search} placeholder="Search chats" onChange={(event) => setSearch(event.target.value)} />
         </label>
         <div className="rail-list">
-          {visible.map((chat) => (
-            <div className={`rail-item ${chat.id === activeId ? "active" : ""}`} key={chat.id}>
-              <button type="button" onClick={() => selectChat(chat.id)}>
-                <strong>{deriveTitle(chat)}</strong>
-                <small>{dayLabel(chat.updatedAt)} · {chat.messages.length} messages</small>
-              </button>
-              <button className="icon-button danger" type="button" aria-label={`Delete ${deriveTitle(chat)}`} onClick={() => deleteChat(chat.id)}>
-                <Trash />
-              </button>
-            </div>
+          {naming?.folder && <RailName label="New folder’s name" placeholder="Name it: Fortis, Ideas…" onDone={newFolder} />}
+          {groups.pinned.length > 0 && (
+            <section className="rail-group" aria-label="Pinned">
+              <h3 className="rail-group-head"><PushPin weight="fill" aria-hidden="true" /> Pinned</h3>
+              {groups.pinned.map(railItem)}
+            </section>
+          )}
+          {groups.folders.filter(({ chats: inside }) => inside.length || !search).map(({ folder, chats: inside }) => (
+            <section className="rail-group" aria-label={folder.name} key={folder.id}>
+              {naming?.folderId === folder.id
+                ? <RailName label={`Rename ${folder.name}`} initial={folder.name} onDone={(name) => { setNaming(null); if (name.trim()) commit((state) => renameChatFolder(state, folder.id, name)); }} />
+                : (
+                  <button type="button" className="rail-group-head is-folder" aria-expanded={!shut.includes(folder.id) || Boolean(search)} onClick={() => fold(folder.id)} onContextMenu={(event) => folderMenu(event, folder)}>
+                    <CaretRight weight="bold" aria-hidden="true" /> <FolderSimple aria-hidden="true" /> <span>{folder.name}</span> <small>{inside.length || ""}</small>
+                  </button>
+                )}
+              {(!shut.includes(folder.id) || search) && inside.map(railItem)}
+              {(!shut.includes(folder.id) || search) && !inside.length && <p className="rail-hint">Move a chat here from its ⋯ menu.</p>}
+            </section>
           ))}
+          {(groups.rest.length > 0 || groups.pinned.length > 0 || groups.folders.length > 0) && (
+            <section className="rail-group" aria-label="Chats">
+              {(groups.pinned.length > 0 || groups.folders.length > 0) && groups.rest.length > 0 && <h3 className="rail-group-head">Chats</h3>}
+              {groups.rest.map(railItem)}
+            </section>
+          )}
           {!visible.length && <p className="rail-empty">{search ? "No chat matches that." : "Your conversations will collect here."}</p>}
         </div>
         <footer className="rail-foot">
@@ -520,8 +621,8 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
                 <PictureInPicture /> Pop out
               </button>
             )}
-            {compact && !panel && (
-              <button className="icon-button" type="button" aria-label="Open in the OSAT window" title="Open in the OSAT window" onClick={() => navigate?.("Assistant", active ? { chatId: active.id } : null)}>
+            {compact && (
+              <button className="icon-button" type="button" aria-label="Open in a whole window" title="Open in a whole window, with your folders and pinned chats" onClick={() => navigate?.("Chat", active ? { chatId: active.id } : null)}>
                 <ArrowsOut />
               </button>
             )}
@@ -740,7 +841,27 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
 
       {railOpen && <div className="rail-scrim" onClick={() => setRailOpen(false)} />}
       {dropping && <div className="drop-veil" aria-hidden="true"><FileText /> Drop a file or a picture to ask about it</div>}
+      {menu}
       {toast}
     </section>
+  );
+}
+
+const SHUT_KEY = "osat.chat.folded.v1";
+function readShut() {
+  try { return JSON.parse(localStorage.getItem(SHUT_KEY) || "[]"); } catch { return []; }
+}
+
+/* A folder's or a chat's name, written in place: Return or leaving keeps it, Esc lets it go. */
+function RailName({ label, placeholder, initial = "", onDone }) {
+  const [name, setName] = useState(initial);
+  const done = useRef(false);
+  const finish = (value) => { if (done.current) return; done.current = true; onDone(value); };
+  return (
+    <form className="rail-naming" onSubmit={(event) => { event.preventDefault(); finish(name); }}>
+      <input autoFocus aria-label={label} placeholder={placeholder} value={name} maxLength={120}
+        onFocus={(event) => event.target.select()} onChange={(event) => setName(event.target.value)} onBlur={() => finish(name)}
+        onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finish(""); } }} />
+    </form>
   );
 }

@@ -1091,3 +1091,21 @@ html:has(.quick-chat) body { background: transparent; }
 .ai-can-chip[data-can="pictures"] { background: var(--paper-sky); }
 .ai-can-chip[data-can="thinking"] { background: var(--paper-lilac); }
 .ai-can-chip[data-can="code"] { background: var(--paper-mint); }
+
+/* ---- The chat list's sections (Phase 111): Pinned, your folders, then Chats ---- */
+.rail-group { display: grid; gap: 1px; }
+.rail-group + .rail-group { margin-top: var(--s-2); }
+.rail-group-head { display: flex; align-items: center; gap: 6px; margin: 0; padding: var(--s-2) var(--s-2) 4px; color: var(--faint); font-size: var(--t-2xs); font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+.rail-group-head svg { width: 12px; height: 12px; }
+.rail-group-head.is-folder { width: 100%; border: 0; border-radius: var(--r-sm); background: none; text-align: left; text-transform: none; letter-spacing: 0; font-size: var(--t-xs); color: var(--muted); }
+.rail-group-head.is-folder:hover { background: var(--surface); color: var(--ink); }
+.rail-group-head.is-folder span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-group-head.is-folder > svg:first-child { transition: rotate var(--d-fast) var(--ease-out); }
+.rail-group-head.is-folder[aria-expanded="true"] > svg:first-child { rotate: 90deg; }
+.rail-group-head small { color: var(--faint); font-weight: 500; }
+.rail-group:has(.is-folder) .rail-item { margin-left: 14px; }
+.rail-hint { margin: 0 0 4px 30px; color: var(--faint); font-size: var(--t-2xs); }
+.rail-naming input { width: 100%; min-height: 30px; padding: 0 var(--s-2); border: 1px solid var(--accent); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font-size: var(--t-xs); }
+
+/* Chat as a whole room: a little more air than the panel. */
+.app-room > .assistant { height: 100%; }

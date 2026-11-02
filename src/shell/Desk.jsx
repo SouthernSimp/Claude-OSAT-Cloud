@@ -56,7 +56,7 @@ import { needsTour, Tour } from './Tour.jsx'
 
 // The rooms that can't do anything offline; they say so instead of opening.
 const ONLINE_ONLY = new Set(['Browser', 'Terminal', 'NowPlaying', 'GitHub'])
-const ROOMS = new Set(['Today', 'Todo', 'JustIn', 'Mindmap', 'Canvas', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile', 'Activity'])
+const ROOMS = new Set(['Chat', 'Today', 'Todo', 'JustIn', 'Mindmap', 'Canvas', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile', 'Activity'])
 const BOARD_KEY = 'osat.boards.board.v1'
 
 export function Desk() {
@@ -247,6 +247,8 @@ export function Desk() {
     else if (view === 'Capture') { if (!latest.current.welcome) setSummon(Date.now()) }
     // Ask is the panel on the right: a question, a chat, or a file to ask about.
     else if (view === 'Assistant') setAsk({ ...(detail || {}), stamp: Date.now() })
+    // Chat is Ask in a whole window (Phase 111): the panel steps aside for it.
+    else if (view === 'Chat') { setAsk(null); go('Chat', detail) }
     else if (view === 'Clipboard') { if (window.osatSearch) window.osatSearch.show('clipboard'); else setNotice('The clipboard history is in the Mac app.') }
     else if (view === 'Obsidian') go('Settings', { section: 'data' })
     else if (view === 'Reflection') go('Journal', { tab: 'reflect' })
@@ -351,6 +353,7 @@ function Room({ at, common, storage, command, covered, boardsRef, setBoard }) {
   const target = at.detail ? { ...at.detail, at: at.stamp } : null
   const today = localDateKey()
   switch (at.view) {
+    case 'Chat': return <LocalAssistant {...common} initialPrompt={target?.chatId || target?.prompt ? target : null} />
     case 'Today': return <TodayView {...common} />
     case 'Todo': return <TodoView {...common} />
     case 'JustIn':

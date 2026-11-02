@@ -367,6 +367,7 @@ function buildMenu() {
         { type: 'separator' },
         room('Boards', 'Mindmap'),
         room('Canvases', 'Canvas'),
+        room('Chat', 'Chat'),
         room('Ask', 'Assistant'),
         room('Meetings', 'Meetings'),
         room('Mail', 'Mail'),

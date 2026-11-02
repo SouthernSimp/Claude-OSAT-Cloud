@@ -64,7 +64,10 @@ export function normalizeChat(value) {
   return { id: value.id, title: text(value.title), messages, createdAt: text(value.createdAt), updatedAt: text(value.updatedAt, text(value.createdAt)),
     ...(modelId(value.modelId) ? { modelId: modelId(value.modelId) } : {}), ...(cleanScope(value.contextScope) ? { contextScope: cleanScope(value.contextScope) } : {}),
     // "Can use tools" turned off for this chat (it is on unless said).
-    ...(value.tools === false ? { tools: false } : {}) }
+    ...(value.tools === false ? { tools: false } : {}),
+    // Pinned on top of the chat list, and the folder it was put in (Phase 111, schema 19).
+    ...(value.pinned === true ? { pinned: true } : {}),
+    ...(typeof value.folderId === 'string' && value.folderId ? { folderId: value.folderId } : {}) }
 }
 
 /* Adds the chat or replaces it, stamping the time it changed. */
@@ -72,6 +75,49 @@ export function putChat(state, chat) {
   const next = { ...chat, updatedAt: new Date().toISOString() }
   const chats = state.chats || []
   return { ...state, chats: chats.some((item) => item.id === chat.id) ? chats.map((item) => (item.id === chat.id ? next : item)) : [next, ...chats] }
+}
+
+/* Chat folders (Phase 111): { id, name } in `settings.chatFolders`, so the chat list can have sections like Fortis or
+   Ideas. Pinning, renaming and moving a chat never change its time, so the list doesn't jump. */
+export const chatFoldersOf = (settings) => (Array.isArray(settings?.chatFolders) ? settings.chatFolders.filter((folder) => typeof folder?.id === 'string' && typeof folder.name === 'string') : [])
+
+const withFolders = (state, folders) => ({ ...state, settings: { ...(state.settings || {}), chatFolders: folders } })
+const changeChat = (state, id, change) => ({ ...state, chats: (state.chats || []).map((chat) => (chat.id === id ? change(chat) : chat)) })
+
+export function addChatFolder(state, name) {
+  const value = String(name || '').trim().slice(0, 60)
+  if (!value) return { state, folder: null }
+  const same = chatFoldersOf(state.settings).find((folder) => folder.name.toLowerCase() === value.toLowerCase())
+  if (same) return { state, folder: same }
+  const folder = { id: `chatfolder-${crypto.randomUUID()}`, name: value }
+  return { state: withFolders(state, [...chatFoldersOf(state.settings), folder]), folder }
+}
+
+export function renameChatFolder(state, id, name) {
+  const value = String(name || '').trim().slice(0, 60)
+  return value ? withFolders(state, chatFoldersOf(state.settings).map((folder) => (folder.id === id ? { ...folder, name: value } : folder))) : state
+}
+
+/* A folder goes; its chats stay, back in the main list. */
+export function removeChatFolder(state, id) {
+  const unfiled = { ...state, chats: (state.chats || []).map((chat) => (chat.folderId === id ? (({ folderId, ...rest }) => rest)(chat) : chat)) }
+  return withFolders(unfiled, chatFoldersOf(state.settings).filter((folder) => folder.id !== id))
+}
+
+export const pinChat = (state, id, on) => changeChat(state, id, (chat) => (on ? { ...chat, pinned: true } : (({ pinned, ...rest }) => rest)(chat)))
+export const moveChat = (state, id, folderId) => changeChat(state, id, (chat) => (folderId ? { ...chat, folderId } : (({ folderId: gone, ...rest }) => rest)(chat)))
+export const renameChat = (state, id, title) => changeChat(state, id, (chat) => ({ ...chat, title: String(title || '').trim().slice(0, 120) }))
+
+/* The chat list's sections: pinned first, then each folder, then the rest; newest first inside each. A pinned chat shows
+   only under Pinned; a chat whose folder is gone is in the rest. */
+export function groupChats(chats, folders) {
+  const known = new Set(folders.map((folder) => folder.id))
+  const sorted = newestFirst(chats)
+  return {
+    pinned: sorted.filter((chat) => chat.pinned),
+    folders: folders.map((folder) => ({ folder, chats: sorted.filter((chat) => !chat.pinned && chat.folderId === folder.id) })),
+    rest: sorted.filter((chat) => !chat.pinned && !known.has(chat.folderId)),
+  }
 }
 
 export const removeChat = (state, id) => ({ ...state, chats: (state.chats || []).filter((chat) => chat.id !== id) })

@@ -149,6 +149,9 @@ export function Sidebar({ workspace, commit, navigate, at, offline, onOffline, n
       </div>
 
       <div className="side-scroll">
+        <section className="side-group" aria-label="Chat">
+          <SideRow space={spaceFor('Chat')} active={here('Chat')} navigate={navigate} />
+        </section>
         {['Favorites', 'Clients'].map((group) => boards.some(({ folder }) => groupOf(folder) === group) && (
           <section key={group} className="side-group" aria-label={group}>
             <header className="side-head"><span>{group}</span></header>
