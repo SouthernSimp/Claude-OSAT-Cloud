@@ -368,6 +368,7 @@ function buildMenu() {
         room('Boards', 'Mindmap'),
         room('Canvases', 'Canvas'),
         room('Chat', 'Chat'),
+        room('Brain', 'Brain'),
         room('Ask', 'Assistant'),
         room('Meetings', 'Meetings'),
         room('Mail', 'Mail'),

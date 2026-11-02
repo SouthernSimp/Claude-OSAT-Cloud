@@ -50,7 +50,8 @@ import { cleanError, setupLine, useAi } from "./useAi.js";
 import { ModelMenu } from './ModelMenu.jsx';
 import { AgentConfirm, AgentSteps } from "./AgentSteps.jsx";
 import { AGENT_MEMORY_CHARS, useAgent } from "./useAgent.js";
-import { aiPreamble } from "../soul.js";
+import { addMemory, aiPreamble, learnsFromChats, memoryOf } from "../soul.js";
+import { learnMessages, readLearned } from "../brain/brain-model.js";
 import { isPicture, MAX_PICTURES, pictureProblem, readPicture, withPictures } from "./pictures.js";
 import "../styles/assistant.css";
 
@@ -371,7 +372,7 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
     let full = "";
     // A question with a picture is answered, never acted on.
     const acting = !pictures.length && base.tools !== false && agent.wants(content);
-    const fit = fitToMemory(outbound(systemPrompt(new Date(), aiPreamble(workspace.settings), askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds }), { acting }), base.messages, content, workspace.notes, noteIds, files, workspace.folders, found.text), acting ? AGENT_MEMORY_CHARS : undefined);
+    const fit = fitToMemory(outbound(systemPrompt(new Date(), aiPreamble(workspace.settings, content), askContext(workspace, content, { scope: base.contextScope?.kind || "workspace", focus: base.contextScope?.folderId, noteIds }), { acting }), base.messages, content, workspace.notes, noteIds, files, workspace.folders, found.text), acting ? AGENT_MEMORY_CHARS : undefined);
     const onDelta = (delta) => {
       full += delta;
       setStreaming(extractActions(full).body);
@@ -400,7 +401,21 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
       return putChat(state, { ...saved, messages: [...saved.messages, answer] });
     });
     if (acted.undo) agent.keepUndo(answer.id, acted.undo);
+    if (body.trim() && learnsFromChats(workspace.settings)) learn(content, body, chat, model);
     if (!acting && actions.length && wantsActions(content)) setPending((current) => ({ ...current, [answer.id]: actions }));
+  }
+
+  /* The brain (Phase 112): after an answer, the same AI lists what's worth remembering from it, quietly. A question
+     never waits on it or fails for it. */
+  async function learn(question, answer, chat, using) {
+    try {
+      const known = memoryOf(workspace.settings).map((line) => line.text);
+      const text = await streamLocalMessage({ model: using, messages: learnMessages(question, answer, known), background: true });
+      const lines = readLearned(text, known);
+      if (!lines.length) return;
+      const from = `Chat: ${deriveTitle({ ...chat, messages: [{ role: "user", content: question }, ...chat.messages] }).slice(0, 60)}`;
+      commit((state) => lines.reduce((next, line) => addMemory(next, line, from, undefined, chat.id), state));
+    } catch { /* learning is quiet */ }
   }
 
   function undoAsk(messageId) {

@@ -1,0 +1,30 @@
+/* The Brain (Phase 112): the graph fills the room; what OSAT remembers sits beside it. */
+.app-room > .brain { display: grid; grid-template-columns: minmax(0, 1fr) 320px; height: 100%; min-height: 0; padding: 0; }
+.brain-stage { position: relative; min-height: 0; overflow: hidden; }
+.brain-head { position: absolute; inset: 0 0 auto 0; z-index: 1; display: flex; align-items: center; gap: 14px; padding: 16px 20px; pointer-events: none; }
+.brain-head > * { pointer-events: auto; }
+.brain-head h1 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--t-xl); letter-spacing: -.02em; }
+.brain-head h1 svg { color: var(--tint-green); }
+.brain-head p { flex: 1; margin: 0; color: var(--muted); font-size: var(--t-sm); }
+.brain-find { display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-raised); color: var(--faint); box-shadow: var(--e-1); }
+.brain-find input { width: 180px; min-height: 30px; padding: 0; border: 0; background: transparent; color: var(--ink); font-size: var(--t-sm); }
+.brain-canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.brain-canvas:active { cursor: grabbing; }
+.brain-legend { position: absolute; left: 20px; bottom: 16px; display: flex; flex-wrap: wrap; gap: 12px; margin: 0; padding: 6px 12px; list-style: none; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-raised); color: var(--muted); font-size: var(--t-xs); }
+.brain-legend li { display: flex; align-items: center; gap: 6px; }
+.brain-legend i { width: 9px; height: 9px; border-radius: 50%; }
+.brain-picked { position: absolute; right: 20px; bottom: 16px; display: flex; align-items: center; gap: 10px; max-width: min(460px, 60%); margin: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); font-size: var(--t-sm); box-shadow: var(--e-2); }
+.brain-side { display: grid; align-content: start; gap: 12px; min-height: 0; overflow: auto; padding: 20px; border-left: 1px solid var(--line); background: var(--surface-sunken); }
+.brain-side h2 { margin: 0; font-size: var(--t-md); }
+.brain-quiet { margin: 0; color: var(--muted); font-size: var(--t-xs); line-height: var(--lh-snug); }
+.brain-switch { display: flex; align-items: center; gap: 8px; font-size: var(--t-sm); font-weight: 550; }
+.brain-memories { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.brain-memories li { display: flex; align-items: flex-start; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-raised); font-size: var(--t-sm); }
+.brain-memories li span { flex: 1; display: grid; gap: 3px; }
+.brain-memories small { color: var(--faint); font-size: var(--t-2xs); }
+.brain-memories .icon-button { width: 26px; height: 26px; opacity: .5; }
+.brain-memories li:hover .icon-button, .brain-memories .icon-button:focus-visible { opacity: 1; }
+@container room (max-width: 860px) {
+  .app-room > .brain { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .brain-side { max-height: 40%; border-left: 0; border-top: 1px solid var(--line); }
+}

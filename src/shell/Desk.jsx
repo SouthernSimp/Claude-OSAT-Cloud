@@ -40,6 +40,7 @@ import { PasswordsView } from '../views/Passwords.jsx'
 import { MeetingsView } from '../views/Meetings.jsx'
 import { SettingsView } from '../views/Settings.jsx'
 import { Sidebar } from './Sidebar.jsx'
+import { BrainRoom } from '../brain/BrainRoom.jsx'
 // Canvases load Excalidraw only when one is opened; its fonts come from inside OSAT (public/excalidraw), never the web.
 const CanvasRoom = lazy(() => {
   window.EXCALIDRAW_ASSET_PATH = new URL('excalidraw/', document.baseURI).href
@@ -56,7 +57,7 @@ import { needsTour, Tour } from './Tour.jsx'
 
 // The rooms that can't do anything offline; they say so instead of opening.
 const ONLINE_ONLY = new Set(['Browser', 'Terminal', 'NowPlaying', 'GitHub'])
-const ROOMS = new Set(['Chat', 'Today', 'Todo', 'JustIn', 'Mindmap', 'Canvas', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile', 'Activity'])
+const ROOMS = new Set(['Chat', 'Brain', 'Today', 'Todo', 'JustIn', 'Mindmap', 'Canvas', 'Notes', 'Files', 'Journal', 'Calendar', 'Habits', 'Goals', 'Budget', 'Browser', 'Terminal', 'Settings', 'NowPlaying', 'Roadmap', 'GitHub', 'Mail', 'Passwords', 'Meetings', 'Pile', 'Activity'])
 const BOARD_KEY = 'osat.boards.board.v1'
 
 export function Desk() {
@@ -353,6 +354,7 @@ function Room({ at, common, storage, command, covered, boardsRef, setBoard }) {
   const target = at.detail ? { ...at.detail, at: at.stamp } : null
   const today = localDateKey()
   switch (at.view) {
+    case 'Brain': return <BrainRoom {...common} />
     case 'Chat': return <LocalAssistant {...common} initialPrompt={target?.chatId || target?.prompt ? target : null} />
     case 'Today': return <TodayView {...common} />
     case 'Todo': return <TodoView {...common} />

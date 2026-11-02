@@ -19,7 +19,11 @@ function fakeAi() {
     status: async () => ({ chosen: 'balanced', tiers: [], download: null }),
     onStatus: () => () => {},
     models: async () => ({ models: [{ id: 'osat:balanced', name: 'Gemma 4 E4B · Balanced', label: 'Balanced', runtime: 'osat', offline: true, state: 'ready' }] }),
-    chatStream: (payload, onDelta) => { answers += 1; const text = `Answer number ${answers}.`; onDelta(text); return { done: Promise.resolve(text), cancel() {} } },
+    chatStream: (payload, onDelta) => {
+      // The brain's quiet step after an answer: what to remember.
+      if (payload.background) { const facts = /Fortis/.test(payload.messages.at(-1).content) ? '- Nate’s client Fortis launches in December.' : 'none'; onDelta(facts); return { done: Promise.resolve(facts), cancel() {} } }
+      answers += 1; const text = `Answer number ${answers}.`; onDelta(text); return { done: Promise.resolve(text), cancel() {} }
+    },
   }
 }
 
@@ -105,6 +109,24 @@ async function run(browser, url, theme) {
   await page.locator('.app-ask-button').click()
   await sideButton(page, 'Chat').click()
   await room.waitFor({ timeout: 5000 })
+
+  // The Brain: what OSAT learned from the Fortis chat, joined to it on the graph; Forget with Undo.
+  await sideButton(page, 'Brain').click()
+  const brain = page.locator('.app-room[data-view="Brain"]')
+  await brain.waitFor({ timeout: 5000 })
+  const fact = brain.locator('.brain-memories li', { hasText: 'Fortis launches in December' })
+  await fact.waitFor({ timeout: 5000 }).catch(() => problems.push(`${theme}: the Brain didn’t remember the Fortis chat`))
+  check(/Chat: Plan the Fortis launch/.test(await fact.innerText().catch(() => '')), `${theme}: the memory doesn’t say which chat it came from`)
+  check(await brain.locator('.brain-memories li').count() === 1, `${theme}: chats with nothing lasting were remembered anyway`)
+  await sleep(1500)
+  const drawn = await brain.locator('canvas').evaluate((canvas) => { const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data; let inked = 0; for (let i = 3; i < data.length; i += 4) if (data[i]) inked += 1; return inked })
+  check(drawn > 200, `${theme}: the graph drew nothing`)
+  check(/[4-9] things/.test(await brain.locator('.brain-head p').innerText()), `${theme}: the graph is missing chats or memories`)
+  await page.screenshot({ path: `${OUT}/brain-${theme}.png` })
+  await fact.getByRole('button', { name: /Forget/ }).click()
+  check(!await brain.locator('.brain-memories li').count(), `${theme}: Forget didn’t forget`)
+  await page.getByRole('button', { name: 'Undo' }).last().click()
+  await brain.locator('.brain-memories li').first().waitFor({ timeout: 3000 }).catch(() => problems.push(`${theme}: Undo didn’t bring the memory back`))
   await page.close()
 }
 
