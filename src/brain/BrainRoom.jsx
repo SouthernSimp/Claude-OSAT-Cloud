@@ -65,7 +65,7 @@ export function BrainRoom({ workspace, commit, navigate }) {
 
       <aside className="brain-side" aria-label="What OSAT remembers">
         <h2>What OSAT remembers</h2>
-        <p className="brain-quiet">Each chat teaches OSAT the lasting things: your clients, people, plans and how you like to work. It reads the ones that fit before it answers.</p>
+        <p className="brain-quiet">Each chat with the AI on this Mac teaches OSAT the lasting things: your clients, people, plans and how you like to work. It reads the ones that fit before it answers.</p>
         <label className="brain-switch">
           <input type="checkbox" checked={learning} onChange={(event) => commit((state) => setLearnFromChats(state, event.target.checked))} />
           <span>Remember what we talk about</span>

@@ -401,12 +401,13 @@ export function LocalAssistant({ workspace, commit, navigate, initialPrompt = nu
       return putChat(state, { ...saved, messages: [...saved.messages, answer] });
     });
     if (acted.undo) agent.keepUndo(answer.id, acted.undo);
-    if (body.trim() && learnsFromChats(workspace.settings)) learn(content, body, chat, model);
+    // Only the AI on this Mac learns: a cloud model would bill an extra question and send the chat out again.
+    if (body.trim() && learnsFromChats(workspace.settings) && isLocalModel(replyingModel)) learn(content, body, chat, model);
     if (!acting && actions.length && wantsActions(content)) setPending((current) => ({ ...current, [answer.id]: actions }));
   }
 
-  /* The brain (Phase 112): after an answer, the same AI lists what's worth remembering from it, quietly. A question
-     never waits on it or fails for it. */
+  /* The brain (Phase 112): after an answer from the AI on this Mac, the same AI lists what's worth remembering from it,
+     quietly. A question never waits on it or fails for it. */
   async function learn(question, answer, chat, using) {
     try {
       const known = memoryOf(workspace.settings).map((line) => line.text);
