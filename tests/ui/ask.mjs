@@ -22,6 +22,8 @@ function fakeAi() {
       { id: 'cloud:deepseek:deepseek-chat', name: 'deepseek-chat · DeepSeek', runtime: 'cloud', offline: false, where: 'DeepSeek' },
     ] }),
     chatStream: (payload, onDelta) => {
+      // The Brain's quiet question after an answer (what to remember) isn't one of these answers.
+      if (payload.background) { onDelta('none'); return { done: Promise.resolve('none'), cancel() {} } }
       window.__payloads = [...(window.__payloads || []), payload]
       answers += 1
       const text = `Answer number ${answers}.`
